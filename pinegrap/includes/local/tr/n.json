@@ -833,6 +833,7 @@
     "No secret saved yet.": "Henüz gizli anahtar kaydedilmedi.",
     "No selection": "Seçim yok",
     "No shippable items": "Kargolanabilir ürün yok",
+    "No shipping method can ship to this recipient": "Hiçbir nakliye yöntemi bu alıcıya gönderemiyor",
     "No shipping method serves this address yet, so the order cannot be completed. Check the country and the address, or contact us.": "Bu adrese gönderim yapan bir kargo yöntemi henüz yok, bu yüzden sipariş tamamlanamıyor. Ülkeyi ve adresi kontrol edin ya da bizimle iletişime geçin.",
     "No shipping methods available for this address.": "Bu adres için kargo yöntemi mevcut değil.",
     "No shipping recipient could be resolved for this order.": "Bu sipariş için kargo alıcısı belirlenemedi.",

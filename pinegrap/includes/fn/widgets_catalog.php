@@ -1597,6 +1597,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     foreach ($products as $p) { $product_ids[] = (int)$p['id']; }
     $product_ids_str = implode(',', $product_ids);
 
+    // The rows of the product lists the card template draws, read for the
+    // products of this page (widgets_lists_product.php).
+    $_pg_listed = pg_sw_list_wanted('product');
+    if ($_pg_listed && $products) pg_sw_list_publish('product', pg_sw_list_product_read($products, $_pg_listed));
+
     $gallery_counts = array();
     if ($product_ids_str !== '') {
         $gc_rows = db_items(
@@ -5634,7 +5639,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         // The rows of the product lists the tree draws, read for this
         // product alone (widgets_lists_product.php).
         if ($_civ_listed) {
-            pg_sw_list_publish('product', pg_sw_list_product_read($p, $_civ_listed, isset($_civ_listed['product.related']) ? $_civ_detail_pid() : 0));
+            pg_sw_list_publish('product', pg_sw_list_product_read(array($p), $_civ_listed, isset($_civ_listed['product.related']) ? $_civ_detail_pid() : 0));
         }
     }
 

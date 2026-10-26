@@ -127,6 +127,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-collab-notes-sync.md: How a note left in the designer reaches the other editor without a reload: presence notes map, page_notes_at counter, notes_fetch, merge rules.
 - designer-collab-view-mode.md: Designer view mode when another person holds the lock: _sdMayEdit, _sdGuardItem, hidden panels, one-item context menu, chat bubble, avatars and the narrow note_save exception.
 - designer-collapse-open-state.md: Open state an accordion item (.collapse) saves and publishes: the one its toggle is written with, not the item last clicked on the canvas; modal, offcanvas, dropdown-menu always close.
+- designer-content-roles-panels.md: The Attributes and Styles panels at content level: read-only outside a marked area, User Styles always, _sdPanelLockReason / _sdPanelLock, the refused commit points
 - designer-content-roles-save-gate.md: Designer content roles (manager/user): what they may edit, how pg_designer_merge_restricted_tree() merges a save, note stamping, body classes, locked vs hidden.
 - designer-content-roles-text-nodes.md: Which designer nodes a manager or user may edit as text outside a marked area (_sdIsTextNode()): content, semantic, the btn and badge components; why not an old card.
 - designer-content-roles-translations.md: What a content-level editor (manager, user) may do with translations and drafts in the designer: the Translate section, translations_action.php limits for role 3, a text's page scope, draft state.
@@ -218,6 +219,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - shared-component-model.md: How a shared_ref places a shared component: id link and name snapshot, empty children, unique names, nesting without loops, request-time markers, depth cap, deleted rows, editor colours.
 - shared-components-panel.md: Deleting shared components and system widgets without opening a design (designs home panel), how usage is counted, and why deleting a design leaves those rows alone (pg_designer_delete_design()).
 - shipping-address-widget.md: The Shipping Address and Arrival widget (first step of the classic multi-step checkout): handler, page row, recipient gate, controls by name, state switch, arrival date rows, what is left out.
+- shipping-method-widget.md: The Shipping Method widget (second step of the classic multi-step checkout): handler, next page, methods from get_shipping_methods(), the chosen method, items section, what is left out.
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.
 - signature-receipt-and-output.md: Signature evidence receipt, the ^^field^^ token output, the h() ampersand pitfall, and why 'signature' was added to the form_fields.type enum.
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
@@ -247,7 +249,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, the pg-hide-if-empty rerun, the edit pencil, the strip (#1592).
 - widget-lists-calendar.md: The calendar view's month and week grid as lists (W13): the four sources, their keys, nesting, day and event tokens, what the classic month_grid section keeps, the editor's grid starter.
 - widget-lists-editor.md: Lists inside a record in the designer (#1688): palette items, where one may land, the list panel, Bind Data row values, canvas band and fade, the JS twins and their test.
-- widget-lists-product.md: Product lists in the catalog detail widget (W9 slice 1, #1752): images, attributes, products bought together; where rows are read, the cross-sell block they replace, what is left
+- widget-lists-product.md: Product lists in the catalog detail and listing widgets (W9): images, attributes, products bought together; where rows are read, group cards, the cross-sell block they replace, what is left
 - widget-lists.md: Lists inside a widget record (#1680): loop_area + props.source, sources and tokens, span and published rows, pass stage 2, empty lists, escaping, nesting, edit pencil, get_file
 - widget-loop-position.md: Row position tokens of widget lists (#1597; __loop_index, __loop_count, first/last/odd/even): row marks only when used, filled by the finish pass per printed page, what counts as a row.
 - wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates

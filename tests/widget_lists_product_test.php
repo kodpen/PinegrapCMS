@@ -92,7 +92,7 @@ function test_widget_lists_product_descriptors()
 	foreach (array('form_list_view', 'form_item_view') as $kind) {
 		foreach (pg_sw_kind_lists($kind) as $d) pg_assert_same('form_record', $d['family'], $kind);
 	}
-	pg_assert_same(array(), pg_sw_kind_lists('catalog_listing'), 'the listing: none yet');
+	pg_assert_same(array('product.images', 'product.attributes'), array_keys(pg_sw_kind_lists('catalog_listing')), 'the listing: no products bought together');
 }
 
 function test_widget_lists_product_rows()
@@ -167,4 +167,44 @@ function test_widget_lists_product_detail_end_to_end()
 	} finally {
 		pg_sw_finish_close();
 	}
+}
+
+// A catalog listing draws product and group cards from one template: each
+// product card lists its own rows; a group card, whose id may be a
+// product's too, lists none.
+function test_widget_lists_product_listing_cards()
+{
+	$card = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'loop_area', 'props' => array(), 'children' => array(
+			_wlp_node('div', 'card', array(
+				_wlp_text('__name', 'name', 'h3'),
+				_wlp_node('ul', 'specs', array(_wlp_list('product.attributes', array(_wlp_text('__attr_value', 'v', 'li'))))),
+			)),
+		)),
+	));
+	$scope = pg_sw_finish_open(array('sid' => 79, 'kind' => 'catalog_listing', 'email' => false));
+	try {
+		$split = _split_widget_tree($card);
+		$tpl = '';
+		foreach ($split['loop_children'] as $child) $tpl .= _render_tree_node($child, 0, 0);
+		pg_assert_same(array('product.attributes' => true), pg_sw_list_wanted('product'));
+		pg_sw_list_publish('product', array('product.attributes' => array(
+			5 => array(array('__attr_name' => 'Size', '__attr_value' => 'S'), array('__attr_name' => 'Size', '__attr_value' => 'M')),
+			6 => array(array('__attr_name' => 'Size', '__attr_value' => 'L')),
+		)));
+		$cards = array(
+			array('__row_type' => 'group', '__id' => '5', '__name' => 'Shirts'),
+			array('__id' => '5', '__name' => 'Tee'),
+			array('__id' => '6', '__name' => 'Polo'),
+		);
+		$html = '';
+		foreach ($cards as $values) $html .= pg_sw_fill_longest(trim($tpl), pg_sw_escape_token_values($values));
+		$out = pg_sw_finish_widget_html(pg_sw_sweep_tokens($html), $scope);
+	} finally {
+		pg_sw_finish_close();
+	}
+	pg_assert_same(array('Shirts', 'Tee', 'Polo'), _wlp_texts($out, 'name'));
+	pg_assert_same(array('S', 'M', 'L'), _wlp_texts($out, 'v'), 'the group card lists nothing, each product its own');
+	pg_assert_same(false, strpos($out, 'pg-l'), 'no span left');
+	pg_assert_same(false, strpos($out, '^^'), 'no token left');
 }

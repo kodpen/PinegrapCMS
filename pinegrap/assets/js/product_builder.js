@@ -2712,9 +2712,9 @@
             /* Without the Bootstrap 5 theme select2 renders its own default
                skin: a thinner control with a white background that does not
                match the form-select fields beside it, and ignores dark mode.
-               Every other select2 on this screen gets the theme from the
-               shared initialiser in backend.src.js; this one is set up here,
-               so it has to ask for it itself. */
+               Every other select2 on this screen gets the theme from
+               pgCombobox (pg_fields.js); this one is set up here, so it has
+               to ask for it itself. */
             theme: 'bootstrap-5',
             width: '100%',
             allowClear: true,

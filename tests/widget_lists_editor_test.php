@@ -66,7 +66,7 @@ function _widget_lists_editor_run_js($script, $stubs = '')
 	pg_assert_true(strpos($js, "\n    var SW_LIST_MAX_DEPTH = 4;\n") !== false, 'the depth is four, as the site draws');
 	pg_assert_true(strpos($cut, 'SW_LIST_SOURCES') !== false && strpos($cut, 'SW_LIST_ORDERS') !== false, 'the list tables are found');
 	foreach (array('_sdT', '_sdListIsSourced', '_sdListSpec', '_sdKindLists', '_sdListsAbove', '_sdListRowOptions', '_sdListRowLabel',
-		'_sdListName', '_sdListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdListWidgetKind', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
+		'_sdListName', '_sdListStarter', '_sdProductListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdListWidgetKind', '_sdListNeedsMainLoop', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
 		'_sdListWrite', '_sdListFieldOf', '_sdListFieldFits', '_sdListBand', 'isDescendantOf', '_subtreeContainsLoopArea', '_sdFirstLoopArea') as $name) {
 		$fn = _widget_lists_editor_js_function($js, $name);
 		pg_assert_true($fn !== '', $name . ' is found');
@@ -312,6 +312,9 @@ console.log(JSON.stringify({
     detailBox:     _sdListPlaceOk(palette('form_record.files'), box6),
     detailRoot:    _sdListPlaceOk(palette('form_record.files'), root6),
     catalog:       _sdListPlaceOk(palette('form_record.files'), card7),
+    catalogImages: _sdListPlaceOk(palette('product.images'), card7),
+    catalogRoot:   _sdListPlaceOk(palette('product.images'), root7),
+    catalogRelated: _sdListPlaceOk(palette('product.related'), card7),
     unknown:       _sdListPlaceOk(palette('form_record.nope'), card5),
     intoItself:    _sdListPlaceOk(move(list5), span5),
     toOtherWidget: _sdListPlaceOk(move(list5), box6),
@@ -342,7 +345,10 @@ JS;
 	pg_assert_true(!$a['onListRoot'], 'on a form list\'s root');
 	pg_assert_true($a['detailBox'], 'anywhere in a form detail view');
 	pg_assert_true($a['detailRoot'], 'on a form detail view\'s root');
-	pg_assert_true(!$a['catalog'], 'a kind without lists');
+	pg_assert_true(!$a['catalog'], 'a form source in a catalog listing');
+	pg_assert_true($a['catalogImages'], 'a product list in a listing\'s card');
+	pg_assert_true(!$a['catalogRoot'], 'a product list outside the listing\'s cards');
+	pg_assert_true(!$a['catalogRelated'], 'no products bought together in a listing');
 	pg_assert_true(!$a['unknown'], 'an unknown source from the palette');
 	pg_assert_true(!$a['intoItself'], 'into itself');
 	pg_assert_true($a['toOtherWidget'], 'into another form widget');

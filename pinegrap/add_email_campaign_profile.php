@@ -318,14 +318,11 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 col-md-6 col-lg-4 my-2">
                                             <label class="form-label" for="schedule_time">' . lang('Send at a specific time') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8', 'data-pg-time' => '')) . '
                                             
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             <div class="text-end form-text">' . lang('h:mm AM/PM, leave blank to send at any time.') . '</div>
-                                            ' . get_time_picker_format() . '
-                                            <script>
-                                                $("#schedule_time").timepicker(timepicker_options);
-                                            </script>
+                                            ' . get_time_picker_format() . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>

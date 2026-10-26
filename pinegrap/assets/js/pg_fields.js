@@ -10,7 +10,8 @@
  * through these objects, so the swap changes the engine here, not the
  * screens. The engine today ('v5') is the one the panel always used.
  *
- *   <input data-pg-chips>                 tagin; the input keeps the joined list
+ *   <input data-pg-chips>                 tagin; the input keeps the joined list,
+ *                                         comma or data-pg-separator (" " for classes)
  *   <select data-pg-combobox>             select2; the native <select> keeps the value
  *   <input data-pg-date>                  jQuery UI datepicker, site date format
  *   <input data-pg-datetime>              date and time in one field
@@ -181,7 +182,7 @@
         v5: {
             chips: {
                 ready: function () { return typeof window.tagin === 'function'; },
-                init: function (el) { window.tagin(el); },
+                init: function (el) { window.tagin(el, { separator: separator(el) }); },
                 // tagin redraws its tags on the input's change event, which
                 // set() fires anyway.
                 redraw: function () {}
@@ -304,8 +305,10 @@
         return function () { el.removeEventListener('change', fn); };
     }
 
+    // data-pg-separator, as liveform prints it; data-separator is what
+    // tagin itself reads from hand-written markup.
     function separator(el) {
-        return el.getAttribute('data-separator') || ',';
+        return el.getAttribute('data-pg-separator') || el.getAttribute('data-separator') || ',';
     }
 
     var pgChips = {

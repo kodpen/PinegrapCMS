@@ -233,11 +233,11 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 col-md">
                                                     <label for="start_date" class="form-label">' . lang('Start Date') . '</label>
-                                                    <input value="' . $start_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off"/>
+                                                    <input value="' . $start_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                                 </div>
                                                 <div class="col-12 col-md">
                                                     <label for="end_date" class="form-label">' . lang('End Date') . '</label>
-                                                    <input value="' . $end_date . '" type="text" name="end_date" id="end_date" class="form-control " maxlength="10" autocomplete="off"/>
+                                                    <input value="' . $end_date . '" type="text" name="end_date" id="end_date" class="form-control " maxlength="10" autocomplete="off" data-pg-date/>
                                                 </div>
                                             </div>
                                         </div>
@@ -254,7 +254,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 col-md-4">
                                             <label for="arrival_date" class="form-label">' . lang('Arrival Date') . '</label>
-                                            <input value="' . $arrival_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off"/>
+                                            <input value="' . $arrival_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                         </div>
                                         <div class="col-12 mt-4">
                                             <h5>' . lang('Or allow Customer to enter this Arrival Date during checkout') . '</h5>
@@ -270,7 +270,7 @@ if (!$_POST) {
                                                         <div class="row">
                                                             <div class="col-12 my-1" id="custom_maximum_arrival_date_row"  style="' . $custom_maximum_arrival_date_row_style . '">
                                                                 <label for="custom_maximum_arrival_date" class="form-label">' . lang('Latest Allowed Arrival Date') . '</label>
-                                                                <input value="' . $custom_maximum_arrival_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="custom_maximum_arrival_date" id="custom_maximum_arrival_date" class="form-control" maxlength="10" autocomplete="off"/>
+                                                                <input value="' . $custom_maximum_arrival_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="custom_maximum_arrival_date" id="custom_maximum_arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                                                 <div class="form-text text-end">' . lang('leave blank for no restriction') . '</div>
                                                             </div>
                                                         </div>
@@ -316,9 +316,7 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <script>
-                        $("#end_date,#start_date,#arrival_date,#custom_maximum_arrival_date").datepicker(datetimepicker_options);
-                    </script>
+                    ' . pg_fields_script() . '
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">

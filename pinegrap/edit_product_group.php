@@ -514,7 +514,7 @@ if (!$_POST) {
         $output_parent_product_group_row =
             '<div class="col-12 col-md-4 my-2">
                 <label for="parent_id" class="form-label">' . lang('Parent Product Group') . '</label>
-                <select style="width:100%" class="select2 form-select" id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '" data-allow-clear="true"><option value=""></option>' . $_parent_options_html . '</select>
+                <select style="width:100%" class="form-select" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '" data-allow-clear="true"><option value=""></option>' . $_parent_options_html . '</select>
             </div>';
     } else {
         $output_parent_product_group_row = '';
@@ -639,12 +639,7 @@ if (!$_POST) {
                                                         </div>
                                                         <div class="col-12 mt-3 mb-2">
                                                             <label for="keywords" class="form-label">' . lang('Search Keywords') . '</label>
-                                                            <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . $keywords . '"/>
-                                                            <script>
-                                                                if(document.body.contains(document.querySelector("input#keywords"))){
-                                                                    tagin( document.querySelector("#keywords") );
-                                                                }
-                                                            </script>
+                                                            <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . $keywords . '"/>' . pg_fields_script() . '
                                                         </div>
                                                         ' . $output_attributes . '
                                                     </div>
@@ -719,12 +714,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 mt-1 mb-2">
                                             <label for="meta_keywords" class="form-label">' . lang('Web Browser Keywords') . '</label>
-                                            <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . h($meta_keywords) . '"/>
-                                            <script>
-                                                if(document.body.contains(document.querySelector("input#keywords"))){
-                                                    tagin(document.querySelector("#meta_keywords"));
-                                                }
-                                            </script>
+                                            <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . h($meta_keywords) . '"/>' . pg_fields_script() . '
                                         </div>
                                         <div class="col-12">
                                             ' . pg_seo_render_checklist($seo_row, 'product_group', (int) $_GET['id']) . '
