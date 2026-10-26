@@ -49,15 +49,7 @@ function api_files_allowed_types() {
 // when they are there.
 function api_files_dimensions_ready() {
 
-	static $ready = null;
-
-	if ($ready === null) {
-
-		$ready = (api_row("SHOW COLUMNS FROM files LIKE 'image\\_width'") !== null);
-
-	}
-
-	return $ready;
+	return pg_schema_has('files', 'image_width');
 
 }
 

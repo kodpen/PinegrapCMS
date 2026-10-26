@@ -51,15 +51,7 @@ function api_seo_library() {
 // one and not the other. Probed on its own for that reason, once per request.
 function api_seo_depth_ready() {
 
-	static $ready = null;
-
-	if ($ready === null) {
-
-		$ready = (api_row("SHOW COLUMNS FROM page LIKE 'seo\\_depth'") !== null);
-
-	}
-
-	return $ready;
+	return pg_schema_has('page', 'seo_depth');
 
 }
 

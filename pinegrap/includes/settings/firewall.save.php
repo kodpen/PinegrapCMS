@@ -259,9 +259,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // Normalised on the way in: trimmed, lower-cased, de-duplicated - the list
     // is matched case-insensitively, and a tidy list is one an operator can
     // still read a year from now.
-    $bea_column = @mysqli_query(db::$con, "SHOW COLUMNS FROM config LIKE 'banned_email_addresses'");
-
-    if ($bea_column && (mysqli_num_rows($bea_column) > 0)) {
+    if (pg_schema_has('config', 'banned_email_addresses')) {
         $bea_entries = array();
 
         foreach (preg_split('/[\r\n,;]+/', (string) post_value('banned_email_addresses')) as $bea_entry) {

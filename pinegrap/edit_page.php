@@ -1231,14 +1231,14 @@ if (!$_POST) {
         // delete stored SEO structure findings for this page.
         // Guarded on the table existing, because a page can be deleted on an
         // installation that has not run the upgrade that creates it.
-        if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+        if (pg_schema_has('seo_issue')) {
             db("DELETE FROM seo_issue WHERE (entity_type = 'page') AND (entity_id = '" . (int) ($_POST['id'] ?? 0) . "')");
         }
 
         // Both directions of the link graph: the rows this page produced and
         // the rows naming it as a destination. Leaving the latter would make
         // pages that linked here look connected to something that is gone.
-        if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+        if (pg_schema_has('seo_link')) {
             db("DELETE FROM seo_link WHERE (from_type = 'page') AND (from_id = '" . (int) ($_POST['id'] ?? 0) . "')");
             db("DELETE FROM seo_link WHERE (to_type = 'page') AND (to_id = '" . (int) ($_POST['id'] ?? 0) . "')");
         }
