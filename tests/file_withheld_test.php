@@ -65,7 +65,8 @@ function file_withheld_test_section($source, $start)
 // well.
 function test_file_withheld_is_asked_by_the_file_doors()
 {
-	$explorer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+	$explorer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/archives.php');
 
 	$doors = array(
 		"case 'explorer_file_get':"                 => 'file_get_contents(',
