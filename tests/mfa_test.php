@@ -248,3 +248,17 @@ function test_mfa_reauth_message()
 		pg_mfa_reauth_message('attempts'));
 	pg_assert_contains('15', pg_mfa_reauth_message('locked', 15), 'lockout minutes');
 }
+
+// Which step a sign-in owes: a code or a passkey is asked for when the
+// account has either; setup only when its role requires a factor and it
+// has neither.
+function test_mfa_gate_mode()
+{
+	pg_assert_same('verify', pg_mfa_gate_mode(true, false, false));
+	pg_assert_same('verify', pg_mfa_gate_mode(true, false, true));
+	pg_assert_same('verify', pg_mfa_gate_mode(false, true, false));
+	pg_assert_same('verify', pg_mfa_gate_mode(false, true, true));
+	pg_assert_same('verify', pg_mfa_gate_mode(true, true, true));
+	pg_assert_same('setup', pg_mfa_gate_mode(false, false, true));
+	pg_assert_same('', pg_mfa_gate_mode(false, false, false));
+}
