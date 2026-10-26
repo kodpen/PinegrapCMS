@@ -72,7 +72,7 @@ $doc_url = $self_url . (($doc === 'invoice') ? '' : '?doc=' . $doc);
 
 // Every field of the three forms is one value. One posted as an array counts
 // as not given: (string) read it as "Array" and saved that as the template.
-pg_request_single_values(array('rules', 'vat_net_withholding', 'vat_exemption_code', 'late_fee', 'late_fee_rate', 'late_fee_tax_rate', 'reset', 'template'));
+pg_request_single_values(array('rules', 'vat_net_withholding', 'vat_exemption_code', 'late_fee', 'late_fee_rate', 'late_fee_tax_rate', 'efatura_threshold', 'erp_efatura_web_threshold', 'erp_efatura_general_threshold', 'reset', 'template'));
 
 // The accounting rules have a form of their own on this screen.
 if ($_POST && ((string) ($_POST['rules'] ?? '') === '1')) {
@@ -115,6 +115,27 @@ if ($_POST && ((string) ($_POST['late_fee'] ?? '') === '1')) {
     }
 
     go($self_url . '#erp_late_fee');
+}
+
+// The e-Fatura thresholds System Status weighs the year's sales against.
+// Answered here whatever happens, so the post never reaches the template
+// form below, which would read its missing template as "reset".
+if ($_POST && ((string) ($_POST['efatura_threshold'] ?? '') === '1')) {
+
+    validate_token_field();
+
+    $saved = !erp_efatura_threshold_ready()
+        ? array('success' => false, 'field' => 'erp_efatura_web_threshold', 'error' => lang('The settings could not be saved.'))
+        : erp_efatura_threshold_save((string) ($_POST['erp_efatura_web_threshold'] ?? ''), (string) ($_POST['erp_efatura_general_threshold'] ?? ''));
+
+    if (!$saved['success']) {
+        $liveform->mark_error($saved['field'], h($saved['error']));
+    } else {
+        $liveform->add_notice(lang('The e-Fatura thresholds were saved.'));
+        log_activity(lang('erp e-fatura thresholds were changed'), $_SESSION['sessionusername']);
+    }
+
+    go($self_url . '#erp_efatura_threshold');
 }
 
 if ($_POST) {
@@ -407,6 +428,40 @@ if (erp_late_fee_ready()) {
             </form>';
 }
 
+// The e-Fatura thresholds: a Turkish rule, so offered where the Turkish
+// features are, and only once the upgrade added the columns (11.0.61).
+$output_efatura_threshold = '';
+
+if ($rules_turkish && erp_efatura_threshold_ready()) {
+    $efatura_limits = erp_efatura_threshold_limits();
+    $efatura_currency = html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+    $output_efatura_threshold = '
+            <form action="erp_settings.php" method="post" id="erp_efatura_threshold">
+                ' . get_token_field() . '
+                <input type="hidden" name="efatura_threshold" value="1">
+                <div class="card my-4">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('e-Fatura threshold') . '</div>
+                    <div class="card-body">
+                        <p class="text-body-secondary">' . lang('A seller outside e-Fatura must join it from the seventh month of the year after its gross sales reached one of these amounts. System Status weighs this year\'s completed orders against them and warns from four fifths on. The tax authority changes the amounts; enter the ones in force. 0 switches a warning off.') . '</p>
+                        <div class="row g-3" style="max-width:36rem">
+                            <div class="col-12 col-sm-6">
+                                <label class="form-label" for="erp_efatura_web_threshold">' . h(lang(array('string' => 'Sales over the internet ({var:1})', 'vars' => $efatura_currency))) . '</label>
+                                <input type="text" class="form-control text-end" id="erp_efatura_web_threshold" name="erp_efatura_web_threshold" value="' . (int) floor($efatura_limits['web'] / 100) . '" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
+                                <div class="form-text">' . lang('Web and marketplace orders; counter sales are left out.') . '</div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <label class="form-label" for="erp_efatura_general_threshold">' . h(lang(array('string' => 'All sales ({var:1})', 'vars' => $efatura_currency))) . '</label>
+                                <input type="text" class="form-control text-end" id="erp_efatura_general_threshold" name="erp_efatura_general_threshold" value="' . (int) floor($efatura_limits['general'] / 100) . '" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
+                                <div class="form-text">' . lang('Every completed order, counter sales included. Invoices written in the ERP without an order are not counted.') . '</div>
+                            </div>
+                        </div>
+                        <div class="mt-3"><button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check2 me-2" aria-hidden="true"></i>' . lang('Save') . '</button></div>
+                    </div>
+                </div>
+            </form>';
+}
+
 $output_document_pills = '';
 foreach ($documents as $key => $item) {
     $output_document_pills .= '
@@ -455,6 +510,7 @@ echo pg_page_shell(array(
                 </div>
             </form>
 ' . $output_late_fee . '
+' . $output_efatura_threshold . '
 
             <form name="form" action="erp_settings.php" method="post">
                 ' . get_token_field() . '

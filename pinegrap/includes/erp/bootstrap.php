@@ -74,6 +74,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/cheques.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bank_import.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/late_fee.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/cash_forecast.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/efatura_threshold.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/storefront.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/registry.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/service.php');

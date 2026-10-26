@@ -67,6 +67,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_note_revision(); // 11.0.84
 	upgrade_2026_11_0_workspace_note_deletions(); // 11.0.85
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
+	upgrade_2026_11_0_erp_efatura_threshold();  // 11.0.61
 
 }
 
@@ -980,6 +981,22 @@ function upgrade_2026_11_0_erp_auto_invoice() {
 	install_add_column('config', 'erp_auto_invoice_min_total', "BIGINT NOT NULL DEFAULT 0");
 
 	install_note('ERP: the invoice the ERP issues on its own for a paid or shipped web order can now be kept to buyers with a tax number and to orders from an amount up, under Site Settings, Ecommerce, ERP. Both are off until set there.');
+
+}
+
+// The two e-Fatura thresholds the ERP weighs the calendar year's gross sales
+// against (includes/erp/efatura_threshold.php): sales over the internet and
+// every sale. A seller that reaches one must join e-Fatura from the seventh
+// month of the next year. Settings, not code, because the tax authority moves
+// them from year to year. Minor units of the base currency, BIGINT like the
+// ERP's other amounts; they start at the amounts in force for 2026 (500 Bin TL
+// and 3 Milyon TL), and 0 switches a warning off.
+function upgrade_2026_11_0_erp_efatura_threshold() {
+
+	install_add_column('config', 'erp_efatura_web_threshold', "BIGINT UNSIGNED NOT NULL DEFAULT 50000000");
+	install_add_column('config', 'erp_efatura_general_threshold', "BIGINT UNSIGNED NOT NULL DEFAULT 300000000");
+
+	install_note('ERP: System Status warns when the year\'s sales come near the e-Fatura threshold (500 Bin TL over the internet, 3 Milyon TL in all) and names the month the move falls due. The amounts are under ERP Settings; 0 switches a warning off.');
 
 }
 

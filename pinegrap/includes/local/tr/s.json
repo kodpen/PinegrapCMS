@@ -80,6 +80,8 @@
     "Sales invoices that pass this many days overdue are announced in the panel bell, by e-mail and on a subscribed device, and once more if still open a month later. An account can carry a threshold of its own. 0 turns the reminders off.": "Vadesi bu kadar gün geçen satış faturaları panel zilinde, e-posta ile ve abone olunan cihazda duyurulur; bir ay sonra hâlâ açıksa bir kez daha. Bir cari kendi eşiğini taşıyabilir. 0, hatırlatmaları kapatır.",
     "Sales invoices that pass this many days overdue are announced once: in the panel bell, by e-mail and on a subscribed device. An account can carry a threshold of its own. 0 turns the reminders off.": "Vadesi bu kadar gün geçen satış faturaları bir kez duyurulur: panel zilinde, e-posta ile ve abone olunan cihazda. Bir cari kendi eşiğini taşıyabilir. 0, hatırlatmaları kapatır.",
     "Sales less sales returns": "Satışlar eksi satış iadeleri",
+    "Sales over the internet ({var:1})": "İnternet üzerinden satışlar ({var:1})",
+    "Sales over the internet: {var:1} of {var:2}": "İnternet üzerinden satışlar: {var:1} / {var:2}",
     "Sales quote": "Satış teklifi",
     "Sales quote {var:1} was added in the Workspace, on Claude's proposal.": "Satış teklifi {var:1} Çalışma Alanı'nda Claude'un önerisiyle eklendi.",
     "Sales return": "Satış iadesi",

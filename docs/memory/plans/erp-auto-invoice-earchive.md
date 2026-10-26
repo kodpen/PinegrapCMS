@@ -1,6 +1,6 @@
 ---
 name: erp-auto-invoice-earchive
-description: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #958): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
+description: Plan (approved 2026-10-19): auto invoice with its two filters and the e-Fatura threshold warning built (#697, #958, #1773); only the internet-sale UBL fields (step 3) left
 ---
 
 ## Why?
@@ -9,6 +9,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #6
 ## What is built?
 - Steps 1-2 (PR #697): the ERP card's "The invoice of a web order" (the existing enum), `erp_auto_invoice_decision()` with tests, `erp_auto_invoice_for_order()` at the end of the checkout, on Payment Received and on a new shipment, the invoicing lock in `erp_invoice_from_order()`, refusals on the panel bell. Behaviour: docs/memory/erp/erp-auto-invoice.md.
 - Step 1b (PR #958): the card's two filters, schema step 11.0.58 (`erp_auto_invoice_tax_number_only`, `erp_auto_invoice_min_total` in minor units), read in `erp_auto_invoice_decision()`.
+- Step 4 (PR #1773): e-Fatura threshold warning, step 11.0.61: docs/memory/erp/erp-efatura-threshold.md.
 
 ## What is decided?
 - Setting card in Settings › Ecommerce › ERP: the existing enum plus two filters, only buyers with a tax number (the invoice's: the account's, else the contact's; the order keeps none) and a smallest order (the whole sale, a gift card included). A filtered order is left to the order screen without a bell row.
@@ -16,12 +17,12 @@ description: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #6
 - Counter sales are never invoiced by it (the till invoices them); an order whose invoice was cancelled is left to the operator.
 - Queue worker: the e-document send depends on the `erp_edoc_queue` worker from `erp-edocument-leftovers.md`; until it exists the invoice is created and the send stays a panel step (the card says so). Built that way.
 - Internet-sale marker: e-Arşiv invoices created from web orders carry the "Bu satış internet üzerinden yapılmıştır" note and the payment method/date fields the UBL profile needs (verify with the İşbaşı test environment); POS sales do not.
-- Threshold warnings: a monthly job sums gross web sales of the calendar year (orders complete, base currency) and System Status shows "e-Fatura threshold" (500 Bin TL internet rule and 3 Milyon TL general) with the deadline month; thresholds are settings so the owner updates them yearly without a release.
+- Threshold warnings: built (step 4); a daily cached sum replaced the monthly job.
 - Legacy Paraşüt order export (`includes/fn/parasut.php`) stays untouched.
 
 ## What remains?
 3. Internet-sale fields in the UBL builder (`includes/erp/edoc/ubl.php`) (S).
-4. Threshold job + status check (S).
+4. ~~Threshold job + status check (S).~~ Done, PR #1773.
 5. When done: decisions move to docs/memory/erp/erp-auto-invoice.md and this file is deleted.
 
 ## Open questions?
@@ -29,4 +30,4 @@ description: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #6
 - Once the queue worker exists: enqueue the e-document send right after the automatic invoice, as first planned.
 
 ## Where to start?
-- Step 4 (no outside dependency); step 3 needs the İşbaşı test environment to check the UBL fields. Read docs/memory/erp/erp-auto-invoice.md first.
+- Step 3 is the only step left; it waits for the İşbaşı test environment, to check the internet-sale note and payment fields against the provider's UBL profile (no field is guessed, `erp-edoc-driver-layer.md`). Read docs/memory/erp/erp-auto-invoice.md first.
