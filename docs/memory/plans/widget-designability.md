@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W10, W11, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets
+description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W5 #1879 #1905, W6 #1680, W7 #1688, W8, W10, W11, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets
 ---
 
 ## What is built, and why?
@@ -30,17 +30,17 @@ OR in conditions; pg-hide-if-empty everywhere; words beside a value; code areas;
 - W2 done (#1582): palette double-click lands beside it.
 - W3 done (#1597): row position ([[widget-loop-position]]).
 - W4 done (#1665, [[widget-condition-panel]]).
-- W5 Layout gallery: Default, On this site, Try/Keep/Cancel #1879 ([[widget-layout-gallery]]); templates left.
+- W5 done (#1879, #1905, [[widget-layout-gallery]]).
 - W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 Entity fields: products #1809, events #1828, quiz #1847, order #1873, account #1890, order line #1903, addresses and order list row tokens #1917; done ([[widget-entity-fields-list]]).
 - W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
-- W15 done (#1734). W16 Placed beats pushed, default parts: order view #1808 #1824 #1863 ([[widget-default-parts]]); rest left. Not waiting.
+- W15 done (#1734). W16 Placed beats pushed, default parts: order view #1808 #1824 #1863, stars #1908 ([[widget-default-parts]]); rest left.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
-- W19 #1904 ([[widget-condition-canvas]]); loop ghosts left.
+- W19 #1904 #1914 ([[widget-condition-canvas]]); main loop rows left.
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
 
 ## How are other sessions kept clear?
 - Claim with a draft PR `[plan:widget-designability] Wn`. A new kind reads its saved-tree checks through `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W16, W5, W19's loop ghosts.
+- W16, W19's loop ghosts.

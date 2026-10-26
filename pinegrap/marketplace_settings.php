@@ -2147,6 +2147,10 @@ if ($selected) {
 
 	$can_answer_questions = $can_questions && mp_can($selected['provider'], 'answer_question');
 
+	// A marketplace whose connector lists the store's products there gets the
+	// bulk matching screen (marketplace_products.php).
+	$can_read_products = mp_can($selected['provider'], 'remote_products');
+
 	$provider_fields = isset($providers[$selected['provider']]['fields'])
 		? $providers[$selected['provider']]['fields']
 		: array();
@@ -2233,8 +2237,11 @@ if ($selected) {
 					<button type="submit" class="btn btn-sm btn-outline-secondary"' . ($maps ? '' : ' disabled') . '>
 						<i class="bi bi-arrow-repeat me-1"></i>' . lang('Send all now') . '</button>
 				</form>
-				<button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#mp_match">
-					<i class="bi bi-plus-lg me-1"></i>' . lang('Match a product') . '</button>
+				<button type="button" class="btn btn-sm ' . ($can_read_products ? 'btn-outline-secondary' : 'btn-primary') . '" data-bs-toggle="modal" data-bs-target="#mp_match">
+					<i class="bi bi-plus-lg me-1"></i>' . lang('Match a product') . '</button>'
+				. ($can_read_products ? '
+				<a class="btn btn-sm btn-primary" href="marketplace_products.php?account=' . $selected_id . '">
+					<i class="bi bi-boxes me-1"></i>' . h(lang('Match in bulk with pictures')) . '</a>' : '') . '
 			</div>
 		</div>
 		<div class="card-body px-2 py-3">';

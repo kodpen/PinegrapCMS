@@ -8950,6 +8950,7 @@ function get_tables() {
 		'marketplace_category_map',
 		'marketplace_order_map',
 		'marketplace_product_map',
+		'marketplace_remote_products',
 		'marketplace_sync_queue',
 		'menu_items',
 		'menus',

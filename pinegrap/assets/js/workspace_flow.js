@@ -111,6 +111,10 @@
         task: { icon: 'bi-check2-square', name: 'fl_kind_task', into: true, out: ['done', 'cancelled'] },
         post: { icon: 'bi-chat-left-text', name: 'fl_kind_post', into: true, out: ['done', 'failed'] },
         email: { icon: 'bi-envelope', name: 'fl_kind_email', into: true, out: ['done', 'failed'] },
+        notify: { icon: 'bi-bell', name: 'fl_kind_notify', into: true, out: ['done', 'failed'] },
+        task_open: { icon: 'bi-plus-square', name: 'fl_kind_task_open', into: true, out: ['done', 'failed'] },
+        webhook: { icon: 'bi-broadcast', name: 'fl_kind_webhook', into: true, out: ['done', 'failed'] },
+        web_check: { icon: 'bi-globe2', name: 'fl_kind_web_check', into: true, out: ['done', 'failed'] },
         end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] }
     };
 
@@ -134,6 +138,10 @@
         ['task', 'bi-check2-square', 'fl_add_task'],
         ['post', 'bi-chat-left-text', 'fl_add_post'],
         ['email', 'bi-envelope', 'fl_add_email'],
+        ['notify', 'bi-bell', 'fl_kind_notify'],
+        ['task_open', 'bi-plus-square', 'fl_kind_task_open'],
+        ['webhook', 'bi-broadcast', 'fl_kind_webhook'],
+        ['web_check', 'bi-globe2', 'fl_kind_web_check'],
         ['end', 'bi-flag', 'fl_add_end']
     ];
 
@@ -223,7 +231,7 @@
     }
 
     function titleOf(node) {
-        return (node.kind === 'task') ? (node.config.title || node.label || '') : (node.label || '');
+        return ((node.kind === 'task') || (node.kind === 'task_open')) ? (node.config.title || node.label || '') : (node.label || '');
     }
 
     function nameOf(node) {
@@ -371,6 +379,13 @@
         return t('tpl_assign_none');
     }
 
+    // Up to two names, then how many more.
+    function peopleText(ids) {
+        var people = ids.map(function (id) { return person(id) ? person(id).name : '#' + id; });
+
+        return (people.length > 2) ? t('fl_people_more', people.slice(0, 2).join(', '), people.length - 2) : people.join(', ');
+    }
+
     function metaOf(node) {
         var config = node.config || {};
 
@@ -395,6 +410,18 @@
 
         if (node.kind === 'email') {
             return config.to ? t('fl_email_meta', config.to) : t('fl_email_no_to');
+        }
+
+        if (node.kind === 'notify') {
+            return (config.user_ids || []).length ? peopleText(config.user_ids) : t('fl_notify_nobody');
+        }
+
+        if (node.kind === 'task_open') {
+            return (config.assignees || []).length ? peopleText(config.assignees) : t('fl_task_open_meta');
+        }
+
+        if ((node.kind === 'webhook') || (node.kind === 'web_check')) {
+            return config.url ? config.url.replace(/^https:\/\//i, '').split('/')[0] : t('fl_url_none');
         }
 
         return (node.kind === 'end') ? t('fl_end_meta') : '';
@@ -1364,7 +1391,7 @@
     function fillBox(box, node) {
         var title = titleOf(node);
         var meta = metaOf(node);
-        var missing = !title && ((node.kind === 'task') || !KINDS[node.kind]);
+        var missing = !title && ((node.kind === 'task') || (node.kind === 'task_open') || !KINDS[node.kind]);
         var titleNode = box.querySelector('.wsf-node-title');
 
         titleNode.textContent = title || (missing ? t('fl_untitled_box') : meta);
@@ -1737,8 +1764,9 @@
         var box = el('div', 'wsf-form');
         var config = node.config;
 
-        var title = textInput(titleOf(node), (node.kind === 'task') ? 200 : 160, function (value) {
-            if (node.kind === 'task') {
+        var titled = (node.kind === 'task') || (node.kind === 'task_open');
+        var title = textInput(titleOf(node), titled ? 200 : 160, function (value) {
+            if (titled) {
                 config.title = value;
             }
 
@@ -1769,6 +1797,18 @@
 
         if (node.kind === 'email') {
             emailFields(box, node);
+        }
+
+        if (node.kind === 'notify') {
+            notifyFields(box, node);
+        }
+
+        if (node.kind === 'task_open') {
+            taskOpenFields(box, node);
+        }
+
+        if ((node.kind === 'webhook') || (node.kind === 'web_check')) {
+            urlFields(box, node);
         }
 
         if (state.edit) {
@@ -1863,9 +1903,10 @@
 
     // A post box: the channel the owner writes in and the message. The store
     // checks the owner may write there.
-    function postFields(box, node) {
-        var config = node.config;
-        var channels = [[0, t('fl_post_pick')]];
+    // The channels a step box may name, the first option for none, and one
+    // the person does not read named as such.
+    function channelPick(config, none) {
+        var channels = [[0, none]];
 
         (BOOT.channels || []).forEach(function (channel) {
             if (((channel.kind === 'public') || (channel.kind === 'private')) && !channel.archived) {
@@ -1877,7 +1918,12 @@
             channels.push([config.channel_id, t('fl_share_hidden')]);
         }
 
-        var pick = K.select(channels, config.channel_id || 0);
+        return K.select(channels, config.channel_id || 0);
+    }
+
+    function postFields(box, node) {
+        var config = node.config;
+        var pick = channelPick(config, t('fl_post_pick'));
 
         pick.addEventListener('change', function () {
             config.channel_id = parseInt(pick.value, 10) || 0;
@@ -1908,11 +1954,146 @@
         }, true), t('fl_values_help')));
     }
 
-    // The team as ticks, with a filter once it is long, drawn into wrap.
-    function peopleList(node, wrap) {
+    // A notify box: the people told and the line they read.
+    function notifyFields(box, node) {
+        var config = node.config;
+
+        box.appendChild(field(t('fl_notify_who'), peopleList(node, el('div', 'wsf-people'), 'user_ids', 50)));
+        box.appendChild(field(t('fl_notify_text'), textInput(config.text, 500, function (value) {
+            config.text = value;
+            refreshNode(node);
+        }), t('fl_values_help')));
+    }
+
+    // A task opened without waiting: its people, channel, due day, priority
+    // and description; the title is the box's.
+    function taskOpenFields(box, node) {
+        var config = node.config;
+
+        box.appendChild(field(t('fl_assign_people'), peopleList(node, el('div', 'wsf-people'), 'assignees', 20)));
+
+        var pick = channelPick(config, t('fl_task_no_channel'));
+
+        pick.addEventListener('change', function () {
+            config.channel_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_task_channel'), pick));
+
+        var due = el('input', 'form-control form-control-sm wsf-number');
+
+        due.type = 'number';
+        due.min = '0';
+        due.max = '3650';
+        due.value = (config.due_in === '' || config.due_in === undefined || config.due_in === null) ? '' : String(config.due_in);
+        due.addEventListener('input', function () {
+            config.due_in = (due.value === '') ? '' : clamp(parseInt(due.value, 10) || 0, 0, 3650);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_due_in'), due, t('fl_task_open_due_help')));
+
+        var priorities = BOOT.priorities || {};
+        var priority = K.select(Object.keys(priorities).map(function (key) { return [key, priorities[key]]; }), config.priority || 'normal');
+
+        priority.addEventListener('change', function () {
+            config.priority = priority.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_priority'), priority));
+        box.appendChild(field(t('fl_description'), textInput(config.description, 8000, function (value) {
+            config.description = value;
+            refreshNode(node);
+        }, true), t('fl_values_help')));
+    }
+
+    // A webhook or a web check: the https address, then what each needs.
+    function urlFields(box, node) {
+        var config = node.config;
+
+        box.appendChild(field(t('fl_url'), textInput(config.url, 2000, function (value) {
+            config.url = value.trim();
+            refreshNode(node);
+        }), t('fl_url_help')));
+
+        if (node.kind === 'webhook') {
+            var format = K.select([['generic', t('fl_hook_generic')], ['text', t('fl_hook_text')], ['discord', t('fl_hook_discord')]], config.format || 'generic');
+
+            format.addEventListener('change', function () {
+                config.format = format.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_hook_format'), format, t('fl_hook_help')));
+            box.appendChild(field(t('fl_post_body'), textInput(config.text, 4000, function (value) {
+                config.text = value;
+                refreshNode(node);
+            }, true), t('fl_values_help')));
+
+            return;
+        }
+
+        var mode = K.select([['status', t('fl_check_status')], ['ssl', t('fl_check_ssl')]], config.mode || 'status');
+        var more = el('div');
+        var draw = function () {
+            K.clear(more);
+
+            if (config.mode === 'ssl') {
+                more.appendChild(field(t('fl_check_days'), numberInput(config.days, 1, 365, function (value) { config.days = value || 14; })));
+                return;
+            }
+
+            more.appendChild(field(t('fl_check_contains'), textInput(config.contains, 200, function (value) {
+                config.contains = value;
+                refreshNode(node);
+            })));
+            more.appendChild(field(t('fl_check_max_ms'), numberInput(config.max_ms, 0, 60000, function (value) { config.max_ms = value; }), t('fl_check_max_ms_help')));
+
+            var redirect = el('input', 'form-check-input');
+
+            redirect.type = 'checkbox';
+            redirect.checked = !!config.redirect;
+            redirect.addEventListener('change', function () {
+                config.redirect = redirect.checked;
+                refreshNode(node);
+            });
+            more.appendChild(field(t('fl_check_redirect'), redirect));
+        };
+
+        mode.addEventListener('change', function () {
+            config.mode = mode.value;
+            draw();
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_check_mode'), mode));
+        box.appendChild(more);
+        draw();
+
+        function numberInput(value, min, max, set) {
+            var input = el('input', 'form-control form-control-sm wsf-number');
+
+            input.type = 'number';
+            input.min = String(min);
+            input.max = String(max);
+            input.value = String(value || '');
+            input.addEventListener('input', function () {
+                set(clamp(parseInt(input.value, 10) || 0, min, max));
+                refreshNode(node);
+            });
+
+            return input;
+        }
+    }
+
+    // The team as ticks, with a filter once it is long, drawn into wrap: the
+    // ids go into the box's settings under key (assignees by default), at
+    // most max of them.
+    function peopleList(node, wrap, key, max) {
         var config = node.config;
         var list = el('div', 'wsf-people-list');
-        var chosen = config.assignees || [];
+
+        key = key || 'assignees';
+        max = max || 20;
+
+        var chosen = config[key] || [];
         var team = BOOT.people || [];
 
         list.setAttribute('role', 'group');
@@ -1943,14 +2124,17 @@
             check.checked = chosen.indexOf(member.id) !== -1;
             check.disabled = !state.edit;
             check.addEventListener('change', function () {
-                var ids = (config.assignees || []).filter(function (id) { return id !== member.id; });
+                var ids = (config[key] || []).filter(function (id) { return id !== member.id; });
 
                 if (check.checked) {
                     ids.push(member.id);
                 }
 
-                config.assignees = ids.slice(0, 20);
-                config.assign = '';
+                config[key] = ids.slice(0, max);
+
+                if (node.kind === 'task') {
+                    config.assign = '';
+                }
                 refreshNode(node);
             });
             row.appendChild(check);
@@ -2288,6 +2472,14 @@
             config = { channel_id: 0, body: '' };
         } else if (kind === 'email') {
             config = { to: '', subject: '', body: '', page_id: 0 };
+        } else if (kind === 'notify') {
+            config = { user_ids: [], text: '' };
+        } else if (kind === 'task_open') {
+            config = { title: '', description: '', assignees: [], channel_id: 0, due_in: '', priority: 'normal' };
+        } else if (kind === 'webhook') {
+            config = { url: '', format: 'generic', text: '' };
+        } else if (kind === 'web_check') {
+            config = { url: '', mode: 'status', redirect: false, contains: '', max_ms: 0, days: 14 };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };
