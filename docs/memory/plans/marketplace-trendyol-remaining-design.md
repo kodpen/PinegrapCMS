@@ -1,6 +1,6 @@
 ---
 name: marketplace-trendyol-remaining-design
-description: Design of the open Trendyol steps (5b, 5c) from a full build finished 2026-10-24 that never reached GitHub; what to build, deviations, unverified doc facts
+description: Design of the open Trendyol step (5c) from a full build finished 2026-10-24 that never reached GitHub; what to build, deviations, unverified doc facts
 ---
 
 ## What is this?
@@ -12,13 +12,15 @@ description: Design of the open Trendyol steps (5b, 5c) from a full build finish
 ## 5a. Invoice link?
 - Built (#1747): `commerce/trendyol-invoice-link.md`.
 
-## 5b and 5c. Returns and questions?
-- "Returns from Trendyol" card: reads the last 14 days on a button (at most 4 pages of 50); approve sends the waiting units of the last read after a confirm. Rejecting with reason codes is left.
+## 5b. Returns?
+- Built (#1772): `commerce/trendyol-returns.md`. Rejecting with reason codes is left.
+
+## 5c. Questions?
 - "Questions from Trendyol" card: reads on a button; each waiting question has a 10–2000 character textarea and an Answer button.
-- Both keep the read in `$_SESSION['software']['marketplace_read']`, never in a table.
+- Keeps the read in `$_SESSION['software']['marketplace_read'][<account id>]['questions']`, never in a table, as returns do.
 
 ## Tests?
-- `tests/marketplace_trendyol_remaining_test.php` (red first per part), claims and questions fixtures; `tests/message_values_commerce_test.php` counts the new escaped warnings.
+- `tests/marketplace_trendyol_remaining_test.php` (red first per part), a questions fixture (claims done); `tests/message_values_commerce_test.php` counts the new escaped warnings.
 
 ## What did the docs not prove?
-- Every claims field, the largest claims page and whether `orderOutboundPackageId` is the imported package id; a successful claim approval's and answer's bodies; a question's status after answering. The return reasons page was not read.
+- A successful answer's body; a question's status after answering.
