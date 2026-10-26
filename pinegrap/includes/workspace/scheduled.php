@@ -174,6 +174,19 @@ function ws_scheduled_actions_only($alias = '')
 }
 
 /**
+ * The condition that leaves the hidden scheduled actions that start a flow
+ * (their anchors, flow_anchors.php) out of the lists of scheduled actions.
+ * The starts by event and join read them: they are what starts the flow.
+ *
+ * @param string $alias the table's alias in the query
+ * @return string " AND ..." or ""
+ */
+function ws_scheduled_anchors_out($alias = '')
+{
+    return (function_exists('ws_flows_ready') && ws_flows_ready()) ? " AND " . (($alias !== '') ? $alias . '.' : '') . "flow_id = 0" : '';
+}
+
+/**
  * Can a start in the queue carry who it is about (2026.4.8, 8.81)? The join
  * rule names the newcomer that way.
  *
@@ -230,7 +243,8 @@ function ws_scheduled_action($id)
 {
     $row = ws_scheduled($id);
 
-    return ($row && ((string) ($row['kind'] ?? 'action') === 'action')) ? $row : null;
+    // A flow's anchor is the flow's, changed and run only through it.
+    return ($row && ((string) ($row['kind'] ?? 'action') === 'action') && ((int) ($row['flow_id'] ?? 0) === 0)) ? $row : null;
 }
 
 /**
@@ -448,6 +462,25 @@ function ws_scheduled_metrics()
     }
 
     return $metrics;
+}
+
+/**
+ * The keys of the counts in money, whose condition is kept in minor units
+ * and sent by the form in major units.
+ *
+ * @return string[]
+ */
+function ws_scheduled_money_metrics()
+{
+    $keys = array();
+
+    foreach (ws_scheduled_metrics() as $key => $metric) {
+        if ($metric['kind'] === 'money') {
+            $keys[] = $key;
+        }
+    }
+
+    return $keys;
 }
 
 /**
@@ -1205,7 +1238,16 @@ function ws_scheduled_rule_input($viewer, $rule)
                 return $fail(lang('You may not see records of this kind.'));
             }
 
-            if (($id <= 0) || (ws_scheduled_record($record_type, $id) === null)) {
+            $record = ($id > 0) ? ws_scheduled_record($record_type, $id) : null;
+
+            if ($record === null) {
+                return $fail(lang('Choose the record the condition looks at.'));
+            }
+
+            // A task the creator may not see is refused as one that is not
+            // there: the words of the condition name the task by its title,
+            // and a refusal of its own would tell that it exists.
+            if (($record_type === 'task') && !ws_can_see_task($viewer, $record)) {
                 return $fail(lang('Choose the record the condition looks at.'));
             }
 
@@ -2737,6 +2779,28 @@ function ws_scheduled_form_data($viewer, $row)
 }
 
 /**
+ * Rules as they are kept, or as the form reads them, turned into the rules
+ * the form sends (pure): a count in money back in major units with two
+ * decimals, since ws_scheduled_input() multiplies it by 100 again. Anything
+ * else is left as it is.
+ *
+ * @param array    $rules as kept
+ * @param string[] $money the counts in money (ws_scheduled_money_metrics())
+ * @return array
+ */
+function ws_scheduled_rules_as_sent($rules, $money)
+{
+    foreach ($rules as $i => $rule) {
+        if (is_array($rule) && (($rule['type'] ?? '') === 'metric') && isset($rule['value'])
+            && in_array((string) ($rule['metric'] ?? ''), (array) $money, true)) {
+            $rules[$i]['value'] = number_format(((int) $rule['value']) / 100, 2, '.', '');
+        }
+    }
+
+    return $rules;
+}
+
+/**
  * The word for how a run went.
  *
  * @param string $status
@@ -2832,7 +2896,7 @@ function ws_scheduled_list($viewer, $filters = array())
         return array();
     }
 
-    $where = array('1 = 1' . ws_scheduled_actions_only());
+    $where = array('1 = 1' . ws_scheduled_actions_only() . ws_scheduled_anchors_out());
     $status = (string) ($filters['status'] ?? '');
 
     if (isset(ws_scheduled_states()[$status])) {
@@ -2868,7 +2932,7 @@ function ws_scheduled_targets($viewer)
 
     $out = array();
 
-    foreach ((array) db_items("SELECT * FROM ws_scheduled_actions WHERE status IN ('active', 'paused', 'failed')" . ws_scheduled_actions_only() . " ORDER BY name, id LIMIT 300") as $row) {
+    foreach ((array) db_items("SELECT * FROM ws_scheduled_actions WHERE status IN ('active', 'paused', 'failed')" . ws_scheduled_actions_only() . ws_scheduled_anchors_out() . " ORDER BY name, id LIMIT 300") as $row) {
         $row = ws_scheduled_decode($row);
         $out[] = array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'status' => (string) $row['status'], 'trigger_only' => ws_scheduled_trigger_only($row));
     }
@@ -3499,7 +3563,11 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
             $steps[] = array('step' => 'rules', 'ok' => false, 'text' => $hold['reason']);
             $fill['result'] = $hold['reason'];
         } else {
-            $done = ws_scheduled_do($viewer, $row, $row['action'], $fill);
+            // A flow's anchor starts a run of its flow (flow_anchors.php);
+            // it is no step a scheduled action takes.
+            $done = (((int) ($row['flow_id'] ?? 0) > 0) && function_exists('ws_flow_anchor_start'))
+                ? ws_flow_anchor_start($viewer, $row, $fill)
+                : ws_scheduled_do($viewer, $row, $row['action'], $fill);
             $steps[] = array('step' => 'action', 'ok' => $done['ok'], 'text' => $done['text']);
             $posted = (int) $done['message_id'];
             $outcome = $done['ok'] ? 'done' : 'failed';
@@ -3594,6 +3662,22 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
  */
 function ws_scheduled_report($row, $status, $steps, $news = true)
 {
+    // A flow's anchor has no card or channel: the flow's runs say how it
+    // went. Only a start that did not happen is written to the Site Log.
+    if ((int) ($row['flow_id'] ?? 0) > 0) {
+        if ($status === 'failed') {
+            $why = array();
+
+            foreach ($steps as $step) {
+                $why[] = (string) $step['text'];
+            }
+
+            log_activity(lang(array('string' => 'workspace flow “{var:1}” did not start on its own: {var:2}', 'vars' => array($row['name'], implode(' · ', $why)))), ws_person_name($row['created_by']));
+        }
+
+        return;
+    }
+
     $lines = array();
 
     foreach ($steps as $step) {

@@ -5,6 +5,7 @@ description: Record changes an application proposes as cards (proposals.php, api
 
 ## What does an AI app call to change a record?
 - `workspace.changes.propose` (POST /workspace/channels/{id}/changes) or `workspace.tasks.changes.propose` (POST /workspace/tasks/{id}/changes): workspace:write, MCP tools, dry_run, 201 `WorkspaceProposal`. Body: `text` and `changes` as requests.answer takes them (`ws_api_changes_param()`).
+- A scheduled action as a draft: `workspace-scheduled-draft-proposals.md`.
 - It only proposes. One route for every plan: a new kind in `ws_change_types()` (erp_quote since #1705: workspace-sales-quote-change.md; variant_set, a bulk create) is proposed here, never through a route of its own.
 - Proposing is offered, not enforced: a key or a connection still writes records directly where its scopes allow (`workspace.tasks.update`, notes, products, orders, customers). The owner keeps them (2026-10-24): no OAuth ceiling or column against them; consent presets, when built, leave record write scopes unticked by default.
 

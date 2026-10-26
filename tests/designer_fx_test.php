@@ -89,6 +89,70 @@ function test_designer_fx_rendered_on_nodes()
 	pg_assert_contains('data-pg-fx="fade"', _pg_grid_open_tag('row', array('_fx' => $fx), array('class' => '', 'style' => '')), 'a grid node');
 }
 
+// A component carries its interaction on the element that takes its id,
+// as the editor's HTML does (_sdFxIntoFirstTag()); a copy typed into the
+// Attributes panel is left out; the language switcher's placeholder has none.
+function test_designer_fx_rendered_on_components()
+{
+	$fx = array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 900);
+	$attrs = pg_fx_attrs(array('_fx' => $fx));
+	$panel = array(array('name' => 'data-pg-fx', 'value' => 'typed'), array('name' => 'data-k', 'value' => 'v'));
+	$c = function ($type, $props = array()) use ($fx, $panel) {
+		return _render_tree_node(array('type' => 'component', 'props' => array('componentType' => $type, 'id' => 'n1', '_fx' => $fx, '_attrs' => $panel) + $props, 'children' => array()), 0, 0);
+	};
+
+	foreach (array(
+		'btn'       => '<a href="#" class="btn btn-primary" id="n1"' . $attrs . ' data-k="v">',
+		'badge'     => '<span class="badge bg-primary" id="n1"' . $attrs . ' data-k="v">',
+		'card'      => '<div class="card" id="n1"' . $attrs . ' data-k="v">',
+		'alert_box' => $attrs,
+		'hero'      => $attrs,
+		'navbar'    => $attrs,
+		'accordion' => $attrs,
+		'tabs'      => $attrs,
+		'carousel'  => $attrs,
+	) as $type => $expected) {
+		$html = $c($type);
+		pg_assert_contains($expected, $html, $type);
+		pg_assert_same(1, substr_count($html, 'data-pg-fx="'), $type . ': written once');
+		pg_assert_false(strpos($html, 'typed') !== false, $type . ': the typed copy is left out');
+	}
+	pg_assert_contains('<button type="button" class="btn btn-primary" id="n1"' . $attrs, $c('btn', array('btnElement' => 'button')));
+	pg_assert_contains('<input type="button" value="Button" class="btn btn-primary" id="n1"' . $attrs, $c('btn', array('btnElement' => 'input')));
+	// The interaction is on the component's outer element: the first tag.
+	pg_assert_true(strpos($c('card'), 'data-pg-fx') < strpos($c('card'), '</div>'), 'on the outer element');
+
+	$html = _render_tree_node(array('type' => 'component', 'props' => array('componentType' => 'btn', '_attrs' => $panel), 'children' => array()), 0, 0);
+	pg_assert_contains('data-pg-fx="typed"', $html, 'without an interaction the panel entry stays');
+}
+
+// Nodes inside a widget or a shared component are drawn by the same paths
+// and keep their interaction through the widget's finish pass; the page
+// looks for the attributes once widgets and shared components are in.
+function test_designer_fx_inside_widgets_and_shared_components()
+{
+	$fx = array('effect' => 'fade', 'trigger' => 'view');
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'div', '_fx' => $fx), 'children' => array(
+			array('type' => 'component', 'props' => array('componentType' => 'btn', '_fx' => array('effect' => 'scale', 'trigger' => 'hover')), 'children' => array()),
+		)),
+	));
+	$scope = pg_sw_finish_open(array('sid' => 94, 'kind' => 'search_results', 'email' => false));
+	try {
+		$html = pg_sw_finish_widget_html(_render_tree_node($tree, 0, 0), $scope);
+	} finally {
+		pg_sw_finish_close();
+	}
+	pg_assert_contains('<div data-pg-fx="fade" data-pg-fx-trigger="view">', $html);
+	pg_assert_contains('data-pg-fx="scale" data-pg-fx-trigger="hover"', $html, 'a component inside a widget');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	$inject = strpos($page, '$content = pg_fx_inject($content);');
+	pg_assert_true($inject !== false, 'the page injects the script');
+	pg_assert_true(strpos($page, '$content = _expand_shared_refs($content);') < $inject, 'after the shared components');
+	pg_assert_true(strpos($page, '$content = _expand_system_widgets($content, $mode, $email);') < $inject, 'after the widgets');
+}
+
 function test_designer_fx_inject()
 {
 	$src = '/pinegrap/assets/js/pg_fx.min.js?v=1';
@@ -241,13 +305,20 @@ function test_designer_fx_panel()
 		. 'function rows(h) { return (h.match(/<row [^>]+>/g) || []).map(function (r) { return r.slice(5, -1); }); }'
 		. 'var c = function (t, p) { return { type: t, props: p }; };'
 		. 'var out = {'
-		. ' takes: [c("content", { contentType: "heading" }), c("content", { contentType: "custom_html" }), c("semantic", {}), c("row", {}), c("component", {}), c("shared_ref", {})].map(_sdFxTakes),'
+		. ' takes: [c("content", { contentType: "heading" }), c("content", { contentType: "custom_html" }), c("semantic", {}), c("row", {}), c("component", { componentType: "btn" }), c("shared_ref", {}), c("component", { componentType: "language_switcher" })].map(_sdFxTakes),'
 		. ' none: rows(propsInteractions(c("semantic", {}))),'
 		. ' slide: rows(propsInteractions(c("semantic", { _fx: { effect: "slide-up", trigger: "view" } }))),'
 		. ' hover: rows(propsInteractions(c("semantic", { _fx: { effect: "fade", trigger: "hover" } }))),'
 		. ' sticky: rows(propsInteractions(c("semantic", { _fx: { effect: "sticky", offset: 8 } }))),'
 		. ' parallax: rows(propsInteractions(c("semantic", { _fx: { effect: "parallax" } }))),'
-		. ' other: propsInteractions(c("component", { _fx: { effect: "fade" } })),'
+		. ' other: propsInteractions(c("component", { componentType: "language_switcher", _fx: { effect: "fade" } })),'
+		. ' component: rows(propsInteractions(c("component", { componentType: "card", _fx: { effect: "fade", trigger: "hover" } }))),'
+		. ' into: ['
+		. '  _sdFxIntoFirstTag("  <a href=\\"#\\" class=\\"btn\\">x</a>\\n", { _fx: { effect: "fade", trigger: "load" } }),'
+		. '  _sdFxIntoFirstTag("<input type=\\"button\\" value=\\"a/b\\"/>", { _fx: { effect: "scale", trigger: "hover" } }),'
+		. '  _sdFxIntoFirstTag("<span>x</span>", {}),'
+		. '  _sdFxIntoFirstTag("text", { _fx: { effect: "fade" } })'
+		. ' ],'
 		. ' slideHtml: propsInteractions(c("semantic", { _fx: { effect: "slide-left", trigger: "hover" } })),'
 		. ' set: ['
 		. '  _sdFxSet(null, "effect", "fade"),'
@@ -265,13 +336,20 @@ function test_designer_fx_panel()
 		return;
 	}
 
-	pg_assert_same(array(true, false, true, true, false, false), $got['takes'], 'where the section is offered');
+	pg_assert_same(array(true, false, true, true, true, false, false), $got['takes'], 'where the section is offered');
 	pg_assert_same(array('Effect'), $got['none'], 'no interaction: the effect alone');
 	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing', 'Distance', 'Stagger children', 'Every time'), $got['slide'], 'a slide that enters on view');
 	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing'), $got['hover'], 'a hover fade');
 	pg_assert_same(array('Effect', 'Top offset'), $got['sticky']);
 	pg_assert_same(array('Effect', 'Speed'), $got['parallax']);
-	pg_assert_same('', $got['other'], 'not on a component');
+	pg_assert_same('', $got['other'], 'not on the language switcher');
+	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing'), $got['component'], 'on a component');
+	// The component's first tag takes the attributes the page writes.
+	pg_assert_same('  <a href="#" class="btn"' . pg_fx_attrs(array('_fx' => array('effect' => 'fade', 'trigger' => 'load'))) . ">x</a>\n", $got['into'][0]);
+	pg_assert_same('<input type="button" value="a/b"' . pg_fx_attrs(array('_fx' => array('effect' => 'scale', 'trigger' => 'hover'))) . '/>', $got['into'][1], 'before a void tag\'s slash');
+	pg_assert_same('<span>x</span>', $got['into'][2], 'no interaction, unchanged');
+	pg_assert_same('text', $got['into'][3], 'no tag, unchanged');
+	pg_assert_contains("_sdFxIntoFirstTag(comp.toHTML(P, pad, _pcChildren), n.props)", $js, 'the editor\'s HTML writes it on components');
 	pg_assert_contains('data-fx="distance" min="0" max="400" step="1" value="" placeholder="6"', $got['slideHtml'], 'the script\'s own distance as the placeholder');
 	pg_assert_contains('<option value="slide-left" selected>Slide left</option>', $got['slideHtml']);
 

@@ -5020,7 +5020,9 @@ function _render_region_tag($props)
 // $title: also write the node's title and tooltip (_pg_node_title_attrs())
 //   and its interaction (pg_fx_attrs()) after the id. Content, semantic and grid nodes pass true; a component's
 //   props.title is its heading text, not an attribute.
-function _render_extra_attrs($props, $skip_names = array(), $title = false)
+// $fx: write the interaction without the title (a component's element);
+//   null follows $title.
+function _render_extra_attrs($props, $skip_names = array(), $title = false, $fx = null)
 {
     $skip_map = array();
     foreach ($skip_names as $n) $skip_map[strtolower((string)$n)] = true;
@@ -5033,8 +5035,9 @@ function _render_extra_attrs($props, $skip_names = array(), $title = false)
     }
     // Content, semantic and grid nodes also carry their interaction
     // (pg_fx_attrs()); its own names typed into the panel are left out.
-    $fx = $title ? pg_fx_attrs($props) : '';
-    if ($title) $out .= _pg_node_title_attrs($props) . $fx;
+    $fx = (($fx === null) ? $title : $fx) ? pg_fx_attrs($props) : '';
+    if ($title) $out .= _pg_node_title_attrs($props);
+    $out .= $fx;
     if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
         foreach ($props['_attrs'] as $a) {
             if (!is_array($a) || empty($a['name'])) continue;
@@ -5141,6 +5144,9 @@ function _render_component_html($props, $pad, $kids = '')
 {
     // Apply data bindings — components inside a system widget can have text/href bound
     $props = _apply_bindings($props);
+    // The element that takes the component's id and attributes also takes
+    // its interaction (pg_fx_attrs()); the language switcher is a
+    // placeholder drawn later and has none.
     $ct = isset($props['componentType']) ? $props['componentType'] : '';
     $html = '';
 
@@ -5153,7 +5159,7 @@ function _render_component_html($props, $pad, $kids = '')
             $fixed = !empty($props['fixed']) ? ' ' . h($props['fixed']) : '';
             $nav_uid = 'navbarNav' . substr(md5(uniqid()), 0, 5);
             $u_style = _user_attr_value($props, 'style');
-            $extra_attrs = _render_extra_attrs($props);
+            $extra_attrs = _render_extra_attrs($props, array(), false, true);
             $html .= $pad . '<nav class="navbar navbar-expand-' . h($expand) . ' navbar-' . h($theme) . ' bg-' . h($bg) . $fixed . '"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
@@ -5176,7 +5182,7 @@ function _render_component_html($props, $pad, $kids = '')
             $hero_style_parts = array('background:' . $bgColor);
             $u_style = _user_attr_value($props, 'style');
             if ($u_style !== '') $hero_style_parts[] = $u_style;
-            $extra_attrs = _render_extra_attrs($props);
+            $extra_attrs = _render_extra_attrs($props, array(), false, true);
             $html .= $pad . '<div class="py-' . h($padding) . ' text-center text-' . h($textColor) . '" style="' . implode(';', $hero_style_parts) . '"' . $extra_attrs . '>' . "\n";
             $html .= $pad . '    <div class="container">' . "\n";
             $html .= $pad . '        <h1 class="display-4 fw-bold">' . $title . '</h1>' . "\n";
@@ -5188,7 +5194,7 @@ function _render_component_html($props, $pad, $kids = '')
 
         case 'card':
             $u_style = _user_attr_value($props, 'style');
-            $extra_attrs = _render_extra_attrs($props);
+            $extra_attrs = _render_extra_attrs($props, array(), false, true);
             $html .= $pad . '<div class="card"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
@@ -5208,7 +5214,7 @@ function _render_component_html($props, $pad, $kids = '')
             $u_style = _user_attr_value($props, 'style');
             // Skip 'id' / 'data-bs-ride' so user attrs don't duplicate the
             // built-ins emitted just below.
-            $extra_attrs = _render_extra_attrs($props, array('id', 'data-bs-ride'));
+            $extra_attrs = _render_extra_attrs($props, array('id', 'data-bs-ride'), false, true);
             $html .= $pad . '<div id="mainCarousel" class="carousel slide' . $fade . '" data-bs-ride="carousel"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
@@ -5233,7 +5239,7 @@ function _render_component_html($props, $pad, $kids = '')
             $dismissible = !empty($props['dismissible']) ? ' alert-dismissible fade show' : '';
             $u_style = _user_attr_value($props, 'style');
             // Skip 'role' from user attrs so the built-in role="alert" wins.
-            $extra_attrs = _render_extra_attrs($props, array('role'));
+            $extra_attrs = _render_extra_attrs($props, array('role'), false, true);
             $html .= $pad . '<div class="alert alert-' . h($alertType) . $dismissible . '" role="alert"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . $text;
@@ -5245,7 +5251,7 @@ function _render_component_html($props, $pad, $kids = '')
             $items = isset($props['items']) ? intval($props['items']) : 3;
             $flush = !empty($props['flush']) ? ' accordion-flush' : '';
             $u_style = _user_attr_value($props, 'style');
-            $extra_attrs = _render_extra_attrs($props, array('id'));
+            $extra_attrs = _render_extra_attrs($props, array('id'), false, true);
             $html .= $pad . '<div class="accordion' . $flush . '" id="accordionMain"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
@@ -5263,7 +5269,7 @@ function _render_component_html($props, $pad, $kids = '')
             $pill = !empty($props['pill']);
             $u_style = _user_attr_value($props, 'style');
             // Skip 'role' (built-in) — id flows through; user can override.
-            $extra_attrs = _render_extra_attrs($props, array('role'));
+            $extra_attrs = _render_extra_attrs($props, array('role'), false, true);
             $html .= $pad . '<ul class="nav nav-' . ($pill ? 'pills' : 'tabs') . '" role="tablist"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
@@ -5345,17 +5351,17 @@ function _render_component_html($props, $pad, $kids = '')
                 $btn_skip = array('type', 'href');
                 if ($target !== '') $btn_skip[] = 'target';
                 if ($rel !== '')    $btn_skip[] = 'rel';
-                $btn_extra = _render_extra_attrs($props, $btn_skip);
+                $btn_extra = _render_extra_attrs($props, $btn_skip, false, true);
                 $html .= $pad . '<a href="' . $href . '"' . $target . $rel . ' class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $btn_inner . '</a>' . "\n";
             } elseif ($tag === 'input') {
                 // <input> uses the button label as its `value` attr — skip
                 // any user-supplied 'value' in _attrs so the explicit one wins.
-                $btn_extra = _render_extra_attrs($props, array('type', 'value', 'href', 'target', 'rel'));
+                $btn_extra = _render_extra_attrs($props, array('type', 'value', 'href', 'target', 'rel'), false, true);
                 $btn_type  = isset($props['btnType']) ? h($props['btnType']) : 'button';
                 $html .= $pad . '<input type="' . $btn_type . '" value="' . $text . '" class="' . $cls . '"' . $style_attr . $btn_extra . '>' . "\n";
             } else {
                 // <button> — keep `value` in _attrs (required for form submit).
-                $btn_extra = _render_extra_attrs($props, array('type', 'href', 'target', 'rel'));
+                $btn_extra = _render_extra_attrs($props, array('type', 'href', 'target', 'rel'), false, true);
                 $btn_type  = isset($props['btnType']) ? h($props['btnType']) : 'button';
                 $html .= $pad . '<button type="' . $btn_type . '" class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $btn_inner . '</button>' . "\n";
             }
@@ -5372,7 +5378,7 @@ function _render_component_html($props, $pad, $kids = '')
             $badge_cls = 'badge bg-' . h(isset($props['bg']) && $props['bg'] !== '' ? $props['bg'] : 'primary')
                 . (!empty($props['rounded']) ? ' rounded-pill' : '')
                 . (!empty($props['cssClass']) ? ' ' . h($props['cssClass']) : '');
-            $html .= $pad . '<span class="' . $badge_cls . '"' . _compose_inline_style($props) . _render_extra_attrs($props) . '>'
+            $html .= $pad . '<span class="' . $badge_cls . '"' . _compose_inline_style($props) . _render_extra_attrs($props, array(), false, true) . '>'
                 . h(isset($props['text']) ? $props['text'] : '')
                 . ($kids !== '' ? "\n" . $kids . $pad : '') . '</span>' . "\n";
             break;

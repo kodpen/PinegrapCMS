@@ -8,7 +8,8 @@
  * and day words, the names the commands answer to, that the help lists every
  * one of them, and who is offered them when nobody is named; the registry
  * (ws_commands()) the picker, /help and the argument popup read, the
- * suggestions it offers, and how a mistyped /word is told apart from a path.
+ * suggestions it offers, and how a mistyped /word is told apart from a path;
+ * the registry as GET /workspace/commands lists it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,8 +21,19 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+if (!defined('PG_MCP_ENTRY')) {
+	define('PG_MCP_ENTRY', true);
+}
+
+if (!defined('PG_API_PANEL')) {
+	define('PG_API_PANEL', true);
+}
+
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 
 // An amount comes back in minor units whichever way it is written: a comma
 // or a point before the cents, thousands grouped by the other mark, a
@@ -669,3 +681,93 @@ function test_workspace_command_meeting_reads_its_parts()
 	pg_assert_same(array(3, 5), $data['people'], 'the writer is on the meeting');
 }
 
+
+// GET /workspace/commands lists the registry: a read under workspace:read,
+// no parameters, no MCP tool, answering a list of WorkspaceCommand.
+function test_workspace_commands_api_route_is_a_read_and_no_tool()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $item) {
+		if ($item['id'] === 'workspace.commands.list') {
+			$route = $item;
+		}
+	}
+
+	pg_assert_true(is_array($route), 'workspace.commands.list is declared');
+	pg_assert_same('GET', $route['method']);
+	pg_assert_same('/workspace/commands', $route['path']);
+	pg_assert_same('workspace:read', $route['scope']);
+	pg_assert_same('ws_api_commands_list', $route['handler']);
+	pg_assert_same(array('list' => 'WorkspaceCommand'), $route['returns']);
+	pg_assert_same(array(), $route['params']);
+	pg_assert_same(false, $route['mcp'] ?? null, 'carries \'mcp\' => false');
+	pg_assert_false(pg_mcp_route_is_offered($route), 'no MCP tool');
+	pg_assert_false(!empty($route['dry_run']), 'a read does not rehearse');
+
+	$objects = ws_openapi_objects();
+	pg_assert_same('ws_api_command_schema', $objects['WorkspaceCommand'] ?? null, 'WorkspaceCommand is registered');
+	pg_assert_same('ws_api_command_argument_schema', $objects['WorkspaceCommandArgument'] ?? null, 'WorkspaceCommandArgument is registered');
+}
+
+// A registry entry is answered with the fields its schema declares, in that
+// order and with those types, and its arguments the same way.
+function test_workspace_commands_api_present_matches_its_schema()
+{
+	$entries = ws_commands(null);
+	$task = null;
+
+	foreach ($entries as $entry) {
+		if ($entry['key'] === 'task') {
+			$task = $entry;
+		}
+	}
+
+	pg_assert_true(is_array($task), 'the registry holds /task');
+
+	$present = ws_api_command_present($task);
+
+	pg_assert_same(array_keys(ws_api_command_schema()), array_keys($present), 'command fields');
+	pg_assert_same('task', $present['key']);
+	pg_assert_same($task['names'], $present['names']);
+	pg_assert_same($task['usage'], $present['usage']);
+	pg_assert_same(true, $present['live']);
+	pg_assert_same(count($task['args']), count($present['args']), 'every argument');
+
+	$people = $present['args'][1];
+
+	pg_assert_same(array_keys(ws_api_command_argument_schema()), array_keys($people), 'argument fields');
+	pg_assert_same(array('name' => 'people', 'kind' => 'people', 'label' => $task['args'][1]['label'], 'optional' => true,
+		'suggest' => 'people_departments', 'multiple' => true, 'anywhere' => true), $people, '/task people');
+
+	// A suggestion source left empty in the registry is null in the answer.
+	$help = null;
+	$poll = null;
+
+	foreach ($entries as $entry) {
+		if ($entry['key'] === 'help') {
+			$help = ws_api_command_present($entry);
+		}
+		if ($entry['key'] === 'poll') {
+			$poll = ws_api_command_present($entry);
+		}
+	}
+
+	pg_assert_same(array(), $help['args'], '/help takes none');
+	pg_assert_same(false, $help['live'], '/help has no live line');
+	pg_assert_same(null, $poll['args'][0]['suggest'], 'no suggestion source');
+}
+
+// The list is the viewer's registry in its order: a command the person may
+// not use is never listed.
+function test_workspace_commands_api_list_keeps_the_registry_order()
+{
+	$keys = array_map(function ($entry) {
+		return $entry['key'];
+	}, ws_api_commands_present(ws_commands(null)));
+
+	pg_assert_same(array_map(function ($entry) {
+		return $entry['key'];
+	}, ws_commands(null)), $keys, 'registry order');
+	pg_assert_same(array(), ws_api_commands_present(array()), 'nothing offered, nothing listed');
+}

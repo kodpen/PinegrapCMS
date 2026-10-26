@@ -799,6 +799,7 @@
     "finished projects": "tamamlanan proje",
     "first day": "ilk gün",
     "first visit, new patient, register, what to bring, ID": "ilk ziyaret, yeni hasta, kayıt, ne getirmeli, kimlik",
+    "flow “{var:1}” started, run {var:2}": "“{var:1}” akışı başladı, çalıştırma {var:2}",
     "flu shots, clinics": "grip aşısı, sağlık merkezleri",
     "folded code": "katlanmış kod",
     "folder": "klasör",

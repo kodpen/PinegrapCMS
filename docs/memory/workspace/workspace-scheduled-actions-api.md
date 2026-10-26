@@ -6,7 +6,7 @@ description: Scheduled actions in the external API (api_scheduled.php): list, ge
 ## Which routes are there?
 - `GET /workspace/scheduled-actions` (filters `status`, `channel_id`; at most 300, the panel's order), `GET /workspace/scheduled-actions/{id}` (with `history`, the latest 20 runs), `POST …/{id}/pause`, `POST …/{id}/cancel`. All four are MCP tools; key, OAuth and team devices sessions alike.
 - Declared in `ws_scheduled_api_routes()` (includes/workspace/api_scheduled.php), merged at the end of `ws_api_routes()`; object `WorkspaceScheduledAction`.
-- `POST …/{id}/resume`, `POST /workspace/scheduled-actions` (201) and `POST`/`PATCH …/{id}`: staff from their own team devices session only (`ws_api_own_words_only()`), `'mcp' => false`: an action runs in the name of whoever saves it (owner, #1708, `workflow/decisions-made-product.md`). Connected apps: a change card later (plan S2b). Added in #1858.
+- `POST …/{id}/resume`, `POST /workspace/scheduled-actions` (201) and `POST`/`PATCH …/{id}`: staff from their own team devices session only (`ws_api_own_words_only()`), `'mcp' => false`: an action runs in the name of whoever saves it (owner, #1708, `workflow/decisions-made-product.md`). Added in #1858. A connected app proposes one instead, as a draft card (`workspace-change-proposals.md`).
 
 ## Who may call them?
 - Staff in the team only (`ws_can_schedule()` in `ws_api_scheduled_viewer()`), 403 for anybody else; 503 before the tables exist. Every staff member sees every action, as on the panel's screen.
@@ -24,6 +24,7 @@ description: Scheduled actions in the external API (api_scheduled.php): list, ge
 
 ## How do create and change write?
 - `ws_scheduled_save_check()` (scheduled.php; refusals 403 / 404 / 422, also run by the panel's `ws_scheduled_save()`) → a rehearsal answers `ws_scheduled_preview()`'s words → `ws_scheduled_save()` inside `ws_api_as_owner()`.
-- Body: `name`, `rules` (list), `action` (the `object` type of the router and the OpenAPI document: a JSON object, a list refused), `follow` (list of {on, do}), `channel_id` on create only. A change keeps every field it leaves out (`ws_api_scheduled_change_data()`, pure); kept rules go to the save as the form sends them, a money condition back in major units (`ws_api_scheduled_rules_as_sent()`), or each rename multiplied its threshold by 100; a resume goes through `ws_scheduled_set_status_check()`.
+- Body: `name`, `rules` (list), `action` (the `object` type of the router and the OpenAPI document: a JSON object, a list refused), `follow` (list of {on, do}), `channel_id` on create only. A change keeps every field it leaves out (`ws_api_scheduled_change_data()`, pure); kept rules go to the save as the form sends them, a money condition back in major units (`ws_scheduled_rules_as_sent()`, scheduled.php), or each rename multiplied its threshold by 100; a resume goes through `ws_scheduled_set_status_check()`.
 - A count of one channel's tasks (count condition or summary) needs the creator to read that channel: refused at save (422 "That channel could not be found.") and at every run (`ws_scheduled_metric_value()`; the summary shows "—" without the channel's name). Before #1978 a summary took any channel id.
+- A task condition needs the creator to see the task (`ws_can_see_task()`), refused at save as a missing one: its words carry the title. Before #1987 any task id was taken.
 - Tests: `tests/workspace_scheduled_api_test.php`; the three ids are lines of the parity table's `api_routes` group.
