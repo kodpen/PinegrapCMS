@@ -36911,6 +36911,7 @@ const StyleDesigner = (function () {
         out.__event_date = true;
         out.__event_start_date = true;
         out.__event_end_date = true;
+        out.__event_updated_date = true;
         // Order view: typed by _pg_sw_order_view_dates().
         out.__order_date = true;
         out.__arrival_date = true;
@@ -37237,6 +37238,18 @@ const StyleDesigner = (function () {
         ['__is_free_shipping',    _sdT('Ships free'), 'cond'],
         ['__is_gift_card',        _sdT('Is a gift card'), 'cond'],
         ['__is_donation',         _sdT('Is a donation'), 'cond']
+    ];
+
+    // A calendar event's allow-listed values (pg_sw_entity_fields('calendar_event')),
+    // offered by the calendar view's event loop and the event view.
+    var SW_EVENT_ENTITY_TOKENS = [
+        ['__event_spots_left',        _sdT('Places left (when places are limited)')],
+        ['__event_updated_date',      _sdT('Last updated')],
+        ['__event_reservation_price', _sdT('Reservation price (with symbol)')],
+        ['__event_recurrence',        _sdT('Repeats (Daily, Weekly …)')],
+        ['__event_reservations_open', _sdT('Takes reservations'), 'cond'],
+        ['__event_spots_limited',     _sdT('Places are limited'), 'cond'],
+        ['__event_is_recurring',      _sdT('Is a recurring event'), 'cond']
     ];
 
     // Whether a palette entry is offered only as a condition (yes/no).
@@ -38603,7 +38616,8 @@ const StyleDesigner = (function () {
             ['__event_calendar_names', _sdT('Calendars')],
             ['__event_is_all_day',     _sdT('All-day event (1 or empty)')],
             ['__event_ical_url',       _sdT('Add to my calendar — .ics file (href)')]
-        ]}
+        ]},
+        { label: _sdT('More event details (loop)'), tokens: SW_EVENT_ENTITY_TOKENS }
     ];
 
     var SW_CALENDAR_VIEW_FLAT_TOKENS = (function () {
@@ -38635,7 +38649,8 @@ const StyleDesigner = (function () {
             ['__event_ical_url',      _sdT('Add to my calendar — .ics file (href)')],
             ['__reservation_message', _sdT('Why reservations are closed (no spots / out of stock)')],
             ['__not_found_message',   _sdT('Not-found message (filled when there is no event)')]
-        ]}
+        ]},
+        { label: _sdT('More event details'), tokens: SW_EVENT_ENTITY_TOKENS }
     ];
 
     var SW_CALENDAR_EVENT_VIEW_FLAT_TOKENS = (function () {
@@ -40164,6 +40179,7 @@ const StyleDesigner = (function () {
                 SW_CALENDAR_VIEW_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -40320,6 +40336,7 @@ const StyleDesigner = (function () {
                 SW_CALENDAR_EVENT_VIEW_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== current) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === current ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';

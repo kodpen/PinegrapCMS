@@ -93,27 +93,81 @@ function test_widget_entity_fields_catalog_is_new()
 	pg_assert_false(pg_sw_catalog_is_new('', $now));
 }
 
-// The editor's SW_PRODUCT_ENTITY_TOKENS lists the same tokens in the same
-// order, and marks exactly the yes/no ones as condition-only.
+function _wef_event($extra = array())
+{
+	return $extra + array(
+		'reservations' => '1',
+		'limit_reservations' => '1',
+		'number_of_remaining_spots' => 0,
+		'last_modified_timestamp' => strtotime('2026-10-20 14:30:00'),
+		'product_price' => 4500,
+		'recurrence' => '1',
+		'recurrence_type' => 'week',
+	);
+}
+
+function test_widget_entity_fields_event_values()
+{
+	$v = pg_sw_entity_values('calendar_event', _wef_event(), array('date_format' => 'd.m.Y', 'currency_symbol' => '$'));
+
+	pg_assert_same('0', $v['__event_spots_left'], 'no places left reads 0, not empty');
+	pg_assert_same('20.10.2026', $v['__event_updated_date']);
+	pg_assert_contains('45', $v['__event_reservation_price']);
+	pg_assert_same(lang('Weekly'), $v['__event_recurrence']);
+	pg_assert_same('1', $v['__event_reservations_open']);
+	pg_assert_same('1', $v['__event_spots_limited']);
+	pg_assert_same('1', $v['__event_is_recurring']);
+}
+
+function test_widget_entity_fields_event_gates()
+{
+	$v = pg_sw_entity_values('calendar_event', _wef_event(array('limit_reservations' => '0', 'number_of_remaining_spots' => 12)));
+	pg_assert_same('', $v['__event_spots_left'], 'unlimited: no count');
+	pg_assert_same('', $v['__event_spots_limited']);
+
+	$v = pg_sw_entity_values('calendar_event', _wef_event(array('reservations' => '0', 'recurrence' => '0')));
+	pg_assert_same('', $v['__event_spots_left'], 'no reservations at all');
+	pg_assert_same('', $v['__event_reservation_price']);
+	pg_assert_same('', $v['__event_reservations_open']);
+	pg_assert_same('', $v['__event_spots_limited']);
+	pg_assert_same('', $v['__event_recurrence'], 'not recurring: no words');
+	pg_assert_same('', $v['__event_is_recurring']);
+
+	$v = pg_sw_entity_values('calendar_event', _wef_event(array('last_modified_timestamp' => 0, 'product_price' => 0)));
+	pg_assert_same('', $v['__event_updated_date']);
+	pg_assert_same('', $v['__event_reservation_price'], 'free reservation');
+}
+
+function test_widget_entity_fields_wanted()
+{
+	pg_assert_true(pg_sw_entity_wanted('calendar_event', '{"_bindings":{"show_if":"__event_is_recurring"}}'));
+	pg_assert_false(pg_sw_entity_wanted('calendar_event', '{"_bindings":{"text":"__event_title"}}'));
+}
+
+// The editor's twin lists name the same tokens in the same order as
+// pg_sw_entity_fields(), and mark exactly the yes/no ones as condition-only.
 function test_widget_entity_fields_editor_twin()
 {
 	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
-	pg_assert_true((bool)preg_match('/var SW_PRODUCT_ENTITY_TOKENS = \[(.*?)\n    \];/s', $js, $m), 'list found');
 
-	preg_match_all("/\['(__[a-z0-9_]+)',[^\n]*?(, 'cond')?\]/", $m[1], $rows, PREG_SET_ORDER);
-	$tokens = array();
-	$cond = array();
-	foreach ($rows as $row) {
-		$tokens[] = $row[1];
-		if (!empty($row[2])) $cond[] = $row[1];
+	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS') as $entity => $name) {
+		pg_assert_true((bool)preg_match('/var ' . $name . ' = \[(.*?)\n    \];/s', $js, $m), $name . ' found');
+
+		preg_match_all("/\['(__[a-z0-9_]+)',[^\n]*?(, 'cond')?\]/", $m[1], $rows, PREG_SET_ORDER);
+		$tokens = array();
+		$cond = array();
+		foreach ($rows as $row) {
+			$tokens[] = $row[1];
+			if (!empty($row[2])) $cond[] = $row[1];
+		}
+
+		$fields = pg_sw_entity_fields($entity);
+		pg_assert_same(array_keys($fields), $tokens, $name);
+
+		$yesno = array();
+		foreach ($fields as $token => $spec) {
+			if ($spec[1] === 'yesno') $yesno[] = $token;
+		}
+		pg_assert_same($yesno, $cond, $name . ' conditions');
 	}
-
-	$fields = pg_sw_entity_fields('product');
-	pg_assert_same(array_keys($fields), $tokens);
-
-	$yesno = array();
-	foreach ($fields as $token => $spec) {
-		if ($spec[1] === 'yesno') $yesno[] = $token;
-	}
-	pg_assert_same($yesno, $cond);
 }
