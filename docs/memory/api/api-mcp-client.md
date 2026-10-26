@@ -31,3 +31,6 @@ description: The site as an MCP client (includes/mcp/client.php, the Workspace's
 - `api_http_request()` answers `errno` (`curl_errno()`, else 0); `pg_mcp_client_post()` and `pg_mcp_client_register()` pass it on. 28: "The MCP server took too long to answer.", 7: "could not be reached", 6: "does not resolve"; any other keeps curl's words and the TLS hint.
 
 Related: api-mcp-server.md (the site's own server), api-connected-accounts-usage.md (`api_http_request()`).
+
+## Which id does a request carry?
+- `pg_mcp_client_next_id()` starts each PHP request at a random number (`random_int()`) and counts up, so two requests of the site in one MCP session (a page and a background run) do not both send id 1. Never seen failing; done as a precaution (#1815).

@@ -203,6 +203,9 @@ function ws_openapi_objects()
         'WorkspaceFlowRunStep'      => 'ws_api_flow_run_step_schema',
         'WorkspaceFlowShare'        => 'ws_api_flow_share_schema',
         'WorkspaceMcpConnector'     => 'ws_api_mcp_connector_schema',
+        'WorkspaceMcpServer'        => 'ws_api_mcp_server_schema',
+        'WorkspaceMcpTool'          => 'ws_api_mcp_tool_schema',
+        'WorkspaceMcpProbe'         => 'ws_api_mcp_probe_schema',
     );
 }
 
@@ -291,6 +294,8 @@ function ws_api_routes()
                 array('name' => 'members', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'description' => 'User ids of the colleagues to bring in besides the owner.'),
                 array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours, as color on a channel group shows it; null or empty for none.'),
                 array('name' => 'icon', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_channel_icon_choices()), 'nullable' => true, 'description' => 'A Bootstrap Icons class from the channel form\'s list; null or empty keeps the icon the kind gives (a hash, or a lock for a private channel).'),
+                array('name' => 'customer_type', 'in' => 'body', 'type' => 'enum', 'values' => array('contact', 'user_account', 'erp_account'), 'nullable' => true, 'description' => 'The kind of record the channel is about, with customer_id: contact, user_account or erp_account (a current account, with the ERP module). null or empty for none.'),
+                array('name' => 'customer_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The id of that record. With the user role, a contact must be filed in one of the owner\'s contact groups. 0, null or empty for none.'),
             ),
         ),
 
@@ -313,6 +318,8 @@ function ws_api_routes()
                 array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours; null or empty for none.'),
                 array('name' => 'icon', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_channel_icon_choices()), 'nullable' => true, 'description' => 'A Bootstrap Icons class from the channel form\'s list; null or empty brings back the icon the kind gives.'),
                 array('name' => 'archived', 'in' => 'body', 'type' => 'bool'),
+                array('name' => 'customer_type', 'in' => 'body', 'type' => 'enum', 'values' => array('contact', 'user_account', 'erp_account'), 'nullable' => true, 'description' => 'The kind of record the channel is about, with customer_id: contact, user_account or erp_account. Sent together with customer_id (one alone is refused unless it clears); null or empty, or customer_id 0, takes the customer off.'),
+                array('name' => 'customer_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The id of that record. With the user role, a contact must be filed in one of the owner\'s contact groups. Left out with customer_type, the customer is left alone.'),
             ),
         ),
 
@@ -497,6 +504,24 @@ function ws_api_routes()
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true),
                 array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('message', 'note', 'decision')),
                 array('name' => 'ack', 'in' => 'body', 'type' => 'bool', 'description' => 'Ask for read receipts on the message once it is written.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.forward',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/forwards',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_forward',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessage',
+            'status'      => 201,
+            'summary'     => 'Forward messages to a channel',
+            'description' => 'Forwards messages into a channel, as Forward does in the panel: id is the channel they go to, message_ids the messages, all of one channel the owner reads, written by people or applications, not deleted, at most 20. The channel they go to must be one the owner may post in and not archived (403 otherwise); a room with a guest takes no forwards. A new message is written there carrying a copy of each forwarded message as it is now - its words, who wrote it, when and where - so a later change or deletion of the original does not reach the copy; a file goes as its name, the file itself stays in its channel. text puts a few words above them. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. Whoever reads the channel it goes to reads the copies too, so forwarding out of a private channel shares its words. A dry run makes every check and its detail gives source_channel_id and how many messages would be forwarded. Send an Idempotency-Key so a retried call does not forward twice.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'message_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'required' => true, 'description' => 'Ids of the messages to forward (GET /workspace/channels/{id}/messages), all of one channel; they are forwarded oldest first.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'A few words above the forwarded messages. Tags are written as tokens, as when writing.'),
             ),
         ),
 
@@ -2085,6 +2110,96 @@ function ws_api_routes()
             'summary'     => 'Ready-made MCP connectors',
             'description' => 'The other services\' MCP servers the Workspace Settings add with one click, for an application whose owner is an administrator (403 for anybody else). auth says how the site signs in: none (the server answers without an account), oauth (the service registers the site on its own and an administrator signs in once) or bearer (a token made on token_url). alias is the one offered when it is free; tools read_only means the first read of the tools turns on the ones the server marks as reading only. added says whether the site already has a server at url, under server_alias. The list is bundled with the site, not fetched. Adding a server, its credential and its sign-in are done in the Workspace Settings only; no MCP tool lists this.',
             'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.mcp_servers.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/mcp-servers',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_mcp_servers_list',
+            'mcp'         => false,
+            'returns'     => array('list' => 'WorkspaceMcpServer'),
+            'summary'     => 'The site\'s MCP servers',
+            'description' => 'The other services\' MCP servers the site has added, for an application whose owner is an administrator (403 for anybody else). state is the badge the Workspace Settings show: off, connect_again, not_connected, unreachable, no_tool_on or ready; reason says why it is not ready, and checklist lists what it needs, each step done or not. Each tool carries what the server says it does (hint: reads_only, not_said, writes, destroys) and its rule (off, auto, auto_declared or approve). No credential is given back. No MCP tool lists this.',
+            'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.mcp_servers.probe',
+            'method'      => 'POST',
+            'path'        => '/workspace/mcp-servers/probe',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_mcp_servers_probe',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMcpProbe',
+            'summary'     => 'Check an MCP server\'s address',
+            'description' => 'Asks an address how it signs in, without a credential: auth is none (it answers without an account), oauth (the service registers the site on its own), bearer (it asks for a token) or null (no MCP server answered; text says what was met). alias is a free one taken from the host. server_id names the server the site already has there; then nothing is asked. Nothing is saved or registered. Administrators only; a dry run checks the address and asks nobody. No MCP tool.',
+            'params'      => array(
+                array('name' => 'url', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'required' => true, 'description' => 'The https address of the MCP server.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.mcp_servers.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/mcp-servers',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_mcp_servers_create',
+            'dry_run'     => true,
+            'status'      => 201,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMcpServer',
+            'summary'     => 'Add an MCP server',
+            'description' => 'Adds another service\'s MCP server, with the checks of the Workspace Settings. The credential typed (token, header_value, password, client_secret) is sealed with the site\'s key and never given back. A server without OAuth is asked for its tools at once; the ones it marks as reading only are turned on, and read says what the server answered. A server that signs in with OAuth gets its sign-in set up, and an administrator connects it in the Workspace Settings: a person signs in in a browser. 409 when the address is already added or the site has as many servers as it may. Administrators only; a dry run runs the checks and asks no server. No MCP tool.',
+            'params'      => array(
+                array('name' => 'url', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'required' => true, 'description' => 'The https address of the MCP server.'),
+                array('name' => 'alias', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'description' => 'How it is asked in a channel, without the @. Left out, a free one taken from the host.'),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100),
+                array('name' => 'auth', 'in' => 'body', 'type' => 'enum', 'values' => array('none', 'bearer', 'header', 'basic', 'oauth'), 'default' => 'none', 'description' => 'How the site signs in to it.'),
+                array('name' => 'token', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'For bearer.'),
+                array('name' => 'header_name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'For header.'),
+                array('name' => 'header_value', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'For header.'),
+                array('name' => 'user', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'For basic.'),
+                array('name' => 'password', 'in' => 'body', 'type' => 'string', 'max_length' => 1000, 'description' => 'For basic.'),
+                array('name' => 'client_id', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'For oauth, when the service needs an application of the site\'s own.'),
+                array('name' => 'client_secret', 'in' => 'body', 'type' => 'string', 'max_length' => 1000, 'description' => 'For oauth, with client_id.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.mcp_servers.refresh',
+            'method'      => 'POST',
+            'path'        => '/workspace/mcp-servers/{id}/refresh',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_mcp_servers_refresh',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMcpServer',
+            'summary'     => 'Read an MCP server\'s tools again',
+            'description' => 'Asks the server for its tools again and keeps the list; rules of tools it no longer lists are dropped. On the first read the tools it marks as reading only are turned on. read says what it answered: a server that could not be reached is 200 with read.ok false and state unreachable. 409 when the site cannot send, or a server that signs in with OAuth is not connected yet. Administrators only; a dry run runs the checks and asks no server. No MCP tool.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.mcp_servers.tools',
+            'method'      => 'POST',
+            'path'        => '/workspace/mcp-servers/{id}/tools',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_mcp_servers_tools',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMcpServer',
+            'summary'     => 'Turn an MCP server\'s tools on or off',
+            'description' => 'Sets the rule of the tools named; the others keep theirs. rule off turns a tool off; on turns it on as far as it may be: a tool that reads only becomes auto, one the server says nothing about auto_declared (the administrator declares it reads only), one that writes approve; approve makes each call wait for the approval of the person who asked. A tool that writes can be on only on a server that signs in with OAuth (422 elsewhere), and a name the server does not list is 422. declare_all declares every tool the server says nothing about to read only, as the warned button of the Workspace Settings does. Administrators only; a dry run answers the rules it would keep. No MCP tool.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'tools', 'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'rule' => 'string'), 'max_items' => 500, 'description' => 'Objects of {name, rule}; rule is off, on or approve.'),
+                array('name' => 'declare_all', 'in' => 'body', 'type' => 'bool', 'description' => 'Also turn on every tool the server says nothing about, declared to read only.'),
+            ),
         ),
 
     );

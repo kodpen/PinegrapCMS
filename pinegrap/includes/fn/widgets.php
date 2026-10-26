@@ -78,6 +78,11 @@ function pg_sw_type_labels()
         'comments'            => lang('Comments'),
         'comments_recent'     => lang('Recent Comments'),
         'shipping_address_and_arrival' => lang('Shipping Address and Arrival'),
+        'shipping_method'     => lang('Shipping Method'),
+        'billing_information' => lang('Billing Information'),
+        'order_preview'       => lang('Order Preview'),
+        'menu_region'         => lang('Menu'),
+        'menu_sequence_region' => lang('Menu Sequence'),
     );
 }
 
@@ -3917,6 +3922,12 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         'not_logged_in' => '',
     ) + $link_values;
 
+    // A list of the member's orders (widgets_lists_order.php): the order
+    // history's rows, filed only when the tree drew one.
+    if (pg_sw_list_wanted('account')) {
+        pg_sw_list_publish('account', pg_sw_list_account_rows($values['account_id'], $extras['orders'], $extras['order_view_url'], pg_sw_default_date_format('date')));
+    }
+
     // ── No loop_area — render entire tree once with account tokens ─────────
     if ($split['loop_children'] === null) {
         return pg_sw_sweep_tokens(
@@ -6278,11 +6289,11 @@ function pg_sw_item_summary($html, $max = 140)
 //   ^^__order_no^^              order number (orders.order_number)
 //   ^^__order_date^^            formatted per cfg.date_format
 //   ^^__order_status^^          raw status text
-//   ^^__order_status_badge^^    <span> carrying the designer-chosen classes for
-//                               this order's lifecycle stage. Classes come from
-//                               cfg.status_class_{complete|pending|shipped|
-//                               cancelled|refunded|default}; see
-//                               _pg_order_status_stage() + _pg_order_status_badge_class()
+//   ^^__order_status_text^^     the status as the badge shows it ("Awaiting
+//                               Payment" for an unpaid bank transfer)
+//   ^^__order_status_stage^^    complete|pending|shipped|cancelled|refunded|default
+//                               (_pg_order_status_stage()); the status badge part
+//                               draws one badge per stage (widgets_parts.php)
 //   ^^__order_total^^           formatted with currency symbol
 //   ^^__order_subtotal^^        formatted
 //   ^^__order_discount^^        formatted
@@ -6329,8 +6340,9 @@ function pg_sw_item_summary($html, $max = 140)
 //     NOT orders.tracking_code - that is the campaign code the visitor
 //     arrived with, and was shown here as a parcel number until 2026.4.4.
 //
-//   Timeline (order lifecycle event list):
-//     __timeline               pre-built <ul.pg-ov-timeline> HTML (Bootstrap + BI)
+//   Timeline (order lifecycle event list): the order.steps list
+//     (widgets_lists_order.php); a layout binding the old __timeline token
+//     is given the timeline part (widgets_parts.php).
 //     visibility flag: has_timeline (true when at least one event has a timestamp)
 //     Events emitted only when their timestamps are real (no hollow rows).
 //
@@ -6650,12 +6662,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     }
 
     // Status badge — the TEXT comes from the order, the LOOK comes from the
-    // designer. Each lifecycle stage has its own cfg field
-    // (cfg.status_class_complete / _pending / _shipped / _cancelled /
-    // _refunded / _default); an empty field falls back to the shared default
-    // map. Previously the colour was hard-coded here, which made the one
-    // visual decision the designer most wants to control the only one they
-    // couldn't reach.
+    // designer: the status badge part draws one badge per lifecycle stage,
+    // each with its own classes (widgets_parts.php).
     //
     // paid_at came with the 2026.4.4 upgrade, so it is probed like the other
     // optional columns and read once here; the timeline below reuses it.
@@ -6680,8 +6688,6 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         $status_text  = lang('Awaiting Payment');
         $status_stage = 'pending';
     }
-    $status_badge_cls  = _pg_order_status_badge_class($status_stage, $cfg);
-    $status_badge_html = '<span class="' . h($status_badge_cls) . '">' . h($status_text) . '</span>';
 
     // Fetch order items — much richer column set. address_name lets designers
     // link to the product detail page; short/full description give them a
@@ -6788,6 +6794,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 'image'             => $image_url,
                 'url'               => $item_url,
                 'ship_to'           => $item_ship_to,
+                'ship_to_id'        => (int)$r['ship_to_id'],
             );
         }
     }
@@ -6854,6 +6861,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // own shape (pg_shipping_carrier). The helpers read the site's default
     // themselves, as they do on every other order screen.
     $tracking_rows = db_items("SELECT shipping_tracking_numbers.number,
+            shipping_tracking_numbers.ship_to_id,
             ship_tos.shipping_method_code
         FROM shipping_tracking_numbers
         LEFT JOIN ship_tos ON ship_tos.id = shipping_tracking_numbers.ship_to_id
@@ -6874,6 +6882,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'number'  => $parcel_number,
             'url'     => get_shipping_tracking_url($parcel_number, $parcel_method),
             'carrier' => get_shipping_carrier_name($parcel_number, $parcel_method),
+            'ship_to' => (int)($tracking_row['ship_to_id'] ?? 0),
         );
     }
 
@@ -6956,10 +6965,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // Created — always present (order_date is required to fetch the row)
     if ($order_date_ts > 0) {
         $timeline_events[] = array(
-            'icon'  => 'bi-receipt',
-            'color' => 'primary',
             'label' => lang('Order Created'),
             'ts'    => $_fmt_ts($order_date_ts, true),
+            'kind'  => 'created',
         );
     }
     // Paid — paid_at is stamped when the money is confirmed: by the gateway
@@ -6971,17 +6979,15 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // neither and gets no event.
     if ($paid_at_ts > 0) {
         $timeline_events[] = array(
-            'icon'  => 'bi-credit-card',
-            'color' => 'success',
             'label' => lang('Payment Received'),
             'ts'    => $_fmt_ts($paid_at_ts, true),
+            'kind'  => 'paid',
         );
     } elseif (trim((string)$order['transaction_id']) !== '' && $order_date_ts > 0) {
         $timeline_events[] = array(
-            'icon'  => 'bi-credit-card',
-            'color' => 'success',
             'label' => lang('Payment Received'),
             'ts'    => $_fmt_ts($order_date_ts, true),
+            'kind'  => 'paid',
         );
     }
     // ship_date / delivery_date are worked out at checkout from the
@@ -6990,31 +6996,38 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     $_today_ts = strtotime(date('Y-m-d'));
     if ($shipping_ts > 0) {
         $timeline_events[] = array(
-            'icon'  => 'bi-truck',
-            'color' => ($shipping_ts > $_today_ts) ? 'secondary' : 'info',
             'label' => ($shipping_ts > $_today_ts) ? lang('Estimated shipping') : lang('Shipped'),
             'ts'    => $_fmt_ts($shipping_ts, false),
+            'kind'     => 'shipped',
+            'estimate' => ($shipping_ts > $_today_ts),
         );
     }
     if ($delivery_ts > 0) {
         $timeline_events[] = array(
-            'icon'  => 'bi-box-seam',
-            'color' => ($delivery_ts > $_today_ts) ? 'secondary' : 'success',
             'label' => ($delivery_ts > $_today_ts) ? lang('Estimated delivery') : lang('Delivered'),
             'ts'    => $_fmt_ts($delivery_ts, false),
+            'kind'     => 'delivered',
+            'estimate' => ($delivery_ts > $_today_ts),
         );
     }
     if ($cancelled_at_ts > 0) {
         // The reason is part of the event: a customer whose transfer order
         // was cancelled by the timer should read why without asking.
         $timeline_events[] = array(
-            'icon'  => 'bi-x-circle',
-            'color' => 'danger',
             'label' => lang('Cancelled') . ($cancellation_reason !== '' ? ' — ' . $cancellation_reason : ''),
             'ts'    => $_fmt_ts($cancelled_at_ts, true),
+            // A list of the steps shows the reason in an element of its own.
+            'kind'       => 'cancelled',
+            'step_label' => lang('Cancelled'),
+            'note'       => $cancellation_reason,
         );
     }
-    $timeline_html = _eo_render_order_timeline($timeline_events);
+    // Drawn by the order.steps list of the timeline part (widgets_parts.php):
+    // a step without a date is never listed.
+    $has_timeline = false;
+    foreach ($timeline_events as $_ov_ev) {
+        if (!empty($_ov_ev['ts'])) { $has_timeline = true; break; }
+    }
 
     // ── Invoice print URL ─────────────────────────────────────────────
     // Customer-facing printable invoice endpoint. URL is built only once
@@ -7048,14 +7061,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // A layout made before the links existed binds neither of them: the
     // kept copies are listed in a card after the widget instead, so every
     // design shows them, with the withdrawal line under them unless the
-    // layout places that itself. A layout that binds a link places them; a
-    // condition that reads one does not (pg_sw_cond_tree_json()).
-    $placed_json = pg_sw_cond_tree_json((string)$tree_json);
-    $legal_block = (strpos($placed_json, '__legal_preinfo_url') === false
-                    && strpos($placed_json, '__legal_contract_url') === false)
+    // layout places that itself (pg_sw_placed()).
+    $legal_block = !pg_sw_placed($tree_decoded, array('__legal_preinfo_url', '__legal_contract_url'))
         ? pg_legal_documents_order_view_block(
             $legal_urls,
-            (strpos($placed_json, '__withdrawal_deadline') === false) ? pg_legal_withdrawal_text($withdrawal, $withdrawal_date) : ''
+            !pg_sw_placed($tree_decoded, array('__withdrawal_deadline')) ? pg_legal_withdrawal_text($withdrawal, $withdrawal_date) : ''
         )
         : '';
 
@@ -7114,8 +7124,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // A layout made before returns existed places neither token: once the
     // setting is on, the block goes after the widget so every design has it.
     $_ov_returns_tail = (is_array($_ov_returns) && $_ov_returns['enabled']
-                         && strpos($placed_json, '__return_form') === false
-                         && strpos($placed_json, '__returns') === false)
+                         && !pg_sw_placed($tree_decoded, array('__return_form', '__returns')))
         ? pg_return_block_html($_ov_returns_list, $_ov_return_form)
         : '';
 
@@ -7159,7 +7168,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'has_tracking_link'        => $tracking_link !== '',
         // Timeline card hides on orders with no events (impossible in
         // practice — order_date is always set — but kept for symmetry).
-        'has_timeline'             => $timeline_html !== '',
+        'has_timeline'             => $has_timeline,
         // Print invoice button: logged-in owner only. Guests viewing a
         // retrieved order won't see the action.
         'can_print_invoice'        => $can_print_invoice,
@@ -7192,6 +7201,30 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
 
+    // The order lists' rows (widgets_lists_order.php), filed once the tree
+    // is drawn: only a widget that drew such a list keeps them, and only a
+    // list of the recipients reads them.
+    $_ov_listed = pg_sw_list_wanted('order');
+    if ($_ov_listed) {
+        $_ov_shipments = array();
+        if (isset($_ov_listed['order.shipments'])) {
+            $_ov_st_rows = db_items(
+                "SELECT ship_tos.id, ship_tos.first_name, ship_tos.last_name, ship_tos.company,
+                        ship_tos.phone_number, ship_tos.address_1, ship_tos.address_2,
+                        ship_tos.city, ship_tos.state, ship_tos.zip_code, ship_tos.country,
+                        ship_tos.arrival_date, shipping_methods.name AS shipping_method
+                 FROM ship_tos
+                 LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
+                 WHERE ship_tos.order_id = '$oid_esc' AND ship_tos.complete = 1
+                 ORDER BY ship_tos.id ASC"
+            );
+            foreach ((array)$_ov_st_rows as $_ov_st) {
+                $_ov_shipments[] = pg_sw_list_order_shipment_row($_ov_st, $fmt_gc_date);
+            }
+        }
+        pg_sw_list_publish('order', pg_sw_list_order_rows($_ov_shipments, $items, $tracking_parcels, $timeline_events));
+    }
+
     // Build loop output
     // A tree with no loop_area has nowhere to put rows: the whole tree is the
     // surround and it renders once. Building the rows anyway meant laying out
@@ -7200,6 +7233,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // before loop_area existed.
     $loop_rendered = '';
     if ($loop_template !== '' && $static_html !== '' && count($items) > 0) {
+        // The row blocks the item template places (pg_sw_placed()).
+        $_ov_row_tree = array('type' => 'root', 'children' => $split['loop_children']);
+        $_ov_form_placed = pg_sw_placed($_ov_row_tree, array('__item_form_data_html'));
+        $_ov_gift_placed = pg_sw_placed($_ov_row_tree, array('__item_gift_card_html'));
         foreach ($items as $idx => $item) {
             $row_values = array(
                 // Existing tokens — kept for backward compatibility
@@ -7244,12 +7281,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             // over where the block lands.
             // Safe to concatenate here: the order_view loop row is a <div>,
             // not a <tr> — see the starter tree in style_designer.js.
-            if ($row_values['__item_form_data_html'] !== ''
-                && strpos($loop_template, '^^__item_form_data_html^^') === false) {
+            if ($row_values['__item_form_data_html'] !== '' && !$_ov_form_placed) {
                 $row_html .= $row_values['__item_form_data_html'];
             }
-            if ($row_values['__item_gift_card_html'] !== ''
-                && strpos($loop_template, '^^__item_gift_card_html^^') === false) {
+            if ($row_values['__item_gift_card_html'] !== '' && !$_ov_gift_placed) {
                 $row_html .= $row_values['__item_gift_card_html'];
             }
 
@@ -7282,7 +7317,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
 
         // ── Order identifiers / meta ──────────────────────────────────
         '__order_id'          => (string)(int)$order['id'],
-        '__order_status_badge' => $status_badge_html,
+        // The status as the badge part shows it ("Awaiting Payment" for a
+        // bank transfer whose money has not arrived) and its stage, which
+        // picks the badge (pg_sw_part_order_status_badge()).
+        '__order_status_text'  => h($status_text),
+        '__order_status_stage' => $status_stage,
 
         // ── Totals breakdown (raw + formatted) ────────────────────────
         '__order_subtotal'   => $fmt_money((int)$order['subtotal']),
@@ -7387,13 +7426,6 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__tracking_link'           => h($tracking_link),
         '__tracking_company_name'   => h($tracking_company_label),
 
-        // ── Timeline (lifecycle event list) ────────────────────────────
-        // Pre-built Bootstrap timeline HTML — already wrapped in
-        // <ul class="pg-ov-timeline">. Empty when no events have
-        // timestamps (vanishingly rare; order_date is always set).
-        // NOT h()'d — output is structural HTML.
-        '__timeline'                => $timeline_html,
-
         // ── Invoice print ──────────────────────────────────────────────
         // URL to the customer-facing printable invoice endpoint. Owner
         // check is enforced server-side; this token only builds the link.
@@ -7405,6 +7437,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__legal_preinfo_url'       => h($legal_urls['preinfo']),
         '__legal_contract_url'      => h($legal_urls['contract']),
         '__withdrawal_deadline'     => h($withdrawal_date),
+        // The key the order lists read outside a list of recipients: the
+        // whole order.
+        '__ship_to_key'             => '0',
     );
     // The dates a format can read (^^__order_date^^%%d.m.Y H:i%%).
     $_ov_typed = _pg_sw_order_view_dates(
@@ -7413,16 +7448,20 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         is_array($withdrawal) ? $withdrawal['deadline'] : ''
     );
 
+    // The timeline part's look; an e-mail carries it inline (widgets_parts.php).
+    $_ov_css = (empty($sw_ctx['email']) && strpos($static_html . $loop_template, 'pg-ov-timeline') !== false)
+        ? _pg_widget_layout_css_once() : '';
+
     if ($static_html === '') {
         // No loop_area — replace tokens in the single rendered template
         $rendered = pg_sw_fill_longest($loop_template, $static_values, $_ov_typed);
-        return pg_sw_sweep_tokens($rendered) . $_ov_returns_tail . $legal_block;
+        return $_ov_css . pg_sw_sweep_tokens($rendered) . $_ov_returns_tail . $legal_block;
     }
 
     $static_html = pg_sw_fill_longest($static_html, $static_values, $_ov_typed);
     $static_html = pg_sw_sweep_tokens($static_html);
 
-    return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $_ov_returns_tail . $legal_block;
+    return $_ov_css . str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $_ov_returns_tail . $legal_block;
 }
 
 // Render a 'membership' system widget: the membership activation form.
@@ -8152,11 +8191,12 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
 
     // Row values; the details (end time, location, the full range) cost a
     // query per event, so they are read only when the layout asks for them —
-    // or when the month grid needs an event's end to show it on every day
-    // it spans.
+    // or when the month grid (the section or the grid lists) needs an
+    // event's end to show it on every day it spans.
     $probe = json_encode($tree);
     $has_grid = ($view !== 'upcoming') && (strpos($probe, '"section":"month_grid"') !== false);
-    $needs_detail = $has_grid || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
+    $has_grid_lists = ($view !== 'upcoming') && (strpos($probe, '"source":"calendar.') !== false);
+    $needs_detail = $has_grid || $has_grid_lists || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
     $rows = array();
     $row_events = array();
     $by_day = array();
@@ -8200,18 +8240,19 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
                 . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Update')) . '</button>'
                 . '</form>';
     }
+    // The days the grid draws: a week, or a month padded to whole weeks.
+    $grid_start  = $range_start;
+    $grid_end    = $range_end;
+    $focus_month = null;
+    if ($view === 'monthly') {
+        $focus_month = (int)date('n', $range_start);
+        $lead  = ($week_start === 'sunday') ? (int)date('w', $range_start) : ((int)date('N', $range_start) - 1);
+        $trail = ($week_start === 'sunday') ? (6 - (int)date('w', $range_end)) : (7 - (int)date('N', $range_end));
+        $grid_start = strtotime('-' . $lead . ' days', $range_start);
+        $grid_end   = strtotime('+' . $trail . ' days', $range_end);
+    }
     $grid = '';
     if ($view !== 'upcoming') {
-        $grid_start = $range_start;
-        $grid_end   = $range_end;
-        $focus_month = null;
-        if ($view === 'monthly') {
-            $focus_month = (int)date('n', $range_start);
-            $lead  = ($week_start === 'sunday') ? (int)date('w', $range_start) : ((int)date('N', $range_start) - 1);
-            $trail = ($week_start === 'sunday') ? (6 - (int)date('w', $range_end)) : (7 - (int)date('N', $range_end));
-            $grid_start = strtotime('-' . $lead . ' days', $range_start);
-            $grid_end   = strtotime('+' . $trail . ' days', $range_end);
-        }
         $grid = _pg_sw_calendar_grid_html($grid_start, $grid_end, $focus_month, $by_day, $week_start, $link_base);
     }
     pg_cf_apply_section_bindings($tree, array('calendar_picker' => $picker, 'month_grid' => $grid));
@@ -8232,6 +8273,11 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         foreach ($split['loop_children'] as $child) $loop_template .= _render_tree_node($child, 0, 0);
         $loop_template = trim($loop_template);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
+    }
+    // The grid lists' rows (widgets_lists_calendar.php), filed once the
+    // tree is drawn: only a widget that drew such a list keeps them.
+    if ($has_grid_lists) {
+        pg_sw_list_publish('calendar', pg_sw_list_calendar_rows($grid_start, $grid_end, $focus_month, $by_day, $week_start, $date_format, date('Y-m-d')));
     }
 
     $loop_rendered = '';
@@ -8269,6 +8315,8 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         '__event_count'   => (string)count($rows),
         '__view'          => $view,
         '__empty_message' => $rows ? '' : $empty_message,
+        // The key the grid lists read outside a weeks list: the whole grid.
+        '__week_key'      => '0',
     ));
     if ($static_html === '') {
         return pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $static_values));

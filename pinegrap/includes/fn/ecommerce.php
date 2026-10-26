@@ -721,8 +721,10 @@ function get_page_name($page_id)
 /**
  * Whether $page_id names a page that a checkout step of $page_type ('express
  * order', 'order preview', 'billing information') is posted from: a page of
- * that type or, for an express order, a page that carries the designer's
- * express order widget (the widget gives its page an express_order_pages row).
+ * that type or, for an express order, order preview or billing information,
+ * a page that carries the designer's widget for it (the widget gives its page
+ * an express_order_pages, order_preview_pages or billing_information_pages
+ * row).
  * The step reads that page's settings by this id: required custom fields and
  * forms, terms, the order receipt e-mail and the next page. For any other id
  * it would carry on without them. Only a string of digits can name a page, so
@@ -750,6 +752,28 @@ function pg_order_page_known($page_id, $page_type)
             WHERE
                 (page.page_id = '" . e($page_id) . "')
                 AND ((page.page_type = 'express order') OR (express_order_pages.page_id IS NOT NULL))
+            LIMIT 1");
+    }
+
+    if ($page_type === 'order preview') {
+        return (bool) db(
+            "SELECT page.page_id
+            FROM page
+            LEFT JOIN order_preview_pages ON order_preview_pages.page_id = page.page_id
+            WHERE
+                (page.page_id = '" . e($page_id) . "')
+                AND ((page.page_type = 'order preview') OR (order_preview_pages.page_id IS NOT NULL))
+            LIMIT 1");
+    }
+
+    if ($page_type === 'billing information') {
+        return (bool) db(
+            "SELECT page.page_id
+            FROM page
+            LEFT JOIN billing_information_pages ON billing_information_pages.page_id = page.page_id
+            WHERE
+                (page.page_id = '" . e($page_id) . "')
+                AND ((page.page_type = 'billing information') OR (billing_information_pages.page_id IS NOT NULL))
             LIMIT 1");
     }
 
@@ -1260,11 +1284,12 @@ function pg_order_quick_update($order_id, $field, $value)
 /**
  * Resolve the CSS classes for an order-status badge.
  *
- * Designer-owned: each stage has its own widget setting, so the colour
- * decision lives in the settings panel rather than in this renderer. The
- * defaults below are mirrored in style_designer.js as
- * SD_OV_STATUS_CLASS_DEFAULTS — change one, change the other, or the canvas
- * preview and the front end drift apart.
+ * Designer-owned: the status badge part (pg_sw_part_order_status_badge())
+ * gives each stage's badge the widget's own status_class_* setting, else
+ * these defaults; once the part is in the tree its classes are edited there.
+ * The defaults are mirrored in style_designer.js as
+ * SD_OV_STATUS_CLASS_DEFAULTS — change one, change the other, or the
+ * editor's part and the site's drift apart.
  *
  * Input is sanitised to class-name characters: the value lands unescaped-ish
  * inside a class attribute, and a designer pasting a quote shouldn't be able

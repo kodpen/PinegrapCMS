@@ -855,6 +855,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                               : (isset($configs[$ov_sid]['_tree_json']) ? $configs[$ov_sid]['_tree_json'] : '');
         $configs[(int)$ov_sid] = $ov_cfg;
     }
+    // A saved tree still binding a token a default part now draws gets the
+    // part here, the one door every render passes (widgets_parts.php).
+    foreach ($configs as $c_sid => $c_cfg) {
+        $configs[$c_sid]['_tree_json'] = pg_sw_default_parts_apply(
+            $c_cfg['_tree_json'], isset($c_cfg['regionType']) ? (string)$c_cfg['regionType'] : '', $c_cfg, $email
+        );
+    }
 
     // A widget's records show their pictures through bound ^^tokens^^, so
     // their srcset is written on each widget's finished output
@@ -1097,6 +1104,44 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             if ($region_type === 'shipping_address_and_arrival') {
                 if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
                 return _render_system_widget_shipping_address_and_arrival($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'shipping_method' — the second step of the classic checkout,
+            // posting to shipping_method.php (widgets_shipping_method.php).
+            if ($region_type === 'shipping_method') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_shipping_method($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'menu_region' — one of the site's menus, its items kept in
+            // the menu screen (widgets_menu.php).
+            if ($region_type === 'menu_region') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_menu_region($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'menu_sequence_region' — the pages before and after this one
+            // in a menu (widgets_menu.php).
+            if ($region_type === 'menu_sequence_region') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_menu_sequence_region($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'billing_information' — the third step of the classic checkout,
+            // posting to billing_information.php (widgets_billing_information.php).
+            if ($region_type === 'billing_information') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_billing_information($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'order_preview' — the last step of the classic checkout,
+            // posting to order_preview.php (widgets_order_preview.php). The
+            // visitor's last submit is read before rendering, as for the
+            // express order: the widget drops the form from the session.
+            if ($region_type === 'order_preview') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                $legal_values = pg_legal_documents_form_values('order_preview');
+                return pg_legal_documents_inject(_render_system_widget_order_preview($tree_json, $sid, $cfg, $mode), $legal_values);
             }
 
             // Future region types handled here.
@@ -2018,7 +2063,7 @@ function pg_designer_design_draft_counts($style_ids)
                              " . ($draft_folder > 0 ? "SUM(page_folder = '$draft_folder')" : "0") . " AS drafts,
                              SUM(page_home = 'yes') AS home
                       FROM page
-                      WHERE page_style IN (" . implode(',', $ids) . ") AND layout_type = 'system'" . pg_designer_not_binned_sql() . "
+                      WHERE page_style IN (" . implode(',', $ids) . ") AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
                       GROUP BY page_style");
     foreach ((array)$rows as $r) {
         $out[(int)$r['page_style']] = array('pages' => (int)$r['pages'], 'drafts' => (int)$r['drafts'], 'home' => (int)$r['home']);
@@ -2093,7 +2138,7 @@ function pg_designer_design_set_draft($style_id, $on, $user)
     $uid  = (int)$user['id'];
     $who  = isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '';
     $rows = db_items("SELECT page_id, page_name, page_folder, page_home FROM page
-                      WHERE page_style = '$style_id' AND layout_type = 'system'" . pg_designer_not_binned_sql() . "
+                      WHERE page_style = '$style_id' AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
                       ORDER BY page_id");
     foreach ((array)$rows as $r) {
         $pid   = (int)$r['page_id'];
@@ -2388,6 +2433,33 @@ function pg_page_is_visual_design($page)
         if (isset($ids[$style_id])) return true;
     }
     return !empty($page['has_tree']);
+}
+
+/**
+ * SQL twin of pg_page_is_visual_design(): a condition true for the pages of
+ * a design, whatever their layout_type. A converted classic page keeps
+ * layout_type 'custom' and its layout file, and is still one of the
+ * design's pages.
+ *
+ * @param string $column_prefix table name or alias with its dot ('page.', 'p2.') or ''
+ */
+function pg_page_visual_design_sql($column_prefix = 'page.')
+{
+    return pg_page_visual_design_sql_for(array_keys(pg_visual_design_style_ids()), pg_multi_page_design_ready(), $column_prefix);
+}
+
+/**
+ * pg_page_visual_design_sql() from its inputs: the visual design style ids
+ * and whether page.page_tree_json exists yet. '0' when nothing can match.
+ */
+function pg_page_visual_design_sql_for($style_ids, $tree_ready, $column_prefix = 'page.')
+{
+    $prefix = preg_replace('/[^A-Za-z0-9_.]/', '', (string)$column_prefix);
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)$style_ids))));
+    $parts = array();
+    if ($ids) $parts[] = $prefix . 'page_style IN (' . implode(',', $ids) . ')';
+    if ($tree_ready) $parts[] = '(' . $prefix . "page_tree_json IS NOT NULL AND " . $prefix . "page_tree_json <> '')";
+    return $parts ? '(' . implode(' OR ', $parts) . ')' : '0';
 }
 
 /**
@@ -2710,7 +2782,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
          WHERE page.page_style = '$style_id'
-           AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . "
+           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
          ORDER BY page.page_id ASC");
     if (!is_array($rows)) $rows = array();
 
@@ -2798,7 +2870,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
 /**
  * Pages that could be attached to a design from the "Sayfa Seç" picker.
  *
- * Only pages the visual editor made (layout_type = 'system'), excluding the
+ * Only pages of a design (pg_page_visual_design_sql()), excluding the
  * ones already on this design. Each row says which design it currently
  * belongs to so the picker can warn before moving it: attaching a page to
  * this design swaps its shared assets for this design's.
@@ -2806,21 +2878,15 @@ function pg_designer_load_pages($style_id, $style_name = '')
 function pg_designer_selectable_pages($style_id)
 {
     $style_id = (int)$style_id;
-    // `layout_type = 'system'` alone is not the test — the legacy system
-    // layouts (interior, emailer-inline, …) use it too and their pages have
-    // no tree the editor could open. A visual-designer page is one whose
-    // style was made by the editor, or that already carries its own tree.
-    $own_tree = pg_multi_page_design_ready()
-        ? " OR (page.page_tree_json IS NOT NULL AND page.page_tree_json <> '')"
-        : '';
+    // Not layout_type: the legacy system layouts (interior, emailer-inline,
+    // …) carry 'system' too, and a converted page keeps 'custom'.
     $rows = db_items(
         "SELECT page.page_id, page.page_name, page.page_title,
                 page.page_style, style.style_name AS current_style_name
          FROM page
          LEFT JOIN style ON page.page_style = style.style_id
-         WHERE page.layout_type = 'system'
-           AND page.page_style <> '$style_id'
-           AND (style.style_layout = 'visual_designer'$own_tree)" . pg_designer_not_binned_sql() . "
+         WHERE page.page_style <> '$style_id'
+           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
          ORDER BY page.page_name ASC");
     if (!is_array($rows)) return array();
     $out = array();
@@ -2860,7 +2926,7 @@ function pg_designer_design_targets($folder_id = 0, $exclude_style_id = 0)
         : '';
     $rows = db_items(
         "SELECT style.style_id, style.style_name,
-                (SELECT COUNT(*) FROM page WHERE page.page_style = style.style_id AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . ") AS pages
+                (SELECT COUNT(*) FROM page WHERE page.page_style = style.style_id AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . ") AS pages
          FROM style
          WHERE (style.style_layout = 'visual_designer'$own_tree)" . ($exclude_style_id > 0 ? " AND style.style_id <> '$exclude_style_id'" : '') . "
          ORDER BY style.style_timestamp DESC, style.style_name ASC");
@@ -2880,7 +2946,7 @@ function pg_designer_design_targets($folder_id = 0, $exclude_style_id = 0)
         // belongs to the design most of its pages are on.
         if ($folder_style === 0) {
             foreach ((array)db_items("SELECT page_style, COUNT(*) AS n FROM page
-                                      WHERE page_folder = '$folder_id' AND layout_type = 'system'
+                                      WHERE page_folder = '$folder_id' AND " . pg_page_visual_design_sql() . "
                                       GROUP BY page_style ORDER BY n DESC") as $fs) {
                 if (isset($ids[(int)$fs['page_style']])) { $folder_style = (int)$fs['page_style']; break; }
             }
@@ -4257,6 +4323,7 @@ function pg_scroller_inject($content, $src = null)
  *   • Unified price block (.pg-price-block strike-through styling)
  *   • Empty-element hiding rules (auto-hide discount tokens when blank)
  *   • Variant chooser visual states
+ *   • The order view's timeline (.pg-ov-timeline)
  *
  * Called from EVERY system widget render (catalog_listing, catalog_item_view,
  * shopping_cart, …) — not just carousel. The price block + discount
@@ -4272,7 +4339,7 @@ function _pg_widget_layout_css_once()
     $base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
           . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
           . '/assets/css/';
-    $v = '3';   // bump on layout css changes
+    $v = '4';   // bump on layout css changes
     return '<link rel="stylesheet" href="' . h($base) . 'pg_carousel_layout.css?v=' . $v . '">';
 }
 
@@ -4876,6 +4943,19 @@ function _build_col_classes($props)
     return implode(' ', $classes);
 }
 
+// The attribute a dynamic region node hands to its code: get_page_content.php
+// reads `<dregion "x">name</dregion>` up to the next double quote and the tag
+// up to the first `>`, and the page is run as PHP before the tag is expanded,
+// so quotes, angle brackets and line breaks are dropped; the rest stays as
+// typed, as it would in a style's own tag. Twin: _sdDregionAttr() in
+// style_designer.js.
+function pg_dregion_attribute_clean($value)
+{
+    if (!is_string($value)) return '';
+    $value = trim(preg_replace('/["<>\x00-\x1f\x7f]/', '', $value));
+    return (mb_strlen($value, 'UTF-8') > 255) ? mb_substr($value, 0, 255, 'UTF-8') : $value;
+}
+
 // Render a region node as its custom tag (pregion, cregion, system, etc.)
 function _render_region_tag($props)
 {
@@ -4886,7 +4966,9 @@ function _render_region_tag($props)
         case 'page': return '<pregion></pregion>';
         case 'system': return $name ? '<system>' . $name . '</system>' : '<system></system>';
         case 'common': case 'designer': return '<cregion>' . $name . '</cregion>';
-        case 'dynamic': return '<dregion>' . $name . '</dregion>';
+        case 'dynamic':
+            $attr = pg_dregion_attribute_clean(isset($props['regionAttr']) ? $props['regionAttr'] : '');
+            return '<dregion' . ($attr !== '' ? ' "' . $attr . '"' : '') . '>' . $name . '</dregion>';
         case 'menu': return '<menu>' . $name . '</menu><div style="clear: both"></div>';
         case 'menu_sequence': return '<menu_sequence>' . $name . '</menu_sequence>';
         case 'login': return '<login>' . $name . '</login>';
@@ -8692,7 +8774,7 @@ function pg_shared_component_usage($ids = null)
                     " . pg_page_tree_sql_expr() . " AS tree_json
              FROM page
              LEFT JOIN style ON page.page_style = style.style_id
-             WHERE page.layout_type = 'system'
+             WHERE " . pg_page_visual_design_sql() . "
              HAVING tree_json IS NOT NULL AND tree_json != ''"
         );
     } else {
@@ -9236,7 +9318,7 @@ function pg_designer_tab_layout_save($style_id, $layout, $user)
         "SELECT page.page_id
          FROM page
          WHERE page.page_style = '$style_id'
-           AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . "
+           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
          ORDER BY page.page_id ASC");
     $page_ids = array();
     foreach ((array)$ids as $row) $page_ids[] = (int)$row['page_id'];

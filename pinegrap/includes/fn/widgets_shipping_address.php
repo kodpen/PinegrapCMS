@@ -177,26 +177,27 @@ function pg_sa_flags($has_recipient, $multi_recipient, $has_arrival_dates, $has_
  * @param string $form_id
  * @param array  $states   country code => list of [code, name]
  * @param array  $zip      country codes that require a zip code
+ * @param string $prefix   the controls' name prefix ('billing_' on the billing step)
  * @return string
  */
-function pg_sa_state_script($form_id, $states, $zip)
+function pg_sa_state_script($form_id, $states, $zip, $prefix = '')
 {
-    $data = encode_json(array('states' => (object)$states, 'zip' => array_values($zip)));
+    $data = encode_json(array('states' => (object)$states, 'zip' => array_values($zip), 'name' => $prefix . 'state'));
     $data = str_replace('</', '<\/', $data);
     return '<script>(function(){'
         . 'var f=document.getElementById(' . encode_json((string)$form_id) . ');if(!f)return;'
         . 'var d=' . $data . ';'
-        . 'var c=f.querySelector("select[name=country]"),t=f.querySelector("[data-pg-sa-state=text]"),'
-        .   'l=f.querySelector("[data-pg-sa-state=list]"),z=f.querySelector("input[name=zip_code]");'
+        . 'var c=f.querySelector("select[name=' . $prefix . 'country]"),t=f.querySelector("[data-pg-sa-state=text]"),'
+        .   'l=f.querySelector("[data-pg-sa-state=list]"),z=f.querySelector("input[name=' . $prefix . 'zip_code]");'
         . 'if(!c)return;'
         . 'function lab(from,to){if(!from||!to||!from.id||!to.id)return;'
         .   'f.querySelectorAll("label[for=\""+from.id+"\"]").forEach(function(x){x.htmlFor=to.id;});}'
         . 'function sync(first){var s=d.states[c.value];'
         .   'if(l&&s){var keep=first?(l.value||(t?t.value:"")):"";l.innerHTML="";l.appendChild(new Option("",""));'
         .     's.forEach(function(r){l.appendChild(new Option(r[1],r[0]));});l.value=keep;'
-        .     'l.name="state";l.hidden=false;l.required=c.required;'
+        .     'l.name=d.name;l.hidden=false;l.required=c.required;'
         .     'if(t){t.name="";t.hidden=true;t.required=false;lab(t,l);}}'
-        .   'else if(t){if(!first)t.value="";t.name="state";t.hidden=false;'
+        .   'else if(t){if(!first)t.value="";t.name=d.name;t.hidden=false;'
         .     'if(l){l.name="";l.hidden=true;l.required=false;lab(l,t);}}'
         .   'if(z)z.required=c.required&&d.zip.indexOf(c.value)!==-1;}'
         . 'c.addEventListener("change",function(){sync(false);});sync(true);'
@@ -299,6 +300,28 @@ function _pg_sa_start_values($lf, $recipient, $ship_to_id, $arrival_dates)
     return $values;
 }
 
+// Put the stored answers of a custom shipping or billing form into the
+// liveform, as the classic page does when it opens: one value, or the list
+// of a field that holds several. $where picks this recipient's or this
+// order's form_data rows.
+function _pg_sa_prefill_custom_form($lf, $where)
+{
+    $by_field = array();
+    foreach ((array)db_items(
+        "SELECT form_data.form_field_id, form_data.data, form_fields.type
+        FROM form_data
+        LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
+        WHERE " . $where . "
+        ORDER BY form_data.id") as $r) {
+        $by_field[(int)$r['form_field_id']]['type'] = (string)$r['type'];
+        $by_field[(int)$r['form_field_id']]['data'][] = $r['data'];
+    }
+    foreach ($by_field as $field_id => $f) {
+        $data = count($f['data']) > 1 ? $f['data'] : $f['data'][0];
+        $lf->assign_field_value('field_' . $field_id, prepare_form_data_for_output($data, $f['type'], false));
+    }
+}
+
 // Give an arrival date row's own controls their names: the custom date box
 // (`custom_arrival_date`) becomes custom_arrival_date_<id>, the radio takes
 // the date's id as its value.
@@ -318,13 +341,13 @@ function _pg_sa_name_arrival_row(&$tree, $date_id)
 }
 
 // Mark the two state controls (the text box and the pick list, both named
-// `state`) for the script, fill the pick list with the country's states and
+// $name: `state`, `billing_state` on the billing step) for the script, fill the pick list with the country's states and
 // leave unnamed and hidden the one the country does not use, so the form
 // posts the right one before the script runs.
-function _pg_sa_state_controls(&$tree, $value, $country_states)
+function _pg_sa_state_controls(&$tree, $value, $country_states, $name = 'state')
 {
     $use_list = !empty($country_states);
-    _pg_member_edit_control($tree, 'state', function (&$node) use ($value, $country_states, $use_list) {
+    _pg_member_edit_control($tree, $name, function (&$node) use ($value, $country_states, $use_list) {
         $is_list = strtolower((string)$node['props']['tag']) === 'select';
         _pg_member_set_attr($node, 'data-pg-sa-state', $is_list ? 'list' : 'text');
         if ($is_list) {
@@ -416,6 +439,9 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
     $type_on = !empty($settings['address_type']);
 
     $lf = new liveform('shipping_address_and_arrival');
+    if ($custom_form && $ship_to_id > 0 && !$lf->field_in_session('first_name')) {
+        _pg_sa_prefill_custom_form($lf, "form_data.ship_to_id = '" . $ship_to_id . "'");
+    }
     $values = $has_recipient ? _pg_sa_start_values($lf, $recipient, $ship_to_id, $arrival_dates) : array();
 
     // The billing box, offered as the classic page offers it.

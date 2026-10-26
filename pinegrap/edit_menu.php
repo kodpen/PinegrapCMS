@@ -168,14 +168,9 @@ if (!$_POST) {
                                                     'id' => 'class',
                                                     'class' => 'form-control tagin border-0 min-width-tagin',
                                                     'data-placeholder' => lang('Add classes'),
-                                                    'maxlength' => '255')) . '
-                                                <script>
-                                                    if(document.body.contains(document.querySelector("input#class"))){
-                                                        tagin( document.querySelector("#class"),{
-                                                            separator : " "
-                                                        });
-                                                    }
-                                                </script>
+                                                    'data-pg-chips' => '',
+                                                    'data-pg-separator' => ' ',
+                                                    'maxlength' => '255')) . pg_fields_script() . '
                                                 <div class="input-group-text bg-reset border-0">"&gt;</div>
                                             </div>
                                             <div class="form-text text-end">' . lang('One or More Custom Classes for the Menu. Separate classes with a space') . '</div>
@@ -190,14 +185,9 @@ if (!$_POST) {
                                                     'id' => 'active_item_class',
                                                     'class' => 'form-control tagin border-0 min-width-tagin',
                                                     'data-placeholder' => lang('Add classes'),
-                                                    'maxlength' => '255')) . '
-                                                <script>
-                                                    if(document.body.contains(document.querySelector("input#active_item_class"))){
-                                                        tagin( document.querySelector("#active_item_class"),{
-                                                            separator : " "
-                                                        });
-                                                    }
-                                                </script>
+                                                    'data-pg-chips' => '',
+                                                    'data-pg-separator' => ' ',
+                                                    'maxlength' => '255')) . pg_fields_script() . '
                                                 <div class="input-group-text bg-reset border-0">"&gt;</div>
                                             </div>
                                             <div class="form-text text-end">' . lang('One or More Classes for the Active Menu Item. Separate classes with a space') . '</div>

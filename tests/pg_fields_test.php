@@ -86,6 +86,8 @@ function FakeElement(doc, tag, attrs) {
 }
 FakeElement.prototype.hasAttribute = function (k) { return Object.prototype.hasOwnProperty.call(this.attributes, k); };
 FakeElement.prototype.getAttribute = function (k) { return this.hasAttribute(k) ? this.attributes[k] : null; };
+FakeElement.prototype.setAttribute = function (k, v) { this.attributes[k] = String(v); };
+FakeElement.prototype.removeAttribute = function (k) { delete this.attributes[k]; };
 FakeElement.prototype.addEventListener = function (t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); };
 FakeElement.prototype.removeEventListener = function (t, f) { this.listeners[t] = (this.listeners[t] || []).filter(function (x) { return x !== f; }); };
 FakeElement.prototype.dispatchEvent = function (e) { var self = this; (this.listeners[e.type] || []).slice().forEach(function (f) { f.call(self, e); }); return true; };
@@ -130,7 +132,7 @@ function load(opts) {
     if (opts.jquery) { win.jQuery = makeJQuery(calls); }
     if (opts.format) { win.date_picker_format = opts.format; win.datetimepicker_options = { dateFormat: opts.format }; }
     if (opts.time) { win.timepicker_options = { timeFormat: 'h:mm TT' }; }
-    win.tagin = function (el) { calls.push(['tagin', el.attributes.id]); };
+    win.tagin = function (el, o) { calls.push(['tagin', el.attributes.id, o]); };
     (opts.fields || []).forEach(function (f) { doc.create(f[0], f[1]); });
     new Function('window', 'document', PG_FIELDS_SOURCE)(win, doc);
     return { win: win, doc: doc, calls: calls };
@@ -154,6 +156,7 @@ function main() {
     // Hooks drawn once by the v5 engine, with the screen's options.
     var fields = [
         ['input', { id: 'tags', 'data-pg-chips': '', value: 'a,b,,c' }],
+        ['input', { id: 'classes', 'data-pg-chips': '', 'data-pg-separator': ' ', value: 'one two' }],
         ['select', { id: 'zones', 'data-pg-combobox': '', 'data-allow-clear': 'true', multiple: '' }],
         ['input', { id: 'day', 'data-pg-date': '', value: '26/10/2026' }],
         ['input', { id: 'start', 'data-pg-datetime': '', value: '26/10/2026 5:00 PM' }],
@@ -166,10 +169,12 @@ function main() {
     out.init_calls = a.calls.map(function (c) { return c[0] + ':' + c[1]; });
     out.select2_options = a.calls.filter(function (c) { return c[0] === 'select2'; })[0][2];
     out.time_options = a.calls.filter(function (c) { return c[0] === 'timepicker'; })[0][2];
+    out.chips_options = a.calls.filter(function (c) { return c[0] === 'tagin'; }).map(function (c) { return c[2]; });
 
     var get = function (id) { return a.doc.querySelector('#' + id); };
     out.get = {
         chips: a.win.pgChips.get('#tags'),
+        classes: a.win.pgChips.get('#classes'),
         date: a.win.pgDatePicker.get('#day'),
         datetime: a.win.pgDateTimeField.get('#start'),
         time: a.win.pgDateTimeField.get('#cutoff')
@@ -186,8 +191,13 @@ function main() {
     out.date_set = { value: get('day').value, heard: heard };
     a.win.pgDateTimeField.set('#start', '2026-02-01 00:30');
     a.win.pgDateTimeField.set('#cutoff', '13:45');
+    var tags = get('tags'), removed = [];
+    tags.nextElementSibling = { classList: { contains: function (c) { return c === 'tagin-wrapper'; } }, parentNode: { removeChild: function (n) { removed.push(n === tags.nextElementSibling); } } };
+    a.calls.length = 0;
     a.win.pgChips.set('#tags', ['x', 'y']);
-    out.texts = [get('start').value, get('cutoff').value, get('tags').value];
+    out.chips_redraw = { removed: removed, calls: a.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
+    a.win.pgChips.set('#classes', ['x', 'y']);
+    out.texts = [get('start').value, get('cutoff').value, get('tags').value, get('classes').value];
 
     var zones = get('zones');
     ['1', '2', '3'].forEach(function (v) { zones.options.push({ value: v, selected: false }); });
@@ -202,6 +212,40 @@ function main() {
     a.doc.create('input', { id: 'late', 'data-pg-chips': '' });
     new Function('window', 'document', PG_FIELDS_SOURCE)(a.win, a.doc);
     out.reload = { same: a.win.pgFields === firstApi, calls: a.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
+
+    // A drawn field switched to another kind: the old widget goes, the new
+    // hook replaces the old one and is drawn once; a plain field is only
+    // marked and drawn.
+    a.calls.length = 0;
+    a.win.pgFields.switchKind('#start', 'date');
+    a.win.pgFields.switchKind('#start', 'date');
+    a.win.pgFields.switchKind('#start', 'datetime');
+    a.win.pgFields.switchKind('#plain', 'date');
+    a.win.pgFields.destroy('#zones');
+    out.switch_kind = {
+        calls: a.calls.map(function (c) { return c[0] + ':' + c[1] + (typeof c[2] === 'string' ? ':' + c[2] : ''); }),
+        start: [get('start').hasAttribute('data-pg-date'), get('start').hasAttribute('data-pg-datetime'), get('start').pgFieldKind],
+        zones: get('zones').pgFieldKind || null
+    };
+
+    // A date in the picker's own wording gets only the date format; a
+    // combobox with a source searches the server, the answer read as
+    // {results: [...]}.
+    var c = load({ jquery: true, format: 'm/d/yy', fields: [
+        ['input', { id: 'shipped', 'data-pg-date': 'plain' }],
+        ['select', { id: 'cat', 'data-pg-combobox': '', 'data-pg-source': 'tax.php?action=search', 'data-pg-min-length': '2', 'data-pg-free-text': '', 'data-placeholder': 'Category' }]
+    ] });
+    c.win.pgFields.init();
+    var catOpts = c.calls.filter(function (x) { return x[0] === 'select2'; })[0][2];
+    out.plain_date = c.calls.filter(function (x) { return x[0] === 'datepicker'; })[0][2];
+    out.remote = {
+        url: catOpts.ajax.url,
+        min: catOpts.minimumInputLength,
+        tags: catOpts.tags,
+        placeholder: catOpts.placeholder,
+        data: catOpts.ajax.data({ term: 'shoe' }),
+        results: [catOpts.ajax.processResults({ results: [{ id: 'a', text: 'a' }] }), catOpts.ajax.processResults(null)]
+    };
 
     // Without the library the field stays a plain one; no error.
     var b = load({ fields: [['select', { id: 's', 'data-pg-combobox': '' }]] });
@@ -269,15 +313,32 @@ function test_pg_fields_hooks_drawn_by_v5_engine()
 
 	pg_assert_same('v5', $r['engine']);
 	pg_assert_same(
-		array('tagin:tags', 'select2:zones', 'datepicker:day', 'datetimepicker:start', 'timepicker:cutoff'),
+		array('tagin:tags', 'tagin:classes', 'select2:zones', 'datepicker:day', 'datetimepicker:start', 'timepicker:cutoff'),
 		$r['init_calls'],
 		'each hook once, the plain field untouched, a second init() draws nothing'
 	);
 	pg_assert_same(array('theme' => 'bootstrap-5', 'allowClear' => true), $r['select2_options'], 'select2 as backend.src.js drew it');
 	pg_assert_same(array('timeFormat' => 'h:mm TT'), $r['time_options'], 'time fields read timepicker_options');
-	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
+	pg_assert_same(array(array('separator' => ','), array('separator' => ' ')), $r['chips_options'], 'tagin gets the data-pg-separator, a comma without one');
+	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'classes' => array('one', 'two'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
 	pg_assert_same(array('kind' => null, 'calls' => 0), $r['no_library'], 'no library: a plain field');
 	pg_assert_same(array('same' => true, 'calls' => array('tagin:late')), $r['reload'], 'a second load draws only the new field');
+}
+
+function test_pg_fields_switch_kind_and_destroy()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	pg_assert_same(
+		array('datepicker:start:destroy', 'datepicker:start', 'datepicker:start:destroy', 'datetimepicker:start', 'datepicker:plain', 'select2:zones:destroy'),
+		$r['switch_kind']['calls'],
+		'the old widget destroyed, the new one drawn, the same kind again a no-op'
+	);
+	pg_assert_same(array(false, true, 'datetime'), $r['switch_kind']['start'], 'one hook on the field, its kind recorded');
+	pg_assert_same(null, $r['switch_kind']['zones'], 'a destroyed field is plain and can be drawn again');
 }
 
 function test_pg_fields_set_writes_the_posted_field()
@@ -292,7 +353,8 @@ function test_pg_fields_set_writes_the_posted_field()
 		$r['date_set'],
 		'one bubbling change per set(), none to a listener after off()'
 	);
-	pg_assert_same(array('1/2/2026 12:30 AM', '1:45 PM', 'x,y'), $r['texts'], 'site text in the posted field');
+	pg_assert_same(array('removed' => array(true), 'calls' => array('tagin:tags')), $r['chips_redraw'], 'tagin does not hear change: the old chips go and tagin draws the new value');
+	pg_assert_same(array('1/2/2026 12:30 AM', '1:45 PM', 'x,y', 'x y'), $r['texts'], 'site text in the posted field');
 	pg_assert_same(
 		array('get' => array('1', '3'), 'redraw' => array(array('trigger', 'zones', 'change.select2'))),
 		$r['combobox'],
@@ -321,4 +383,26 @@ function test_pg_fields_liveform_prints_hooks()
 	pg_assert_contains(' data-pg-chips="&quot;&gt;&lt;b&gt;"', $valued, 'a value escaped');
 	pg_assert_same(false, strpos($valued, 'data-pg-Bad'), 'only lower-case hook names');
 	pg_assert_same(false, strpos($valued, 'data-other'), 'other data attributes are not forwarded');
+}
+
+function test_pg_fields_plain_date_and_remote_combobox()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	pg_assert_same(array('dateFormat' => 'm/d/yy'), $r['plain_date'], 'a plain date gets the site format and none of the translated names');
+	pg_assert_same(
+		array(
+			'url' => 'tax.php?action=search',
+			'min' => 2,
+			'tags' => true,
+			'placeholder' => 'Category',
+			'data' => array('q' => 'shoe'),
+			'results' => array(array('results' => array(array('id' => 'a', 'text' => 'a'))), array('results' => array())),
+		),
+		$r['remote'],
+		'data-pg-source searched with q, results read from the answer, free text kept'
+	);
 }

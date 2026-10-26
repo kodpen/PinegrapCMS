@@ -30,19 +30,19 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 ## Steps (one PR each, in order)?
 - F1 User Styles range parser and splice writer, Create as one undo step (`_stylesCreateRule`, card edit ~22975-23244): tests/designer_user_styles_test.php. Done #1721.
 - F2 Attributes undo before the change, style row on Enter or blur (~23484-23606). Done #1729.
-- F3 Bracket and quote-aware `_parseInlineStyle`: tests/designer_image_size_test.php. Done #1739.
+- F3 Bracket and quote-aware `_parseInlineStyle`. Done #1739.
 - F4 Code view style apply drops printed sizing (`_sdCodeSetAttr`): tests/designer_code_view_attrs_test.php. Done #1755 ([[designer-code-view-style]]).
-- F5 Attributes and Styles read-only at content level (builds on #1479, merged).
+- F5 Attributes and Styles read-only at content level. Done #1765 ([[designer-content-roles-panels]]).
 - F6 done #1702: facade primer, `addCompletionRanker`, css/js sources inside HTML, swatches ([[code-editor-completion]]).
 - 1 done #1704: vocabulary from tools/build_designer_vocab.php ([[designer-bootstrap-vocabulary]]).
 - 2 done #1728: breakpoint-aware dedupe ([[designer-class-dedupe]]).
 - 3 done #1722: predictor ([[style-predictor]]).
-- 4 Loader and class field; `class_suggestions.js` removed (clean_up.php). Done #1754 ([[style-suggest]]).
-- 5 Attribute rows and Styles panel inputs.
-- 6 Custom style model and Styles "This element": tests/designer_custom_style_test.php.
-- 7 Custom style row in the Attributes panel.
-- 8 CM6 html/css sources; 9 CM6 Bootstrap JS source.
+- 4 Loader and class field, `class_suggestions.js` removed. Done #1754 ([[style-suggest]]).
+- 5 done #1778: panel inputs ([[style-fields]]).
+- 6 done #1785: custom style model ([[custom-style]]).
+- 7 done #1793: Attributes css row ([[custom-style]]).
+- 8 done #1770; 9 done #1779.
 - Optional: User Styles CSS tab (after F1), inline hint.
 
 ## Where to start?
-- F3 next (then F4, F5, 2); step 4 builds on 1 and 3 (merged). Facade: docs/memory/core/code-editor-facade-and-bundle.md.
+- F1-F6, 1-8 done; next 9 (CM6 Bootstrap JS source, `jsClasses`/`jsMembers`/`jsEvents` of the predictor), then the optional items. Facade: docs/memory/core/code-editor-facade-and-bundle.md.

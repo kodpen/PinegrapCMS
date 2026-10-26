@@ -18636,3 +18636,40 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
   .wsf-bar .wsf-unpublished { display: none; }
 }
 /* ── /Workspace ── */
+/* A scheduled action drawn read-only in the Scheduled actions section of
+   Flows (showAction() in workspace_flow.js): the flow boxes on a canvas
+   that scrolls, with the colours of a condition and a follow-up. */
+.wsf-node-sa-condition { --wsf-kind: #9a6b2f; }
+.wsf-node-sa-follow { --wsf-kind: #7a5ea8; }
+html[data-bs-theme="dark"] .wsf-node-sa-condition { --wsf-kind: #e0b36f; }
+html[data-bs-theme="dark"] .wsf-node-sa-follow { --wsf-kind: #c3a8ec; }
+.ws-sa-graph {
+  height: auto;
+  overflow: auto;
+}
+.ws-sa-graph-layer {
+  position: relative;
+}
+.ws-sa-graph .wsf-node {
+  cursor: default;
+  touch-action: auto;
+  user-select: text;
+}
+.ws-sa-graph .wsf-node:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 2px var(--ws-accent);
+}
+.ws-sa-graph .wsf-port-out {
+  cursor: inherit;
+}
+.ws-sa-graph-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.ws-sa-graph-chip {
+  font-weight: 500;
+  white-space: normal;
+  text-align: left;
+}

@@ -2053,7 +2053,7 @@ function _eo_payment_method_label_html($method)
         }
     }
 
-    return h(lang($method));
+    return h(pg_payment_method_label($method));
 }
 
 // ── Helper: render conditional payment methods ───────────────────────────────
@@ -2069,18 +2069,9 @@ function _eo_payment_method_label_html($method)
 // another, installment selector in a third).
 function _eo_render_payment_methods_only($lf, $hosted_card_html = '')
 {
-    $methods = array();
-    $cc_on   = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true;
-    $any_card = (defined('ECOMMERCE_VISA') && ECOMMERCE_VISA == true)
-             || (defined('ECOMMERCE_MASTERCARD') && ECOMMERCE_MASTERCARD == true)
-             || (defined('ECOMMERCE_AMERICAN_EXPRESS') && ECOMMERCE_AMERICAN_EXPRESS === true)
-             || (defined('ECOMMERCE_DINERS_CLUB') && ECOMMERCE_DINERS_CLUB == true)
-             || (defined('ECOMMERCE_DISCOVER_CARD') && ECOMMERCE_DISCOVER_CARD == true)
-             || (defined('ECOMMERCE_TROY') && ECOMMERCE_TROY == true);
-    if ($cc_on && $any_card) $methods[] = 'Credit/Debit Card';
-    if (defined('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT') && ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == true) $methods[] = 'PayPal Express Checkout';
-    if (defined('ECOMMERCE_PAY_WITH_IYZICO') && ECOMMERCE_PAY_WITH_IYZICO == true)               $methods[] = 'Pay With Iyzico';
-    if (defined('ECOMMERCE_OFFLINE_PAYMENT') && ECOMMERCE_OFFLINE_PAYMENT == true)               $methods[] = 'Offline Payment';
+    // The checkout's one list (pg_payment_checkout_methods()); the card
+    // only while a card brand is accepted.
+    $methods = pg_payment_checkout_methods(array('card_brands' => true));
     if (pg_erp_open_account_option() !== null)                                                    $methods[] = 'On Account';
     if (empty($methods)) {
         return '<div class="alert alert-warning mb-0">' . h(lang('No payment methods are configured. Please contact the site administrator.')) . '</div>';
@@ -2663,52 +2654,6 @@ function _eo_render_cancel_status_alert($flash)
     return '';
 }
 
-// ── Order timeline HTML (order_view __timeline token) ────────────────────
-// Renders a vertical Bootstrap 5 + Bootstrap-Icons timeline of order
-// lifecycle events. Only events with a real timestamp are rendered — empty
-// rows are skipped so a not-yet-shipped order never shows a hollow
-// "Kargoya Verildi" stub. Each $events row:
-//   [ 'icon' => 'bi-...', 'color' => 'success|info|warning|danger|secondary',
-//     'label' => string,  'ts' => string (already formatted) ]
-//
-// The CSS lives inline (scoped to .pg-ov-timeline) so designers don't need
-// to ship extra stylesheets; widget render output is self-contained.
-function _eo_render_order_timeline($events)
-{
-    $events = array_values(array_filter((array)$events, function ($e) {
-        return is_array($e) && !empty($e['ts']);
-    }));
-    if (count($events) === 0) return '';
-
-    $css = '<style>'
-        . '.pg-ov-timeline{list-style:none;padding:0;margin:0;position:relative}'
-        . '.pg-ov-timeline::before{content:"";position:absolute;left:1.15rem;top:.5rem;bottom:.5rem;width:2px;background:#dee2e6}'
-        . '.pg-ov-timeline-item{position:relative;padding:.25rem 0 1rem 3rem;min-height:2.5rem}'
-        . '.pg-ov-timeline-item:last-child{padding-bottom:0}'
-        . '.pg-ov-timeline-icon{position:absolute;left:0;top:0;width:2.3rem;height:2.3rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem}'
-        . '.pg-ov-timeline-label{font-weight:600;line-height:1.2}'
-        . '.pg-ov-timeline-ts{color:#6c757d;font-size:.875rem}'
-        . '</style>';
-
-    $html = $css . '<ul class="pg-ov-timeline">';
-    foreach ($events as $e) {
-        $icon  = isset($e['icon'])  ? (string)$e['icon']  : 'bi-circle-fill';
-        $color = isset($e['color']) ? (string)$e['color'] : 'secondary';
-        $label = isset($e['label']) ? (string)$e['label'] : '';
-        $ts    = isset($e['ts'])    ? (string)$e['ts']    : '';
-        $html .=
-              '<li class="pg-ov-timeline-item">'
-            .   '<span class="pg-ov-timeline-icon bg-' . h($color) . '">'
-            .     '<i class="bi ' . h($icon) . '"></i>'
-            .   '</span>'
-            .   '<div class="pg-ov-timeline-label">' . h($label) . '</div>'
-            .   '<div class="pg-ov-timeline-ts">' . h($ts) . '</div>'
-            . '</li>';
-    }
-    $html .= '</ul>';
-    return $html;
-}
-
 //   (a) the monolithic Phase-1 layout is in use (no eo_* tree bindings), OR
 //   (b) a saved tree references `#pg-eo-terms-modal` but doesn't actually
 //       contain the modal element (very old trees pre-real-modal).
@@ -2857,30 +2802,11 @@ function _eo_render_installment_box($lf)
 
 function _eo_render_payment_methods($lf, $cfg, $hosted_card_html = '')
 {
-    $methods = array();
+    // The checkout's one list (pg_payment_checkout_methods()): the card
+    // (only while a card brand is accepted), PayPal Express Checkout, Pay
+    // With Iyzico, the redirect drivers switched on, Offline Payment.
+    $methods = pg_payment_checkout_methods(array('card_brands' => true));
 
-    // Credit/Debit Card (umbrella for 8 sub-gateways)
-    $cc_on = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true;
-    $any_card = (defined('ECOMMERCE_VISA') && ECOMMERCE_VISA == true)
-             || (defined('ECOMMERCE_MASTERCARD') && ECOMMERCE_MASTERCARD == true)
-             || (defined('ECOMMERCE_AMERICAN_EXPRESS') && ECOMMERCE_AMERICAN_EXPRESS === true)
-             || (defined('ECOMMERCE_DINERS_CLUB') && ECOMMERCE_DINERS_CLUB == true)
-             || (defined('ECOMMERCE_DISCOVER_CARD') && ECOMMERCE_DISCOVER_CARD == true)
-             || (defined('ECOMMERCE_TROY') && ECOMMERCE_TROY == true);
-    if ($cc_on && $any_card) $methods[] = 'Credit/Debit Card';
-
-    // PayPal Express Checkout
-    if (defined('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT') && ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == true) {
-        $methods[] = 'PayPal Express Checkout';
-    }
-    // Pay With Iyzico
-    if (defined('ECOMMERCE_PAY_WITH_IYZICO') && ECOMMERCE_PAY_WITH_IYZICO == true) {
-        $methods[] = 'Pay With Iyzico';
-    }
-    // Offline Payment
-    if (defined('ECOMMERCE_OFFLINE_PAYMENT') && ECOMMERCE_OFFLINE_PAYMENT == true) {
-        $methods[] = 'Offline Payment';
-    }
     // Put it on my account (ERP, 10.60): only for a member whose account has a
     // credit limit; submit_order.php weighs the order against it.
     if (pg_erp_open_account_option() !== null) {

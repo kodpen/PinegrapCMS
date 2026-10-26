@@ -10,9 +10,15 @@
  * through these objects, so the swap changes the engine here, not the
  * screens. The engine today ('v5') is the one the panel always used.
  *
- *   <input data-pg-chips>                 tagin; the input keeps the joined list
+ *   <input data-pg-chips>                 tagin; the input keeps the joined list,
+ *                                         comma or data-pg-separator (" " for classes)
  *   <select data-pg-combobox>             select2; the native <select> keeps the value
+ *     data-pg-source="url"                options searched on the server as you type:
+ *                                         GET url?q=<text> answers {results: [{id, text}]};
+ *                                         data-pg-min-length, data-pg-free-text (a typed
+ *                                         value is kept), data-placeholder
  *   <input data-pg-date>                  jQuery UI datepicker, site date format
+ *   <input data-pg-date="plain">          the same in the picker's own English wording
  *   <input data-pg-datetime>              date and time in one field
  *   <input data-pg-time>                  time only
  *
@@ -27,6 +33,8 @@
  *   pgDatePicker.get(el) / set(el, iso)
  *   pgDateTimeField.get(el) / set(el, iso), the same for a time-only field
  *   pgFields.onChange(el, fn)             every change, typed or picked; returns off()
+ *   pgFields.destroy(el)                  back to a plain field, value kept
+ *   pgFields.switchKind(el, kind)         the same field as another kind ('date' <-> 'datetime')
  *
  * set() fires a native change event that bubbles; listen with onChange() or
  * jQuery .on('change'): select2 announces a pick only through jQuery.
@@ -174,17 +182,22 @@
     // ------------------------------------------------------------ engines
 
     // One engine per Bootstrap generation; each kind has init(el), which
-    // draws the widget over the posted field, and redraw(el), which shows a
-    // value written into that field. The Bootstrap 6 engine (Chips, Combobox,
+    // draws the widget over the posted field, redraw(el), which shows a
+    // value written into that field, and destroy(el), which removes the
+    // widget and leaves the field. The Bootstrap 6 engine (Chips, Combobox,
     // Datepicker) comes with the component swaps.
     var ENGINES = {
         v5: {
             chips: {
                 ready: function () { return typeof window.tagin === 'function'; },
-                init: function (el) { window.tagin(el); },
-                // tagin redraws its tags on the input's change event, which
-                // set() fires anyway.
-                redraw: function () {}
+                init: function (el) { window.tagin(el, { separator: separator(el) }); },
+                // tagin reads the input only when it is drawn and never hears
+                // a change, so its chips are dropped and drawn again.
+                redraw: function (el) {
+                    removeTaginWrapper(el);
+                    window.tagin(el, { separator: separator(el) });
+                },
+                destroy: function (el) { removeTaginWrapper(el); }
             },
             combobox: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.select2); },
@@ -193,31 +206,78 @@
                     if ($(el).data('allowClear')) {
                         opts.allowClear = true;
                     }
+                    if (el.getAttribute('data-pg-source')) {
+                        remoteOptions(el, opts);
+                    }
                     if (window.pgUI && window.pgUI.overlayHost) {
                         opts.dropdownParent = $(window.pgUI.overlayHost(el));
                     }
                     $(el).select2(opts);
                 },
                 // Only select2's own listener: the native change already ran.
-                redraw: function (el) { jq()(el).trigger('change.select2'); }
+                redraw: function (el) { jq()(el).trigger('change.select2'); },
+                destroy: function (el) { jq()(el).select2('destroy'); }
             },
             date: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.datepicker); },
-                init: function (el) { jq()(el).datepicker(window.datetimepicker_options || {}); },
-                redraw: function () {}
+                init: function (el) {
+                    // "plain" keeps the screens that never passed the translated
+                    // names: only the site date format.
+                    var opts = el.getAttribute(HOOKS.date) === 'plain'
+                        ? { dateFormat: (window.datetimepicker_options && window.datetimepicker_options.dateFormat) || window.date_picker_format }
+                        : (window.datetimepicker_options || {});
+                    jq()(el).datepicker(opts);
+                },
+                redraw: function () {},
+                destroy: destroyPicker
             },
             datetime: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.datetimepicker); },
                 init: function (el) { jq()(el).datetimepicker(window.datetimepicker_options || {}); },
-                redraw: function () {}
+                redraw: function () {},
+                destroy: destroyPicker
             },
             time: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.timepicker); },
                 init: function (el) { jq()(el).timepicker(window.timepicker_options || window.datetimepicker_options || {}); },
-                redraw: function () {}
+                redraw: function () {},
+                destroy: destroyPicker
             }
         }
     };
+
+    // select2 asks data-pg-source for the options matching the typed text.
+    // A value the field already holds is an <option> in the markup.
+    function remoteOptions(el, opts) {
+        opts.ajax = {
+            url: el.getAttribute('data-pg-source'),
+            dataType: 'json',
+            delay: 200,
+            cache: true,
+            data: function (params) { return { q: params.term }; },
+            processResults: function (data) { return { results: (data && data.results) ? data.results : [] }; }
+        };
+        opts.minimumInputLength = parseInt(el.getAttribute('data-pg-min-length'), 10) || 0;
+        if (el.hasAttribute('data-pg-free-text')) {
+            opts.tags = true;
+        }
+        if (el.getAttribute('data-placeholder')) {
+            opts.placeholder = el.getAttribute('data-placeholder');
+        }
+    }
+
+    function removeTaginWrapper(el) {
+        var next = el.nextElementSibling;
+        if (next && next.classList && next.classList.contains('tagin-wrapper')) {
+            next.parentNode.removeChild(next);
+        }
+    }
+
+    // The datetimepicker and timepicker addon build on the datepicker, whose
+    // destroy removes any of the three.
+    function destroyPicker(el) {
+        jq()(el).datepicker('destroy');
+    }
 
     var engineName = 'v5';
 
@@ -265,6 +325,34 @@
         }
     }
 
+    // Removes the widget; the field keeps its value and hook and posts as
+    // before. init() draws it again.
+    function destroy(el) {
+        el = element(el);
+        if (el && el.pgFieldKind) {
+            engine(el.pgFieldKind).destroy(el);
+            el.pgFieldKind = '';
+        }
+        return el;
+    }
+
+    // The same field as another kind, as the calendar's all-day switch
+    // turns a date and time into a date: one hook, drawn once.
+    function switchKind(el, kind) {
+        el = element(el);
+        if (!el || !HOOKS[kind] || el.pgFieldKind === kind) {
+            return el;
+        }
+        destroy(el);
+        for (var k in HOOKS) {
+            if (k !== kind && el.hasAttribute(HOOKS[k])) {
+                el.removeAttribute(HOOKS[k]);
+            }
+        }
+        el.setAttribute(HOOKS[kind], '');
+        return initField(el, kind);
+    }
+
     function fireChange(el) {
         var ev;
         if (typeof window.Event === 'function') {
@@ -304,8 +392,10 @@
         return function () { el.removeEventListener('change', fn); };
     }
 
+    // data-pg-separator, as liveform prints it; data-separator is what
+    // tagin itself reads from hand-written markup.
     function separator(el) {
-        return el.getAttribute('data-separator') || ',';
+        return el.getAttribute('data-pg-separator') || el.getAttribute('data-separator') || ',';
     }
 
     var pgChips = {
@@ -410,6 +500,8 @@
     window.pgFields = {
         init: init,
         onChange: onChange,
+        destroy: destroy,
+        switchKind: switchKind,
         engine: function () { return engineName; },
         hooks: HOOKS
     };

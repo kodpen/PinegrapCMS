@@ -358,6 +358,27 @@ function ws_mcp_probe_kind($answered, $status, $found, $https)
 }
 
 /**
+ * Can an address be asked how it signs in: an https address, and the site
+ * can send? Sends nothing.
+ *
+ * @param string $url
+ * @param bool   $stand_in the network is a stand-in (the tests)
+ * @return string the problem, '' when it can
+ */
+function ws_mcp_probe_check($url, $stand_in = false)
+{
+    if (!pg_mcp_client_url_is_valid(trim((string) $url))) {
+        return lang('The address must be an https address, without a user name, a password or a # part.');
+    }
+
+    if (!$stand_in && !function_exists('curl_init')) {
+        return lang('This server cannot make outgoing HTTPS requests (cURL is missing).');
+    }
+
+    return '';
+}
+
+/**
  * Asks an address how it signs in, without a credential: an initialize and
  * the tool list, and on a 401 the OAuth challenge and the service's sign-in
  * metadata. Nothing is registered or saved.
@@ -381,13 +402,9 @@ function ws_mcp_probe($url, $fetch = null, $https = null)
     $out = array('ok' => false, 'kind' => '', 'tools' => 0, 'reads' => 0, 'name' => ucfirst($alias), 'alias' => $alias, 'host' => $host, 'error' => '', 'oauth_manual' => false);
     $https = ($https === null) ? (defined('URL_SCHEME') && (URL_SCHEME === 'https://')) : (bool) $https;
 
-    if (!pg_mcp_client_url_is_valid($url)) {
-        $out['error'] = lang('The address must be an https address, without a user name, a password or a # part.');
-        return $out;
-    }
+    $out['error'] = ws_mcp_probe_check($url, is_callable($fetch));
 
-    if (!is_callable($fetch) && !function_exists('curl_init')) {
-        $out['error'] = lang('This server cannot make outgoing HTTPS requests (cURL is missing).');
+    if ($out['error'] !== '') {
         return $out;
     }
 
@@ -510,6 +527,34 @@ function ws_mcp_server_at($url)
     return null;
 }
 
+/**
+ * An address checked for the settings screen and the API: the server the
+ * site already has there, else what ws_mcp_probe() found, with its sentence
+ * and colour.
+ *
+ * @param string $url
+ * @return array probe (ws_mcp_probe(), or kind '' with the alias and name
+ *               of the server already there), state, text, server (the one
+ *               already there, or null)
+ */
+function ws_mcp_probe_address($url)
+{
+    $existing = ($url !== '') ? ws_mcp_server_at($url) : null;
+
+    if ($existing) {
+        return array(
+            'probe'  => array('ok' => false, 'kind' => '', 'alias' => (string) $existing['alias'], 'name' => (string) $existing['name']),
+            'state'  => 'info',
+            'text'   => lang(array('string' => 'This address is already added as @{var:1}.', 'vars' => $existing['alias'])),
+            'server' => $existing,
+        );
+    }
+
+    $probe = ws_mcp_probe($url);
+
+    return array('probe' => $probe, 'state' => ws_mcp_probe_state($probe), 'text' => ws_mcp_probe_text($probe), 'server' => null);
+}
+
 /* ---------------------------------------------------------------------------
    The settings screen
    --------------------------------------------------------------------------- */
@@ -533,17 +578,10 @@ function ws_mcp_catalogue_post($viewer, $action, $liveform, $username)
 {
     if ($action === 'mcp_probe') {
         $url = trim(mb_substr(is_scalar($_POST['mcp_url'] ?? '') ? (string) $_POST['mcp_url'] : '', 0, 500));
-        $existing = ($url !== '') ? ws_mcp_server_at($url) : null;
-
-        if ($existing) {
-            $probe = array('ok' => false, 'kind' => '', 'alias' => (string) $existing['alias'], 'name' => (string) $existing['name']);
-            $state = 'info';
-            $text = lang(array('string' => 'This address is already added as @{var:1}.', 'vars' => $existing['alias']));
-        } else {
-            $probe = ws_mcp_probe($url);
-            $state = ws_mcp_probe_state($probe);
-            $text = ws_mcp_probe_text($probe);
-        }
+        $found = ws_mcp_probe_address($url);
+        $probe = $found['probe'];
+        $state = $found['state'];
+        $text = $found['text'];
 
         $liveform->assign_field_value('mcp_kept_for', 'probe');
         $liveform->assign_field_value('mcp_url', $url);

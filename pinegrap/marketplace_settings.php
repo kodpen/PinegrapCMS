@@ -988,6 +988,250 @@ if ($_POST) {
 
 	}
 
+	// The buyers' returns of the last two weeks, read on the operator's
+	// button. The list is kept in the session for this screen and never in a
+	// table: the marketplace holds the returns, and a stored copy would only
+	// go stale. A failed read leaves the last good one in place.
+	if ($action === 'claims_read' && $account) {
+
+		if (!mp_can($account['provider'], 'claims')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} else {
+
+			$read = mp_call($account['provider'], 'claims', array($account));
+
+			if ($read['ok']) {
+
+				$_SESSION['software']['marketplace_read'][$account_id]['claims'] = array(
+					'read'   => time(),
+					'claims' => $read['data']['claims'],
+					'more'   => !empty($read['data']['more'])
+				);
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'The returns could not be read: {var:1}',
+					'vars'   => array(h($read['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-claims');
+
+		exit();
+
+	}
+
+	// Approve the waiting units of one return from the last read: the buyer
+	// is refunded. Which units is taken from that read, not from the form, so
+	// a posted id the marketplace never named for this return cannot be sent.
+	// The read is not changed beyond noting the approval: what the
+	// marketplace made of it is seen on the next read.
+	if ($action === 'claim_approve' && $account) {
+
+		$claim_id = isset($_POST['claim_id']) ? trim((string)$_POST['claim_id']) : '';
+
+		$claim = null;
+
+		$claim_index = null;
+
+		foreach (mp_settings_marketplace_read($account_id, 'claims')['claims'] as $index => $row) {
+
+			if (isset($row['claim_id']) && ($row['claim_id'] === $claim_id)) {
+
+				$claim = $row;
+
+				$claim_index = $index;
+
+				break;
+
+			}
+
+		}
+
+		$waiting = $claim ? mp_claim_waiting($claim) : array();
+
+		if (!mp_can($account['provider'], 'approve_claim')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} elseif (!$claim) {
+
+			$liveform->add_warning(lang('That return is no longer in the list. Read the returns again.'));
+
+		} elseif (!empty($claim['approved']) || !$waiting) {
+
+			$liveform->add_notice(lang(array(
+				'string' => 'The return of order {var:1} has no units waiting for approval.',
+				'vars'   => array(h((string)$claim['order_number']))
+			)));
+
+		} else {
+
+			$sent = mp_call($account['provider'], 'approve_claim', array($account, $claim_id, $waiting));
+
+			if ($sent['ok']) {
+
+				$_SESSION['software']['marketplace_read'][$account_id]['claims']['claims'][$claim_index]['approved'] = time();
+
+				log_activity(lang(array(
+					'string' => 'The return of order {var:1} was approved on {var:2} ({var:3} units).',
+					'vars'   => array((string)$claim['order_number'], mp_provider_name($account['provider']), count($waiting))
+				)), 'system');
+
+				$liveform->add_notice(lang(array(
+					'string' => 'The return of order {var:1} was approved on {var:2}.',
+					'vars'   => array(h((string)$claim['order_number']), h(mp_provider_name($account['provider'])))
+				)));
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'The return of order {var:1} was not approved: {var:2}',
+					'vars'   => array(h((string)$claim['order_number']), h($sent['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-claims');
+
+		exit();
+
+	}
+
+	// The buyers' questions of the last two weeks, read on the operator's
+	// button and kept in the session like the returns (claims_read).
+	if ($action === 'questions_read' && $account) {
+
+		if (!mp_can($account['provider'], 'questions')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} else {
+
+			$read = mp_call($account['provider'], 'questions', array($account));
+
+			if ($read['ok']) {
+
+				$_SESSION['software']['marketplace_read'][$account_id]['questions'] = array(
+					'read'      => time(),
+					'questions' => $read['data']['questions'],
+					'more'      => !empty($read['data']['more'])
+				);
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'The questions could not be read: {var:1}',
+					'vars'   => array(h($read['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-questions');
+
+		exit();
+
+	}
+
+	// Answer one waiting question of the last read. The question has to be in
+	// that read and waiting, so an id the marketplace never listed is not
+	// sent. A sent answer is noted on the read; whether the marketplace
+	// published it is seen on the next read.
+	if ($action === 'question_answer' && $account) {
+
+		$question_id = isset($_POST['question_id']) ? trim((string)$_POST['question_id']) : '';
+
+		$answer = isset($_POST['answer']) ? trim((string)$_POST['answer']) : '';
+
+		$question = null;
+
+		$question_index = null;
+
+		foreach (mp_settings_marketplace_read($account_id, 'questions')['questions'] as $index => $row) {
+
+			if (isset($row['id']) && ((string)$row['id'] === $question_id)) {
+
+				$question = $row;
+
+				$question_index = $index;
+
+				break;
+
+			}
+
+		}
+
+		if (!mp_can($account['provider'], 'answer_question')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} elseif (!$question) {
+
+			$liveform->add_warning(lang('That question is no longer in the list. Read the questions again.'));
+
+		} elseif (!empty($question['sent']) || empty($question['waiting'])) {
+
+			$liveform->add_notice(lang('That question is not waiting for an answer.'));
+
+		} else {
+
+			$sent = mp_call($account['provider'], 'answer_question', array($account, $question_id, $answer));
+
+			if ($sent['ok']) {
+
+				$_SESSION['software']['marketplace_read'][$account_id]['questions']['questions'][$question_index]['sent'] = time();
+
+				$_SESSION['software']['marketplace_read'][$account_id]['questions']['questions'][$question_index]['answer'] = $answer;
+
+				log_activity(lang(array(
+					'string' => 'A buyer question about {var:1} was answered on {var:2}.',
+					'vars'   => array((string)$question['product'], mp_provider_name($account['provider']))
+				)), 'system');
+
+				$liveform->add_notice(lang(array(
+					'string' => 'The answer was sent to {var:1}. It is published after their review.',
+					'vars'   => array(h(mp_provider_name($account['provider'])))
+				)));
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'The answer was not sent: {var:1}',
+					'vars'   => array(h($sent['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-questions');
+
+		exit();
+
+	}
+
 	if ($action === 'clear_queue' && $account) {
 
 		db("DELETE FROM marketplace_sync_queue
@@ -1000,6 +1244,88 @@ if ($_POST) {
 			exit();
 
 	}
+
+}
+
+// The last read of an account's returns or questions in this session (see
+// the claims_read and questions_read actions): {read, <kind>, more}, read 0
+// when nothing was read yet.
+function mp_settings_marketplace_read($account_id, $kind) {
+
+	$read = $_SESSION['software']['marketplace_read'][(int)$account_id][$kind] ?? null;
+
+	if (!is_array($read) || !isset($read[$kind]) || !is_array($read[$kind])) {
+
+		return array('read' => 0, $kind => array(), 'more' => false);
+
+	}
+
+	return array(
+		'read'   => (int)($read['read'] ?? 0),
+		$kind    => $read[$kind],
+		'more'   => !empty($read['more'])
+	);
+
+}
+
+// A return unit's status as a pill. Their status names are shown in words
+// the operator knows; one this screen does not know is shown as it came.
+function mp_settings_claim_status($status) {
+
+	$labels = array(
+		'Created'           => array(lang('On its way back'), 'off'),
+		'WaitingInAction'   => array(lang('Waiting for you'), 'bad'),
+		'WaitingFraudCheck' => array(lang('Fraud check'), 'off'),
+		'InAnalysis'        => array(lang('In analysis'), 'off'),
+		'Accepted'          => array(lang('Accepted'), 'on'),
+		'Rejected'          => array(lang('Rejected'), 'off'),
+		'Cancelled'         => array(lang('Cancelled'), 'off'),
+		'Unresolved'        => array(lang('Unresolved'), 'off')
+	);
+
+	if ($status === '') {
+
+		return '';
+
+	}
+
+	$label = isset($labels[$status]) ? $labels[$status] : array(h($status), 'off');
+
+	return '<span class="mp-pill ' . $label[1] . '">' . $label[0] . '</span>';
+
+}
+
+// A question's status as a pill: an answer sent from here first, else their
+// status in words the operator knows, else as it came.
+function mp_settings_question_status($question) {
+
+	if (!empty($question['sent'])) {
+
+		return '<span class="mp-pill on" title="' . h(mp_settings_ago((int)$question['sent'])) . '">'
+			. lang('Answer sent') . '</span>';
+
+	}
+
+	$labels = array(
+		'WAITING_FOR_ANSWER'  => array(lang('Waiting for you'), 'bad'),
+		'WAITING_FOR_APPROVE' => array(lang('Answer in review'), 'off'),
+		'ANSWERED'            => array(lang('Answered'), 'on'),
+		'REJECTED'            => array(lang('Answer rejected'), 'bad'),
+		'REPORTED'            => array(lang('Reported'), 'off'),
+		'UNANSWERED'          => array(lang('Time ran out'), 'off')
+	);
+
+	$status = isset($question['status']) ? (string)$question['status'] : '';
+
+	if ($status === '') {
+
+		return '';
+
+	}
+
+	$label = isset($labels[$status]) ? $labels[$status] : array(h($status), 'off');
+
+	return '<span class="mp-pill ' . $label[1] . '">' . $label[0] . '</span>';
 
 }
 
@@ -1531,6 +1857,18 @@ if ($selected) {
 	// whose files are newer than its database draws no form.
 	$can_invoice = $can_orders && mp_can($selected['provider'], 'send_invoice_link') && mp_invoice_sent_ready();
 
+	// The returns card, for a connector that reads returns; its approve
+	// button only where the connector can approve them.
+	$can_claims = mp_can($selected['provider'], 'claims');
+
+	$can_approve_claims = $can_claims && mp_can($selected['provider'], 'approve_claim');
+
+	// The questions card, for a connector that reads questions; its answer
+	// forms only where the connector can answer them.
+	$can_questions = mp_can($selected['provider'], 'questions');
+
+	$can_answer_questions = $can_questions && mp_can($selected['provider'], 'answer_question');
+
 	$provider_fields = isset($providers[$selected['provider']]['fields'])
 		? $providers[$selected['provider']]['fields']
 		: array();
@@ -2013,6 +2351,250 @@ if ($selected) {
 
 			echo '
 			</div>';
+
+		}
+
+		echo '
+		</div>
+	</div>';
+
+	}
+
+	/* ------------------------------------------------------------ returns */
+
+	// The buyers' returns, read on a button and kept in the session (see the
+	// claims_read action). A return with units waiting for the seller can be
+	// approved after a confirm; rejecting one, which needs their reason codes
+	// and a document, is done in the marketplace's seller panel.
+	if ($can_claims) {
+
+		$claims_read = mp_settings_marketplace_read($selected_id, 'claims');
+
+		echo '
+	<div class="card mb-3" id="mp-claims">
+		<div class="card-header d-flex align-items-center flex-wrap gap-2">
+			<i class="bi bi-arrow-return-left me-1"></i><b>' . h(lang(array(
+				'string' => 'Returns from {var:1}',
+				'vars'   => array(mp_provider_name($selected['provider']))
+			))) . '</b>
+			<span class="small opacity-75 ms-auto">'
+				. ($claims_read['read']
+					? h(lang(array('string' => 'Read {var:1}', 'vars' => array(mp_settings_ago($claims_read['read'])))))
+					: lang('Not read yet')) . '</span>
+			<form method="post" action="marketplace_settings.php" class="d-inline"
+				onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
+				' . get_token_field() . '
+				<input type="hidden" name="mp_action" value="claims_read">
+				<input type="hidden" name="account_id" value="' . $selected_id . '">
+				<button type="submit" class="btn btn-sm btn-outline-secondary">
+					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Read returns') . '</button>
+			</form>
+		</div>
+		<div class="card-body px-2 py-3">';
+
+		if (!$claims_read['read']) {
+
+			echo '
+			<p class="small opacity-75 text-center my-4 mb-0">'
+			. lang('Returns are read from the marketplace when you ask: the last two weeks, every status.') . '</p>';
+
+		} elseif (!$claims_read['claims']) {
+
+			echo '
+			<p class="small opacity-75 text-center my-4 mb-0">'
+			. lang('No return in the last two weeks.') . '</p>';
+
+		} else {
+
+			echo '
+			<div class="mp-scroll">
+			<div class="mp-head" style="grid-template-columns:1.2fr 1.2fr 2.6fr .9fr 110px">
+				<span>' . lang('Order') . '</span><span>' . lang('Customer') . '</span>
+				<span>' . lang('Products') . '</span><span>' . lang('Date') . '</span><span></span>
+			</div>';
+
+			foreach ($claims_read['claims'] as $claim) {
+
+				$waiting = mp_claim_waiting($claim);
+
+				$units = '';
+
+				foreach ($claim['units'] as $unit) {
+
+					$units .= '
+					<div class="small">' . h((string)$unit['product'])
+						. (((string)$unit['barcode'] !== '') ? ' <code>' . h((string)$unit['barcode']) . '</code>' : '')
+						. ' ' . mp_settings_claim_status((string)$unit['status'])
+						. (((string)$unit['reason'] !== '') ? '<div class="opacity-75">' . h((string)$unit['reason'])
+							. (((string)$unit['note'] !== '') ? ' &mdash; &ldquo;' . h((string)$unit['note']) . '&rdquo;' : '')
+							. '</div>' : '') . '
+					</div>';
+
+				}
+
+				echo '
+			<div class="mp-row" style="grid-template-columns:1.2fr 1.2fr 2.6fr .9fr 110px">
+				<span>
+					<b>' . h((string)$claim['order_number']) . '</b>
+					' . (((string)$claim['carrier'] !== '')
+						? '<div class="small opacity-75">' . h((string)$claim['carrier'])
+							. (((string)$claim['tracking'] !== '') ? ' <code>' . h((string)$claim['tracking']) . '</code>' : '') . '</div>'
+						: '') . '
+				</span>
+				<span>' . (((string)$claim['customer'] !== '') ? h((string)$claim['customer']) : '&mdash;') . '</span>
+				<span>' . $units . '
+				</span>
+				<span class="small opacity-75">' . ($claim['claimed'] ? h(mp_settings_ago((int)$claim['claimed'])) : '&mdash;') . '</span>
+				<span>';
+
+				if (!empty($claim['approved'])) {
+
+					echo '<span class="mp-pill on" title="' . h(mp_settings_ago((int)$claim['approved'])) . '">'
+						. lang('Approval sent') . '</span>';
+
+				} elseif ($waiting && $can_approve_claims) {
+
+					echo '
+					<form method="post" action="marketplace_settings.php" class="d-inline"
+						onsubmit="if (!confirm(' . h(json_encode(lang(array(
+							'string' => 'Approve the return of order {var:1}? The buyer is refunded for {var:2} units, and this cannot be undone from here.',
+							'vars'   => array((string)$claim['order_number'], count($waiting))
+						)))) . ')) return false; this.querySelector(\'button[type=submit]\').disabled = true;">
+						' . get_token_field() . '
+						<input type="hidden" name="mp_action" value="claim_approve">
+						<input type="hidden" name="account_id" value="' . $selected_id . '">
+						<input type="hidden" name="claim_id" value="' . h((string)$claim['claim_id']) . '">
+						<button type="submit" class="btn btn-sm btn-outline-success">' . lang('Approve') . '</button>
+					</form>';
+
+				}
+
+				echo '</span>
+			</div>';
+
+			}
+
+			echo '
+			</div>';
+
+			if ($claims_read['more']) {
+
+				echo '
+			<p class="small opacity-75 mt-3 mb-0 px-2">'
+				. lang('Only the first 200 returns are shown. The rest are in your seller panel.') . '</p>';
+
+			}
+
+		}
+
+		echo '
+		</div>
+	</div>';
+
+	}
+
+	/* ---------------------------------------------------------- questions */
+
+	// The buyers' questions, read on a button and kept in the session (see
+	// the questions_read action). A waiting question has its answer form.
+	if ($can_questions) {
+
+		$questions_read = mp_settings_marketplace_read($selected_id, 'questions');
+
+		echo '
+	<div class="card mb-3" id="mp-questions">
+		<div class="card-header d-flex align-items-center flex-wrap gap-2">
+			<i class="bi bi-chat-left-text me-1"></i><b>' . h(lang(array(
+				'string' => 'Questions from {var:1}',
+				'vars'   => array(mp_provider_name($selected['provider']))
+			))) . '</b>
+			<span class="small opacity-75 ms-auto">'
+				. ($questions_read['read']
+					? h(lang(array('string' => 'Read {var:1}', 'vars' => array(mp_settings_ago($questions_read['read'])))))
+					: lang('Not read yet')) . '</span>
+			<form method="post" action="marketplace_settings.php" class="d-inline"
+				onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
+				' . get_token_field() . '
+				<input type="hidden" name="mp_action" value="questions_read">
+				<input type="hidden" name="account_id" value="' . $selected_id . '">
+				<button type="submit" class="btn btn-sm btn-outline-secondary">
+					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Read questions') . '</button>
+			</form>
+		</div>
+		<div class="card-body px-2 py-3">';
+
+		if (!$questions_read['read']) {
+
+			echo '
+			<p class="small opacity-75 text-center my-4 mb-0">'
+			. lang('Questions are read from the marketplace when you ask: the last two weeks, every status.') . '</p>';
+
+		} elseif (!$questions_read['questions']) {
+
+			echo '
+			<p class="small opacity-75 text-center my-4 mb-0">'
+			. lang('No question in the last two weeks.') . '</p>';
+
+		} else {
+
+			foreach ($questions_read['questions'] as $question) {
+
+				$question_id = h((string)$question['id']);
+
+				echo '
+			<div class="mp-row d-block">
+				<div class="d-flex flex-wrap gap-2 align-items-center small">
+					' . (((string)$question['product_url'] !== '')
+						? '<a href="' . h((string)$question['product_url']) . '" target="_blank" rel="noopener noreferrer">'
+							. h((string)$question['product']) . '</a>'
+						: h((string)$question['product'])) . '
+					' . mp_settings_question_status($question) . '
+					<span class="opacity-75 ms-auto">'
+						. (((string)$question['user'] !== '') ? h((string)$question['user']) . ' &middot; ' : '')
+						. ($question['asked'] ? h(mp_settings_ago((int)$question['asked'])) : '') . '</span>
+				</div>
+				<div class="my-1" style="white-space:pre-wrap">' . h((string)$question['text']) . '</div>'
+				. (((string)$question['answer'] !== '')
+					? '
+				<div class="small border-start ps-2 opacity-75" style="white-space:pre-wrap">' . h((string)$question['answer']) . '</div>'
+					: '')
+				. (((string)$question['reason'] !== '')
+					? '
+				<div class="mp-err">' . h((string)$question['reason']) . '</div>'
+					: '');
+
+				if (!empty($question['waiting']) && empty($question['sent']) && $can_answer_questions) {
+
+					echo '
+				<form method="post" action="marketplace_settings.php" class="mt-2"
+					onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
+					' . get_token_field() . '
+					<input type="hidden" name="mp_action" value="question_answer">
+					<input type="hidden" name="account_id" value="' . $selected_id . '">
+					<input type="hidden" name="question_id" value="' . $question_id . '">
+					<label class="visually-hidden" for="mp_answer_' . $question_id . '">' . lang('Answer') . '</label>
+					<textarea class="form-control form-control-sm" id="mp_answer_' . $question_id . '" name="answer"
+						rows="2" minlength="10" maxlength="2000" required></textarea>
+					<div class="d-flex align-items-center gap-2 mt-1">
+						<span class="form-text m-0">' . lang('10 to 2000 characters. The marketplace reviews the answer before the buyer sees it.') . '</span>
+						<button type="submit" class="btn btn-sm btn-outline-success ms-auto">' . lang('Answer') . '</button>
+					</div>
+				</form>';
+
+				}
+
+				echo '
+			</div>';
+
+			}
+
+			if ($questions_read['more']) {
+
+				echo '
+			<p class="small opacity-75 mt-3 mb-0 px-2">'
+				. lang('Only the newest 200 questions are shown. The rest are in your seller panel.') . '</p>';
+
+			}
 
 		}
 

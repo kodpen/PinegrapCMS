@@ -940,6 +940,22 @@ function ws_scheduled_clock_ok($clock)
 }
 
 /**
+ * A day as the form sends it (YYYY-MM-DD) that is on the calendar:
+ * strtotime() alone takes 2027-02-29 and moves it to 1 March.
+ *
+ * @param string $date
+ * @return bool
+ */
+function ws_scheduled_date_ok($date)
+{
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', (string) $date, $part)) {
+        return false;
+    }
+
+    return checkdate((int) $part[2], (int) $part[3], (int) $part[1]);
+}
+
+/**
  * One rule.
  *
  * @param array $viewer
@@ -961,7 +977,7 @@ function ws_scheduled_rule_input($viewer, $rule)
             $clock = (string) ($rule['time'] ?? '');
             $repeat = (string) ($rule['repeat'] ?? 'none');
 
-            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || (strtotime($date . ' 12:00:00') === false)) {
+            if (!ws_scheduled_date_ok($date)) {
                 return $fail(lang('The date is not valid.'));
             }
 
@@ -1012,7 +1028,7 @@ function ws_scheduled_rule_input($viewer, $rule)
             $until = (string) ($rule['until'] ?? '');
 
             if ($until !== '') {
-                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $until) || (strtotime($until . ' 12:00:00') === false)) {
+                if (!ws_scheduled_date_ok($until)) {
                     return $fail(lang('The last day is not valid.'));
                 }
 
@@ -2465,6 +2481,10 @@ function ws_scheduled_present($viewer, $row, $full = false)
 
     $outcomes = ws_scheduled_outcomes();
     $follow = array();
+    // The name of the action a step starts, as the card's starters have it.
+    $target_name = function ($action) {
+        return ((($action['type'] ?? '') === 'trigger')) ? trim(ws_scheduled_name($action['target_id']), '“”') : '';
+    };
 
     foreach ((array) $row['follow'] as $item) {
         $follow[] = array(
@@ -2472,6 +2492,7 @@ function ws_scheduled_present($viewer, $row, $full = false)
             'label'   => $outcomes[$item['on']] ?? '',
             'text'    => ws_scheduled_action_text($viewer, $item['do']),
             'target'  => ((($item['do']['type'] ?? '') === 'trigger')) ? (int) $item['do']['target_id'] : 0,
+            'target_name' => $target_name($item['do']),
         );
     }
 
@@ -2484,6 +2505,8 @@ function ws_scheduled_present($viewer, $row, $full = false)
     $out += array(
         'conditions'  => $rules,
         'action_text' => ws_scheduled_action_text($viewer, $row['action']),
+        'action_target' => ((($row['action']['type'] ?? '') === 'trigger')) ? (int) $row['action']['target_id'] : 0,
+        'action_target_name' => $target_name($row['action']),
         'follow'      => $follow,
         'then_text'   => '',
         'starters'    => $starters,
@@ -2513,6 +2536,122 @@ function ws_scheduled_present($viewer, $row, $full = false)
     }
 
     return $out;
+}
+
+/**
+ * A scheduled action drawn as a graph the flow canvas shows read-only: the
+ * "when" box, one box per condition, the step, and a box per follow-up on
+ * an arrow named by its outcome. What lies outside the action is told in
+ * chips: the actions that start it, those it starts, and a step that starts
+ * the action itself again (a retry). Built from the card a staff member
+ * gets (ws_scheduled_present()), so it shows what the card says; nothing
+ * is read here.
+ *
+ * Boxes sit in columns of 256 canvas units (a 208 box and its gap) on the
+ * flow canvas's 16 grid; the follow-ups stack in the last column, the
+ * boxes before them on the middle of that stack.
+ *
+ * @param array $item ws_scheduled_present() for staff
+ * @return array v, nodes (id, kind, kind_label, icon, label, meta, x, y),
+ *               edges (from, to, on, label), chips (starters, started,
+ *               self_retry)
+ */
+function ws_scheduled_graph($item)
+{
+    $id = (int) ($item['id'] ?? 0);
+    $follow = array_values((array) ($item['follow'] ?? array()));
+    $row_gap = 112;
+    $middle = (int) (round(max(0, count($follow) - 1) * $row_gap / 2 / 16) * 16);
+    $nodes = array();
+    $edges = array();
+    $started = array();
+    $self_retry = array();
+    $column = 0;
+
+    $add = function ($node_id, $kind, $kind_label, $icon, $label, $meta, $y) use (&$nodes, &$column) {
+        $nodes[] = array(
+            'id'         => $node_id,
+            'kind'       => $kind,
+            'kind_label' => $kind_label,
+            'icon'       => $icon,
+            'label'      => (string) $label,
+            'meta'       => (string) $meta,
+            'x'          => $column * 256,
+            'y'          => $y,
+        );
+    };
+
+    // A step that starts an action: a chip for it, or the retry mark when
+    // it is this action again.
+    $starts = function ($target, $name, $from, $on_label) use ($id, &$started, &$self_retry) {
+        if ($target <= 0) {
+            return;
+        }
+
+        if ($target === $id) {
+            $self_retry[] = $on_label;
+        } elseif (!in_array($target, array_column($started, 'id'), true)) {
+            $started[] = array('id' => $target, 'name' => (string) $name, 'from' => $from);
+        }
+    };
+
+    if (!empty($item['joins'])) {
+        $when_icon = 'bi-person-plus';
+    } elseif (!empty($item['on_event'])) {
+        $when_icon = 'bi-broadcast';
+    } elseif (!empty($item['trigger_only'])) {
+        $when_icon = 'bi-diagram-3';
+    } else {
+        $when_icon = !empty($item['repeats']) ? 'bi-arrow-repeat' : 'bi-calendar-event';
+    }
+
+    $add('when', 'when', lang('When'), $when_icon, $item['when'] ?? '', (($item['next'] ?? '') !== '') ? lang('Next') . ': ' . $item['next'] : '', $middle);
+    $previous = 'when';
+
+    foreach (array_values((array) ($item['conditions'] ?? array())) as $n => $text) {
+        $column++;
+        $add('if_' . ($n + 1), 'condition', lang('Condition'), 'bi-funnel', $text, lang('If it does not hold, the run is skipped.'), $middle);
+        $edges[] = array('from' => $previous, 'to' => 'if_' . ($n + 1), 'on' => 'next', 'label' => '');
+        $previous = 'if_' . ($n + 1);
+    }
+
+    $column++;
+    $add('step', 'step', lang('Step'), 'bi-lightning-charge', $item['action_text'] ?? '', '', $middle);
+    $edges[] = array('from' => $previous, 'to' => 'step', 'on' => 'next', 'label' => '');
+    $starts((int) ($item['action_target'] ?? 0), $item['action_target_name'] ?? '', 'step', '');
+
+    if (!empty($follow)) {
+        $column++;
+    }
+
+    foreach ($follow as $n => $then) {
+        $node_id = 'then_' . ($n + 1);
+        $target = (int) ($then['target'] ?? 0);
+
+        $add($node_id, 'follow', lang('Follow-up'), $target ? 'bi-diagram-3' : 'bi-arrow-return-right', $then['text'] ?? '', '', $n * $row_gap);
+        $edges[] = array('from' => 'step', 'to' => $node_id, 'on' => (string) ($then['on'] ?? ''), 'label' => (string) ($then['label'] ?? ''));
+        $starts($target, $then['target_name'] ?? '', $node_id, (string) ($then['label'] ?? ''));
+    }
+
+    $starters = array();
+
+    foreach ((array) ($item['starters'] ?? array()) as $starter) {
+        // The action starting itself is told as its retry, not as a starter.
+        if ((int) ($starter['id'] ?? 0) !== $id) {
+            $starters[] = array('id' => (int) $starter['id'], 'name' => (string) ($starter['name'] ?? ''));
+        }
+    }
+
+    return array(
+        'v'     => 1,
+        'nodes' => $nodes,
+        'edges' => $edges,
+        'chips' => array(
+            'starters'   => $starters,
+            'started'    => $started,
+            'self_retry' => $self_retry,
+        ),
+    );
 }
 
 /**
@@ -4642,6 +4781,13 @@ function ws_scheduled_js_strings()
         'sa_in_channel'     => lang('Written in'),
         'sa_in_note'        => lang('Written in the note'),
         'sa_started_by'     => lang('Started by'),
+        'sa_show_canvas'    => lang('Show on canvas'),
+        'sa_canvas_back'    => lang('Back to scheduled actions'),
+        'sa_canvas_help'    => lang('Shown read-only. Change it with Edit.'),
+        'sa_canvas_label'   => lang('The parts of the scheduled action, in order'),
+        'sa_canvas_starts'  => lang('Starts'),
+        'sa_canvas_retry'   => lang('Starts itself again'),
+        'sa_canvas_retry_on' => ws_js_template('Starts itself again when: {var:1}', 1),
         'sa_starts'         => lang('Starts'),
         'sa_all'            => lang('All'),
         'sa_state_active'   => lang('Set to run'),

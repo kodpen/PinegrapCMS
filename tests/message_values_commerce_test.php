@@ -47,6 +47,9 @@ function test_message_values_commerce_are_escaped()
 		array('marketplace_settings.php', '$liveform->add_warning(h($loaded[\'error\']));', 1),
 		array('marketplace_settings.php', '$liveform->add_warning(h($ready[\'error\']));', 1),
 		array('marketplace_settings.php', '\'vars\'   => array(h((string)$package[\'remote_order_id\']), h($sent[\'error\']))', 1),
+		array('marketplace_settings.php', '\'vars\'   => array(h($read[\'error\']))', 2),
+		array('marketplace_settings.php', '\'vars\'   => array(h($sent[\'error\']))', 1),
+		array('marketplace_settings.php', '\'vars\'   => array(h((string)$claim[\'order_number\']), h($sent[\'error\']))', 1),
 		array('shipping_address_and_arrival.php', '$liveform->validate_required_field(\'custom_arrival_date_\' . $liveform->get_field_value(\'arrival_date\'), \'A custom arrival date is required, because you selected \' . h($arrival_date_name) . \'.\');', 1),
 		array('update_exchange_rates.php', '\'vars\' => array(h($code))', 1),
 	);

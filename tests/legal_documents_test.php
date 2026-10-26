@@ -735,8 +735,7 @@ function test_legal_documents_order_view_links()
 	pg_assert_contains("empty(\$sw_ctx['email']) ? pg_legal_documents_of_order((int)\$order['id']) : array()", $section, 'no copies in the e-mail');
 	pg_assert_contains("'__legal_preinfo_url'       => h(\$legal_urls['preinfo'])", $section, 'the pre-information form link');
 	pg_assert_contains("'__legal_contract_url'      => h(\$legal_urls['contract'])", $section, 'the contract link');
-	pg_assert_contains('$placed_json = pg_sw_cond_tree_json((string)$tree_json);', $section, 'the tree without its conditions');
-	pg_assert_contains("strpos(\$placed_json, '__legal_preinfo_url') === false", $section, 'a bound link keeps the card away');
+	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__legal_preinfo_url', '__legal_contract_url'))", $section, 'a bound link keeps the card away');
 	pg_assert_same(2, substr_count($section, '. $legal_block;'), 'both ways out add the card');
 }
 

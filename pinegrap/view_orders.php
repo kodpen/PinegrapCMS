@@ -398,7 +398,11 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
         $_SESSION['software']['ecommerce']['view_orders']['payment_method'] = 'any';
     }
 
-    if ((($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == '') || (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'Credit/Debit Card') || (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'PayPal Express Checkout') || (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'Offline Payment')) {
+    // The methods the filter offers: none, the built-in ones it has always
+    // listed and each redirect driver's (pg_payment_driver_methods()).
+    $payment_method_filters = array_merge(array('', 'Credit/Debit Card', 'PayPal Express Checkout', 'Offline Payment'), array_keys(pg_payment_driver_methods()));
+
+    if (in_array((string) ($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? ''), $payment_method_filters, true)) {
         $where .= " AND (orders.payment_method = '" . escape(($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '')) . "')";
     }
 
@@ -2644,6 +2648,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $payment_method_offline_selected = ' selected="selected"';
         }
 
+        // Each redirect driver's method after the built-in ones.
+        $output_payment_method_driver_options = '';
+
+        foreach (array_keys(pg_payment_driver_methods()) as $payment_method_driver) {
+            $output_payment_method_driver_options .= '<option value="' . h($payment_method_driver) . '"' . ((($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') === $payment_method_driver) ? ' selected="selected"' : '') . '>' . h(pg_payment_method_label($payment_method_driver)) . '</option>';
+        }
+
         if (AFFILIATE_PROGRAM == true) {
             $output_affiliate ='
                 <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Affiliate') . '</h5></div>
@@ -2772,7 +2783,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Payment') . '</h5></div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Payment Method') . '</label>
-                            <select class="form-select" name="payment_method"><option value="any"' . $payment_method_any_selected . '>' . lang('Any') . '</option><option value=""' . $payment_method_none_selected . '>' . lang('None') . '</option><option value="Credit/Debit Card"' . $payment_method_credit_debit_card_selected . '>' . lang('Credit/Debit Card') . '</option><option value="PayPal Express Checkout"' . $payment_method_paypal_express_checkout_selected . '>' . lang('PayPal Express Checkout') . '</option><option value="Offline Payment"' . $payment_method_offline_selected . '>' . lang('Offline Payment') . '</option></select>
+                            <select class="form-select" name="payment_method"><option value="any"' . $payment_method_any_selected . '>' . lang('Any') . '</option><option value=""' . $payment_method_none_selected . '>' . lang('None') . '</option><option value="Credit/Debit Card"' . $payment_method_credit_debit_card_selected . '>' . lang('Credit/Debit Card') . '</option><option value="PayPal Express Checkout"' . $payment_method_paypal_express_checkout_selected . '>' . lang('PayPal Express Checkout') . '</option><option value="Offline Payment"' . $payment_method_offline_selected . '>' . lang('Offline Payment') . '</option>' . $output_payment_method_driver_options . '</select>
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label class="form-label">' . lang('Card Type') . '</label>

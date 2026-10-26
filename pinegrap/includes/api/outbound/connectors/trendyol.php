@@ -22,7 +22,9 @@
 // stock and price, read the result of a batch, read order
 // packages (pulled, or delivered by their webhook), accept one (Picking),
 // report one shipped with the seller's own carrier, send the link of a
-// package's invoice, and register or remove that webhook. What it does not
+// package's invoice, read the buyers' returns and approve the ones that came
+// back, read the buyers' questions and answer them, and register or remove
+// that webhook. What it does not
 // name in the table below mp_can() answers no for, so nothing queues work this
 // connector cannot do.
 //
@@ -79,6 +81,10 @@ function mp_trendyol_connector() {
 		'approve_lines'       => 'mp_trendyol_approve_lines',
 		'ship_package'        => 'mp_trendyol_ship_package',
 		'send_invoice_link'   => 'mp_trendyol_send_invoice_link',
+		'claims'              => 'mp_trendyol_claims',
+		'approve_claim'       => 'mp_trendyol_approve_claim',
+		'questions'           => 'mp_trendyol_questions',
+		'answer_question'     => 'mp_trendyol_answer_question',
 		'webhook_packages'    => 'mp_trendyol_webhook_packages',
 		'register_webhook'    => 'mp_trendyol_register_webhook',
 		'remove_webhook'      => 'mp_trendyol_remove_webhook'
@@ -2748,6 +2754,470 @@ function mp_trendyol_send_invoice_link($account, $package, $url, $transport = nu
 	}
 
 	return $result;
+
+}
+
+/* ----------------------------------------------------------------- returns */
+
+// How many returns one page asks for, and how many pages one read takes.
+// Their ceiling for a page is 200; four pages of fifty keep what the screen
+// draws, and what the session keeps of it, to two hundred returns.
+function mp_trendyol_claim_page_size() {
+
+	return 50;
+
+}
+
+function mp_trendyol_claim_pages() {
+
+	return 4;
+
+}
+
+// A return or return unit id as it goes into a path or a body, or false.
+// Theirs are UUIDs, written as text; the documentation types the path's claim
+// id as a string without a pattern, so letters, digits and inner dashes are
+// let through and nothing that could leave the path segment.
+function mp_trendyol_claim_id_fits($id) {
+
+	return is_string($id) && (preg_match('/^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/', $id) === 1);
+
+}
+
+// The returns opened or changed in the last fourteen days, every status.
+//
+// GET /integration/order/sellers/{sellerId}/claims, paged like the order feed.
+// The window is the order feed's: two weeks, an hour inside it. The read stops
+// at the last page their totalPages names, at a short page, or after
+// mp_trendyol_claim_pages() pages, when data['more'] says the list is not all
+// of them. A page that fails makes the whole read an error: a list missing
+// its later pages would look complete.
+//
+// Answers data['claims'] in the shape of mp_trendyol_claim_rows().
+function mp_trendyol_claims($account, $transport = null, $now = null) {
+
+	$now = ($now === null) ? time() : (int)$now;
+
+	$start = ($now - 1209600 + 3600) * 1000;
+
+	$end = $now * 1000;
+
+	$size = mp_trendyol_claim_page_size();
+
+	$claims = array();
+
+	$more = false;
+
+	for ($page = 0; $page < mp_trendyol_claim_pages(); $page++) {
+
+		$result = mp_trendyol_call($account,
+			'/integration/order/sellers/' . mp_trendyol_seller_id($account) . '/claims'
+				. '?startDate=' . $start
+				. '&endDate=' . $end
+				. '&page=' . $page
+				. '&size=' . $size,
+			4194304, $transport);
+
+		if (!$result['ok']) {
+
+			return $result;
+
+		}
+
+		$content = (isset($result['data']['content']) && is_array($result['data']['content']))
+			? $result['data']['content'] : array();
+
+		$claims = array_merge($claims, mp_trendyol_claim_rows($result['data']));
+
+		$total_pages = (isset($result['data']['totalPages']) && is_numeric($result['data']['totalPages']))
+			? (int)$result['data']['totalPages'] : -1;
+
+		$more = (count($content) >= $size) && (($total_pages < 0) || ($page + 1 < $total_pages));
+
+		if (!$more) {
+
+			break;
+
+		}
+
+	}
+
+	return mp_ok(array('claims' => $claims, 'more' => $more));
+
+}
+
+// Their page of returns as a list of
+// {claim_id, order_number, package_id, claimed, customer, carrier, tracking,
+// units: [{id, barcode, product, price, status, waiting, reason, note}]}.
+//
+// A unit is one piece the buyer sends back: a line of two shirts returned is
+// two units, each with its own id, status and reason, and it is units that are
+// approved. Only a unit WaitingInAction is waiting for the seller and can be
+// approved: one Created is still on its way back to the warehouse, one
+// Accepted, Rejected or Cancelled is settled. A return without a usable id, or without a unit, is left out, as
+// is a unit whose id could not be sent back to them. The price is the line's
+// unit price in minor units, VAT inside.
+//
+// cargoTrackingNumber is typed as a 64-bit number but their own example
+// overflows it, so json_decode() makes a float of it; the sender number, which
+// is text, is read instead.
+function mp_trendyol_claim_rows($decoded) {
+
+	$content = (is_array($decoded) && isset($decoded['content']) && is_array($decoded['content']))
+		? $decoded['content'] : array();
+
+	$rows = array();
+
+	foreach ($content as $entry) {
+
+		if (!is_array($entry)) {
+
+			continue;
+
+		}
+
+		$claim_id = mp_trendyol_text($entry, array('claimId', 'id'));
+
+		if (!mp_trendyol_claim_id_fits($claim_id)) {
+
+			continue;
+
+		}
+
+		$units = array();
+
+		foreach ((isset($entry['items']) && is_array($entry['items'])) ? $entry['items'] : array() as $item) {
+
+			if (!is_array($item)) {
+
+				continue;
+
+			}
+
+			$line = (isset($item['orderLine']) && is_array($item['orderLine'])) ? $item['orderLine'] : array();
+
+			$product = mp_trendyol_text($line, array('productName'));
+
+			foreach ((isset($item['claimItems']) && is_array($item['claimItems'])) ? $item['claimItems'] : array() as $unit) {
+
+				$unit_id = is_array($unit) ? mp_trendyol_text($unit, array('id')) : '';
+
+				if (!mp_trendyol_claim_id_fits($unit_id)) {
+
+					continue;
+
+				}
+
+				$reason = '';
+
+				foreach (array('customerClaimItemReason', 'trendyolClaimItemReason') as $key) {
+
+					if (($reason === '') && isset($unit[$key]) && is_array($unit[$key])) {
+
+						$reason = mp_trendyol_text($unit[$key], array('name', 'code'));
+
+					}
+
+				}
+
+				$status = (isset($unit['claimItemStatus']) && is_array($unit['claimItemStatus']))
+					? mp_trendyol_text($unit['claimItemStatus'], array('name')) : '';
+
+				$units[] = array(
+					'id'      => $unit_id,
+					'barcode' => mp_trendyol_text($line, array('barcode')),
+					'product' => mb_substr($product, 0, 200),
+					'price'   => isset($line['price']) ? mp_trendyol_minor($line['price']) : 0,
+					'status'  => $status,
+					'waiting' => ($status === 'WaitingInAction'),
+					'reason'  => mb_substr($reason, 0, 200),
+					'note'    => mb_substr(mp_trendyol_text($unit, array('customerNote')), 0, 500)
+				);
+
+			}
+
+		}
+
+		if (!$units) {
+
+			continue;
+
+		}
+
+		$rows[] = array(
+			'claim_id'     => $claim_id,
+			'order_number' => mp_trendyol_text($entry, array('orderNumber')),
+			'package_id'   => mp_trendyol_text($entry, array('orderShipmentPackageId')),
+			'claimed'      => isset($entry['claimDate']) ? mp_trendyol_seconds($entry['claimDate']) : 0,
+			'customer'     => trim(mp_trendyol_text($entry, array('customerFirstName')) . ' '
+				. mp_trendyol_text($entry, array('customerLastName'))),
+			'carrier'      => mp_trendyol_text($entry, array('cargoProviderName')),
+			'tracking'     => (isset($entry['cargoSenderNumber']) && is_string($entry['cargoSenderNumber']))
+				? trim($entry['cargoSenderNumber']) : '',
+			'units'        => $units
+		);
+
+	}
+
+	return $rows;
+
+}
+
+// Approve units of a return that came back to the warehouse: the buyer is
+// refunded. PUT .../claims/{claimId}/items/approve with
+// {"claimLineItemIdList": [...]}; their optional params object is left out.
+// A successful answer has no documented body, so any 2xx is success.
+//
+// The caller decides which units: the screen sends the waiting units of the
+// return as it read them, never ids posted by the browser.
+function mp_trendyol_approve_claim($account, $claim_id, $unit_ids, $transport = null) {
+
+	if (!mp_trendyol_claim_id_fits($claim_id)) {
+
+		return mp_error(lang('That return has no number to approve.'));
+
+	}
+
+	$ids = array();
+
+	foreach (is_array($unit_ids) ? $unit_ids : array() as $unit_id) {
+
+		if (!mp_trendyol_claim_id_fits($unit_id)) {
+
+			return mp_error(lang('That return has no units waiting for approval.'));
+
+		}
+
+		$ids[$unit_id] = true;
+
+	}
+
+	if (!$ids) {
+
+		return mp_error(lang('That return has no units waiting for approval.'));
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/order/sellers/' . mp_trendyol_seller_id($account) . '/claims/' . $claim_id . '/items/approve',
+		65536, $transport, array('claimLineItemIdList' => array_keys($ids)), 'PUT', true);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(array('approved' => count($ids)));
+
+}
+
+/* --------------------------------------------------------------- questions */
+
+// How many questions one page asks for, and how many pages one read takes.
+// Their reference allows 200 a page, their guide 50; the smaller is asked.
+function mp_trendyol_question_page_size() {
+
+	return 50;
+
+}
+
+function mp_trendyol_question_pages() {
+
+	return 4;
+
+}
+
+// The buyers' questions asked in the last two weeks, every status, newest
+// first.
+//
+// GET /integration/qna/sellers/{sellerId}/questions/filter. Their window is
+// at most two weeks (a longer one is cut to two weeks from its start), so the
+// window is the order feed's: two weeks, an hour inside it. The read stops as
+// the returns read does (mp_trendyol_claims()), and a page that fails makes
+// the whole read an error.
+//
+// Answers data['questions'] in the shape of mp_trendyol_question_rows().
+function mp_trendyol_questions($account, $transport = null, $now = null) {
+
+	$now = ($now === null) ? time() : (int)$now;
+
+	$start = ($now - 1209600 + 3600) * 1000;
+
+	$end = $now * 1000;
+
+	$size = mp_trendyol_question_page_size();
+
+	$questions = array();
+
+	$more = false;
+
+	for ($page = 0; $page < mp_trendyol_question_pages(); $page++) {
+
+		$result = mp_trendyol_call($account,
+			'/integration/qna/sellers/' . mp_trendyol_seller_id($account) . '/questions/filter'
+				. '?startDate=' . $start
+				. '&endDate=' . $end
+				. '&orderByField=CreatedDate'
+				. '&orderByDirection=DESC'
+				. '&page=' . $page
+				. '&size=' . $size,
+			4194304, $transport);
+
+		if (!$result['ok']) {
+
+			return $result;
+
+		}
+
+		$content = (isset($result['data']['content']) && is_array($result['data']['content']))
+			? $result['data']['content'] : array();
+
+		$questions = array_merge($questions, mp_trendyol_question_rows($result['data']));
+
+		$total_pages = (isset($result['data']['totalPages']) && is_numeric($result['data']['totalPages']))
+			? (int)$result['data']['totalPages'] : -1;
+
+		$more = (count($content) >= $size) && (($total_pages < 0) || ($page + 1 < $total_pages));
+
+		if (!$more) {
+
+			break;
+
+		}
+
+	}
+
+	return mp_ok(array('questions' => $questions, 'more' => $more));
+
+}
+
+// Their page of questions as a list of
+// {id, text, status, waiting, asked, user, product, product_url, answer,
+// reason}.
+//
+// Only a question WAITING_FOR_ANSWER can be answered. The answer shown is the
+// active one, else the last rejected one, whose rejection reason is in
+// reason. The buyer's name is kept only where they chose to show it (it is
+// masked by Trendyol either way). The product link is kept only when it is an
+// https address, because the screen draws it as a link. A question without a
+// usable id or without text is left out.
+function mp_trendyol_question_rows($decoded) {
+
+	$content = (is_array($decoded) && isset($decoded['content']) && is_array($decoded['content']))
+		? $decoded['content'] : array();
+
+	$rows = array();
+
+	foreach ($content as $entry) {
+
+		if (!is_array($entry)) {
+
+			continue;
+
+		}
+
+		$id = mp_trendyol_text($entry, array('id'));
+
+		$text = mp_trendyol_text($entry, array('text'));
+
+		if (!mp_trendyol_id_fits($id) || ($text === '')) {
+
+			continue;
+
+		}
+
+		$status = mp_trendyol_text($entry, array('status'));
+
+		$answer = '';
+
+		foreach (array('answer', 'rejectedAnswer') as $key) {
+
+			if (($answer === '') && isset($entry[$key]) && is_array($entry[$key])) {
+
+				$answer = mp_trendyol_text($entry[$key], array('text'));
+
+			}
+
+		}
+
+		$url = mp_trendyol_text($entry, array('webUrl'));
+
+		$rows[] = array(
+			'id'          => $id,
+			'text'        => mb_substr($text, 0, 2000),
+			'status'      => $status,
+			'waiting'     => ($status === 'WAITING_FOR_ANSWER'),
+			'asked'       => isset($entry['creationDate']) ? mp_trendyol_seconds($entry['creationDate']) : 0,
+			'user'        => (isset($entry['showUserName']) && ($entry['showUserName'] === false))
+				? '' : mb_substr(mp_trendyol_text($entry, array('userName')), 0, 100),
+			'product'     => mb_substr(mp_trendyol_text($entry, array('productName')), 0, 200),
+			'product_url' => ((strlen($url) <= 1000) && (preg_match('#^https://[^\s/?\#@]+(?:[/?\#]\S*)?$#i', $url) === 1))
+				? $url : '',
+			'answer'      => mb_substr($answer, 0, 2000),
+			'reason'      => mb_substr(mp_trendyol_text($entry, array('reason')), 0, 500)
+		);
+
+	}
+
+	return $rows;
+
+}
+
+// What is wrong with an answer before it is sent, or ''. Their limits are
+// 10 to 2000 characters.
+function mp_trendyol_answer_problem($text) {
+
+	$length = is_string($text) ? mb_strlen(trim($text)) : 0;
+
+	if ($length < 10) {
+
+		return lang('Write an answer of at least 10 characters.');
+
+	}
+
+	if ($length > 2000) {
+
+		return lang('An answer can be at most 2000 characters long.');
+
+	}
+
+	return '';
+
+}
+
+// Answer a buyer's question. POST .../questions/{id}/answers with {"text"};
+// Trendyol reviews the answer before it is published. A successful answer is
+// a bare JSON string, which the reader takes as success with no data.
+function mp_trendyol_answer_question($account, $question_id, $text, $transport = null) {
+
+	$question_id = is_scalar($question_id) ? trim((string)$question_id) : '';
+
+	if (!mp_trendyol_id_fits($question_id)) {
+
+		return mp_error(lang('That question has no number to answer.'));
+
+	}
+
+	$problem = mp_trendyol_answer_problem($text);
+
+	if ($problem !== '') {
+
+		return mp_error($problem);
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/qna/sellers/' . mp_trendyol_seller_id($account) . '/questions/' . $question_id . '/answers',
+		65536, $transport, array('text' => trim($text)), 'POST', true);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(array('answered' => true));
 
 }
 

@@ -608,7 +608,7 @@ function bs6_scope_kind($path)
 	$editor = array(
 		'assets/js/style_designer.js', 'assets/css/style_designer.css', 'includes/designer_screen.php',
 		'includes/fn/designer.php', 'includes/designer_ai.php', 'assets/js/pg_style_suggest.js',
-		'assets/js/pg_style_predict.js', 'includes/fn/designer_vocab.php',
+		'assets/js/pg_style_predict.js', 'includes/fn/designer_vocab.php', 'assets/js/pg_style_complete.js',
 	);
 	if (in_array($path, $editor, true)) {
 		return 'editor';

@@ -146,14 +146,9 @@ if (!$_POST) {
                                                     'id' => 'item_class',
                                                     'class' => 'form-control tagin border-0 min-width-tagin',
                                                     'data-placeholder' => lang('Add classes'),
-                                                    'maxlength' => '255')) . '
-                                                <script>
-                                                    if(document.body.contains(document.querySelector("input#item_class"))){
-                                                        tagin( document.querySelector("#item_class"),{
-                                                            separator : " "
-                                                        });
-                                                    }
-                                                </script>
+                                                    'data-pg-chips' => '',
+                                                    'data-pg-separator' => ' ',
+                                                    'maxlength' => '255')) . pg_fields_script() . '
                                                 <div class="input-group-text bg-reset border-0">"&gt;</div>
                                             </div>
                                             <div class="form-text text-end">' . lang('One or More Custom Classes for the Menu Item. Separate classes with a space') . '</div>

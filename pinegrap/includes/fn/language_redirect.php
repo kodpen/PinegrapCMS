@@ -524,12 +524,13 @@ function pg_lang_redirect_page($page_id, $is_home)
 
     // Only a page drawn from a layout tree exists in the other languages: the
     // same test the translated body is drawn by (includes/translate/render.php).
-    // layout_type alone is not it - the legacy system layouts carry 'system' too.
+    // Not layout_type: the legacy system layouts carry 'system' too, and a
+    // classic page converted to a design keeps 'custom'.
     $tree_expression = pg_page_tree_sql_expr();
     $has_tree = db_value("SELECT ($tree_expression IS NOT NULL AND $tree_expression <> '')
                           FROM page
                           INNER JOIN style ON page.page_style = style.style_id
-                          WHERE page.page_id = '" . (int) $page_id . "' AND page.layout_type = 'system' LIMIT 1");
+                          WHERE page.page_id = '" . (int) $page_id . "' LIMIT 1");
 
     if (!$has_tree) {
         return;

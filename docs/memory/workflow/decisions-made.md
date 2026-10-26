@@ -6,7 +6,7 @@ description: The decisions list: places reviewed and kept as they are on purpose
 ## What is this list?
 - Places that were reviewed and are kept as they are on purpose. Nothing in the code says why, so audits keep reporting them as "dead code", "unused field" or "missing check". Finding one is not a finding: the decision is made (CLAUDE.md fixed rule 6).
 - Read it before writing any audit finding and before proposing a cleanup or refactor.
-- Parts: this file (code and files); `decisions-made-access.md` (open doors, gates, secrets, TLS: the security hand-off issues #59, #62, #67, #68, #70); `decisions-made-data.md` (columns, dumps, migrations, database servers); `decisions-made-product.md` (checkout totals, translation, designer, SEO, legacy layer, ERP limits).
+- Parts: this file (code and files); `decisions-made-access.md` (open doors, gates, secrets, TLS: the security hand-off issues #59, #62, #67, #68, #70); `decisions-made-data.md` (columns, dumps, migrations, database servers); `decisions-made-product.md` (checkout totals, translation, designer, SEO, legacy layer, ERP limits, erasure); `decisions-made-widgets.md` (system widget conditions, old blocks, layout gallery, entity values).
 
 ## How is it treated?
 - Do not change, clean up or "improve" a listed place. If you really believe an entry is wrong, ask before acting; changing it silently breaks this rule.

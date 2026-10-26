@@ -68,11 +68,13 @@ if (!$_POST) {
         }
     }
 
-    // Everything the site keeps about this contact, for a KVKK / GDPR request
-    // (privacy_export.php is open to staff only).
+    // Everything the site keeps about this contact, and its erasure, for a
+    // KVKK / GDPR request (privacy_export.php and privacy_erase.php are open
+    // to staff only).
     if ($user['role'] < 3) {
         $output_bar_links .= '
-                    <a class="btn btn-link link-secondary py-0 mb-2 " href="privacy_export.php?contact_id=' . (int) $id . '"><i class="bi bi-person-down me-1" aria-hidden="true"></i>' . lang('Export personal data') . '</a>';
+                    <a class="btn btn-link link-secondary py-0 mb-2 " href="privacy_export.php?contact_id=' . (int) $id . '"><i class="bi bi-person-down me-1" aria-hidden="true"></i>' . lang('Export personal data') . '</a>
+                    <a class="btn btn-link link-secondary py-0 mb-2 " href="privacy_erase.php?contact_id=' . (int) $id . '"><i class="bi bi-person-x me-1" aria-hidden="true"></i>' . lang('Erase personal data') . '</a>';
     }
 
     // Where the contact was talked about in the workspace, its customer
@@ -693,12 +695,9 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 my-2">
                                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
-                                            <input value="' . $expiration_date . '" type="text" name="expiration_date" id="expiration_date" class="form-control" />
+                                            <input value="' . $expiration_date . '" type="text" name="expiration_date" id="expiration_date" class="form-control" data-pg-date />
                                             <div class="form-text text-end">' . lang('leave blank for lifetime membership') . '</div>
-                                            ' . get_date_picker_format() . '
-                                            <script>
-                                                $("#expiration_date").datepicker(datetimepicker_options);
-                                            </script>
+                                            ' . get_date_picker_format() . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>

@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; steps 1-3 done: #738, #813, #905, #1383, #938; next step 4): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+description: Plan (approved 2026-10-19; steps 1-4b done, last #1706 and #1792; next 5): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -17,15 +17,13 @@ description: Plan (approved 2026-10-19; steps 1-3 done: #738, #813, #905, #1383,
 1. Done (#738): `consent_log`, `audit_log` (11.0.16), `includes/fn/privacy.php`, `includes/fn/audit.php`; consent writers in `core/consent-log-writers.md`.
 2. Done (#813, #905, #1383): save paths in `core/audit-trail-writers.md`, the Workspace's in `core/audit-trail-workspace.md`.
 3. Done (#938): `privacy_export.php`, JSON pack, PDF summary; `core/personal-data-export.md`.
-4. Erasure wizard with dry-run (M).
+4. Done (#1706): `privacy_erase.php`, `core/personal-data-erasure.md`; the owner's answers in `workflow/decisions-made-product.md`.
+4b. Done (#1792): feed tokens in clear in early SEO settings lines masked in place, step 11.0.38 (`core/audit-trail-stored-values.md`).
 5. Audit screen (JSON text is stored as object, list or compacted text: `core/audit-trail-stored-values.md`), export, API; retention jobs (S–M).
 
 ## Open questions?
-- Owner: a site that ran `development` between #813 and #905 may keep the feed token in clear text in `audit_log` rows with `label = 'seo'`. Delete them?
 - The export leaves out the site log, `audit_log` rows about the person and `visitors` (`core/personal-data-export.md`): add them later?
-- A deleted order or user keeps its whole row in `audit_log.before_json`: anonymise it in step 4 or keep it for the trail's retention?
-- Keep order e-mail for refund disputes after erasure? Keep the hashed token and the PSP reference only; refunds use the PSP reference.
 - Which step writes cookie and `contract` consent rows? `sms-and-iys.md` step 4 (PR #1581) added the e-mail marketing writers (`core/consent-log-writers.md`); the cookie notice's server endpoint and a `contract` row next to `order_documents` are not assigned.
 
 ## Where to start?
-- Step 4. Erasure reuses `pg_privacy_export_find()`; `core/personal-data-export.md` lists where a person's data lives. Read `core/consent-log-and-audit-trail.md` and `core/audit-trail-writers.md` first. The plan's `[NEW]` line is in (export); step 4 widens it, no second line.
+- Step 5. Read `core/audit-trail-stored-values.md` and `core/audit-trail-writers.md` first. The plan's `[NEW]` line is in (export); steps 4 and 5 widen it, no second line.

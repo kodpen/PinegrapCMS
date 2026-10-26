@@ -1308,7 +1308,7 @@ function pg_proto_design_pages($style_id)
         "SELECT page_id, page_name, page_title, page_folder" . ($schedule ? ", publish_at" : "") . "
         FROM page
         WHERE page_style = '" . $style_id . "'
-            AND layout_type = 'system'
+            AND " . pg_page_visual_design_sql() . "
             AND page_folder = '" . (int) $draft_folder . "'" . pg_designer_not_binned_sql('page_folder') . "
         ORDER BY page_id");
 

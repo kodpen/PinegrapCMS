@@ -12,7 +12,7 @@ description: Connected accounts at work: mail through Gmail or Microsoft 365, cl
 - A large file goes in 10 MiB parts, each through `pg_connect_api()`, so a token that runs out half-way is renewed between parts. A Graph upload session's `uploadUrl` gets no token: it is called with `api_http_request()` directly.
 
 ## How is a response header read?
-- An outgoing call that needs one (a resumable upload's `Location`, an MCP server's session) passes `'response_headers' => true` to `api_http_request()`; the answer then carries `headers` (lower-case name => value, the last of a repeated name wins).
+- An outgoing call that needs one (a resumable upload's `Location`, an MCP server's session) passes `'response_headers' => true` to `api_http_request()`; the answer then carries `headers` (lower-case name => value, built by `api_http_header_line()`: the last of a repeated name wins, except WWW-Authenticate, whose lines are joined with ", " so a Bearer challenge after a Basic one is still read).
 - Every answer also carries `errno`: curl's error number when curl failed (28 a timeout), else 0, also for an address refused before curl ran. `error` stays curl's words plus the TLS hint; the MCP client turns 28, 7 and 6 into sentences (`api-mcp-client.md`).
 
 ## What does api_http_request() refuse? (`includes/api/outbound/http.php`)

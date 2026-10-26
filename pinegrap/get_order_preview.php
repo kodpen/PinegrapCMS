@@ -20,6 +20,10 @@ function get_order_preview($properties) {
     
     $page_id = $properties['page_id'];
     $device_type = $properties['device_type'];
+    // The designer's order preview widget asks for the custom layout's
+    // values and form instead of the drawn page (widgets_order_preview.php),
+    // so its figures are the ones computed here.
+    $layout_data_only = !empty($properties['layout_data_only']);
 
     $properties = get_page_type_properties($page_id, 'order preview');
 
@@ -31,7 +35,7 @@ function get_order_preview($properties) {
     $offline_payment_always_allowed = $properties['offline_payment_always_allowed'];
     $offline_payment_label = $properties['offline_payment_label'];
 
-    $layout_type = get_layout_type($page_id);
+    $layout_type = $layout_data_only ? 'custom' : get_layout_type($page_id);
     
     // store page id for order preview page in case we need to come back to this page later in the order process
     $_SESSION['ecommerce']['order_preview_page_id'] = $page_id;
@@ -1443,6 +1447,10 @@ function get_order_preview($properties) {
         // assume that the pay with iyzico payment method will not be shown until we find out otherwise
         $show_pay_with_iyzico_payment_method = FALSE;
 
+        // The redirect drivers' methods this order is offered (pg_payment_checkout_methods()),
+        // each drawn as a radio after Pay With Iyzico.
+        $payment_driver_methods = pg_payment_checkout_driver_methods($recurring_transaction == TRUE);
+
         $output_surcharge_rows = '';
         
         // if a non-recurring or recurring transaction is required and at least one payment method will be outputted,
@@ -1456,6 +1464,7 @@ function get_order_preview($properties) {
             (
                 ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS === true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true)))
                 || ((ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == TRUE) && ($recurring_transaction == FALSE))
+                || ($payment_driver_methods !== array())
                 ||
                 (
                     (ECOMMERCE_OFFLINE_PAYMENT == TRUE)
@@ -1497,6 +1506,7 @@ function get_order_preview($properties) {
                 if (
                     ($show_paypal_express_checkout_payment_method == FALSE)
                     && ($show_pay_with_iyzico_payment_method == FALSE)
+                    && ($payment_driver_methods === array())
                     &&
                     (
                         (ECOMMERCE_OFFLINE_PAYMENT == FALSE)
@@ -1573,6 +1583,7 @@ function get_order_preview($properties) {
                     if (
                         ($show_paypal_express_checkout_payment_method)
                         || ($show_pay_with_iyzico_payment_method)
+                        || ($payment_driver_methods !== array())
                         ||
                         (
                             (ECOMMERCE_OFFLINE_PAYMENT)
@@ -1706,6 +1717,7 @@ function get_order_preview($properties) {
                 if (
                     ($show_credit_debit_card_payment_method == FALSE)
                     && ($show_pay_with_iyzico_payment_method == FALSE)
+                    && ($payment_driver_methods === array())
                     &&
                     (
                         (ECOMMERCE_OFFLINE_PAYMENT == FALSE)
@@ -1731,6 +1743,7 @@ function get_order_preview($properties) {
                 if (
                     ($show_credit_debit_card_payment_method == FALSE)
                     && ($show_paypal_express_checkout_payment_method == FALSE)
+                    && ($payment_driver_methods === array())
                     &&
                     (
                         (ECOMMERCE_OFFLINE_PAYMENT == FALSE)
@@ -1748,6 +1761,29 @@ function get_order_preview($properties) {
                 }
 
                 $output_payment_methods .= '<div class="payment data" style="margin-bottom: 1em">' . $form->output_field(array('type'=>'radio', 'name'=>'payment_method', 'id'=>'payment_method_pay_with_iyzico', 'value'=>'Pay With Iyzico', 'checked'=>$pay_with_iyzico_checked, 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="payment_method_pay_with_iyzico"> <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/iyzico.png" width="80" height="26" border="0" alt="' . h(lang('Pay with Iyzico')) . '" onclick="document.getElementById(\'payment_method_pay_with_iyzico\').checked = true;"></label></div>';
+            }
+
+            // A redirect driver's method: its own radio, selected when it is the only method.
+            foreach ($payment_driver_methods as $payment_driver_method => $payment_driver_label) {
+                $payment_driver_method_id = 'payment_method_' . preg_replace('/[^a-z0-9]+/', '_', strtolower($payment_driver_method));
+
+                $payment_driver_method_checked = (
+                    ($show_credit_debit_card_payment_method == FALSE)
+                    && ($show_paypal_express_checkout_payment_method == FALSE)
+                    && ($show_pay_with_iyzico_payment_method == FALSE)
+                    && (count($payment_driver_methods) == 1)
+                    &&
+                    (
+                        (ECOMMERCE_OFFLINE_PAYMENT == FALSE)
+                        ||
+                        (
+                            ($offline_payment_allowed == '0')
+                            && ($offline_payment_always_allowed == 0)
+                        )
+                    )
+                ) ? 'checked' : '';
+
+                $output_payment_methods .= '<div class="payment data" style="margin-bottom: 1em">' . $form->output_field(array('type'=>'radio', 'name'=>'payment_method', 'id'=>$payment_driver_method_id, 'value'=>$payment_driver_method, 'checked'=>$payment_driver_method_checked, 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="' . h($payment_driver_method_id) . '"> ' . h($payment_driver_label) . '</label></div>';
             }
 
             // if allow offline orders is on, and if this order is allowed to be paid for offline, then output the offline payment method
@@ -1768,7 +1804,7 @@ function get_order_preview($properties) {
                 $_SESSION['ecommerce']['offline_payment_label'] = $offline_payment_label;
                 
                 // if the offline payment method is the only payment method, then select radio button by default
-                if (($show_credit_debit_card_payment_method == FALSE) && ($show_paypal_express_checkout_payment_method == FALSE) && ($show_pay_with_iyzico_payment_method == FALSE)) {
+                if (($show_credit_debit_card_payment_method == FALSE) && ($show_paypal_express_checkout_payment_method == FALSE) && ($show_pay_with_iyzico_payment_method == FALSE) && ($payment_driver_methods === array())) {
                     $offline_payment_checked = 'checked';
                     
                 } else {
@@ -1827,6 +1863,7 @@ function get_order_preview($properties) {
             (
                 (ECOMMERCE_GIFT_CARD == FALSE)
                 && (ECOMMERCE_CREDIT_DEBIT_CARD == FALSE)
+                && ($payment_driver_methods === array())
                 &&
                 (
                     (ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == FALSE)
@@ -2035,6 +2072,7 @@ function get_order_preview($properties) {
         $pay_with_iyzico = false;
         $pay_with_iyzico_image_url = '';
         $offline_payment = false;
+        $payment_driver_methods = array();
         $terms_url = '';
         $purchase_now_button = false;
         $installment = false;
@@ -2879,6 +2917,7 @@ function get_order_preview($properties) {
                 (
                     ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS === true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true)))
                     || ((ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == TRUE) && ($recurring_transaction == FALSE))
+                    || (pg_payment_checkout_driver_methods($recurring_transaction == TRUE) !== array())
                     ||
                     (
                         (ECOMMERCE_OFFLINE_PAYMENT == TRUE)
@@ -2918,6 +2957,11 @@ function get_order_preview($properties) {
                     $number_of_payment_methods++;
                 }
 
+                // The redirect drivers' methods this order is offered
+                // (pg_payment_checkout_methods()), method => label.
+                $payment_driver_methods = pg_payment_checkout_driver_methods($recurring_transaction == TRUE);
+                $number_of_payment_methods += count($payment_driver_methods);
+
                 // If offline payment method should be available to this order,
                 // then remember that.
                 if (
@@ -2941,7 +2985,7 @@ function get_order_preview($properties) {
 
                     // If credit/debit card is the only payment method, then select that method by
                     // default.
-                    if (!$paypal_express_checkout and !$pay_with_iyzico and !$offline_payment) {
+                    if (!$paypal_express_checkout and !$pay_with_iyzico and !$payment_driver_methods and !$offline_payment) {
                         $form->set('payment_method', 'Credit/Debit Card');
                     }
 
@@ -3056,7 +3100,7 @@ function get_order_preview($properties) {
                         // If there are multiple payment methods, then output surcharge warning,
                         // because the surcharge might not have been included in the totals
                         // above until the customer selected the credit card payment method.
-                        if ($paypal_express_checkout or $pay_with_iyzico or $offline_payment) {
+                        if ($paypal_express_checkout or $pay_with_iyzico or $payment_driver_methods or $offline_payment) {
                             $surcharge_message = true;
                         }
 
@@ -3239,6 +3283,7 @@ function get_order_preview($properties) {
                     if (
                         !$credit_debit_card
                         and !$pay_with_iyzico
+                        and !$payment_driver_methods
                         and !$offline_payment
                     ) {
                         $form->set('payment_method', 'PayPal Express Checkout');
@@ -3255,12 +3300,24 @@ function get_order_preview($properties) {
                     if (
                         !$credit_debit_card
                         and !$paypal_express_checkout
+                        and !$payment_driver_methods
                         and !$offline_payment
                     ) {
                         $form->set('payment_method', 'Pay With Iyzico');
                     }
 
                     $pay_with_iyzico_image_url = PATH . SOFTWARE_DIRECTORY . '/assets/images/iyzico.png';
+                }
+
+                // A redirect driver's method that is the only payment method is selected by default.
+                if (
+                    !$credit_debit_card
+                    and !$paypal_express_checkout
+                    and !$pay_with_iyzico
+                    and !$offline_payment
+                    and (count($payment_driver_methods) == 1)
+                ) {
+                    $form->set('payment_method', key($payment_driver_methods));
                 }
 
                 // If offline payment method should be shown, then prepare.
@@ -3272,6 +3329,7 @@ function get_order_preview($properties) {
                         !$credit_debit_card
                         and !$paypal_express_checkout
                         and !$pay_with_iyzico
+                        and !$payment_driver_methods
                     ) {
                         $form->set('payment_method', 'Offline Payment');
                     }
@@ -3313,6 +3371,7 @@ function get_order_preview($properties) {
                 (
                     (ECOMMERCE_GIFT_CARD == FALSE)
                     && (ECOMMERCE_CREDIT_DEBIT_CARD == FALSE)
+                    && ($payment_driver_methods === array())
                     &&
                     (
                         (ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == FALSE)
@@ -3399,7 +3458,7 @@ function get_order_preview($properties) {
             }
         }
 
-        $content = render_layout(array(
+        $layout_data = array(
             'page_id' => $page_id,
             'messages' => $form->get_messages(),
             'form' => $form,
@@ -3478,6 +3537,7 @@ function get_order_preview($properties) {
             'pay_with_iyzico' => $pay_with_iyzico,
             'pay_with_iyzico_image_url' => $pay_with_iyzico_image_url,
             'offline_payment' => $offline_payment,
+            'payment_driver_methods' => $payment_driver_methods,
             'offline_payment_label' => $offline_payment_label,
             'terms_url' => $terms_url,
             'system' => $system,
@@ -3490,7 +3550,13 @@ function get_order_preview($properties) {
             'installment' => $installment,
             'installment_table' => $installment_table,
             'threedsecure' => $threedsecure,
-            'threedsecure_required' => $threedsecure_required));
+            'threedsecure_required' => $threedsecure_required);
+
+        if ($layout_data_only) {
+            return $layout_data;
+        }
+
+        $content = render_layout($layout_data);
             
         $content = $form->prepare($content);
 

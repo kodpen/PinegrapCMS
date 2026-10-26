@@ -40,18 +40,12 @@ function pg_chat_ready($recheck = false)
         return $ready;
     }
 
-    $ready = false;
-
-    if (!class_exists('db') || !isset(db::$con) || !db::$con) {
-        return $ready;
+    if ($recheck) {
+        pg_schema_forget('chat_conversations');
+        pg_schema_forget('chat_messages');
     }
 
-    $conversations_table = db_item("SHOW TABLES LIKE 'chat_conversations'");
-    $messages_table = db_item("SHOW TABLES LIKE 'chat_messages'");
-
-    if ($conversations_table && $messages_table) {
-        $ready = true;
-    }
+    $ready = (pg_schema_has('chat_conversations') && pg_schema_has('chat_messages'));
 
     return $ready;
 }
@@ -71,7 +65,7 @@ function pg_chat_typing_ready()
     static $ready = null;
 
     if ($ready === null) {
-        $ready = (pg_chat_ready() && db_item("SHOW COLUMNS FROM chat_conversations LIKE 'initiator_typing_until'")) ? true : false;
+        $ready = (pg_chat_ready() && pg_schema_has('chat_conversations', 'initiator_typing_until')) ? true : false;
     }
 
     return $ready;
@@ -84,7 +78,7 @@ function pg_chat_attachments_ready()
     static $ready = null;
 
     if ($ready === null) {
-        $ready = (pg_chat_ready() && db_item("SHOW COLUMNS FROM chat_messages LIKE 'attachment_file_id'")) ? true : false;
+        $ready = (pg_chat_ready() && pg_schema_has('chat_messages', 'attachment_file_id')) ? true : false;
     }
 
     return $ready;
@@ -102,7 +96,7 @@ function pg_chat_audio_ready()
         $ready = false;
 
         if (pg_chat_attachments_ready()) {
-            $column = db_item("SHOW COLUMNS FROM chat_messages LIKE 'attachment_kind'");
+            $column = db_item("SHOW COLUMNS FROM chat_messages WHERE Field = 'attachment_kind'");
 
             $ready = (is_array($column) && isset($column['Type']) && strpos($column['Type'], "'audio'") !== false);
         }

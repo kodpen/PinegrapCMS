@@ -999,6 +999,207 @@ function pg_payment_settings_redirect_rows()
 
 
 /* ---------------------------------------------------------------------------
+   Checkout payment methods: the one list every checkout screen offers
+   --------------------------------------------------------------------------- */
+
+/**
+ * The payment methods the store has always had, as orders.payment_method
+ * stores them, in the order the checkout lists them. Each has its own switch
+ * on the Ecommerce card (config), Pay With Iyzico included: its driver keeps
+ * the config switch ('settings' => 'config').
+ *
+ * @return array
+ */
+function pg_payment_builtin_methods()
+{
+    return array('Credit/Debit Card', 'PayPal Express Checkout', 'Pay With Iyzico', 'Offline Payment');
+}
+
+/**
+ * The payment methods of the redirect drivers whose switch is the Ecommerce
+ * card's driver row (settings in connect_apps), in registration order.
+ *
+ * @param bool $enabled_only only the drivers switched on
+ * @return array method => driver key
+ */
+function pg_payment_driver_methods($enabled_only = false)
+{
+    $methods = array();
+
+    foreach (pg_payment_drivers() as $key => $definition) {
+        if (($definition['kind'] !== 'redirect') || ($definition['settings'] !== 'connect')
+            || in_array($definition['method'], pg_payment_builtin_methods(), true)) {
+            continue;
+        }
+
+        if ($enabled_only) {
+            $settings = pg_payment_settings($key);
+
+            if (!$settings['enabled']) {
+                continue;
+            }
+        }
+
+        $methods[$definition['method']] = $key;
+    }
+
+    return $methods;
+}
+
+/**
+ * Every value orders.payment_method can carry from a checkout: the built-in
+ * methods, then the redirect drivers' methods, switched on or not.
+ *
+ * @return array
+ */
+function pg_payment_method_values()
+{
+    return array_values(array_unique(array_merge(pg_payment_builtin_methods(), array_keys(pg_payment_driver_methods()))));
+}
+
+/**
+ * The name a visitor reads for a payment method: the translation of a
+ * built-in method, the driver's own label (as the service writes its name)
+ * for a driver's method, the value itself for anything else.
+ *
+ * @param string $method
+ * @return string
+ */
+function pg_payment_method_label($method)
+{
+    $method = (string) $method;
+
+    if (in_array($method, pg_payment_builtin_methods(), true)) {
+        return lang($method);
+    }
+
+    $key = pg_payment_driver_for_method($method);
+    $definition = ($key !== '') ? pg_payment_driver($key) : null;
+
+    return ($definition !== null) ? $definition['label'] : $method;
+}
+
+/**
+ * Which payment methods an order is offered, decided from the switches
+ * alone: no database, no constants.
+ *
+ * The order is the checkout's: the card, PayPal Express Checkout, Pay With
+ * Iyzico, the redirect drivers, Offline Payment. A redirect method (PayPal,
+ * Pay With Iyzico, a driver's) takes one payment and cannot charge a
+ * subscription again, so an order with a recurring line gets none. Offline
+ * Payment is offered only when the order may be paid offline (its products
+ * allow it, or the page always allows it).
+ *
+ * @param array $switches        built-in method => bool (its config switch)
+ * @param array $driver_methods  the methods of the redirect drivers switched on
+ * @param bool  $recurring       the order has a recurring line
+ * @param bool  $offline_allowed the order may be paid offline
+ * @return array methods
+ */
+function pg_payment_checkout_methods_decide($switches, $driver_methods, $recurring, $offline_allowed)
+{
+    $on = function ($method) use ($switches) {
+        return !empty($switches[$method]);
+    };
+
+    $methods = array();
+
+    if ($on('Credit/Debit Card')) {
+        $methods[] = 'Credit/Debit Card';
+    }
+
+    if (!$recurring) {
+        foreach (array('PayPal Express Checkout', 'Pay With Iyzico') as $method) {
+            if ($on($method)) {
+                $methods[] = $method;
+            }
+        }
+
+        foreach ((array) $driver_methods as $method) {
+            if (is_string($method) && ($method !== '') && !in_array($method, pg_payment_builtin_methods(), true)
+                && !in_array($method, $methods, true)) {
+                $methods[] = $method;
+            }
+        }
+    }
+
+    if ($on('Offline Payment') && $offline_allowed) {
+        $methods[] = 'Offline Payment';
+    }
+
+    return $methods;
+}
+
+/**
+ * The switch of each built-in method, from the store's config. With
+ * $card_brands the card counts as on only while at least one card brand is
+ * accepted, as the designer's express order widget has always asked.
+ *
+ * @param bool $card_brands
+ * @return array method => bool
+ */
+function pg_payment_builtin_switches($card_brands = false)
+{
+    $on = function ($constant) {
+        return defined($constant) && (constant($constant) == true);
+    };
+
+    $card = $on('ECOMMERCE_CREDIT_DEBIT_CARD');
+
+    if ($card && $card_brands) {
+        $card = $on('ECOMMERCE_VISA') || $on('ECOMMERCE_MASTERCARD')
+            || (defined('ECOMMERCE_AMERICAN_EXPRESS') && (ECOMMERCE_AMERICAN_EXPRESS === true))
+            || $on('ECOMMERCE_DINERS_CLUB') || $on('ECOMMERCE_DISCOVER_CARD') || $on('ECOMMERCE_TROY');
+    }
+
+    return array(
+        'Credit/Debit Card'       => $card,
+        'PayPal Express Checkout' => $on('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT'),
+        'Pay With Iyzico'         => $on('ECOMMERCE_PAY_WITH_IYZICO'),
+        'Offline Payment'         => $on('ECOMMERCE_OFFLINE_PAYMENT'),
+    );
+}
+
+/**
+ * The payment methods an order is offered, from the store's config and the
+ * redirect drivers switched on (pg_payment_checkout_methods_decide()).
+ *
+ * @param array $order recurring (bool, default false), offline_allowed (bool,
+ *                     default true), card_brands (bool, default false: see
+ *                     pg_payment_builtin_switches())
+ * @return array methods
+ */
+function pg_payment_checkout_methods($order = array())
+{
+    return pg_payment_checkout_methods_decide(
+        pg_payment_builtin_switches(!empty($order['card_brands'])),
+        array_keys(pg_payment_driver_methods(true)),
+        !empty($order['recurring']),
+        !array_key_exists('offline_allowed', $order) || !empty($order['offline_allowed'])
+    );
+}
+
+/**
+ * The redirect drivers' methods an order is offered, for the classic
+ * checkout pages that draw the built-in methods each in its own markup:
+ * none for an order with a recurring line.
+ *
+ * @param bool $recurring
+ * @return array method => label
+ */
+function pg_payment_checkout_driver_methods($recurring)
+{
+    $methods = array();
+
+    foreach (pg_payment_checkout_methods_decide(array(), array_keys(pg_payment_driver_methods(true)), (bool) $recurring, false) as $method) {
+        $methods[$method] = pg_payment_method_label($method);
+    }
+
+    return $methods;
+}
+
+
+/* ---------------------------------------------------------------------------
    Checkout (submit_order.php)
    --------------------------------------------------------------------------- */
 

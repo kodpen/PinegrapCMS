@@ -16564,6 +16564,16 @@
         });
         tools.appendChild(copy);
 
+        // The action drawn read-only on the flow canvas: in the Scheduled
+        // actions section of Flows, where workspace_flow.js is loaded.
+        if ((CFG.mode === 'flows') && window.PGWsFlow && window.PGWsFlow.showAction) {
+            var canvas = button('btn btn-sm btn-ghost', t('sa_show_canvas'), 'bi-diagram-3');
+            canvas.addEventListener('click', function () {
+                scheduledGraph(item.id);
+            });
+            tools.appendChild(canvas);
+        }
+
         var history = button('btn btn-sm btn-ghost', t('sa_history'), 'bi-clock-history');
         var historyBox = el('div', 'ws-sa-history');
         historyBox.hidden = true;
@@ -16608,6 +16618,18 @@
         card.appendChild(historyBox);
 
         return card;
+    }
+
+    // A scheduled action on the flow canvas (ws_scheduled_get answers its
+    // graph); Edit there opens the form, and the action saved is drawn again.
+    function scheduledGraph(id) {
+        api('ws_scheduled_get', { id: id }).then(function (data) {
+            window.PGWsFlow.showAction(data.item, data.graph, {
+                edit: data.item.can_edit ? function () {
+                    scheduledForm(null, data.item, function (fresh) { scheduledGraph(fresh.id); });
+                } : null
+            });
+        }).catch(fail);
     }
 
     // The screen's run: started when ws_sync says something is due, not

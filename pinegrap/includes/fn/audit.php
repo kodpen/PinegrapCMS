@@ -376,6 +376,60 @@ function pg_audit_json(array $values)
 }
 
 /**
+ * A stored side masked again by today's rule. A line written before JSON
+ * text was decoded (#905) kept such a text as it was, whole or cut to its
+ * start, so the secrets under their own names inside it (the feed tokens of
+ * config.product_feeds) stayed in clear. Pure.
+ *
+ * @param mixed $json  before_json or after_json as stored
+ * @return mixed  the text to store; the same value when nothing changes
+ */
+function pg_audit_remask($json)
+{
+    $values = (is_string($json) && ($json !== '')) ? json_decode($json, true) : null;
+
+    if (!is_array($values)) {
+        return $json;
+    }
+
+    $masked = pg_audit_mask_starts(pg_audit_redact($values));
+
+    return ($masked === $values) ? $json : pg_audit_json($masked);
+}
+
+/**
+ * The start a compacted value keeps (pg_audit_compact()) with the secrets in
+ * it masked: a cut JSON text no longer decodes, so each "name": "value" pair
+ * whose name is a secret's (pg_audit_secret_key()) has its value replaced
+ * with ***, the last one too when the cut falls inside it. Pure.
+ *
+ * @param array $values  a redacted side
+ * @return array
+ */
+function pg_audit_mask_starts(array $values)
+{
+    if (!empty($values['truncated']) && isset($values['start']) && is_string($values['start'])) {
+        $start = preg_replace_callback('/"([^"\\\\]{1,64})"(\s*:\s*)"((?:[^"\\\\]|\\\\.)*)/u', function ($match) {
+            return (($match[3] !== '') && pg_audit_secret_key($match[1])) ? '"' . $match[1] . '"' . $match[2] . '"***' : $match[0];
+        }, $values['start']);
+
+        if (is_string($start)) {
+            $values['start'] = $start;
+        }
+
+        return $values;
+    }
+
+    foreach ($values as $key => $value) {
+        if (is_array($value)) {
+            $values[$key] = pg_audit_mask_starts($value);
+        }
+    }
+
+    return $values;
+}
+
+/**
  * The row a change becomes, without who and where (pg_audit() adds those).
  *
  * action is a verb (create, update, delete, restore, publish…) and

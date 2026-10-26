@@ -406,7 +406,10 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That scheduled action could not be found.'));
             }
 
-            return ws_action_ok(array('item' => ws_scheduled_present($viewer, $scheduled, true)));
+            $item = ws_scheduled_present($viewer, $scheduled, true);
+
+            // The graph "Show on canvas" draws (ws_scheduled_graph()).
+            return ws_action_ok(array('item' => $item, 'graph' => ws_scheduled_graph($item)));
 
         case 'ws_scheduled_save':
             $result = ws_scheduled_save($viewer, array(
@@ -2132,6 +2135,19 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('history' => $history));
+
+        // "Remind me about this customer" on that card: a follow-up task for
+        // the person asking (includes/workspace/followups.php).
+        case 'ws_channel_customer_followup':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $made = ws_customer_followup_open($viewer, $channel, $request);
+
+            return $made['ok'] ? ws_action_ok(array('task' => $made['task'])) : ws_action_error($made['error'], $made['field']);
 
         case 'ws_channel_members_add':
             $channel = ws_action_channel($viewer, $request, 'post');

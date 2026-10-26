@@ -66,7 +66,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_comment_author_index();   // 11.0.36
 	upgrade_2026_11_0_workspace_note_revision(); // 11.0.84
 	upgrade_2026_11_0_workspace_note_deletions(); // 11.0.85
+	upgrade_2026_11_0_workspace_note_sources(); // 11.0.86
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
+	upgrade_2026_11_0_audit_feed_tokens();      // 11.0.38
 	upgrade_2026_11_0_erp_efatura_threshold();  // 11.0.61
 
 }
@@ -1751,6 +1753,36 @@ function upgrade_2026_11_0_workspace_note_deletions() {
 
 }
 
+// Where an imported Workspace note came from (2026.11.0, 11.0.86;
+// includes/workspace/notes_import.php).
+//
+// One row a note file a person brought in: the app it came from (provider:
+// keep, enex, markdown, html), the id it is known by there (external_id:
+// Keep's JSON entry name, Evernote's guid or title and created, a Markdown
+// front matter id or path, a web page's address or file name), what the file
+// held (hash) and the note it became. The same file brought in again shows
+// as "same", or updates that note, instead of adding it once more. A deleted
+// note drops its rows. external_id compares byte for byte: under the table's
+// case- and accent-blind collation "Günlük.md" and "Gunluk.md" in one vault
+// were one source, and the second file overwrote the first file's note.
+function upgrade_2026_11_0_workspace_note_sources() {
+
+	install_create_table('ws_note_sources', "CREATE TABLE ws_note_sources (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id INT UNSIGNED NOT NULL DEFAULT 0,
+		provider VARCHAR(16) NOT NULL DEFAULT '',
+		external_id VARCHAR(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
+		hash CHAR(40) NOT NULL DEFAULT '',
+		note_id INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_source (user_id, provider, external_id),
+		KEY idx_note (note_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: notes brought in from other apps remember where they came from, so importing the same notes again updates them instead of adding them twice.');
+
+}
+
 // Workspace flows (2026.11.0, 11.0.80; includes/workspace/flows.php).
 //
 // A flow is a graph of boxes and arrows drawn on the Workspace canvas: a
@@ -2253,5 +2285,50 @@ function upgrade_2026_11_0_marketplace_columns() {
 	install_add_column('marketplace_order_map', 'invoice_sent', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Marketplaces: a listing can keep the commission rate the marketplace reports for it, and an imported order can record when its invoice link was sent to the marketplace.');
+
+}
+
+// Feed tokens in clear in the audit trail (2026.11.0, 11.0.38;
+// pg_audit_remask() in includes/fn/audit.php).
+//
+// Until JSON text was decoded before masking (#905), a save of the SEO
+// settings stored config.product_feeds in its audit_log line as the text it
+// was, whole or cut to its start, with the feed tokens inside it in clear.
+// Those lines are masked again in place by today's rule; they are kept, so
+// the record of who changed the SEO settings stays. A line already masked
+// comes back unchanged and is not written, so the step can run again.
+function upgrade_2026_11_0_audit_feed_tokens() {
+
+	if (!install_table_exists('audit_log')) {
+		install_skipped('audit_log: no table, no feed token to mask');
+
+		return;
+	}
+
+	$masked = 0;
+
+	foreach (db_items("SELECT id, before_json, after_json FROM audit_log WHERE (entity_type = 'settings') AND (label = 'seo')") as $row) {
+		$before = pg_audit_remask($row['before_json']);
+		$after = pg_audit_remask($row['after_json']);
+
+		if (($before === $row['before_json']) && ($after === $row['after_json'])) {
+			continue;
+		}
+
+		db("UPDATE audit_log SET
+			before_json = " . (($before === null) ? 'NULL' : "'" . e($before) . "'") . ",
+			after_json = " . (($after === null) ? 'NULL' : "'" . e($after) . "'") . "
+			WHERE id = '" . (int) $row['id'] . "'");
+
+		$masked++;
+	}
+
+	if ($masked > 0) {
+		install_ran('audit_log: the feed tokens of ' . $masked . ' SEO settings line(s) masked');
+	} else {
+		install_skipped('audit_log: no SEO settings line keeps a feed token in clear');
+	}
+
+	install_note('Audit trail: the product feed addresses that early SEO settings lines kept in clear are masked; the lines stay.');
 
 }

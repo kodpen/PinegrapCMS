@@ -56,6 +56,10 @@
  * the external API lists them under GET /products/{id}/price-history
  * (includes/api/resources/products.php), and the MCP tools run the same route.
  *
+ * The reference price of a product is worked out from those rows by
+ * pg_price_history_reference(), over the rows pg_price_history_window_sql()
+ * reads for a page of products in one statement.
+ *
  * Once a day the general job trims the history to thirteen months
  * (pg_price_history_trim_run()): older rows go, except, in each product and
  * channel, the newest one before that point, which says what the price was
@@ -1267,4 +1271,237 @@ function pg_compare_at_price_sql($value)
     $value = pg_compare_at_price_value($value);
 
     return is_int($value) ? "'" . $value . "'" : 'NULL';
+}
+
+/* ------------------------------------------------------------------ *
+ * Reference price ("price before the discount")
+ * ------------------------------------------------------------------ */
+
+/**
+ * The reference price rules: the rule name => the days of history it reads.
+ *
+ *   - lowest_30d: the lowest price of the 30 days before the window's end
+ *     (Turkish price label regulation, EU Omnibus rule);
+ *   - lowest_10d: the same over 10 days (Turkish discount advertising from
+ *     1 August 2026);
+ *   - manual: the merchant's compare-at price; no history is read.
+ *
+ * @return array
+ */
+function pg_price_history_reference_rules()
+{
+    return array('lowest_30d' => 30, 'lowest_10d' => 10, 'manual' => 0);
+}
+
+/**
+ * The moment a rule's window begins, or null for a rule that reads no
+ * history (manual) or is not one.
+ *
+ * @param string $rule
+ * @param int    $window_end unix time
+ * @return int|null
+ */
+function pg_price_history_window_start($rule, $window_end)
+{
+    $rules = pg_price_history_reference_rules();
+
+    if (!is_string($rule) || empty($rules[$rule])) {
+        return null;
+    }
+
+    return (int) $window_end - $rules[$rule] * 86400;
+}
+
+/**
+ * A price as whole minor units: rounded, never cut, or null when it is not a
+ * number.
+ *
+ * @param mixed $value
+ * @return int|null
+ */
+function pg_price_history_minor_units($value)
+{
+    if (is_int($value)) {
+        return $value;
+    }
+
+    if (is_string($value)) {
+        $value = trim($value);
+    }
+
+    if ((!is_float($value) && !is_string($value)) || !is_numeric($value)) {
+        return null;
+    }
+
+    $value = round((float) $value);
+
+    return is_finite($value) ? (int) $value : null;
+}
+
+/**
+ * The query for the history rows one page of products needs for a window, in
+ * one statement: the rows stamped inside it (after its start, before its end)
+ * and, for each product, the rows of the newest second at or before its
+ * start, which hold the price that applied when the window began. Rows of
+ * every source are read: an offer price that applied is a price.
+ *
+ * Several rows stamped in that same second all come back;
+ * pg_price_history_reference() takes the highest id of them. Rows come in
+ * product order, oldest first.
+ *
+ * @param int[]  $ids        the products of the page
+ * @param string $channel
+ * @param int    $start      pg_price_history_window_start()
+ * @param int    $end        the window's end, not included
+ * @return string '' when there is no product id, the channel is not one or the window is empty
+ */
+function pg_price_history_window_sql($ids, $channel, $start, $end)
+{
+    $channel = pg_price_history_channel($channel);
+    $ids = pg_price_history_ids($ids);
+    $start = (int) $start;
+    $end = (int) $end;
+
+    if (($channel === null) || !$ids || ($start >= $end)) {
+        return '';
+    }
+
+    $in = implode(',', $ids);
+
+    return "SELECT product_id, id, price, changed_at, source
+        FROM product_price_history
+        WHERE
+            (product_id IN (" . $in . "))
+            AND (channel = '" . $channel . "')
+            AND (changed_at > '" . $start . "')
+            AND (changed_at < '" . $end . "')
+        UNION ALL
+        SELECT history.product_id, history.id, history.price, history.changed_at, history.source
+        FROM product_price_history AS history
+        INNER JOIN (
+            SELECT product_id, MAX(changed_at) AS changed_at
+            FROM product_price_history
+            WHERE
+                (product_id IN (" . $in . "))
+                AND (channel = '" . $channel . "')
+                AND (changed_at <= '" . $start . "')
+            GROUP BY product_id
+        ) AS latest ON
+            (latest.product_id = history.product_id)
+            AND (latest.changed_at = history.changed_at)
+        WHERE history.channel = '" . $channel . "'
+        ORDER BY product_id, changed_at, id";
+}
+
+/**
+ * The reference price of one product: the figure a shop may show as the price
+ * before the discount, and the kind of label that goes with it.
+ *
+ * For a lowest_* rule it is the lowest price that applied during the window:
+ * the price of the newest row at or before the window's start (highest
+ * changed_at, then id) and the price of every row after the start and before
+ * the end. A row stamped at the end itself is left out: the end is where the
+ * price the reference stands beside began. Where the window ends is the
+ * caller's choice.
+ *
+ * The window is covered when a row is at or before its start, or when the
+ * oldest row is not the upgrade's 'initial' row: a product added later has its
+ * whole life in the history, so the lowest of its rows is the lowest of the
+ * window. When the oldest row is an 'initial' row younger than the window,
+ * the price before it is unknown, and the current price comes back with the
+ * kind 'current' rather than a lowest read from part of the window.
+ *
+ * For manual it is the compare-at price, only when above the current price.
+ *
+ * @param array      $rows       the product's rows from pg_price_history_window_sql() (id, changed_at, price, source), any order
+ * @param int|string $current    the price the product sells at now, minor units
+ * @param string     $rule       a key of pg_price_history_reference_rules()
+ * @param int        $window_end unix time, not included
+ * @param mixed      $compare_at products.compare_at_price, for the manual rule
+ * @return array array('price' => int|null, 'kind' => 'lowest'|'current'|'manual'|'none', 'days' => int)
+ */
+function pg_price_history_reference($rows, $current, $rule, $window_end, $compare_at = null)
+{
+    $none = array('price' => null, 'kind' => 'none', 'days' => 0);
+    $rules = pg_price_history_reference_rules();
+    $current = pg_price_history_minor_units($current);
+
+    if (!is_string($rule) || !isset($rules[$rule]) || ($current === null)) {
+        return $none;
+    }
+
+    if ($rule === 'manual') {
+        $compare_at = pg_compare_at_price_value($compare_at);
+
+        if (is_int($compare_at) && ($compare_at > $current)) {
+            return array('price' => $compare_at, 'kind' => 'manual', 'days' => 0);
+        }
+
+        return $none;
+    }
+
+    $days = $rules[$rule];
+    $end = (int) $window_end;
+    $start = pg_price_history_window_start($rule, $end);
+    $at_start = null;
+    $oldest = null;
+    $lowest = null;
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || !isset($row['price'], $row['changed_at']) || !is_numeric($row['changed_at'])) {
+            continue;
+        }
+
+        $price = pg_price_history_minor_units($row['price']);
+
+        if ($price === null) {
+            continue;
+        }
+
+        $row = array(
+            'time' => (int) $row['changed_at'],
+            'id' => isset($row['id']) ? (int) $row['id'] : 0,
+            'price' => $price,
+            'source' => isset($row['source']) ? (string) $row['source'] : '',
+        );
+
+        if ($row['time'] >= $end) {
+            continue;
+        }
+
+        if (($oldest === null) || pg_price_history_row_before($row, $oldest)) {
+            $oldest = $row;
+        }
+
+        if ($row['time'] <= $start) {
+            if (($at_start === null) || pg_price_history_row_before($at_start, $row)) {
+                $at_start = $row;
+            }
+        } elseif (($lowest === null) || ($price < $lowest)) {
+            $lowest = $price;
+        }
+    }
+
+    if (($at_start === null) && (($oldest === null) || ($oldest['source'] === 'initial'))) {
+        return array('price' => $current, 'kind' => 'current', 'days' => $days);
+    }
+
+    if (($at_start !== null) && (($lowest === null) || ($at_start['price'] < $lowest))) {
+        $lowest = $at_start['price'];
+    }
+
+    return array('price' => $lowest, 'kind' => 'lowest', 'days' => $days);
+}
+
+/**
+ * True when row $a comes before row $b in the order the history is read
+ * (changed_at, then id).
+ *
+ * @param array $a array('time' => int, 'id' => int)
+ * @param array $b
+ * @return bool
+ */
+function pg_price_history_row_before($a, $b)
+{
+    return ($a['time'] < $b['time']) || (($a['time'] === $b['time']) && ($a['id'] < $b['id']));
 }

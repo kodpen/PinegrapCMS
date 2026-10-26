@@ -1447,9 +1447,14 @@ function pg_page_cache_panel_sub_actions()
             'dirty' => array('create', 'delete', 'save'),
             'clean' => array('list_folders', 'read'),
         ),
+        'dynamic_region_code' => array(
+            'key' => 'sub_action',
+            'dirty' => array('save'),
+            'clean' => array('read'),
+        ),
         'shared_component' => array(
             'key' => 'sub_action',
-            'dirty' => array('create', 'update', 'content_update', 'set_content_editable', 'update_config',
+            'dirty' => array('create', 'from_designer_region', 'update', 'content_update', 'set_content_editable', 'update_config',
                 'rename', 'delete', 'delete_many'),
             'clean' => array('list', 'usage_all', 'prefetch', 'get', 'list_custom_forms',
                 'list_form_item_view_pages', 'list_calendars', 'list_calendar_event_pages',

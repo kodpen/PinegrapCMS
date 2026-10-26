@@ -374,3 +374,48 @@ function test_audit_file_manager_and_catalog_copies_write_lines()
 	pg_assert_true(($fetch !== false) && ($fetch < strpos($status, '"UPDATE products')), 'status change reads the products first');
 	pg_assert_contains("pg_audit_record_many('update', 'products', array_intersect_key(\$audit_before, \$audit_changed));", $status, 'and records the ones it changed');
 }
+
+// A settings line written before JSON text was decoded kept the feed tokens
+// of config.product_feeds in clear, whole or cut to its start; masked again,
+// the tokens are *** and the rest of the line stays.
+function test_audit_remask_feed_tokens()
+{
+	$feeds = json_encode(array(array('format' => 'google', 'token' => 'SECRET1'), array('format' => 'meta', 'token' => 'SECRET2')));
+	$old = json_encode(array('product_feeds' => $feeds, 'seo_title_suffix' => 'Shop'));
+
+	$new = pg_audit_remask($old);
+
+	pg_assert_same(
+		array('product_feeds' => array(array('format' => 'google', 'token' => '***'), array('format' => 'meta', 'token' => '***')), 'seo_title_suffix' => 'Shop'),
+		json_decode($new, true),
+		'whole text: decoded and masked'
+	);
+	pg_assert_same($new, pg_audit_remask($new), 'masked once: unchanged');
+
+	$start = '[{"format":"google","token":"ab\"c","x":"y"},{"token":"SECRE';
+	$cut = json_encode(array('product_feeds' => array('truncated' => true, 'length' => 3000, 'sha1' => 'f00', 'start' => $start)));
+	$new = pg_audit_remask($cut);
+
+	pg_assert_same(
+		'[{"format":"google","token":"***","x":"y"},{"token":"***',
+		json_decode($new, true)['product_feeds']['start'],
+		'cut text: each token in the start masked, the last one cut off too'
+	);
+	pg_assert_same(3000, json_decode($new, true)['product_feeds']['length'], 'cut text: length kept');
+	pg_assert_same($new, pg_audit_remask($new), 'cut text masked once: unchanged');
+
+	pg_assert_same(null, pg_audit_remask(null), 'null side');
+	pg_assert_same('[]', pg_audit_remask('[]'), 'empty side');
+	pg_assert_same('{"seo_title_suffix":"Shop"}', pg_audit_remask('{"seo_title_suffix":"Shop"}'), 'nothing secret: the stored text');
+}
+
+// The step runs in the open version under its label, and only on the SEO
+// settings lines.
+function test_audit_feed_token_step_is_called()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
+
+	pg_assert_same(1, preg_match('/^\tupgrade_2026_11_0_audit_feed_tokens\(\);\s+\/\/ 11\.0\.38$/m', $source), 'call and label');
+	pg_assert_contains("WHERE (entity_type = 'settings') AND (label = 'seo')", $source, 'only the SEO settings lines');
+	pg_assert_contains('pg_audit_remask($row[\'before_json\'])', $source, 'masked by the trail\'s rule');
+}

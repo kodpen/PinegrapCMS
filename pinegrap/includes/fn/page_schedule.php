@@ -339,13 +339,15 @@ function pg_page_schedule_run($now = null, $limit = PG_PAGE_SCHEDULE_BATCH)
     $limit  = max(1, (int) $limit);
     $binned = pg_designer_not_binned_sql('page_folder');
 
+    // A page of a design with a custom layout is due like any other; a
+    // system-layout page that left its design keeps the time it was given.
     // Publish first: a page whose two times have both come goes on and then
     // off, as it would have with the job on time.
     foreach (array('publish_at', 'unpublish_at') as $column) {
         $rows = db_items(
             "SELECT page_id, page_name, page_folder, page_home, $column AS due
              FROM page
-             WHERE $column > 0 AND $column <= '$now' AND layout_type = 'system'$binned
+             WHERE $column > 0 AND $column <= '$now' AND (layout_type = 'system' OR " . pg_page_visual_design_sql() . ")$binned
              ORDER BY $column, page_id
              LIMIT $limit");
 
@@ -405,7 +407,7 @@ function pg_page_schedule_design_counts($style_ids)
                 MIN(NULLIF(publish_at, 0)) AS next_publish,
                 MIN(NULLIF(unpublish_at, 0)) AS next_unpublish
          FROM page
-         WHERE page_style IN (" . implode(',', $ids) . ") AND layout_type = 'system'" . pg_designer_not_binned_sql('page_folder') . "
+         WHERE page_style IN (" . implode(',', $ids) . ") AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql('page_folder') . "
          GROUP BY page_style");
 
     foreach ((array) $rows as $r) {

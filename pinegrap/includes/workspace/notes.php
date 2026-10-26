@@ -130,6 +130,65 @@ function ws_note_deletions_ready()
 }
 
 /**
+ * Is it remembered where an imported note came from (2026.11.0, 11.0.86)?
+ *
+ * @return bool
+ */
+function ws_note_sources_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('ws_note_sources');
+    }
+
+    return $ready;
+}
+
+/**
+ * The note a file brought in before became, by the id it is known by in the
+ * app it came from (ws_note_source_id()).
+ *
+ * @param int    $user_id  who brought it in
+ * @param string $provider keep | enex | markdown | html
+ * @param string $external
+ * @return array|null hash, note_id; null when unknown or the table is not there yet
+ */
+function ws_note_source_find($user_id, $provider, $external)
+{
+    if (((string) $external === '') || !ws_note_sources_ready()) {
+        return null;
+    }
+
+    $row = db_item("SELECT hash, note_id FROM ws_note_sources
+        WHERE user_id = '" . (int) $user_id . "' AND provider = '" . e($provider) . "' AND external_id = '" . e($external) . "'");
+
+    return $row ? array('hash' => (string) $row['hash'], 'note_id' => (int) $row['note_id']) : null;
+}
+
+/**
+ * Remembers the note a file became and what the file held, so the same file
+ * brought in again updates that note.
+ *
+ * @param int    $user_id
+ * @param string $provider
+ * @param string $external
+ * @param string $hash     ws_note_source_hash()
+ * @param int    $note_id
+ * @return void
+ */
+function ws_note_source_save($user_id, $provider, $external, $hash, $note_id)
+{
+    if (((string) $external === '') || ((int) $note_id <= 0) || !ws_note_sources_ready()) {
+        return;
+    }
+
+    db("INSERT INTO ws_note_sources (user_id, provider, external_id, hash, note_id)
+        VALUES ('" . (int) $user_id . "', '" . e($provider) . "', '" . e($external) . "', '" . e($hash) . "', '" . (int) $note_id . "')
+        ON DUPLICATE KEY UPDATE hash = VALUES(hash), note_id = VALUES(note_id)");
+}
+
+/**
  * The part of an UPDATE of ws_notes that moves the revision on, for every
  * write of a note's title, text or pin: ", revision = revision + 1" ('' while
  * the column is not there yet).
@@ -1272,6 +1331,11 @@ function ws_note_delete($viewer, $note)
     db("DELETE FROM ws_note_shares WHERE note_id = '" . $id . "'");
     db("DELETE FROM ws_notes WHERE id = '" . $id . "'");
 
+    // The same file brought in again is a new note.
+    if (ws_note_sources_ready()) {
+        db("DELETE FROM ws_note_sources WHERE note_id = '" . $id . "'");
+    }
+
     if (ws_note_versions_ready()) {
         db("DELETE FROM ws_note_versions WHERE note_id = '" . $id . "'");
     }
@@ -2219,7 +2283,7 @@ function ws_notes_js_strings()
         'notes_export_all'      => lang('Export all'),
         'notes_import'          => lang('Import'),
         'notes_import_title'    => lang('Import notes'),
-        'notes_import_intro'    => lang('Bring notes in from another app: Markdown (.md) or text (.txt) files, or a .zip of them, such as an Obsidian vault, a Notion, Joplin or Bear export or a Google Keep Takeout, or Evernote exports (.enex). Notes exported from here are recognised and brought up to date.'),
+        'notes_import_intro'    => lang('Bring notes in from another app: Markdown (.md) or text (.txt) files, or a .zip of them, such as an Obsidian vault, a Notion, Joplin or Bear export or a Google Keep Takeout, Evernote exports (.enex), or a web page saved as .html. Notes exported from here are recognised and brought up to date.'),
         'notes_import_pick'     => lang('Choose the files or drop them here'),
         'notes_import_limit'    => ws_js_template('Up to {var:1} MB', 1),
         'notes_import_too_many' => ws_js_template('Pick at most {var:1} files at a time, or put them in a .zip.', 1),
@@ -2233,7 +2297,7 @@ function ws_notes_js_strings()
         'notes_import_cannot_read' => ws_js_template('The file {var:1} cannot be read.', 1),
         'notes_import_clear'    => lang('Clear'),
         'notes_import_upload'   => lang('Upload'),
-        'notes_import_choose'   => lang('Choose Markdown (.md) or text (.txt) files, one .zip of them, or Evernote exports (.enex).'),
+        'notes_import_choose'   => lang('Choose Markdown (.md) or text (.txt) files, one .zip of them, Evernote exports (.enex) or one web page (.html).'),
         'notes_import_zip_alone' => lang('Upload a .zip on its own, without other files.'),
         'notes_import_enex_alone' => lang('Upload Evernote exports (.enex) on their own, without other files.'),
         'notes_import_sent'     => ws_js_template('{var:1} of {var:2}', 2),

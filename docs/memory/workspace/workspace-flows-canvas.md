@@ -10,6 +10,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 
 ## Where are staff's scheduled actions?
 - `ws_flows_scheduled($viewer)` (staff, flow tables there; `CFG.flows.scheduled`): an entry under the flow list opens a section in place of the canvas (`?view=scheduled`), drawn by `scheduledList(body, bar)` of workspace.js through `PGWsKit`; the rail has no Scheduled actions entry then, workspace.php's `?view=scheduled` shows their scheduled messages only (`&part=messages` names that tab without flow tables). Parity: `workspace-flows-parity-test.md`.
+- "Show on canvas" on a card there: `ws_scheduled_get` answers `graph` (pure `ws_scheduled_graph()` of the staff card: when, conditions, step, follow-ups by outcome; chips: starters, started, self-retry); `showAction()` draws it read-only on a scrolling stage; Edit opens the form.
 
 ## Which panel actions?
 - `ws_flow_list`, `_get`, `_create`, `_save`, `_publish`, `_pause`, `_bin`, `ws_flow_run_start`, `ws_flow_runs_list` (20 a page), `ws_flow_run_get`, `_cancel`, `ws_flow_shares`, `ws_flow_share_set`, `_remove`: `ws_` rows (exempt, token, write); the store's, runner's, shares' `*_check()` decide.
@@ -37,4 +38,4 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - `workspace-flows-run-view.md`: Run, the runs list, a run shown box by box, how it is read again and what a failed read shows.
 
 ## What is left?
-- Notes on the canvas, undo/redo, auto-layout, templates, multi-select, Help link; retry or skip a box (F5). Tests `tests/workspace_flows_canvas_test.php`; no headless harness in the repo.
+- Notes on the canvas, undo/redo, auto-layout, templates, multi-select, Help link; retry or skip a box (F5). Tests `tests/workspace_flows_canvas_test.php`; no headless harness.
