@@ -1507,7 +1507,7 @@ function pg_designer_components_card($user)
     $none = array('button' => '', 'panel' => '');
     require_once(dirname(__FILE__) . '/designer_access.php');
     if (!pg_designer_is_full($user)) return $none;
-    if (!db_value("SHOW TABLES LIKE 'shared_components'")) return $none;
+    if (!pg_schema_has('shared_components')) return $none;
 
     $comp_rows = db_items("SELECT id, name, category, updated_at, system_region_config FROM shared_components ORDER BY name");
     if (!is_array($comp_rows) || count($comp_rows) === 0) return $none;

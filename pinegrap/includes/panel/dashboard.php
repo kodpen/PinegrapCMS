@@ -313,7 +313,7 @@ function pg_panel_update_dashboard_appearance($request, $action)
     // The columns arrive with 2026.4.4. An installation whose files are
     // ahead of its database is told to run the upgrade rather than handed a
     // failed query: the caller cannot know which columns the row has.
-    if (!db_item("SHOW COLUMNS FROM dashboard LIKE '" . $appearance_field . "'")) {
+    if (!pg_schema_has('dashboard', $appearance_field)) {
 
         $response = array(
             'status' => 'error',

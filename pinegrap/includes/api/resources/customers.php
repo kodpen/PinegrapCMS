@@ -709,7 +709,7 @@ function api_customers_delete($params) {
 
 	}
 
-	if ((api_row("SHOW TABLES LIKE 'erp_accounts'") !== null)
+	if (pg_schema_has('erp_accounts')
 		&& ((int)api_value("SELECT COUNT(*) FROM erp_accounts WHERE contact_id = '" . $id . "'") > 0)) {
 
 		api_fail(409, 'customer_has_erp_account', lang('This contact is linked to an ERP account and is not deleted through the API.'));
