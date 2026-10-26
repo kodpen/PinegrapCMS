@@ -235,3 +235,72 @@ function test_widget_condition_eval_canvas_states()
 	pg_assert_same('code:__order_status_stage:complete', $a['forOutside']);
 	pg_assert_same('empty', $a['kept'], 'a state that draws the node is kept');
 }
+
+// The sample rows a list draws after its card name sources the server
+// knows and only the row values of their source.
+function test_widget_condition_eval_list_sample_rows_name_known_tokens()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$from = strpos($js, "\n    var SD_LIST_SAMPLE_ROWS = {");
+	pg_assert_true($from !== false, 'SD_LIST_SAMPLE_ROWS is found');
+	$block = substr($js, $from, strpos($js, "\n    };\n", $from) - $from);
+	preg_match_all("/^        '([a-z_]+\.[a-z_]+)': \[(.*?)^        \]/ms", $block, $m, PREG_SET_ORDER);
+	pg_assert_true(count($m) >= 3, 'the sources are read');
+	$sources = pg_sw_list_sources();
+	foreach ($m as $row) {
+		pg_assert_true(isset($sources[$row[1]]), $row[1] . ' is a list source');
+		$tokens = array();
+		foreach ($sources[$row[1]]['tokens'] as $t) {
+			$tokens[] = $t[0];
+		}
+		preg_match_all('/(__[a-z0-9_]+):/', $row[2], $used);
+		foreach ($used[1] as $token) {
+			pg_assert_true(in_array($token, $tokens, true), $row[1] . ' has ' . $token);
+		}
+	}
+}
+
+// The timeline's sample rows draw one icon each: the kind of their row,
+// the delivered one greyed as an estimate.
+function test_widget_condition_eval_timeline_sample_rows()
+{
+	if (!_cond_eval_node_ok()) return;
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$cut = function ($from, $to) use ($js) {
+		$a = strpos($js, $from);
+		pg_assert_true($a !== false, 'found: ' . trim($from));
+		$b = strpos($js, $to, $a);
+		return substr($js, $a, $b + strlen($to) - $a);
+	};
+	$src = _cond_eval_js_source()
+		. $cut("\n    var SW_COND_OPS = [", "\n    ];\n")
+		. $cut("\n    var SW_COND_DENY = [", "\n    ];\n")
+		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
+		. $cut("\n    var _SD_FLAG_TOKENS = {", "\n    };\n")
+		. $cut("\n    var SD_LIST_SAMPLE_ROWS = {", "\n    };\n");
+	foreach (array('_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondCodeStates', '_sdCondCanvasValue', '_sdCondCanvasShows') as $fn) {
+		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
+	}
+	$timeline = json_decode(json_encode(pg_sw_part_order_timeline()), true);
+	$stubs = "function _sdT(s) { return s; }\nvar _sdListSample = null;\n"
+		. "function _displayValueForBinding(prop, token) { if (_sdListSample && token in _sdListSample) return _sdListSample[token]; return { __step_kind: 'created' }[token] || ''; }\n";
+	$script = 'var timeline = ' . json_encode($timeline) . ";\n"
+		. "var drawn = function () { var out = []; (function walk(n, on) {\n"
+		. "  if (!n || typeof n !== 'object') return; if (Array.isArray(n)) { n.forEach(function (c) { walk(c, on); }); return; }\n"
+		. "  var here = on && _sdCondCanvasShows(n, 'sample');\n"
+		. "  if (here && /pg-ov-timeline-icon/.test((n.props && n.props.cssClass) || '')) out.push(n.props.cssClass.replace(/^pg-ov-timeline-icon /, ''));\n"
+		. "  walk(n.children || [], here); })(timeline, true); return out.join('|'); };\n"
+		. "var out = [drawn()];\n"
+		. "SD_LIST_SAMPLE_ROWS['order.steps'].forEach(function (row) { _sdListSample = row; out.push(drawn()); });\n"
+		. "console.log(JSON.stringify(out));\n";
+	$file = @tempnam(sys_get_temp_dir(), 'pgcond');
+	if ($file === false) return;
+	file_put_contents($file, $stubs . $src . $script);
+	$out = array();
+	$code = 1;
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	pg_assert_same(array('bg-primary', 'bg-success', 'bg-info', 'bg-secondary'), json_decode($printed, true), $printed);
+}

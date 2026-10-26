@@ -10874,6 +10874,7 @@ const StyleDesigner = (function () {
                 _tagLoopRow(childEl);
                 if (childEl) frag.appendChild(childEl);
             });
+            _sdListGhostEls(node).forEach(function (g) { _tagLoopRow(g); frag.appendChild(g); });
         } else {
             // Empty loop_area inside a table — real <tr>/<td> drop target so
             // designers can still drag a template row in (mirrors the
@@ -12199,6 +12200,75 @@ const StyleDesigner = (function () {
         }
     }
 
+    // ── Sample rows of a list ─────────────────────────────────────────────
+    // A list inside a record (a loop_area with props.source) is designed on
+    // one row; the canvas follows it with sample rows built from the same
+    // nodes, so the row reads as repeated and a condition on a row value
+    // (the timeline's icon per kind) shows each of its cases. Ghost DOM as
+    // the sample comments: no node id, no toolbar, inert, never in the tree.
+    // A row's values come first in _displayValueForBinding(); a token the
+    // row leaves out reads the card's sample. Off with the sample switch.
+    var _sdListSample = null;
+
+    // The sample rows after the card, by list source: each the values that
+    // differ from the card's. A source not named here gets two rows of the
+    // card's values.
+    var SD_LIST_SAMPLE_ROWS = {
+        'order.steps': [
+            { __step_kind: 'paid', __step_label: _sdT('Payment Received'), __step_date: '20.10.2026 10:05' },
+            { __step_kind: 'shipped', __step_label: _sdT('Shipped'), __step_date: '21.10.2026 09:30' },
+            { __step_kind: 'delivered', __step_label: _sdT('Delivered'), __step_date: '23.10.2026', __step_is_estimate: '1' }
+        ],
+        'calendar.weekdays': [
+            { __weekday_name: _sdT('Tuesday'), __weekday_short: _sdT('Tue') },
+            { __weekday_name: _sdT('Wednesday'), __weekday_short: _sdT('Wed') }
+        ],
+        'product.attributes': [
+            { __attr_name: _sdT('Size'), __attr_value: 'M' }
+        ],
+        'security.passkeys': [
+            { __passkey_id: '2', __passkey_name: _sdT('My laptop'), __passkey_last_used: _sdT('Never'), __passkey_is_synced: '' }
+        ]
+    };
+
+    // The rows drawn after a list's card: none when the site draws nothing
+    // for it, inside a sample row, or with the sample switch off; at most
+    // the rows the list shows (props.limit) less the card.
+    function _sdListSampleRows(node) {
+        if (!_sdGhostsOn || _sdListSample || !_sdListIsSourced(node)) return [];
+        var src = SW_LIST_SOURCES[node.props.source];
+        if (!src || _sdListBand(node).off) return [];
+        var rows = SD_LIST_SAMPLE_ROWS[node.props.source] || [{}, {}];
+        var limit = parseInt(node.props.limit, 10);
+        return (limit > 0) ? rows.slice(0, limit - 1) : rows;
+    }
+
+    // The ghost elements of a list's sample rows, in order.
+    function _sdListGhostEls(node) {
+        var out = [];
+        _sdListSampleRows(node).forEach(function (row) {
+            _sdListSample = row;
+            try {
+                (node.children || []).forEach(function (child) {
+                    var el = buildNodeEl(child);
+                    if (!el || el.nodeType !== 1) return;
+                    el.querySelectorAll('.sd-tb').forEach(function (tb) { tb.remove(); });
+                    [el].concat(Array.prototype.slice.call(el.querySelectorAll('*'))).forEach(function (x) {
+                        ['data-sd-id', 'id', 'draggable', 'contenteditable'].forEach(function (a) { x.removeAttribute(a); });
+                        x.classList.remove('sd-selected');
+                    });
+                    el.classList.add('sd-ghost', 'sd-list-sample');
+                    el.setAttribute('aria-hidden', 'true');
+                    el.setAttribute('inert', '');
+                    out.push(el);
+                });
+            } finally {
+                _sdListSample = null;
+            }
+        });
+        return out;
+    }
+
     // In the e-mail state, a widget an e-mail draws no comment from
     // (_sdCommentsEmailDrawsComment()) is left out, as the e-mail leaves it
     // out; this note takes its place and says what the card needs. Editor
@@ -12878,6 +12948,8 @@ const StyleDesigner = (function () {
                 node.children.forEach(function (child) {
                     innerEl.appendChild(buildNodeEl(child));
                 });
+                // A list's sample rows after its card (_sdListGhostEls()).
+                if (node.type === 'loop_area') _sdListGhostEls(node).forEach(function (g) { innerEl.appendChild(g); });
             }
             if (_isBtnLike && _vtxt && _textPos !== 'start') innerEl.appendChild(_vtxt);
             // Non-button-like semantic: legacy behavior — text as plain text node AFTER children.
@@ -14163,6 +14235,10 @@ const StyleDesigner = (function () {
             Object.prototype.hasOwnProperty.call(_sdCommentSample.values, fieldName)) {
             var _sample = _sdCommentSample.values[fieldName];
             return (typeof _sample === 'function') ? _sample() : _sample;
+        }
+        // A list's sample row (_sdListGhostEls()).
+        if (_sdListSample && fieldName && Object.prototype.hasOwnProperty.call(_sdListSample, fieldName)) {
+            return _sdListSample[fieldName];
         }
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
