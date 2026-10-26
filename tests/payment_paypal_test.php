@@ -339,6 +339,13 @@ function test_payment_paypal_complete_pending_capture()
 	pg_assert_true($answer['success'], $answer['error']);
 	pg_assert_same('pending', $answer['status']);
 	pg_assert_same('3C679366HH908993F', $answer['transaction_id']);
+	pg_assert_same(array('PayPal Checkout payment for order #438 is PENDING on PayPal (capture 3C679366HH908993F, reason not given). Check it on PayPal before shipping: PayPal may still deny it.'), $answer['log']);
+
+	$answer = payment_paypal_test_complete(array(
+		'GET /v2/checkout/orders/5O190127TN364715T'          => array(200, payment_paypal_test_fixture('order_approved')),
+		'POST /v2/checkout/orders/5O190127TN364715T/capture' => array(201, payment_paypal_test_fixture('order_captured', array('purchase_units' => array(array('payments' => array('captures' => array(array('status' => 'PENDING', 'status_details' => array('reason' => 'PENDING_REVIEW'))))))))),
+	));
+	pg_assert_contains('reason PENDING_REVIEW', $answer['log'][0]);
 }
 
 function test_payment_paypal_complete_declined_and_cancelled()
@@ -437,6 +444,28 @@ function test_payment_paypal_complete_keeps_waiting_while_paypal_is_unreached()
 	$answer = payment_paypal_test_complete(array('GET /v2/checkout/orders/5O190127TN364715T' => array(200, payment_paypal_test_fixture('order_approved'))));
 	pg_assert_false($answer['success']);
 	pg_assert_same(payment_paypal_test_state(), $answer['state'], 'capture not answered: the next return reads the order again');
+
+	// A server error, an answer that is not PayPal's JSON, a 2xx without a
+	// capture: the capture may have gone through, so the wait goes on.
+	foreach (array(
+		'5xx'        => array(500, array('name' => 'INTERNAL_SERVER_ERROR', 'message' => 'An internal server error has occurred.', 'debug_id' => '90957fca61718')),
+		'not JSON'   => array(200, null),
+		'no capture' => array(201, payment_paypal_test_fixture('order_approved', array('status' => 'COMPLETED'))),
+	) as $label => $capture) {
+		$answer = payment_paypal_test_complete(array(
+			'GET /v2/checkout/orders/5O190127TN364715T'          => array(200, payment_paypal_test_fixture('order_approved')),
+			'POST /v2/checkout/orders/5O190127TN364715T/capture' => $capture,
+		));
+		pg_assert_false($answer['success'], $label);
+		pg_assert_same(payment_paypal_test_state(), $answer['state'], $label);
+	}
+
+	// PayPal's own refusal ends it.
+	$answer = payment_paypal_test_complete(array(
+		'GET /v2/checkout/orders/5O190127TN364715T'          => array(200, payment_paypal_test_fixture('order_approved')),
+		'POST /v2/checkout/orders/5O190127TN364715T/capture' => array(422, payment_paypal_test_fixture('capture_instrument_declined')),
+	));
+	pg_assert_same(array(), $answer['state']);
 }
 
 /* ---------------------------------------------------------------------------

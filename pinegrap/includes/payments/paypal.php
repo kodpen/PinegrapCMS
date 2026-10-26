@@ -580,17 +580,24 @@ function pg_payment_paypal_complete_with($order, $amount, $return, $state, $sett
             $capture = pg_payment_paypal_call($http, $settings, $token['token'], 'POST', '/v2/checkout/orders/' . $paypal_id . '/capture', array(), 'pg-capture-' . $paypal_id);
 
             if (!$capture['ok']) {
-                // Not reached: the capture may have been made, so the wait
-                // goes on and the next return reads the order again.
-                return pg_payment_paypal_refused($order, pg_payment_paypal_visitor_error($capture['code']), $capture['message'], $capture['code'], ($capture['code'] === 'unreached') ? $state : array());
+                // Not reached, a server error or an answer that cannot be
+                // read: the capture may have been made, so the wait goes on
+                // and the next return reads the order again (and repeats the
+                // capture under the same request id). Only PayPal's own
+                // refusal ends it.
+                if (pg_payment_paypal_capture_unclear($capture)) {
+                    return pg_payment_paypal_refused($order, lang('The payment could not be verified. Please try again.'), $capture['message'], $capture['code'], $state);
+                }
+
+                return pg_payment_paypal_refused($order, pg_payment_paypal_visitor_error($capture['code']), $capture['message'], $capture['code']);
             }
 
-            return pg_payment_paypal_capture_answer($order, $amount, $started, $capture['body'], $settings, $http, $token['token']);
+            return pg_payment_paypal_capture_answer($order, $amount, $started, $capture['body'], $settings, $http, $token['token'], $state);
 
         // Captured already (the first return's answer was lost): what was
         // taken is read from the order.
         case 'COMPLETED':
-            return pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_order, $settings, $http, $token['token']);
+            return pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_order, $settings, $http, $token['token'], $state);
 
         case 'CREATED':
         case 'PAYER_ACTION_REQUIRED':
@@ -612,9 +619,11 @@ function pg_payment_paypal_complete_with($order, $amount, $return, $state, $sett
  * @param array    $settings
  * @param callable $http
  * @param string   $token
+ * @param array    $state        kept when the answer does not say what was
+ *                               taken
  * @return array
  */
-function pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_order, $settings, $http, $token)
+function pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_order, $settings, $http, $token, $state = array())
 {
     $order_id = (int) pg_payment_paypal_order_value($order, 'id');
     $capture = pg_payment_paypal_capture_of($paypal_order);
@@ -622,7 +631,7 @@ function pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_ord
     $status = (isset($capture['status']) && is_string($capture['status'])) ? $capture['status'] : '';
 
     if (!pg_payment_paypal_id_valid($capture_id)) {
-        return pg_payment_paypal_refused($order, lang('The payment service gave an answer that cannot be read. Check the payment on the service\'s own screen before trying again.'), 'PayPal order ' . (isset($paypal_order['id']) && is_string($paypal_order['id']) ? $paypal_order['id'] : '(none)') . ' has no capture', '');
+        return pg_payment_paypal_refused($order, lang('The payment service gave an answer that cannot be read. Check the payment on the service\'s own screen before trying again.'), 'PayPal order ' . (isset($paypal_order['id']) && is_string($paypal_order['id']) ? $paypal_order['id'] : '(none)') . ' has no capture', '', $state);
     }
 
     if (in_array($status, array('DECLINED', 'FAILED'), true)) {
@@ -653,6 +662,8 @@ function pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_ord
         );
     }
 
+    $reason = (isset($capture['status_details']['reason']) && is_scalar($capture['status_details']['reason'])) ? (string) $capture['status_details']['reason'] : 'not given';
+
     return array(
         'success'        => true,
         // A pending capture (an eCheck, a review on PayPal's side) settles
@@ -660,8 +671,23 @@ function pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_ord
         'status'         => ($status === 'PENDING') ? 'pending' : 'paid',
         'transaction_id' => $capture_id,
         'amount'         => (int) $amount,
-        'log'            => array('PayPal Checkout payment for order #' . $order_id . ' was ' . (($status === 'PENDING') ? 'captured, pending on PayPal' : 'taken') . ' (capture ' . $capture_id . ').'),
+        'log'            => ($status === 'PENDING')
+            ? array('PayPal Checkout payment for order #' . $order_id . ' is PENDING on PayPal (capture ' . $capture_id . ', reason ' . $reason . '). Check it on PayPal before shipping: PayPal may still deny it.')
+            : array('PayPal Checkout payment for order #' . $order_id . ' was taken (capture ' . $capture_id . ').'),
     );
+}
+
+/**
+ * Whether a capture call that did not succeed may still have taken the
+ * money: PayPal not reached, a server error, or an answer without PayPal's
+ * error code (not JSON, an empty body).
+ *
+ * @param array $call pg_payment_paypal_read()
+ * @return bool
+ */
+function pg_payment_paypal_capture_unclear($call)
+{
+    return ($call['code'] === 'unreached') || ($call['code'] === '') || ($call['status'] >= 500);
 }
 
 /**

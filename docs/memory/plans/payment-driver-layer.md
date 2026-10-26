@@ -27,6 +27,7 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 4a, 4b, 5 done; 3b, 4c ope
 - Sipay/Param after PayTR by demand; prefer a PSP that fronts the banks over per-bank vPOS.
 - Since 2b no request reaches submit_order.php's inline Iyzipay and Pay With Iyzico code: remove it or keep it? Owner.
 - 3b: `payment_intent.succeeded` for an order still incomplete: alert only, or complete it from the webhook? Owner.
+- 4b: a PayPal capture PENDING on PayPal (review, eCheck) places the order with a log warning and nothing learns of a later denial: keep, refuse the order, or wait for a PayPal webhook on 3b's callback? Owner (PR #1827).
 - Stripe's fields are drawn only by the designer's express order widget; classic checkout pages and order preview too? Owner.
 
 ## Where to start?
