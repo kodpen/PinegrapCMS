@@ -9,11 +9,12 @@
  */
 
 // A module of functions.php: the page links of a list widget as a list
-// (widgets_lists.php), drawn in the form list widget.
+// (widgets_lists.php), drawn in the form list, catalog listing and search
+// results widgets.
 //
 // Loaded by functions.php through require_once, never on its own.
 //
-// The form list draws its pagination itself (pg_sw_pagination_html()); a
+// Each widget draws its pagination itself (pg_sw_pagination_html()); a
 // design that wants its own look puts a list of the page links in the
 // widget instead, one row per link, and the built-in pagination is left
 // out. The list is keyed by ^^__page_number^^, the page shown, which the
