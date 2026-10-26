@@ -116,46 +116,38 @@ if ($_POST) {
 			// the key cannot be used as HTTP Basic credentials either. An OAuth
 			// application (includes/oauth/) is the same kind of switch for
 			// outside applications a person connects, and has none either.
-			$kind = (isset($_POST['kind']) && in_array($_POST['kind'], array('device', 'oauth'), true)) ? $_POST['kind'] : 'server';
+			$kind = api_app_kind(isset($_POST['kind']) ? $_POST['kind'] : '');
 
-			$key    = api_generate_key();
-			$secret = ($kind === 'server') ? api_generate_secret() : '';
+			$made = api_app_create(
+				$liveform->get_field_value('name'),
+				isset($_POST['description']) ? $_POST['description'] : '',
+				$posted_scopes,
+				(int)$user['id'],
+				($kind === 'server'),
+				$_SESSION['sessionusername'],
+				$kind
+			);
 
-			db("INSERT INTO api_apps
-				(name, description, api_key, api_secret_hash, api_secret_hint, owner_user_id,
-				 scopes, status, rate_limit_per_min, kind, created_user_id, created_timestamp, updated_timestamp)
-				VALUES (
-					'" . escape($liveform->get_field_value('name')) . "',
-					'" . escape(isset($_POST['description']) ? $_POST['description'] : '') . "',
-					'" . escape($key) . "',
-					'" . escape(($secret !== '') ? api_secret_hash($secret) : '') . "',
-					'" . escape(($secret !== '') ? api_secret_hint($secret) : '') . "',
-					'" . (int)$user['id'] . "',
-					'" . escape(json_encode($posted_scopes)) . "',
-					'active',
-					'120',
-					'" . $kind . "',
-					'" . (int)$user['id'] . "',
-					UNIX_TIMESTAMP(),
-					UNIX_TIMESTAMP()
-				)");
+			// No row was written: there is no key to show.
+			if (!$made) {
 
-			pg_audit_record('create', 'api_apps', (int) mysqli_insert_id(db::$con));
+				$liveform->add_error(lang('The application could not be created.'));
+
+				header('Location: ' . $screen_url);
+
+				exit();
+
+			}
 
 			// The one and only time this pair is readable. It is handed to the
 			// next request through the session rather than the query string,
 			// because a query string is written to the server's access log.
 			$_SESSION['software']['api_new_credentials'] = array(
 				'name'   => $liveform->get_field_value('name'),
-				'key'    => $key,
-				'secret' => $secret,
-				'kind'   => $kind
+				'key'    => $made['key'],
+				'secret' => $made['secret'],
+				'kind'   => $made['kind']
 			);
-
-			log_activity(lang(array(
-				'string' => 'API application ({var:1}) was created.',
-				'vars'   => $liveform->get_field_value('name')
-			)), $_SESSION['sessionusername']);
 
 			header('Location: ' . $screen_url);
 
@@ -219,7 +211,7 @@ if ($_POST) {
 
 	} elseif ($action === 'rotate' && $app_id > 0) {
 
-		$existing = db_item("SELECT id, name, api_key, api_secret_hash, kind FROM api_apps
+		$existing = db_item("SELECT id, api_secret_hash, kind FROM api_apps
 			WHERE id = '" . $app_id . "' AND kind = 'server' LIMIT 1");
 
 		// A key made without a secret (Pinegrap AI's, made in the Workspace
@@ -232,34 +224,25 @@ if ($_POST) {
 
 		} elseif ($existing) {
 
-			$secret = api_generate_secret();
-
-			$audit_before = pg_audit_fetch('api_apps', $app_id);
-
 			// The outgoing secret keeps answering for a day. Issuing a new one
 			// and expecting every integration to be updated in the same instant
 			// is not how a live site works.
-			db("UPDATE api_apps SET
-					api_secret_prev_hash = '" . escape($existing['api_secret_hash']) . "',
-					api_secret_prev_expires = UNIX_TIMESTAMP() + 86400,
-					api_secret_hash = '" . escape(api_secret_hash($secret)) . "',
-					api_secret_hint = '" . escape(api_secret_hint($secret)) . "',
-					updated_timestamp = UNIX_TIMESTAMP()
-				WHERE id = '" . $app_id . "' AND kind = 'server' AND api_secret_hash <> ''");
+			$rotated = api_app_rotate_secret($app_id, 86400, $_SESSION['sessionusername']);
 
-			pg_audit_record('rotate', 'api_apps', $app_id, $audit_before);
+			if ($rotated) {
 
-			$_SESSION['software']['api_new_credentials'] = array(
-				'name'    => $existing['name'],
-				'key'     => $existing['api_key'],
-				'secret'  => $secret,
-				'rotated' => true
-			);
+				$_SESSION['software']['api_new_credentials'] = array(
+					'name'    => $rotated['name'],
+					'key'     => $rotated['key'],
+					'secret'  => $rotated['secret'],
+					'rotated' => true
+				);
 
-			log_activity(lang(array(
-				'string' => 'A new secret was issued for the API application ({var:1}).',
-				'vars'   => $existing['name']
-			)), $_SESSION['sessionusername']);
+			} else {
+
+				$liveform->add_error(lang('That application could not be found.'));
+
+			}
 
 		}
 
