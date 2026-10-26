@@ -1,6 +1,6 @@
 ---
 name: accessibility-report
-description: Accessibility report (nightly seo_a11y_job.php, includes/fn/a11y.php): which WCAG 2.2 checks run on the server, a11y_ codes in seo_issue kept out of the SEO score, the resumable pass, the API filter
+description: Accessibility report (seo_a11y_job.php, includes/fn/a11y.php, view_accessibility.php): server-side WCAG 2.2 checks, a11y_ codes in seo_issue, the resumable pass, screen, PDF, API filter
 ---
 
 ## What does the report check?
@@ -19,7 +19,9 @@ description: Accessibility report (nightly seo_a11y_job.php, includes/fn/a11y.ph
 - A run stops after `SEO_ANALYZE_TIME_BUDGET` (120 s) and keeps its place in `data/temp/seo_a11y.json` (last page id); a lost file restarts the pass. The run is recorded (`pg_cron_ran()`) only when the pass reaches the end, so the dispatcher hands an unfinished pass out on the next tick. At the end the findings of pages no longer in the report are deleted.
 - A page whose render fails keeps its earlier findings; the run logs how many failed.
 
-## What is not built yet?
-- The SEO screen's Accessibility tab, the finding labels and the checklist PDF export (plan `accessibility-and-consent-tools`, step 2b).
+## Where is the report shown?
+- `view_accessibility.php` (managers and up), linked from the Pages list's SEO buttons and the panel search; no menu entry yet. A checklist row per check (criterion, level, pages and times found), the findings worst first (1,000 rows, filter by check), Check Pages Now (the same pass, `SEO_ANALYZE_BUTTON_BUDGET`, carries on from the job's place), and the PDF.
+- Download PDF: `pg_a11y_report_html()` (checklist then up to 2,000 findings) rendered by `pg_privacy_export_pdf()`, the shared dompdf call. Both the screen and the PDF say an automatic check covers only part of each criterion.
+- Not on the SEO detail panel or in the page's SEO block: those read `pg_seo_load_issues()` with category `seo`.
 
 Test: `tests/a11y_test.php`.

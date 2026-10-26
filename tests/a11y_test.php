@@ -204,3 +204,32 @@ function test_a11y_finding_shape()
 
 	pg_assert_same(array('code' => 'a11y_img_alt', 'severity' => 'error', 'occurrences' => 2, 'detail' => 'a.png'), $findings['a11y_img_alt']);
 }
+
+// Every check has a sentence and its criterion a name, for the screen and the PDF.
+function test_a11y_every_rule_has_a_label_and_a_named_criterion()
+{
+	$criteria = pg_a11y_criteria();
+
+	foreach (pg_a11y_rules() as $code => $rule) {
+		pg_assert_true(pg_a11y_issue_label($code) !== $code, $code . ' label');
+		pg_assert_true(isset($criteria[$rule['criterion']]), $code . ' criterion ' . $rule['criterion']);
+	}
+}
+
+// The PDF's document: charset first, a row per check, found ones counted, the
+// rest passed, findings listed with their text escaped.
+function test_a11y_report_html()
+{
+	$html = pg_a11y_report_html(
+		array('a11y_img_alt' => array('pages' => 2, 'occurrences' => 5)),
+		array(array('page_id' => 3, 'page_name' => 'urunler', 'code' => 'a11y_img_alt', 'severity' => 'error', 'occurrences' => 4, 'detail' => '<b>x.png</b>')),
+		12, 0, 'ornek.com');
+
+	pg_assert_same(0, strpos($html, '<!DOCTYPE html><html><head><meta charset="utf-8">'));
+	pg_assert_same(count(pg_a11y_rules()) + 3, substr_count($html, '<tr>'), 'a row per check, two header rows and one finding');
+	pg_assert_same(count(pg_a11y_rules()) - 1, substr_count($html, 'class="ok"'));
+	pg_assert_same(1, substr_count($html, 'class="fail"'));
+	pg_assert_true(strpos($html, 'ornek.com') !== false);
+	pg_assert_true(strpos($html, '&lt;b&gt;x.png&lt;/b&gt;') !== false, 'detail escaped');
+	pg_assert_same(1, substr_count(pg_a11y_report_html(array(), array(), 0, 0, 'x'), '<table>'), 'no findings table without findings');
+}

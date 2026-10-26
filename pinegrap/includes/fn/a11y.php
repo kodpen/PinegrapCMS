@@ -57,6 +57,63 @@ function pg_a11y_rules()
     );
 }
 
+// WCAG 2.2 success criteria the checks read, by number, with their names.
+function pg_a11y_criteria()
+{
+    return array(
+        '1.1.1' => lang('Non-text Content'),
+        '1.3.1' => lang('Info and Relationships'),
+        '1.4.2' => lang('Audio Control'),
+        '1.4.3' => lang('Contrast (Minimum)'),
+        '2.4.1' => lang('Bypass Blocks'),
+        '2.4.2' => lang('Page Titled'),
+        '2.4.4' => lang('Link Purpose (In Context)'),
+        '2.5.8' => lang('Target Size (Minimum)'),
+        '3.1.1' => lang('Language of Page'),
+        '3.3.1' => lang('Error Identification'),
+        '4.1.2' => lang('Name, Role, Value'),
+    );
+}
+
+// What a finding means, in a sentence for the report.
+function pg_a11y_issue_label($code)
+{
+    switch ($code) {
+        case 'a11y_page_title':
+            return lang('The page has no title');
+        case 'a11y_html_lang':
+            return lang('The page does not state its language');
+        case 'a11y_main_missing':
+            return lang('No main content area to skip to');
+        case 'a11y_heading_order':
+            return lang('A heading level is skipped');
+        case 'a11y_img_alt':
+            return lang('Image without alternative text');
+        case 'a11y_form_label':
+            return lang('Form field without a label');
+        case 'a11y_idref_broken':
+            return lang('A label or description points to an element that is not on the page');
+        case 'a11y_error_association':
+            return lang('A field marked invalid does not point to its error message');
+        case 'a11y_link_name':
+            return lang('Link without text');
+        case 'a11y_link_generic':
+            return lang('Link text that does not say where it leads');
+        case 'a11y_button_name':
+            return lang('Button without a name');
+        case 'a11y_frame_title':
+            return lang('Frame without a title');
+        case 'a11y_media_autoplay':
+            return lang('Sound that plays by itself');
+        case 'a11y_contrast':
+            return lang('Text with too little contrast');
+        case 'a11y_target_size':
+            return lang('Link or button smaller than 24 by 24 pixels');
+    }
+
+    return $code;
+}
+
 /**
  * Every finding of the checks over one piece of markup, keyed by code: code,
  * severity, occurrences and the first example as detail.
@@ -764,4 +821,109 @@ function pg_a11y_run($time_budget)
     @unlink(pg_a11y_state_path());
 
     return array('checked' => $checked, 'failed' => $failed, 'done' => true, 'ready' => true);
+}
+
+// ---- The report -----------------------------------------------------------
+
+/**
+ * Pages and occurrences per code across the site, for the checklist.
+ *
+ * @return array<string,array> code => array('pages' => int, 'occurrences' => int)
+ */
+function pg_a11y_report_summary()
+{
+    $summary = array();
+
+    foreach (db_items(
+        "SELECT code, COUNT(DISTINCT entity_id) AS pages, SUM(occurrences) AS occurrences
+        FROM seo_issue
+        WHERE (entity_type = 'page') AND (LEFT(code, 5) = 'a11y_')
+        GROUP BY code") as $row) {
+
+        $summary[$row['code']] = array('pages' => (int) $row['pages'], 'occurrences' => (int) $row['occurrences']);
+    }
+
+    return $summary;
+}
+
+/**
+ * Findings with their page, worst first, at most $limit of them.
+ *
+ * @param string $code One check, or '' for all.
+ * @param int $limit
+ * @return array
+ */
+function pg_a11y_report_rows($code, $limit)
+{
+    $rules = pg_a11y_rules();
+    $sql_code = isset($rules[$code]) ? " AND (seo_issue.code = '" . e($code) . "')" : " AND (LEFT(seo_issue.code, 5) = 'a11y_')";
+
+    return db_items(
+        "SELECT seo_issue.entity_id AS page_id, page.page_name, seo_issue.code, seo_issue.severity, seo_issue.occurrences, seo_issue.detail
+        FROM seo_issue
+        JOIN page ON page.page_id = seo_issue.entity_id
+        WHERE (seo_issue.entity_type = 'page')" . $sql_code . "
+        ORDER BY FIELD(seo_issue.severity, 'error', 'warning', 'notice'), seo_issue.code, page.page_name
+        LIMIT " . (int) $limit);
+}
+
+/**
+ * The checklist report as a printable HTML document, for the PDF export:
+ * one row per criterion with the checks under it, then the findings.
+ *
+ * @param array $summary pg_a11y_report_summary()
+ * @param array $rows pg_a11y_report_rows()
+ * @param int $pages Pages the report covers.
+ * @param int $last_run Time the last full pass ended, 0 for never.
+ * @param string $site The site's host name.
+ * @return string
+ */
+function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site)
+{
+    $criteria = pg_a11y_criteria();
+    $by_criterion = array();
+
+    foreach (pg_a11y_rules() as $code => $rule) {
+        $by_criterion[$rule['criterion']][$code] = $rule;
+    }
+
+    ksort($by_criterion, SORT_NATURAL);
+
+    // A comment or text before the charset meta makes dompdf read the page
+    // as Latin-1 (core/dompdf-embedding.md).
+    $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' . h(lang('Accessibility report')) . '</title><style>'
+        . 'body{font-family:"DejaVu Sans",sans-serif;font-size:9pt;color:#212529}h1{font-size:15pt;margin:0 0 4pt}h2{font-size:11pt;margin:14pt 0 4pt}'
+        . 'table{width:100%;border-collapse:collapse}th,td{border:0.5pt solid #adb5bd;padding:3pt 4pt;text-align:left;vertical-align:top}th{background:#e9ecef}'
+        . '.muted{color:#6c757d}.ok{color:#146c43}.fail{color:#b02a37}</style></head><body>'
+        . '<h1>' . h(lang('Accessibility report')) . '</h1>'
+        . '<p>' . h($site) . ' · ' . h(lang(array('string' => '{var:1} published pages checked', 'vars' => array($pages)))) . ' · '
+        . h($last_run ? lang(array('string' => 'last full check {var:1}', 'vars' => array(date('Y-m-d H:i', $last_run)))) : lang('no full check has finished yet')) . '</p>'
+        . '<p class="muted">' . h(lang('The checks read the published markup of each page against WCAG 2.2. They cover only what can be checked automatically; every criterion still needs a person to review the rest.')) . '</p>'
+        . '<h2>' . h(lang('Checklist')) . '</h2><table><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Check')) . '</th><th>' . h(lang('Result')) . '</th></tr>';
+
+    foreach ($by_criterion as $number => $codes) {
+        foreach ($codes as $code => $rule) {
+            $found = isset($summary[$code]) ? $summary[$code] : null;
+
+            $html .= '<tr><td>' . h($number . ' ' . (isset($criteria[$number]) ? $criteria[$number] : '')) . '</td><td>' . h($rule['level']) . '</td><td>' . h(pg_a11y_issue_label($code)) . '</td><td>'
+                . ($found
+                    ? '<span class="fail">' . h(lang(array('string' => '{var:1} page(s), {var:2} time(s)', 'vars' => array($found['pages'], $found['occurrences'])))) . '</span>'
+                    : '<span class="ok">' . h(lang('No problem found')) . '</span>')
+                . '</td></tr>';
+        }
+    }
+
+    $html .= '</table>';
+
+    if ($rows) {
+        $html .= '<h2>' . h(lang('Findings')) . '</h2><table><tr><th>' . h(lang('Page')) . '</th><th>' . h(lang('Problem')) . '</th><th>' . h(lang('Times')) . '</th><th>' . h(lang('Example')) . '</th></tr>';
+
+        foreach ($rows as $row) {
+            $html .= '<tr><td>' . h($row['page_name']) . '</td><td>' . h(pg_a11y_issue_label($row['code'])) . '</td><td>' . (int) $row['occurrences'] . '</td><td>' . h($row['detail']) . '</td></tr>';
+        }
+
+        $html .= '</table>';
+    }
+
+    return $html . '</body></html>';
 }
