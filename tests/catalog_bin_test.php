@@ -237,7 +237,7 @@ function test_catalog_bin_product_pickers_leave_the_bin_out()
 	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('includes/workspace/refs.php'), 'Workspace references');
 	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('includes/panel/search.php'), 'panel search: products');
 	pg_assert_contains("pg_catalog_bin_live_sql('product_groups')", catalog_bin_test_source('includes/panel/search.php'), 'panel search: groups');
-	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('marketplace_settings.php'), 'marketplace matching');
+	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('includes/api/outbound/product_matches.php'), 'marketplace matching');
 
 	// The offer editor keeps the products an offer already names, flagged,
 	// and offers only the rest.

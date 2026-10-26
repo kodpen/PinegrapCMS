@@ -281,6 +281,7 @@
     "Left empty, everybody who is on an open task gets their list.": "Boş bırakılırsa açık bir görevde adı olan herkes kendi listesini alır.",
     "Left empty, it stays open until someone closes it.": "Boş bırakılırsa biri kapatana kadar açık kalır.",
     "Left empty, it waits until it is answered. A day before, the people still to answer are reminded.": "Boş bırakılırsa yanıtlanana kadar bekler. Son tarihten bir gün önce hâlâ yanıt vermeyenlere hatırlatılır.",
+    "Left empty, its own code is used: {var:1}": "Boş bırakılırsa kendi kodu kullanılır: {var:1}",
     "Left empty, the first words of the message.": "Boş bırakılırsa mesajın ilk sözcükleri.",
     "Left empty, the kind is used as the title.": "Boş bırakılırsa türü başlık olarak kullanılır.",
     "Left empty, the link works for {var:1} days. The customer gets no reminder.": "Boş bırakılırsa bağlantı {var:1} gün geçerli olur. Müşteriye hatırlatma gönderilmez.",

@@ -277,13 +277,11 @@ function mp_matches_set_code($account, $product_id, $code) {
 
 	if ($existing) {
 
-		// A new code is another listing over there: the old listing's id
-		// and its approval no longer say anything about it.
-		$changed = !mp_remote_products_same_code($existing['remote_code'], $code);
-
+		// Matched again: the listing's id (Trendyol's content id) is
+		// forgotten and read again for the code now written, which may be
+		// another listing over there.
 		db("UPDATE marketplace_product_map
-			SET remote_code = '" . e($code) . "', status = 'active', last_error = ''"
-				. ($changed ? ", remote_id = ''" : '') . "
+			SET remote_code = '" . e($code) . "', remote_id = '', status = 'active', last_error = ''
 			WHERE id = '" . e((int) $existing['id']) . "'");
 
 	} else {

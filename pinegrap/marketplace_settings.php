@@ -54,14 +54,13 @@ if ($_POST) {
 	validate_token_field();
 
 	// Every field here holds one value, except the category attributes
-	// (attribute[id]), the matched products ticked for a listing update
-	// (map_ids[]) and the return units ticked for a rejection (unit_ids[]);
+	// (attribute[id]) and the return units ticked for a rejection (unit_ids[]);
 	// a rejection's documents (claim_files[]) arrive in $_FILES, and are
 	// named only because the form draws them as a list. One posted as a list
 	// (provider[]=x) stopped the request in trim(), and account_id[]=x or
 	// group_id[]=x was read as record 1.
 	// Nothing is written, so every account and match stays as it was.
-	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1, 'map_ids' => 1, 'unit_ids' => 1, 'claim_files' => 1));
+	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1, 'unit_ids' => 1, 'claim_files' => 1));
 
 	if ($mp_settings_lists) {
 
@@ -523,114 +522,6 @@ if ($_POST) {
 
 	}
 
-	if ($action === 'map' && $account) {
-
-		$product_id = isset($_POST['product_id']) ? (int)$_POST['product_id'] : 0;
-
-		$remote_code = isset($_POST['remote_code']) ? trim($_POST['remote_code']) : '';
-
-		$product = $product_id ? db_item("SELECT id, name FROM products WHERE id = '" . e($product_id) . "'") : null;
-
-		// The picker resolves the typed label to an id in the browser. What was
-		// typed is submitted as well, and is what decides here when it did not -
-		// a datalist that was filled by pasting, or a browser that does not do
-		// datalists at all, otherwise silently submits nothing.
-		if (!$product) {
-
-			$typed = isset($_POST['product_code']) ? trim($_POST['product_code']) : '';
-
-			// The option is "CODE - Title"; the code is what identifies it.
-			$typed = trim(explode(' — ', $typed)[0]);
-
-			if ($typed !== '') {
-
-				$product = db_item("SELECT id, name FROM products WHERE name = '" . e($typed) . "' LIMIT 1");
-
-				$product_id = $product ? (int)$product['id'] : 0;
-
-			}
-
-		}
-
-		if (!$product) {
-
-			$liveform->add_error(lang('That product was not found. Choose one from the list.'));
-
-		}
-
-		if ($liveform->check_form_errors() == false) {
-
-			// Blank means the product's own code. Most shops list under the same
-			// code on both sides, and making the operator retype it is how a
-			// typo gets into the mapping. On a marketplace keyed on barcodes
-			// the product's own code is its barcode, not its name.
-			if ($remote_code === '') {
-
-				$remote_code = mp_provider_keys_by_barcode($account['provider'])
-					? mp_product_first_barcode($product_id)
-					: $product['name'];
-
-			}
-
-			if ($remote_code === '') {
-
-				$liveform->add_error(lang(array(
-					'string' => 'This product has no barcode. Type the barcode it is listed under on {var:1}.',
-					'vars'   => array(mp_provider_name($account['provider']))
-				)));
-
-				header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-map');
-
-				exit();
-
-			}
-
-			$existing = db_value("SELECT id FROM marketplace_product_map
-				WHERE (account_id = '" . e($account_id) . "') AND (product_id = '" . e($product_id) . "')");
-
-			// The content id read from the marketplace belongs to the old
-			// code, so it is forgotten and the next listing read finds the
-			// new code's own.
-			if ($existing) {
-
-				db("UPDATE marketplace_product_map
-					SET remote_code = '" . e($remote_code) . "', remote_id = '', status = 'active', last_error = ''
-					WHERE id = '" . e((int)$existing) . "'");
-
-			} else {
-
-				db("INSERT INTO marketplace_product_map
-					(account_id, product_id, remote_code, status, created_timestamp)
-					VALUES ('" . e($account_id) . "', '" . e($product_id) . "',
-						'" . e($remote_code) . "', 'active', UNIX_TIMESTAMP())");
-
-			}
-
-			$liveform->add_notice(lang('Product matched.'));
-
-			header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-map');
-
-			exit();
-
-		}
-
-	}
-
-	if ($action === 'unmap' && $account) {
-
-		$map_id = isset($_POST['map_id']) ? (int)$_POST['map_id'] : 0;
-
-		db("DELETE FROM marketplace_product_map
-			WHERE (id = '" . e($map_id) . "') AND (account_id = '" . e($account_id) . "')");
-
-		$liveform->add_notice(lang('Match removed.'));
-
-		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-map');
-
-			exit();
-
-	}
-
 	if ($action === 'push_all' && $account) {
 
 		$queued = mp_enqueue_account($account_id);
@@ -694,68 +585,6 @@ if ($_POST) {
 		$liveform->add_notice(lang('The orders that failed will be read from the marketplace again on the next run.'));
 
 		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-orders');
-
-		exit();
-
-	}
-
-	// Send the shop's title, description and pictures over the ticked listings
-	// the marketplace has approved. Queued for this account only, not through
-	// mp_enqueue(), which queues stock for every account; the job sends them
-	// on its next pass (mp_sync_send_listing_updates()). A product already
-	// waiting for an update is not queued twice.
-	if ($action === 'listing_update' && $account) {
-
-		$map_ids = array();
-
-		foreach ((array)(isset($_POST['map_ids']) ? $_POST['map_ids'] : array()) as $value) {
-
-			if (is_scalar($value) && (int)$value > 0) {
-
-				$map_ids[(int)$value] = (int)$value;
-
-			}
-
-		}
-
-		$product_ids = $map_ids ? array_map('intval', (array) db_values("SELECT product_id FROM marketplace_product_map
-			WHERE (account_id = '" . e($account_id) . "') AND (remote_id <> '')
-			  AND (id IN (" . implode(',', $map_ids) . "))")) : array();
-
-		if (!mp_can($account['provider'], 'update_listings')) {
-
-			$liveform->add_warning(lang(array(
-				'string' => '{var:1} cannot do this.',
-				'vars'   => array(h(mp_provider_name($account['provider'])))
-			)));
-
-		} elseif (!$product_ids) {
-
-			$liveform->add_warning(lang('Tick at least one product whose listing is approved.'));
-
-		} else {
-
-			foreach ($product_ids as $product_id) {
-
-				db("INSERT INTO marketplace_sync_queue
-					(account_id, product_id, operation, status, priority, attempts, run_after, created_timestamp, updated_timestamp)
-					SELECT '" . e($account_id) . "', '" . e($product_id) . "', 'listing_update', 'waiting', 3, 0, 0,
-						UNIX_TIMESTAMP(), UNIX_TIMESTAMP()
-					FROM DUAL
-					WHERE NOT EXISTS (SELECT 1 FROM marketplace_sync_queue
-						WHERE (account_id = '" . e($account_id) . "') AND (product_id = '" . e($product_id) . "')
-						  AND (operation = 'listing_update') AND (status = 'waiting'))");
-
-			}
-
-			$liveform->add_notice(lang(array(
-				'string' => 'The changes of {var:1} listing(s) will be sent on the next run.',
-				'vars'   => array(count($product_ids))
-			)));
-
-		}
-
-		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-map');
 
 		exit();
 
@@ -1867,7 +1696,7 @@ if (!$selected_id && $accounts) {
 
 $selected = $selected_id ? mp_account($selected_id) : null;
 
-$maps = array();
+$map_counts = array('all' => 0, 'errors' => 0);
 
 $orders = array();
 
@@ -1891,20 +1720,13 @@ $failures = array();
 
 if ($selected) {
 
-	// One query for the mapping and the product beside it. The screen shows the
-	// price and quantity next to the remote code, because the question an
-	// operator opens this screen with is "what is it going to send": the price
-	// is the one the queue sends, tax included (mp_product_price()), which is
-	// why the product's taxable flag and rate ride along.
-	$maps = (array) db_items("SELECT marketplace_product_map.*,
-			products.name AS product_name, products.title, products.price,
-			products.taxable, products.tax_rate,
-			products.inventory, products.inventory_quantity, products.out_of_stock, products.enabled
-		FROM marketplace_product_map
-		LEFT JOIN products ON products.id = marketplace_product_map.product_id
-		WHERE marketplace_product_map.account_id = '" . e($selected_id) . "'
-		ORDER BY products.name ASC
-		LIMIT 500");
+	// How many products are matched, and how many of them a send was refused
+	// for; the products themselves are listed on marketplace_products.php.
+	$map_counts = array(
+		'all'    => (int) db_value("SELECT COUNT(*) FROM marketplace_product_map WHERE account_id = '" . e($selected_id) . "'"),
+		'errors' => (int) db_value("SELECT COUNT(*) FROM marketplace_product_map
+			WHERE (account_id = '" . e($selected_id) . "') AND (status = 'error')")
+	);
 
 	foreach ((array) db_items("SELECT status, COUNT(*) AS n FROM marketplace_sync_queue
 		WHERE account_id = '" . e($selected_id) . "' GROUP BY status") as $row) {
@@ -2178,7 +2000,7 @@ if ($selected) {
 		</div>
 		<div class="card-body">
 			<div class="mp-count">
-				<div><b>' . pg_format_number(count($maps), 0) . '</b><span>' . lang('matched products') . '</span></div>
+				<div><b>' . pg_format_number($map_counts['all'], 0) . '</b><span>' . lang('matched products') . '</span></div>
 				<div><b>' . pg_format_number($queue_counts['waiting'], 0) . '</b><span>' . lang('waiting') . '</span></div>
 				<div><b>' . pg_format_number($queue_counts['sent'], 0) . '</b><span>' . lang('with the marketplace') . '</span></div>
 				<div><b class="' . ($queue_counts['failed'] ? 'text-danger' : '') . '">'
@@ -2210,165 +2032,38 @@ if ($selected) {
 
 	/* ------------------------------------------------------------ mapping */
 
+	// Which products are sent, and under which codes, is looked after on
+	// marketplace_products.php: the shop's products with their pictures, and
+	// the marketplace's catalogue where the connector reads it. This card
+	// says how many and leads there.
 	echo '
 	<div class="card mb-3" id="mp-map">
 		<div class="card-header d-flex align-items-center flex-wrap gap-2">
 			<i class="bi bi-link-45deg me-1"></i><b>' . lang('Matched products') . '</b>
-			<span class="small opacity-75 d-none d-lg-inline">'
-				. lang('The code on the left is this shop\'s; the code on the right is what the marketplace calls it.') . '</span>
-			<div class="ms-auto d-flex gap-2">'
-				. ($can_update_listings ? '
-				<form method="post" action="marketplace_settings.php" class="d-inline" id="mp_update_form">
-					' . get_token_field() . '
-					<input type="hidden" name="mp_action" value="listing_update">
-					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline-secondary"'
-						. ($maps ? '' : ' disabled') . ' title="'
-						. h(lang('Sends the title, description and pictures of the ticked approved listings. Price and stock go on their own.')) . '">
-						<i class="bi bi-cloud-upload me-1"></i>' . h(lang(array(
-							'string' => 'Send changes to {var:1}',
-							'vars'   => array(mp_provider_name($selected['provider']))
-						))) . '</button>
-				</form>' : '') . '
+			<div class="ms-auto d-flex gap-2">
 				<form method="post" action="marketplace_settings.php" class="d-inline">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="push_all">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline-secondary"' . ($maps ? '' : ' disabled') . '>
+					<button type="submit" class="btn btn-sm btn-outline-secondary"' . ($map_counts['all'] ? '' : ' disabled') . '>
 						<i class="bi bi-arrow-repeat me-1"></i>' . lang('Send all now') . '</button>
 				</form>
-				<button type="button" class="btn btn-sm ' . ($can_read_products ? 'btn-outline-secondary' : 'btn-primary') . '" data-bs-toggle="modal" data-bs-target="#mp_match">
-					<i class="bi bi-plus-lg me-1"></i>' . lang('Match a product') . '</button>'
+				<a class="btn btn-sm ' . ($can_read_products ? 'btn-outline-secondary' : 'btn-primary') . '" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=shop">
+					<i class="bi bi-shop me-1"></i>' . h(lang('Products in this shop')) . '</a>'
 				. ($can_read_products ? '
 				<a class="btn btn-sm btn-primary" href="marketplace_products.php?account=' . $selected_id . '">
 					<i class="bi bi-boxes me-1"></i>' . h(lang('Match in bulk with pictures')) . '</a>' : '') . '
 			</div>
 		</div>
-		<div class="card-body px-2 py-3">';
-
-	if (!$maps) {
-
-		echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
-			. lang('No product is matched yet. Nothing is sent until at least one is.') . '</p>';
-
-	} else {
-
-		echo '
-			<div class="mp-scroll">
-			<div class="mp-head">
-				<span>' . lang('Product') . '</span><span>' . lang('Code on the marketplace') . '</span>
-				<span>' . lang('Price') . '</span><span>' . lang('Stock') . '</span>
-				<span>' . lang('Last sent') . '</span><span></span>
-			</div>';
-
-		// The price cell below is the site's own formatter and is deliberately
-		// not escaped: it returns the currency symbol as an HTML entity -
-		// Turkish lira is &#8378; - and escaping that prints the entity itself
-		// instead of the sign. Everything else in the row is text somebody
-		// typed and is escaped.
-		foreach ($maps as $map) {
-
-			$tracked = !empty($map['inventory']);
-
-			$quantity = $tracked ? (int)$map['inventory_quantity'] : 0;
-
-			if (empty($map['enabled']) || !empty($map['out_of_stock'])) {
-
-				$quantity = 0;
-
-			}
-
-			// The figure the marketplace gets; marked when it carries tax the
-			// product's stored price does not, so it is not read as a typo.
-			$map_price = mp_product_price($map);
-
-			// Where the listing stands, for a marketplace whose connector
-			// reads its approval (mp_sync_listing_states()): on sale once its
-			// content id is known, rejected with the reason below, otherwise
-			// still waiting. A note on a listing that is on sale (locked,
-			// archived, a document asked for) is shown under the code.
-			$map_state = '';
-
-			if ($can_listing_status) {
-
-				if ((string)$map['remote_id'] !== '') {
-
-					$map_state = ' <span class="mp-pill on">' . h(lang(array(
-						'string' => 'On {var:1}',
-						'vars'   => array(mp_provider_name($selected['provider']))
-					))) . '</span>';
-
-				} elseif ($map['status'] === 'error'
-					&& strpos((string)$map['last_error'], mp_listing_rejected_prefix(mp_provider_name($selected['provider']))) === 0) {
-
-					$map_state = ' <span class="mp-pill bad">' . lang('Rejected') . '</span>';
-
-				} elseif ($map['status'] === 'active') {
-
-					$map_state = ' <span class="mp-pill off">' . lang('Awaiting approval') . '</span>';
-
-				}
-
-			}
-
-			// The commission the marketplace takes, read with the approval
-			// (NULL until then; the key is missing before the upgrade step).
-			if (isset($map['commission']) && is_numeric($map['commission'])) {
-
-				$map_state .= ' <span class="small opacity-75">' . h(lang(array(
-					'string' => 'Commission {var:1} %',
-					'vars'   => array(pg_format_number((float)$map['commission'], 2))
-				))) . '</span>';
-
-			}
-
-			// The tick box belongs to the form in the card header (form
-			// attribute): the row already holds the remove form, and forms
-			// do not nest.
-			$map_tick = ($can_update_listings && (string)$map['remote_id'] !== '')
-				? '<input type="checkbox" class="form-check-input me-1" form="mp_update_form" name="map_ids[]" value="'
-					. (int)$map['id'] . '" aria-label="' . h(lang('Send changes')) . '">'
-				: '';
-
-			echo '
-			<div class="mp-row">
-				<span>
-					<b>' . $map_tick . h((string)$map['product_name']) . '</b>
-					<code>' . h(mb_substr((string)$map['title'], 0, 46)) . '</code>
-				</span>
-				<span><code>' . h($map['remote_code']) . '</code>' . $map_state
-					. ($map['status'] === 'error'
-						? '<div class="mp-err">' . h(mb_substr((string)$map['last_error'], 0, 90)) . '</div>'
-						: (($can_listing_status && (string)$map['last_error'] !== '')
-							? '<div class="small opacity-75">' . h(mb_substr((string)$map['last_error'], 0, 90)) . '</div>'
-							: '')) . '</span>
-				<span>' . prepare_price_for_output($map_price, false, 0, 'html', false)
-					. ($map_price !== (int)$map['price'] ? ' <span class="small opacity-50">' . lang('VAT included') . '</span>' : '') . '</span>
-				<span>' . pg_format_number($quantity, 0)
-					. ($tracked ? '' : ' <span class="small opacity-50">' . lang('untracked') . '</span>') . '</span>
-				<span class="small opacity-75">'
-					. ($map['last_pushed'] ? h(mp_settings_ago((int)$map['last_pushed'])) : '&mdash;') . '</span>
-				<span>
-					<form method="post" action="marketplace_settings.php">
-						' . get_token_field() . '
-						<input type="hidden" name="mp_action" value="unmap">
-						<input type="hidden" name="account_id" value="' . $selected_id . '">
-						<input type="hidden" name="map_id" value="' . (int)$map['id'] . '">
-						<button type="submit" class="btn btn-sm btn-link text-danger p-0" title="' . lang('Remove match') . '">
-							<i class="bi bi-x-lg"></i></button>
-					</form>
-				</span>
-			</div>';
-
-		}
-
-		echo '
-			</div>';
-
-	}
-
-	echo '
+		<div class="card-body small">'
+			. ($map_counts['all']
+				? h(lang(array('string' => '{var:1} products are matched and sent to {var:2}.',
+					'vars' => array(pg_format_number($map_counts['all'], 0), mp_provider_name($selected['provider'])))))
+					. ($map_counts['errors']
+						? ' <a class="text-danger" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=shop&amp;view=errors">'
+							. h(lang(array('string' => '{var:1} of them were not sent.', 'vars' => array(pg_format_number($map_counts['errors'], 0))))) . '</a>'
+						: '')
+				: h(lang('No product is matched yet. Nothing is sent until at least one is.'))) . '
 		</div>
 	</div>';
 
@@ -3153,50 +2848,9 @@ if ($selected) {
 			<button type="submit" class="btn btn-primary flex-grow-1">' . lang('Save') . '</button>
 		</div>
 	</form>
-</div>
-
-<div class="modal fade" id="mp_match" tabindex="-1">
-	<div class="modal-dialog">
-		<form method="post" action="marketplace_settings.php" autocomplete="off" class="modal-content disable_shortcut">
-			' . get_token_field() . '
-			<input type="hidden" name="mp_action" value="map">
-			<input type="hidden" name="account_id" value="' . $selected_id . '">
-			<div class="modal-header">
-				<h5 class="modal-title"><i class="bi bi-link-45deg me-2"></i>' . lang('Match a product') . '</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-			</div>
-			<div class="modal-body">
-				<div class="mb-3">
-					<label class="form-label" for="match_product">' . lang('Product') . '</label>
-					<input class="form-control" list="mp_products" id="match_product_text" name="product_code"
-						placeholder="' . lang('Type a product code') . '" autocomplete="off">
-					<input type="hidden" name="product_id" id="match_product">
-					<datalist id="mp_products"></datalist>
-					<div class="form-text">' . lang('Only products that are not matched to this marketplace yet.') . '</div>
-				</div>
-				<div class="mb-3">
-					<label class="form-label" for="match_code">' . lang('Code on the marketplace') . '</label>
-					<input type="text" class="form-control" id="match_code" name="remote_code" autocomplete="off">
-					<div class="form-text">'
-						. (($selected['provider'] === 'trendyol')
-							? lang('Leave empty to use the product\'s barcode. Trendyol knows a listing by its barcode.')
-							: lang('Leave empty to use the same code as here. On n11 this is the stock code (stockCode) of the listing.')) . '</div>
-				</div>
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-				<button type="submit" class="btn btn-primary">' . lang('Match') . '</button>
-			</div>
-		</form>
-	</div>
 </div>';
 
 }
-
-/* The product picker is filled from a list built here rather than by a search
-   endpoint: a catalogue that fits in a datalist does not need one, and the
-   screens that do have a search endpoint are the ones with tens of thousands
-   of rows. The cap is the point at which that stops being true. */
 
 // The category picker's list.
 //
@@ -3216,20 +2870,6 @@ if ($selected && $open_group) {
 			. h((string)$row['path']) . '</option>';
 
 	}
-
-}
-
-$unmatched = array();
-
-if ($selected) {
-
-	// Products in the Recycle Bin are not offered for matching.
-	$unmatched = (array) db_items("SELECT products.id, products.name, products.title
-		FROM products
-		WHERE products.id NOT IN (
-			SELECT product_id FROM marketplace_product_map WHERE account_id = '" . e($selected_id) . "')" . pg_catalog_bin_live_sql('products') . "
-		ORDER BY products.name ASC
-		LIMIT 2000");
 
 }
 
@@ -3270,54 +2910,6 @@ echo '
 		provider.addEventListener(\'change\', showFields);
 
 		showFields();
-
-	}
-
-	var products = ' . json_encode($unmatched, JSON_UNESCAPED_UNICODE) . ';
-
-	var list = document.getElementById(\'mp_products\');
-	var text = document.getElementById(\'match_product_text\');
-	var hidden = document.getElementById(\'match_product\');
-
-	if (list && products.length) {
-
-		var html = \'\';
-
-		for (var i = 0; i < products.length; i++) {
-
-			var label = products[i].name + (products[i].title ? \' \\u2014 \' + products[i].title : \'\');
-
-			html += \'<option value="\' + label.replace(/"/g, \'&quot;\') + \'"></option>\';
-
-		}
-
-		list.innerHTML = html;
-
-	}
-
-	// The datalist hands back the label, not the id. The code is everything up
-	// to the em dash, which is what the option was built from.
-	if (text && hidden) {
-
-		text.addEventListener(\'input\', function () {
-
-			var typed = text.value.split(\' \\u2014 \')[0].trim();
-
-			hidden.value = \'\';
-
-			for (var i = 0; i < products.length; i++) {
-
-				if (products[i].name === typed) {
-
-					hidden.value = products[i].id;
-
-					break;
-
-				}
-
-			}
-
-		});
 
 	}
 
