@@ -409,3 +409,19 @@ function test_bs6_classes_between_php_blocks()
 		bs6_convert_class_list('badge <?php if ($a): ?>text-bg-success<?php else: ?>text-bg-secondary<?php endif ?> p-3')['value']);
 	pg_assert_same('x <?php if ($a): ?>fg-danger<?php endif ?>', bs6_convert_class_list('x <?php if ($a): ?>text-danger<?php endif ?>')['value']);
 }
+
+// Class strings in code (a status map, a ternary feeding className) are read
+// when the caller asks; a lone text-bg colour is a badge's theme, a lone
+// class that would split is reported.
+function test_bs6_class_strings()
+{
+	$js = "var cls = ok ? 'text-success' : 'text-muted';\nbadge.className = 'badge ' + (open ? 'text-bg-warning' : 'text-bg-secondary');\n"
+		. "x.classList.toggle(on ? 'btn-primary' : 'btn-outline-secondary');\nvar label = 'Save it';\nvar wide = 'col-12 col-md-6 p-2';\n";
+	$r = bs6_convert_source($js, null, true);
+
+	pg_assert_same("var cls = ok ? 'fg-success' : 'fg-secondary';\nbadge.className = 'badge ' + (open ? 'theme-warning' : 'theme-secondary');\n"
+		. "x.classList.toggle(on ? 'btn-primary' : 'btn-outline-secondary');\nvar label = 'Save it';\nvar wide = 'col-12 md:col-6 p-3';\n", $r['source']);
+	pg_assert_same(2, count($r['reviews']), 'the split button classes');
+	pg_assert_same($js, bs6_convert_source($js)['source'], 'not read unless asked');
+	pg_assert_false(bs6_reads_class_strings('assets/js/style_designer.js'), 'the editor names canvas classes as data');
+}
