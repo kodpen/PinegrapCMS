@@ -36,7 +36,7 @@ OR in conditions; pg-hide-if-empty everywhere; words beside a value; code areas;
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
 - W15 done (#1734). W16 Placed beats pushed, default parts: order view #1808 #1824 #1863 ([[widget-default-parts]]); rest left. Not waiting.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
-- W19 #1904 #1910 ([[widget-condition-canvas]]); main loop rows left.
+- W19 #1904 #1914 ([[widget-condition-canvas]]); main loop rows left.
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
 
 ## How are other sessions kept clear?
