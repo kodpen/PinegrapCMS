@@ -1,10 +1,12 @@
 {
+    "0 for no limit.": "Sınır yoksa 0.",
     "0 for none": "Eklenmemesi için 0 yazınız",
     "0 items": "0 adet",
     "0 leaves the reply deadline out of the letter.": "0 yazılırsa yanıt süresi cümlesi mektuba girmez.",
     "0 results": "0 sonuç",
     "0 shows every row; at most 100.": "0 tüm satırları gösterir; en çok 100.",
     "0 starts it at once.": "0 hemen başlatır.",
+    "0 starts it at once; at most a week (10,080 minutes).": "0 hemen başlatır; en fazla bir hafta (10.080 dakika).",
     "0 to start immediately": "hemen başlaması için 0 yazınız",
     "0 — This page only": "0 — Yalnızca bu sayfa",
     "08 Apr 2026": "08 Nis 2026",

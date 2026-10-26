@@ -54,6 +54,11 @@ function pg_sw_default_part_tokens()
         'order_view' => array(
             array('__timeline', 'pg_sw_part_order_timeline'),
             array('__order_status_badge', 'pg_sw_part_order_status_badge'),
+            array('__item_form_data_html', 'pg_sw_part_order_item_form'),
+            array('__item_gift_card_html', 'pg_sw_part_order_item_gift_card'),
+        ),
+        'comments' => array(
+            array('__comment_stars_html', 'pg_sw_part_comment_stars'),
         ),
     );
 }
@@ -71,6 +76,57 @@ function pg_sw_default_tail_parts()
             array(array('__legal_preinfo_url', '__legal_contract_url'), 'pg_sw_part_order_legal_documents'),
         ),
     );
+}
+
+// The blocks a renderer added after each row of a widget's main loop whose
+// row placed none of their tokens, now default parts added to the end of
+// the main loop once, by widget kind: pairs of the tokens that place the
+// block (the old token, the list the part draws) and the function that
+// builds it. In the order the renderer added them.
+function pg_sw_default_loop_tail_parts()
+{
+    return array(
+        'order_view' => array(
+            array(array('__item_form_data_html', 'order.item_forms'), 'pg_sw_part_order_item_form'),
+            array(array('__item_gift_card_html', 'order.item_gift_cards'), 'pg_sw_part_order_item_gift_card'),
+        ),
+    );
+}
+
+// The main loop of the widget tree $node (its first loop_area without a
+// source, lists not searched), by reference; null for none.
+function &pg_sw_main_loop_ref(&$node)
+{
+    $none = null;
+    if (!is_array($node) || pg_sw_list_is_sourced($node)) return $none;
+    if (isset($node['type']) && $node['type'] === 'loop_area') return $node;
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) {
+            $found = &pg_sw_main_loop_ref($node['children'][$i]);
+            if ($found !== null) return $found;
+            unset($found);
+        }
+    }
+    return $none;
+}
+
+// Adds to the end of $tree's main loop each row block of $kind its row
+// does not place (pg_sw_default_loop_tail_parts()). Returns whether
+// anything was added.
+function pg_sw_default_loop_tails(&$tree, $kind, $cfg)
+{
+    $all = pg_sw_default_loop_tail_parts();
+    if (!isset($all[$kind])) return false;
+    $loop = &pg_sw_main_loop_ref($tree);
+    if ($loop === null) return false;
+    $row = array('type' => 'root', 'children' => isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array());
+    $added = false;
+    foreach ($all[$kind] as $pair) {
+        if (pg_sw_placed($row, $pair[0])) continue;
+        $loop['children'] = array_merge(isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array(), call_user_func($pair[1], $cfg));
+        $added = true;
+    }
+    return $added;
 }
 
 // $tree_json with every node that draws an old token of $kind given its
@@ -92,13 +148,23 @@ function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = f
     foreach (isset($tails[$kind]) ? $tails[$kind] : array() as $pair) {
         if (!pg_sw_placed($tree_json, $pair[0])) $due[] = $pair[1];
     }
-    $mail = $email && strpos($tree_json, 'pg-ov-timeline') !== false;
-    if (!$found && !$due && !$mail) return $tree_json;
+    // A row block is due unless the whole tree places it (then the row
+    // itself is read below).
+    $loop_due = false;
+    $loop_tails = pg_sw_default_loop_tail_parts();
+    foreach (isset($loop_tails[$kind]) ? $loop_tails[$kind] : array() as $pair) {
+        if (!pg_sw_placed($tree_json, $pair[0])) { $loop_due = true; break; }
+    }
+    $mail = $email && (strpos($tree_json, 'pg-ov-timeline') !== false || strpos($tree_json, 'pg-comment-stars') !== false);
+    if (!$found && !$due && !$loop_due && !$mail) return $tree_json;
 
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return $tree_json;
     $cfg = is_array($cfg) ? $cfg : array();
     $changed = $found ? pg_sw_default_parts_tree($tree, $parts, $cfg) : false;
+    if (!pg_sw_tree_is_placeholder($tree)) {
+        $changed = pg_sw_default_loop_tails($tree, $kind, $cfg) || $changed;
+    }
     if ($due && !pg_sw_tree_is_placeholder($tree)) {
         $placed = $tree;
         if (!isset($tree['children']) || !is_array($tree['children'])) $tree['children'] = array();
@@ -107,7 +173,10 @@ function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = f
         }
         $changed = true;
     }
-    if ($email) $changed = pg_sw_parts_mail_styles($tree) || $changed;
+    if ($email) {
+        $changed = pg_sw_parts_mail_styles($tree) || $changed;
+        $changed = pg_sw_parts_mail_stars($tree) || $changed;
+    }
     if (!$changed) return $tree_json;
     $out = json_encode($tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return ($out === false) ? $tree_json : $out;
@@ -292,6 +361,94 @@ function pg_sw_part_order_status_badge($cfg = array())
     return $out;
 }
 
+// The props of an element showing $token, $sample on the canvas, drawn
+// only when $token passes $op when one is given.
+function pg_sw_part_value($token, $sample, $op = '')
+{
+    $props = array('text' => $sample, '_bindings' => array('text' => $token));
+    if ($op !== '') {
+        $props['_bindings']['show_if'] = $token;
+        $props['_bindParams'] = array('show_if' => array('op' => $op));
+    }
+    return $props;
+}
+
+// The heading of an item's form or gift card: its name, and its number
+// among the item's when there is more than one.
+function pg_sw_part_order_item_legend($props, $name, $number, $count)
+{
+    return pg_sw_part_el('legend', 'float-none w-auto px-2 fs-6 fw-semibold', 'Heading', $props, array(
+        pg_sw_part_el('span', '', 'Name', $name),
+        pg_sw_part_el('span', '', 'Number', array_merge(array('text' => ' (^^' . $number . '^^ / ^^' . $count . '^^)'), pg_sw_part_when($count, 'gt', '1'))),
+    ));
+}
+
+// One label above its value, as the order view prints a form's answers:
+// the value element takes $props and $children.
+function pg_sw_part_order_item_line($label, $props, $children = array())
+{
+    return pg_sw_part_el('div', 'mb-2', $label, array(), array(
+        pg_sw_part_el('div', 'form-label mb-0 fw-semibold', 'Label', array('text' => $label)),
+        pg_sw_part_el('div', 'pg-ov-form-value', $label, $props, $children),
+    ));
+}
+
+// The answers an item's buyer gave in the product's order form, printed: a
+// box per form (order.item_forms; one per unit for 'One Form per
+// Quantity'), its heading, then each field's label above its answer
+// (order.item_form_fields); an information field shows its label and text.
+// The box carries the item's id for page scripts (data-pg-ov-item-form).
+function pg_sw_part_order_item_form($cfg = array())
+{
+    return array(pg_sw_part_el('div', 'pg-ov-item-form mt-2', 'Product Form Answers', array_merge(
+        array('_attrs' => array(array('name' => 'data-pg-ov-item-form', 'value' => '{{__item_id}}'))),
+        pg_sw_part_when('__item_has_form_data', 'not_empty')
+    ), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'order.item_forms'), 'children' => array(
+            pg_sw_part_el('fieldset', 'pg-ov-item-form-block border rounded p-3 mt-2', 'Form', array(), array(
+                pg_sw_part_order_item_legend(pg_sw_part_when('__form_has_legend', 'not_empty'),
+                    pg_sw_part_value('__form_name', 'Order Form'), '__form_number', '__form_count'),
+                array('type' => 'loop_area', 'props' => array('source' => 'order.item_form_fields'), 'children' => array(
+                    pg_sw_part_el('div', 'mb-2', 'Field', pg_sw_part_when('__field_is_info', 'empty'), array(
+                        pg_sw_part_el('div', 'form-label mb-0 fw-semibold', 'Label', pg_sw_part_value('__field_label', 'Label')),
+                        pg_sw_part_el('div', 'pg-ov-form-value', 'Answer', pg_sw_part_value('__field_value_html', 'Answer')),
+                    )),
+                    pg_sw_part_el('div', 'mb-2 small', 'Information', pg_sw_part_when('__field_is_info', 'not_empty'), array(
+                        pg_sw_part_el('div', 'fw-semibold', 'Label', pg_sw_part_value('__field_label', 'Label', 'not_empty')),
+                        pg_sw_part_el('div', 'text-muted', 'Information', pg_sw_part_value('__field_info_html', '')),
+                    )),
+                )),
+            )),
+        )),
+    )));
+}
+
+// An item's gift cards, printed: a box per card filled in
+// (order.item_gift_cards), its heading, then the amount, the recipient's
+// address, the sender's name, the message and the delivery date, each
+// label above its value. The box carries the item's id for page scripts
+// (data-pg-ov-item-gift-card).
+function pg_sw_part_order_item_gift_card($cfg = array())
+{
+    return array(pg_sw_part_el('div', 'pg-ov-item-gift-card mt-2', 'Gift Card Details', array_merge(
+        array('_attrs' => array(array('name' => 'data-pg-ov-item-gift-card', 'value' => '{{__item_id}}'))),
+        pg_sw_part_when('__item_has_gift_card', 'not_empty')
+    ), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'order.item_gift_cards'), 'children' => array(
+            pg_sw_part_el('fieldset', 'pg-ov-item-gift-card-block border rounded p-3 mt-2', 'Gift card', array(), array(
+                pg_sw_part_order_item_legend(array(), array('text' => lang('Gift card')), '__gift_card_number', '__gift_card_count'),
+                pg_sw_part_order_item_line(lang('Amount'), array(), array(
+                    pg_sw_part_el('strong', '', 'Amount', pg_sw_part_value('__gift_card_amount', '100,00')),
+                )),
+                pg_sw_part_order_item_line(lang('Recipient Email'), pg_sw_part_value('__gift_card_email', 'name@example.com')),
+                pg_sw_part_order_item_line(lang('Your Name'), pg_sw_part_value('__gift_card_from_name', 'Name')),
+                pg_sw_part_order_item_line(lang('Message'), pg_sw_part_value('__gift_card_message_html', 'Message')),
+                pg_sw_part_order_item_line(lang('Delivery Date'), pg_sw_part_value('__gift_card_delivery', '20.10.2026')),
+            )),
+        )),
+    )));
+}
+
 // A card added after the order view: the shell the returns and legal
 // documents cards had, a card with a small heading, shown by $flag.
 function pg_sw_part_order_card($class, $name, $flag, $heading, $body)
@@ -346,6 +503,50 @@ function pg_sw_part_order_legal_documents($cfg = array(), $tree = array())
     return array(pg_sw_part_order_card('pg-ov-legal-documents', 'Legal Documents', 'has_legal_documents', lang('Legal Documents'), $body));
 }
 
+// A comment's stars: five drawings in a span said once as "Rated N out of
+// 5" (__comment_rating_label), the first N filled (__comment_rating gte
+// the star's place), the rest empty. Drawn only for a rating; the colour
+// comes from the design (text-warning in the starters). The look that
+// keeps the drawings side by side is in pg_carousel_layout.css.
+function pg_sw_part_comment_stars($cfg = array())
+{
+    $stars = array();
+    for ($i = 1; $i <= 5; $i++) {
+        $stars[] = pg_sw_part_comment_star(true, $i);
+        $stars[] = pg_sw_part_comment_star(false, $i);
+    }
+    return array(pg_sw_part_el('span', 'pg-comment-stars', 'Stars', array_merge(
+        array('_attrs' => array(
+            array('name' => 'role', 'value' => 'img'),
+            array('name' => 'aria-label', 'value' => '{{__comment_rating_label}}'),
+        )),
+        pg_sw_part_when('__comment_rating', 'not_empty')
+    ), $stars));
+}
+
+// The star at place $place, filled or empty: an SVG drawing node, the one
+// _pg_comments_star_svg() draws, shown by the comment's rating.
+function pg_sw_part_comment_star($filled, $place)
+{
+    return array(
+        'type'     => 'content',
+        'props'    => array_merge(
+            array('contentType' => 'svg', 'html' => _pg_comments_star_svg($filled), 'customName' => $filled ? 'Filled star' : 'Empty star'),
+            pg_sw_part_when('__comment_rating', $filled ? 'gte' : 'lt', (string)$place)
+        ),
+        'children' => array(),
+    );
+}
+
+// The stylesheet a page needs for the parts in a widget's output $html
+// (pg_carousel_layout.css: the comment stars side by side), once a
+// request; '' when $html holds none. Live pages only: an e-mail draws the
+// stars as characters (pg_sw_parts_mail_stars()).
+function pg_sw_parts_css($html)
+{
+    return (strpos((string)$html, 'pg-comment-stars') !== false) ? _pg_widget_layout_css_once() : '';
+}
+
 // The look of the parts in an e-mail, where the stylesheet may be dropped:
 // written inline before the element's own style, which wins on a repeat.
 // Plain boxes and colours only: no flex, no positioning, no pseudo element.
@@ -397,6 +598,45 @@ function pg_sw_parts_mail_styles(&$node)
     if (isset($node['children']) && is_array($node['children'])) {
         foreach ($node['children'] as $i => $child) {
             if (pg_sw_parts_mail_styles($child)) {
+                $node['children'][$i] = $child;
+                $changed = true;
+            }
+        }
+    }
+    return $changed;
+}
+
+// In an e-mail, the star drawings of every comment stars span under $node
+// (pg_sw_part_comment_stars()) become the stars as characters
+// (__comment_stars_text): mail clients drop SVG. The span's other children
+// stay. Returns whether anything changed.
+function pg_sw_parts_mail_stars(&$node)
+{
+    if (!is_array($node)) return false;
+    $changed = false;
+    $classes = isset($node['props']['cssClass']) ? preg_split('/\s+/', trim((string)$node['props']['cssClass'])) : array();
+    if (in_array('pg-comment-stars', $classes, true) && isset($node['children']) && is_array($node['children'])) {
+        $kids = array();
+        $text = false;
+        foreach ($node['children'] as $child) {
+            $is_star = is_array($child) && isset($child['type'], $child['props']['contentType'], $child['props']['html'])
+                && $child['type'] === 'content' && $child['props']['contentType'] === 'svg'
+                && preg_match('/\bbi-star(-fill)?\b/', (string)$child['props']['html']);
+            if (!$is_star) {
+                $kids[] = $child;
+                continue;
+            }
+            if (!$text) {
+                $kids[] = array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '^^__comment_stars_text^^'), 'children' => array());
+                $text = true;
+            }
+            $changed = true;
+        }
+        $node['children'] = $kids;
+    }
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) {
+            if (pg_sw_parts_mail_stars($child)) {
                 $node['children'][$i] = $child;
                 $changed = true;
             }

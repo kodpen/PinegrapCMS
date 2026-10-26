@@ -312,3 +312,94 @@ function test_erp_api_account_writes_can_be_rehearsed()
 
 	pg_assert_contains('erp_lock_refusal(', $create, 'the opening date is checked against the lock before anything is written');
 }
+
+// Recording and cancelling a receipt can be tried first: the panel's receipt
+// functions keep their checks in erp_post_receipt_check() and
+// erp_receipt_cancel_check(), the endpoints call the same checks and stop
+// the rehearsal before the till or the account is written.
+function test_erp_api_receipt_writes_can_be_rehearsed()
+{
+	$routes = array();
+
+	foreach (erp_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$source = function ($handler) {
+		$function = new ReflectionFunction($handler);
+		$lines = file($function->getFileName());
+
+		return preg_replace('~^\s*(//|\*).*$~m', '', implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1)));
+	};
+
+	foreach (array(
+		'erp.receipts.create' => array('erp_api_receipts_create', 'erp_post_receipt_check(', 'erp_post_receipt('),
+		'erp.receipts.cancel' => array('erp_api_receipts_cancel', 'erp_receipt_cancel_check(', 'erp_receipt_cancel('),
+	) as $id => $expect) {
+		list($handler, $check, $write) = $expect;
+		$code = $source($handler);
+		$stop = strpos($code, 'api_dry_run_stop(');
+
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' takes X-Dry-Run');
+		pg_assert_true($stop !== false, $handler . ' stops a rehearsal');
+		pg_assert_true((strpos($code, $check) !== false) && (strpos($code, $check) < $stop), $handler . ' runs ' . $check . ') first');
+		pg_assert_true($stop < strpos($code, $write), $handler . ' stops before the write');
+	}
+
+	pg_assert_contains('erp_post_receipt_check(', $source('erp_post_receipt'), 'the panel meets the same checks');
+	pg_assert_contains('erp_receipt_cancel_check(', $source('erp_receipt_cancel'), 'the panel meets the same checks');
+	pg_assert_contains('erp_receipt_invoice_refusal(', $source('erp_post_receipt_check'), 'the invoice is checked before the transaction');
+	pg_assert_contains('erp_receipt_invoice_refusal(', $source('erp_post_receipt'), 'and again inside it');
+
+	pg_assert_same(lang('Enter an amount greater than zero.'), erp_post_receipt_check(array('amount' => 0, 'account_id' => 1, 'cash_account_id' => 1)));
+	pg_assert_same(lang('Choose an account.'), erp_post_receipt_check(array('amount' => 100, 'account_id' => 0, 'cash_account_id' => 1)));
+}
+
+// Recording, changing, paying and cancelling an expense and keeping its
+// receipt file can be tried first: the panel's expense functions keep their
+// checks in erp_expense_save_check(), erp_expense_pay_check(),
+// erp_expense_cancel_check() and erp_expense_receipt_check(), the endpoints
+// call the same checks and stop the rehearsal before the expense, the till
+// or the file is written.
+function test_erp_api_expense_writes_can_be_rehearsed()
+{
+	$routes = array();
+
+	foreach (erp_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$source = function ($handler) {
+		$function = new ReflectionFunction($handler);
+		$lines = file($function->getFileName());
+
+		return preg_replace('~^\s*(//|\*).*$~m', '', implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1)));
+	};
+
+	foreach (array(
+		'erp.expenses.create' => array('erp_api_expenses_create', 'erp_expense_save_check(', 'erp_expense_save('),
+		'erp.expenses.update' => array('erp_api_expenses_update', 'erp_expense_save_check(', 'erp_expense_save('),
+		'erp.expenses.pay' => array('erp_api_expenses_pay', 'erp_expense_pay_check(', 'erp_expense_pay('),
+		'erp.expenses.cancel' => array('erp_api_expenses_cancel', 'erp_expense_cancel_check(', 'erp_expense_cancel('),
+		'erp.expenses.receipt_put' => array('erp_api_expenses_receipt_put', 'erp_expense_receipt_check(', 'erp_expense_keep_receipt('),
+	) as $id => $expect) {
+		list($handler, $check, $write) = $expect;
+		$code = $source($handler);
+		$stop = strpos($code, 'api_dry_run_stop(');
+
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' takes X-Dry-Run');
+		pg_assert_true($stop !== false, $handler . ' stops a rehearsal');
+		pg_assert_true((strpos($code, $check) !== false) && (strpos($code, $check) < $stop), $handler . ' runs ' . $check . ') first');
+		pg_assert_true($stop < strpos($code, $write), $handler . ' stops before the write');
+	}
+
+	pg_assert_contains('erp_expense_save_check(', $source('erp_expense_save'), 'the panel meets the same checks');
+	pg_assert_contains('erp_expense_pay_check(', $source('erp_expense_pay'), 'the panel meets the same checks');
+	pg_assert_contains('erp_expense_cancel_check(', $source('erp_expense_cancel'), 'the panel meets the same checks');
+	pg_assert_contains('erp_expense_receipt_check(', $source('erp_expense_keep_receipt'), 'the panel meets the same checks');
+	pg_assert_contains('erp_expense_payment_refusal(', $source('erp_expense_save_check'), 'paying on the spot is checked before the expense is written');
+	pg_assert_contains('erp_expense_payment_refusal(', $source('erp_expense_pay_check'), 'a payment is checked before the transaction');
+	pg_assert_contains('erp_expense_payment_refusal(', $source('erp_expense_post_payment'), 'and again inside it');
+
+	pg_assert_same(lang('Choose a payment method.'), erp_expense_payment_refusal(array('expense_date' => '2026-01-01', 'currency' => 'TRY'), array('payment_method' => 'barter', 'cash_account_id' => 1)));
+}

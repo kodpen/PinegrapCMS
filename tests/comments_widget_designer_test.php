@@ -753,7 +753,7 @@ function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").
 var _cmt = { pg_comments: '1', pg_comments_rating: '1', pg_comments_select_name: '0', pg_comments_label: '' };
 function _getCmtVal(k) { return _cmt[k] || ''; }
 var _sdCommentsCanvasState = 'comments';
-var _sdCommentSample = null;
+var _sdCommentSample = null, _sdListSample = null;
 var _sysWidgetRenderTreeRoot = null;
 function n(type, props, kids, name) { props = props || {}; props.customName = name; return { type: type, props: props, children: kids || [] }; }
 function flag(f, kids, name) { return n('semantic', { tag: 'div', _bindings: { eo_visible_if: f } }, kids, name); }
@@ -1134,7 +1134,7 @@ function esc(s) { return s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt
 function _sdDecodeEntities(s) { return String(s); }
 var _cmt = { pg_comments_message: '<img src=x onerror="alert(1)">', pg_comments_label: '' };
 function _getCmtVal(k) { return _cmt[k] || ''; }
-var _sdCommentSample = null;
+var _sdCommentSample = null, _sdListSample = null;
 var _SD_AVATAR_TOKENS = {};
 var _SD_RICH_TEXT_CONTENT = { heading: 1, link: 1, paragraph: 1, span: 1, text: 1 };
 var _SD_HTML_PREVIEW_TOKENS = { __comment_message_html: function () { return '<p>Comment text</p>'; } };

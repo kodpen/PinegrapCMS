@@ -2672,7 +2672,8 @@
                 return editor.markup() !== baseline;
             },
             // Buttons under the box (PGWsEditor.toolbar()): people, records,
-            // emoji and, where the text may hold one, a checklist. Callers
+            // emoji and, where the text may hold them, lists, a quote and a
+            // checklist. Callers
             // add their own (save, cancel) to the row it answers.
             tools: function (withList) {
                 var mention = button('btn btn-sm btn-ghost', '', 'bi-at', t('mention'));
@@ -2689,7 +2690,7 @@
                     emojiPicker(box.left, box.bottom + 4, function (picked) { editor.insertText(picked); });
                 });
 
-                return window.PGWsEditor.toolbar(editor, [mention, tag, emoji].concat(withList ? ['checklist'] : []), { className: 'ws-note-actions' });
+                return window.PGWsEditor.toolbar(editor, [mention, tag, emoji].concat(withList ? ['bullets', 'numbers', 'quote', 'checklist'] : []), { className: 'ws-note-actions' });
             }
         };
 
@@ -11162,11 +11163,11 @@
             });
             parts.push(command);
 
-            // Bold, italic, strikethrough, undo and redo of the box itself
-            // (PGWsEditor.toolbar()); the stylesheet leaves them out where
-            // the row has no room for them, the bar over a selection still
-            // formats there.
-            parts.push(['bold', 'italic', 'strike'], ['undo', 'redo']);
+            // Bold, italic, strikethrough, lists, undo and redo of the box
+            // itself (PGWsEditor.toolbar()); the stylesheet leaves them out
+            // where the row has no room for them, the bar over a selection
+            // still formats there.
+            parts.push(['bold', 'italic', 'strike'], ['bullets', 'numbers', 'quote'], ['undo', 'redo']);
 
             parts.push(el('span', 'ws-grow ws-composer-hint d-none d-lg-inline', t('composer_hint')));
 
@@ -12485,7 +12486,8 @@
             var before = self.beforeCaret();
             var match;
 
-            if (!self.noCommands && (match = /^\/([^\s]*)$/.exec(before))) {
+            // A list's first item starting with "/" is words, no command.
+            if (!self.noCommands && !(self.rich && self.rich.inListItem()) && (match = /^\/([^\s]*)$/.exec(before))) {
                 self.argDismissed = null;
                 self.drawCommandStrip(null);
                 self.openPicker('command', match[1], before.length - match[0].length);
@@ -12495,7 +12497,7 @@
             // After "/name ": the argument the command expects next
             // (commandArgument()), shown in the strip above the box. Only the
             // channel's composer reads commands.
-            var argument = self.noCommands ? null : self.commandArgument(before);
+            var argument = (self.noCommands || (self.rich && self.rich.inListItem())) ? null : self.commandArgument(before);
 
             if (!self.noCommands) {
                 if (!argument) {
@@ -12772,6 +12774,11 @@
                 return;
             }
 
+            if (source === 'statuses') {
+                show(fixed(values.statuses, 'bi-circle-half'));
+                return;
+            }
+
             // The team, as the @ picker lists it, without whoever the line
             // already names; never the site's members.
             if (source === 'people' || source === 'people_departments') {
@@ -12884,15 +12891,16 @@
             this.commandLive(argument);
         },
 
-        // Under /task's usage: what sending the line now would do, read by
-        // the parser that runs it (ws_command_suggest), and what it cannot
-        // read, such as a typed @name no team member, or several, answer to. The last
+        // Under the usage of a command the registry marks live (/task,
+        // /status): what sending the line now would do, read by the parser
+        // that runs it (ws_command_suggest), and what it cannot read, such
+        // as a typed @name no team member, or several, answer to. The last
         // answer stays on screen until the next one comes.
         commandLive: function (argument) {
             var self = this;
             var body = self.inputText();
 
-            if (!self.channel || (argument.entry.key !== 'task')) {
+            if (!self.channel || !argument.entry.live) {
                 return;
             }
 
@@ -20944,14 +20952,67 @@
                 }));
             }
 
+            // Whether two files of one size hold the same bytes, read a
+            // megabyte at a time and stopped at the first difference. A file
+            // that cannot be read counts as the same, as name, size and time
+            // alone decided before.
+            function sameBytes(one, two) {
+                var step = 1048576;
+
+                function read(blob) {
+                    return new Promise(function (resolve, reject) {
+                        var reader = new FileReader();
+
+                        reader.onload = function () { resolve(new Uint8Array(reader.result)); };
+                        reader.onerror = function () { reject(reader.error); };
+                        reader.readAsArrayBuffer(blob);
+                    });
+                }
+
+                function from(at) {
+                    if (at >= one.size) {
+                        return Promise.resolve(true);
+                    }
+
+                    return Promise.all([read(one.slice(at, at + step)), read(two.slice(at, at + step))]).then(function (parts) {
+                        if (parts[0].length !== parts[1].length) {
+                            return false;
+                        }
+
+                        for (var i = 0; i < parts[0].length; i++) {
+                            if (parts[0][i] !== parts[1][i]) {
+                                return false;
+                            }
+                        }
+
+                        return from(at + step);
+                    });
+                }
+
+                return (one === two) ? Promise.resolve(true) : from(0).catch(function () { return true; });
+            }
+
+            // The first of the rows whose file holds what file holds.
+            function firstSame(rows, file) {
+                if (!rows.length) {
+                    return Promise.resolve(null);
+                }
+
+                return sameBytes(rows[0].file, file).then(function (same) {
+                    return same ? rows[0] : firstSame(rows.slice(1), file);
+                });
+            }
+
             // Adds to what is picked already. Each file becomes a note of
             // its own, so a file of a listed name gets a row of its own too:
             // todo.md from two folders are two notes, and the server stages
-            // both. The same file again (name, size and time) takes its row.
-            // A listed file of that name is replaced only when the browser
-            // can no longer read it: it changed on disk, and this is the
-            // file picked again. The files of one pick or drop are matched
-            // only against the rows listed before it, never with each other.
+            // both. The same file again (name, size, time and bytes) takes
+            // its row; two copies of one name, size and time that hold
+            // different text are two rows. A listed file of that name is
+            // replaced only when the browser can no longer read it: it
+            // changed on disk, and this is the file picked again. The files
+            // of one pick or drop are matched only against the rows listed
+            // before it, never with each other.
             function add(entries) {
                 var namesakes = picked.filter(function (have) {
                     return !have.folder && entries.some(function (entry) {
@@ -20962,31 +21023,40 @@
                 probe(namesakes).then(function () {
                     var known = picked.slice();
                     var taken = [];
+                    var chain = Promise.resolve();
 
                     entries.forEach(function (entry) {
-                        var file = entry.file;
-                        var listed = known.filter(function (have) {
-                            return have.file.name === file.name && taken.indexOf(have) === -1;
-                        });
-                        var row = listed.filter(function (have) {
-                            return have.file.size === file.size && have.file.lastModified === file.lastModified;
-                        })[0] || listed.filter(function (have) {
-                            return have.stale;
-                        })[0];
+                        chain = chain.then(function () {
+                            var file = entry.file;
+                            var listed = known.filter(function (have) {
+                                return have.file.name === file.name && taken.indexOf(have) === -1;
+                            });
+                            var alike = listed.filter(function (have) {
+                                return !have.stale && !have.folder && have.file.size === file.size && have.file.lastModified === file.lastModified;
+                            });
 
-                        if (row) {
-                            taken.push(row);
-                            picked[picked.indexOf(row)] = entry;
-                        } else {
-                            picked.push(entry);
-                        }
+                            return firstSame(alike, file).then(function (row) {
+                                row = row || listed.filter(function (have) {
+                                    return have.stale;
+                                })[0];
+
+                                if (row) {
+                                    taken.push(row);
+                                    picked[picked.indexOf(row)] = entry;
+                                } else {
+                                    picked.push(entry);
+                                }
+                            });
+                        });
                     });
 
                     // Upload pressed while the files were read: the list
                     // shows them when it comes back.
-                    if (phase === 'pick') {
-                        drawPick().focus();
-                    }
+                    chain.then(function () {
+                        if (phase === 'pick') {
+                            drawPick().focus();
+                        }
+                    });
                 });
             }
 
@@ -20999,7 +21069,7 @@
             // then the rest of ws_note_import_stage()'s rules in its order.
             // The first that fails holds the upload back.
             function check() {
-                var result = { files: [], total: 0, over: 0, blocked: 0, error: '' };
+                var result = { files: [], total: 0, over: 0, blocked: 0, stale: 0, error: '' };
                 var zips = 0;
                 var exports = 0;
 
@@ -21013,6 +21083,7 @@
                         result.blocked++;
                     } else if (entry.stale) {
                         entry.state = 'stale';
+                        result.stale++;
                     } else if (limits.max && entry.file.size > limits.max) {
                         entry.state = 'over';
                         result.over++;
@@ -21110,6 +21181,10 @@
 
                     if (result.blocked) {
                         heading += ' — ' + t('notes_import_blocked', result.blocked);
+                    }
+
+                    if (result.stale) {
+                        heading += ' — ' + t('notes_import_stale', result.stale);
                     }
 
                     clearAll.addEventListener('click', function () {
@@ -21817,6 +21892,7 @@
             return window.PGWsEditor.toolbar(rich, [
                 ['undo', 'redo'],
                 ['bold', 'italic', 'strike'],
+                ['bullets', 'numbers', 'quote'],
                 blocks,
                 tags,
                 [picker, tool('bi-paperclip', t('notes_attach'), function () { picker.click(); }), emoji]

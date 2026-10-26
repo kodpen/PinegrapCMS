@@ -20,7 +20,7 @@ Designing it (E-mail canvas state, the link the card must keep, save warnings): 
 ## Which links and dates?
 - On `URL_SCHEME . HOSTNAME_SETTING . PATH` and the thread page (`?r=` for a record): `__comment_url` and the parent's are the View or Reply address (`pg_comment_view_query()`); `__comment_reply_url` only when the thread page draws the widget, takes comments and replies (`pg_comments_email_reply_ok()`); the file link absolute.
 - Every date in the site's zone, never relative. `__comment_date`, `__comment_seller_reply_date`: `get_absolute_time()` with `'format' => 'plain_text'` (the escape printed its `<time>` tag as words). `__comment_datetime`: `pg_comments_email_fill_datetime()`, the design's `%%format%%` through `date()`, none or `relative` the default shape; the record rules wrote "a moment ago" and, for a signed-in sender with a zone of their own (a moderator, the poster), that zone (tooltip, `T`, `e`).
-- Stars as characters (`pg_comments_stars_text_html()`): mail clients drop SVG.
+- Stars as characters ([[widget-default-parts-comments]]): mail clients drop SVG.
 
 ## How was it checked?
 - `tests/comments_widget_email_test.php`: decision, links, flags, strip, draw, drew, dates (a Tokyo sender on a Chicago site, in a process of its own), both mail functions folded back equal their former text by sha1, renders naming no comment.

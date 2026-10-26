@@ -1416,6 +1416,23 @@ function erp_api_receipts_create($params)
         $data['exchange_rate_source'] = 'api';
     }
 
+    // The receipt function's own checks: the period lock, the currency and
+    // rate, and the invoice it closes (its side and whether it is still open).
+    $refusal = erp_post_receipt_check($data);
+
+    if ($refusal !== '') {
+        api_fail_validation($refusal, ($invoice_id > 0) ? 'invoice_id' : 'amount');
+    }
+
+    api_dry_run_stop('created', 'erp_receipt', array(
+        'account_id' => $account_id,
+        'cash_account_id' => (int) $data['cash_account_id'],
+        'direction' => $direction,
+        'amount' => (int) $data['amount'],
+        'date' => $data['doc_date'],
+        'invoice_id' => ($invoice_id > 0) ? $invoice_id : null,
+    ));
+
     $posted = erp_post_receipt($data);
 
     if (empty($posted['success'])) {
@@ -1465,6 +1482,19 @@ function erp_api_receipts_cancel($params)
     if ($reason === '') {
         api_fail_validation(lang('The reason is required.'), 'reason');
     }
+
+    // The cancel function's own checks, the period lock among them.
+    $checked = erp_receipt_cancel_check((int) $row['id'], $reason);
+
+    if ($checked['error'] !== '') {
+        api_fail_validation($checked['error'], 'id');
+    }
+
+    api_dry_run_stop('cancelled', 'erp_receipt', array(
+        'id' => (int) $row['id'],
+        'amount' => (int) $checked['receipt']['amount'],
+        'reopened_invoice_ids' => array_values(array_unique(array_map('intval', array_column(erp_txn_settlements((int) $checked['receipt']['ledger_id']), 'invoice_id')))),
+    ));
 
     $cancelled = erp_receipt_cancel((int) $row['id'], $reason, $owner['id']);
 
@@ -2161,6 +2191,26 @@ function erp_api_expenses_create($params)
         $data['paid_date'] = isset($params['paid_date']) ? erp_api_day($params['paid_date']) : '';
     }
 
+    // The save function's own checks: the category, the period lock, the
+    // figures and, for one paid on the spot, the payment day and the till.
+    $checked = erp_expense_save_check($data);
+
+    if ($checked['error'] !== '') {
+        api_fail_validation($checked['error'], erp_api_expense_field($checked['field']));
+    }
+
+    api_dry_run_stop('created', 'erp_expense', array(
+        'date' => $checked['columns']['expense_date'],
+        'category_id' => (int) $checked['columns']['category_id'],
+        'currency' => $checked['columns']['currency'],
+        'net_amount' => (int) $checked['columns']['net_amount'],
+        'tax_amount' => (int) $checked['columns']['tax_amount'],
+        'total_amount' => (int) $checked['columns']['total_amount'],
+        'paid' => $checked['pay'],
+        'cash_account_id' => $checked['pay'] ? (int) $data['cash_account_id'] : null,
+        'receipt' => ($bytes !== null),
+    ));
+
     $saved = erp_expense_save($data, $owner['id']);
 
     if (empty($saved['success'])) {
@@ -2247,6 +2297,17 @@ function erp_api_expenses_update($params)
         $data['tax_amount'] = (int) $existing['tax_amount'];
     }
 
+    $checked = erp_expense_save_check($data, (int) $existing['id']);
+
+    if ($checked['error'] !== '') {
+        api_fail_validation($checked['error'], erp_api_expense_field($checked['field']));
+    }
+
+    api_dry_run_stop('updated', 'erp_expense', array(
+        'id' => (int) $existing['id'],
+        'changed' => array_values(array_filter(array('date', 'category_id', 'amount', 'includes_tax', 'tax_rate', 'tax_amount', 'tax_deductible', 'supplier', 'supplier_tax_number', 'document_no', 'description', 'due_date', 'exchange_rate'), $sent)),
+    ));
+
     $saved = erp_expense_save($data, $owner['id'], (int) $existing['id']);
 
     if (empty($saved['success'])) {
@@ -2275,11 +2336,28 @@ function erp_api_expenses_pay($params)
 
     erp_api_expense_till((int) $params['cash_account_id']);
 
-    $paid = erp_expense_pay((int) $row['id'], array(
+    $payment = array(
         'cash_account_id' => (int) $params['cash_account_id'],
         'payment_method' => (string) ($params['payment_method'] ?? 'cash'),
         'paid_date' => isset($params['date']) ? erp_api_day($params['date']) : date('Y-m-d'),
-    ), $owner['id']);
+    );
+
+    // The pay function's own checks: waiting to be paid, the day, the
+    // period lock and the till's currency.
+    $checked = erp_expense_pay_check((int) $row['id'], $payment);
+
+    if ($checked['error'] !== '') {
+        api_fail_validation($checked['error']);
+    }
+
+    api_dry_run_stop('paid', 'erp_expense', array(
+        'id' => (int) $row['id'],
+        'cash_account_id' => $payment['cash_account_id'],
+        'amount' => (int) $checked['expense']['total_amount'],
+        'date' => $payment['paid_date'],
+    ));
+
+    $paid = erp_expense_pay((int) $row['id'], $payment, $owner['id']);
 
     if (empty($paid['success'])) {
         api_fail_validation((string) $paid['error']);
@@ -2315,6 +2393,20 @@ function erp_api_expenses_cancel($params)
         api_fail_validation(lang('The reason is required.'), 'reason');
     }
 
+    // The cancel function's own checks, the period lock of the expense and
+    // of its payment among them.
+    $checked = erp_expense_cancel_check((int) $row['id'], $reason);
+
+    if ($checked['error'] !== '') {
+        api_fail_validation($checked['error'], 'id');
+    }
+
+    api_dry_run_stop('cancelled', 'erp_expense', array(
+        'id' => (int) $row['id'],
+        'amount' => (int) $checked['expense']['total_amount'],
+        'refunded_cash_account_id' => is_array($checked['movement']) ? (int) $checked['movement']['cash_account_id'] : null,
+    ));
+
     $cancelled = erp_expense_cancel((int) $row['id'], $reason, $owner['id']);
 
     if (empty($cancelled['success'])) {
@@ -2329,6 +2421,33 @@ function erp_api_expenses_cancel($params)
     api_ok(erp_api_expense_present(erp_api_expense_row((int) $row['id'])));
 }
 
+/**
+ * Answer a receipt file that was not kept, by erp_expense_keep_receipt()'s
+ * code.
+ *
+ * @param string $code
+ * @param string $error
+ */
+function erp_api_expense_receipt_fail($code, $error)
+{
+    switch ((string) $code) {
+        case 'exists':
+            api_fail(409, 'expense_has_receipt', lang('This expense already has its receipt. Send replace true to take the new file in its place.'), 'replace');
+            break;
+        case 'not_ready':
+            api_fail(503, 'service_unavailable', (string) $error);
+            break;
+        case 'disk':
+            api_fail_server((string) $error);
+            break;
+        case 'refused':
+            api_fail_validation((string) $error, 'replace');
+            break;
+        default:
+            api_fail_validation((string) $error, 'content_base64');
+    }
+}
+
 function erp_api_expenses_receipt_put($params)
 {
     erp_api_expenses_ready();
@@ -2337,25 +2456,24 @@ function erp_api_expenses_receipt_put($params)
     $row = erp_api_expense_row((int) $params['id']);
     $bytes = erp_api_expense_receipt_bytes($params['content_base64'], 'content_base64');
 
+    // The keep function's own checks: a file already kept, and whether it
+    // may still be replaced.
+    $checked = erp_expense_receipt_check((int) $row['id'], $bytes, !empty($params['replace']));
+
+    if ($checked['error'] !== '') {
+        erp_api_expense_receipt_fail($checked['code'], $checked['error']);
+    }
+
+    api_dry_run_stop(($checked['existing'] !== null) ? 'replaced' : 'created', 'erp_expense_receipt', array(
+        'id' => (int) $row['id'],
+        'type' => $checked['extension'],
+        'size' => strlen($bytes),
+    ));
+
     $kept = erp_expense_keep_receipt((int) $row['id'], $bytes, $owner['id'], !empty($params['replace']));
 
     if (empty($kept['success'])) {
-        switch ((string) $kept['code']) {
-            case 'exists':
-                api_fail(409, 'expense_has_receipt', lang('This expense already has its receipt. Send replace true to take the new file in its place.'), 'replace');
-                break;
-            case 'not_ready':
-                api_fail(503, 'service_unavailable', (string) $kept['error']);
-                break;
-            case 'disk':
-                api_fail_server((string) $kept['error']);
-                break;
-            case 'refused':
-                api_fail_validation((string) $kept['error'], 'replace');
-                break;
-            default:
-                api_fail_validation((string) $kept['error'], 'content_base64');
-        }
+        erp_api_expense_receipt_fail((string) $kept['code'], (string) $kept['error']);
     }
 
     if ($kept['replaced']) {

@@ -11,6 +11,7 @@ description: Design rules of the outbound marketplace layer (includes/api/outbou
 - Nothing is queued for what a connector cannot do: `mp_enqueue()` skips accounts whose provider lacks `push_stock_price`, and the screen hides "List on the marketplace" without `create_listings` (otherwise rows fail six times or wait for ever).
 - The same for orders: without `pull_orders` the account screen draws neither the "Bring orders in" switch nor the "Imported orders" card, only "Orders are not brought in from {var:1} yet."; the auto-accept switch needs `approve_lines` too. A new account writes `pull_orders` from `mp_can()` (the column defaults to 1). Before, a Trendyol account showed import on and an empty card while the job skipped it silently (#981, PR #1240).
 
+
 ## How are a provider's credential fields declared?
 - In `mp_providers()[...]['fields']`: marketplace-provider-fields.md.
 
@@ -24,4 +25,4 @@ description: Design rules of the outbound marketplace layer (includes/api/outbou
 - Before the network call a 300 s lease (`run_after`) is taken and status stays `waiting`: overlapping cron runs skip, and if the process dies the lease expires. Same pattern as `api_webhook_queue`.
 - `api_sync_job.php` runs in rotation (300 s), NOT inline. A webhook is a message, stock is a state; running rarely makes batches bigger and writes less against the per-minute rate limit.
 
-Related: docs/memory/commerce/marketplace-order-import.md, docs/memory/commerce/marketplace-provider-fields.md
+Related: docs/memory/commerce/marketplace-bulk-matching.md (`remote_products`), docs/memory/commerce/marketplace-order-import.md, docs/memory/commerce/marketplace-provider-fields.md

@@ -22,7 +22,7 @@ description: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> i
 - A discussion is in no group: `ws_webhook_event_channel_id()` matches it by `thread.channel_id`, so a narrowed subscription hears its channel's discussions.
 
 ## What is still missing?
-- An outside application's tag is drawn as "@Claude" (`ws_refs_resolve()`), in the panel and in `text`; read `body`. The @ picker offers no outside application. Both wait for step 1 of `plans/workspace-agent-handles.md`; its step 2 turns `ws_app_reads_channel()` into the asker's invitation where the channel allows the app, as for the assistants (workspace-assistant-reach.md).
+- An outside application's tag is drawn with a handle from its own name, in the panel and in `text` (workspace-app-handles.md). The @ picker offers no outside application yet (step 1b of `plans/workspace-agent-handles.md`); step 2 turns `ws_app_reads_channel()` into the asker's invitation where the channel allows the app, as for the assistants (workspace-assistant-reach.md).
 - A person mentioning an application that may not read the channel gets no line saying so.
 
 ## Where is the code?

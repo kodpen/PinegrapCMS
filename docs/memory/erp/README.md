@@ -35,7 +35,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-accounting-rules.md: ERP accounting rules (4.103): withholding in the VAT difference, the exemption code of zero-rated lines, the expense category VAT default, and the accountant questions file.
 - erp-aging-and-due-date.md: Single source for ERP due dates and aging (includes/erp/aging.php): point-in-time open amounts, buckets, filters, and payment_days default due dates.
 - erp-alerts.md: ERP bell and device notices (4.91): money in, low stock, quotes running out (and their Workspace follow-up), refused automatic invoice; the actor rule, who gets banners, what a new notice needs.
-- erp-api-dry-run.md: Which ERP API writes take X-Dry-Run (MCP dry_run) and which do not yet; the account create/update rehearsal (PR #1850): its checks, the opening lock asked before the card, the tests
+- erp-api-dry-run.md: Which ERP API writes take X-Dry-Run (MCP dry_run); the account (PR #1850), receipt (PR #1870) and expense (PR #1891) rehearsals: their checks, the *_check() functions, the tests
 - erp-api-events-and-testing.md: The ERP event door erp_event() (webhook queue, audit trail, alerts), where writers announce, what a new event needs, and how to test the ERP API on dev without creating keys.
 - erp-api-seam.md: ERP's only door into the external API, includes/erp/api.php: five hooks, load chain, name clashes, schema pairs, paging, scope groups, owner ceiling, error codes, drafts, wire rules.
 - erp-audit-trail.md: ERP audit trail (erp_audit_log, 4.90): its two writers (events and ERP log lines), the calling-file rule, why it is never deleted, what a line carries, who may read it.

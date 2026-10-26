@@ -84,6 +84,7 @@ function pg_sw_type_labels()
         'menu_region'         => lang('Menu'),
         'menu_sequence_region' => lang('Menu Sequence'),
         'ad_region'           => lang('Ad Region'),
+        'tag_cloud_region'    => lang('Tag Cloud'),
     );
 }
 
@@ -800,8 +801,12 @@ function pg_sw_raw_token_keys()
         '__clear_filters_button',
         // Comments widget.
         '__comment_message_html',
-        '__comment_stars_html',
         '__comment_seller_reply_html',
+        // Order view: product form answers, information text and a gift
+        // card's message with its line breaks (widgets_lists_order.php).
+        '__field_value_html',
+        '__field_info_html',
+        '__gift_card_message_html',
         // Ad Region widget: the ad's own markup.
         '__ad_content_html',
         '__ad_caption_html',
@@ -3932,6 +3937,8 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         '__display_name' => h($full_name !== '' ? $full_name : ($user_row ? (string)$user_row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : ''))),
         'not_logged_in' => '',
     ) + $link_values;
+    // The member's own allow-listed account values (pg_sw_entity_fields('account')).
+    $values += pg_sw_entity_account_tokens($uid, pg_sw_cond_tree_json($tree_decoded));
 
     // A list of the member's orders (widgets_lists_order.php): the order
     // history's rows, filed only when the tree drew one.
@@ -6715,13 +6722,25 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // per-row READ-ONLY blocks below: a product carrying an order form shows
     // what the visitor typed at checkout, a gift card shows the recipient
     // details. Both are output-only here — the order is already placed.
+    // The line's and its product's allow-listed values
+    // (pg_sw_entity_fields('order_line') and 'product'), read only when the
+    // tree names one.
+    $_ov_tree_cond  = pg_sw_cond_tree_json($tree_decoded);
+    $_ov_line_want  = pg_sw_entity_wanted('order_line', $_ov_tree_cond);
+    $_ov_prod_want  = pg_sw_entity_wanted('product', $_ov_tree_cond);
+    $_ov_entity_sql = ($_ov_line_want ? pg_sw_entity_select('order_line', 'oi') : '')
+                    . ($_ov_prod_want ? pg_sw_entity_select('product', 'p') : '');
+    $_ov_entity_ctx = array(
+        'currency_symbol' => $currency_symbol,
+        'format_stamp'    => function ($ts) use ($fmt_gc_date) { return $fmt_gc_date(date('Y-m-d', $ts)); },
+    );
     $item_rows = db_items(
         "SELECT oi.id AS item_id, oi.product_name,
                 oi.quantity, oi.price, oi.ship_to_id,
                 p.id AS product_id, p.address_name, p.image_name,
                 p.short_description, p.full_description,
                 p.form AS product_has_form, p.form_name, p.form_quantity_type,
-                p.gift_card AS product_is_gift_card,
+                p.gift_card AS product_is_gift_card" . $_ov_entity_sql . ",
                 st.first_name AS st_first_name, st.last_name AS st_last_name,
                 st.address_1 AS st_address_1, st.city AS st_city,
                 st.state AS st_state, st.zip_code AS st_zip, st.country AS st_country
@@ -6758,42 +6777,25 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             ));
             $item_ship_to = implode(', ', $item_ship_parts);
 
-            // ── Read-only product-form data ────────────────────────────
-            // What the visitor typed into the product's order form at
-            // checkout (a gift-card message, a conference attendee name, …).
-            // Rendered as OUTPUT, never inputs — this order is placed.
-            $item_form_html = '';
-            if (!empty($r['product_has_form'])) {
-                $_ov_form_name = isset($r['form_name']) ? trim((string)$r['form_name']) : '';
-                $item_form_html = _pg_render_order_item_form_data_readonly(
-                    (int)$r['item_id'],
-                    (int)($r['product_id'] ?? 0),
-                    $qty,
-                    (string)($r['form_quantity_type'] ?? ''),
-                    $_ov_form_name !== '' ? (string)lang($_ov_form_name) : ''
-                );
-            }
-
-            // ── Read-only gift-card recipient details ──────────────────
-            // Separate mechanism from products.form (see the note on
-            // _pg_render_order_item_gift_card_readonly).
-            $item_gift_card_html = '';
-            if (!empty($r['product_is_gift_card'])) {
-                $item_gift_card_html = _pg_render_order_item_gift_card_readonly(
-                    (int)$r['item_id'],
-                    $qty,
-                    $unit_cents,
-                    $fmt_money,
-                    $fmt_gc_date
-                );
-            }
+            // Raw: the loop escapes them, the items list's pass does too.
+            $item_entity = array();
+            if ($_ov_line_want) $item_entity += pg_sw_entity_values('order_line', pg_sw_entity_order_line_event($r), $_ov_entity_ctx);
+            if ($_ov_prod_want) $item_entity += pg_sw_entity_values('product', !empty($r['product_id']) ? $r : null, $_ov_entity_ctx);
 
             $items[] = array(
                 'id'                => (int)$r['item_id'],
                 'product_id'        => (int)($r['product_id'] ?? 0),
                 'name'              => (string)$r['product_name'],
-                'form_data_html'    => $item_form_html,
-                'gift_card_html'    => $item_gift_card_html,
+                // What the visitor typed into the product's order form at
+                // checkout, and a gift card's recipient details: read only
+                // when the layout lists them (order.item_forms,
+                // order.item_gift_cards), drawn as printed values.
+                'has_form'          => !empty($r['product_has_form']),
+                'form_name'         => trim((string)($r['form_name'] ?? '')),
+                'form_quantity_type' => (string)($r['form_quantity_type'] ?? ''),
+                'is_gift_card'      => !empty($r['product_is_gift_card']),
+                'has_form_data'     => false,
+                'has_gift_card'     => false,
                 'item_number'       => (string)$r['product_name'],  // Product ID / SKU
                 'short_description' => (string)($r['short_description'] ?? ''),
                 'full_description'  => (string)($r['full_description'] ?? ''),
@@ -6806,6 +6808,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 'url'               => $item_url,
                 'ship_to'           => $item_ship_to,
                 'ship_to_id'        => (int)$r['ship_to_id'],
+                'entity'            => $item_entity,
             );
         }
     }
@@ -7225,7 +7228,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 $_ov_shipments[] = pg_sw_list_order_shipment_row($_ov_st, $fmt_gc_date);
             }
         }
-        pg_sw_list_publish('order', pg_sw_list_order_rows($_ov_shipments, $items, $tracking_parcels, $timeline_events));
+        // First: it marks the items that have form answers or gift cards.
+        $_ov_item_rows = pg_sw_list_order_item_parts_read($items, $_ov_listed, $fmt_money, $fmt_gc_date);
+        pg_sw_list_publish('order', pg_sw_list_order_rows($_ov_shipments, $items, $tracking_parcels, $timeline_events) + $_ov_item_rows);
     }
 
     // Build loop output
@@ -7236,10 +7241,6 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // before loop_area existed.
     $loop_rendered = '';
     if ($loop_template !== '' && $static_html !== '' && count($items) > 0) {
-        // The row blocks the item template places (pg_sw_placed()).
-        $_ov_row_tree = array('type' => 'root', 'children' => $split['loop_children']);
-        $_ov_form_placed = pg_sw_placed($_ov_row_tree, array('__item_form_data_html'));
-        $_ov_gift_placed = pg_sw_placed($_ov_row_tree, array('__item_gift_card_html'));
         foreach ($items as $idx => $item) {
             $row_values = array(
                 // Existing tokens — kept for backward compatibility
@@ -7262,34 +7263,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 '__item_url'               => h($item['url']),
                 // Per-item shipping (one-liner; empty for digital products)
                 '__item_ship_to'           => h($item['ship_to']),
-                // Read-only product-form answers / gift-card details.
-                // Pre-built HTML → NOT h()'d. Empty for ordinary products,
-                // so the token quietly disappears on those rows.
-                // Kept as two separate tokens (mirroring shopping_cart)
-                // because a product can carry a form OR be a gift card and
-                // the designer may want them in different places.
-                '__item_form_data_html'    => (string)$item['form_data_html'],
-                '__item_gift_card_html'    => (string)$item['gift_card_html'],
-            );
+                // Whether the item's product form answers and gift cards
+                // have rows (the item form and gift card parts' boxes).
+                '__item_has_form_data'     => !empty($item['has_form_data']) ? '1' : '',
+                '__item_has_gift_card'     => !empty($item['has_gift_card']) ? '1' : '',
+            ) + array_map('h', $item['entity']);
             $row_html = pg_sw_fill_longest($loop_template, $row_values);
             $row_html = pg_sw_sweep_tokens($row_html);
-
-            // Auto-append the read-only form / gift-card blocks when the row
-            // HAS them and the designer hasn't placed the matching token in
-            // the loop template. Same fallback the shopping_cart widget uses:
-            // trees saved before these tokens existed would otherwise drop
-            // the data silently, and on an order receipt that data is often
-            // the whole point (who the gift card was sent to, which name was
-            // engraved). A designer who DOES place the token keeps control
-            // over where the block lands.
-            // Safe to concatenate here: the order_view loop row is a <div>,
-            // not a <tr> — see the starter tree in style_designer.js.
-            if ($row_values['__item_form_data_html'] !== '' && !$_ov_form_placed) {
-                $row_html .= $row_values['__item_form_data_html'];
-            }
-            if ($row_values['__item_gift_card_html'] !== '' && !$_ov_gift_placed) {
-                $row_html .= $row_values['__item_gift_card_html'];
-            }
 
             // Uniquify Bootstrap component IDs per item row
             $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $idx);
@@ -7447,6 +7427,15 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // whole order.
         '__ship_to_key'             => '0',
     );
+    // The order's allow-listed values (pg_sw_entity_fields('order')), read
+    // in one more query only when the tree names one; dates as the widget's
+    // other dates read.
+    if (pg_sw_entity_wanted('order', pg_sw_cond_tree_json($tree_decoded))) {
+        $static_values += array_map('h', pg_sw_entity_values('order', pg_sw_entity_order_read((int)$order['id']), array(
+            'currency_symbol' => $currency_symbol,
+            'format_stamp'    => function ($ts) use ($_fmt_ts) { return $_fmt_ts($ts, false); },
+        )));
+    }
     // The dates a format can read (^^__order_date^^%%d.m.Y H:i%%).
     $_ov_typed = _pg_sw_order_view_dates(
         $order_date_ts,

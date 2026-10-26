@@ -445,6 +445,55 @@ function api_products_name_or_fail($raw, $except_id = 0) {
 
 }
 
+// The row a new product starts from before the request's fields are laid
+// over it, stamped with the key's owner. POST /product-groups/variant-sets
+// starts its variants from it too.
+function api_products_create_defaults($owner_id) {
+
+	// Defaults for a product nobody described in full. taxable and shippable
+	// are on because that is what the product screen starts from and what a
+	// physical article normally is; enabled is off so an import can be looked
+	// at before the shop starts selling it.
+	return array(
+		'enabled'           => '0',
+		'price'             => 0,
+		'taxable'           => '1',
+		'shippable'         => '1',
+		'free_shipping'     => '0',
+		'title'             => '',
+		'short_description' => '',
+		'meta_description'  => '',
+		'brand'             => '',
+		'gtin'              => '',
+		'mpn'               => '',
+		'keywords'          => '',
+		'weight'            => 0,
+		'length'            => 0,
+		'width'             => 0,
+		'height'            => 0,
+		'inventory'         => '0',
+		'inventory_quantity'=> 0,
+		'user'              => $owner_id,
+
+		// NOT NULL text columns with no database default. MySQL is asked for a
+		// permissive sql_mode elsewhere in the application and would fill these
+		// in itself, but a row that only inserts because the mode is loose is a
+		// row that stops inserting the day somebody tightens it.
+		'full_description'      => '',
+		'meta_keywords'         => '',
+		'notes'                 => '',
+		'details'               => '',
+		'seo_analysis'          => '',
+		'code'                  => '',
+		'out_of_stock_message'  => '',
+		'order_receipt_message' => '',
+		'add_comment_message'   => '',
+		'gift_card_email_body'  => '',
+		'google_product_category' => ''
+	);
+
+}
+
 // Add a product.
 //
 // The row and its cross-references are written by pg_pb_create_product()
@@ -476,48 +525,8 @@ function api_products_create($params) {
 
 	$app = api_current_app();
 
-	// Defaults for a product nobody described in full. taxable and shippable
-	// are on because that is what the product screen starts from and what a
-	// physical article normally is; enabled is off so an import can be looked
-	// at before the shop starts selling it.
-	$product = array(
-		'name'              => $name,
-		'enabled'           => '0',
-		'price'             => 0,
-		'taxable'           => '1',
-		'shippable'         => '1',
-		'free_shipping'     => '0',
-		'title'             => '',
-		'short_description' => '',
-		'meta_description'  => '',
-		'brand'             => '',
-		'gtin'              => '',
-		'mpn'               => '',
-		'keywords'          => '',
-		'weight'            => 0,
-		'length'            => 0,
-		'width'             => 0,
-		'height'            => 0,
-		'inventory'         => '0',
-		'inventory_quantity'=> 0,
-		'user'              => (int)$app['owner']['id'],
-
-		// NOT NULL text columns with no database default. MySQL is asked for a
-		// permissive sql_mode elsewhere in the application and would fill these
-		// in itself, but a row that only inserts because the mode is loose is a
-		// row that stops inserting the day somebody tightens it.
-		'full_description'      => '',
-		'meta_keywords'         => '',
-		'notes'                 => '',
-		'details'               => '',
-		'seo_analysis'          => '',
-		'code'                  => '',
-		'out_of_stock_message'  => '',
-		'order_receipt_message' => '',
-		'add_comment_message'   => '',
-		'gift_card_email_body'  => '',
-		'google_product_category' => ''
-	);
+	$product = api_products_create_defaults((int)$app['owner']['id']);
+	$product['name'] = $name;
 
 	// The same whitelist the update uses, and the second gate for the same
 	// reason: the validator has already refused an unknown parameter, and this
@@ -1228,16 +1237,7 @@ function api_products_update($params) {
 // pretends otherwise. Asked once per request.
 function api_catalog_bin_columns() {
 
-	static $ready = null;
-
-	if ($ready === null) {
-
-		$ready = (api_row("SHOW COLUMNS FROM products LIKE 'recycled'") !== null)
-			&& (api_row("SHOW COLUMNS FROM product_groups LIKE 'recycled'") !== null);
-
-	}
-
-	return $ready;
+	return pg_schema_has('products', 'recycled') && pg_schema_has('product_groups', 'recycled');
 
 }
 
