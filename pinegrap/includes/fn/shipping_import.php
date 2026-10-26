@@ -2,12 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Shipping in bulk: the pure half of "mark shipped" on the selected orders
- * (edit_orders.php) and of the tracking-number CSV upload
- * (import_shipments.php). Reading and checking the file, the list an address
- * is sent and the request a mark sends live here; the writes go through
- * update_order(), the order screen's own save, so a parcel entered in bulk is
- * recorded, announced and mailed the same way as one typed in by hand.
+ * Shipping in bulk: "mark shipped" on the selected orders (edit_orders.php)
+ * and the tracking-number CSV upload (import_shipments.php). Reading and
+ * checking the file, the list an address is sent and the request a mark
+ * sends are pure; the writes go through update_order(), the order screen's
+ * own save, so a parcel entered in bulk is recorded, announced and mailed the
+ * same way as one typed in by hand.
  *
  * Loaded by the two screens, not by functions.php.
  *
@@ -238,4 +238,236 @@ function pg_shipping_bulk_mark_skip($status, $address_count, $has_parcel)
     }
 
     return '';
+}
+
+/**
+ * Reads the uploaded file, writes each order's numbers and returns the result
+ * list as HTML.
+ *
+ * @param  string $path      the uploaded file
+ * @param  bool   $notify    whether customers get the shipping e-mail
+ * @param  int    $max_rows
+ * @return string
+ */
+function pg_shipping_import_run($path, $notify, $max_rows)
+{
+    $handle = fopen($path, 'r');
+
+    if (!$handle) {
+        return '<div class="alert alert-danger">' . h(lang('The file could not be read.')) . '</div>';
+    }
+
+    $read = pg_shipping_import_read($handle, $max_rows);
+
+    fclose($handle);
+
+    // line => array(class, message); rows are listed in the file's order.
+    $results = array();
+
+    // order_number => its valid rows, so an order is written once with all
+    // of its new numbers.
+    $orders = array();
+
+    foreach ($read['rows'] as $row) {
+
+        $error = pg_shipping_import_row_error($row);
+
+        if ($error !== '') {
+            $results[$row['line']] = array('danger', $error);
+            continue;
+        }
+
+        $orders[$row['order_number']][] = $row;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/update_order.php');
+
+    $counts = array('added' => 0, 'present' => 0, 'failed' => 0);
+
+    foreach ($orders as $order_number => $rows) {
+
+        $outcome = pg_shipping_import_order($order_number, $rows, $notify);
+
+        foreach ($rows as $row) {
+            $results[$row['line']] = $outcome[$row['line']];
+        }
+    }
+
+    foreach ($results as $result) {
+        if ($result[0] === 'success' || $result[0] === 'warning') {
+            $counts['added']++;
+        } elseif ($result[0] === 'secondary') {
+            $counts['present']++;
+        } else {
+            $counts['failed']++;
+        }
+    }
+
+    if ($counts['added'] > 0) {
+        log_activity(lang(array(
+            'string' => '{var:1} tracking number(s) were imported from a CSV file',
+            'vars'   => array(pg_format_number($counts['added'], 0)),
+        )));
+    }
+
+    $output_rows = '';
+
+    foreach ($read['rows'] as $row) {
+
+        $result = $results[$row['line']];
+
+        $output_rows .= '
+            <tr>
+                <td class="text-end">' . h($row['line']) . '</td>
+                <td>' . h($row['order_number']) . '</td>
+                <td>' . h($row['number']) . '</td>
+                <td>' . h($row['carrier']) . '</td>
+                <td><span class="badge text-bg-' . $result[0] . '">' . h($result[1]) . '</span></td>
+            </tr>';
+    }
+
+    $output = '
+        <div class="alert alert-info">
+            ' . h(lang(array(
+                'string' => 'Added: {var:1}. Already on the order: {var:2}. Not imported: {var:3}.',
+                'vars'   => array(pg_format_number($counts['added'], 0), pg_format_number($counts['present'], 0), pg_format_number($counts['failed'], 0)),
+            ))) . '
+        </div>';
+
+    if ($read['more']) {
+        $output .= '
+        <div class="alert alert-warning">' . h(lang(array(
+            'string' => 'Only the first {var:1} rows were read. Please upload the rest in another file.',
+            'vars'   => array(pg_format_number($max_rows, 0)),
+        ))) . '</div>';
+    }
+
+    if ($output_rows === '') {
+        return $output . '<div class="alert alert-warning">' . h(lang('The file has no rows.')) . '</div>';
+    }
+
+    return $output . '
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th class="text-end">' . h(lang('Line')) . '</th>
+                        <th>' . h(lang('Order Number')) . '</th>
+                        <th>' . h(lang('Tracking Number')) . '</th>
+                        <th>' . h(lang('Carrier')) . '</th>
+                        <th>' . h(lang('Result')) . '</th>
+                    </tr>
+                </thead>
+                <tbody>' . $output_rows . '
+                </tbody>
+            </table>
+        </div>';
+}
+
+/**
+ * Adds one order's rows to its address.
+ *
+ * @param  string $order_number
+ * @param  array  $rows   the order's valid rows
+ * @param  bool   $notify
+ * @return array line => array(badge class, message)
+ */
+function pg_shipping_import_order($order_number, $rows, $notify)
+{
+    $refuse = function ($message) use ($rows) {
+        $out = array();
+        foreach ($rows as $row) {
+            $out[$row['line']] = array('danger', $message);
+        }
+        return $out;
+    };
+
+    $order = db_item("SELECT id, status FROM orders WHERE order_number = '" . e($order_number) . "' LIMIT 1");
+
+    if (!$order) {
+        return $refuse(lang('No order has this order number.'));
+    }
+
+    if ($order['status'] === 'cancelled') {
+        return $refuse(lang('This order was cancelled, so a shipment cannot be recorded against it.'));
+    }
+
+    if ($order['status'] === 'incomplete') {
+        return $refuse(lang('This order was never completed.'));
+    }
+
+    $recipients = db_items("SELECT id, ship_date, delivery_date FROM ship_tos WHERE order_id = '" . (int) $order['id'] . "' ORDER BY id");
+
+    if (count($recipients) === 0) {
+        return $refuse(lang('This order has no shipping address, so there is nothing to ship.'));
+    }
+
+    if (count($recipients) > 1) {
+        return $refuse(lang('This order ships to more than one address. Enter its tracking numbers on the order screen.'));
+    }
+
+    $recipient = $recipients[0];
+
+    $existing = array();
+
+    foreach (pg_shipment_rows($recipient['id']) as $parcel) {
+        if (trim($parcel['number']) !== '') {
+            $existing[] = $parcel['number'];
+        }
+    }
+
+    $entries = pg_shipping_import_entries($existing, $rows);
+
+    $out = array();
+
+    foreach ($entries['status'] as $line => $status) {
+        $out[$line] = ($status === 'add')
+            ? array('success', lang('Added'))
+            : array('secondary', lang('Already on the order'));
+    }
+
+    if (!in_array('add', $entries['status'], true)) {
+        return $out;
+    }
+
+    $request = array(
+        'id'               => (int) $recipient['id'],
+        'shipped'          => (bool) $notify,
+        'tracking_numbers' => $entries['entries'],
+        'items'            => array(),
+    );
+
+    // An address without a ship date gets today's; the delivery date goes
+    // back as it is, because update_order() writes the two together.
+    if (in_array((string) $recipient['ship_date'], array('', '0000-00-00'), true)) {
+        $request['ship_date'] = date('Y-m-d');
+        $request['delivery_date'] = (string) $recipient['delivery_date'];
+    }
+
+    $outcome = update_order(array('source' => 'csv', 'order' => array(
+        'id'         => (int) $order['id'],
+        'recipients' => array($request),
+    )));
+
+    if (!is_array($outcome) || (($outcome['status'] ?? '') !== 'success')) {
+        return $refuse(lang('The tracking numbers could not be saved.'));
+    }
+
+    // A number of a shape its carrier does not use was saved with a warning,
+    // the same one the order screen shows beside it.
+    $warned = array();
+
+    foreach (pg_shipment_rows($recipient['id']) as $parcel) {
+        if (!empty($parcel['format_warning'])) {
+            $warned[mb_strtolower($parcel['number'])] = true;
+        }
+    }
+
+    foreach ($rows as $row) {
+        if ($out[$row['line']][0] === 'success' && isset($warned[mb_strtolower($row['number'])])) {
+            $out[$row['line']] = array('warning', lang('Added') . ' ' . pg_shipment_warning_text(''));
+        }
+    }
+
+    return $out;
 }
