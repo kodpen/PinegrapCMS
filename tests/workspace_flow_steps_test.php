@@ -502,3 +502,38 @@ function test_workspace_flow_steps_try_writes_nothing()
 	pg_assert_contains("'method'      => 'GET'", $route);
 	pg_assert_contains("'mcp'         => false", $route);
 }
+
+// Only the owner tries a box: it is looked at with their rights, which a
+// colleague the flow is shared with at edit does not hold.
+function test_workspace_flow_steps_try_is_the_owners()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_shares.php');
+
+	pg_assert_true(ws_flow_share_manages(true, 'edit'));
+	pg_assert_false(ws_flow_share_manages(false, 'edit'), 'an edit share');
+
+	$try = ws_flow_steps_test_source('ws_flow_box_try');
+
+	pg_assert_contains('!ws_flow_share_manager($viewer, $flow)', $try);
+	pg_assert_true(strpos($try, 'ws_flow_share_manager(') < strpos($try, 'ws_change_viewer_for_id('), 'refused before the owner is read');
+	pg_assert_true(strpos($try, 'ws_flow_share_manager(') < strpos($try, 'ws_flow_run_for('), 'refused before a run is read');
+
+	// The canvas offers it to the owner alone.
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_true((bool) preg_match('/if \(state\.flow && state\.flow\.manage\) \{\s*tryField\(box, node\);/', $js));
+}
+
+// The application an assistant works through is refused, and a run the
+// application does not reach gives no values.
+function test_workspace_flow_steps_try_refuses_assistants()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
+
+	$api = ws_flow_steps_test_source('ws_api_flows_box_try');
+
+	pg_assert_true(strpos($api, 'ws_api_is_assistant()') < strpos($api, 'ws_api_viewer()'), 'refused first');
+	pg_assert_contains("api_fail(403, 'forbidden'", $api);
+	pg_assert_contains('ws_api_flow_run_reachable($viewer, $flow, $run)', $api);
+	pg_assert_true(strpos($api, 'ws_api_flow_run_reachable(') < strpos($api, 'ws_flow_box_try('), 'the run is checked before it is read');
+}

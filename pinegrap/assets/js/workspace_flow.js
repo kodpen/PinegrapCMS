@@ -1933,7 +1933,11 @@
         }
 
         if (state.edit) {
-            tryField(box, node);
+            // Only the owner: the box is looked at with their rights.
+            if (state.flow && state.flow.manage) {
+                tryField(box, node);
+            }
+
             box.appendChild(connections(node));
 
             var remove = K.button('btn btn-sm btn-outline-warning', t('fl_remove_box'), 'bi-trash');

@@ -484,6 +484,7 @@
     "Only the owner of a flow can pause it.": "Bir akışı yalnız sahibi duraklatabilir.",
     "Only the owner of a flow can publish it.": "Bir akışı yalnız sahibi yayımlayabilir.",
     "Only the owner of a flow can share it.": "Bir akışı yalnız sahibi paylaşabilir.",
+    "Only the owner of a flow can try its boxes.": "Bir akışın kutularını yalnızca sahibi deneyebilir.",
     "Only the owner of the channel can change it.": "Kanalı yalnızca sahibi değiştirebilir.",
     "Only the owner of the channel can open it to the team.": "Kanalı ekibe yalnızca sahibi açabilir.",
     "Only the owner of the flow or the person who started the run can cancel it.": "Çalıştırmayı yalnız akışın sahibi ya da çalıştırmayı başlatan kişi iptal edebilir.",

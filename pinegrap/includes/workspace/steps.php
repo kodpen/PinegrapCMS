@@ -688,9 +688,9 @@ function ws_step_run($run, $step, $node, $graph, $owner)
  * (ws_step_check(), ws_flow_condition_check(), ws_flow_anchor_check()); a
  * step's texts are filled with the values of a run the person chose, or left
  * empty without one; a condition is looked at now; a start box at a time
- * names its next times. Nothing is sent, written or called. Only whoever may
- * change the flow tries its boxes: the draft and its settings are theirs to
- * read.
+ * names its next times. Nothing is sent, written or called. Only the flow's
+ * owner tries its boxes, as only they publish it: the checks and sentences
+ * use their rights.
  *
  * @param array $viewer
  * @param array $flow ws_flow_for() with access
@@ -706,8 +706,11 @@ function ws_flow_box_try($viewer, $flow, $data)
         return ws_flow_refusal(lang('The database has to be updated first.'), 503);
     }
 
-    if ((string) ($flow['access'] ?? '') !== 'edit') {
-        return ws_flow_refusal(lang('Only the owner of a flow can change it.'), 403);
+    // The owner alone, as publishing: the boxes are looked at with the
+    // owner's rights, which a colleague the flow is shared with at edit
+    // does not hold (a record, a count or a channel of theirs).
+    if (((string) ($flow['access'] ?? '') !== 'edit') || !ws_flow_share_manager($viewer, $flow)) {
+        return ws_flow_refusal(lang('Only the owner of a flow can try its boxes.'), 403);
     }
 
     $graph = ws_flow_graph_of($flow);

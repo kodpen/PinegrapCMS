@@ -10,10 +10,11 @@ description: Trying one box of a flow's draft without running it (F4e, PR #2024,
 
 ## Whose values and rights?
 - Values: the settled boxes of a run the person chose (`ws_flow_run_for()`, same flow, else 404 `run_id`); without one every `{{node.*}}` is empty and listed in `empty`.
-- Only `edit` access tries a box (the draft is theirs to read); the checks use the owner's rights now (`ws_change_viewer_for_id()`, still staff), as publish and the run do. An edit-share colleague therefore sees a condition's verdict under the owner's rights; they already read the box's settings.
+- Only the owner tries a box (`ws_flow_share_manager()`, 403, as publish): the checks and sentences use the owner's rights. Why: the first version let an edit-share colleague try one, and a condition on the owner's private task or a count on their private channel read its title, count or name back (merge review of #2024).
+- The API refuses the application an assistant works through (`ws_api_is_assistant()`, 403): Claude's routine calls REST with its key, so `'mcp' => false` alone let it read records outside its channels. A `run_id` must also pass `ws_api_flow_run_reachable()`.
 
 ## Where is it offered?
 - Panel action `ws_flow_box_try` (`includes/workspace/actions.php`), answer `{try: …}`. It needs its line in the ws_flow list of `includes/panel/actions.php`, or the panel refuses it.
 - API `GET /workspace/flows/{id}/boxes/{node}/try?run_id=` (`workspace.flows.box_try`, `workspace:read`, `'mcp' => false`: it reads counts and records with the owner's rights), answer `WorkspaceFlowBoxTry` (`ws_api_flow_box_try_present()`).
-- Canvas: `tryField()` and `drawTry()` in `workspace_flow.js`, under an editor's box settings: a run list loaded on first focus, "Try this box" saves the draft first (`flush()`), then asks.
-- Tests: `tests/workspace_flow_steps_test.php` (`…_try_texts`, `…_try_anchor_times`, `…_try_writes_nothing`).
+- Canvas: `tryField()` and `drawTry()` in `workspace_flow.js`, under the box settings when `state.flow.manage`: a run list loaded on first focus, "Try this box" saves the draft first (`flush()`), then asks.
+- Tests: `tests/workspace_flow_steps_test.php` (`…_try_texts`, `…_try_anchor_times`, `…_try_writes_nothing`, `…_try_is_the_owners`, `…_try_refuses_assistants`).

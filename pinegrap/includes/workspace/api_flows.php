@@ -684,19 +684,34 @@ function ws_api_flow_box_try_schema()
     );
 }
 
-// Trying a box reads the draft, which only whoever may change the flow reads,
-// and looks at counts and records with the owner's rights: no MCP tool, so an
-// assistant does not read through it what its own scopes keep back.
+// Trying a box looks at counts, records and channels with the owner's
+// rights: no MCP tool, and the application an assistant works through is
+// refused here as well, since Claude's routine calls REST with its key and
+// would read what its channels keep back.
 function ws_api_flows_box_try($params)
 {
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not try the boxes of a flow; the person does.'));
+    }
+
     $viewer = ws_api_viewer();
 
     ws_api_flows_ready();
 
     $flow = ws_api_flow_editable($viewer, $params['id']);
+    $run_id = (int) ($params['run_id'] ?? 0);
+
+    // A run the application does not reach gives no values.
+    if ($run_id > 0) {
+        $run = ws_flow_run_for($viewer, $run_id);
+
+        if (!$run || ((int) $run['flow_id'] !== (int) $flow['id']) || !ws_api_flow_run_reachable($viewer, $flow, $run)) {
+            api_fail_not_found(lang('Flow run'));
+        }
+    }
     $result = ws_flow_box_try($viewer, $flow, array(
         'node_id' => (string) $params['node'],
-        'run_id'  => (int) ($params['run_id'] ?? 0),
+        'run_id'  => $run_id,
     ));
 
     if (!$result['ok']) {
