@@ -3938,6 +3938,8 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         '__display_name' => h($full_name !== '' ? $full_name : ($user_row ? (string)$user_row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : ''))),
         'not_logged_in' => '',
     ) + $link_values;
+    // The member's own allow-listed account values (pg_sw_entity_fields('account')).
+    $values += pg_sw_entity_account_tokens($uid, pg_sw_cond_tree_json($tree_decoded));
 
     // A list of the member's orders (widgets_lists_order.php): the order
     // history's rows, filed only when the tree drew one.
