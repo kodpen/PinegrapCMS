@@ -1120,6 +1120,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_menu_region($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'menu_sequence_region' — the pages before and after this one
+            // in a menu (widgets_menu.php).
+            if ($region_type === 'menu_sequence_region') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_menu_sequence_region($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'billing_information' — the third step of the classic checkout,
             // posting to billing_information.php (widgets_billing_information.php).
             if ($region_type === 'billing_information') {

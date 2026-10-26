@@ -12,6 +12,10 @@
  * list (source menu.children, widgets_lists_menu.php), nested for deeper
  * levels.
  *
+ * The Menu Sequence widget (kind 'menu_sequence_region', the classic
+ * <menu_sequence> region) walks the pages of a menu in order: the links to
+ * the page before and after the one shown.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -133,6 +137,146 @@ function _render_system_widget_menu_region($tree_json, $widget_id, $cfg = array(
     // A header and an offcanvas menu may both carry it.
     $static_html = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values)), $widget_id, 1000 + (++$placement));
     $html = str_replace(' target=""', '', str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html));
+
+    if ($menu_id > 0 && $mode !== 'background' && pg_mw_can_edit_menu($menu_id)) {
+        $html = pg_sw_add_edit_chip($html, pg_sw_backend_edit_url('view_menu_items.php', $menu_id, array('from' => 'pages')),
+            lang('Menu') . ': ' . (string)$menu['name'], 'page');
+    }
+    return $html;
+}
+
+// ============================================================================
+// menu_sequence_region
+// ============================================================================
+
+/**
+ * The pages of a menu in reading order, as get_menu_sequence() walks them:
+ * each item before the items under it, an item that links to no page left
+ * out, a page listed once (its first item). No access check: the classic
+ * region shows every page of the menu.
+ *
+ * @param array $items the menu's rows as pg_menu_tree() reads them, in sort order
+ * @return array of array('name', 'page' (page name), 'page_id')
+ */
+function pg_mw_sequence($items)
+{
+    $children = array();
+    foreach (is_array($items) ? $items : array() as $item) {
+        if (!is_array($item) || empty($item['id'])) continue;
+        $children[isset($item['parent_id']) ? (int)$item['parent_id'] : 0][] = $item;
+    }
+    $out   = array();
+    $pages = array();
+    $seen  = array();
+    $walk  = function ($parent) use (&$walk, &$out, &$pages, &$seen, $children) {
+        if (empty($children[$parent])) return;
+        foreach ($children[$parent] as $item) {
+            $id = (int)$item['id'];
+            if (isset($seen[$id])) continue;
+            $seen[$id] = true;
+            $page = isset($item['link_page_name']) ? (string)$item['link_page_name'] : '';
+            if ($page !== '' && !isset($pages[$page])) {
+                $pages[$page] = true;
+                $out[] = array(
+                    'name'    => isset($item['name']) ? (string)$item['name'] : '',
+                    'page'    => $page,
+                    'page_id' => isset($item['link_page_id']) ? (int)$item['link_page_id'] : 0,
+                );
+            }
+            $walk($id);
+        }
+    };
+    $walk(0);
+    return $out;
+}
+
+/**
+ * The flags and raw token values of a menu sequence for page $page_id, as
+ * the classic region draws it: the page before (none on the first page)
+ * and the page after, which on the last page is the first again. A page
+ * the sequence does not hold gets nothing.
+ *
+ * @param array    $sequence pg_mw_sequence()
+ * @param int      $page_id  the page shown
+ * @param callable $name_of  translates a name (null: as stored)
+ * @return array array('flags' => …, 'tokens' => …)
+ */
+function pg_mw_sequence_values($sequence, $page_id, $name_of = null)
+{
+    $base  = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    $seq   = is_array($sequence) ? array_values($sequence) : array();
+    $at    = null;
+    foreach ($seq as $i => $step) {
+        if ((int)$page_id > 0 && $step['page_id'] === (int)$page_id) {
+            $at = $i;
+            break;
+        }
+    }
+    $name = function ($step) use ($name_of) {
+        return ($name_of !== null) ? (string)call_user_func($name_of, $step['name']) : $step['name'];
+    };
+    $prev = ($at !== null && $at > 0) ? $seq[$at - 1] : null;
+    $next = ($at === null) ? null : (isset($seq[$at + 1]) ? $seq[$at + 1] : $seq[0]);
+    return array(
+        'flags' => array(
+            'in_sequence'     => $at !== null,
+            'not_in_sequence' => $at === null,
+            'has_previous'    => $prev !== null,
+            'next_wraps'      => $at !== null && !isset($seq[$at + 1]),
+        ),
+        'tokens' => array(
+            '__previous_name'     => $prev ? $name($prev) : '',
+            '__previous_url'      => $prev ? $base . $prev['page'] : '',
+            '__next_name'         => $next ? $name($next) : '',
+            '__next_url'          => $next ? $base . $next['page'] : '',
+            '__sequence_position' => ($at !== null) ? (string)($at + 1) : '',
+            '__sequence_count'    => (string)count($seq),
+        ),
+    );
+}
+
+// Render a 'menu_sequence_region' system widget: no loop.
+//
+// Tokens: ^^__menu_name^^, ^^__previous_name^^, ^^__previous_url^^,
+// ^^__next_name^^, ^^__next_url^^, ^^__sequence_position^^ (the page's
+// place, from 1), ^^__sequence_count^^ (pages in the sequence).
+// Flags: in_sequence, not_in_sequence, has_previous, next_wraps (the next
+// link goes back to the first page). Messages: 'menu_sequence_region'.
+// cfg: menu_name (the menu, by its name as the classic region names it).
+function _render_system_widget_menu_sequence_region($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
+{
+    static $placement = 0;
+    $widget_id = (int)$widget_id;
+    if ($tree_json === '' || $tree_json === null) return '';
+    if (!is_array($cfg)) $cfg = array();
+    $tree = json_decode($tree_json, true);
+    if (!is_array($tree)) return '';
+
+    $menu_name = isset($cfg['menu_name']) && is_string($cfg['menu_name']) ? trim($cfg['menu_name']) : '';
+    $menu = ($menu_name !== '') ? db_item("SELECT id, name FROM menus WHERE name = '" . e($menu_name) . "'") : null;
+    $menu_id = is_array($menu) ? (int)$menu['id'] : 0;
+
+    $sequence = array();
+    if ($menu_id > 0) {
+        $menu_tree = pg_menu_tree($menu_id);
+        $items = array();
+        foreach ((array)$menu_tree['children'] as $level) {
+            foreach ($level as $item) $items[] = $item;
+        }
+        $sequence = pg_mw_sequence($items);
+    }
+    $values = pg_mw_sequence_values($sequence, _pg_sa_page_id(),
+        defined('FRONTEND_LANGUAGE') ? function ($name) { return pg_tr_text($name, 'text'); } : null);
+
+    _eo_apply_visibility_bindings($tree, $values['flags']);
+    _pg_inject_messages_node($tree, 'menu_sequence_region');
+
+    $split = _split_widget_tree($tree);
+    $html = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
+    $tokens = pg_sw_escape_token_values($values['tokens'] + array(
+        '__menu_name' => is_array($menu) ? (string)$menu['name'] : '',
+    ));
+    $html = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, $tokens)), $widget_id, 1000 + (++$placement));
 
     if ($menu_id > 0 && $mode !== 'background' && pg_mw_can_edit_menu($menu_id)) {
         $html = pg_sw_add_edit_chip($html, pg_sw_backend_edit_url('view_menu_items.php', $menu_id, array('from' => 'pages')),

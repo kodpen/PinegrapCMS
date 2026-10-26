@@ -11103,6 +11103,7 @@ const StyleDesigner = (function () {
                     billing_information:  _sdT('Billing Information'),
                     order_preview:        _sdT('Order Preview'),
                     menu_region:          _sdT('Menu'),
+                    menu_sequence_region: _sdT('Menu Sequence'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -32328,6 +32329,7 @@ const StyleDesigner = (function () {
             var _isBillingInfo     = (_regionType === 'billing_information');
             var _isOrderPreview    = (_regionType === 'order_preview');
             var _isMenuRegion      = (_regionType === 'menu_region');
+            var _isMenuSequence    = (_regionType === 'menu_sequence_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -32378,6 +32380,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isOrderPreview) {
                 _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
+            } else if (_isMenuSequence) {
+                _sourceInfoHtml = _sdT('Links to the page before and after the one shown, in the order of a menu\'s pages: each item before the items under it, a page once. On the last page the next link goes back to the first; on a page the menu does not link to, the links are not drawn. The menu is edited under Menus.');
             } else if (_isMenuRegion) {
                 _sourceInfoHtml = _sdT('One of the site\'s menus, read on every visit: its items, their order, links and who may see them are edited under Menus, by the users who may edit that menu, and every page that shows the widget follows. The loop repeats the top-level items; a list of the sub-items of a menu item inside a row repeats the items under it.');
             } else if (_isBillingInfo) {
@@ -33497,8 +33501,8 @@ const StyleDesigner = (function () {
                 );
             }
 
-            // ── menu_region settings ─────────────────────────────────────────
-            if (_isMenuRegion) {
+            // ── menu_region and menu_sequence_region settings ────────────────
+            if (_isMenuRegion || _isMenuSequence) {
                 var _mrNames = (regionData && regionData.menu_regions) || [];
                 var _mrName = typeof _cfg.menu_name === 'string' ? _cfg.menu_name : '';
                 var _mrOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
@@ -36919,7 +36923,7 @@ const StyleDesigner = (function () {
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
-        order_preview: 1, menu_region: 1
+        order_preview: 1, menu_region: 1, menu_sequence_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -38020,6 +38024,22 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // menu_sequence_region token palette — no loop_area. Mirrors
+    // _render_system_widget_menu_sequence_region() in widgets_menu.php.
+    var SW_MENU_SEQUENCE_TOKEN_GROUPS = [
+        { label: _sdT('Menu'), tokens: [
+            ['__menu_name',           _sdT('Menu name')],
+            ['__sequence_position',   _sdT('Place of the page shown (from 1)')],
+            ['__sequence_count',      _sdT('Pages in the sequence')],
+            ['__previous_name',       _sdT('Previous page name')],
+            ['__next_name',           _sdT('Next page name')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__previous_url',        _sdT('Previous page address')],
+            ['__next_url',            _sdT('Next page address')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -38038,7 +38058,8 @@ const StyleDesigner = (function () {
         shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS,
         billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS,
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
-        menu_region:       SW_MENU_REGION_TOKEN_GROUPS
+        menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
+        menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -39113,6 +39134,12 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        menu_sequence_region: [
+            ['in_sequence',     _sdT('The page shown is one of the menu\'s pages')],
+            ['not_in_sequence', _sdT('The page shown is not one of the menu\'s pages')],
+            ['has_previous',    _sdT('A page comes before the one shown')],
+            ['next_wraps',      _sdT('The page shown is the last; the next link goes to the first')]
         ],
         menu_region: [
             ['has_menu_items',             _sdT('The menu has an item the visitor may see')],
@@ -51470,14 +51497,15 @@ const StyleDesigner = (function () {
         { type: 'shipping_method',   label: _sdT('Shipping Method'),   slug: _sdT('shipping-method'),   icon: 'bi-box-seam' },
         { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' },
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
-        { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' }
+        { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
+        { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
     var _SW_ACCOUNT_TYPES  = { logout: 1, change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1, account_security: 1 };
     var _SW_ACCOUNT_SINGLE = { logout: 1, change_password: 1, set_password: 1, account_profile: 1 };
     // Other widgets that show one screen and never repeat their loop_area.
-    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1, account_email: 1 };
+    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1, account_email: 1, menu_sequence_region: 1 };
     function _swTypeInfo(type) {
         for (var i = 0; i < SW_TYPES.length; i++) if (SW_TYPES[i].type === type) return SW_TYPES[i];
         return null;
@@ -51649,7 +51677,7 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
-        } else if (newType === 'menu_region') {
+        } else if (newType === 'menu_region' || newType === 'menu_sequence_region') {
             // The site's first menu, so a new widget shows items at once.
             if (cfg.menu_name === undefined) cfg.menu_name = ((regionData && regionData.menu_regions) || [])[0] || '';
         } else if (newType === 'language_switcher') {
@@ -57473,6 +57501,32 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'menu_sequence_region': {
+                // The pages before and after this one in a menu: two links
+                // at either end of a row, the previous one only when a page
+                // comes before. Mirrors
+                // _render_system_widget_menu_sequence_region().
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'nav', cssClass: 'd-flex justify-content-between align-items-center gap-3 my-4', customName: _sdT('Menu Sequence'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Previous and next page') }],
+                        _bindings: { eo_visible_if: 'in_sequence' } }, [
+                        createNode('semantic', { tag: 'a', cssClass: 'btn btn-outline-secondary d-inline-flex align-items-center gap-2', href: '#', customName: _sdT('Previous'),
+                            _attrs: [{ name: 'rel', value: 'prev' }],
+                            _bindings: { href: '__previous_url', eo_visible_if: 'has_previous' } }, [
+                            createNode('semantic', { tag: 'i', cssClass: 'bi bi-arrow-left', customName: _sdT('Icon'), _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+                            createNode('semantic', { tag: 'span', text: _sdT('Previous page name'), customName: _sdT('Label'), _bindings: { text: '__previous_name' } })
+                        ]),
+                        createNode('semantic', { tag: 'a', cssClass: 'btn btn-outline-secondary d-inline-flex align-items-center gap-2 ms-auto', href: '#', customName: _sdT('Next'),
+                            _attrs: [{ name: 'rel', value: 'next' }],
+                            _bindings: { href: '__next_url' } }, [
+                            createNode('semantic', { tag: 'span', text: _sdT('Next page name'), customName: _sdT('Label'), _bindings: { text: '__next_name' } }),
+                            createNode('semantic', { tag: 'i', cssClass: 'bi bi-arrow-right', customName: _sdT('Icon'), _attrs: [{ name: 'aria-hidden', value: 'true' }] })
+                        ])
+                    ]),
+                    createNode('loop_area', {}, [])
+                ]);
+            }
+
             case 'menu_region': {
                 // One of the site's menus as a Bootstrap navbar: the loop
                 // repeats the top-level items, an item with sub-items opens
@@ -58116,7 +58170,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
