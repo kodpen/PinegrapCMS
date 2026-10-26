@@ -204,10 +204,12 @@ if (!$channel_id) {
 
 $product_id = (int) seed_value('SELECT id FROM products ORDER BY id LIMIT 1');
 $offer_id = (int) seed_value('SELECT id FROM offers ORDER BY id LIMIT 1');
+$style_id = (int) seed_value("SELECT style_id FROM style WHERE style_layout = 'visual_designer' ORDER BY style_id LIMIT 1");
 
 echo json_encode(array(
 	'user_id' => $user_id,
 	'channel_id' => $channel_id,
 	'product_id' => $product_id,
 	'offer_id' => $offer_id,
+	'style_id' => $style_id,
 )) . "\n";
