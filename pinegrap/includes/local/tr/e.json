@@ -1174,6 +1174,7 @@
     "empty": "boş",
     "empty (prompt)": "boş (istem)",
     "enabled": "etkin",
+    "end or ~length": "bitiş ya da ~süre",
     "end_date must be a date as YYYY-MM-DD, or empty for an offer with no end.": "end_date YYYY-AA-GG biçiminde bir tarih olmalı; bitişi olmayan kampanya için boş bırakın.",
     "ended all of their OAuth connections": "OAuth bağlantılarının hepsini sonlandırdı",
     "ended the OAuth connection of an application ({var:1})": "bir uygulamanın OAuth bağlantısını sonlandırdı ({var:1})",
