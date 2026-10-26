@@ -25,6 +25,7 @@ description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 and the me
 - `widgets_shipping_address`, `widgets_shipping_method`, `widgets_billing_information`, `widgets_order_preview`: the classic checkout's four steps: [[shipping-address-widget]] … [[order-preview-widget]].
 - `widgets_entity_fields` (the entity values a widget may show, `pg_sw_entity_*`): [[widget-entity-fields]].
 - `widgets_parts` (placement rule, default parts): [[widget-default-parts]].
+- `layouts`: [[layout-code-tab]].
 
 ## Where does a module added later go?
 - Its line goes here under its version; the kinds of function each older module holds are in [[fn-module-map]].

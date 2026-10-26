@@ -3057,7 +3057,7 @@ function pg_designer_target_modal()
             go.addEventListener("click", function () {
                 var url = target();
                 if (!url) return;
-                window.bootstrap.Modal.getOrCreateInstance(modal).hide();
+                pgUI.dialog.hide(modal);
                 if (typeof opts.go === "function") opts.go(url); else window.location.href = url;
             });
             window.pgDesignTarget = {
@@ -3068,7 +3068,7 @@ function pg_designer_target_modal()
                     document.getElementById("pgDesignTargetIntro").textContent = T[mode + "_intro"];
                     list.innerHTML = "<div class=\"list-group-item small text-body-secondary\">" + esc(T.loading) + "</div>";
                     go.disabled = true;
-                    window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                    pgUI.dialog.show(modal);
                     fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ action: "designer", sub_action: "design_targets", folder_id: opts.folder || 0,
                                                exclude_style_id: opts.exclude || 0, token: (typeof software_token !== "undefined" ? software_token : "") }) })

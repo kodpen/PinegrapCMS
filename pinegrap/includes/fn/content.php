@@ -727,6 +727,8 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
     }
     $label_column_width_added = false;
     $form_info['wysiwyg_fields'] = array();
+    // Picker kinds of the hooked fields (backend only), for picker_scripts.
+    $picker_kinds = array();
     foreach ($fields as $field) {
         $output_label_column_width = '';
         // if the label column width is not blank and it has not been added and this field type is not information, then add it to this field
@@ -1095,6 +1097,19 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 $form_info['file_upload_exists'] = true;
                 break;
             case 'date':
+                // The panel preview hooks the field for pgDatePicker; the site
+                // keeps its jQuery UI call.
+                if ($interface == 'backend') {
+                    $date_hook = array('data-pg-date' => '');
+                    $date_script = '';
+                    $picker_kinds['date'] = true;
+                } else {
+                    $date_hook = array();
+                    $date_script = get_date_picker_format() . '
+                            <script>
+                                software_$("#' . $html_field_name . '").datepicker(datetimepicker_options);
+                            </script>';
+                }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
                         <td style="' . $output_label_column_width . '">' . $field['label'] . '</td>
@@ -1110,21 +1125,27 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                                 'maxlength' => '10',
                                 'class' => 'software_input_text',
                                 'required' => $required
-                            )) . '
+                            ) + $date_hook) . '
 
-                            ' . get_date_picker_format() . '
-
-                            <script>
-
-                                software_$("#' . $html_field_name . '").datepicker(datetimepicker_options);
-
-                            </script>
+                            ' . $date_script . '
 
                         </td>
 
                     </tr>';
                 break;
             case 'date and time':
+                if ($interface == 'backend') {
+                    $date_hook = array('data-pg-datetime' => '');
+                    $date_script = '';
+                    $picker_kinds['date and time'] = true;
+                } else {
+                    $date_hook = array();
+                    $date_script = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+                            ' . get_date_time_picker_format() . '
+                            <script>
+                                software_$("#' . $html_field_name . '").datetimepicker(datetimepicker_options);
+                            </script>';
+                }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
                         <td style="' . $output_label_column_width . '">' . $field['label'] . '</td>
@@ -1140,13 +1161,9 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                                 'maxlength' => '22',
                                 'class' => 'software_input_text',
                                 'required' => $required
-                            )) . '
+                            ) + $date_hook) . '
 
-                            <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-                            ' . get_date_time_picker_format() . '
-                            <script>
-                                software_$("#' . $html_field_name . '").datetimepicker(datetimepicker_options);
-                            </script>
+                            ' . $date_script . '
 
                         </td>
 
@@ -1202,6 +1219,20 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
 
                 </tr>';
         }
+    }
+    // What the hooked panel fields need, printed once after the table: the
+    // pickers are drawn when the page has loaded and all read the one
+    // datetimepicker_options, so a form with a date and time field gets the
+    // variant with the time wording.
+    $form_info['picker_scripts'] = '';
+    if (isset($picker_kinds['date and time'])) {
+        $form_info['picker_scripts'] = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+        ' . get_date_time_picker_format();
+    } elseif (isset($picker_kinds['date'])) {
+        $form_info['picker_scripts'] = get_date_picker_format();
+    }
+    if ($picker_kinds) {
+        $form_info['picker_scripts'] .= pg_fields_script();
     }
     return $form_info;
 }

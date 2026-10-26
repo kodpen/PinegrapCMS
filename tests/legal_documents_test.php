@@ -711,23 +711,9 @@ function test_legal_documents_copy_urls()
 	pg_assert_same(array('preinfo' => '', 'contract' => ''), pg_legal_document_copy_urls(array(), 7, '/p/legal_document.php'), 'nothing kept');
 }
 
-// The card after a layout that links neither document lists the kept copies
-// with their names, the addresses escaped; no copy, no card.
-function test_legal_documents_order_view_block()
-{
-	pg_assert_same('', pg_legal_documents_order_view_block(array('preinfo' => '', 'contract' => '')), 'nothing kept');
-
-	$block = pg_legal_documents_order_view_block(array('preinfo' => '', 'contract' => '/p/legal_document.php?order_id=7&type=contract', 'kvkk' => '/x'));
-	$types = pg_legal_document_types();
-
-	pg_assert_contains('<a href="/p/legal_document.php?order_id=7&amp;type=contract" target="_blank" rel="noopener">' . h($types['contract']) . '</a>', $block, 'the contract');
-	pg_assert_false(strpos($block, h($types['preinfo'])) !== false, 'no line for a copy that is not kept');
-	pg_assert_false(strpos($block, 'href="/x"') !== false, 'no line for an unnamed type');
-	pg_assert_contains('<h6 class="mb-0 fw-semibold">' . h(lang('Legal Documents')) . '</h6>', $block, 'the heading');
-}
-
 // The order view links the kept copies, never in the receipt e-mail (it
-// attaches them), and adds the card only to a layout that binds no link.
+// attaches them); a layout that binds no link is given the legal documents
+// card (widget_default_parts_test.php).
 function test_legal_documents_order_view_links()
 {
 	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php'), '_render_system_widget_order_view');
@@ -735,8 +721,7 @@ function test_legal_documents_order_view_links()
 	pg_assert_contains("empty(\$sw_ctx['email']) ? pg_legal_documents_of_order((int)\$order['id']) : array()", $section, 'no copies in the e-mail');
 	pg_assert_contains("'__legal_preinfo_url'       => h(\$legal_urls['preinfo'])", $section, 'the pre-information form link');
 	pg_assert_contains("'__legal_contract_url'      => h(\$legal_urls['contract'])", $section, 'the contract link');
-	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__legal_preinfo_url', '__legal_contract_url'))", $section, 'a bound link keeps the card away');
-	pg_assert_same(2, substr_count($section, '. $legal_block;'), 'both ways out add the card');
+	pg_assert_contains("array(array('__legal_preinfo_url', '__legal_contract_url'), 'pg_sw_part_order_legal_documents')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php'), 'a bound link keeps the card away');
 }
 
 // Deleting an order deletes the copies kept with it: they hold the buyer's

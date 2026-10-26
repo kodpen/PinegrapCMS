@@ -143,7 +143,7 @@ const StyleDesigner = (function () {
     // `done` gets the new `pages` list ([] for every page); dismissing the
     // dialog changes nothing.
     function _sdAssetPagesDialog(entry, done) {
-        if (typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+        if (!window.pgUI) return;
         var current = Array.isArray(entry.pages) ? entry.pages.map(String) : [];
         var all = !current.length;
         var rows = _pages.map(function (p) {
@@ -191,11 +191,11 @@ const StyleDesigner = (function () {
             var some = !!el.querySelector('input[name="sd-ap-mode"][value="some"]:checked');
             var refs = some ? boxes.filter(function (b) { return b.checked; }).map(function (b) { return b.dataset.pageRef; }) : [];
             if (some && !refs.length) { el.querySelector('[data-ap-error]').classList.remove('d-none'); return; }
-            bootstrap.Modal.getOrCreateInstance(el).hide();
+            pgUI.dialog.hide(el);
             done(refs);
         });
-        el.addEventListener('hidden.bs.modal', function () { el.remove(); });
-        bootstrap.Modal.getOrCreateInstance(el).show();
+        pgUI.dialog.on(el, 'hidden', function () { el.remove(); });
+        pgUI.dialog.show(el);
     }
     let _pages     = [];     // [{ key, page_id, page_name, …settings, tree, undoStack, redoStack, nodeIdCounter, baseline }]
     let _activeKey = null;   // key of the page currently on the canvas
@@ -606,6 +606,7 @@ const StyleDesigner = (function () {
     // it. nodeOf(id, wrap) finds the node of a wrapper (_sdFindNodeForEl());
     // it is asked for open elements only, a closed one draws a node without
     // `show`.
+    /* @pg-site-output */
     function _sdCanvasOpenRestore(doc, open, nodeOf) {
         if (!doc) return;
         _sdCanvasOpenEach(doc, function (el, key, wrap) {
@@ -773,6 +774,7 @@ const StyleDesigner = (function () {
         return { _id: gid(), type: type, props: p, children: children || [] };
     }
 
+    /* @pg-site-output */
     function colProps(xs) {
         return { xs: xs || '12', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '' };
     }
@@ -895,6 +897,8 @@ const StyleDesigner = (function () {
                                 // An old token a default part now draws gets
                                 // the part; the site draws the same.
                                 if (mcfg) _sdDefaultParts(parsed, _swKindOf(mcfg), mcfg);
+                                // Never on a template's placeholder (below).
+                                if (mcfg && !_swIsTemplatePlaceholder(parsed)) _sdDefaultTails(parsed, _swKindOf(mcfg), mcfg);
                             }
                             // A template's widget whose layout was never written
                             // (the loss above): it still holds the placeholder and
@@ -2717,6 +2721,7 @@ const StyleDesigner = (function () {
      * else it is ordinary markup. The label is an element the designer may
      * delete — the field then keeps the name given in the panel.
      */
+    /* @pg-site-output */
     function _cfPaletteBlock(kind) {
         var def = CF_PALETTE[kind] || CF_PALETTE.text;
         var id  = 'f_' + Math.random().toString(36).slice(2, 7);
@@ -2833,6 +2838,7 @@ const StyleDesigner = (function () {
 
     // The container every custom form starts with: a centred column. What
     // goes inside is the caller's.
+    /* @pg-site-output */
     function _cfFrame(children) {
         var loopArea = createNode('loop_area', {}, []); // present but hidden
         return createNode('root', {}, [
@@ -2848,6 +2854,7 @@ const StyleDesigner = (function () {
 
     // A new form: one input, the CAPTCHA, a button. The designer takes it
     // from there — including deleting the input.
+    /* @pg-site-output */
     function _cfStarterTree() {
         var first = _cfPaletteBlock('text');
         return _cfFrame([first, _cfPaletteBlock('captcha'), _cfPaletteBlock('submit')]);
@@ -2861,6 +2868,7 @@ const StyleDesigner = (function () {
      * and row id. Office-use-only fields are drawn too — the renderer hides
      * them from visitors.
      */
+    /* @pg-site-output */
     function _cfBuildFromFields(fields, formPageId, formName) {
         var blocks = [];
         var reId = function (nd) { nd._id = gid(); if (Array.isArray(nd.children)) nd.children.forEach(reId); };
@@ -3216,6 +3224,7 @@ const StyleDesigner = (function () {
      * controls and indicators dark under data-bs-theme="dark" (and with
      * .carousel-dark, which the carousel ships with), so a dark slide would hide them.
      */
+    /* @pg-site-output */
     function makeCarouselSlide(idx, isActive) {
         var bg = CAROUSEL_SURFACES[(idx - 1) % CAROUSEL_SURFACES.length];
         return createNode('semantic', { tag: 'div', cssClass: 'carousel-item' + (isActive ? ' active' : ''), customName: _sdT('Slide {var}', idx) }, [
@@ -4683,6 +4692,7 @@ const StyleDesigner = (function () {
         });
         return { props: props, rest: rest };
     }
+    /* @pg-site-output */
     function _serializeRowToClasses(props, rest) {
         var cls = ['row'];
         if (props.gutter)  cls.push('g-' + props.gutter);
@@ -4713,6 +4723,7 @@ const StyleDesigner = (function () {
         });
         return { props: props, rest: rest };
     }
+    /* @pg-site-output */
     function _serializeColToClasses(props, rest) {
         var cls = [];
         if (props.xs === 'col')        cls.push('col');
@@ -4885,6 +4896,7 @@ const StyleDesigner = (function () {
     // with the site's languages (sdDesign.siteLanguages, source first) and
     // the page's own language current. On the site every item links to the
     // page in its language; here none goes anywhere.
+    /* @pg-site-output */
     function _sdLangSwitcherMarkup(p) {
         p = p || {};
         // Attribute-safe as well: names and classes end up inside quotes.
@@ -4911,6 +4923,7 @@ const StyleDesigner = (function () {
             '</div>';
     }
 
+    /* @pg-site-output */
     var COMPONENTS = {
         navbar: {
             label: _sdT('Navbar'), icon: 'bi-layout-navbar',
@@ -5104,6 +5117,7 @@ const StyleDesigner = (function () {
     };
 
     // ========================= CONTENT REGISTRY =========================
+    /* @pg-site-output */
     var CONTENT = {
         heading: {
             label: _sdT('Heading'), icon: 'bi-type-h1',
@@ -5663,6 +5677,7 @@ const StyleDesigner = (function () {
             }).join(' ');
         });
     }
+    /* @pg-site-output */
     var IFRAME_CSS = [
         '*, *::before, *::after { box-sizing: border-box; }',
         // html is the scroll container so position:sticky works inside the canvas iframe.
@@ -7940,6 +7955,7 @@ const StyleDesigner = (function () {
         return null;
     }
 
+    /* @pg-site-output */
     function addCompositeChild(node, type) {
         if (!node) return;
         saveState();
@@ -8218,6 +8234,7 @@ const StyleDesigner = (function () {
 
     // ── Node wrap / unwrap helpers (for table-responsive toggle) ──────────────
 
+    /* @pg-site-output */
     function wrapNode(node, wrapTag, wrapCls) {
         var par = findParent(node, tree);
         if (!par) return;
@@ -8324,6 +8341,7 @@ const StyleDesigner = (function () {
         render(); renderProperties();
     }
 
+    /* @pg-site-output */
     function splitCell(node) {
         if (!node || !node.props) return;
         var tr = findParent(node, tree);
@@ -12313,6 +12331,7 @@ const StyleDesigner = (function () {
         return _imgPW.indexOf('%') !== -1;
     }
 
+    /* @pg-site-output */
     function buildNodeEl(node) {
         // Delegate table structural nodes to the wrapper-free builder
         if (node.type === 'semantic' &&
@@ -13360,6 +13379,7 @@ const StyleDesigner = (function () {
         return s;
     }
 
+    /* @pg-site-output */
     function buildInnerElement(doc, node) {
         switch (node.type) {
             case 'container':
@@ -14358,6 +14378,7 @@ const StyleDesigner = (function () {
         });
     }
 
+    /* @pg-site-output */
     function getNodeLabel(node) {
         if (node.props && node.props.customName) return node.props.customName;
         switch (node.type) {
@@ -16042,6 +16063,7 @@ const StyleDesigner = (function () {
         }
     }
 
+    /* @pg-site-output */
     function createFromPalette(type, extra) {
         switch (type) {
             case 'container': return createNode('container', { fluid: false, cssClass: '' }, []);
@@ -21814,6 +21836,7 @@ const StyleDesigner = (function () {
     }
 
     // ========================= NODE ACTIONS =========================
+    /* @pg-site-output */
     function onAddChild(node) {
         saveState();
         var n;
@@ -21948,6 +21971,7 @@ const StyleDesigner = (function () {
         render();
     }
 
+    /* @pg-site-output */
     function setQuickLayout(rowNode, layout) {
         saveState();
         rowNode.children = layout.map(function (w) { return createNode('col', colProps(String(w)), []); });
@@ -23305,7 +23329,7 @@ const StyleDesigner = (function () {
         // Resolves true on Delete, false otherwise.
         function _bulkConfirm(opts) {
             return new Promise(function (resolve) {
-                if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+                if (!window.pgUI) {
                     resolve(opts.need ? (window.prompt(opts.text, '') || '').trim() === opts.need : window.confirm(opts.text));
                     return;
                 }
@@ -23335,11 +23359,11 @@ const StyleDesigner = (function () {
                 okBtn.addEventListener('click', function () {
                     if (okBtn.disabled) return;
                     ok = true;
-                    bootstrap.Modal.getOrCreateInstance(el).hide();
+                    pgUI.dialog.hide(el);
                 });
-                el.addEventListener('shown.bs.modal', function () { (input || el.querySelector('[data-bs-dismiss].btn')).focus(); });
-                el.addEventListener('hidden.bs.modal', function () { el.remove(); resolve(ok); });
-                bootstrap.Modal.getOrCreateInstance(el, { backdrop: 'static' }).show();
+                pgUI.dialog.on(el, 'shown', function () { (input || el.querySelector('[data-bs-dismiss].btn')).focus(); });
+                pgUI.dialog.on(el, 'hidden', function () { el.remove(); resolve(ok); });
+                pgUI.dialog.show(el, { backdrop: 'static' });
             });
         }
 
@@ -26340,6 +26364,7 @@ const StyleDesigner = (function () {
 
     // ========================= HTML TREE (bottom panel) =========================
     // Returns the real HTML tag info for each node
+    /* @pg-site-output */
     function getNodeHtmlTag(node) {
         var tag = 'div', cls = '', id = node.props.id || '';
         var selfClose = false, preview = '';
@@ -28007,6 +28032,7 @@ const StyleDesigner = (function () {
 
     // A new element around existing nodes: a plain element with the typed
     // tag and attributes, so the nodes inside keep what they are.
+    /* @pg-site-output */
     function _sdCodeNewSemantic(item) {
         var props = { tag: item.tag, cssClass: '' };
         var attrs = [];
@@ -28021,12 +28047,14 @@ const StyleDesigner = (function () {
         return { _id: gid(), type: 'semantic', props: props, children: [] };
     }
 
+    /* @pg-site-output */
     function _sdCodeNewSpan(raw) {
         return { _id: gid(), type: 'content', props: { contentType: 'span', text: raw.trim(), cssClass: '' }, children: [] };
     }
 
     // The place a new element keeps until the converter answers: its own
     // markup as Custom HTML, which prints the same text.
+    /* @pg-site-output */
     function _sdCodeNewHolder(html) {
         return { _id: gid(), type: 'content', props: { contentType: 'custom_html', html: html, cssClass: '', _sdPending: html }, children: [] };
     }
@@ -28745,6 +28773,62 @@ const StyleDesigner = (function () {
             url: null,
             load: function (cb) { post('read', null, cb); },
             save: function (content, cb) { post('save', { content: content }, cb); }
+        });
+    }
+
+    // A classic page's custom layout (the PHP its system region draws) as a
+    // file tab: read, regenerated and saved through api.php's layout_code,
+    // which admits the classic layout editor's role (designers and
+    // administrators) and checks the form token. A text saved equal to the
+    // generated layout, white space aside, leaves the page unmodified.
+    // Regenerate puts the generated layout in the tab; nothing is saved
+    // until the tab is. Read only on a hosted site, which ignores the file.
+    function _sdLayoutCodeOpen(page, regenerate) {
+        if (!page || !(page.page_id > 0)) return;
+        var key = 'layout:' + page.page_id;
+        var readOnly = !!(_design && _design.layoutReadOnly);
+        if (regenerate && readOnly) return;
+        var post = function (sub, extra, cb) {
+            var body = { action: 'layout_code', sub_action: sub, page_id: page.page_id, token: _pgToken() };
+            if (extra) Object.keys(extra).forEach(function (k) { body[k] = extra[k]; });
+            var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+            fetch(url, { method: 'POST', body: JSON.stringify(body), credentials: 'same-origin',
+                         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data && data.status === 'success') cb({ ok: true, content: data.content || '' });
+                    else cb({ ok: false, message: (data && data.message) || _sdT('Network error') });
+                })
+                .catch(function () { cb({ ok: false, message: _sdT('Network error') }); });
+        };
+        if (regenerate && !window.confirm(_sdT('Replace the layout in the editor with a newly generated one? Nothing is saved until you save the file.'))) return;
+        var open = _sdCodeTabFind(key);
+        var spec = {
+            key: key,
+            title: _sdT('Layout (PHP)') + (page.page_name ? ': ' + page.page_name : ''),
+            icon: 'bi-filetype-php',
+            language: 'php',
+            readOnly: readOnly,
+            url: null,
+            load: function (cb) {
+                if (!regenerate) { post('read', null, cb); return; }
+                // A new tab starts from the generated text, unsaved.
+                post('regenerate', null, function (res) {
+                    cb(res);
+                    var tab = _sdCodeTabFind(key);
+                    if (res.ok && tab) { tab.dirty = true; _sdCodeTabsRender(); }
+                });
+            },
+            save: function (content, cb) { post('save', { content: content }, cb); }
+        };
+        _sdCodeTabOpen(spec);
+        if (!regenerate || !open) return;
+        if (!open.loaded) return;
+        post('regenerate', null, function (res) {
+            var tab = _sdCodeTabFind(key);
+            if (!tab || !tab.ed) return;
+            if (res.ok) tab.ed.setValue(res.content);
+            else sdToast(esc(res.message || ''), 'error', 5000);
         });
     }
 
@@ -30500,6 +30584,7 @@ const StyleDesigner = (function () {
     // makes one (pg_di_node()): its words, with any inline markup, are the
     // text; address, target, rel and classes are its options; any other
     // attribute stays an attribute.
+    /* @pg-site-output */
     function _sdIlLinkNode(a) {
         var p = {
             contentType: 'link',
@@ -30573,6 +30658,7 @@ const StyleDesigner = (function () {
     // The text becomes an element of the same tag and classes holding a link
     // element for each link and a span for a separator. The node keeps its
     // id: its name, notes, attributes and place stay.
+    /* @pg-site-output */
     function _sdIlSplit(n) {
         var frag = _sdIlParse(n.props.text);
         if (!_sdIlOnlyLinks(frag)) return;
@@ -32058,6 +32144,7 @@ const StyleDesigner = (function () {
             row(_sdT('Type'), sel('regionType', typeOpts, n.props.regionType)) +
             '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
+            (n.props.regionType === 'system' ? _sdLayoutPropsHtml() : '') +
             (n.props.regionType === 'designer' ? _sdDesignerRegionPropsHtml(n) : '') +
             designableHtml
         ) + commentsInfo;
@@ -36883,6 +36970,7 @@ const StyleDesigner = (function () {
         out.__event_date = true;
         out.__event_start_date = true;
         out.__event_end_date = true;
+        out.__event_updated_date = true;
         // Order view: typed by _pg_sw_order_view_dates().
         out.__order_date = true;
         out.__arrival_date = true;
@@ -37209,6 +37297,18 @@ const StyleDesigner = (function () {
         ['__is_free_shipping',    _sdT('Ships free'), 'cond'],
         ['__is_gift_card',        _sdT('Is a gift card'), 'cond'],
         ['__is_donation',         _sdT('Is a donation'), 'cond']
+    ];
+
+    // A calendar event's allow-listed values (pg_sw_entity_fields('calendar_event')),
+    // offered by the calendar view's event loop and the event view.
+    var SW_EVENT_ENTITY_TOKENS = [
+        ['__event_spots_left',        _sdT('Places left (when places are limited)')],
+        ['__event_updated_date',      _sdT('Last updated')],
+        ['__event_reservation_price', _sdT('Reservation price (with symbol)')],
+        ['__event_recurrence',        _sdT('Repeats (Daily, Weekly …)')],
+        ['__event_reservations_open', _sdT('Takes reservations'), 'cond'],
+        ['__event_spots_limited',     _sdT('Places are limited'), 'cond'],
+        ['__event_is_recurring',      _sdT('Is a recurring event'), 'cond']
     ];
 
     // Whether a palette entry is offered only as a condition (yes/no).
@@ -38311,7 +38411,8 @@ const StyleDesigner = (function () {
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
             ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
-            ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')]
+            ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')],
+            ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
@@ -38575,7 +38676,8 @@ const StyleDesigner = (function () {
             ['__event_calendar_names', _sdT('Calendars')],
             ['__event_is_all_day',     _sdT('All-day event (1 or empty)')],
             ['__event_ical_url',       _sdT('Add to my calendar — .ics file (href)')]
-        ]}
+        ]},
+        { label: _sdT('More event details (loop)'), tokens: SW_EVENT_ENTITY_TOKENS }
     ];
 
     var SW_CALENDAR_VIEW_FLAT_TOKENS = (function () {
@@ -38607,7 +38709,8 @@ const StyleDesigner = (function () {
             ['__event_ical_url',      _sdT('Add to my calendar — .ics file (href)')],
             ['__reservation_message', _sdT('Why reservations are closed (no spots / out of stock)')],
             ['__not_found_message',   _sdT('Not-found message (filled when there is no event)')]
-        ]}
+        ]},
+        { label: _sdT('More event details'), tokens: SW_EVENT_ENTITY_TOKENS }
     ];
 
     var SW_CALENDAR_EVENT_VIEW_FLAT_TOKENS = (function () {
@@ -38736,6 +38839,7 @@ const StyleDesigner = (function () {
     }
 
     // One element of a part (pg_sw_part_el()).
+    /* @pg-site-output */
     function _sdPartEl(tag, cls, name, props, children) {
         var p = { tag: tag, cssClass: cls, customName: name };
         Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
@@ -38751,6 +38855,7 @@ const StyleDesigner = (function () {
 
     // The order timeline (pg_sw_part_order_timeline()): an order.steps list,
     // the icon and colour by the step's kind, an estimated date greyed.
+    /* @pg-site-output */
     function _sdPartOrderTimeline() {
         var icon = function (colour, bi, props) {
             return _sdPartEl('span', 'pg-ov-timeline-icon bg-' + colour, _sdT('Icon'), props, [
@@ -38808,6 +38913,85 @@ const StyleDesigner = (function () {
         });
     }
 
+    // The blocks the server added after a widget whose layout placed none
+    // of their tokens, now parts added to the end of the tree once
+    // (pg_sw_default_tail_parts()): kind => [tokens that place it, part].
+    var SW_DEFAULT_TAILS = {
+        order_view: [
+            [['__return_form', '__returns'], function (cfg, tree) { return _sdPartOrderReturns(); }],
+            [['__legal_preinfo_url', '__legal_contract_url'], function (cfg, tree) { return _sdPartOrderLegal(tree); }]
+        ]
+    };
+
+    // Whether `tree` places any of `tokens` (pg_sw_placed()): anywhere in
+    // the tree but a value condition, the name matched whole.
+    function _sdPartPlaced(tree, tokens) {
+        var copy = JSON.parse(JSON.stringify(tree || {}));
+        (function strip(n) {
+            if (!n || typeof n !== 'object') return;
+            var p = n.props || {};
+            if (p._bindings && typeof p._bindings === 'object') delete p._bindings.show_if;
+            if (p._bindParams && typeof p._bindParams === 'object') delete p._bindParams.show_if;
+            (n.children || []).forEach(strip);
+        })(copy);
+        var json = JSON.stringify(copy);
+        return tokens.some(function (t) {
+            return t !== '' && new RegExp('(^|[^A-Za-z0-9_])' + t + '(?![A-Za-z0-9_])').test(json);
+        });
+    }
+
+    // Adds to the end of `tree` each block of `kind` it does not place.
+    // Returns whether anything was added.
+    function _sdDefaultTails(tree, kind, cfg) {
+        var tails = SW_DEFAULT_TAILS[kind];
+        if (!tails || !tree || typeof tree !== 'object') return false;
+        var placed = JSON.parse(JSON.stringify(tree));
+        var due = tails.filter(function (t) { return !_sdPartPlaced(placed, t[0]); });
+        tree.children = tree.children || [];
+        due.forEach(function (t) { tree.children = tree.children.concat(t[1](cfg || null, placed)); });
+        return due.length > 0;
+    }
+
+    // A card added after the order view (pg_sw_part_order_card()).
+    function _sdPartOrderCard(cls, name, flag, heading, body) {
+        return _sdPartEl('div', 'container pb-4 ' + cls, name, { _bindings: { eo_visible_if: flag } }, [
+            _sdPartEl('div', 'card', _sdT('Card'), {}, [
+                _sdPartEl('div', 'card-header', _sdT('Card header'), {}, [
+                    _sdPartEl('h6', 'mb-0 fw-semibold', _sdT('Heading'), { text: heading })
+                ]),
+                _sdPartEl('div', 'card-body', _sdT('Card body'), {}, body)
+            ])
+        ]);
+    }
+
+    // The returns card (pg_sw_part_order_returns()).
+    function _sdPartOrderReturns() {
+        var block = function (token, name) { return _sdPartEl('div', '', name, { _bindings: { text: token } }); };
+        return [_sdPartOrderCard('pg-ov-returns-block', _sdT('Returns'), 'show_returns_card', _sdT('Returns'), [
+            block('__returns', _sdT('Return requests')),
+            block('__return_form', _sdT('Return request form'))
+        ])];
+    }
+
+    // The legal documents card (pg_sw_part_order_legal_documents()).
+    function _sdPartOrderLegal(tree) {
+        var link = function (label, token, flag) {
+            return _sdPartEl('li', '', label, { _bindings: { eo_visible_if: flag } }, [
+                _sdPartEl('a', '', label, { text: label, href: '#', target: '_blank', rel: 'noopener', _bindings: { href: token } })
+            ]);
+        };
+        var body = [_sdPartEl('ul', 'list-unstyled mb-0', _sdT('Links'), {}, [
+            link(_sdT('Pre-Information Form'), '__legal_preinfo_url', 'has_legal_preinfo'),
+            link(_sdT('Distance Sales Contract'), '__legal_contract_url', 'has_legal_contract')
+        ])];
+        if (!_sdPartPlaced(tree, ['__withdrawal_deadline', '__withdrawal_text'])) {
+            body.push(_sdPartEl('p', 'small text-muted mt-2 mb-0', _sdT('Right of Withdrawal'), {
+                text: '', _bindings: { text: '__withdrawal_text', eo_visible_if: 'has_withdrawal_deadline' }
+            }));
+        }
+        return [_sdPartOrderCard('pg-ov-legal-documents', _sdT('Legal Documents'), 'has_legal_documents', _sdT('Legal Documents'), body)];
+    }
+
     // One-time migration for trees saved before the "bind content, not layout"
     // rule. Walks the tree; whenever a structural tag carries a text/src/href
     // binding, the binding (and the cell's preview text) moves into a <span>
@@ -38816,6 +39000,7 @@ const StyleDesigner = (function () {
     //
     // Idempotent: after the move the cell has no binding left, so a second pass
     // finds nothing to do.
+    /* @pg-site-output */
     function _sdMigrateStructuralBindings(node) {
         if (!node || typeof node !== 'object') return false;
         var changed = false;
@@ -38977,6 +39162,7 @@ const StyleDesigner = (function () {
             ['cancel_flash_already',    _sdT('Already cancelled (notice after the redirect)')],
             ['cancel_flash_shipped',    _sdT('Could not cancel, already shipped (notice after the redirect)')],
             ['show_returns',            _sdT('There is a return to follow, or one can be requested')],
+            ['show_returns_card',       _sdT('Returns are on, and there is a return to follow or one can be requested')],
             ['can_request_return',      _sdT('A return can be requested')],
             ['has_returns',             _sdT('The order has return requests')]
         ],
@@ -39544,6 +39730,7 @@ const StyleDesigner = (function () {
     // A heading, paragraph or span whose whole text is one link, split into
     // the element and a link element inside it: the text binding moves to
     // the link, the look (tag, classes, style) stays on the outer element.
+    /* @pg-site-output */
     function _sdSplitTextLink(node) {
         var a = node && node.props ? _sdSoleTextLink(node.props.text) : null;
         if (!a) return;
@@ -40132,6 +40319,7 @@ const StyleDesigner = (function () {
                 SW_CALENDAR_VIEW_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -40288,6 +40476,7 @@ const StyleDesigner = (function () {
                 SW_CALENDAR_EVENT_VIEW_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== current) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === current ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -42294,6 +42483,7 @@ const StyleDesigner = (function () {
     // tree root is left out: a widget is already a bounded area, so
     // elements go straight into it. A column into a column comes in a new
     // row there. Returns `node` itself when nothing wraps it.
+    /* @pg-site-output */
     function _sdWrapForParent(parent, node, payload) {
         var map = { 'container-fluid': 'container', 'system_widget': 'shared_ref' };
         var t = payload ? (map[payload.type] || payload.type) : node.type;
@@ -42575,6 +42765,7 @@ const StyleDesigner = (function () {
      * cloned — a designer who styled the first checkbox keeps that styling on
      * every choice, and does not lose it by adding a fifth answer.
      */
+    /* @pg-site-output */
     function _sdWriteChoices(n, list) {
         var kind = _sdChoiceKind(n);
         if (kind === 'select') {
@@ -43737,6 +43928,33 @@ const StyleDesigner = (function () {
                 (Array.isArray(data.warnings) ? data.warnings : []).forEach(function (w) { sdToast(esc(String(w)), 'warning', 12000); });
             })
             .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
+    }
+
+    // The system region of a page that draws a custom layout: its PHP in a
+    // code-view tab, for the classic layout editor's role (_design.layoutCode),
+    // and the generated layout to start again from.
+    function _sdLayoutPropsHtml() {
+        var p = _pgActivePage();
+        if (!_design || !_design.layoutCode || !p || !(p.page_id > 0)) return '';
+        if ((_design.layoutPages || []).indexOf(p.page_id) === -1) return '';
+        var h = '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-layout-code">' +
+                    '<span class="bi bi-filetype-php me-1"></span>' + esc(_sdT('Edit layout (PHP)')) +
+                '</button>' +
+            '</div>';
+        if (!_design.layoutReadOnly) {
+            h += '<div class="sd-prop-row">' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-layout-regenerate">' +
+                        '<span class="bi bi-arrow-counterclockwise me-1"></span>' + esc(_sdT('Regenerate layout')) +
+                    '</button>' +
+                '</div>';
+        }
+        h += '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_design.layoutReadOnly
+                    ? _sdT('This site draws the generated layout; a custom layout cannot be saved here.')
+                    : _sdT('This page draws its system region with a custom layout. Saved unchanged from the generated one, it keeps following the form\'s fields.')) +
+            '</div></div>';
+        return h;
     }
 
     function needsName(t) { return ['ad','common','designer','dynamic','login','menu','menu_sequence','tag_cloud','system'].indexOf(t) !== -1; }
@@ -46113,7 +46331,7 @@ const StyleDesigner = (function () {
                 if (!this.checked && idx !== -1) arr.splice(idx, 1);
                 n.props.cssClass = arr.join(' ');
                 var innerEl = getCanvasInnerEl(nodeId);
-                if (innerEl) innerEl.classList.toggle('carousel-dark', this.checked);
+                if (innerEl) innerEl.classList.toggle('carousel-dark', this.checked); /* @pg-site-output */
             });
         });
 
@@ -46406,6 +46624,12 @@ const StyleDesigner = (function () {
         if (dregionCodeBtn) dregionCodeBtn.addEventListener('click', function () {
             if (selectedNode && selectedNode.props) _sdDregionCodeOpen(selectedNode.props.regionName);
         });
+        // A custom layout's PHP opens as a code-view tab, or starts again
+        // from the generated layout.
+        var layoutCodeBtn = document.getElementById('sd-layout-code');
+        if (layoutCodeBtn) layoutCodeBtn.addEventListener('click', function () { _sdLayoutCodeOpen(_pgActivePage(), false); });
+        var layoutRegenBtn = document.getElementById('sd-layout-regenerate');
+        if (layoutRegenBtn) layoutRegenBtn.addEventListener('click', function () { _sdLayoutCodeOpen(_pgActivePage(), true); });
 
         // Spacing toggle — expand/collapse responsive breakpoint rows
         document.querySelectorAll('#sd-properties .sd-sp-toggle').forEach(function(btn) {
@@ -50538,8 +50762,7 @@ const StyleDesigner = (function () {
             resetBtn.innerHTML = '<span class="bi bi-layout-three-columns me-1" aria-hidden="true"></span>' + esc(_sdT('Reset Layout'));
             resetBtn.addEventListener('click', function() {
                 resetLayout();
-                var bsModal = bootstrap.Modal.getInstance(phpModal);
-                if (bsModal) bsModal.hide();
+                if (pgUI.dialog.find(phpModal)) pgUI.dialog.hide(phpModal);
             });
             footer.insertBefore(resetBtn, footer.firstChild);
         }
@@ -50550,10 +50773,10 @@ const StyleDesigner = (function () {
             saveBtn.addEventListener('click', function () {
                 var main = document.getElementById('sd-ajax-save');
                 if (!main || main.disabled || !_collab.mayEdit) return;
-                phpModal.addEventListener('hidden.bs.modal', function () {
+                pgUI.dialog.on(phpModal, 'hidden', function () {
                     if (!main.disabled) main.click();
                 }, { once: true });
-                bootstrap.Modal.getOrCreateInstance(phpModal).hide();
+                pgUI.dialog.hide(phpModal);
             });
         }
         // A draft saves and stays off the site; the word follows the switch.
@@ -50588,7 +50811,7 @@ const StyleDesigner = (function () {
         // ── Panes ──
         // The head code and the page's JSON-LD become code fields the first
         // time their pane opens (_sdSettingsCodeFields()).
-        phpModal.addEventListener('shown.bs.tab', _sdSettingsCodeFields);
+        pgUI.tab.on(phpModal, 'shown', _sdSettingsCodeFields);
         var jsonld = document.getElementById('pg_page_custom_jsonld');
         if (jsonld) jsonld.addEventListener('input', _sdJsonLdStatus);
         ['pg_page_canonical_url', 'pg_page_max_snippet'].forEach(function (id) {
@@ -50597,7 +50820,7 @@ const StyleDesigner = (function () {
         });
 
         // ── Refresh dynamic values on modal open ──
-        phpModal.addEventListener('show.bs.modal', function() {
+        pgUI.dialog.on(phpModal, 'show', function() {
             _sdMetaListRender('design');
             _sdMetaListRender('page');
             _sdSettingsSyncSave();
@@ -50608,12 +50831,12 @@ const StyleDesigner = (function () {
         // Every way out keeps what was changed: the meta tag lists and the
         // page fields have written their inputs by now, the HTML tree shows
         // them from there.
-        phpModal.addEventListener('hide.bs.modal', function () {
+        pgUI.dialog.on(phpModal, 'hide', function () {
             renderHtmlTree();
         });
         // Page and design settings reach an open preview window once the
         // modal is closed.
-        phpModal.addEventListener('hidden.bs.modal', function() {
+        pgUI.dialog.on(phpModal, 'hidden', function() {
             _sdLivePreviewSchedule();
         });
 
@@ -50625,16 +50848,16 @@ const StyleDesigner = (function () {
     // page-meta), with a row of it in view when one is named.
     function _sdOpenSettingsPane(pane, rowId) {
         var modalEl = document.getElementById('styleSettingsModal');
-        if (!modalEl || typeof bootstrap === 'undefined') return;
+        if (!modalEl || !window.pgUI) return;
         var btn = document.getElementById('tab-' + pane + '-btn');
-        if (btn && bootstrap.Tab && !btn.classList.contains('d-none')) bootstrap.Tab.getOrCreateInstance(btn).show();
+        if (btn && !btn.classList.contains('d-none')) pgUI.tab.show(btn);
         if (rowId) {
-            modalEl.addEventListener('shown.bs.modal', function () {
+            pgUI.dialog.on(modalEl, 'shown', function () {
                 var row = document.getElementById(rowId);
                 if (row && row.scrollIntoView) row.scrollIntoView({ block: 'center' });
             }, { once: true });
         }
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        pgUI.dialog.show(modalEl);
     }
 
     // The footer's main button says what the toolbar's says: a draft is
@@ -50945,7 +51168,7 @@ const StyleDesigner = (function () {
         var nameEl  = document.getElementById('sd-make-template-name');
         var descEl  = document.getElementById('sd-make-template-description');
         var runBtn  = document.getElementById('sd-make-template-run');
-        if (!btn || !modalEl || !nameEl || !descEl || !runBtn || typeof bootstrap === 'undefined') return;
+        if (!btn || !modalEl || !nameEl || !descEl || !runBtn || !window.pgUI) return;
 
         var styleId = function () { return (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0; };
 
@@ -50956,16 +51179,16 @@ const StyleDesigner = (function () {
             nameEl.value = designName ? designName.value.trim() : '';
             nameEl.classList.remove('is-invalid');
             descEl.value = '';
-            var show = function () { bootstrap.Modal.getOrCreateInstance(modalEl).show(); };
+            var show = function () { pgUI.dialog.show(modalEl); };
             var settings = document.getElementById('styleSettingsModal');
-            if (settings && settings.classList.contains('show')) {
-                settings.addEventListener('hidden.bs.modal', show, { once: true });
-                bootstrap.Modal.getOrCreateInstance(settings).hide();
+            if (settings && pgUI.dialog.isOpen(settings)) {
+                pgUI.dialog.on(settings, 'hidden', show, { once: true });
+                pgUI.dialog.hide(settings);
             } else {
                 show();
             }
         };
-        modalEl.addEventListener('shown.bs.modal', function () { nameEl.focus(); nameEl.select(); });
+        pgUI.dialog.on(modalEl, 'shown', function () { nameEl.focus(); nameEl.select(); });
 
         btn.addEventListener('click', function () {
             if (styleId() <= 0) {
@@ -51000,7 +51223,7 @@ const StyleDesigner = (function () {
                         sdToast(esc((res && res.message) ? res.message : _sdT('Sorry, we could not accept your request.')), 'error');
                         return;
                     }
-                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                    pgUI.dialog.hide(modalEl);
                     if (res.message) sdToast(esc(res.message), 'success', 6000);
                 })
                 .catch(function () { done(); sdToast(esc(_sdT('Network error.')), 'error'); });
@@ -51711,6 +51934,7 @@ const StyleDesigner = (function () {
     // The bare tree a blank widget starts with: a root holding one empty
     // loop_area, the per-record repetition zone. Nodes dropped beside it
     // (heading, search box, pagination) render once.
+    /* @pg-site-output */
     function _swBlankTree() {
         var t = createNode('root', {}, [createNode('loop_area', {}, [])]);
         t._id = 'sw-root-' + gid();
@@ -53028,6 +53252,7 @@ const StyleDesigner = (function () {
     // A new list of `source` from the palette: a list without its field
     // yet (the panel asks for it) around one row, a badge showing the value
     // or a link opening the file. The row is the designer's to restyle.
+    /* @pg-site-output */
     function _sdListStarter(source) {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
@@ -53066,6 +53291,7 @@ const StyleDesigner = (function () {
     // badge and the cancellation's reason. The member's orders: a list
     // group of links, a "Cancelled" badge on a cancelled one. Every word is
     // the designer's to restyle or translate.
+    /* @pg-site-output */
     function _sdOrderListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
             var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
@@ -53187,6 +53413,7 @@ const StyleDesigner = (function () {
     // (dimmed on a day of another month), a "Today" badge and its events as
     // links. The others: a list of their own rows, the days list with its
     // events. Every word is the designer's to restyle or translate.
+    /* @pg-site-output */
     function _sdCalendarListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
             var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
@@ -53260,6 +53487,7 @@ const StyleDesigner = (function () {
     // as a table of name and value, the products bought together as cards
     // in a grid (the list inside its row, at most four shown). Pictures
     // carry the product's short description as their text.
+    /* @pg-site-output */
     function _sdProductListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
             var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
@@ -53848,7 +54076,7 @@ const StyleDesigner = (function () {
     function sdChoose(opts) {
         opts = opts || {};
         return new Promise(function (resolve) {
-            if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+            if (!window.pgUI) {
                 var first = (opts.choices || [])[0];
                 resolve(window.confirm(opts.message || '') && first ? first.value : null);
                 return;
@@ -53874,13 +54102,13 @@ const StyleDesigner = (function () {
                 var b = e.target.closest('[data-choice]');
                 if (!b) return;
                 picked = b.dataset.choice;
-                bootstrap.Modal.getOrCreateInstance(el).hide();
+                pgUI.dialog.hide(el);
             });
-            el.addEventListener('hidden.bs.modal', function () {
+            pgUI.dialog.on(el, 'hidden', function () {
                 if (!done) { done = true; resolve(picked); }
                 el.remove();
             });
-            bootstrap.Modal.getOrCreateInstance(el, { backdrop: 'static' }).show();
+            pgUI.dialog.show(el, { backdrop: 'static' });
         });
     }
 
@@ -53930,6 +54158,7 @@ const StyleDesigner = (function () {
     // throughout, real <table> for totals with token-bound value cells.
     // Designers see what visitors see at /siparis the moment they drop
     // the widget. KEEP IN SYNC with functions.php:_eo_default_designer_tree.
+    /* @pg-site-output */
     function _buildExpressOrderStarterTree() {
         function sem(tag, cssClass, childrenOrText, extra) {
             var p = { tag: tag };
@@ -54634,6 +54863,7 @@ const StyleDesigner = (function () {
     }
     // `view`: 'list' (a card per submission) or 'item' (the one record).
     // Returns the children of the record's body.
+    /* @pg-site-output */
     function _swFormFieldNodes(fields, view) {
         var isList     = (view === 'list');
         var titleField = _swFormTitleField(fields);
@@ -54729,6 +54959,7 @@ const StyleDesigner = (function () {
     // ── Account widget starters: shared pieces ──────────────────────────────
     // A labelled control in an mb-3 wrapper, as the member widget starters
     // draw them. `o`: { required, autocomplete, attrs, colCss }.
+    /* @pg-site-output */
     function _swAcctField(label, id, type, name, o) {
         o = o || {};
         var attrs = [{ name: 'type', value: type }, { name: 'name', value: name }];
@@ -54743,6 +54974,7 @@ const StyleDesigner = (function () {
     }
     // A <select> the server fills with the site's choices (countries, time
     // zones, salutations); the starter carries one empty option.
+    /* @pg-site-output */
     function _swAcctSelect(label, id, name, colCss) {
         return createNode('semantic', { tag: 'div', cssClass: ((colCss || '') + ' mb-3').trim(), customName: label }, [
             createNode('semantic', { tag: 'label', cssClass: 'form-label', text: label, customName: _sdT('Label'),
@@ -54753,14 +54985,17 @@ const StyleDesigner = (function () {
             ])
         ]);
     }
+    /* @pg-site-output */
     function _swAcctSubmit(text, name) {
         return createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: text,
             customName: name || _sdT('Save Button'), _attrs: [{ name: 'type', value: 'submit' }] });
     }
+    /* @pg-site-output */
     function _swAcctLinks(children) {
         return createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, children);
     }
     // What a visitor who is not signed in sees on a members-only account page.
+    /* @pg-site-output */
     function _swAcctSignedOut() {
         return createNode('semantic', { tag: 'div', cssClass: 'text-center', customName: _sdT('Signed Out'),
             _bindings: { eo_visible_if: 'is_signed_out' } }, [
@@ -54773,6 +55008,7 @@ const StyleDesigner = (function () {
     // The centred card every account widget starter sits in. A widget that
     // repeats nothing still carries an empty loop_area, hidden, as the member
     // widgets do.
+    /* @pg-site-output */
     function _swAcctPage(cardName, md, lg, body, hasLoop) {
         var col = [
             createNode('semantic', { tag: 'div', cssClass: 'card shadow-sm', customName: cardName }, [
@@ -54797,6 +55033,7 @@ const StyleDesigner = (function () {
     // script (pg_wishlist.js) shows it, filled for a saved product. A
     // product group's card has none. Starters only: the design templates
     // build their own cards.
+    /* @pg-site-output */
     function _sdWishlistHeart(action) {
         return createNode('component', { componentType: 'btn',
             btnElement: 'button', btnType: 'button',
@@ -54812,6 +55049,7 @@ const StyleDesigner = (function () {
 
     // `opts.formFields` — the chosen form's fields (list_form_fields rows).
     // Only the two form views read it; every other kind ignores it.
+    /* @pg-site-output */
     function _buildStarterTree(regionType, opts) {
         opts = opts || {};
         var _formFields = Array.isArray(opts.formFields) ? opts.formFields : null;
@@ -56084,7 +56322,7 @@ const StyleDesigner = (function () {
                     ]);
                 };
 
-                return createNode('root', {}, [
+                var ovTree = createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [
 
                         // ── Cancel status alert (appears after redirect) ─
@@ -56432,6 +56670,9 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
+                // The legal documents and returns cards (_sdDefaultTails()).
+                _sdDefaultTails(ovTree, 'order_view', null);
+                return ovTree;
             }
 
             case 'express_order': {
@@ -58136,6 +58377,7 @@ const StyleDesigner = (function () {
     //
     // (Future: drag-drop / delete invariants — cannot be deleted, cannot be
     //  moved outside the widget — to be added, following the loop_area pattern.)
+    /* @pg-site-output */
     function _ensureMessagesNode(tree) {
         if (!tree || !tree.children) return tree;
         var msgNode = createNode('content', { contentType: 'messages', cssClass: '' });
@@ -58642,6 +58884,7 @@ const StyleDesigner = (function () {
     // widgets are written whole, their loop areas as comment markers, so the
     // code view shows what the canvas shows. Without a sink nothing here
     // differs from before: generateHTML() passes none.
+    /* @pg-site-output */
     function _sdEmitNode(n, indent, base, sink) {
         var pad = '    '.repeat(indent);
         var h = '';
@@ -58957,6 +59200,7 @@ const StyleDesigner = (function () {
     // `treeOverride`: another tree drawn with this page's frame (a published
     // revision, for the History panel's compare); the page's own tree
     // otherwise.
+    /* @pg-site-output */
     function generateHTML(styleName, additionalBodyClasses, treeOverride) {
         var root = treeOverride || tree;
         if (!root) return '';
@@ -59049,6 +59293,7 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    /* @pg-site-output */
     function _sdThemeHeadHtml(indent) {
         return _sdThemeAssets().map(function (a) {
             return (indent || '') + (a.css
@@ -59479,6 +59724,7 @@ const StyleDesigner = (function () {
     // Without widgetHtml: the page markup with the widget markers left in.
     // With it: the finished preview document. `raw` is a markup from an
     // earlier call without widgetHtml, so the page is not generated twice.
+    /* @pg-site-output */
     function _sdPreviewDocHtml(widgetHtml, raw) {
         var html;
         if (typeof raw === 'string') {
@@ -61337,18 +61583,17 @@ const StyleDesigner = (function () {
                 p[k] = (k === 'page_folder') ? (parseInt(el.value, 10) || 0) : el.value;
                 if (wasClean) p.baseline = _pgBaselineOf(p);
             }
-            // tagin draws its own chips from the input value; redraw them.
-            if (el.classList.contains('tagin') && typeof tagin === 'function') {
-                var sib = el.nextElementSibling;
-                if (sib && sib.classList.contains('tagin-wrapper')) sib.remove();
-                if (document.body.contains(el)) tagin(el);
-            }
         });
         _PG_CMT_FIELDS.forEach(function (k) {
             var el = document.querySelector('input[type="hidden"][name="' + k + '"]');
             if (!el) return;
             el.value = _PG_BOOL_FIELDS[k] ? (p[k] ? '1' : '0') : (p[k] == null ? '' : String(p[k]));
         });
+        // The keyword chips are drawn from their input; set() redraws them.
+        // Its change event reads every field back into the active page, so
+        // it runs only once all of them hold this page's values.
+        var kw = document.getElementById('pg_search_keywords');
+        if (kw && window.pgChips) pgChips.set(kw, pgChips.get(kw));
         _pgSyncDraftBox(p);
         // The page's meta tag rows are drawn from its hidden field.
         _sdMetaListRender('page');
@@ -61457,7 +61702,7 @@ const StyleDesigner = (function () {
         if (count) count.textContent = _pages.length > 1 ? String(_pages.length) : '';
         var hidden = list.scrollWidth <= list.clientWidth + 1 && !list.querySelector('.sd-tab-folded');
         if (wrap.hidden !== hidden) {
-            if (hidden && wrap.classList.contains('show')) return;
+            if (hidden && pgUI.menu.isOpen(wrap.querySelector('[data-bs-toggle="dropdown"]'))) return;
             wrap.hidden = hidden;
         }
     }
@@ -61490,16 +61735,16 @@ const StyleDesigner = (function () {
         if (all && !all._pgBound) {
             all._pgBound = true;
             var filter = document.getElementById('sd-tabs-all-filter');
-            all.addEventListener('show.bs.dropdown', function () {
+            pgUI.menu.on(all, 'show', function () {
                 if (filter) filter.value = '';
                 _pgTabsAllFill();
             });
-            all.addEventListener('shown.bs.dropdown', function () {
+            pgUI.menu.on(all, 'shown', function () {
                 if (filter) filter.focus();
                 var act = all.querySelector('.sd-tabs-all-item.active');
                 if (act) act.scrollIntoView({ block: 'nearest' });
             });
-            all.addEventListener('hidden.bs.dropdown', function () { _pgTabsAllSync(); });
+            pgUI.menu.on(all, 'hidden', function () { _pgTabsAllSync(); });
             if (filter) {
                 filter.addEventListener('input', _pgTabsAllFill);
                 filter.addEventListener('keydown', function (e) {
@@ -61513,7 +61758,7 @@ const StyleDesigner = (function () {
                 var it = e.target.closest('.sd-tabs-all-item');
                 if (!it || it.disabled) return;
                 var btn = all.querySelector('[data-bs-toggle="dropdown"]');
-                if (btn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) bootstrap.Dropdown.getOrCreateInstance(btn).hide();
+                if (btn) pgUI.menu.hide(btn);
                 if (it.dataset.key !== _activeKey) _pgTabsSwitch(it.dataset.key);
             });
             window.addEventListener('resize', function () { _pgTabsAllSync(); });
@@ -63633,12 +63878,12 @@ const StyleDesigner = (function () {
             document.body.appendChild(el);
             var btn = el.querySelector('#sd-locked-comment');
             if (btn) btn.addEventListener('click', function () {
-                bootstrap.Modal.getOrCreateInstance(el).hide();
+                pgUI.dialog.hide(el);
                 _collabOpenNote();
             });
             var tk = el.querySelector('#sd-locked-takeover');
             if (tk) tk.addEventListener('click', function () {
-                bootstrap.Modal.getOrCreateInstance(el).hide();
+                pgUI.dialog.hide(el);
                 _collabTakeOver();
             });
         }
@@ -63658,7 +63903,7 @@ const StyleDesigner = (function () {
                   '<p class="mb-2">' + esc(_sdT('Two people saving one page would overwrite each other, so you are in view mode: the canvas is read-only and Publish is off for this page.')) + '</p>' +
                   '<p class="mb-0 text-muted">' + esc(_sdT('You can still leave a note on any element — the same notes panel as always. When they move to another page, refresh and the page is yours.')) + '</p>';
         }
-        try { bootstrap.Modal.getOrCreateInstance(el).show(); } catch (e) {}
+        try { pgUI.dialog.show(el); } catch (e) {}
     }
 
     function _pgTabsOpenPicker() {
@@ -63668,7 +63913,7 @@ const StyleDesigner = (function () {
         if (!modalEl || !list) return;
         list.innerHTML = '<div class="list-group-item bg-transparent text-muted small">' + esc(_sdT('Loading...')) + '</div>';
         if (filter) filter.value = '';
-        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        var modal = pgUI.dialog.get(modalEl);
         modal.show();
 
         _pgApiPost('selectable_pages', { style_id: (_design && _design.styleId) || 0 }).then(function (res) {
@@ -63782,7 +64027,7 @@ const StyleDesigner = (function () {
             run._pgBound = true;
             run.addEventListener('click', _pgImportRun);
         }
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        pgUI.dialog.show(modalEl);
     }
 
     function _pgImportRun() {
@@ -63987,7 +64232,7 @@ const StyleDesigner = (function () {
                 '</div>';
             document.body.appendChild(el);
             var chosen = [];
-            var modal = new bootstrap.Modal(el, { backdrop: 'static', keyboard: false });
+            var modal = pgUI.dialog.get(el, { backdrop: 'static', keyboard: false });
             el.querySelector('[data-sd-imp="share"]').addEventListener('click', function () {
                 el.querySelectorAll('[data-sd-imp-group]').forEach(function (cb) {
                     if (cb.checked) chosen.push(groups[parseInt(cb.getAttribute('data-sd-imp-group'), 10)]);
@@ -63995,7 +64240,7 @@ const StyleDesigner = (function () {
                 modal.hide();
             });
             el.querySelector('[data-sd-imp="keep"]').addEventListener('click', function () { modal.hide(); });
-            el.addEventListener('hidden.bs.modal', function () {
+            pgUI.dialog.on(el, 'hidden', function () {
                 if (el.parentNode) el.parentNode.removeChild(el);
                 resolve(chosen);
             });
@@ -64058,7 +64303,7 @@ const StyleDesigner = (function () {
         var groups = (pages.length > 1) ? _pgImportFindShared(pages) : [];
         if (!groups.length) { _pgImportApplyPages(d, projectName, 0); return; }
         var im = document.getElementById('sdImportModal');
-        if (im) bootstrap.Modal.getOrCreateInstance(im).hide();
+        if (im) pgUI.dialog.hide(im);
         _pgImportAskShared(groups, projectName).then(function (chosen) {
             if (!chosen.length) return 0;
             return _pgImportMakeShared(chosen, pages, projectName).catch(function () {
@@ -64141,7 +64386,7 @@ const StyleDesigner = (function () {
                 if (!firstKey) firstKey = p.key;
             });
             var im = document.getElementById('sdImportModal');
-            if (im) bootstrap.Modal.getOrCreateInstance(im).hide();
+            if (im) pgUI.dialog.hide(im);
             if (firstKey) _pgTabsSwitch(firstKey); else _pgTabsRender();
             var summary = (d.pages || []).length + ' ' + _sdT('page(s)') + ', ' + added.css + ' CSS, ' + added.js + ' JS, ' + added.fonts + ' ' + _sdT('font(s)') +
                 (sharedMade ? ', ' + _sdT('{var} shared component(s)', sharedMade) : '');
@@ -64696,7 +64941,7 @@ const StyleDesigner = (function () {
     // asks first. Below, the form for a new link. A link always shows the
     // drafts as last saved.
     function _pgPrototypeShareDialog(startPageId) {
-        if (typeof bootstrap === 'undefined' || !bootstrap.Modal || !_pgPrototypeShareReady()) return;
+        if (!window.pgUI || !_pgPrototypeShareReady()) return;
         var styleId = _design.styleId;
         var state = { pages: [], durations: [], canShow: true };
         var when = function (unix) {
@@ -64966,8 +65211,8 @@ const StyleDesigner = (function () {
                 errorEl.classList.remove('d-none');
             });
         });
-        el.addEventListener('hidden.bs.modal', function () { el.remove(); });
-        bootstrap.Modal.getOrCreateInstance(el).show();
+        pgUI.dialog.on(el, 'hidden', function () { el.remove(); });
+        pgUI.dialog.show(el);
         load();
     }
 
@@ -65217,7 +65462,7 @@ const StyleDesigner = (function () {
     // it, and on its own would add the browser's tooltip beside it.
     function _sdSetButtonTitle(el, text) {
         if (!el) return;
-        var pop = (window.bootstrap && bootstrap.Popover && bootstrap.Popover.getInstance) ? bootstrap.Popover.getInstance(el) : null;
+        var pop = window.pgUI ? pgUI.popover.find(el) : null;
         if (pop) {
             el.removeAttribute('title');
             el.setAttribute('data-bs-original-title', text);
@@ -65564,7 +65809,7 @@ const StyleDesigner = (function () {
         });
         var designOpen = document.querySelector('#settingsTabs .nav-link.active[data-sd-settings-scope="design"]');
         var pageBtn = document.getElementById('tab-page-btn');
-        if (designOpen && pageBtn && window.bootstrap && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(pageBtn).show();
+        if (designOpen && pageBtn && window.pgUI) pgUI.tab.show(pageBtn);
         // …and the panels that edit the design's stylesheets, scripts, fonts
         // and themes, wherever they live in the left rail.
         ['sd-assets-panel', 'sd-themes-panel', 'sd-bp-assets', 'sd-bp-themes'].forEach(function (id) {
@@ -65864,10 +66109,7 @@ const StyleDesigner = (function () {
                 currentIconInput.dispatchEvent(evt);
             }
             var mEl = document.getElementById('sdIconModal');
-            if (window.bootstrap) {
-                var modalIns = window.bootstrap.Modal.getInstance(mEl);
-                if (modalIns) modalIns.hide();
-            }
+            if (window.pgUI && pgUI.dialog.find(mEl)) pgUI.dialog.hide(mEl);
         }
 
         function renderSections(filter) {
@@ -65928,10 +66170,8 @@ const StyleDesigner = (function () {
     function openIconModal(inputEl) {
         currentIconInput = inputEl;
         var mHtml = document.getElementById('sdIconModal');
-        if (window.bootstrap) {
-            var modal = window.bootstrap.Modal.getInstance(mHtml);
-            if (!modal) modal = new window.bootstrap.Modal(mHtml);
-            modal.show();
+        if (window.pgUI) {
+            pgUI.dialog.show(mHtml);
         } else {
             alert(_sdT('Bootstrap framework is not loaded.'));
         }
@@ -66002,8 +66242,8 @@ const StyleDesigner = (function () {
                 '</div>';
             document.body.appendChild(_sdShortcutsModalEl);
         }
-        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            bootstrap.Modal.getOrCreateInstance(_sdShortcutsModalEl).show();
+        if (window.pgUI) {
+            pgUI.dialog.show(_sdShortcutsModalEl);
         }
     }
 
@@ -66681,6 +66921,7 @@ const StyleDesigner = (function () {
     //   v  drawing key, _sdPalDrawing()
     // Built on first use: the descriptions are read through _sdT().
     var _sdPalInfoMap = null;
+    /* @pg-site-output */
     function _sdPalInfo() {
         if (_sdPalInfoMap) return _sdPalInfoMap;
         _sdPalInfoMap = {

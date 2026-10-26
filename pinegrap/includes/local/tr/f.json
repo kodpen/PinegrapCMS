@@ -138,6 +138,7 @@
     "Fields": "Alanlar",
     "Fields ({var})": "Alanlar ({var})",
     "Fields bound to a contact create or update the sender's contact record, and that record joins this group.": "Rehber bağlantılı alanlar gönderenin rehber kaydını açar ya da günceller; kayıt bu gruba girer.",
+    "Fields changed": "Değişen alanlar",
     "Fields marked with * are required.": "* ile işaretli alanların doldurulması zorunludur.",
     "Fields you can use in a template": "Şablonda kullanabileceğiniz alanlar",
     "Fieldset": "Alan Grubu",
@@ -811,5 +812,6 @@
     "from now": "sonra",
     "from the saved page": "kaydedilmiş sayfadan",
     "from the variants": "varyantlardan",
+    "from {var:1}": "{var:1} itibarıyla",
     "furniture, woodworking, craft": "mobilya, ahşap işçiliği, el sanatı"
 }

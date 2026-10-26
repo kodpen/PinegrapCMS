@@ -303,11 +303,8 @@ function test_widget_conditions_placement_checks_skip_conditions()
 	$cart    = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
 	pg_assert_contains("strpos(pg_sw_cond_tree_json(\$tree_decoded), 'not_logged_in')", $widgets);
 	pg_assert_contains("strpos(pg_sw_cond_tree_json(\$tree_decoded), '__not_found_message')", $widgets);
-	// The order view's blocks ask pg_sw_placed(), which reads the tree
+	// The order view's cards ask pg_sw_placed(), which reads the tree
 	// without its conditions (widget_default_parts_test.php).
-	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__legal_preinfo_url', '__legal_contract_url'))", $widgets);
-	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__withdrawal_deadline'))", $widgets);
-	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__return_form', '__returns'))", $widgets);
 	pg_assert_contains('$json = pg_sw_cond_tree_json($tree);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php'));
 	pg_assert_contains("strpos(pg_sw_cond_tree_json((string)\$tree_json), '\"has_items\"')", $cart);
 	foreach (array($widgets, $cart) as $i => $source) {
