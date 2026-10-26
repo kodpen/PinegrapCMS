@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-messages
-description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #PR, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -9,7 +9,7 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #PR, answe
 ## What is there today?
 - Recording, playing and the quick voice reply are built (#1457, #1494): workspace/workspace-voice-recording.md. Uploads never call `ws_message_ask_assistants()`.
 - Assistants, MCP, webhooks, push, search and recaps (`ws_recap_transcript()`: `[file: name]`) read only `body`.
-- get_file.php answers `Range` with 206 (#PR, platform/get-file-byte-ranges.md).
+- get_file.php answers `Range` with 206 (#1717, platform/get-file-byte-ranges.md).
 - Not blocked: `Permissions-Policy: microphone=(self)` (`waf_send_security_headers()`, waf.php), keep `(self)`; CSP `media-src` has `blob:`.
 
 ## What is proposed? (not approved yet)
@@ -20,7 +20,7 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #PR, answe
 
 ## Slices
 1. Done (#1457): V1 record, send, play (no schema; `files.create` takes them already).
-2. Done (#PR): V1b `Range` 206 in get_file.php (no schema, no `lang()`).
+2. Done (#1717): V1b `Range` 206 in get_file.php (no schema, no `lang()`).
 3. Done (#1494): V2 quick voice reply (no schema): a mic on a voice message (tap: a phone's long press opens the menu) sends with `parent_id`; `ws_attach` and `files.create` (dry run too) learn it; quote "Voice message".
 4. V3 transcripts (schema, ask first): table `ws_voice` (proposed: duration, peaks, transcript, status), settings card, `ws_voice_transcribe()` (proposed) run like `ws_ai_kick`/`ws_ai_job()`, then `ws_message_touch()`; `file.voice` (proposed) in `ws_api_message_file_schema()` (MCP reads it); `workspace.message.transcribed` (proposed) with `channel_id`, public channels only.
 5. V4 assistants hear it: transcript in Pinegrap AI's context, `ws_api_claude_request_present()`, `ws_api_channel_context()`, recaps, push, search; a recording with typed tags (mic kept while the box holds only tags) or answering an assistant asks once transcribed.
