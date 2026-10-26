@@ -2585,6 +2585,8 @@
         self.savedBackward = false;
         self.history = { states: [], at: -1, timer: 0, pending: false, since: 0, quiet: false };
         self.watchers = [];
+        self.slash = null;
+        self.slashSkip = -1;
 
         var node = el('div', 'ws-rich form-control');
         node.contentEditable = 'true';
@@ -2606,6 +2608,7 @@
 
             self.tidy();
             self.fenceCheck();
+            self.slashCheck(event);
 
             if (self.options.previews) {
                 clearTimeout(self.previewTimer);
@@ -2643,7 +2646,7 @@
         });
 
         node.addEventListener('keydown', function (event) {
-            if (self.historyKey(event)) {
+            if (self.historyKey(event) || self.slashKey(event)) {
                 return;
             }
 
@@ -2677,6 +2680,8 @@
             self.tidy();
         });
 
+        node.addEventListener('mousedown', function () { self.slashClose(); });
+
         node.addEventListener('click', function (event) {
             var card = event.target.closest ? event.target.closest('.ws-rich-block') : null;
 
@@ -2706,6 +2711,8 @@
         // outside it inserts (an emoji, a table).
         node.addEventListener('blur', function () {
             var range = selectionRange();
+
+            self.slashClose();
 
             if (range && node.contains(range.startContainer)) {
                 self.savedRange = range.cloneRange();
@@ -3575,6 +3582,221 @@
                     self.insertBlock('code', markup);
                 }
             });
+        },
+
+        // "/" in a note's box (options.slashInserts) lists the inserts that
+        // match the word typed after it (slashInserts()). Not while a word is
+        // composed, nor in code, a link or a card; "//" leaves one "/" and no
+        // list; Escape leaves the "/" as typed, a space closes it.
+        slashCheck: function (event) {
+            var range = selectionRange();
+
+            if (!this.options.slashInserts || (event && event.isComposing) || this.node.wsComposing || !range) {
+                this.slashClose();
+                return;
+            }
+
+            var element = (range.startContainer.nodeType === 1) ? range.startContainer : range.startContainer.parentNode;
+            var blocked = !range.collapsed || !this.node.contains(range.startContainer)
+                || !!(element && element.closest && element.closest('code, a, td, th, .ws-rich-block, [data-ws-skip]'));
+            var labels = {};
+
+            SLASH.forEach(function (name) { labels[name] = t(TOOLS[name].label); });
+
+            var found = slashInserts(this.beforeCaret(), blocked, labels);
+
+            if (found && found.plain) {
+                var open = this.slash && (this.slash.start === found.start);
+
+                this.slashClose();
+
+                if (open) {
+                    this.slashSkip = found.start;
+                    this.replaceTyped(2, { text: '/' });
+                }
+
+                return;
+            }
+
+            if (!found || (found.start === this.slashSkip)) {
+                this.slashSkip = found ? this.slashSkip : -1;
+                this.slashClose();
+                return;
+            }
+
+            this.slashDraw(found, labels, range);
+        },
+
+        // The list under the caret: no row chosen while nothing is typed
+        // after the "/", so Enter still breaks the line; the first row once
+        // a word is typed.
+        slashDraw: function (found, labels, range) {
+            var self = this;
+            var box = (self.slash && self.slash.box) || el('div', 'ws-picker ws-slash');
+            var list = el('div', 'ws-picker-list');
+
+            self.slash = { box: box, start: found.start, word: found.word, names: found.names, index: (found.word === '') ? -1 : 0, rows: [] };
+            box.textContent = '';
+            box.id = box.id || ('ws-slash-' + Math.random().toString(36).slice(2));
+            box.setAttribute('role', 'listbox');
+            box.setAttribute('aria-label', t('slash_inserts'));
+
+            found.names.forEach(function (name, index) {
+                var row = el('button', 'ws-picker-item');
+
+                row.type = 'button';
+                row.id = box.id + '-' + name;
+                row.setAttribute('role', 'option');
+                row.appendChild(icon(TOOLS[name].icon));
+                row.appendChild(el('span', 'ws-picker-label', labels[name].replace(/\s*\(.*\)\s*$/, '')));
+                row.addEventListener('mousedown', function (event) { event.preventDefault(); });
+                row.addEventListener('click', function () {
+                    self.slash.index = index;
+                    self.slashPick();
+                });
+                list.appendChild(row);
+                self.slash.rows.push(row);
+            });
+
+            box.appendChild(list);
+
+            if (!box.parentNode) {
+                floatingHost(self.node).appendChild(box);
+            }
+
+            self.node.setAttribute('aria-expanded', 'true');
+            self.node.setAttribute('aria-controls', box.id);
+            self.slashMark();
+
+            var rect = range.getBoundingClientRect();
+
+            if (!rect.height) {
+                rect = self.node.getBoundingClientRect();
+            }
+
+            var top = rect.bottom + 4;
+
+            if ((top + box.offsetHeight > window.innerHeight - 8) && (rect.top - box.offsetHeight - 4 >= 8)) {
+                top = rect.top - box.offsetHeight - 4;
+            }
+
+            box.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - box.offsetWidth - 8)) + 'px';
+            box.style.top = Math.max(8, top) + 'px';
+        },
+
+        // The chosen insert: the "/word" typed goes, then the tool acts as
+        // its button does. A list or quote is one step of the box's undo
+        // with the word's removal, so one Ctrl+Z brings the "/word" back;
+        // the highlight waits for the next letters; a card's window opens
+        // and puts the card in where the word was.
+        slashPick: function () {
+            var self = this;
+            var slash = self.slash;
+            var name = slash ? slash.names[slash.index] : null;
+            var spec = name ? TOOLS[name] : null;
+
+            self.slashClose();
+
+            if (!spec) {
+                return;
+            }
+
+            var remove = function () {
+                var selection = window.getSelection();
+
+                self.node.focus();
+
+                for (var i = 0; i < slash.word.length + 1; i++) {
+                    selection.modify('extend', 'backward', 'character');
+                }
+
+                var range = selectionRange();
+
+                range.deleteContents();
+                select(range.startContainer, range.startOffset, range.startContainer, range.startOffset);
+
+                return true;
+            };
+
+            if (spec.list) {
+                self.change(function () {
+                    remove();
+                    toggleList(self.node, spec.list);
+                    return true;
+                });
+            } else if (spec.mark) {
+                self.change(remove);
+                applyMark(self.node, spec.mark);
+                self.notify();
+            } else {
+                self.change(remove);
+                self.savedRange = selectionRange() ? selectionRange().cloneRange() : null;
+                insertFrom(self, spec.block, (typeof self.options.slashInserts === 'object') ? self.options.slashInserts : {});
+            }
+        },
+
+        slashMark: function () {
+            var slash = this.slash;
+
+            slash.rows.forEach(function (row, index) {
+                row.classList.toggle('active', index === slash.index);
+                row.setAttribute('aria-selected', (index === slash.index) ? 'true' : 'false');
+            });
+
+            if (slash.index >= 0) {
+                this.node.setAttribute('aria-activedescendant', slash.rows[slash.index].id);
+                slash.rows[slash.index].scrollIntoView({ block: 'nearest' });
+            } else {
+                this.node.removeAttribute('aria-activedescendant');
+            }
+        },
+
+        slashClose: function () {
+            if (this.slash) {
+                this.slash.box.remove();
+                this.slash = null;
+                this.node.removeAttribute('aria-expanded');
+                this.node.removeAttribute('aria-controls');
+                this.node.removeAttribute('aria-activedescendant');
+            }
+        },
+
+        // Arrows choose, Enter or Tab inserts the chosen row, Escape closes
+        // and leaves the "/" as typed; a caret moved sideways closes. true
+        // when handled.
+        slashKey: function (event) {
+            var slash = this.slash;
+
+            if (!slash || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) {
+                return false;
+            }
+
+            if ((event.key === 'ArrowDown') || (event.key === 'ArrowUp')) {
+                event.preventDefault();
+                slash.index = (slash.index + ((event.key === 'ArrowDown') ? 1 : slash.rows.length - 1 + ((slash.index < 0) ? 1 : 0))) % slash.rows.length;
+                this.slashMark();
+                return true;
+            }
+
+            if (((event.key === 'Enter') || (event.key === 'Tab')) && !event.shiftKey && (slash.index >= 0)) {
+                event.preventDefault();
+                this.slashPick();
+                return true;
+            }
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                this.slashSkip = slash.start;
+                this.slashClose();
+                return true;
+            }
+
+            if (['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', 'Tab'].indexOf(event.key) !== -1) {
+                this.slashClose();
+            }
+
+            return false;
         }
     };
 
@@ -3598,6 +3820,55 @@
         calc: { icon: 'bi-calculator', label: 'tool_calc', block: 'calc' },
         codeblock: { icon: 'bi-code-slash', label: 'tool_codeblock', block: 'code' }
     };
+
+    // What "/" offers in a note's box (options.slashInserts), in order: the
+    // box's own tools, which do the insert. No heading or rule: the server
+    // draws neither.
+    var SLASH = ['bullets', 'numbers', 'quote', 'checklist', 'table', 'calc', 'codeblock', 'highlight'];
+
+    // A word in plain and in Turkish lower case: "İşaretle" and "işa" meet
+    // only in Turkish, "Italic" and "ita" only in plain.
+    function slashFold(text) {
+        return [String(text).toLowerCase(), String(text).toLocaleLowerCase('tr')];
+    }
+
+    // The "/" list at the caret: what is written before it (chips as
+    // U+FFFC), whether the caret stands where nothing may be inserted (code,
+    // a link, a card), and the tools' labels. A "/" at a line's start or
+    // after a space opens it; a word of a label or a tool's name beginning
+    // with the word typed after it keeps an insert. Answers null (no list),
+    // { start, plain: true } for "//", which types a plain "/", or
+    // { start, word, names }.
+    function slashInserts(before, blocked, labels) {
+        if (blocked) {
+            return null;
+        }
+
+        var plain = /(^|[\s\uFFFC])\/\/$/.exec(before);
+
+        if (plain) {
+            return { start: before.length - 2, plain: true };
+        }
+
+        var match = /(^|[\s\uFFFC])\/([^\s\/\uFFFC]{0,20})$/.exec(before);
+
+        if (!match) {
+            return null;
+        }
+
+        var typed = slashFold(match[2]);
+        var names = SLASH.filter(function (name) {
+            var words = (name + ' ' + String(labels[name] || '').replace(/\s*\(.*\)\s*$/, '')).split(/\s+/);
+
+            return words.some(function (word) {
+                var folded = slashFold(word);
+
+                return (folded[0].indexOf(typed[0]) === 0) || (folded[1].indexOf(typed[1]) === 0);
+            });
+        });
+
+        return names.length ? { start: before.length - match[2].length - 1, word: match[2], names: names } : null;
+    }
 
     var MAC = /Mac|iPhone|iPad|iPod/.test((navigator && navigator.platform) || '');
 

@@ -571,6 +571,7 @@ function ws_editor_js_strings()
         'tool_table'                => lang('Table'),
         'tool_calc'                 => lang('Calculation'),
         'tool_codeblock'            => lang('Code block'),
+        'slash_inserts'             => lang('Insert into the note'),
     );
 }
 
