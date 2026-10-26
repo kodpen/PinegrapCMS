@@ -122,6 +122,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-code-view-bindings.md: Data bindings in the designer's code view: a bound text, href, src or alt prints as {{token}}, typing a token binds, a literal unbinds, {{ offers the widget's tokens; where the rules live
 - designer-code-view-editing.md: How a change typed in the designer's code view reaches the tree: dirty span, scope, owner rule, in-place rules per node kind, new elements as holders through the converter, undo, flush, file tabs
 - designer-code-view-model.md: The designer's code view: range map from one emitter, the document and its lock levels, head/foot rows shared with the HTML tree, what lives in the facade and what in the designer
+- designer-code-view-style.md: A style typed in the designer's code view: which declarations go back to the font, image and Display & Sizing props, which stay the Attributes panel's style, and why (sizing printed twice before)
 - designer-collab-locking.md: Two people in the visual designer: designer_presence / designer_page_lock tables, atomic lock claim, staleness, same-user takeover, and why the lock is enforced on the save path.
 - designer-collab-notes-sync.md: How a note left in the designer reaches the other editor without a reload: presence notes map, page_notes_at counter, notes_fetch, merge rules.
 - designer-collab-view-mode.md: Designer view mode when another person holds the lock: _sdMayEdit, _sdGuardItem, hidden panels, one-item context menu, chat bubble, avatars and the narrow note_save exception.
