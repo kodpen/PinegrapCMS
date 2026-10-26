@@ -18,7 +18,7 @@ description: Plan (2026-10-21, step 1 done, answers open): each askable agent ge
 
 ## Slices
 1. No schema: an application's tag reads with a handle from its own name; the picker lists applications a mention reaches. Reach stays the owner's until 2.
-   - 1a done (#1885, workspace-app-handles.md); 1b, the picker, done (#1985).
+   - 1a done (#1885, workspace-app-handles.md); 1b, the picker, done (#1975).
 2. Registry and permission (schema, ask first): a table of agents an administrator adds (kind, handle, name, app id, provider, model, sealed key, status; keys `app:<id>`, `model:<id>`) and each channel's choice per agent; then an outside app hears a mention by invitation where the channel allows it (`ws_app_reads_channel()`). `claude_access`, `ai_access` stay.
 3. Model assistants with the site's own key: OpenAI-compatible chat APIs (OpenAI, Gemini, Mistral, DeepSeek, OpenRouter with PKCE sign-in (plans/reverse-oauth-leftovers.md), Azure OpenAI, a custom address such as Ollama) answered by the Pinegrap AI engine (`ws_ai_step()` with that address, key and model): the same tools, proposals and approvals. A card each: handle (`@chatgpt`), name, avatar, sealed key, model, test. `ws_ai_requests.agent` `model:<id>`.
 4. Application membership endpoints (item 1 of plans/workspace-phase3-leftovers.md): add or remove an application in a channel; only a member adds one to a private channel.
