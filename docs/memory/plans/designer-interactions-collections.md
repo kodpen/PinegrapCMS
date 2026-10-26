@@ -13,7 +13,7 @@ description: Plan (approved 2026-10-19, watch list, designer session): interacti
 - Legacy: classic pages and legacy form pages are untouched.
 
 ## What remains?
-- Interactions: cut into steps I1–I4 in `plans/designer-interactions-steps.md`.
+- Interactions: done (I1–I4, `designer/designer-interactions.md`).
 - Collections: cut into steps C1–C7 in `plans/designer-collections-steps.md`.
 
 ## Open questions?

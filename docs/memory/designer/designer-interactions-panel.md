@@ -4,7 +4,7 @@ description: Interactions section of the properties panel and on the canvas: nod
 ---
 
 ## Where is the section, and on which nodes?
-- The Interactions section of the properties panel (`propsInteractions()`, after Search and SERP), only on nodes `_sdFxTakes()` accepts: semantic and grid nodes and the content types whose markup carries the node's attributes (designer-node-attributes.md). Rows follow the effect and the trigger (distance only for slides, stagger for load/view, Every time for view, Top offset for sticky, Speed for parallax). `_sdFxSet()` writes one field and normalizes, so switching the effect keeps the timing and drops what no longer applies; None deletes `_fx`.
+- The Interactions section of the properties panel (`propsInteractions()`, after Search and SERP), only on nodes `_sdFxTakes()` accepts: semantic and grid nodes, components but the language switcher (I4), and the content types whose markup carries the node's attributes (designer-node-attributes.md). Rows follow the effect and the trigger (distance only for slides, stagger for load/view, Every time for view, Top offset for sticky, Speed for parallax). `_sdFxSet()` writes one field and normalizes, so switching the effect keeps the timing and drops what no longer applies; None deletes `_fx`.
 
 ## How are undo and redraws handled?
 - A choice is one undo step and redraws the panel; a typed number is one undo step per focus (`_sdUndoBeforeFirstInput()`) and redraws the panel on leaving it, showing the clamped value.
