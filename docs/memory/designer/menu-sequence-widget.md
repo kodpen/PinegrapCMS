@@ -1,6 +1,6 @@
 ---
 name: menu-sequence-widget
-description: Menu Sequence widget (menu_sequence_region, #PRNUM): the classic <menu_sequence> region in the designer; reading order of a menu's pages, previous and next links, wrap to the first, tokens, flags.
+description: Menu Sequence widget (menu_sequence_region, #1817): the classic <menu_sequence> region in the designer; reading order of a menu's pages, previous and next links, wrap to the first, tokens, flags.
 ---
 
 ## What is it?
