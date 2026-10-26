@@ -1,0 +1,46 @@
+{
+  "content": [
+    {
+      "id": 3045671234,
+      "text": "Bu gömleğin kumaşı yüzde yüz keten mi?",
+      "customerId": 112233,
+      "userName": "A** Y**",
+      "showUserName": true,
+      "status": "WAITING_FOR_ANSWER",
+      "public": true,
+      "productMainId": "GML-BYZ",
+      "productName": "Keten Gömlek Beyaz",
+      "imageUrl": "https://cdn.dsmcdn.com/ty100/product/media/images/gml-byz.jpg",
+      "webUrl": "https://www.trendyol.com/marka/keten-gomlek-beyaz-p-123456",
+      "creationDate": 1761300000000
+    },
+    {
+      "id": 3045670001,
+      "text": "Kargo ne zaman çıkar?",
+      "customerId": 445566,
+      "userName": "",
+      "showUserName": false,
+      "status": "ANSWERED",
+      "public": true,
+      "productMainId": "KMR-KHV",
+      "productName": "Kemer Kahve",
+      "webUrl": "javascript:alert(1)",
+      "creationDate": 1761200000000,
+      "answeredDateMessage": "Cevabınız 24.10.2026 tarihinde yayınlandı.",
+      "answer": {"id": 9001, "text": "Siparişiniz aynı gün kargoya verilir.", "creationDate": 1761210000000, "hasPrivateInfo": false}
+    },
+    {
+      "id": 3045670002,
+      "text": "Telefon numaranızı verir misiniz?",
+      "status": "REJECTED",
+      "productName": "Kemer Kahve",
+      "creationDate": 1761100000000,
+      "reason": "Kişisel bilgi içeriyor",
+      "rejectedAnswer": {"id": 9002, "text": "0555 000 00 00 numarasından ulaşabilirsiniz.", "creationDate": 1761110000000, "reason": "Kişisel bilgi"}
+    }
+  ],
+  "page": 0,
+  "size": 50,
+  "totalElements": 3,
+  "totalPages": 1
+}
