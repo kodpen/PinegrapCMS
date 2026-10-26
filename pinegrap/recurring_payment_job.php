@@ -130,7 +130,7 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
         $curl_errno = curl_errno($ch);
         $curl_error = curl_error($ch);
         
-        curl_close($ch);
+        unset($ch);
         
         parse_str($response_data, $response);
         

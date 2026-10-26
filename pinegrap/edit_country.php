@@ -104,8 +104,8 @@ if (!$_POST) {
                         <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang('WARNING: This country and all states and verified shipping addresses in this country will be permanently deleted.') . '"><span class="material-icons me-2">delete</span><span class="btn-text">' . lang('Delete') . '</span></button>
+                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang('WARNING: This country and all states and verified shipping addresses in this country will be permanently deleted.') . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                                 </div>
                             </div>
                         </nav>

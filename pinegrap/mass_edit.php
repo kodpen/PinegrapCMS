@@ -53,7 +53,7 @@ if (!$_POST) {
         <div class="row justify-content-center mt-5 pt-5">
             <div class="col position-relative mb-5">
                 <label for="page_options" class="form-label">' . lang(array('string'=>'Select one or more {var:1}','vars'=>'Page Area' )) . '</label>
-                <select class="select2 form-select" id="page_options" name="page_options[]" multiple="multiple">
+                <select class="form-select" data-pg-combobox id="page_options" name="page_options[]" multiple="multiple">
                     <optgroup value="" label="' . lang('Main Informations') . '">
                         <option value="page_name">' . lang('Page Name') . '</option>
                     </optgroup>
@@ -74,7 +74,7 @@ if (!$_POST) {
             </nav>
         </div>
         <script>
-            $("select#page_options").on("select2:select select2:unselect", function (evt) {
+            $("select#page_options").on("change", function (evt) {
                 if($(this).val() == ""){
                     $("button#get_form").addClass("disabled");
                 }else{
@@ -201,8 +201,7 @@ if (!$_POST) {
                                                 <div class="row">
                                                     <div class="col-12 mt-3 mb-2">
                                                         <label for="page_search_keywords_' . $row['page_id'] . '" class="form-label">' . lang('Promote on Keyword') . '</label>
-                                                        <input value="' . h($row['page_search_keywords']) . '" type="text" name="page_search_keywords_' . $row['page_id'] . '" id="page_search_keywords_' . $row['page_id'] . '" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"/>
-                                                        <script>tagin( document.querySelector("#page_search_keywords_' . $row['page_id'] . '") );</script>
+                                                        <input value="' . h($row['page_search_keywords']) . '" type="text" name="page_search_keywords_' . $row['page_id'] . '" id="page_search_keywords_' . $row['page_id'] . '" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"/>
                                                     </div>
                                                 </div>
                                             </div>
@@ -373,7 +372,7 @@ if (!$_POST) {
             { sel: "[name^=\"meta_description_\"]", min: 150, max: 160 }
         ]);
         </script>
-        ' . output_footer();
+        ' . pg_fields_script() . output_footer();
         $liveform->remove_form('mass_edit');
 
 }else{

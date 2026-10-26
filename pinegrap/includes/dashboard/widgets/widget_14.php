@@ -69,7 +69,7 @@ function pg_dashboard_widget_14($request, $user)
             $response = curl_exec($ch);
             $curl_errno = curl_errno($ch);
             $curl_error = curl_error($ch);
-            curl_close($ch);
+            unset($ch);
             $data = decode_json($response);
 
             // The remote service can be unreachable or answer with something that is not JSON,

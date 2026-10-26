@@ -514,7 +514,7 @@ if (!$_POST) {
         $output_parent_product_group_row =
             '<div class="col-12 col-md-4 my-2">
                 <label for="parent_id" class="form-label">' . lang('Parent Product Group') . '</label>
-                <select style="width:100%" class="select2 form-select" id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '" data-allow-clear="true"><option value=""></option>' . $_parent_options_html . '</select>
+                <select style="width:100%" class="form-select" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '" data-allow-clear="true"><option value=""></option>' . $_parent_options_html . '</select>
             </div>';
     } else {
         $output_parent_product_group_row = '';
@@ -527,11 +527,11 @@ if (!$_POST) {
     } elseif ($parent_id != 0) {
         // if there is a child product group in this product group, then disable delete button
         if ($child_product_group_exists == true) {
-            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " onclick="alert(\'' . lang('Please delete all product groups in this product group before deleting this product group.') . '\')" ><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " onclick="alert(\'' . lang('Please delete all product groups in this product group before deleting this product group.') . '\')" ><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         // else there is not a child object in this product group, so allow delete
         } else {
             $output_delete_button = '
-            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         }
     } else {
         $output_delete_button = '';
@@ -639,12 +639,7 @@ if (!$_POST) {
                                                         </div>
                                                         <div class="col-12 mt-3 mb-2">
                                                             <label for="keywords" class="form-label">' . lang('Search Keywords') . '</label>
-                                                            <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . $keywords . '"/>
-                                                            <script>
-                                                                if(document.body.contains(document.querySelector("input#keywords"))){
-                                                                    tagin( document.querySelector("#keywords") );
-                                                                }
-                                                            </script>
+                                                            <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . $keywords . '"/>' . pg_fields_script() . '
                                                         </div>
                                                         ' . $output_attributes . '
                                                     </div>
@@ -719,12 +714,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 mt-1 mb-2">
                                             <label for="meta_keywords" class="form-label">' . lang('Web Browser Keywords') . '</label>
-                                            <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . h($meta_keywords) . '"/>
-                                            <script>
-                                                if(document.body.contains(document.querySelector("input#keywords"))){
-                                                    tagin(document.querySelector("#meta_keywords"));
-                                                }
-                                            </script>
+                                            <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . h($meta_keywords) . '"/>' . pg_fields_script() . '
                                         </div>
                                         <div class="col-12">
                                             ' . pg_seo_render_checklist($seo_row, 'product_group', (int) $_GET['id']) . '
@@ -829,8 +819,8 @@ if (!$_POST) {
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 ' . ($group_binned
-                                    ? '<a class="btn my-1 btn-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-2"></span><span class="btn-text">' . lang('Open the Recycle Bin') . '</span></a>'
-                                    : '<button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
+                                    ? '<a class="btn my-1 btn-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-2"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>'
+                                    : '<button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
                                 ' . $output_delete_button . '
                             </div>
                             <span class="enable-on-selected"> 

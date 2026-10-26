@@ -132,21 +132,21 @@ if (!$_POST) {
         $system_buttons = '
             <button type="submit" id="send_system_email" name="send_system_email" value="Send System Test Email" class="btn my-1 btn-warning">
                 <span class="material-icons me-2">forward_to_inbox</span>
-                <span class="btn-text">' . lang('Send Test') . '</span>
+                <span class="pg-btn-label">' . lang('Send Test') . '</span>
             </button>';
     }
 
     $dkim_generate_button = '
         <button type="submit" name="generate_dkim_key" value="true" class="btn my-1 btn-secondary">
             <span class="material-icons me-2">vpn_key</span>
-            <span class="btn-text">' . lang('Generate DKIM Key') . '</span>
+            <span class="pg-btn-label">' . lang('Generate DKIM Key') . '</span>
         </button>';
     $dkim_buttons = $dkim_generate_button;
     if ($smtp_ready) {
         $dkim_buttons .= '
             <button type="submit" name="test_dkim" value="true" class="btn my-1 btn-info">
                 <span class="material-icons me-2">verified</span>
-                <span class="btn-text">' . lang('Test DKIM') . '</span>
+                <span class="pg-btn-label">' . lang('Test DKIM') . '</span>
             </button>';
     }
 
@@ -323,7 +323,7 @@ if (!$_POST) {
                             <div class="btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success">
                                     <span class="material-icons me-2">save</span>
-                                    <span class="btn-text">' . lang(['string'=>'Save']) . '</span>
+                                    <span class="pg-btn-label">' . lang(['string'=>'Save']) . '</span>
                                 </button>
                             </div>
                         </div>

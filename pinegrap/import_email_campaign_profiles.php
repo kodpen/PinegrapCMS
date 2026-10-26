@@ -73,7 +73,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import_products" name="submit_button" value="Import Campaign Profiles" class="btn my-1  btn-success " ><span class="material-icons me-2">file_upload</span><span class="btn-text" >' . lang(array('string'=>'Import') ) . '</span></button>
+                                <button type="submit" id="submit_import_products" name="submit_button" value="Import Campaign Profiles" class="btn my-1  btn-success " ><span class="material-icons me-2">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -97,13 +97,8 @@ if (!$_POST) {
         go($_SERVER['PHP_SELF']);
     }
 
-    // Fix classic Mac (CR-only) line endings: fgetcsv() splits only on LF unless this
-    // setting is on. It is deprecated since PHP 8.1 but still functional through 8.5,
-    // so the E_DEPRECATED notice is suppressed instead of dropping CR support.
-    @ini_set('auto_detect_line_endings', true);
-    
     // Get file handle for uploaded CSV file.
-    $handle = fopen($_FILES['file']['tmp_name'], 'r');
+    $handle = pg_csv_open($_FILES['file']['tmp_name']);
 
     // Get column names from first row of CSV file.
     $row = fgetcsv($handle, 100000, ',', '"', '\\');

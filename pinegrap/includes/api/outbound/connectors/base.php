@@ -477,6 +477,29 @@ function mp_error($message, $retry = false, $data = array()) {
 
 }
 
+/* -------------------------------------------------------------------- returns */
+
+// The ids of a return's units waiting for the seller, which an approval
+// sends. A return is in the shape a connector's claims read answers with;
+// the connector decides which of its statuses is waiting.
+function mp_claim_waiting($claim) {
+
+	$ids = array();
+
+	foreach ((isset($claim['units']) && is_array($claim['units'])) ? $claim['units'] : array() as $unit) {
+
+		if (!empty($unit['waiting']) && isset($unit['id'])) {
+
+			$ids[] = (string)$unit['id'];
+
+		}
+
+	}
+
+	return $ids;
+
+}
+
 /* ---------------------------------------------------------------- order feeds */
 
 // A moment of an order feed as the feed counts it, in whole milliseconds, or 0

@@ -683,7 +683,7 @@ if (!$_POST) {
         $delete_confirmation = (pg_recycle_ready() && !pg_recycle_is_inside($page_folder))
             ? lang('This page will be moved to the Recycle Bin.')
             : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page'))));
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     // "Write with AI" beside the browser title and description
@@ -849,12 +849,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12 mt-3 mb-2">
                                                                     <label for="keywords" class="form-label">' . lang('Promote on Keyword') . '</label>
-                                                                    <input value="' . h($page_search_keywords) . '" type="text" name="search_keywords" id="search_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"/>
-                                                                    <script>
-                                                                        if(document.body.contains(document.querySelector("input#search_keywords"))){
-                                                                            tagin( document.querySelector("#search_keywords") );
-                                                                        }
-                                                                    </script>
+                                                                    <input value="' . h($page_search_keywords) . '" type="text" name="search_keywords" id="search_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"/>' . pg_fields_script() . '
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1016,7 +1011,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>

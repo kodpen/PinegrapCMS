@@ -183,7 +183,7 @@ pg_page_shell(
                         <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="submit_import" name="submit_save" value="Import" class="btn my-1 btn-success"><i class="bi bi-upload me-2" aria-hidden="true"></i><span class="btn-text">' . h(lang('Import Short Links')) . '</span></button>
+                                    <button type="submit" id="submit_import" name="submit_save" value="Import" class="btn my-1 btn-success"><i class="bi bi-upload me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Import Short Links')) . '</span></button>
                                 </div>
                             </div>
                         </nav>

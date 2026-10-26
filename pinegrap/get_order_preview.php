@@ -20,6 +20,10 @@ function get_order_preview($properties) {
     
     $page_id = $properties['page_id'];
     $device_type = $properties['device_type'];
+    // The designer's order preview widget asks for the custom layout's
+    // values and form instead of the drawn page (widgets_order_preview.php),
+    // so its figures are the ones computed here.
+    $layout_data_only = !empty($properties['layout_data_only']);
 
     $properties = get_page_type_properties($page_id, 'order preview');
 
@@ -31,7 +35,7 @@ function get_order_preview($properties) {
     $offline_payment_always_allowed = $properties['offline_payment_always_allowed'];
     $offline_payment_label = $properties['offline_payment_label'];
 
-    $layout_type = get_layout_type($page_id);
+    $layout_type = $layout_data_only ? 'custom' : get_layout_type($page_id);
     
     // store page id for order preview page in case we need to come back to this page later in the order process
     $_SESSION['ecommerce']['order_preview_page_id'] = $page_id;
@@ -3454,7 +3458,7 @@ function get_order_preview($properties) {
             }
         }
 
-        $content = render_layout(array(
+        $layout_data = array(
             'page_id' => $page_id,
             'messages' => $form->get_messages(),
             'form' => $form,
@@ -3546,7 +3550,13 @@ function get_order_preview($properties) {
             'installment' => $installment,
             'installment_table' => $installment_table,
             'threedsecure' => $threedsecure,
-            'threedsecure_required' => $threedsecure_required));
+            'threedsecure_required' => $threedsecure_required);
+
+        if ($layout_data_only) {
+            return $layout_data;
+        }
+
+        $content = render_layout($layout_data);
             
         $content = $form->prepare($content);
 

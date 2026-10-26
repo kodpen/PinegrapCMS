@@ -14,8 +14,7 @@ description: marketplace_product_map.commission and marketplace_order_map.invoic
 - Only after asking `mp_commission_ready()` or `mp_invoice_sent_ready()` (`includes/api/outbound/connectors/base.php`, loaded by every outbound file): exact-name probes through `pg_schema_has()`. The files land before the upgrade step runs (`release/upgrade-bridge-rule.md`), so a statement naming a column the database lacks fails and returns `false`.
 
 ## Who writes them?
-- `commission`: the approval read of Trendyol listings (plan step 2b-ii).
-- `invoice_sent`: the "Send invoice link" form of an imported order (plan step 5a).
-- Until those steps land, nothing writes either column.
+- `commission`: the approval read of Trendyol listings, at the read that sets `remote_id` (`trendyol-listing-update.md`).
+- `invoice_sent`: the "Send invoice link" form of an imported order (`trendyol-invoice-link.md`), only after a 2xx, with `AND invoice_sent = 0`.
 
 Related: docs/memory/plans/marketplace-trendyol-hepsiburada.md, docs/memory/commerce/trendyol-listing-status.md, docs/memory/commerce/trendyol-orders.md

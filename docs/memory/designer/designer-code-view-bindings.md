@@ -16,6 +16,7 @@ description: Data bindings in the designer's code view: a bound text, href, src 
 
 ## What does {{ offer?
 - `_sdCodeBindingCompletion()` (registered with `PgCodeEditor.addCompletionSource('html', …)` beside the class completion) answers only in the page's code view (`context.view === _sdCode.ed.view`), in a `Text` node or the value of `href` / `src` / `alt` / `value`, after `{{`: the tokens of the element's widget from `_swBindTokenOptions(node)`, label as detail, `}}` appended unless already there.
+- Other attributes: [[widget-attr-bindings]].
 - `_swBindTokenOptions()` is the flat form of what the Bind Data panel draws: `_swBindTokenGroups(type)` (the fixed palettes, also behind `_swBindLabel()`), and for the two form views the form's fields (`_formFieldsCache`, fetched when missing), their `__label` tokens when the detail view shows labels, and the built-in field options.
 
 Related: docs/memory/designer/designer-code-view-editing.md, docs/memory/designer/system-widget-bindings.md

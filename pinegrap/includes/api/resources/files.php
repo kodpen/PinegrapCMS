@@ -367,7 +367,7 @@ function api_files_extension_from_bytes($bytes) {
 
 	$mime = @finfo_buffer($finfo, $bytes);
 
-	finfo_close($finfo);
+	unset($finfo);
 
 	$mime = strtolower(trim((string)$mime));
 

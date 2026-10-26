@@ -1485,7 +1485,7 @@ function pg_backup_s3_put($file, array $config)
     $error = curl_error($ch);
     $http  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-    curl_close($ch);
+    unset($ch);
     fclose($handle);
 
     if ($errno) {

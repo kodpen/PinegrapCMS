@@ -372,7 +372,8 @@ if (!$_POST) {
                                                     'id' => 'publish_date_and_time',
                                                     'name' => 'publish_date_and_time',
                                                     'maxlength' => '19',
-                                                    'class' => 'form-control')) . '
+                                                    'class' => 'form-control',
+                                                    'data-pg-datetime' => '')) . '
 
                                                 <div class="form-check form-switch ms-1 mt-2">
                                                     ' . $liveform->output_field(array(
@@ -386,7 +387,7 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-                                        ' . get_date_time_picker_format() . '
+                                        ' . get_date_time_picker_format() . pg_fields_script() . '
                                         <script>init_edit_comment_publish()</script>
                                         <div class="col-12 my-3">
                                             <div class="form-check form-switch">
@@ -408,8 +409,8 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('comment')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('comment')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

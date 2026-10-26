@@ -133,6 +133,129 @@ function api_folder_access_widens($before, $after) {
 
 }
 
+// The aclfolder rows of the user role (3), keyed by folder and user. Roles
+// above it read every private folder whatever their rows say, so their rows
+// never decide whether a move opens a folder to more people.
+function api_folder_acl() {
+
+	$acl = array();
+
+	foreach (api_rows("SELECT aclfolder.aclfolder_folder, aclfolder.aclfolder_user, aclfolder.aclfolder_rights, aclfolder.expiration_date
+		FROM aclfolder
+		INNER JOIN user ON user.user_id = aclfolder.aclfolder_user
+		WHERE user.user_role >= 3") as $row) {
+
+		$acl[(int)$row['aclfolder_folder']][(int)$row['aclfolder_user']] = array(
+			'rights'  => (int)$row['aclfolder_rights'],
+			'expires' => (string)$row['expiration_date']
+		);
+
+	}
+
+	return $acl;
+
+}
+
+// Who may read a private folder, as check_private_access() decides it: for
+// each user the nearest row on the way up decides - edit rights or an
+// unexpired view row let them in, an expired view row keeps them out. The
+// answer is user id => last day of access ('9999-12-31' for no end), users
+// without access left out. $tree, $overrides as in api_folder_access_walk();
+// $acl is api_folder_acl()'s shape; $today is 'Y-m-d'. Pure.
+function api_folder_readers_walk($tree, $acl, $folder_id, $today, $overrides = array()) {
+
+	$decided = array();
+
+	$current = (int)$folder_id;
+
+	$visited = array();
+
+	while ($current > 0 && !isset($visited[$current])) {
+
+		$visited[$current] = true;
+
+		if (isset($acl[$current])) {
+
+			foreach ($acl[$current] as $user_id => $row) {
+
+				if (isset($decided[$user_id])) {
+
+					continue;
+
+				}
+
+				if ($row['rights'] === 2) {
+
+					$decided[$user_id] = '9999-12-31';
+
+				} elseif ($row['rights'] === 1) {
+
+					$expires = $row['expires'];
+
+					if (($expires === '') || ($expires === '0000-00-00')) {
+
+						$decided[$user_id] = '9999-12-31';
+
+					} else {
+
+						$decided[$user_id] = ($expires < $today) ? false : $expires;
+
+					}
+
+				}
+
+			}
+
+		}
+
+		$node = isset($overrides[$current]) ? $overrides[$current] : (isset($tree[$current]) ? $tree[$current] : null);
+
+		if ($node === null) {
+
+			break;
+
+		}
+
+		$current = (int)$node['parent'];
+
+	}
+
+	$readers = array();
+
+	foreach ($decided as $user_id => $until) {
+
+		if ($until !== false) {
+
+			$readers[$user_id] = $until;
+
+		}
+
+	}
+
+	ksort($readers);
+
+	return $readers;
+
+}
+
+// Whether a private folder's readers after a change include someone who
+// could not read it before, or someone for longer than before. Pure.
+function api_folder_readers_widen($before, $after) {
+
+	foreach ($after as $user_id => $until) {
+
+		if (!isset($before[$user_id]) || ($until > $before[$user_id])) {
+
+			return true;
+
+		}
+
+	}
+
+	return false;
+
+}
+
 // Whether $candidate is $folder_id itself or anywhere below it. Pure, like
 // the walk above.
 function api_folder_within($tree, $candidate, $folder_id) {
@@ -687,6 +810,41 @@ function api_folders_update($params) {
 				'string' => 'This change would serve the folder as {var:1} instead of {var:2}, which opens what is in it to more people. Change it on the folder screen.',
 				'vars'   => array(get_access_control_type_name($after), get_access_control_type_name($before))
 			)), array_key_exists('access', $params) ? 'access' : 'parent_id');
+
+		}
+
+		// A move also changes who reads the private folders in the branch:
+		// their aclfolder lists are inherited from above. Each folder of the
+		// branch that is private before and after must keep or narrow its
+		// readers; one that turns private from another type is narrowed.
+		if ($new_parent !== $parent) {
+
+			$change = array($id => array('parent' => $new_parent, 'access' => $new_own));
+
+			$acl = api_folder_acl();
+
+			$today = date('Y-m-d');
+
+			foreach (array_keys($tree) as $branch_id) {
+
+				if (!api_folder_within($tree, $branch_id, $id)
+					|| (api_folder_access_walk($tree, $branch_id) !== 'private')
+					|| (api_folder_access_walk($tree, $branch_id, $change) !== 'private')) {
+
+					continue;
+
+				}
+
+				if (api_folder_readers_widen(
+					api_folder_readers_walk($tree, $acl, $branch_id, $today),
+					api_folder_readers_walk($tree, $acl, $branch_id, $today, $change)
+				)) {
+
+					api_fail(409, 'access_widening_refused', lang('This change would let people open folders in this branch who cannot open them now. Change it on the folder screen.'), 'parent_id');
+
+				}
+
+			}
 
 		}
 

@@ -335,6 +335,7 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
         <div class=" btn-group btn-group-sm flex-wrap">
             <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?recalculate_seo=1' . get_token_query_string_field() . '"><span class="bi bi-speedometer2 me-1"></span>' . lang('Refresh SEO Scores') . '</a>
             <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?analyze_seo=1' . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><span class="bi bi-code-slash me-1"></span>' . lang('Analyze HTML Structure') . '</a>
+            <a class="btn btn-link link-secondary py-0 m-1" href="view_accessibility.php"><span class="bi bi-universal-access me-1"></span>' . lang('Accessibility report') . '</a>
         </div>';
     }
 

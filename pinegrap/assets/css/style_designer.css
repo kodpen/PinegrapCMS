@@ -1916,6 +1916,22 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 /* element.style — selected node's inline style attribute */
 .sd-styles-element-style { background: rgba(13,110,253,.04); }
 .sd-styles-element-body { padding: .15rem 0; }
+/* This element — the element's custom style rule (a growing textarea) */
+.sd-styles-this-element { background: rgba(121,192,255,.05); }
+.sd-custom-style-input {
+    display: block; width: 100%; resize: none; overflow: hidden;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .72rem; line-height: 1.45;
+    background: transparent; color: inherit;
+    border: 1px solid var(--sd-panel-border); border-radius: 3px; padding: .2rem .35rem;
+}
+.sd-custom-style-input:focus { outline: none; border-color: #79c0ff; }
+.sd-custom-style-note { font-size: .66rem; color: #d29922; padding: .15rem .1rem 0; }
+.sd-custom-style-error { color: #f85149; }
+.sd-custom-style-shared { display: flex; align-items: center; gap: .4rem; color: #8b949e; }
+.sd-custom-style-split {
+    margin-left: auto; font-size: .66rem; padding: 0 .4rem;
+    background: transparent; color: #79c0ff; border: 1px solid var(--sd-panel-border); border-radius: 3px;
+}
 .sd-styles-empty-decl {
     color: #6e7681; font-size: .68rem; padding: .15rem .4rem .25rem;
     font-style: italic;
@@ -3630,6 +3646,25 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-rev-diff .sd-rev-fold { display: block; color: #6e7681; font-style: italic; padding: 2px 0; }
 .sd-rev-summary { margin-right: auto; font-size: .78rem; color: #9ca3af; align-self: center; }
 
+/* ===================== PANELS READ-ONLY AT CONTENT LEVEL ===================== */
+/* _sdPanelLock(): the fields are disabled; the marks that remove or add go. */
+.sd-panel-readonly-note {
+    display: flex; gap: 6px; align-items: baseline;
+    padding: 4px 8px; margin-bottom: 4px;
+    font-size: .7rem; color: #9ca3af;
+}
+.sd-panel-readonly .sd-class-tag-remove,
+.sd-panel-readonly .sd-class-input,
+.sd-panel-readonly .sd-attrs-add-row,
+.sd-panel-readonly .sd-attr-del,
+.sd-panel-readonly .sd-styles-decl-add,
+.sd-panel-readonly .sd-styles-decl-del,
+.sd-panel-readonly .sd-styles-decl-toggle,
+.sd-panel-readonly .sd-styles-ur-toggle,
+.sd-panel-readonly .sd-styles-ur-del-decl,
+.sd-panel-readonly .sd-styles-user-rule-del { display: none; }
+.sd-panel-readonly input:disabled { opacity: .75; cursor: default; }
+
 /* ========================= CLASS AUTOCOMPLETE ========================= */
 .sd-class-ac-dropdown {
     position: fixed; z-index: 10060;
@@ -3648,6 +3683,14 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 .sd-class-ac-item:hover,
 .sd-class-ac-item.active { background: #2563eb; color: #fff; }
+.sd-class-ac-item { display: flex; gap: 12px; align-items: baseline; }
+.sd-class-ac-hint {
+    margin-left: auto; font-family: system-ui, sans-serif; font-size: .7rem;
+    color: #9ca3af;
+}
+.sd-class-ac-item:hover .sd-class-ac-hint,
+.sd-class-ac-item.active .sd-class-ac-hint { color: #dbeafe; }
+.sd-class-ac-muted .sd-class-ac-label { opacity: .6; }
 
 /* ========================= SHARED USAGE BADGE ========================= */
 .sd-shared-usage-badge {

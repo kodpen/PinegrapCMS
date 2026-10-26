@@ -1698,6 +1698,7 @@ function api_schema() {
 				array('name' => 'entity_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Limit to one record, with entity_type.'),
 				array('name' => 'severity',    'in' => 'query', 'type' => 'enum', 'values' => array('error', 'warning', 'notice')),
 				array('name' => 'code',        'in' => 'query', 'type' => 'string', 'max_length' => 48, 'description' => 'One check, by its code - the way to work through a single kind of problem across the site.'),
+				array('name' => 'category',    'in' => 'query', 'type' => 'enum', 'values' => array('seo', 'a11y'), 'default' => 'seo', 'description' => 'seo: the SEO analysis. a11y: the accessibility report, the WCAG 2.2 checks of the nightly accessibility job over published pages (codes starting a11y_); not part of the SEO score.'),
 				array('name' => 'limit',       'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',      'in' => 'query', 'type' => 'string', 'max_length' => 255)
 			)
@@ -1856,7 +1857,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Page',
 			'summary' => 'Change a page',
-			'description' => 'The title, the description, the keywords, the site search settings, the indexing switches, the comment switches and the folder. Only what is sent is changed. A page closed to search engines cannot be in the site map at the same time and the request is refused rather than quietly corrected; nofollow only applies while noindex is on. A move to another folder may keep the page as open as it is or close it further, never open it up: a move that would serve the page to more people answers 409 access_widening_refused. The home page, the pages the storefront and the account area run on, drafts and pages in the recycle bin are not moved from here. The meta half of the score is recalculated here, the structure half stays with the nightly job. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached. Use POST.',
+			'description' => 'The title, the description, the keywords, the site search settings, the indexing switches, the comment switches and the folder. Only what is sent is changed. A page closed to search engines cannot be in the site map at the same time and the request is refused rather than quietly corrected; nofollow only applies while noindex is on. A move to another folder may keep the page as open as it is or close it further, never open it up: a move that would serve the page to more people, including a move into a private folder whose access list lets in a user account the current folder does not, answers 409 access_widening_refused. The home page, the pages the storefront and the account area run on, drafts and pages in the recycle bin are not moved from here. The meta half of the score is recalculated here, the structure half stays with the nightly job. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached. Use POST.',
 			'params'  => array(
 				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'title',            'in' => 'body', 'type' => 'string', 'max_length' => 255),
@@ -1972,7 +1973,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Folder',
 			'summary' => 'Change a folder',
-			'description' => 'Rename it, sort it, archive it, move it under another parent, or give it a stricter access rule. Only what is sent is changed. A change that would serve the folder to more people than today - a looser access type, or a move out from under a stricter parent - answers 409 access_widening_refused: opening part of the site up is done on the folder screen. The top folder is not moved, and the drafts folder and the recycle bin are not changed here. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'description' => 'Rename it, sort it, archive it, move it under another parent, or give it a stricter access rule. Only what is sent is changed. A change that would serve the folder to more people than today - a looser access type, a move out from under a stricter parent, or a move that lets more user accounts open a private folder in the branch - answers 409 access_widening_refused: opening part of the site up is done on the folder screen. The top folder is not moved, and the drafts folder and the recycle bin are not changed here. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100),

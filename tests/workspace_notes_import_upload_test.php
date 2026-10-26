@@ -112,7 +112,7 @@ function test_workspace_notes_import_upload_stage_names_the_file()
 function test_workspace_notes_import_upload_stage_part_without_file()
 {
 	$viewer = array('id' => 7, 'role' => 0, 'member' => true);
-	$choose = lang('Choose Markdown (.md) or text (.txt) files, one .zip of them, or Evernote exports (.enex).');
+	$choose = lang('Choose Markdown (.md) or text (.txt) files, one .zip of them, Evernote exports (.enex) or one web page (.html).');
 	$empty = ws_note_import_stage($viewer, array(array('name' => '', 'tmp_name' => '', 'size' => 0, 'error' => UPLOAD_ERR_NO_FILE)));
 	$bare = ws_note_import_stage($viewer, array(array('name' => 'a.md', 'tmp_name' => '', 'size' => 0)));
 
@@ -124,7 +124,7 @@ function test_workspace_notes_import_upload_stage_part_without_file()
 // One list of kinds: the stage reads it, the screen gets it with its config.
 function test_workspace_notes_import_upload_extensions_are_one_list()
 {
-	pg_assert_same(array('md', 'markdown', 'txt', 'zip', 'enex'), ws_note_import_extensions());
+	pg_assert_same(array('md', 'markdown', 'txt', 'zip', 'enex', 'html', 'htm'), ws_note_import_extensions());
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/notes_import.php');
 	$stage = pg_test_notes_upload_between($source, 'function ws_note_import_stage(', "\n}\n");

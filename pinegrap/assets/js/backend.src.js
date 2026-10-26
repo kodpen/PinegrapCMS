@@ -1732,10 +1732,6 @@ $(document).ready(function () {
             + "&redirect_uri=" + encodeURIComponent("urn:ietf:wg:oauth:2.0:oob") + "&response_type=code");
     });
 
-    if ($("input.timepicker").length > 0) {
-        $("input.timepicker").timepicker(timepicker_options);
-    };
-
     if ($("input[name=convert_to_metric_system]").length > 0) {
         var unit_lb_label = $("input[name=weight]").parent().find("label.unit");
         var unit_lb_label_text = unit_lb_label.text();
@@ -1853,13 +1849,6 @@ $(document).ready(function () {
         }
     });
 
-    if ($("select.select2").length) {
-        $("select.select2").each(function () {
-            var opts = { theme: "bootstrap-5" };
-            if ($(this).data('allowClear')) opts.allowClear = true;
-            $(this).select2(opts);
-        });
-    }
     $(".show-password-btn").each(function () {
         $(this).on("click", function () {
             var input = $(this).siblings("input");
@@ -3664,21 +3653,26 @@ function init_product_groups(properties) {
         $('.group_list').append(
             '<div class="col-12">\
                 <div class="input-group my-2 group group_' + id + '" >\
-                    <select name="product_group" class="form-select product_group"><option value=""></option>' + group_options + '</select>\
+                    <select name="product_group" class="form-select product_group" data-pg-combobox data-allow-clear="true"><option value=""></option>' + group_options + '</select>\
                     <a href="javascript:void(0)" title="' + label['Remove'] + '" class="remove btn btn-danger no-popover">x</a>\
                 </div>\
             </div>');
 
-        $('.group_' + id + ' .product_group').select2({
-            theme: 'bootstrap-5',
-            placeholder: '-' + label['Select Group'] + '-',
-            allowClear: true
-        });
+        // select2 reads its placeholder from the data attribute.
+        var select = $('.group_' + id + ' .product_group').attr('data-placeholder', '-' + label['Select Group'] + '-')[0];
+
+        if (window.pgCombobox) {
+            pgCombobox.init(select);
+        }
 
         // If this group is an existing group for the product,
         // then set value and trigger change event so that option pick list appears.
         if (typeof group.product_group !== 'undefined') {
-            $('.group_' + id + ' .product_group').val(group.product_group).trigger('change');
+            if (window.pgCombobox) {
+                pgCombobox.set(select, group.product_group);
+            } else {
+                $(select).val(group.product_group).trigger('change');
+            }
         }
 
         $('.group_' + id + ' .remove').click(function () {
@@ -4692,13 +4686,12 @@ function show_or_hide_view_expiration_date(folder_id) {
 
         container.style.display = '';
 
-        // Bind once: datepicker() on an already-bound field is a no-op that
-        // still costs a full re-init, and a second call would drop the value
-        // the operator has just typed.
+        // pgDatePicker.init() draws a field once and leaves a drawn one
+        // alone, so a date the operator has just typed stays.
         var field = container.querySelector('input');
 
-        if (field && window.jQuery && !$(field).hasClass('hasDatepicker') && (typeof datetimepicker_options !== 'undefined')) {
-            $(field).datepicker(datetimepicker_options);
+        if (field && window.pgDatePicker) {
+            pgDatePicker.init(field);
         }
 
     } else {
@@ -4743,8 +4736,9 @@ function pgOpenAclExpiry(container, focus) {
         return;
     }
 
-    if (window.jQuery && !$(field).hasClass('hasDatepicker') && (typeof datetimepicker_options !== 'undefined')) {
-        $(field).datepicker(datetimepicker_options);
+    // The folder tree prints pg_fields.js with it (get_acl_folder_tree()).
+    if (window.pgDatePicker) {
+        pgDatePicker.init(field);
     }
 
     if (focus) {
@@ -5696,12 +5690,12 @@ function change_page_type(page_type) {
     ) {
 
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the submit button should contain the normal "Save"
     } else {
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5719,13 +5713,13 @@ function show_or_hide_billing_information_custom_billing_form() {
     if ((document.getElementById('billing_information_form').checked == true) && (original_billing_information_form != 1)) {
         document.getElementById('billing_information_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
         document.getElementById('billing_information_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5739,13 +5733,13 @@ function toggle_express_order_custom_shipping_form() {
     ) {
         document.getElementById('express_order_shipping_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
         // Otherwise the form is disabled or the form was already enabled, so do not show notice and
         // update the submit button to contain "Save"
     } else {
         document.getElementById('express_order_shipping_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5762,13 +5756,13 @@ function show_or_hide_express_order_custom_billing_form() {
     if ((document.getElementById('express_order_form').checked == true) && (original_express_order_form != 1)) {
         document.getElementById('express_order_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
         document.getElementById('express_order_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
         // we check if its checked before
         toggle_express_order_custom_shipping_form();
     }
@@ -5787,12 +5781,12 @@ function show_or_hide_custom_shipping_form() {
     if ((document.getElementById('shipping_address_and_arrival_form').checked == true) && (original_shipping_address_and_arrival_form != 1)) {
         document.getElementById('shipping_address_and_arrival_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
         document.getElementById('shipping_address_and_arrival_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5960,12 +5954,11 @@ function init_edit_comment_publish() {
     var publish_date_and_time = $('#publish_date_and_time');
     var publish_schedule = $('#publish_schedule');
 
+    // The date and time field is a data-pg-datetime hook (pg_fields.js).
     // If the schedule option is selected by default when the page first loaded,
-    // then show fields for it and init date/time picker.
+    // then show fields for it.
     if (publish.val() == 'schedule') {
         publish_schedule.fadeIn();
-
-        publish_date_and_time.datetimepicker(datetimepicker_options);
     }
 
     // When the publish pick list is changed, then update fields.
@@ -5973,8 +5966,6 @@ function init_edit_comment_publish() {
         // If the schedule option is selected, then show fields for it.
         if (publish.val() == 'schedule') {
             publish_schedule.fadeIn();
-
-            publish_date_and_time.datetimepicker(datetimepicker_options);
 
             // Place the focus in the date & time field,
             // so that the date/time picker automatically appears.
@@ -6000,23 +5991,15 @@ function toggle_calendar_event_all_day() {
         document.getElementById('show_start_time_container').style.display = 'none';
         document.getElementById('show_end_time_container').style.display = 'none';
 
-        // Remove time picker by removing its parent date picker.
-        $("#start_time").datepicker('destroy');
-        $("#end_time").datepicker('destroy');
+        // Turn both date and time fields into date fields that keep only
+        // the date of what they held.
+        ['start_time', 'end_time'].forEach(function (id) {
+            var field = document.getElementById(id);
+            var date = pgDateTimeField.get(field).slice(0, 10);
 
-        // Add date picker to both fields.
-
-        $("#start_time").datepicker(datetimepicker_options);
-
-        $("#end_time").datepicker(datetimepicker_options);
-
-        // Get just the date values in order to strip the times from the fields.
-        var start_date = $.datepicker.formatDate(date_picker_format, $('#start_time').datepicker('getDate'));
-        var end_date = $.datepicker.formatDate(date_picker_format, $('#end_time').datepicker('getDate'));
-
-        // Update fields to only contain the date.
-        $("#start_time").datepicker('setDate', start_date);
-        $("#end_time").datepicker('setDate', end_date);
+            pgFields.switchKind(field, 'date');
+            pgDatePicker.set(field, date);
+        });
 
         // Update the size and maxlength of the fields to support just a date.
         $('#start_time').attr('size', 10);
@@ -6031,15 +6014,9 @@ function toggle_calendar_event_all_day() {
         document.getElementById('show_start_time_container').style.display = '';
         document.getElementById('show_end_time_container').style.display = '';
 
-        // Remove date picker in preparation for adding date/time picker.
-        $("#start_time").datepicker('destroy');
-        $("#end_time").datepicker('destroy');
-
-        // Add date/time picker to both fields.
-
-        $("#start_time").datetimepicker(datetimepicker_options);
-
-        $("#end_time").datetimepicker(datetimepicker_options);
+        // Date and time pickers on both fields; the dates they hold stay.
+        pgFields.switchKind(document.getElementById('start_time'), 'datetime');
+        pgFields.switchKind(document.getElementById('end_time'), 'datetime');
 
         // Update the size and maxlength of the fields to support both a date and time.
         $('#start_time').attr('size', 19);
@@ -6158,7 +6135,7 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for date and time cell
     var td_2 = document.createElement('td');
-    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + properties['date_and_time'] + '" size="20" maxlength="22" />';
+    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + properties['date_and_time'] + '" size="20" maxlength="22" data-pg-datetime />';
 
     // prepare content for delete cell
     var td_3 = document.createElement('td');
@@ -6170,7 +6147,9 @@ function create_shipping_cutoff(properties) {
 
     tbody.appendChild(tr);
 
-    $('#shipping_cutoff_' + shipping_cutoff_number + '_date_and_time').datetimepicker(datetimepicker_options);
+    if (window.pgDateTimeField) {
+        pgDateTimeField.init(document.getElementById('shipping_cutoff_' + shipping_cutoff_number + '_date_and_time'));
+    }
 
     // show the shipping cut-off table in case it was hidden
     document.getElementById('shipping_cutoff_table').style.display = '';
@@ -10095,10 +10074,11 @@ function pgInitInjected(scope) {
         });
     }
 
-    // The timepicker addon and its wording arrive with the card that uses it,
-    // as a <script src> inside the markup, so neither can be assumed.
-    if ($.fn.timepicker && (typeof timepicker_options !== 'undefined')) {
-        $scope.find('input.timepicker').timepicker(timepicker_options);
+    // Chips, combobox, date and time fields marked with a data-pg-* hook.
+    // Chips, combobox, date and time fields marked with a data-pg-* hook; a
+    // card whose library arrives with its markup prints pg_fields_script().
+    if (window.pgFields) {
+        pgFields.init($scope[0]);
     }
 }
 

@@ -318,14 +318,11 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 col-md-6 col-lg-4 my-2">
                                             <label class="form-label" for="schedule_time">' . lang('Send at a specific time') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8', 'data-pg-time' => '')) . '
                                             
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             <div class="text-end form-text">' . lang('h:mm AM/PM, leave blank to send at any time.') . '</div>
-                                            ' . get_time_picker_format() . '
-                                            <script>
-                                                $("#schedule_time").timepicker(timepicker_options);
-                                            </script>
+                                            ' . get_time_picker_format() . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
@@ -368,7 +365,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

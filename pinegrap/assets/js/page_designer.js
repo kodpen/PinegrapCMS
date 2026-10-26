@@ -647,7 +647,7 @@ function init_page_designer(properties) {
                           </div>
                     </div>
                     <div class="modal-footer">
-                      <button type="button" id="saveCregionButton" name="submit_create" value="Create Designer Region" class="btn my-1 btn-success "><span class="btn-text">${labels["Create & Add"]}</span></button>
+                      <button type="button" id="saveCregionButton" name="submit_create" value="Create Designer Region" class="btn my-1 btn-success "><span class="pg-btn-label">${labels["Create & Add"]}</span></button>
                     </div>
                   </div>
                 </div>
@@ -676,7 +676,7 @@ function init_page_designer(properties) {
                           </div>
                     </div>
                     <div class="modal-footer">
-                      <button type="button" id="saveDregionButton" name="submit_create" value="Create Dynamic Region" class="btn my-1 btn-success "><span class="btn-text">${labels["Create & Add"]}</span></button>
+                      <button type="button" id="saveDregionButton" name="submit_create" value="Create Dynamic Region" class="btn my-1 btn-success "><span class="pg-btn-label">${labels["Create & Add"]}</span></button>
                     </div>
                   </div>
                 </div>

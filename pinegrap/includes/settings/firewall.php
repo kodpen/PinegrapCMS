@@ -181,22 +181,14 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="waf_trusted_proxies" class="form-label">' . lang('Trusted Proxies') . '</label>
-                                                            <input type="text" value="' . h(waf_list_to_string($waf_trusted_proxies)) . '" name="waf_trusted_proxies" id="waf_trusted_proxies" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add Address') . '"/>
-                                                            <script>
-                                                                if(document.body.contains(document.querySelector("input#waf_trusted_proxies"))){
-                                                                    tagin(document.querySelector("#waf_trusted_proxies"));
-                                                                }
-                                                            </script>
+                                                            ' . pg_fields_script() . '
+                                                            <input type="text" value="' . h(waf_list_to_string($waf_trusted_proxies)) . '" name="waf_trusted_proxies" id="waf_trusted_proxies" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add Address') . '"/>
                                                             <div class="form-text">' . lang('Addresses of your own load balancer or CDN, one per line. Only these are allowed to declare a visitor address through forwarding headers, since those headers are trivially forged. Cloudflare is recognised automatically.') . '</div>
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="waf_exclusions" class="form-label">' . lang('Excluded Paths') . '</label>
-                                                            <input type="text" value="' . h(waf_list_to_string($waf_exclusions)) . '" name="waf_exclusions" id="waf_exclusions" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add Path') . '"/>
-                                                            <script>
-                                                                if(document.body.contains(document.querySelector("input#waf_exclusions"))){
-                                                                    tagin(document.querySelector("#waf_exclusions"));
-                                                                }
-                                                            </script>
+                                                            ' . pg_fields_script() . '
+                                                            <input type="text" value="' . h(waf_list_to_string($waf_exclusions)) . '" name="waf_exclusions" id="waf_exclusions" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add Path') . '"/>
                                                             <div class="form-text">' . lang('Script names or URL paths that skip inspection entirely, before any other rule. Matched against the path only — never the query string, which anyone could append to steal the exemption. Intended for payment gateway callbacks, where losing a request loses a paid order, and for your own licence or update endpoint if this site serves other Pinegrap installations.') . '</div>
                                                         </div>
                                                     </div>
@@ -230,22 +222,14 @@ $pg_settings_cards[] = '
                                                    <div class="row gy-3">
                                                         <div class="pg-f-lg">
                                                             <label for="allowed_bots" class="form-label"><i class="bi bi-check-circle text-success me-1"></i>' . lang('Allowed Bots') . ' <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-normal">' . lang('never blocked') . '</span></label>
-                                                            <input type="text" value="' . h(waf_list_to_string($allowed_bots)) . '" name="allowed_bots" id="allowed_bots" class="form-control tagin min-height-tagin border-success-subtle" data-placeholder="' . lang('Allow a crawler') . '"/>
-                                                            <script>
-                                                                if(document.body.contains(document.querySelector("input#allowed_bots"))){
-                                                                    tagin(document.querySelector("#allowed_bots"));
-                                                                }
-                                                            </script>
+                                                            ' . pg_fields_script() . '
+                                                            <input type="text" value="' . h(waf_list_to_string($allowed_bots)) . '" name="allowed_bots" id="allowed_bots" class="form-control tagin min-height-tagin border-success-subtle" data-pg-chips data-placeholder="' . lang('Allow a crawler') . '"/>
                                                             <div class="form-text">' . lang('Extra crawlers to permit, on top of the built-in list. You do not need to list Google, Bing, Yandex, Facebook, Twitter or the payment gateways — those are already recognised.') . '</div>
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="waf_blocked_agents" class="form-label"><i class="bi bi-slash-circle text-danger me-1"></i>' . lang('Blocked Bots') . ' <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle fw-normal">' . lang('always blocked') . '</span></label>
-                                                            <input type="text" value="' . h(waf_list_to_string($waf_blocked_agents)) . '" name="waf_blocked_agents" id="waf_blocked_agents" class="form-control tagin min-height-tagin border-danger-subtle" data-placeholder="' . lang('Block a crawler') . '"/>
-                                                            <script>
-                                                                if(document.body.contains(document.querySelector("input#waf_blocked_agents"))){
-                                                                    tagin(document.querySelector("#waf_blocked_agents"));
-                                                                }
-                                                            </script>
+                                                            ' . pg_fields_script() . '
+                                                            <input type="text" value="' . h(waf_list_to_string($waf_blocked_agents)) . '" name="waf_blocked_agents" id="waf_blocked_agents" class="form-control tagin min-height-tagin border-danger-subtle" data-pg-chips data-placeholder="' . lang('Block a crawler') . '"/>
                                                             <div class="form-text">' . lang('Extra crawlers to reject. Checked after the built-in lists, so these can never override a search engine or a payment gateway.') . '</div>
                                                         </div>
                                                         <div class="col-12 ">
@@ -274,33 +258,21 @@ $pg_settings_cards[] = '
                                            <div class="row gy-3">
                                                 <div class="pg-f-lg">
                                                     <label for="allowed_ip_addresses" class="form-label"><i class="bi bi-check-circle text-success me-1"></i>' . lang('Allowed IP Addresses') . ' <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-normal">' . lang('never blocked') . '</span></label>
-                                                    <input type="text" value="' . h($output_allowed_ip_addresses) . '" name="allowed_ip_addresses" id="allowed_ip_addresses" class="form-control tagin min-height-tagin border-success-subtle" data-placeholder="' . lang('Allow an address') . '"/>
+                                                    ' . pg_fields_script() . '
+                                                    <input type="text" value="' . h($output_allowed_ip_addresses) . '" name="allowed_ip_addresses" id="allowed_ip_addresses" class="form-control tagin min-height-tagin border-success-subtle" data-pg-chips data-placeholder="' . lang('Allow an address') . '"/>
                                                     <div class="form-text">' . lang('These addresses skip every firewall rule. Add your own office or VPN address before enabling blocking, so a mistuned rule cannot lock you out of your own site.') . '</div>
-                                                    <script>
-                                                        if(document.body.contains(document.querySelector("input#allowed_ip_addresses"))){
-                                                            tagin(document.querySelector("#allowed_ip_addresses"));
-                                                        }
-                                                    </script>
                                                 </div>
                                                 <div class="pg-f-lg">
                                                     <label for="banned_ip_addresses" class="form-label"><i class="bi bi-slash-circle text-danger me-1"></i>' . lang('Banned IP Addresses') . ' <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle fw-normal">' . lang('always blocked') . '</span></label>
-                                                    <input type="text" value="' . h($output_banned_ip_addresses) . '" name="banned_ip_addresses" id="banned_ip_addresses" class="form-control tagin min-height-tagin border-danger-subtle" data-placeholder="' . lang('Block an address') . '"/>
+                                                    ' . pg_fields_script() . '
+                                                    <input type="text" value="' . h($output_banned_ip_addresses) . '" name="banned_ip_addresses" id="banned_ip_addresses" class="form-control tagin min-height-tagin border-danger-subtle" data-pg-chips data-placeholder="' . lang('Block an address') . '"/>
                                                     <div class="form-text">' . lang('Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32') . ' ' . lang('Enforced whatever mode the firewall is in, including Monitor, and before the database is even opened. Allowed addresses above still win.') . '</div>
-                                                    <script>
-                                                        if(document.body.contains(document.querySelector("input#banned_ip_addresses"))){
-                                                            tagin(document.querySelector("#banned_ip_addresses"));
-                                                        }
-                                                    </script>
                                                 </div>
                                                 <div class="col-12">
                                                     <label for="banned_email_addresses" class="form-label"><i class="bi bi-envelope-slash text-danger me-1"></i>' . lang('Blocked Email Addresses') . '</label>
-                                                    <input type="text" value="' . h($banned_email_addresses) . '" name="banned_email_addresses" id="banned_email_addresses" class="form-control tagin min-height-tagin border-danger-subtle" data-placeholder="' . lang('Block an address') . '"/>
+                                                    ' . pg_fields_script() . '
+                                                    <input type="text" value="' . h($banned_email_addresses) . '" name="banned_email_addresses" id="banned_email_addresses" class="form-control tagin min-height-tagin border-danger-subtle" data-pg-chips data-placeholder="' . lang('Block an address') . '"/>
                                                     <div class="form-text">' . lang('A whole address or a domain. For example: spam@example.com, tempmail.com, @disposable.net. A blocked address cannot register through any form, cannot connect Google, and cannot sign in.') . '</div>
-                                                    <script>
-                                                        if(document.body.contains(document.querySelector("input#banned_email_addresses"))){
-                                                            tagin(document.querySelector("#banned_email_addresses"));
-                                                        }
-                                                    </script>
                                                 </div>
                                                 ' . ($output_auto_bans ? '<div class="col-12 ">
                                                     <label class="form-label">' . lang('Automatic Temporary Bans') . '</label>
@@ -388,12 +360,8 @@ if (!empty($waf_country_ready)) {
                     </div>
                     <div class="col-12">
                         <label for="waf_country_list" class="form-label"><i class="bi bi-globe2 me-1"></i>' . lang('Countries') . '</label>
-                        <input type="text" value="' . h(implode(',', $waf_country_list)) . '" name="waf_country_list" id="waf_country_list" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add a country code') . '"/>
-                        <script>
-                            if(document.body.contains(document.querySelector("input#waf_country_list"))){
-                                tagin(document.querySelector("#waf_country_list"));
-                            }
-                        </script>
+                        ' . pg_fields_script() . '
+                        <input type="text" value="' . h(implode(',', $waf_country_list)) . '" name="waf_country_list" id="waf_country_list" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add a country code') . '"/>
                         <div class="form-text">' . lang('Two-letter country codes (ISO 3166-1), for example TR, DE, US. T1 is the Tor network, which only Cloudflare reports.') . ($waf_country_names ? '<br/>' . h(implode(', ', $waf_country_names)) : '') . '</div>
                     </div>
                     <div class="col-12">

@@ -311,7 +311,7 @@ function pg_chat_store_upload($original_name, $data, $allow_images, $allow_files
 
             if ($finfo) {
                 $mime = (string) @finfo_file($finfo, $stored_path);
-                @finfo_close($finfo);
+                unset($finfo);
 
                 if (!preg_match('#^(audio/|video/webm|video/ogg|video/mp4|application/ogg)#i', $mime)) {
                     @unlink($stored_path);
@@ -325,7 +325,7 @@ function pg_chat_store_upload($original_name, $data, $allow_images, $allow_files
 
         if ($finfo) {
             $mime = (string) @finfo_file($finfo, $stored_path);
-            @finfo_close($finfo);
+            unset($finfo);
 
             // Any hint of script/HTML/executable content: hard reject.
             if (preg_match('#^(text/html|application/x-php|application/x-httpd|application/x-msdownload|application/x-sh|application/x-executable)#i', $mime)) {

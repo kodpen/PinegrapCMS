@@ -126,7 +126,8 @@ the merging session, `coordinator.md` for coordinators.
 9. **Coordinators.** One coordinator per account starts its cloud workers
    and carries the owner's questions; it writes no code and merges nothing.
    A worker writes a question for the owner under `## Questions for the
-   owner` in its PR body and waits; the answer comes as a PR comment.
+   owner` in its PR body and waits; the answer comes as a PR comment. It
+   tells the owner when the merging session seems stopped (`coordinator.md`).
 
 ## Fixed rules
 

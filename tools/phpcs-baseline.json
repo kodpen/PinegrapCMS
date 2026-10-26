@@ -1,73 +1,14 @@
 {
-    "download_assistant.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 2,
-        "PHPCompatibility.ParameterValues.NewHTMLEntitiesFlagsDefault.NotSet": 3
-    },
-    "pinegrap/chat.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.finfo_closeDeprecated": 2
-    },
-    "pinegrap/cloudflare.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 2,
-        "PHPCompatibility.ParameterValues.NewHTMLEntitiesFlagsDefault.NotSet": 23
-    },
-    "pinegrap/import_contacts.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/import_design.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/import_email_campaign_profiles.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/import_key_codes.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/import_products.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/import_submitted_forms.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/import_users.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/includes/api/outbound/http.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/api/resources/files.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.finfo_closeDeprecated": 1
-    },
-    "pinegrap/includes/dashboard/widgets/widget_14.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/erp/edoc/registry.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
     "pinegrap/includes/fn/ai_write.php": {
         "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 2
     },
-    "pinegrap/includes/fn/backup.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/fn/carrier_api.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
     "pinegrap/includes/fn/core.php": {
         "PHPCompatibility.Extensions.RemovedExtensions.mysql_DeprecatedRemoved": 5,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.finfo_closeDeprecated": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_connectDeprecatedRemoved": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_get_server_infoDeprecatedRemoved": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_queryDeprecatedRemoved": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_select_dbDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_set_charsetDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysqli_pingDeprecated": 1
-    },
-    "pinegrap/includes/fn/cron.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/fn/currency_rates.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
+        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_set_charsetDeprecatedRemoved": 1
     },
     "pinegrap/includes/fn/custom_form.php": {
         "PHPCompatibility.ControlStructures.ForbiddenBreakContinueOutsideLoop.FatalError": 1
@@ -79,16 +20,12 @@
         "PHPCompatibility.Constants.RemovedConstants.mcrypt_mode_cbcDeprecatedRemoved": 2,
         "PHPCompatibility.Constants.RemovedConstants.mcrypt_rijndael_256DeprecatedRemoved": 2,
         "PHPCompatibility.Extensions.RemovedExtensions.mcryptDeprecatedRemoved": 3,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 2,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_decryptDeprecatedRemoved": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_get_iv_sizeDeprecatedRemoved": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_list_algorithmsDeprecatedRemoved": 1
     },
     "pinegrap/includes/fn/errors.php": {
         "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 1
-    },
-    "pinegrap/includes/fn/geo.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
     },
     "pinegrap/includes/fn/mail_queue.php": {
         "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 1
@@ -99,24 +36,8 @@
     "pinegrap/includes/fn/output.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
     },
-    "pinegrap/includes/fn/parasut.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 2
-    },
     "pinegrap/includes/fn/product_feeds.php": {
         "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 1
-    },
-    "pinegrap/includes/fn/seo.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/fn/signature.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/fn/system_status.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/fn/update.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 3,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.openssl_x509_freeDeprecated": 1
     },
     "pinegrap/includes/image_engine.php": {
         "PHPCompatibility.FunctionUse.NewFunctions.imageavifFound": 1,
@@ -125,10 +46,6 @@
     },
     "pinegrap/includes/mcp/client.php": {
         "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 1
-    },
-    "pinegrap/includes/panel/software.php": {
-        "PHPCompatibility.Constants.RemovedConstants.curlopt_binarytransferDeprecated": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
     },
     "pinegrap/includes/settings/prep.php": {
         "PHPCompatibility.Constants.NewConstants.php_os_familyFound": 1
@@ -140,17 +57,7 @@
         "PHPCompatibility.ParameterValues.NewIDNVariantDefault.NotSet": 1
     },
     "pinegrap/includes/workspace/ai.php": {
-        "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 3,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/workspace/claude.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/workspace/files.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.finfo_closeDeprecated": 1
-    },
-    "pinegrap/includes/workspace/notes.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.finfo_closeDeprecated": 1
+        "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 3
     },
     "pinegrap/init.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.get_magic_quotes_gpcDeprecatedRemoved": 1,
@@ -158,15 +65,8 @@
         "PHPCompatibility.IniDirectives.RemovedIniDirectives.magic_quotes_sybaseDeprecatedRemoved": 2
     },
     "pinegrap/install/index.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.get_magic_quotes_gpcDeprecatedRemoved": 1,
         "PHPCompatibility.IniDirectives.RemovedIniDirectives.magic_quotes_sybaseDeprecatedRemoved": 2
-    },
-    "pinegrap/mailchimp.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/recurring_payment_job.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
     },
     "pinegrap/router.php": {
         "PHPCompatibility.Extensions.RemovedExtensions.mysql_DeprecatedRemoved": 4,
@@ -174,9 +74,6 @@
         "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_queryDeprecatedRemoved": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_select_dbDeprecatedRemoved": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_set_charsetDeprecatedRemoved": 1
-    },
-    "pinegrap/software_update_check.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
     },
     "pinegrap/submit_order.php": {
         "PHPCompatibility.Extensions.RemovedExtensions.pfpro_Removed": 2,

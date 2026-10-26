@@ -508,7 +508,7 @@ function ws_upload_inspect($original_name, $binary)
         $mime = $finfo ? (string) @finfo_buffer($finfo, $binary) : '';
 
         if ($finfo) {
-            @finfo_close($finfo);
+            unset($finfo);
         }
 
         if (preg_match('#^(text/html|application/xhtml|application/x-php|text/x-php|application/x-httpd|application/x-msdownload|application/x-dosexec|application/x-sh|text/x-shellscript|application/x-executable|image/svg|application/javascript|text/javascript)#i', $mime)) {

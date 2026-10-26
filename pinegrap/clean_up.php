@@ -144,6 +144,10 @@ $file_list = array(
     'assets/chat_backend.src.js',
     'assets/ckeditor_4_20',
     'assets/class_suggestions.js',
+    // The designer's fixed list of Bootstrap classes, replaced by the smart
+    // completion (assets/js/pg_style_suggest.js with the predictor and the
+    // generated vocabulary). Dropped from the package with 2026.11.0.
+    'assets/js/class_suggestions.js',
     'assets/codemirror',
     'assets/codemirror-5.65.9',
     'assets/codemirror_modal.js',
@@ -302,7 +306,7 @@ if (!$_POST) {
         }
         $output_counter_info = '<div class="alert alert-success">' . lang(array('string'=>'Found{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that can be cleaned.','vars'=>array($folder_text,$and_text,$file_text),'suffix'=>array($folder_suffix,$file_suffix) )) . '</div>';
 
-        $output_delete_button = '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1  btn-success "><span class="material-icons me-2">auto_delete</span><span class="btn-text" >' . lang(array('string'=>'Delete all unnecessary files and folders') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1  btn-success "><span class="material-icons me-2">auto_delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete all unnecessary files and folders') ) . '</span></button>';
     }else{
         include_once('liveform.class.php');
         $liveform = new liveform('settings');
