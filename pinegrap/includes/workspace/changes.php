@@ -2961,6 +2961,17 @@ function ws_change_show($type, $name, $value, $limit = 300)
 
             return ($text === '') ? lang('(empty)') : ((mb_strlen($text) > $limit) ? rtrim(mb_substr($text, 0, $limit - 1)) . '…' : $text);
 
+        // A variant set's rows by their SKUs, its rules by how many there are.
+        case 'variants':
+            $text = implode(', ', array_map(function ($row) {
+                return (string) ($row['name'] ?? '');
+            }, array_filter((array) $value, 'is_array')));
+
+            return ($text === '') ? lang('(empty)') : ((mb_strlen($text) > $limit) ? rtrim(mb_substr($text, 0, $limit - 1)) . '…' : $text);
+
+        case 'price_rules':
+            return empty($value) ? lang('(empty)') : lang(array('string' => '{var:1} attributes set the prices', 'vars' => count((array) $value)));
+
         case 'enum':
             return ws_change_enum_label($type, $value);
     }
@@ -3162,13 +3173,17 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
         $cancels = false;
         $note_task = 0;
 
-        // A sales quote's lines are written in its own currency.
+        // A sales quote's lines are written in its own currency; a variant
+        // set's rows are priced from its base and rules.
         $currency = '';
+        $values = array();
 
         foreach ($fields as $item) {
             if (($type === 'erp_quote') && (($item['name'] ?? '') === 'currency')) {
                 $currency = (string) ($item['to'] ?? '');
             }
+
+            $values[(string) ($item['name'] ?? '')] = $item['to'] ?? null;
         }
 
         foreach ($fields as $item) {
@@ -3209,6 +3224,35 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
                         'html'  => '',
                     );
                 }
+
+                continue;
+            }
+
+            // A variant set's rows as a matrix: the attributes, and each
+            // row's price as it will be written; the rules are in the prices.
+            if ($field[0] === 'price_rules') {
+                continue;
+            }
+
+            if ($field[0] === 'variants') {
+                $matrix = ws_change_variant_set_matrix($values, ws_change_variant_set_labels($item['to'] ?? array()));
+                $cells = array();
+
+                foreach ($matrix['rows'] as $variant) {
+                    $cells[] = array('sku' => $variant['sku'], 'options' => $variant['options'], 'price' => ws_money_out($variant['price']), 'manual' => $variant['manual']);
+                }
+
+                $items[] = array(
+                    'label'  => $field[2],
+                    'from'   => '',
+                    'to'     => ws_change_show($type, $name, $item['to'] ?? array()),
+                    'html'   => '',
+                    'matrix' => array(
+                        'head'   => array_merge($matrix['axes'], array(lang('SKU'), lang('Price'))),
+                        'rows'   => $cells,
+                        'manual' => lang('Price typed for this variant'),
+                    ),
+                );
 
                 continue;
             }

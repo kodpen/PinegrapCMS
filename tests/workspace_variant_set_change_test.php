@@ -274,3 +274,19 @@ function test_workspace_variant_set_is_offered_to_the_proposers()
 	pg_assert_contains('variant set', workspace_variant_set_change_test_source('ws_ai_tools', 'ai.php'), 'its propose_change tool names the rows');
 	pg_assert_contains('variant_set', workspace_variant_set_change_test_source('ws_api_changes_param', 'api_proposals.php'), 'the proposal routes name the kind');
 }
+
+// The card: the change's rows drawn as the matrix, priced as the writer
+// prices them, the rules left to the prices; workspace.js draws the table.
+function test_workspace_variant_set_card_draws_the_matrix()
+{
+	$map = workspace_variant_set_change_test_source('ws_changes_map');
+
+	pg_assert_contains('ws_change_variant_set_matrix($values, ws_change_variant_set_labels(', $map, 'the matrix of the proposed values');
+	pg_assert_contains("'price' => ws_money_out(\$variant['price'])", $map, 'prices shown from minor units');
+	pg_assert_contains("if (\$field[0] === 'price_rules') {\n                continue;", $map, 'the rules shown in the prices');
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains('if (field.matrix) {', $script, 'workspace.js draws the matrix');
+	pg_assert_contains('field.matrix.rows.forEach(', $script, 'a row per variant');
+}
