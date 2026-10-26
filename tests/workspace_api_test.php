@@ -1233,9 +1233,10 @@ function test_ws_api_carry_on_where()
 	pg_assert_same('', ws_api_carry_on_where(false, false), 'IIS, a message written');
 }
 
-// A file is posted and fetched with the caller's own token; neither is an
-// MCP tool, since a model has no use for a file's bytes, and the download is
-// described as the file itself rather than a record.
+// A file is posted and fetched with the caller's own token. Posting is an
+// MCP tool for a small file sent as content_base64; the download is none,
+// since a tool result cannot carry the bytes, and it is described as the
+// file itself rather than a record.
 function test_ws_api_files_routes()
 {
 	$routes = array();
@@ -1249,7 +1250,7 @@ function test_ws_api_files_routes()
 	pg_assert_same('/workspace/channels/{id}/files', $routes['workspace.files.create']['path']);
 	pg_assert_same('workspace:write', $routes['workspace.files.create']['scope']);
 	pg_assert_same('WorkspaceMessage', $routes['workspace.files.create']['returns']);
-	pg_assert_false(pg_mcp_route_is_offered($routes['workspace.files.create']), 'posting a file is no MCP tool');
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.files.create']), 'posting a small file is an MCP tool');
 
 	pg_assert_true(isset($routes['workspace.files.get']), 'workspace.files.get is declared');
 	pg_assert_same('GET', $routes['workspace.files.get']['method']);
@@ -2007,7 +2008,7 @@ function test_ws_api_message_file_reaction_ack_decision_and_note_rehearse()
 		}
 	}
 
-	pg_assert_false(pg_mcp_route_is_offered($routes['workspace.files.create']), 'the upload stays no MCP tool');
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.files.create']), 'the upload is a tool, for a small file');
 	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.messages.create']), 'writing is still a tool');
 }
 
@@ -2136,6 +2137,46 @@ function test_ws_message_send_file_checks_before_storing()
 
 	pg_assert_contains("ws_action_channel(\$viewer, \$request, 'post')", $picked, 'the picker needs a channel the person may post in');
 	pg_assert_contains('ws_library_send(', $picked, 'the picker goes through it');
+}
+
+// Through MCP a file travels as content_base64 inside one JSON-RPC message:
+// the tool takes it and name, never the form part, and holds the file to
+// ws_mcp_upload_max_bytes(), measured on the text before it is decoded.
+function test_ws_api_files_create_small_file_tool()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $candidate) {
+		if ($candidate['id'] === 'workspace.files.create') {
+			$route = $candidate;
+		}
+	}
+
+	$tool = pg_mcp_tool_from_route($route);
+	$properties = (array) $tool['inputSchema']['properties'];
+
+	pg_assert_same('workspace_files_create', $tool['name']);
+	pg_assert_true(isset($properties['content_base64'], $properties['name'], $properties['dry_run']), 'the tool takes content_base64, name and dry_run');
+	pg_assert_false(isset($properties['file']), 'no form part through MCP');
+	pg_assert_false($tool['annotations']['destructiveHint'], 'posting a file only adds');
+	pg_assert_contains('MCP', $tool['description']);
+
+	pg_assert_true(ws_mcp_upload_max_bytes() > 0, 'a small file is taken');
+	pg_assert_true(ws_mcp_upload_max_bytes() <= 1048576, 'at most 1 MB through MCP');
+	pg_assert_true(ws_mcp_upload_max_bytes() <= ws_upload_max_bytes(), 'never above the channel limit');
+
+	foreach (array(0, 1, 2, 3, 4, 1000, 1048577) as $size) {
+		$encoded = base64_encode(str_repeat('a', $size));
+
+		pg_assert_same($size, ws_upload_base64_bytes($encoded), $size . ' bytes');
+		pg_assert_same($size, ws_upload_base64_bytes('data:image/png;base64,' . $encoded), $size . ' bytes after a data: prefix');
+		pg_assert_same($size, ws_upload_base64_bytes(chunk_split($encoded, 76, "\r\n")), $size . ' bytes in lines');
+	}
+
+	$input = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_upload_input'));
+
+	pg_assert_contains('ws_mcp_upload_max_bytes(', $input);
+	pg_assert_contains('ws_upload_base64_bytes(', $input);
 }
 
 // A file may answer a message (a voice reply): files.create declares an
