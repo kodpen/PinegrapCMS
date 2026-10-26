@@ -25,7 +25,6 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 4a, 5 done; 3b, 4b, 4c ope
 6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
 
 ## Open questions?
-- 4a: fill the Pay With Iyzico gaps listed in `commerce/payment-method-lists.md`? Owner (asked in #1743).
 - Sipay/Param after PayTR by demand; prefer a PSP that fronts the banks over per-bank vPOS.
 - Since 2b no request reaches submit_order.php's inline Iyzipay and Pay With Iyzico code: remove it or keep it? Owner.
 - 3b: `payment_intent.succeeded` for an order still incomplete: alert only, or complete it from the webhook? Owner.

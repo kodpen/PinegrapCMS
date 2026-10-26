@@ -1,6 +1,6 @@
 ---
 name: payment-method-lists
-description: One list of checkout payment methods (pg_payment_checkout_methods(), PR #1743): screens that read it, what a redirect driver still needs by hand, the Pay With Iyzico gaps
+description: One list of checkout payment methods (pg_payment_checkout_methods(), PR #1743): screens that read it, what a redirect driver still needs by hand, the Pay With Iyzico gaps kept
 ---
 
 ## Where is the list?
@@ -22,8 +22,8 @@ description: One list of checkout payment methods (pg_payment_checkout_methods()
 - frontend.src.js `init_payment_method()` swaps the button label only for PayPal and Pay With Iyzico; a driver's method keeps the standard label.
 - A site's own custom layout draws a driver's radio only if it loops `$payment_driver_methods`.
 
-## Which Pay With Iyzico gaps were kept (asked in #1743)?
+## Which Pay With Iyzico gaps stay (owner decision, `workflow/decisions-made-product.md`)?
 - Missing from view_orders.php's filter and view_order_report.php's options; the classic express order page never offers it.
-- get_order_preview.php's block condition and its "no payment method" error leave it out: a store whose only method it is shows no payment block on order preview (unless gift cards are on).
+- get_order_preview.php's block condition and its "no payment method" error leave it out. Kept: it would not reach customer sites; old sites get it by hand. The shared list is for forward compatibility.
 
 Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-driver-iyzico.md, docs/memory/commerce/order-payment-method-normalization.md, docs/memory/plans/payment-driver-layer.md

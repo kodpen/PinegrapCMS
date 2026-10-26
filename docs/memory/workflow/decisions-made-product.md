@@ -5,6 +5,7 @@ description: Decisions list, product part: express order and order preview total
 
 ## Which checkout and storefront behaviour stays?
 - `get_express_order.php` and `get_order_preview.php`: their calculations are not reworked or tidied. Live sites use that feature; a change breaks their totals. Exception (owner decision, 2026-10-24): a figure the checkout charges follows `submit_order.php`'s rule, so the page shows what is charged: the order VAT per rate (#1168), the order charges' VAT (#1211), the card surcharge (#1388).
+- Pay With Iyzico stays missing from the old screens (owner decision, 2026-10-26, PR #1743): the order list filter, the order report options, the classic express order page (`get_express_order.php`) and the classic order preview's block condition and "no payment method" error. Adding it there would not reach customer sites; old sites get it by hand if needed. The shared method list (`pg_payment_checkout_methods()`, `commerce/payment-method-lists.md`) is for forward compatibility only.
 - The legacy custom style layer (`get_catalog.php`, `get_shopping_cart.php`, the custom style templates) is production: not touched, and the yardstick for correct system widget behaviour. The system widget layer, in turn, keeps no dead code for backward compatibility (`designer/frontend-conventions-layers.md`).
 - A page blocked by `robots.txt` never has its `noindex` tag read by the crawler: a known trade-off of the noindex switch, which writes both (`visitors/page-noindex-switch.md`), not a bug.
 
