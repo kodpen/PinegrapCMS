@@ -20,8 +20,16 @@
  * still sticks); turned on while the page is open, every node is put back.
  * The node's own opacity, transform and transition are kept and restored.
  *
- * window.pgFxBind(root) binds the nodes under root that are not bound yet;
- * window.pgFx holds the pure helpers the tests run. Plain ES5 and no jQuery:
+ * window.pgFxBind(root) binds the nodes under root that are not bound yet
+ * and forgets the ones no longer in the document; window.pgFx holds the
+ * pure helpers the tests run and replay(el), which plays a node's
+ * interaction once more whatever the motion setting.
+ *
+ * The editor's canvas loads the same file with window.pgFxEditing set: it
+ * redraws its body on every change, and only the nodes there when the file
+ * starts play their entrance; a node drawn again later shows in place
+ * (the Interactions section's Play button replays it). A paused canvas
+ * answers prefers-reduced-motion with "reduce", so nothing moves there. Plain ES5 and no jQuery:
  * it has to work whatever the design loads.
  *
  * @author      Erdal Güral (Kodpen)
@@ -116,6 +124,7 @@
     var floating = [];
     var seen = null;
     var queued = false;
+    var binds = 0;
 
     function reduced() {
         return !!(reduce && reduce.matches);
@@ -216,9 +225,12 @@
         (window.requestAnimationFrame || window.setTimeout)(float);
     }
 
-    function start(rec) {
+    function start(rec, later) {
         var el = rec.el, o = rec.o;
         if (o.effect === 'sticky') {
+            // The page's head style makes it sticky; a page without it (the
+            // editor's canvas) gets it here.
+            if (window.getComputedStyle && window.getComputedStyle(el).position === 'static') el.style.position = 'sticky';
             if (o.offset) el.style.top = o.offset + 'px';
             return;
         }
@@ -229,6 +241,10 @@
         if (o.effect === 'parallax') {
             floating.push(rec);
             floatSoon();
+            return;
+        }
+        if (o.entrance && later) {
+            el.classList.add('pg-fx-armed');
             return;
         }
         if (o.entrance) {
@@ -255,11 +271,20 @@
     }
 
     // Binds the nodes under root (a document or an element) not bound yet.
+    // Nodes taken out of the document (the editor's canvas redraws its
+    // body) are forgotten first, so nothing keeps them.
     function bind(root) {
         root = root || document;
+        var later = !!window.pgFxEditing && binds++ > 0;
         if (!seen && window.IntersectionObserver) {
             seen = new window.IntersectionObserver(onSeen, { threshold: 0 });
         }
+        bound = bound.filter(function (rec) {
+            if (document.documentElement.contains(rec.el)) return true;
+            if (seen) seen.unobserve(rec.el);
+            return false;
+        });
+        floating = floating.filter(function (rec) { return bound.indexOf(rec) !== -1; });
         var list = root.querySelectorAll ? root.querySelectorAll('[data-pg-fx]') : [];
         for (var i = 0; i < list.length; i++) {
             var el = list[i];
@@ -269,7 +294,7 @@
             var rec = { el: el, o: o, targets: o.entrance ? targets(el, o) : [el] };
             el.pgFx = rec;
             bound.push(rec);
-            start(rec);
+            start(rec, later);
         }
     }
 
@@ -284,6 +309,38 @@
         });
     }
 
+    // Plays a node's interaction once: an entrance from its start, a hover
+    // or click effect there and back. The transitions are written as
+    // important, so a stylesheet that stops motion (the editor's paused
+    // canvas) does not cut them short; the node's own transition comes
+    // back when it is over. false when the node has no moving effect.
+    function replay(el) {
+        if (el && !el.pgFx) bind(el.parentNode || document);
+        var rec = el && el.pgFx;
+        if (!rec || !rec.o.trigger) return false;
+        var o = rec.o, ts = o.entrance ? rec.targets : [el];
+        var still = { opacity: '', transform: '' };
+        var go = function (s, wait) {
+            ts.forEach(function (t, i) {
+                put(t, s);
+                t.style.setProperty('transition', transition(o, wait + i * (o.stagger || 0)), 'important');
+            });
+        };
+        ts.forEach(function (t) { put(t, o.entrance ? shift(o) : still); });
+        void el.offsetWidth;
+        go(o.entrance ? still : shift(o), o.delay);
+        var total = o.delay + (ts.length - 1) * (o.stagger || 0) + o.duration;
+        clearTimeout(rec.replay);
+        rec.replay = setTimeout(function () {
+            if (!o.entrance) go(still, 0);
+            rec.replay = setTimeout(function () {
+                ts.forEach(function (t) { t.style.removeProperty('transition'); restore(t); });
+            }, o.entrance ? 50 : o.duration + 50);
+        }, total + (o.entrance ? 0 : 300));
+        return true;
+    }
+
+    window.pgFx.replay = replay;
     window.pgFxBind = bind;
     window.addEventListener('scroll', floatSoon, { passive: true });
     window.addEventListener('resize', floatSoon);

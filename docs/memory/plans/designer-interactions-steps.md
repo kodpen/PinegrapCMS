@@ -15,7 +15,8 @@ description: Plan (designer session): interaction builder for designer nodes cut
 - Each step updates `designer/designer-interactions.md`.
 
 ## What remains?
-- I1 done (#1922), I2 done (#1961), I3 in progress; then I4; each waits for the previous merge.
+- I1 done (#1922), I2 done (#1961), I3 done (#1977); I4 is open: claim it with a draft PR once #1977 is merged.
 
 ## Where to start?
+- I4: palette components (`type: 'component'`) print their own markup (`_render_tree_node()` component branch, `_sdEmitNode()` component case, `render()`/`toHTML()` per component); add `pg_fx_attrs()` / `_sdFxAttrs()` to the element that takes the component's id, then let `_sdFxTakes()` accept them. Widget and shared component nodes already render through `_render_tree_node()`, so check them on a page before adding code. Read `designer/designer-interactions.md` and `designer-interactions-panel.md` first.
 - `includes/fn/designer_fx.php`, `assets/js/pg_fx.src.js`, `_sdFxAttrs()` beside `_sdNodeExtraAttrs()` in `assets/js/style_designer.js`, `tests/designer_fx_test.php`.
