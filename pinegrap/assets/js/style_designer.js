@@ -28357,6 +28357,7 @@ const StyleDesigner = (function () {
         if (_sdCodeApplyBoundValue(node, key || name, now)) return;
         if (key) { p[key] = now || ''; return; }
         if (_sdCodeSetTitleAttr(node, name, now)) return;
+        if (_sdCodeSetFxAttr(node, name, now)) return;
         if (!Array.isArray(p._attrs)) p._attrs = [];
         var idx = -1;
         for (var i = 0; i < p._attrs.length; i++) {
@@ -28450,6 +28451,33 @@ const StyleDesigner = (function () {
         if (now === 'tooltip') return true;
         p.tooltipEnabled = false;
         return now === undefined;
+    }
+
+    // A data-pg-fx attribute edited in the code view goes back to the
+    // interaction it was printed from (_sdFxAttrs()): the node's attributes
+    // as printed, with this one changed, read back into props._fx. A
+    // data-pg-fx naming no known effect ends the interaction; false when the
+    // attribute is not the interaction's (another name, or a value typed on
+    // a node that has none and names no effect), which the caller then
+    // writes to the Attributes panel's list.
+    function _sdCodeSetFxAttr(node, name, now) {
+        if (name !== 'data-pg-fx' && name.indexOf('data-pg-fx-') !== 0) return false;
+        var p = node.props;
+        var had = _sdFxNormalize(p._fx);
+        if (!had && name !== 'data-pg-fx') return false;
+        var attrs = {};
+        _sdFxAttrs(p).replace(/\s(data-pg-fx[a-z-]*)(?:="([^"]*)")?/g, function (all, n, v) { attrs[n] = v === undefined ? '' : v; return all; });
+        if (now === undefined) delete attrs[name]; else attrs[name] = now;
+        var fx = { effect: attrs['data-pg-fx'] };
+        ['trigger', 'duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed'].forEach(function (f) {
+            if (attrs['data-pg-fx-' + f] !== undefined) fx[f] = attrs['data-pg-fx-' + f];
+        });
+        fx.repeat = attrs['data-pg-fx-repeat'] !== undefined;
+        fx = _sdFxNormalize(fx);
+        if (fx) { p._fx = fx; return true; }
+        if (!had) return false;
+        delete p._fx;
+        return true;
     }
 
     // The body tag's id and style live where the Attributes panel keeps the
@@ -31741,6 +31769,10 @@ const StyleDesigner = (function () {
         // Search and SERP: the part of the page a site search result points at.
         optHtml += propsSearchSection(selectedNode);
 
+        // Interactions: the node's entrance, hover, click, sticky or
+        // parallax effect (props._fx).
+        optHtml += propsInteractions(selectedNode);
+
         // Data binding section — shown ONLY when selectedNode is inside a system widget.
         // Renders nothing for nodes outside system widgets (zero overhead in the common case).
         optHtml = propsDataBinding(selectedNode) + optHtml;
@@ -31790,6 +31822,7 @@ const StyleDesigner = (function () {
         var _cmtOpenBtn = document.getElementById('sd-cmt-open-settings');
         if (_cmtOpenBtn) _cmtOpenBtn.addEventListener('click', function () { _sdOpenWidgetSection(this.dataset.swId, 'sd-cmt-settings'); });
         _sdIlBind(selectedNode);
+        _sdFxBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
         // Re-apply search filter if user had typed something
@@ -31883,6 +31916,107 @@ const StyleDesigner = (function () {
                 '</div></div>';
         }
         return sect('bi-search', _sdT('Search and SERP'), h);
+    }
+
+    // ── Interactions ──────────────────────────────────────────────────────
+    // One effect per node, kept in props._fx (_sdFxNormalize()) and written
+    // on the page as data-pg-fx-* attributes (_sdFxAttrs(), pg_fx_attrs());
+    // assets/js/pg_fx.src.js plays it on the published page and in the
+    // Preview. Offered only where the page writes it: the content types
+    // whose markup carries the node's attributes, semantic and grid nodes.
+    var _SD_FX_CONTENT = ['heading', 'paragraph', 'span', 'text', 'link', 'icon', 'image', 'divider', 'spacer', 'svg'];
+    function _sdFxTakes(n) {
+        if (!n || !n.props) return false;
+        if (n.type === 'semantic' || n.type === 'container' || n.type === 'row' || n.type === 'col') return true;
+        return n.type === 'content' && _SD_FX_CONTENT.indexOf(n.props.contentType) !== -1;
+    }
+
+    // The node's interaction after one field of the panel changed: the
+    // stored one with `field` set to `value`, normalized; null when the
+    // effect is cleared. Fields that no longer apply drop out; switching
+    // the effect keeps the timing.
+    function _sdFxSet(fx, field, value) {
+        if (field === 'effect' && !value) return null;
+        var cur = _sdFxNormalize(fx) || {}, next = {};
+        for (var k in cur) if (Object.prototype.hasOwnProperty.call(cur, k)) next[k] = cur[k];
+        next[field] = value;
+        return _sdFxNormalize(next);
+    }
+
+    function propsInteractions(n) {
+        if (!_sdFxTakes(n)) return '';
+        var fx = _sdFxNormalize(n.props._fx) || { effect: '' };
+        var spec = _sdFxSpec();
+        var select = function (field, opts) {
+            return '<select class="form-select form-select-sm" data-fx="' + field + '">' + opts.map(function (o) {
+                return '<option value="' + esc(o[0]) + '"' + (o[0] === fx[field] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+            }).join('') + '</select>';
+        };
+        var number = function (field, unit, placeholder) {
+            var r = spec.numbers[field];
+            var v = (field === 'distance' && !fx.distance) ? '' : fx[field];
+            return '<div class="input-group input-group-sm">' +
+                '<input type="number" class="form-control form-control-sm" data-fx="' + field + '" min="' + r[0] + '" max="' + r[1] + '" step="1" value="' + esc(String(v)) + '"' +
+                (placeholder ? ' placeholder="' + esc(String(placeholder)) + '"' : '') + '>' +
+                '<span class="input-group-text">' + unit + '</span></div>';
+        };
+        var h = row(_sdT('Effect'), select('effect', [
+            ['', _sdT('None')], ['fade', _sdT('Fade in')],
+            ['slide-up', _sdT('Slide up')], ['slide-down', _sdT('Slide down')],
+            ['slide-left', _sdT('Slide left')], ['slide-right', _sdT('Slide right')],
+            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')]
+        ]));
+        if (fx.trigger) {
+            var entrance = fx.trigger === 'load' || fx.trigger === 'view';
+            h += row(_sdT('Trigger'), select('trigger', [
+                ['view', _sdT('Scroll into view')], ['load', _sdT('Page load')],
+                ['hover', _sdT('Hover')], ['click', _sdT('Click')]
+            ]));
+            h += row(_sdT('Duration'), number('duration', 'ms'));
+            h += row(_sdT('Delay'), number('delay', 'ms'));
+            h += row(_sdT('Easing'), select('easing', [
+                ['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
+                ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]
+            ]));
+            if (/^slide-/.test(fx.effect)) h += row(_sdT('Distance'), number('distance', 'px', entrance ? 24 : 6));
+            if (entrance) h += row(_sdT('Stagger children'), number('stagger', 'ms'));
+            if (fx.trigger === 'view') h += row(_sdT('Every time'), swAttr('data-fx="repeat"', !!fx.repeat));
+        }
+        if (fx.effect === 'sticky') h += row(_sdT('Top offset'), number('offset', 'px'));
+        if (fx.effect === 'parallax') h += row(_sdT('Speed'), number('speed', '%'));
+        if (fx.effect) {
+            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                esc(_sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
+                '</div></div>';
+        }
+        return sect('bi-stars', _sdT('Interactions'), h);
+    }
+
+    // The Interactions section's fields write props._fx (_sdFxSet()). A
+    // choice is one undo step and redraws the panel, whose rows follow the
+    // effect and trigger; a typed number is one undo step per focus and
+    // redraws the panel once it is left, showing the value kept.
+    function _sdFxBind(n) {
+        var panel = document.getElementById('sd-properties');
+        if (!panel || !_sdFxTakes(n)) return;
+        panel.querySelectorAll('[data-fx]').forEach(function (el) {
+            var field = el.getAttribute('data-fx');
+            var typed = el.type === 'number';
+            var before = typed ? _sdUndoBeforeFirstInput(el) : null;
+            el.addEventListener(typed ? 'input' : 'change', function () {
+                if (typed) before(); else saveState();
+                var fx = _sdFxSet(n.props._fx, field, el.type === 'checkbox' ? el.checked : el.value);
+                if (fx) n.props._fx = fx; else delete n.props._fx;
+                if (!typed) { render(); return; }
+                renderCanvas();
+                renderTree();
+                renderStatusBar();
+                renderAttrsPanel();
+                renderHtmlTree();
+                _sdLivePreviewSchedule();
+            });
+            if (typed) el.addEventListener('change', function () { render(); });
+        });
     }
 
     // A design built without a framework (Custom) has nothing that styles
