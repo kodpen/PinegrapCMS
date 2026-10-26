@@ -66,7 +66,7 @@ function _widget_lists_editor_run_js($script, $stubs = '')
 	pg_assert_true(strpos($js, "\n    var SW_LIST_MAX_DEPTH = 4;\n") !== false, 'the depth is four, as the site draws');
 	pg_assert_true(strpos($cut, 'SW_LIST_SOURCES') !== false && strpos($cut, 'SW_LIST_ORDERS') !== false, 'the list tables are found');
 	foreach (array('_sdT', '_sdListIsSourced', '_sdListSpec', '_sdKindLists', '_sdListsAbove', '_sdListRowOptions', '_sdListRowLabel',
-		'_sdListName', '_sdListStarter', '_sdListWidgetKind', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
+		'_sdListName', '_sdListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdListWidgetKind', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
 		'_sdListWrite', '_sdListFieldOf', '_sdListFieldFits', '_sdListBand', 'isDescendantOf', '_subtreeContainsLoopArea', '_sdFirstLoopArea') as $name) {
 		$fn = _widget_lists_editor_js_function($js, $name);
 		pg_assert_true($fn !== '', $name . ' is found');
@@ -520,4 +520,93 @@ JS;
 	pg_assert_same(array(true, 'Values of a field: the field gone gives this list no rows'), $a['goneField']);
 	pg_assert_same(array(false, 'Attachments — one row shown (repeated for every row at runtime)'), $a['deep'], 'the fourth level draws');
 	pg_assert_same(array(false, 'Attachments — one row shown (repeated for every row at runtime)'), $a['files']);
+}
+
+// A calendar view (8): an event loop, a month grid of weeks > days >
+// events beside it, and an events list outside any day.
+function _widget_lists_editor_calendar_js()
+{
+	return _widget_lists_editor_trees_js() . <<<'JS'
+var chip8  = N('semantic', { tag: 'li' });
+var ev8    = N('loop_area', { source: 'calendar.events' }, [chip8]);
+var cell8  = N('semantic', { tag: 'td' }, [ev8]);
+var days8  = N('loop_area', { source: 'calendar.days' }, [cell8]);
+var weeks8 = N('loop_area', { source: 'calendar.weeks' }, [days8]);
+var stray8 = N('loop_area', { source: 'calendar.events' }, []);
+var box8   = N('semantic', { tag: 'div' }, [weeks8, stray8]);
+var row8   = N('semantic', { tag: 'article' });
+var inLoop8 = N('loop_area', { source: 'calendar.days' }, []);
+var main8  = N('loop_area', {}, [row8, inLoop8]);
+var root8  = N('root', {}, [box8, main8]);
+_sharedCache[8] = { tree: root8, system_region_config: JSON.stringify({ regionType: 'calendar_view' }) };
+JS;
+}
+
+// The calendar grid lists land beside the event loop, never in it nor in
+// another kind; a month grid counts three lists deep; an events list draws
+// only inside a list of days; the month grid starter draws on the site.
+function test_widget_lists_editor_calendar()
+{
+	$stubs = _widget_lists_editor_calendar_js() . <<<'JS'
+function createNode(type, props, children) { return N(type, props, children); }
+function _sdUsesBootstrap() { return true; }
+JS;
+	$script = <<<'JS'
+var band = function (n) { var b = _sdListBand(n); return [b.off, b.text]; };
+var grid = _sdCalendarListStarter('calendar.weeks', true);
+var sources = [];
+(function walk(n) { if (n.type === 'loop_area') sources.push(n.props.source); (n.children || []).forEach(walk); })(grid);
+console.log(JSON.stringify({
+    beside:   _sdListPlaceOk(palette('calendar.weeks'), box8),
+    onRoot:   _sdListPlaceOk(palette('calendar.weeks'), root8),
+    inLoop:   _sdListPlaceOk(palette('calendar.days'), row8),
+    formView: _sdListPlaceOk(palette('calendar.weeks'), box6),
+    gridInDay: _sdListPlaceOk(palette('calendar.weeks'), cell8),
+    eventsInDay: _sdListPlaceOk(palette('calendar.events'), cell8),
+    depth: [_sdListStarterDepth('calendar.weeks'), _sdListNesting(grid), _sdListStarterDepth('calendar.days'),
+        _sdListNesting(_sdCalendarListStarter('calendar.days', true)), _sdListStarterDepth('form_record.values')],
+    sources: sources,
+    bands: [band(weeks8), band(days8), band(ev8), band(stray8), band(inLoop8)],
+    starter: _sdListStarter('calendar.weeks'),
+    tree: N('root', {}, [grid])
+}));
+JS;
+	$a = _widget_lists_editor_run_js($script, $stubs);
+	if ($a === null) {
+		return;
+	}
+	pg_assert_true($a['beside'], 'beside the event loop');
+	pg_assert_true($a['onRoot'], 'on the widget root');
+	pg_assert_true(!$a['inLoop'], 'never in the event loop');
+	pg_assert_true(!$a['formView'], 'never in a form view');
+	pg_assert_true(!$a['gridInDay'], 'a month grid two lists deep goes past four');
+	pg_assert_true($a['eventsInDay'], 'a day\'s events in a day');
+	pg_assert_same(array(3, 3, 2, 2, 1), $a['depth']);
+	pg_assert_same(array('calendar.weekdays', 'calendar.weeks', 'calendar.days', 'calendar.events'), $a['sources']);
+	pg_assert_same(array(false, 'Weeks of the calendar — one row shown (repeated for every row at runtime)'), $a['bands'][0]);
+	pg_assert_same(false, $a['bands'][1][0]);
+	pg_assert_same(false, $a['bands'][2][0]);
+	pg_assert_same(array(true, 'Events of the day: outside a list of days, nothing is drawn'), $a['bands'][3]);
+	pg_assert_same(array(true, 'Days of the calendar: inside the event loop, nothing is drawn'), $a['bands'][4]);
+	pg_assert_same('div', $a['starter']['props']['tag'], 'the palette lands the whole grid');
+
+	// The starter as the site draws it: a cell per day, a head per weekday,
+	// the number dimmed outside the month, the badge on today.
+	$scope = pg_sw_finish_open(array('sid' => 48, 'kind' => 'calendar_view', 'email' => false));
+	try {
+		$html = trim(_render_tree_node($a['tree'], 0, 0));
+		pg_sw_list_publish('calendar', pg_sw_list_calendar_rows(mktime(0, 0, 0, 9, 28, 2026), mktime(0, 0, 0, 11, 1, 2026), 10,
+			array('2026-10-05' => array(array('__event_title' => 'Concert', '__event_url' => '/e?id=3', '__event_time' => '20:00'))), 'monday', 'd.m.Y', '2026-10-26'));
+		$html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, array('__week_key' => '0')));
+	} finally {
+		pg_sw_finish_close();
+	}
+	$out = pg_sw_finish_widget_html($html, $scope);
+	pg_assert_same(7, substr_count($out, '<th '));
+	pg_assert_same(5, substr_count($out, '<tr') - 1, 'five weeks and the head row');
+	pg_assert_same(35, substr_count($out, '<td '));
+	pg_assert_same(4, substr_count($out, 'class="text-body-tertiary"'), 'three September days and 1 November');
+	pg_assert_same(1, substr_count($out, 'badge text-bg-primary'), 'one today');
+	pg_assert_true(strpos($out, '>Concert</a>') !== false && strpos($out, '>20:00</span>') !== false, 'the event');
+	pg_assert_same(false, strpos($out, '^^'));
 }

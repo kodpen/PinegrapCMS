@@ -85,19 +85,21 @@ function pg_sw_list_sources()
                 array('__file_ext', lang('File type')),
             ),
         ),
-    );
+    ) + pg_sw_list_calendar_sources();
 }
 
 // The sources a widget kind offers (source => descriptor): the form record
-// sources in the two form views, which publish their records' data; none
+// sources in the two form views, the calendar grid sources in the calendar
+// view (widgets_lists_calendar.php), each kind publishing their data; none
 // in any other kind.
 function pg_sw_kind_lists($kind)
 {
+    $families = array('form_list_view' => 'form_record', 'form_item_view' => 'form_record', 'calendar_view' => 'calendar');
     $kind = pg_sw_finish_kind($kind);
-    if ($kind !== 'form_list_view' && $kind !== 'form_item_view') return array();
+    if (!isset($families[$kind])) return array();
     $out = array();
     foreach (pg_sw_list_sources() as $source => $descriptor) {
-        if ($descriptor['family'] === 'form_record') $out[$source] = $descriptor;
+        if ($descriptor['family'] === $families[$kind]) $out[$source] = $descriptor;
     }
     return $out;
 }
@@ -272,6 +274,8 @@ function pg_sw_list_span($node, $indent = 0, $depth = 0)
 // 'form_record': $data_rows as the form views read form_data (data_id and
 // field_office_use included); $options: 'translate' (the widget includes
 // its records in the translation).
+// 'calendar': $data_rows = source => key => rows, as
+// pg_sw_list_calendar_rows() builds them.
 function pg_sw_list_publish($family, $data_rows, $options = array())
 {
     $scope = pg_sw_finish_scope();
@@ -289,7 +293,9 @@ function pg_sw_list_publish($family, $data_rows, $options = array())
     if (!$wanted) return;
 
     $published = &_pg_sw_list_published();
-    if ($family === 'form_record') {
+    if ($family === 'calendar') {
+        $published[$sid][$family] = array('rows' => is_array($data_rows) ? $data_rows : array());
+    } elseif ($family === 'form_record') {
         $published[$sid][$family] = array(
             'records' => pg_sw_list_form_records($data_rows),
             'options' => array('translate' => is_array($options) && !empty($options['translate'])),
@@ -459,7 +465,8 @@ function pg_sw_list_file_rows($records, $arg)
 // asks for: $wanted = key => arg => true; returns key => arg => rows. One
 // call per source per level, so a provider that reads the database later
 // asks once for all of them. The form record providers read what the
-// renderer published.
+// renderer published; a calendar list its rows as published, whatever the
+// arg.
 function pg_sw_list_source_rows($source, $wanted, $published)
 {
     $sources = pg_sw_list_sources();
@@ -469,7 +476,14 @@ function pg_sw_list_source_rows($source, $wanted, $published)
     if ($data === null) return array();
 
     $out = array();
-    if ($family === 'form_record') {
+    if ($family === 'calendar') {
+        $rows = (isset($data['rows'][$source]) && is_array($data['rows'][$source])) ? $data['rows'][$source] : array();
+        foreach ($wanted as $key => $args) {
+            foreach (array_keys((array)$args) as $arg) {
+                $out[$key][$arg] = (isset($rows[(int)$key]) && is_array($rows[(int)$key])) ? $rows[(int)$key] : array();
+            }
+        }
+    } elseif ($family === 'form_record') {
         $records = (isset($data['records']) && is_array($data['records'])) ? $data['records'] : array();
         $options = (isset($data['options']) && is_array($data['options'])) ? $data['options'] : array();
         foreach ($wanted as $key => $args) {

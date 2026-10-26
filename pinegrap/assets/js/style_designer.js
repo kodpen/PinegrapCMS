@@ -22237,7 +22237,11 @@ const StyleDesigner = (function () {
             { title: _sdT('Lists in a record'), icon: 'bi-list-ul', items: [
                 { label: _sdT('Values of a field'), type: 'loop_area', icon: 'bi-list-check', extra: { listSource: 'form_record.values' } },
                 { label: _sdT('Parts of a field, split at commas'), type: 'loop_area', icon: 'bi-list-ul', extra: { listSource: 'form_record.split' } },
-                { label: _sdT('Attachments'), type: 'loop_area', icon: 'bi-paperclip', extra: { listSource: 'form_record.files' } }
+                { label: _sdT('Attachments'), type: 'loop_area', icon: 'bi-paperclip', extra: { listSource: 'form_record.files' } },
+                { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
+                { label: _sdT('Days of the week'), type: 'loop_area', icon: 'bi-calendar-week', extra: { listSource: 'calendar.weekdays' } },
+                { label: _sdT('Days of the calendar'), type: 'loop_area', icon: 'bi-calendar-day', extra: { listSource: 'calendar.days' } },
+                { label: _sdT('Events of the day'), type: 'loop_area', icon: 'bi-calendar-event', extra: { listSource: 'calendar.events' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
@@ -31619,10 +31623,13 @@ const StyleDesigner = (function () {
 
         var src = SW_LIST_SOURCES[p.source];
         if (src) {
-            var formId = _getSystemWidgetCustomFormPageId(n);
+            // A calendar list takes no field: it lists what the calendar shows.
+            var formId = src.arg ? _getSystemWidgetCustomFormPageId(n) : 0;
             var fields = formId ? _formFieldsCache[formId] : null;
-            var fieldCtl;
-            if (!formId) {
+            var fieldCtl = '';
+            if (!src.arg) {
+                // no field
+            } else if (!formId) {
                 fieldCtl = note(_sdT('Pick the widget\'s form first (the System Widget section).'), true);
             } else if (!fields) {
                 _fetchFormFields(formId, function () { renderProperties(); });
@@ -31643,7 +31650,7 @@ const StyleDesigner = (function () {
                 if (!known) fOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
                 fieldCtl = '<select class="form-select form-select-sm sd-list-arg" aria-label="' + esc(_sdT('Field')) + '">' + fOpts + '</select>';
             }
-            html += row(esc(_sdT('Field')), fieldCtl);
+            if (src.arg) html += row(esc(_sdT('Field')), fieldCtl);
             var limit = parseInt(p.limit, 10);
             html += row(esc(_sdT('Rows to show')),
                 '<input type="number" min="0" max="100" step="1" class="form-control form-control-sm sd-list-limit" value="' + ((limit > 0 && limit <= 100) ? limit : 0) + '" aria-label="' + esc(_sdT('Rows to show')) + '">' +
@@ -31660,7 +31667,11 @@ const StyleDesigner = (function () {
         var about = {
             'form_record.values': _sdT('One row for every value the field holds: every ticked box of a check box group, every choice of a multiple choice list. Bind the row\'s elements to "Value" in Bind Data.'),
             'form_record.split':  _sdT('One row for every part of the field\'s text cut at its commas, spaces at either end dropped: "red, green, blue" gives three rows. Bind the row\'s elements to "Value" in Bind Data.'),
-            'form_record.files':  _sdT('One row for every file the record holds. Bind a link to "File address" and its text to "File Name" in Bind Data; the file opens for visitors who may see the record.')
+            'form_record.files':  _sdT('One row for every file the record holds. Bind a link to "File address" and its text to "File Name" in Bind Data; the file opens for visitors who may see the record.'),
+            'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
+            'calendar.weeks':     _sdT('One row for every week the monthly or weekly view shows. Put a list of the days of the calendar inside the row: it lists that week\'s days.'),
+            'calendar.days':      _sdT('One row for every day: inside a list of weeks that week\'s days, else every day the view shows. Days of the next or previous month hold no events; a condition on "Day of another month" or "Today" styles them.'),
+            'calendar.events':    _sdT('One row for every event of the day, inside a list of the days of the calendar. An event lasting several days is on each of them.')
         };
         if (about[p.source]) html += note(about[p.source], false);
         html += note(_sdT('A list without rows draws nothing. The canvas shows its row once.'), false);
@@ -51567,6 +51578,63 @@ const StyleDesigner = (function () {
                 ['__file_field', _sdT('Field')],
                 ['__file_ext',   _sdT('File type')]
             ]
+        },
+        // The calendar grid sources (pg_sw_list_calendar_sources()): the
+        // monthly and weekly views' heads, weeks, days and a day's events;
+        // none takes a field.
+        'calendar.weekdays': {
+            label: _sdT('Days of the week'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__weekday_name',  _sdT('Day name')],
+                ['__weekday_short', _sdT('Short day name')]
+            ]
+        },
+        'calendar.weeks': {
+            label: _sdT('Weeks of the calendar'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__week_key',    _sdT('Week in the calendar')],
+                ['__week_number', _sdT('Week number')]
+            ]
+        },
+        'calendar.days': {
+            label: _sdT('Days of the calendar'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__day_key',         _sdT('Day key')],
+                ['__day_number',      _sdT('Day number')],
+                ['__day_date',        _sdT('Date')],
+                ['__day_weekday',     _sdT('Weekday')],
+                ['__day_is_today',    _sdT('Today (1 or empty)')],
+                ['__day_is_outside',  _sdT('Day of another month (1 or empty)')],
+                ['__day_event_count', _sdT('Number of events')]
+            ]
+        },
+        'calendar.events': {
+            label: _sdT('Events of the day'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__event_title',          _sdT('Event title')],
+                ['__event_url',            _sdT('Event detail URL')],
+                ['__event_excerpt',        _sdT('Event summary')],
+                ['__event_date',           _sdT('Event date')],
+                ['__event_day',            _sdT('Day of the month')],
+                ['__event_month',          _sdT('Month name')],
+                ['__event_weekday',        _sdT('Day of the week')],
+                ['__event_time',           _sdT('Start time')],
+                ['__event_end_time',       _sdT('End time')],
+                ['__event_time_range',     _sdT('Time range ("All day" for all-day events)')],
+                ['__event_date_range',     _sdT('Full date and time range')],
+                ['__event_location',       _sdT('Location')],
+                ['__event_calendar_names', _sdT('Calendars')],
+                ['__event_is_all_day',     _sdT('All-day event (1 or empty)')],
+                ['__event_ical_url',       _sdT('Add to my calendar — .ics file (href)')]
+            ]
         }
     };
 
@@ -51577,7 +51645,18 @@ const StyleDesigner = (function () {
         __file_name:   'document.pdf',
         __file_url:    '#',
         __file_field:  _sdT('Attachment'),
-        __file_ext:    'pdf'
+        __file_ext:    'pdf',
+        __weekday_name:  _sdT('Monday'),
+        __weekday_short: _sdT('Mon'),
+        __week_key:      '1',
+        __week_number:   '40',
+        __day_key:       '20261005',
+        __day_number:    '5',
+        __day_date:      '05.10.2026',
+        __day_weekday:   _sdT('Monday'),
+        __day_is_today:  '',
+        __day_is_outside: '',
+        __day_event_count: '1'
     };
 
     // The orders a list's rows take (props.order).
@@ -51695,12 +51774,93 @@ const StyleDesigner = (function () {
     // or a link opening the file. The row is the designer's to restyle.
     function _sdListStarter(source) {
         var bs = _sdUsesBootstrap();
+        if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
         var row = (source === 'form_record.files')
             ? createNode('semantic', { tag: 'a', cssClass: bs ? 'd-block' : '', text: _sdT('File Name'), href: '#', target: '_blank',
                 customName: _sdT('Attachment link'), _bindings: { href: '__file_url', text: '__file_name' } }, [])
             : createNode('semantic', { tag: 'span', cssClass: bs ? 'badge text-bg-light border me-1' : '', text: _sdT('Value'),
                 customName: _sdT('List row'), _bindings: { text: '__value_text' } }, []);
         return createNode('loop_area', { source: source }, [row]);
+    }
+
+    // How many lists deep a new list of `source` lands (_sdListStarter()):
+    // a month grid is weeks > days > events, a days list holds its events.
+    function _sdListStarterDepth(source) {
+        return (source === 'calendar.weeks') ? 3 : ((source === 'calendar.days') ? 2 : 1);
+    }
+
+    // A new calendar list. The month grid: a table, its heads from the days
+    // of the week, a row per week, a cell per day holding the day's number
+    // (dimmed on a day of another month), a "Today" badge and its events as
+    // links. The others: a list of their own rows, the days list with its
+    // events. Every word is the designer's to restyle or translate.
+    function _sdCalendarListStarter(source, bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var when = function (token, op) {
+            return { _bindings: { show_if: token }, _bindParams: { show_if: { op: op } } };
+        };
+        var merge = function (a, b) {
+            var o = {};
+            Object.keys(a).forEach(function (k) { o[k] = a[k]; });
+            Object.keys(b).forEach(function (k) {
+                if (o[k] && typeof o[k] === 'object') {
+                    Object.keys(b[k]).forEach(function (kk) { o[k][kk] = b[k][kk]; });
+                } else {
+                    o[k] = b[k];
+                }
+            });
+            return o;
+        };
+        var events = function () {
+            return sem('ul', 'list-unstyled small mb-0', _sdT('Events of the day'), {}, [createNode('loop_area', { source: 'calendar.events' }, [
+                sem('li', 'text-truncate', _sdT('Event'), {}, [
+                    sem('span', 'me-1 text-body-secondary', _sdT('Start time'), merge({ text: '10:00', _bindings: { text: '__event_time' } }, when('__event_time', 'not_empty'))),
+                    sem('a', 'link-underline link-underline-opacity-0', _sdT('Event title'), { text: _sdT('Event title'), href: '#', _bindings: { href: '__event_url', text: '__event_title' } })
+                ])
+            ])]);
+        };
+        var dayHead = function () {
+            return sem('div', 'd-flex align-items-center gap-1 small mb-1', _sdT('Day number'), {}, [
+                sem('span', 'fw-semibold', _sdT('Day number'), merge({ text: '5', _bindings: { text: '__day_number' } }, when('__day_is_outside', 'empty'))),
+                sem('span', 'text-body-tertiary', _sdT('Day of another month'), merge({ text: '30', _bindings: { text: '__day_number' } }, when('__day_is_outside', 'not_empty'))),
+                sem('span', 'badge text-bg-primary', _sdT('Today'), merge({ text: _sdT('Today') }, when('__day_is_today', 'not_empty')))
+            ]);
+        };
+        if (source === 'calendar.weeks') {
+            return sem('div', 'table-responsive', _sdT('Month grid'), {}, [
+                sem('table', 'table table-bordered table-sm mb-0', _sdT('Month grid'), {}, [
+                    sem('thead', '', _sdT('Days of the week'), {}, [sem('tr', '', _sdT('Days of the week'), {}, [
+                        createNode('loop_area', { source: 'calendar.weekdays' }, [
+                            sem('th', 'text-center small fw-semibold', _sdT('Day name'), { text: _sdT('Mon'), _attrs: [{ name: 'scope', value: 'col' }], _bindings: { text: '__weekday_short' } })
+                        ])
+                    ])]),
+                    sem('tbody', '', _sdT('Weeks of the calendar'), {}, [
+                        createNode('loop_area', { source: 'calendar.weeks' }, [
+                            sem('tr', '', _sdT('Week'), {}, [
+                                createNode('loop_area', { source: 'calendar.days' }, [
+                                    sem('td', 'align-top p-1', _sdT('Day'), {}, [dayHead(), events()])
+                                ])
+                            ])
+                        ])
+                    ])
+                ])
+            ]);
+        }
+        if (source === 'calendar.weekdays') {
+            return createNode('loop_area', { source: source }, [
+                sem('div', 'small fw-semibold', _sdT('Day name'), { text: _sdT('Mon'), _bindings: { text: '__weekday_short' } })
+            ]);
+        }
+        if (source === 'calendar.days') {
+            return createNode('loop_area', { source: source }, [
+                sem('div', 'border p-1', _sdT('Day'), {}, [dayHead(), events()])
+            ]);
+        }
+        return events();
     }
 
     // The kind the site draws widget `sid` as (pg_sw_finish_kind()): its
@@ -51760,7 +51920,10 @@ const StyleDesigner = (function () {
         if (!kind) return false;
         if (_sdKindLists(kind).indexOf(source) === -1 && !(list && _isInsideSystemWidget(list) === sid)) return false;
         if (kind === 'form_list_view' && !_sdInMainLoopAt(target)) return false;
-        var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : 1);
+        // The calendar's grid lists read the calendar, not an event: never
+        // in the event loop.
+        if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
+        var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : _sdListStarterDepth(source));
         return depth <= SW_LIST_MAX_DEPTH;
     }
 
@@ -51844,6 +52007,10 @@ const StyleDesigner = (function () {
         var kind = _sdListWidgetKind(_isInsideSystemWidget(node));
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
         if (kind === 'form_list_view' && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
+        if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
+        if (spec.source === 'calendar.events' && !_sdListsAbove(node).some(function (l) { return l.props.source === 'calendar.days'; })) {
+            return { off: true, text: _sdT('{var}: outside a list of days, nothing is drawn', src.label) };
+        }
         if (_sdListsAbove(node).length >= SW_LIST_MAX_DEPTH) return { off: true, text: _sdT('{var}: more than four lists deep, nothing is drawn', src.label) };
         var name = src.label;
         if (spec.arg) {
@@ -51939,10 +52106,11 @@ const StyleDesigner = (function () {
     function _swBindLabel(type, token) {
         var position = _swPositionLabel(token);
         if (position) return position;
+        // A list row's value is named the same in every kind with lists.
+        var listRow = _sdListRowLabel(token);
+        if (listRow) return listRow;
         if (type === 'form_list_view' || type === 'form_item_view') {
             if (token === SW_PAGE_LINK_TOKEN) return _sdT('Another page, with values from the record');
-            var listRow = _sdListRowLabel(token);
-            if (listRow) return listRow;
             // Names the settings once gave these values (see _bindAlias).
             if (token === '__detail_url' && type === 'form_list_view') token = 'form_item_view';
             if (token === '__not_found_message' && type === 'form_item_view') token = 'not_found';
