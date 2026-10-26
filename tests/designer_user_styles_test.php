@@ -170,3 +170,21 @@ function test_designer_user_styles_parse_tolerates_broken_text()
 	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
 	pg_assert_same(array(array('.a'), 0, 0, array('color')), $result, 'broken text');
 }
+
+// Create is one undo step like every other User Styles edit (saveState()
+// before the write), and no card edit rewrites the whole text from the list.
+function test_designer_user_styles_wiring()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$from = strpos($js, 'function _stylesCreateRule()');
+	$create = ($from !== false) ? substr($js, $from, strpos($js, "\n    }\n", $from) - $from) : '';
+
+	pg_assert_true(strpos($create, '_writeUserStylesText(PgUserStyles.appendRule(') !== false, 'Create writes through _writeUserStylesText()');
+	pg_assert_false(strpos($js, '_serializeUserStyles') !== false, 'no whole-text serialiser left');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	$helpers = strpos($screen, 'assets/js/pg_user_styles.js');
+	$designer = strpos($screen, '<script src="assets/js/style_designer.js');
+
+	pg_assert_true(($helpers !== false) && ($designer !== false) && ($helpers < $designer), 'the helpers load before the designer');
+}
