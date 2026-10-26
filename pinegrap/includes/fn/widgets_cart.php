@@ -1769,10 +1769,16 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         }
     }
 
+    // The cart list's rows (widgets_lists_cart.php), filed only when the
+    // tree drew one.
+    if (pg_sw_list_wanted('cart')) pg_sw_list_publish('cart', pg_sw_list_cart_rows($items));
+
     // ── Static tokens ──────────────────────────────────────────────────────
     // Currency-bearing tokens are NOT h()'d (entity preservation, see note
     // above). Plain text fields are h()'d as usual.
     $static_values = array(
+        // The key the cart list reads: the whole cart.
+        '__ship_to_key'                => '0',
         // Summary numbers (currency symbol included)
         '__cart_subtotal'              => $fmt_money($sub_cents),
         '__cart_tax'                   => $fmt_money($tax_cents),
@@ -3914,10 +3920,19 @@ function _render_system_widget_cart_link($tree_json, $widget_id, $cfg = array(),
 
     $split    = _split_widget_tree($tree);
     $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
+    // A mini cart: the lines of a cart list (widgets_lists_cart.php), read
+    // only when the tree drew one.
+    if (pg_sw_list_wanted('cart')) {
+        pg_sw_list_publish('cart', pg_sw_list_cart_rows(pg_sw_list_cart_read($order_id, function ($cents) use ($symbol) {
+            return pg_visitor_money((int)$cents / 100, $symbol);
+        })));
+    }
     // A header and an offcanvas menu may both carry it.
     $rendered = pg_sw_uniquify_row_ids($rendered, (int)$widget_id, ++$placement);
 
     $tokens = $values;
     foreach ($links as $k => $v) $tokens[$k] = h($v);
+    // The key the cart list reads: the whole cart.
+    $tokens['__ship_to_key'] = '0';
     return _pg_member_apply_tokens($rendered, $tokens);
 }

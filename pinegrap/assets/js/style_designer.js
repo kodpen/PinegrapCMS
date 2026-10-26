@@ -22291,7 +22291,8 @@ const StyleDesigner = (function () {
                 { label: _sdT('Items of the order'), type: 'loop_area', icon: 'bi-box', extra: { listSource: 'order.items' } },
                 { label: _sdT('Parcels of the order'), type: 'loop_area', icon: 'bi-truck', extra: { listSource: 'order.parcels' } },
                 { label: _sdT('Steps of the order'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'order.steps' } },
-                { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } }
+                { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
+                { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
@@ -32164,7 +32165,8 @@ const StyleDesigner = (function () {
             'order.items':        _sdT('One row for every item of the order; inside a list of the recipients, that recipient\'s items. The receipt e-mail draws it too.'),
             'order.parcels':      _sdT('One row for every tracking number of the order; inside a list of the recipients, that recipient\'s. A parcel whose carrier is not known has no tracking link: a condition on "Shipment tracking link" shows the number without one.'),
             'order.steps':        _sdT('One row for every step of the order: created, paid, shipped, delivered, cancelled. A shipping or delivery date still to come is estimated; a condition on "Estimated" marks it.'),
-            'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.')
+            'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
+            'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.')
         };
         if (about[p.source]) html += note(about[p.source], false);
         html += note(_sdT('A list without rows draws nothing. The canvas shows its row once.'), false);
@@ -52574,6 +52576,23 @@ const StyleDesigner = (function () {
                 ['__order_is_cancelled', _sdT('Cancelled (1 or empty)')],
                 ['__order_url',          _sdT('Order detail URL')]
             ]
+        },
+        'cart.items': {
+            label: _sdT('Products in the cart'),
+            arg: '', argRequired: false,
+            kinds: ['cart_link', 'shopping_cart'],
+            rows: [
+                ['__item_id',                _sdT('Row ID (order_items.id)')],
+                ['__item_name',              _sdT('Product name (products.name)')],
+                ['__item_short_description', _sdT('Short description (display name)')],
+                ['__item_qty',               _sdT('Quantity')],
+                ['__item_price',             _sdT('Unit price')],
+                ['__item_total',             _sdT('Row total')],
+                ['__item_image',             _sdT('Image URL')],
+                ['__item_image_alt',         _sdT('Image alt text')],
+                ['__item_url',               _sdT('Product detail page URL')],
+                ['__item_remove_url',        _sdT('Remove from cart URL')]
+            ]
         }
     };
 
@@ -52733,7 +52752,7 @@ const StyleDesigner = (function () {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
-        if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0) return _sdOrderListStarter(source, bs);
+        if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         var row = (source === 'form_record.files')
             ? createNode('semantic', { tag: 'a', cssClass: bs ? 'd-block' : '', text: _sdT('File Name'), href: '#', target: '_blank',
                 customName: _sdT('Attachment link'), _bindings: { href: '__file_url', text: '__file_name' } }, [])
@@ -52813,6 +52832,27 @@ const StyleDesigner = (function () {
             ])]);
         }
         if (source === 'order.items') return items();
+        // The mini cart: a picture, the display name linked to the product,
+        // quantity and row total, a remove link.
+        if (source === 'cart.items') {
+            return sem('ul', 'list-group list-group-flush', _sdT('Products in the cart'), {}, [createNode('loop_area', { source: source }, [
+                sem('li', 'list-group-item d-flex align-items-center gap-2', _sdT('Product'), {}, [
+                    createNode('content', { contentType: 'image', src: '', alt: '', fluid: false, rounded: true, width: '48', height: '48',
+                        cssClass: bs ? 'flex-shrink-0 object-fit-cover' : '', _bindings: { src: '__item_image', alt: '__item_image_alt' } }),
+                    sem('div', 'flex-grow-1 small', _sdT('Product'), {}, [
+                        sem('a', 'd-block text-body fw-semibold text-truncate', _sdT('Short description (display name)'),
+                            { text: _sdT('Example product'), href: '#', _bindings: { href: '__item_url', text: '__item_short_description' } }),
+                        sem('span', 'text-body-secondary', _sdT('Quantity'), {}, [
+                            text('span', '', _sdT('Quantity'), '1', '__item_qty'),
+                            sem('span', '', _sdT('Times'), { text: ' × ' }),
+                            text('span', '', _sdT('Unit price'), '₺99,90', '__item_price')
+                        ])
+                    ]),
+                    sem('a', 'btn btn-sm btn-link text-body-secondary', _sdT('Remove from cart URL'),
+                        { text: '×', href: '#', _attrs: [{ name: 'aria-label', value: _sdT('Remove') }], _bindings: { href: '__item_remove_url' } })
+                ])
+            ])]);
+        }
         if (source === 'order.parcels') return parcels();
         if (source === 'order.steps') {
             return sem('ol', 'list-unstyled mb-0', _sdT('Steps of the order'), {}, [createNode('loop_area', { source: source }, [
@@ -53035,9 +53075,9 @@ const StyleDesigner = (function () {
         // The calendar's grid lists read the calendar, not an event: never
         // in the event loop.
         if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
-        // The order lists read the order, not an item row: never in the
-        // items loop.
-        if (kind === 'order_view' && _sdInMainLoopAt(target)) return false;
+        // The order and cart lists read the order or the cart, not an item
+        // row: never in the items loop.
+        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(target)) return false;
         var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : _sdListStarterDepth(source));
         return depth <= SW_LIST_MAX_DEPTH;
     }
@@ -53123,7 +53163,7 @@ const StyleDesigner = (function () {
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
         if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
-        if (kind === 'order_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
+        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
         if (_sdOrderListKeyless(spec.source, node)) return { off: true, text: _sdT('{var}: inside a list of the recipients, nothing is drawn', src.label) };
         if (spec.source === 'calendar.events' && !_sdListsAbove(node).some(function (l) { return l.props.source === 'calendar.days'; })) {
             return { off: true, text: _sdT('{var}: outside a list of days, nothing is drawn', src.label) };
