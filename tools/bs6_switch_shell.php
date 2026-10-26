@@ -921,3 +921,43 @@ function bs6_shell_open_sheet($source, array $root, $root_text, array $root_clas
 		array($box_close[0], $box_close[1], (strpos(substr($source, $box_close[0], 3), '\\') !== false ? '<\/' : '</') . 'dialog>'),
 	);
 }
+
+/**
+ * The visual editor's own dialogs in style_designer.js. Its chrome and its
+ * canvas code (Bootstrap 5 inside the page being edited) share members, so
+ * the names are renamed only inside the statements that build a chrome
+ * dialog (`x.innerHTML = '<div class="modal-dialog …` or
+ * `var html = '<div class="modal fade …`, up to the `';` that ends it), then
+ * the dialogs are converted as anywhere else.
+ */
+function bs6_switch_editor_dialogs($source)
+{
+	$site_output = bs6_site_output_ranges($source);
+	$spans = array();
+	$start = '/(?:[A-Za-z_$][\w$.]*\.innerHTML|\bvar [A-Za-z_$][\w$]*)\s*=\s*[\'"]<div class="modal(?:-dialog\b| fade\b)/';
+
+	if (preg_match_all($start, $source, $matches, PREG_OFFSET_CAPTURE)) {
+		foreach ($matches[0] as $match) {
+			if ((!$site_output || !bs6_in_ranges($match[1], $site_output))
+				&& preg_match('/[\'"];[ \t]*\r?\n/', $source, $end, PREG_OFFSET_CAPTURE, $match[1])) {
+				$spans[] = array($match[1], $end[0][1] + 2);
+			}
+		}
+	}
+
+	$edits = array();
+
+	foreach ($spans as $span) {
+		$text = substr($source, $span[0], $span[1] - $span[0]);
+		$renamed = bs6_switch_component_names($text)['source'];
+
+		if ($renamed !== $text) {
+			$edits[] = array($span[0], $span[1], $renamed);
+		}
+	}
+
+	$named = bs6_shell_apply($source, $edits);
+	$result = bs6_switch_dialogs($named);
+
+	return array('source' => $result['source'], 'status' => ($edits || $result['status'] === 'applied') ? 'applied' : 'done', 'left' => $result['left']);
+}
