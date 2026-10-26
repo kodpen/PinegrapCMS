@@ -27,4 +27,4 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 - `notify` false (API `notify` false, marketplace) skips the customer e-mail and SMS, not the event. The marketplace import calls it per address on every delivered poll; `first` is its "delivery_date was empty" update.
 
 ## What is still open?
-- Phases 5 (mail-merge fields, readers of the row) and 7 (API fields) in `plans/shipping-management.md`; the order screen: `order-screen-shipments.md`.
+- Phases 5b and 7 of `plans/shipping-management.md`; e-mail fields: `shipment-mail-fields.md`; order screen: `order-screen-shipments.md`.

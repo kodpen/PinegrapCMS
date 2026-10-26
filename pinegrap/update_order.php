@@ -282,6 +282,18 @@ function update_order($request) {
             'name' => 'order_number',
             'data' => $order['order_number']);
 
+        // ^^tracking_numbers^^, ^^carrier_name^^ and ^^tracking_url^^ of the
+        // addresses this save shipped, not of every address of the order.
+        $shipped_ids = array();
+
+        foreach ($order['recipients'] as $shipped_recipient) {
+            if (!empty($shipped_recipient['shipped'])) {
+                $shipped_ids[] = (int) $shipped_recipient['id'];
+            }
+        }
+
+        $fields = array_merge($fields, pg_shipment_mail_fields($shipped_ids));
+
         create_auto_email_campaigns(array(
             'action' => 'order_shipped',
             'contact_id' => $order['contact_id'],

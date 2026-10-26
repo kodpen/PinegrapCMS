@@ -145,6 +145,7 @@ if (!$_POST) {
         case 'order_completed':
         case 'order_review_request':
         case 'order_shipped':
+        case 'order_delivered':
             $standard_schedule_period_and_base_class = 'show';
             break;
 
@@ -195,6 +196,7 @@ if (!$_POST) {
         $action_options[lang('Order Abandoned')] = 'order_abandoned';
         $action_options[lang('Order Completed')] = 'order_completed';
         $action_options[lang('Order Review Request')] = 'order_review_request';
+        $action_options[lang('Order Delivered')] = 'order_delivered';
         $action_options[lang('Order Shipped')] = 'order_shipped';
         $action_options[lang('Product Ordered')] = 'product_ordered';
 
@@ -501,6 +503,7 @@ if (!$_POST) {
                 or $liveform->get('action') == 'order_completed'
                 or $liveform->get('action') == 'order_review_request'
                 or $liveform->get('action') == 'order_shipped'
+                or $liveform->get('action') == 'order_delivered'
                 or $liveform->get('action') == 'product_ordered'
             )
             and (!ECOMMERCE or !USER_MANAGE_ECOMMERCE)
@@ -680,6 +683,7 @@ if (!$_POST) {
             case 'order_completed':
             case 'order_review_request':
             case 'order_shipped':
+            case 'order_delivered':
                 $action_item_id = '0';
                 $schedule_period = 'after';
                 $schedule_base = 'action';

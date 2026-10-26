@@ -701,9 +701,9 @@ function pg_shipment_delivered($ship_to_id, $time, $opts = array())
             'action'        => 'order_delivered',
             'contact_id'    => $recipient['contact_id'],
             'email_address' => $recipient['billing_email_address'],
-            'fields'        => array(
-                array('name' => 'order_number', 'data' => $recipient['order_number']),
-            ),
+            'fields'        => array_merge(
+                array(array('name' => 'order_number', 'data' => $recipient['order_number'])),
+                pg_shipment_mail_fields(array($ship_to_id))),
             'data'          => array('order' => array(
                 'id'                    => (int) $recipient['order_id'],
                 'order_number'          => $recipient['order_number'],
