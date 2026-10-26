@@ -45,6 +45,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/interact.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/tasks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/recurrence.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/reminders.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/followups.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/task_work.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/schedule.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/meetings.php');

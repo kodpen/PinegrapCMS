@@ -148,7 +148,7 @@ function test_ws_followup_task_data_reminder()
 
 	$before = ws_followup_task_data(7, workspace_followup_test_input(array('due_date' => '2026-10-27', 'remind_minutes' => 1440)), workspace_followup_test_now());
 
-	pg_assert_false($before['ok'], 'a day before tomorrow 09:00 has passed');
+	pg_assert_true($before['ok'], 'a day before tomorrow 09:00 has passed, the task is not due yet: it goes at once');
 
 	$overdue = ws_followup_task_data(7, workspace_followup_test_input(array('due_date' => '2026-10-20', 'remind_minutes' => null)), workspace_followup_test_now());
 
