@@ -1,6 +1,6 @@
 ---
 name: product-reference-price
-description: pg_price_history_reference() and pg_price_history_window_sql() (PR #PRNUM): the "price before the discount" of a window from product_price_history, rules, coverage, labels; no caller yet
+description: pg_price_history_reference() and pg_price_history_window_sql() (PR #1803): the "price before the discount" of a window from product_price_history, rules, coverage, labels; no caller yet
 ---
 
 ## What gives the reference price?

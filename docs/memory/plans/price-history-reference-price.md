@@ -12,7 +12,7 @@ description: Plan (approved 2026-10-19, in progress: history, writers, API read,
 - Step 3 (PR #658): `compare_at_price` in panel, files, API, copies (commerce/product-compare-at-price.md).
 - Step 1 (PR #681): offer rows, hourly (commerce/product-price-history-offers.md).
 - Step 4 (PR #1425): 13-month retention (commerce/product-price-history-retention.md).
-- Step 2a (PR #PRNUM): `pg_price_history_reference()` and batched `pg_price_history_window_sql()`, no caller; window end is a parameter (commerce/product-reference-price.md).
+- Step 2a (PR #1803): `pg_price_history_reference()` and batched `pg_price_history_window_sql()`, no caller; window end is a parameter (commerce/product-reference-price.md).
 
 ## What is decided?
 - Rule is a setting: `lowest_30d` (default for TR and EU), `lowest_10d`, or `manual`. Catalog widgets print `__reference_price` and `__reference_label` (text through `lang()`); legacy catalog pages get the same through `get_catalog.php` helpers without layout changes.
