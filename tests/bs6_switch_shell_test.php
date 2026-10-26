@@ -168,11 +168,11 @@ function test_bs6_shell_breakpoints()
 	pg_assert_same('done', bs6_switch_breakpoints($result['source'])['status'], 'second run');
 }
 
-function test_bs6_shell_links()
+function test_bs6_shell_own_classes()
 {
-	$in = "<a class=\"link-secondary small\">x</a> .link-body-emphasis:hover {} ws-link-secondary link-light\n/* @pg-site-output */\nfunction site() {\n    return '<a class=\"link-danger\">';\n}\n";
-	$result = bs6_switch_links($in);
+	$in = "<a class=\"link-secondary small d-print-none\">x</a> .link-body-emphasis:hover {} ws-link-secondary link-light\n/* @pg-site-output */\nfunction site() {\n    return '<a class=\"link-danger\">';\n}\n";
+	$result = bs6_switch_own_classes($in);
 
-	pg_assert_same("<a class=\"pg-link-secondary small\">x</a> .pg-link-body-emphasis:hover {} ws-link-secondary link-light\n/* @pg-site-output */\nfunction site() {\n    return '<a class=\"link-danger\">';\n}\n", $result['source']);
-	pg_assert_same('done', bs6_switch_links($result['source'])['status'], 'second run');
+	pg_assert_same("<a class=\"pg-link-secondary small pg-print-none\">x</a> .pg-link-body-emphasis:hover {} ws-link-secondary link-light\n/* @pg-site-output */\nfunction site() {\n    return '<a class=\"link-danger\">';\n}\n", $result['source']);
+	pg_assert_same('done', bs6_switch_own_classes($result['source'])['status'], 'second run');
 }
