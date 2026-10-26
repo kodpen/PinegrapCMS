@@ -69,6 +69,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_note_sources(); // 11.0.86
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
 	upgrade_2026_11_0_audit_feed_tokens();      // 11.0.38
+	upgrade_2026_11_0_paypal_checkout();        // 11.0.39
 
 }
 
@@ -2314,4 +2315,43 @@ function upgrade_2026_11_0_audit_feed_tokens() {
 
 	install_note('Audit trail: the product feed addresses that early SEO settings lines kept in clear are masked; the lines stay.');
 
+}
+
+// The PayPal Checkout payment driver on the Orders v2 API (2026.11.0, 11.0.39;
+// includes/payments/paypal.php).
+//
+// orders.payment_method is an ENUM and the connection runs without strict
+// mode, so a method outside the list is stored as '': an order paid with the
+// driver would lose its method, and with it its refund through the driver.
+// 'PayPal Checkout' is appended to the list the column already has, as 4.48
+// appended 'Pay With Iyzico'; 'PayPal Express Checkout' stays the classic
+// code. Nullability and default are copied from the column as it is. The
+// driver keeps its keys in connect_apps, so no other column is needed.
+function upgrade_2026_11_0_paypal_checkout() {
+
+	$column = install_column_info('orders', 'payment_method');
+
+	if (!is_array($column)) {
+
+		install_skipped(lang('orders.payment_method does not exist, skipped'));
+
+	} elseif (stripos((string) $column['Type'], "'PayPal Checkout'") !== false) {
+
+		install_skipped(lang('orders.payment_method already knows about PayPal Checkout'));
+
+	} elseif (preg_match('/^enum\((.*)\)$/is', trim((string) $column['Type']), $enum_match)) {
+
+		$nullable = (strtoupper((string) $column['Null']) === 'YES');
+		$default  = ($column['Default'] === null) ? ($nullable ? 'NULL' : "''") : "'" . e((string) $column['Default']) . "'";
+
+		install_modify_column('orders', 'payment_method',
+			"ENUM(" . $enum_match[1] . ",'PayPal Checkout') " . ($nullable ? 'NULL' : 'NOT NULL') . " DEFAULT " . $default);
+
+	} else {
+
+		install_skipped(lang('orders.payment_method is not an ENUM, skipped'));
+
+	}
+
+	install_note('PayPal can now take payments on its Checkout (Orders v2) API: the visitor approves the payment on PayPal\'s page and the store takes it on the way back. Turn on "PayPal Checkout" in the Ecommerce settings with the REST app\'s client ID and secret; "PayPal Express Checkout" keeps working as before.');
 }
