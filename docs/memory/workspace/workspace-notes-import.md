@@ -16,6 +16,7 @@ description: Notes brought in from other apps (workspace_notes_import.php, notes
 - It is matched only when `pinegrap_note` names a note the person may read and its `created` equals that note's created_at, so another site's note 12 is never taken.
 - `ws_note_import_merge()` lays the file over the note: a line still as the export wrote it is the stored line again (tags, file links), a changed line gets back the tags whose written form it holds (`[label](url)`, `@name`; a tag that went out as a bare word stays a word). Same text and title → "same", skipped. Changed, with owner or edit access → `ws_note_save()` (a version kept, others told). Read-only, or "Add them as new notes" → a new note, files uploaded again.
 - A new note keeps the file's dates (else the zip entry's time, else now).
+- A file brought in before (any provider) is found through `ws_note_sources` and handled the same way: workspace-notes-sources.md.
 
 ## Anything fixed alongside?
 - The export wrote people as `@@name` (labels carry `@`); fixed (issue #549). Tests: tests/workspace_notes_io_test.php.

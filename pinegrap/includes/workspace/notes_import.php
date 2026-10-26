@@ -472,6 +472,10 @@ function ws_note_import_stage($viewer, $files, $token = '')
     $exports = 0;
     $pages = 0;
 
+    // The app the notes come from, for the place each note is remembered
+    // under (ws_note_sources).
+    $provider = 'markdown';
+
     if (empty($files)) {
         return $fail($choose);
     }
@@ -577,6 +581,7 @@ function ws_note_import_stage($viewer, $files, $token = '')
         }
 
         $read = ws_note_html_stage($dir, $source, (string) $files[0]['name']);
+        $provider = 'html';
 
         if (!$read['ok']) {
             return $fail($read['error'], $dir);
@@ -599,6 +604,7 @@ function ws_note_import_stage($viewer, $files, $token = '')
         }
 
         $read = ws_note_enex_stage($dir, $sources);
+        $provider = 'enex';
 
         if (!$read['ok']) {
             return $fail($read['error'], $dir);
@@ -655,6 +661,7 @@ function ws_note_import_stage($viewer, $files, $token = '')
 
             $entries = $keep['entries'];
             $read_zip = false;
+            $provider = 'keep';
             @unlink($path);
         }
     } else {
@@ -676,12 +683,13 @@ function ws_note_import_stage($viewer, $files, $token = '')
     }
 
     $stage = array(
-        'dir'     => $dir,
-        'user'    => (int) $viewer['id'],
-        'created' => time(),
-        'zip'     => $read_zip,
-        'name'    => mb_substr(ws_note_import_entry_name(pg_basename(str_replace('\\', '/', (string) $files[0]['name']))), 0, 120),
-        'entries' => $entries,
+        'dir'      => $dir,
+        'user'     => (int) $viewer['id'],
+        'created'  => time(),
+        'zip'      => $read_zip,
+        'provider' => $provider,
+        'name'     => mb_substr(ws_note_import_entry_name(pg_basename(str_replace('\\', '/', (string) $files[0]['name']))), 0, 120),
+        'entries'  => $entries,
     );
 
     if (!ws_note_import_save($stage)) {
@@ -928,18 +936,20 @@ function ws_note_import_note_files($note, $dir)
 /**
  * One note file of the upload as it would be written for this person: its
  * title, its text with links pointed from the top of the upload, its dates,
- * and, for a file exported from a note they may read, that note, the file
- * laid over it, and whether anything changed.
+ * and, for a file exported from a note they may read or one they brought in
+ * before (ws_note_sources), that note, the file laid over it, and whether
+ * anything changed.
  *
  * @param array $viewer
  * @param array $stage
  * @param int   $entry
- * @return array ok, error, title, body, merged, created, updated, note, same
+ * @return array ok, error, title, body, merged, created, updated, note, same,
+ *               source (provider, external, hash: where it is remembered)
  */
 function ws_note_import_entry($viewer, $stage, $entry)
 {
     $path = (string) $stage['entries'][$entry][0];
-    $out = array('ok' => false, 'error' => '', 'title' => ws_note_import_name_title($path), 'body' => '', 'merged' => '', 'created' => 0, 'updated' => 0, 'note' => null, 'same' => false);
+    $out = array('ok' => false, 'error' => '', 'title' => ws_note_import_name_title($path), 'body' => '', 'merged' => '', 'created' => 0, 'updated' => 0, 'note' => null, 'same' => false, 'source' => null);
 
     if ((int) $stage['entries'][$entry][1] > WS_NOTE_IMPORT_TEXT_MAX) {
         $out['error'] = lang('The file is too long to be a note.');
@@ -963,16 +973,35 @@ function ws_note_import_entry($viewer, $stage, $entry)
     $out['created'] = $parsed['created'];
     $out['updated'] = $parsed['updated'];
 
+    // Evernote and Keep notes and web pages are laid out as Markdown files
+    // whose front matter carries the id they are known by; a Markdown file
+    // carries its own, else is known by its path in the upload.
+    $out['source'] = array(
+        'provider' => (string) ($stage['provider'] ?? 'markdown'),
+        'external' => ws_note_source_id('markdown', array('id' => $parsed['source'], 'path' => $path)),
+        'hash'     => ws_note_source_hash($parsed['title'], $parsed['body']),
+    );
+
     $note = ws_note_import_match($viewer, $parsed);
+    $files = $note ? ws_note_import_note_files($note, $dir) : array();
+    $kind = '';
+
+    // A file brought in before: the note it became, while the person may
+    // still read it.
+    if (!$note) {
+        $known = ws_note_source_find((int) $viewer['id'], $out['source']['provider'], $out['source']['external']);
+        $note = $known ? ws_note_for($viewer, $known['note_id'], 'view') : null;
+        $kind = $note ? ws_note_import_source_kind($known['hash'], $out['source']['hash'], (string) $note['access']) : '';
+    }
 
     if ($note) {
         $refs = ws_refs_resolve($viewer, ws_tokens((string) $note['body']));
-        $merged = ws_note_import_merge($out['body'], (string) $note['body'], $refs, ws_note_import_base(), ws_note_import_note_files($note, $dir));
+        $merged = ws_note_import_merge($out['body'], (string) $note['body'], $refs, ws_note_import_base(), $files);
 
         $out['note'] = $note;
         $out['merged'] = $merged;
-        $out['same'] = ($merged === rtrim(str_replace("\r\n", "\n", (string) $note['body'])))
-            && ($parsed['title'] === ws_note_title($viewer, $note));
+        $out['same'] = ($kind === 'same') || (($merged === rtrim(str_replace("\r\n", "\n", (string) $note['body'])))
+            && ($parsed['title'] === ws_note_title($viewer, $note)));
     }
 
     // A file with nothing in it but its name (Obsidian makes one for every
@@ -1219,7 +1248,13 @@ function ws_note_import_write($viewer, &$stage, $index, $row, $mode)
 
     $access = $item['note'] ? (string) $item['note']['access'] : '';
 
+    $remember = function ($note_id) use ($viewer, $item) {
+        ws_note_source_save((int) $viewer['id'], $item['source']['provider'], $item['source']['external'], $item['source']['hash'], $note_id);
+    };
+
     if ($item['note'] && $item['same'] && ($mode !== 'new')) {
+        $remember((int) $item['note']['id']);
+
         return array('state' => 'same', 'note_id' => (int) $item['note']['id'], 'written' => 0, 'links' => false, 'error' => '');
     }
 
@@ -1238,6 +1273,8 @@ function ws_note_import_write($viewer, &$stage, $index, $row, $mode)
         if (!$result['ok']) {
             return $failed($result['error']);
         }
+
+        $remember((int) $note['id']);
 
         return array(
             'state'   => 'updated',
@@ -1270,6 +1307,8 @@ function ws_note_import_write($viewer, &$stage, $index, $row, $mode)
     if ($note_id <= 0) {
         return $failed(lang('The note could not be saved.'));
     }
+
+    $remember($note_id);
 
     $note = ws_note($note_id);
     $linked = ws_note_import_attach($viewer, $stage, $index, $entry, $note, $body, false);

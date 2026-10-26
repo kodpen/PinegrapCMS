@@ -130,6 +130,65 @@ function ws_note_deletions_ready()
 }
 
 /**
+ * Is it remembered where an imported note came from (2026.11.0, 11.0.86)?
+ *
+ * @return bool
+ */
+function ws_note_sources_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('ws_note_sources');
+    }
+
+    return $ready;
+}
+
+/**
+ * The note a file brought in before became, by the id it is known by in the
+ * app it came from (ws_note_source_id()).
+ *
+ * @param int    $user_id  who brought it in
+ * @param string $provider keep | enex | markdown | html
+ * @param string $external
+ * @return array|null hash, note_id; null when unknown or the table is not there yet
+ */
+function ws_note_source_find($user_id, $provider, $external)
+{
+    if (((string) $external === '') || !ws_note_sources_ready()) {
+        return null;
+    }
+
+    $row = db_item("SELECT hash, note_id FROM ws_note_sources
+        WHERE user_id = '" . (int) $user_id . "' AND provider = '" . e($provider) . "' AND external_id = '" . e($external) . "'");
+
+    return $row ? array('hash' => (string) $row['hash'], 'note_id' => (int) $row['note_id']) : null;
+}
+
+/**
+ * Remembers the note a file became and what the file held, so the same file
+ * brought in again updates that note.
+ *
+ * @param int    $user_id
+ * @param string $provider
+ * @param string $external
+ * @param string $hash     ws_note_source_hash()
+ * @param int    $note_id
+ * @return void
+ */
+function ws_note_source_save($user_id, $provider, $external, $hash, $note_id)
+{
+    if (((string) $external === '') || ((int) $note_id <= 0) || !ws_note_sources_ready()) {
+        return;
+    }
+
+    db("INSERT INTO ws_note_sources (user_id, provider, external_id, hash, note_id)
+        VALUES ('" . (int) $user_id . "', '" . e($provider) . "', '" . e($external) . "', '" . e($hash) . "', '" . (int) $note_id . "')
+        ON DUPLICATE KEY UPDATE hash = VALUES(hash), note_id = VALUES(note_id)");
+}
+
+/**
  * The part of an UPDATE of ws_notes that moves the revision on, for every
  * write of a note's title, text or pin: ", revision = revision + 1" ('' while
  * the column is not there yet).
@@ -1271,6 +1330,11 @@ function ws_note_delete($viewer, $note)
 
     db("DELETE FROM ws_note_shares WHERE note_id = '" . $id . "'");
     db("DELETE FROM ws_notes WHERE id = '" . $id . "'");
+
+    // The same file brought in again is a new note.
+    if (ws_note_sources_ready()) {
+        db("DELETE FROM ws_note_sources WHERE note_id = '" . $id . "'");
+    }
 
     if (ws_note_versions_ready()) {
         db("DELETE FROM ws_note_versions WHERE note_id = '" . $id . "'");

@@ -218,6 +218,7 @@ function test_workspace_notes_html_stage()
 
 	$note = ws_note_import_parse(ws_note_import_text(ws_note_import_read($stage, 0, WS_NOTE_IMPORT_TEXT_MAX)), 'My clip.md', 0);
 	pg_assert_same(gmmktime(0, 0, 0, 1, 2, 2024), $note['created']);
+	pg_assert_same('My clip.html', $note['source'], 'a page without a canonical address known by its file name');
 	pg_assert_contains('Hi [image-1.png](attachments/1/image-1.png)', $note['body']);
 
 	foreach (array_merge((array) glob($dir . '/files/*'), (array) glob($dir . '/*')) as $path) {
