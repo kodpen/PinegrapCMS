@@ -1137,6 +1137,7 @@
     "Proceed to Checkout": "Ödemeye Geç",
     "Proceed to Checkout (shopping_cart)": "Ödemeye Geç (shopping_cart)",
     "Process": "İşlem",
+    "Processes drawn as boxes and arrows, and the scheduled actions: work the workspace does by itself at the times you set, a reminder, a summary, a task, a webhook, one after another if need be.": "Kutular ve oklarla çizilen süreçler ve programlanmış işler: çalışma alanının belirlediğiniz zamanlarda kendi kendine yaptığı işler; bir hatırlatma, bir özet, bir görev, bir webhook, gerekirse art arda.",
     "Processing": "İşleniyor",
     "Produced by {var:1} on {var:2}": "{var:1} tarafından {var:2} tarihinde üretildi",
     "Product": "Ürün",

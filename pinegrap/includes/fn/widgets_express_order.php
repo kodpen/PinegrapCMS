@@ -491,10 +491,12 @@ function _eo_compute_item_tokens($item, $widget_id, $form_id, $fmt, $lf, $gc_dat
     );
 }
 
+// A format after a token (^^__cart_total^^%%upper%%) is read, never
+// printed (pg_sw_fill_token_map()).
 function _eo_replace_tokens($html, $vars)
 {
     if (!is_array($vars) || empty($vars)) return $html;
-    return strtr($html, $vars);
+    return pg_sw_fill_token_map($html, $vars);
 }
 
 // ── Designer bindings: <button> action wiring ───────────────────────────────
@@ -4617,7 +4619,7 @@ function _eo_render_recipient_loop($template_children, $recipients, $lf)
 
         // Per-recipient token replacement (^^__recipient_index^^ etc.).
         $tokens = _eo_compute_recipient_tokens($r, $i, $count, $lf);
-        $row_html = strtr($row_html, $tokens);
+        $row_html = _eo_replace_tokens($row_html, $tokens);
 
         // The `name` of each control already carries the recipient
         // (shipping_<rid>_first_name), but the `id` did not — so with two

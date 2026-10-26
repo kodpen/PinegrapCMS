@@ -372,11 +372,15 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-diagram-3',
             );
 
+        // Without a card in a channel, the list of scheduled actions: in
+        // Flows when it lists them (ws_flows_scheduled()).
         case 'scheduled_failed':
+            $list = (function_exists('ws_flows_scheduled') && ws_flows_scheduled($viewer)) ? 'workspace_flows.php?view=scheduled' : 'workspace.php?view=scheduled';
+
             return array(
                 'title' => lang('A scheduled action you wrote failed'),
                 'body'  => $channel_name,
-                'url'   => $base . (((int) $row['message_id'] > 0) ? 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'] : 'workspace.php?view=scheduled'),
+                'url'   => $base . (((int) $row['message_id'] > 0) ? 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'] : $list),
                 'icon'  => 'bi-alarm',
             );
 
@@ -392,12 +396,13 @@ function ws_inbox_describe($viewer, $row)
             );
 
         // A message scheduled from the writing box that could not be posted
-        // (scheduled_messages.php): it waits on the scheduled screen.
+        // (scheduled_messages.php): it waits on the scheduled screen, on the
+        // Messages tab for staff, whose list there may open on their actions.
         case 'scheduled_message':
             return array(
                 'title' => lang('A message you scheduled could not be posted'),
                 'body'  => $channel_name,
-                'url'   => $base . 'workspace.php?view=scheduled',
+                'url'   => $base . 'workspace.php?view=scheduled&part=messages',
                 'icon'  => 'bi-send-exclamation',
             );
 

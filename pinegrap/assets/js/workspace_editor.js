@@ -2918,9 +2918,9 @@
         node.querySelector('.btn-close').setAttribute('aria-label', t('close'));
         document.body.appendChild(node);
 
-        var instance = window.bootstrap ? window.bootstrap.Modal.getOrCreateInstance(node) : null;
+        var instance = window.pgUI ? pgUI.dialog.get(node) : null;
 
-        node.addEventListener('hidden.bs.modal', function () {
+        pgUI.dialog.on(node, 'hidden', function () {
             hideBar();
             hideTip();
             node.remove();
@@ -3685,7 +3685,7 @@
             done(linesOut.join('\n'));
         }, options.insertLabel);
 
-        win.node.addEventListener('shown.bs.modal', function () { focusCell(-1, 0); });
+        pgUI.dialog.on(win.node, 'shown', function () { focusCell(-1, 0); });
         win.show();
     }
 
@@ -3847,7 +3847,7 @@
             done(lines.join('\n'));
         });
 
-        win.node.addEventListener('shown.bs.modal', function () { focusRow(rows()[0]); });
+        pgUI.dialog.on(win.node, 'shown', function () { focusRow(rows()[0]); });
         win.show();
     }
 
@@ -3931,7 +3931,7 @@
             done('```' + name + '\n' + body.replace(/^(\s*)```/gm, '$1​```') + '\n```');
         });
 
-        win.node.addEventListener('shown.bs.modal', function () { area.focus(); });
+        pgUI.dialog.on(win.node, 'shown', function () { area.focus(); });
         win.show();
     }
 
@@ -4357,7 +4357,7 @@
             done((body.trim() === '') ? '' : fence() + '\n' + body.replace(/^(\s*)```/gm, '$1​```') + '\n```');
         }, options.insertLabel);
 
-        win.node.addEventListener('shown.bs.modal', function () { area.focus(); });
+        pgUI.dialog.on(win.node, 'shown', function () { area.focus(); });
         win.show();
         preview();
     }

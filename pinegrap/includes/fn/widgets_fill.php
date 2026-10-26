@@ -239,3 +239,40 @@ function pg_sw_fill_typed($html, $values, $typed = array())
 
     return ($out === null) ? $html : $out;
 }
+
+// Fill ^^token^^ slots from an already-escaped map the way the shop widgets
+// (catalog, catalog detail, cart, express order, order view) always did:
+// str_replace(), longest key first, so '^^__foo_bar^^' is never cut short
+// by '^^__foo^^'. A template with a format after a token (^^x^^%%upper%%)
+// is filled in one typed pass instead (pg_sw_fill_typed()), so the format
+// is read, never printed; one without fills byte for byte as before. A
+// token the map does not hold keeps its suffix for a later pass or the
+// sweep. $typed as in pg_sw_fill_typed().
+function pg_sw_fill_longest($html, $values, $typed = array())
+{
+    if (!is_string($html) || $html === '' || !is_array($values) || !$values) return $html;
+    if (strpos($html, '^^%%') !== false) return pg_sw_fill_typed($html, $values, $typed);
+    $keys = array_keys($values);
+    usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
+    foreach ($keys as $k) {
+        $html = str_replace('^^' . $k . '^^', (string)$values[$k], $html);
+    }
+    return $html;
+}
+
+// The same for a map keyed by the whole token ('^^__cart_total^^' => …), as
+// the express order builds its own: strtr() when no format follows a token,
+// as before, else the typed pass.
+function pg_sw_fill_token_map($html, $map, $typed = array())
+{
+    if (!is_string($html) || $html === '' || !is_array($map) || !$map) return $html;
+    if (strpos($html, '^^%%') === false) return strtr($html, $map);
+    $values = array();
+    foreach ($map as $token => $value) {
+        $token = (string)$token;
+        if (strlen($token) > 4 && substr($token, 0, 2) === '^^' && substr($token, -2) === '^^') {
+            $values[substr($token, 2, -2)] = $value;
+        }
+    }
+    return pg_sw_fill_typed($html, $values, $typed);
+}

@@ -1,6 +1,6 @@
 ---
 name: workspace-canvas-workflow-tables
-description: Plan (2026-10-23, not started, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+description: Plan (2026-10-23, S1 done #1708, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 ---
 
 ## What is asked?
@@ -15,7 +15,7 @@ description: Plan (2026-10-23, not started, answers open): workflow tables, boar
 - Candidates: `ws_templates` starters, xlsx export (includes/fn/office.php), "my tables" strip on /workspace/my-day.
 
 ## Slices
-1. S1 Scheduled actions API (staff-only `ws_can_schedule()`, all see all): list, get, pause, cancel, after #1352 (merged; changed includes/workspace/watch.php).
+1. S1 Scheduled actions API: list, get, pause, cancel — done, #1708 (workspace/workspace-scheduled-actions-api.md).
 2. S2 Create, edit, resume (question 1): new `ws_scheduled_save_check()` from `ws_scheduled_save()`, `ws_scheduled_preview()`; S2b change card after the MCP plan's slice 3 propose route.
 3. T1 Tables: new `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`, includes/workspace/wtables.php (`ws_wtable_*`, not `ws_table_*`), workspace_wtables.php, API.
 4. T2 Board view (the channel Board tab component) by a status column.
@@ -27,4 +27,4 @@ description: Plan (2026-10-23, not started, answers open): workflow tables, boar
 2. Admins on personal tables: (a) never, like notes, (b) board holders → a. Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
 
 ## Where to start?
-- S1: new `GET /workspace/scheduled-actions` (+ `/{id}`), `POST .../{id}/pause`, `/cancel` (keys, MCP); action kind only (`ws_scheduled_action()`), never flow anchors (`flow_id` > 0, proposed); new `ws_scheduled_set_status_check()` → `api_dry_run_stop()` → `ws_scheduled_set_status()`; channel names only where `ws_can_read_channel()`. Test: tests/workspace_api_test.php.
+- S2 once question 1 is answered (asked in #1708): resume as `POST /workspace/scheduled-actions/{id}/resume` through `ws_scheduled_set_status_check()`; create/edit through a new `ws_scheduled_save_check()`; add the route ids to the parity table's `api_routes` group.

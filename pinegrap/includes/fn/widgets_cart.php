@@ -1720,12 +1720,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                   . h(lang('Ship to')) . ' <span class="text-primary">' . h($_rcp_name) . '</span></div>'
                 : '';
 
-            $row_html = $loop_template;
-            $rkeys = array_keys($row_values);
-            usort($rkeys, function ($a, $b) { return strlen($b) - strlen($a); });
-            foreach ($rkeys as $k) {
-                $row_html = str_replace('^^' . $k . '^^', $row_values[$k], $row_html);
-            }
+            $row_html = pg_sw_fill_longest($loop_template, $row_values);
             $row_html = pg_sw_sweep_tokens($row_html);
             if ($_it_is_donation || $_it_by_offer) {
                 $row_html = _pg_cart_retarget_qty_box($row_html, 'quantities[' . (int)$item['item_id'] . ']',
@@ -1884,12 +1879,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // button submit through it.
     if ($static_html === '') {
         // No loop_area split — the template is the loop body, render once.
-        $rendered = $loop_template;
-        $skeys = array_keys($static_values);
-        usort($skeys, function ($a, $b) { return strlen($b) - strlen($a); });
-        foreach ($skeys as $k) {
-            $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
-        }
+        $rendered = pg_sw_fill_longest($loop_template, $static_values);
         $rendered = pg_sw_sweep_tokens($rendered);
         // Same applied_offers placeholder substitution as above.
         if (strpos($rendered, '<!--pg-applied-offers-placeholder-->') !== false) {
@@ -1899,11 +1889,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         return _pg_widget_layout_css_once() . $update_form_html . $rendered . _pg_qty_stepper_inline_js() . _pg_remove_from_cart_inline_js();
     }
 
-    $skeys = array_keys($static_values);
-    usort($skeys, function ($a, $b) { return strlen($b) - strlen($a); });
-    foreach ($skeys as $k) {
-        $static_html = str_replace('^^' . $k . '^^', $static_values[$k], $static_html);
-    }
+    $static_html = pg_sw_fill_longest($static_html, $static_values);
     $static_html = pg_sw_sweep_tokens($static_html);
 
     $body = str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);

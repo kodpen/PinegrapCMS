@@ -153,7 +153,8 @@ if (!$_POST) {
     // So every control the screen draws is marked as well. Done here rather
     // than in the 258 controls themselves: one pass, and a control added later
     // is covered without anyone having to remember. A control that already
-    // says what it wants keeps what it says.
+    // says what it wants keeps what it says. The toolbar's filter box is drawn
+    // outside the body, so it carries the token itself.
     $pg_settings_body = preg_replace_callback(
         '/<(input|select|textarea)\b([^>]*)>/i',
         function ($match) {
@@ -201,7 +202,7 @@ if (!$_POST) {
                 <div class="pg-toolbar-grow pg-chips">' . $pg_settings_chips . '</div>
                 <div class="input-group input-group-sm rounded-pill pg-toolbar-search">
                     <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                    <input type="search" id="pg_settings_filter" class="form-control border-start-0 rounded-end-pill" placeholder="' . h(lang('Search in this page')) . '" autocomplete="off" />
+                    <input type="search" id="pg_settings_filter" class="form-control border-start-0 rounded-end-pill" placeholder="' . h(lang('Search in this page')) . '" autocomplete="pg-no-autofill" />
                 </div>
                 <div class="btn-group btn-group-sm">' . $pg_settings_step_links . '</div>
             </div>

@@ -7134,12 +7134,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 '__item_form_data_html'    => (string)$item['form_data_html'],
                 '__item_gift_card_html'    => (string)$item['gift_card_html'],
             );
-            $row_html = $loop_template;
-            $rkeys = array_keys($row_values);
-            usort($rkeys, function ($a, $b) { return strlen($b) - strlen($a); });
-            foreach ($rkeys as $k) {
-                $row_html = str_replace('^^' . $k . '^^', $row_values[$k], $row_html);
-            }
+            $row_html = pg_sw_fill_longest($loop_template, $row_values);
             $row_html = pg_sw_sweep_tokens($row_html);
 
             // Auto-append the read-only form / gift-card blocks when the row
@@ -7314,23 +7309,20 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__legal_contract_url'      => h($legal_urls['contract']),
         '__withdrawal_deadline'     => h($withdrawal_date),
     );
+    // The dates a format can read (^^__order_date^^%%d.m.Y H:i%%).
+    $_ov_typed = _pg_sw_order_view_dates(
+        $order_date_ts,
+        isset($ship_to['arrival_date']) ? $ship_to['arrival_date'] : '',
+        is_array($withdrawal) ? $withdrawal['deadline'] : ''
+    );
 
     if ($static_html === '') {
         // No loop_area — replace tokens in the single rendered template
-        $rendered = $loop_template;
-        $skeys = array_keys($static_values);
-        usort($skeys, function ($a, $b) { return strlen($b) - strlen($a); });
-        foreach ($skeys as $k) {
-            $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
-        }
+        $rendered = pg_sw_fill_longest($loop_template, $static_values, $_ov_typed);
         return pg_sw_sweep_tokens($rendered) . $_ov_returns_tail . $legal_block;
     }
 
-    $skeys = array_keys($static_values);
-    usort($skeys, function ($a, $b) { return strlen($b) - strlen($a); });
-    foreach ($skeys as $k) {
-        $static_html = str_replace('^^' . $k . '^^', $static_values[$k], $static_html);
-    }
+    $static_html = pg_sw_fill_longest($static_html, $static_values, $_ov_typed);
     $static_html = pg_sw_sweep_tokens($static_html);
 
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $_ov_returns_tail . $legal_block;
@@ -7872,6 +7864,25 @@ function _pg_sw_calendar_event_times($start_ts, $end_ts = null, $all_day = false
         $times['__event_end_date'] = array('type' => $type, 'data' => date($layout, $end_ts));
     }
     return $times;
+}
+
+// The order view's date tokens typed for a date format (pg_sw_fill_typed()):
+// the order's time (a unix time stamp) as a date and time, the planned
+// arrival and the last day of withdrawal ('Y-m-d') as dates. A date left
+// out (none, or 0000-00-00) leaves its token to the configured format.
+function _pg_sw_order_view_dates($order_ts, $arrival_date, $withdrawal_deadline)
+{
+    $dates = array();
+    if ((int)$order_ts > 0) {
+        $dates['__order_date'] = array('type' => 'date and time', 'data' => date('Y-m-d H:i:s', (int)$order_ts));
+    }
+    foreach (array('__arrival_date' => $arrival_date, '__withdrawal_deadline' => $withdrawal_deadline) as $key => $day) {
+        $day = substr(trim((string)$day), 0, 10);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) && $day !== '0000-00-00') {
+            $dates[$key] = array('type' => 'date', 'data' => $day);
+        }
+    }
+    return $dates;
 }
 
 // The month (or week) grid for section=month_grid: a Bootstrap table, one

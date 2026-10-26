@@ -252,12 +252,12 @@
 
         ui.input.addEventListener('keydown', onKey);
 
-        ui.node.addEventListener('shown.bs.modal', function () {
+        pgUI.dialog.on(ui.node, 'shown', function () {
             ui.input.focus();
             ui.input.select();
         });
 
-        ui.node.addEventListener('hidden.bs.modal', function () {
+        pgUI.dialog.on(ui.node, 'hidden', function () {
             var after = state.after;
 
             state.open = false;
@@ -675,7 +675,7 @@
     }
 
     function open() {
-        if (!window.bootstrap || !kit()) {
+        if (!window.pgUI || !kit()) {
             return;
         }
 
@@ -689,7 +689,7 @@
         state.open = true;
         drawFilters();
         search();
-        window.bootstrap.Modal.getOrCreateInstance(ui.node).show();
+        pgUI.dialog.show(ui.node);
     }
 
     function close(after) {
@@ -702,7 +702,7 @@
         }
 
         state.after = after || null;
-        window.bootstrap.Modal.getOrCreateInstance(ui.node).hide();
+        pgUI.dialog.hide(ui.node);
     }
 
     window.PGWsPalette = {

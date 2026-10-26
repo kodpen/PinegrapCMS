@@ -2575,13 +2575,13 @@ function pg_pb_render_image_picker_css()
                border change on a tall area is easy to miss mid-drag. */
             .pg-pb-dropzone {
                 position: relative;
-                border: 2px dashed var(--bs-border-color);
-                background: var(--bs-tertiary-bg);
+                border: 2px dashed var(--pg-border-color);
+                background: var(--pg-bg-1);
                 transition: border-color .15s ease, background-color .15s ease;
             }
             .pg-pb-dropzone.pg-pb-dragging {
-                border-color: var(--bs-primary);
-                background: var(--bs-primary-bg-subtle);
+                border-color: var(--pg-primary);
+                background: var(--pg-primary-bg-subtle);
             }
             .pg-pb-dropzone-overlay {
                 position: absolute;
@@ -2589,15 +2589,15 @@ function pg_pb_render_image_picker_css()
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: var(--bs-primary-bg-subtle);
-                color: var(--bs-primary-text-emphasis);
+                background: var(--pg-primary-bg-subtle);
+                color: var(--pg-primary-fg-emphasis);
                 border-radius: inherit;
                 pointer-events: none;
                 z-index: 2;
             }
 
             /* Rounded tiles, and a grab cursor so it reads as draggable. */
-            #software_image_picker_container .item .card-body { border-radius: var(--bs-border-radius); }
+            #software_image_picker_container .item .card-body { border-radius: var(--pg-radius); }
             #software_image_picker_container .item { cursor: grab; }
             #software_image_picker_container .item:active { cursor: grabbing; }
 
@@ -3000,14 +3000,14 @@ function pg_pb_render_styles()
                 font-size: .7rem;
                 text-transform: uppercase;
                 letter-spacing: .04em;
-                color: var(--bs-secondary-color);
+                color: var(--pg-fg-2);
                 margin-bottom: .25rem;
             }
             .pg-pb-wf-box {
-                border: 1px solid var(--bs-border-color);
-                border-radius: var(--bs-border-radius);
+                border: 1px solid var(--pg-border-color);
+                border-radius: var(--pg-radius);
                 padding: .4rem;
-                background: var(--bs-tertiary-bg);
+                background: var(--pg-bg-1);
             }
             /* The catalog card is capped rather than filling the column. Its
                image is 4:3, so every pixel of width costs three quarters of a
@@ -3020,12 +3020,12 @@ function pg_pb_render_styles()
             }
             .pg-pb-wf-image {
                 aspect-ratio: 4 / 3;
-                border-radius: calc(var(--bs-border-radius) - .125rem);
-                background: var(--bs-secondary-bg) center / cover no-repeat;
+                border-radius: calc(var(--pg-radius) - .125rem);
+                background: var(--pg-bg-2) center / cover no-repeat;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                color: var(--bs-secondary-color);
+                color: var(--pg-fg-2);
                 font-size: 1.5rem;
                 margin-bottom: .4rem;
                 overflow: hidden;
@@ -3049,7 +3049,7 @@ function pg_pb_render_styles()
             .pg-pb-wf-bar {
                 height: .5rem;
                 border-radius: 1rem;
-                background: var(--bs-secondary-bg);
+                background: var(--pg-bg-2);
                 margin: .25rem 0;
             }
             .pg-pb-wf-line .pg-pb-wf-bar:nth-child(2) { width: 70%; }
@@ -3068,10 +3068,10 @@ function pg_pb_render_styles()
                 max-width: 7rem;
                 font-size: .62rem;
                 padding: .1rem .35rem;
-                border: 1px solid var(--bs-border-color);
-                border-radius: calc(var(--bs-border-radius) - .15rem);
-                background: var(--bs-body-bg);
-                color: var(--bs-secondary-color);
+                border: 1px solid var(--pg-border-color);
+                border-radius: calc(var(--pg-radius) - .15rem);
+                background: var(--pg-bg-body);
+                color: var(--pg-fg-2);
             }
             .pg-pb-wf-select i {
                 font-size: .55rem;
@@ -3082,7 +3082,7 @@ function pg_pb_render_styles()
                URL line, one blue title, two lines of description. */
             .pg-pb-serp-url {
                 font-size: .68rem;
-                color: var(--bs-secondary-color);
+                color: var(--pg-fg-2);
                 margin-bottom: .15rem;
                 white-space: nowrap;
                 overflow: hidden;
@@ -3091,7 +3091,7 @@ function pg_pb_render_styles()
             .pg-pb-serp-title {
                 font-size: .82rem;
                 line-height: 1.25;
-                color: var(--bs-link-color);
+                color: var(--pg-link-color);
                 margin-bottom: .2rem;
                 display: -webkit-box;
                 -webkit-line-clamp: 2;
@@ -3102,7 +3102,7 @@ function pg_pb_render_styles()
             .pg-pb-serp-desc {
                 font-size: .72rem;
                 line-height: 1.35;
-                color: var(--bs-secondary-color);
+                color: var(--pg-fg-2);
                 display: -webkit-box;
                 -webkit-line-clamp: 2;
                 -webkit-box-orient: vertical;
@@ -3119,15 +3119,15 @@ function pg_pb_render_styles()
                 font-size: .65rem;
                 text-transform: uppercase;
                 letter-spacing: .04em;
-                color: var(--bs-secondary-color);
-                border-bottom: 1px solid var(--bs-border-color);
+                color: var(--pg-fg-2);
+                border-bottom: 1px solid var(--pg-border-color);
                 padding-bottom: .15rem;
                 margin-bottom: .3rem;
             }
             #pg_pb_wf_details {
                 font-size: .7rem;
                 line-height: 1.35;
-                color: var(--bs-secondary-color);
+                color: var(--pg-fg-2);
                 display: -webkit-box;
                 -webkit-line-clamp: 3;
                 -webkit-box-orient: vertical;
@@ -3153,10 +3153,10 @@ function pg_pb_render_styles()
             .pg-pb-strip .pg-pb-chip {
                 position: relative;
                 width: 34px; height: 34px;
-                border: 1px solid var(--bs-border-color);
-                border-radius: var(--bs-border-radius-sm);
+                border: 1px solid var(--pg-border-color);
+                border-radius: var(--pg-radius-sm);
                 overflow: hidden;
-                background: var(--bs-tertiary-bg);
+                background: var(--pg-bg-1);
             }
             .pg-pb-strip .pg-pb-chip img { width: 100%; height: 100%; object-fit: cover; }
             .pg-pb-strip .pg-pb-chip .pg-pb-chip-remove {
@@ -3173,7 +3173,7 @@ function pg_pb_render_styles()
                the display utilities but not the per-cell labels, which are
                plain elements toggled with d-lg-none. */
             @media (max-width: 991.98px) {
-                .pg-pb-vtable tbody tr { border-bottom: 2px solid var(--bs-border-color); }
+                .pg-pb-vtable tbody tr { border-bottom: 2px solid var(--pg-border-color); }
             }
 
             /* Price rules: one small input group per option, wrapping. The

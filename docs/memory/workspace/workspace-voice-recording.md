@@ -15,7 +15,7 @@ description: Voice messages (workspace_voice.js): the mic in place of Send, a so
 - A quote or reply bar of a file without words reads "Voice message" for a `voice-` sound, else the file name (`quoteText()`).
 
 ## Why .weba, .ogg or .m4a and never .webm?
-- `ws_file_kind()` draws a `.webm` as a video. WebM is named `voice-YYYYMMDD-HHMMSS.weba`, Ogg Opus `.ogg`, MP4/AAC (Safari) `.m4a`, after `recorder.mimeType`; asked in order `audio/webm;codecs=opus`, `audio/ogg;codecs=opus`, `audio/mp4`. `get_file.php` serves `weba webm ogg oga opus aac` with their own type.
+- `ws_file_kind()` draws a `.webm` as a video. WebM is named `voice-YYYYMMDD-HHMMSS.weba`, Ogg Opus `.ogg`, MP4/AAC (Safari) `.m4a`, after `recorder.mimeType`; asked in order `audio/webm;codecs=opus`, `audio/ogg;codecs=opus`, `audio/mp4`. `get_file.php` serves `weba webm ogg oga opus aac` with their own type, and answers `Range` with 206 (Safari plays nothing else; `platform/get-file-byte-ranges.md`).
 
 ## How is a sound drawn?
 - `filePreview` draws every `audio` file with `PGWsVoice.player()`: play/pause, time, a seek line, speed 1×/1.5×/2× (`localStorage` `ws-voice-speed`), download, the reply microphone. One sounds at a time.
@@ -26,5 +26,5 @@ description: Voice messages (workspace_voice.js): the mic in place of Send, a so
 - `Permissions-Policy: microphone=(self)` (`waf.php`); keep `(self)`.
 
 ## What is not built yet?
-- `Range`/206 in `get_file.php` (Safari), `parent_id` in the API's message answer and in `messages.create`, a stored duration or waveform, transcripts, assistants hearing it.
+- `parent_id` in the API's message answer and in `messages.create`, a stored duration or waveform, transcripts, assistants hearing it.
 - Checked in headless Chromium with a fake microphone and a stubbed API; not on Safari, Firefox or a running site.

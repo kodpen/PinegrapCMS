@@ -105,6 +105,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-block-theme-surfaces.md: How a ready-made designer block writes a dark navbar, a hero on a photo, buttons and links on tinted or primary surfaces, and carousel slides so they pass contrast in every look, palette and mode.
 - designer-blocks-news-maintenance-creative.md: Maintenance, news and creative blocks (2026.11.0): palette groups, the family branch and helpers, maintenance blocks without site links, attribute-dropping nodes, block details, the palette test.
 - designer-body-tag-merge.md: Designer <body> tag: class/style/id from Body Settings and the Attributes panel are merged, not dropped; three lockstep code paths; page_tree_code is a snapshot.
+- designer-bootstrap-vocabulary.md: The Bootstrap 5 vocabulary of the designer's smart completion (assets/js/designer_vocab/bootstrap5.json): how it is generated and kept, its keys and what each entry holds
 - designer-canvas-absolute-position.md: Where the designer canvas places an absolutely positioned element (sd-fx-abs, sd-fx-unpos), which wrappers stop the walk, and how the chrome of see-through wrappers is placed.
 - designer-canvas-chrome-placement.md: Designer chrome that must not move or cover the canvas: the context bar's reserved row, the toolbar spot above/below/inside (_sdTbSpot), the page root's name tag at the bottom-left, the size badge.
 - designer-canvas-controls.md: Which canvas controls run as on the page (_SD_CANVAS_CONTROLS) and why a click on their icon or label reaches them; the theme toggle's icon beside the editor toolbar.
@@ -216,6 +217,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - signature-receipt-and-output.md: Signature evidence receipt, the ^^field^^ token output, the h() ampersand pitfall, and why 'signature' was added to the form_fields.type enum.
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
+- style-predictor.md: The smart completion predictor assets/js/pg_style_predict.js: its API, the context object, suggestion fields, reason codes, how classes are ranked, the hand-kept hint tables, tests
 - submitted-form-system-fields.md: Single record of submitted-form system fields (get_standard_fields_for_view), pg_sw_* helper functions, date format suffix and order_by_field for system widgets.
 - submitted-form-token-pitfalls.md: Pitfalls of submitted-form tokens in system widgets: single escape, single-pass replace, truncate before escape, submitted_form_info counters per page and who refreshes them on designed pages.
 - system-widget-bindings.md: System widget data flow via _bindings.* (text, src, href, action, eo_field, value, section, eo_visible_if, show_if) and _bindFormats, action bindings, href-bound UI rule, HTML token previews.
@@ -227,12 +229,14 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - system-widget-type-and-name.md: Designer system widget rules: SW_TYPES, auto names, empty widget, gated type change (fork/all/cancel), the panel's copy button, walking all page tabs, pg_shared_component_usage() and usage_all rows.
 - text-inner-elements.md: Elements written inside a heading, paragraph, link or span text (span, strong, a, badge, icon) are picked by themselves on the canvas and in the overview, and edited through the text.
 - token-dictionary.md: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
+- user-styles-card-edits.md: How the Styles panel's User Styles cards read and edit the User Styles text (assets/js/pg_user_styles.js): which rules are listed, edits in place, Create as one undo step
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
 - widget-condition-panel.md: The Bind Data row "Show only when a value…" (#1665): token, operator, compared text, the canvas chip, the twin lists, no condition on a required control, the compared text translated.
 - widget-conditions.md: Value conditions on system widget nodes (show_if): operators, how a value reads as text or a number, refused tokens, tree checks, fail closed (#1592).
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
 - widget-edit-chip-coverage.md: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and which renders and widget kinds draw none.
 - widget-fill-filters.md: A bound widget value's format (_bindFormats): text filters or a date format, how the suffix is read, which fills read it, escaping, Turkish case, what a condition compares, typed dates (#1602).
+- widget-fill-shop.md: A bound value's format in the shop widgets (catalog, catalog detail, cart, express order, order view): fills, no change without a format, order view dates, fallback words (#1701).
 - widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, the pg-hide-if-empty rerun, the edit pencil, the strip (#1592).
 - widget-lists-editor.md: Lists inside a record in the designer (#1688): palette items, where one may land, the list panel, Bind Data row values, canvas band and fade, the JS twins and their test.
 - widget-lists.md: Lists inside a widget record (#1680): loop_area + props.source, sources and tokens, span and published rows, pass stage 2, empty lists, escaping, nesting, edit pencil, get_file

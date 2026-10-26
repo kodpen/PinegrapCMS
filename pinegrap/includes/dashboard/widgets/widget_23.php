@@ -226,10 +226,10 @@ function pg_dashboard_widget_23($request, $user)
         // gradient so they render identically in both themes.
         $pf_arc = '';
         $pf_bands = array(
-            array(0.00, 0.25, 'var(--bs-success)'),
-            array(0.25, 0.50, 'var(--bs-success)'),
-            array(0.50, 0.75, 'var(--bs-warning)'),
-            array(0.75, 1.00, 'var(--bs-danger)'),
+            array(0.00, 0.25, 'var(--pg-success)'),
+            array(0.25, 0.50, 'var(--pg-success)'),
+            array(0.50, 0.75, 'var(--pg-warning)'),
+            array(0.75, 1.00, 'var(--pg-danger)'),
         );
 
         foreach ($pf_bands as $pf_band) {

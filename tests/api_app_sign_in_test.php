@@ -140,15 +140,19 @@ function test_api_app_sign_in_keyless_row_is_never_given_a_secret()
 }
 
 // Both places that issue a new secret, Application Access's "Issue a new
-// secret" and api_app_rotate_secret() (Claude's "Reset secret"), ask the
-// guard and keep a row without a secret out of their UPDATE, so neither can
-// turn Pinegrap AI's key into a way in carrying its owner's rights.
+// secret" and Claude's "Reset secret", go through api_app_rotate_secret(),
+// which asks the guard and keeps a row without a secret out of its UPDATE, so
+// neither can turn Pinegrap AI's key into a way in carrying its owner's
+// rights. Application Access asks the guard first as well, for its message.
 function test_api_app_sign_in_both_rotations_refuse_a_keyless_row()
 {
-	foreach (array('includes/api/keys.php', 'api_settings.php') as $file) {
-		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+	$keys = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/keys.php');
 
-		pg_assert_contains('api_app_secret_can_rotate($existing)', $source, $file . ' asks the guard');
-		pg_assert_contains("AND api_secret_hash <> ''", $source, $file . ' keeps a keyless row out of the UPDATE');
-	}
+	pg_assert_contains('api_app_secret_can_rotate($existing)', $keys, 'keys.php asks the guard');
+	pg_assert_contains("AND api_secret_hash <> ''", $keys, 'keys.php keeps a keyless row out of the UPDATE');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
+
+	pg_assert_contains('api_app_secret_can_rotate($existing)', $screen, 'api_settings.php asks the guard');
+	pg_assert_contains('api_app_rotate_secret(', $screen, 'api_settings.php rotates through the helper');
 }

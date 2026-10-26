@@ -116,46 +116,38 @@ if ($_POST) {
 			// the key cannot be used as HTTP Basic credentials either. An OAuth
 			// application (includes/oauth/) is the same kind of switch for
 			// outside applications a person connects, and has none either.
-			$kind = (isset($_POST['kind']) && in_array($_POST['kind'], array('device', 'oauth'), true)) ? $_POST['kind'] : 'server';
+			$kind = api_app_kind(isset($_POST['kind']) ? $_POST['kind'] : '');
 
-			$key    = api_generate_key();
-			$secret = ($kind === 'server') ? api_generate_secret() : '';
+			$made = api_app_create(
+				$liveform->get_field_value('name'),
+				isset($_POST['description']) ? $_POST['description'] : '',
+				$posted_scopes,
+				(int)$user['id'],
+				($kind === 'server'),
+				$_SESSION['sessionusername'],
+				$kind
+			);
 
-			db("INSERT INTO api_apps
-				(name, description, api_key, api_secret_hash, api_secret_hint, owner_user_id,
-				 scopes, status, rate_limit_per_min, kind, created_user_id, created_timestamp, updated_timestamp)
-				VALUES (
-					'" . escape($liveform->get_field_value('name')) . "',
-					'" . escape(isset($_POST['description']) ? $_POST['description'] : '') . "',
-					'" . escape($key) . "',
-					'" . escape(($secret !== '') ? api_secret_hash($secret) : '') . "',
-					'" . escape(($secret !== '') ? api_secret_hint($secret) : '') . "',
-					'" . (int)$user['id'] . "',
-					'" . escape(json_encode($posted_scopes)) . "',
-					'active',
-					'120',
-					'" . $kind . "',
-					'" . (int)$user['id'] . "',
-					UNIX_TIMESTAMP(),
-					UNIX_TIMESTAMP()
-				)");
+			// No row was written: there is no key to show.
+			if (!$made) {
 
-			pg_audit_record('create', 'api_apps', (int) mysqli_insert_id(db::$con));
+				$liveform->add_error(lang('The application could not be created.'));
+
+				header('Location: ' . $screen_url);
+
+				exit();
+
+			}
 
 			// The one and only time this pair is readable. It is handed to the
 			// next request through the session rather than the query string,
 			// because a query string is written to the server's access log.
 			$_SESSION['software']['api_new_credentials'] = array(
 				'name'   => $liveform->get_field_value('name'),
-				'key'    => $key,
-				'secret' => $secret,
-				'kind'   => $kind
+				'key'    => $made['key'],
+				'secret' => $made['secret'],
+				'kind'   => $made['kind']
 			);
-
-			log_activity(lang(array(
-				'string' => 'API application ({var:1}) was created.',
-				'vars'   => $liveform->get_field_value('name')
-			)), $_SESSION['sessionusername']);
 
 			header('Location: ' . $screen_url);
 
@@ -219,7 +211,7 @@ if ($_POST) {
 
 	} elseif ($action === 'rotate' && $app_id > 0) {
 
-		$existing = db_item("SELECT id, name, api_key, api_secret_hash, kind FROM api_apps
+		$existing = db_item("SELECT id, api_secret_hash, kind FROM api_apps
 			WHERE id = '" . $app_id . "' AND kind = 'server' LIMIT 1");
 
 		// A key made without a secret (Pinegrap AI's, made in the Workspace
@@ -232,34 +224,25 @@ if ($_POST) {
 
 		} elseif ($existing) {
 
-			$secret = api_generate_secret();
-
-			$audit_before = pg_audit_fetch('api_apps', $app_id);
-
 			// The outgoing secret keeps answering for a day. Issuing a new one
 			// and expecting every integration to be updated in the same instant
 			// is not how a live site works.
-			db("UPDATE api_apps SET
-					api_secret_prev_hash = '" . escape($existing['api_secret_hash']) . "',
-					api_secret_prev_expires = UNIX_TIMESTAMP() + 86400,
-					api_secret_hash = '" . escape(api_secret_hash($secret)) . "',
-					api_secret_hint = '" . escape(api_secret_hint($secret)) . "',
-					updated_timestamp = UNIX_TIMESTAMP()
-				WHERE id = '" . $app_id . "' AND kind = 'server' AND api_secret_hash <> ''");
+			$rotated = api_app_rotate_secret($app_id, 86400, $_SESSION['sessionusername']);
 
-			pg_audit_record('rotate', 'api_apps', $app_id, $audit_before);
+			if ($rotated) {
 
-			$_SESSION['software']['api_new_credentials'] = array(
-				'name'    => $existing['name'],
-				'key'     => $existing['api_key'],
-				'secret'  => $secret,
-				'rotated' => true
-			);
+				$_SESSION['software']['api_new_credentials'] = array(
+					'name'    => $rotated['name'],
+					'key'     => $rotated['key'],
+					'secret'  => $rotated['secret'],
+					'rotated' => true
+				);
 
-			log_activity(lang(array(
-				'string' => 'A new secret was issued for the API application ({var:1}).',
-				'vars'   => $existing['name']
-			)), $_SESSION['sessionusername']);
+			} else {
+
+				$liveform->add_error(lang('That application could not be found.'));
+
+			}
 
 		}
 
@@ -1540,30 +1523,30 @@ echo pg_page_shell(array(
 .api-head, .api-row { display: grid; grid-template-columns: 1.9fr 1.5fr .85fr 1.15fr .9fr 34px;
 	gap: 14px; align-items: center; min-width: 900px; }
 .api-head { padding: 0 16px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; opacity: .55; }
-.api-row { padding: 13px 16px; border-top: 1px solid var(--bs-border-color); cursor: pointer; }
-.api-row:hover, .api-row:focus-visible { background: var(--bs-tertiary-bg); outline: 0; }
+.api-row { padding: 13px 16px; border-top: 1px solid var(--pg-border-color); cursor: pointer; }
+.api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); outline: 0; }
 .api-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .api-name i { opacity: .7; }
 .api-name b { font-size: 13px; display: block; }
 .api-name code { font-size: 10.5px; opacity: .55; }
 .api-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.api-chip { font-size: 10px; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--bs-border-color); opacity: .85; }
-.api-chip.w { border-color: var(--bs-primary); color: var(--bs-primary); }
+.api-chip { font-size: 10px; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--pg-border-color); opacity: .85; }
+.api-chip.w { border-color: var(--pg-primary); color: var(--pg-primary); }
 .api-chip.muted { opacity: .45; }
 .api-status { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
-	border: 1px solid var(--bs-border-color); display: inline-block; }
-.api-status.on { color: var(--bs-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
+	border: 1px solid var(--pg-border-color); display: inline-block; }
+.api-status.on { color: var(--pg-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
 .api-status.off { opacity: .5; }
-.api-status.warn { color: var(--bs-warning); border-color: color-mix(in srgb, var(--pg-warning) 35%, transparent); }
+.api-status.warn { color: var(--pg-warning); border-color: color-mix(in srgb, var(--pg-warning) 35%, transparent); }
 .api-meta { font-size: 11.5px; opacity: .8; }
 .api-meta small { display: block; font-size: 10.5px; opacity: .7; }
-.api-meta small.bad { color: var(--bs-danger); opacity: 1; }
-.api-empty { padding: 26px 16px; text-align: center; opacity: .6; border-top: 1px solid var(--bs-border-color); }
+.api-meta small.bad { color: var(--pg-danger); opacity: 1; }
+.api-empty { padding: 26px 16px; text-align: center; opacity: .6; border-top: 1px solid var(--pg-border-color); }
 
 /* One permission per resource, three positions. The row carries the sentence
    that says what it reaches, because "Orders: write" on its own does not. */
 .api-perm { display: flex; align-items: center; gap: 12px; padding: 13px 2px;
-	border-top: 1px solid var(--bs-border-color); }
+	border-top: 1px solid var(--pg-border-color); }
 .api-perm:first-of-type { border-top: 0; }
 .api-perm > i { font-size: 15px; width: 18px; text-align: center; opacity: .7; }
 .api-perm-text { flex: 1; min-width: 0; }
@@ -1580,36 +1563,36 @@ echo pg_page_shell(array(
 }
 .api-seg { flex: none; }
 .api-seg .btn { --bs-btn-font-size: 11px; --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem;
-	--bs-btn-color: var(--bs-secondary-color); --bs-btn-border-color: var(--bs-border-color);
-	--bs-btn-hover-border-color: var(--bs-border-color); }
-.api-seg .btn-check:checked + .btn { color: #fff; background: var(--bs-primary); border-color: var(--bs-primary); }
+	--bs-btn-color: var(--pg-fg-2); --bs-btn-border-color: var(--pg-border-color);
+	--bs-btn-hover-border-color: var(--pg-border-color); }
+.api-seg .btn-check:checked + .btn { color: #fff; background: var(--pg-primary); border-color: var(--pg-primary); }
 /* Write implies read, so the read position shows as held-open rather than
    inviting a click that would silently do nothing. */
-.api-seg .btn.implied { color: #fff; background: var(--bs-primary); border-color: var(--bs-primary); opacity: .45; }
+.api-seg .btn.implied { color: #fff; background: var(--pg-primary); border-color: var(--pg-primary); opacity: .45; }
 .api-seg-none { display: inline-flex; align-items: center; justify-content: center; min-width: 34px;
-	font-size: 11px; opacity: .3; border: 1px solid var(--bs-border-color); border-left: 0; }
+	font-size: 11px; opacity: .3; border: 1px solid var(--pg-border-color); border-left: 0; }
 .api-log { display: grid; grid-template-columns: 46px 1fr auto auto auto; gap: 9px; align-items: center;
-	padding: 8px 2px; border-top: 1px solid var(--bs-border-color); font-size: 11.5px; }
+	padding: 8px 2px; border-top: 1px solid var(--pg-border-color); font-size: 11.5px; }
 .api-log:first-child { border-top: 0; }
 .api-log .m { font-size: 9.5px; font-weight: 700; text-align: center; border-radius: 4px; padding: 2px 0;
-	background: var(--bs-tertiary-bg); }
+	background: var(--pg-bg-1); }
 .api-log code { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .api-log .s { font-size: 10.5px; font-weight: 600; }
-.api-log .s.ok { color: var(--bs-success); }
-.api-log .s.bad { color: var(--bs-danger); }
+.api-log .s.ok { color: var(--pg-success); }
+.api-log .s.bad { color: var(--pg-danger); }
 .api-log .d, .api-log .t { font-size: 10.5px; opacity: .55; }
-.api-hook { border-top: 1px solid var(--bs-border-color); padding: 11px 2px; }
+.api-hook { border-top: 1px solid var(--pg-border-color); padding: 11px 2px; }
 .api-hook:first-child { border-top: 0; }
 .api-hook-top { display: flex; align-items: center; gap: 8px; }
 .api-hook-url { flex: 1; min-width: 0; font-size: 12px; word-break: break-all; }
 .api-hook-events { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .api-hook-meta { font-size: 10.5px; opacity: .65; margin-top: 6px; }
-.api-hook-error { font-size: 10.5px; color: var(--bs-danger); margin-top: 5px; word-break: break-word; }
+.api-hook-error { font-size: 10.5px; color: var(--pg-danger); margin-top: 5px; word-break: break-word; }
 .api-hook-acts { display: flex; gap: 5px; margin-top: 8px; }
-.api-secret-box { display: flex; align-items: center; gap: 8px; background: var(--bs-tertiary-bg);
-	border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 9px 11px; }
+.api-secret-box { display: flex; align-items: center; gap: 8px; background: var(--pg-bg-1);
+	border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 9px 11px; }
 .api-secret-box code { flex: 1; font-size: 12px; word-break: break-all; }
-.api-guide { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: 8px;
+.api-guide { background: var(--pg-bg-1); border: 1px solid var(--pg-border-color); border-radius: 8px;
 	padding: 10px 12px; margin-bottom: 10px; font-size: 12.5px; }
 .api-guide-title { font-weight: 600; margin-bottom: 6px; }
 .api-guide ol, .api-guide ul { padding-left: 18px; }
@@ -1618,7 +1601,7 @@ echo pg_page_shell(array(
 .api-client summary { cursor: pointer; font-weight: 500; }
 .api-client[open] summary { margin-bottom: 4px; }
 .api-snippet code { white-space: pre; overflow-x: auto; word-break: normal; }
-.api-danger-zone { border-top: 1px solid var(--bs-border-color); margin-top: 18px; padding-top: 14px; }
+.api-danger-zone { border-top: 1px solid var(--pg-border-color); margin-top: 18px; padding-top: 14px; }
 /* The site chat launcher is fixed at z-index 1080, an offcanvas is 1045, so the
    bubble sits on top of whatever the drawer puts in its bottom right corner -
    which here is Save. Hidden while the drawer is open rather than moved: the
@@ -2030,9 +2013,10 @@ echo '
 
 	var API_BASE = ' . json_encode($api_base_url, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
 
+	// This runs while the page is parsed; Bootstrap is reached through pgUI
+	// only when a row is opened, so a Bootstrap that loads later (6 is a
+	// deferred module) is in place by then.
 	var drawerElement = document.getElementById("api_drawer");
-
-	var drawer = new bootstrap.Offcanvas(drawerElement);
 
 	function setRadio(name, value) {
 		var chosen = document.querySelector("#api_drawer [name=\'" + name + "\'][value=\'" + value + "\']");
@@ -2221,19 +2205,19 @@ echo '
 		devicesLabel.textContent = oauth ? devicesLabel.dataset.oauth : devicesLabel.dataset.device;
 		renderDevices(app.devices || []);
 		var firstTab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'#d_general\']");
-		if (firstTab) { bootstrap.Tab.getOrCreateInstance(firstTab).show(); }
+		if (firstTab) { pgUI.tab.show(firstTab); }
 
 		document.getElementById("d_delete_ask").classList.remove("d-none");
 		document.getElementById("d_delete_confirm").classList.add("d-none");
 
-		drawer.show();
+		pgUI.drawer.show(drawerElement);
 	}
 
-	drawerElement.addEventListener("show.bs.offcanvas", function () {
+	pgUI.drawer.on(drawerElement, "show", function () {
 		document.body.classList.add("api-drawer-open");
 	});
 
-	drawerElement.addEventListener("hidden.bs.offcanvas", function () {
+	pgUI.drawer.on(drawerElement, "hidden", function () {
 		document.body.classList.remove("api-drawer-open");
 	});
 

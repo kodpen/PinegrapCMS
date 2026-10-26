@@ -8,6 +8,9 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - `workspace.js` calls `window.PGWsFlow.start(root, BOOT)` and lends `PGWsKit` (`api` with `{keepalive}`, `ask`, `toast`, `select`, `peoplePicker`, `openTask`). Bundle `workspace_flow.min.js`, mode `flows` only.
 - Texts `ws_flow_js_strings()` (`fl_*`). Config `ws_flow_js_config($viewer, $mode)`: `nav`; mode `record`: `nav: false`, no query; `flows` adds build, subjects, limits.
 
+## Where are staff's scheduled actions?
+- `ws_flows_scheduled($viewer)` (staff, flow tables there; `CFG.flows.scheduled`): an entry under the flow list opens a section in place of the canvas (`?view=scheduled`), drawn by `scheduledList(body, bar)` of workspace.js through `PGWsKit`; the rail has no Scheduled actions entry then, workspace.php's `?view=scheduled` shows their scheduled messages only (`&part=messages` names that tab without flow tables). Parity: `workspace-flows-parity-test.md`.
+
 ## Which panel actions?
 - `ws_flow_list`, `_get`, `_create`, `_save`, `_publish`, `_pause`, `_bin`, `ws_flow_run_start`, `ws_flow_runs_list` (20 a page), `ws_flow_run_get`, `_cancel`, `ws_flow_shares`, `ws_flow_share_set`, `_remove`: `ws_` rows (exempt, token, write); the store's, runner's, shares' `*_check()` decide.
 - `ws_action_flow_fields()` always passes `draft_rev`; `ws_action_flow_refused()` makes a 409 `field: changed_meanwhile`.

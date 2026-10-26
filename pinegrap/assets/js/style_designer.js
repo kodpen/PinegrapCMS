@@ -24266,6 +24266,7 @@ const StyleDesigner = (function () {
                 var fullIdx = userRules.indexOf(r);
                 html += '<div class="sd-styles-user-rule" data-ur-idx="' + fullIdx + '">' +
                             '<div class="sd-styles-user-rule-hdr">' +
+                                (r.media ? '<span class="sd-styles-source" title="' + _stylesEscape(r.media) + '">' + _stylesEscape(r.media) + '</span>' : '') +
                                 '<input type="text" class="sd-styles-user-rule-sel" data-ur-idx="' + fullIdx + '" value="' + _stylesEscape(r.selector) + '" placeholder="selector">' +
                                 '<span class="sd-styles-user-rule-brace">{</span>' +
                                 '<button type="button" class="sd-styles-user-rule-del" data-ur-idx="' + fullIdx + '" title="' + esc(_sdT('Delete this rule')) + '"><span class="bi bi-trash"></span></button>' +
@@ -24368,66 +24369,63 @@ const StyleDesigner = (function () {
 
         // ── Bind User Styles editable rule events ──
         // Each handler reparses the current overlay content (single source
-        // of truth: cssFiles[user-styles].content) so concurrent edits stay
-        // consistent. Mutates one property/decl/selector at a time, then
-        // serialises back through _writeUserStyles → setUserStylesContent.
+        // of truth: cssFiles[user-styles].content), so the indexes the cards
+        // were drawn with still match, and changes only the characters of
+        // that rule or declaration (PgUserStyles): comments, @media wrappers,
+        // @font-face and the formatting around it stay as written.
+        function _urEdit(ri, change) {
+            var text = _userStylesGet();
+            var rule = _parseUserStyles(text)[ri];
+            if (!rule) return;
+            var next = change(text, rule);
+            if (next !== text) _writeUserStylesText(next);
+        }
         panel.querySelectorAll('.sd-styles-user-rule-sel').forEach(function (inp) {
             inp.addEventListener('change', function () {
-                var idx = parseInt(this.dataset.urIdx, 10);
-                var rules = _parseUserStyles(_userStylesGet());
-                if (!rules[idx]) return;
                 var v = this.value.trim();
-                if (!v) {
-                    rules.splice(idx, 1);   // empty selector = remove rule
-                } else {
-                    rules[idx].selector = v;
-                }
-                _writeUserStyles(rules);
+                _urEdit(parseInt(this.dataset.urIdx, 10), function (text, rule) {
+                    // An empty selector removes the rule.
+                    return v ? PgUserStyles.setSelector(text, rule, v) : PgUserStyles.removeRule(text, rule);
+                });
             });
         });
         panel.querySelectorAll('.sd-styles-user-rule-del').forEach(function (b) {
             b.addEventListener('click', function () {
-                var idx = parseInt(this.dataset.urIdx, 10);
-                var rules = _parseUserStyles(_userStylesGet());
-                if (rules[idx]) rules.splice(idx, 1);
-                _writeUserStyles(rules);
+                _urEdit(parseInt(this.dataset.urIdx, 10), function (text, rule) {
+                    return PgUserStyles.removeRule(text, rule);
+                });
             });
         });
         panel.querySelectorAll('.sd-styles-ur-toggle').forEach(function (cb) {
             cb.addEventListener('change', function () {
                 if (this.checked) return;  // off only — see _toggleInlineDecl note
-                var ri = parseInt(this.dataset.urIdx, 10);
                 var di = parseInt(this.dataset.declIdx, 10);
-                var rules = _parseUserStyles(_userStylesGet());
-                if (rules[ri] && rules[ri].decls[di]) rules[ri].decls.splice(di, 1);
-                _writeUserStyles(rules);
+                _urEdit(parseInt(this.dataset.urIdx, 10), function (text, rule) {
+                    return PgUserStyles.removeDecl(text, rule, di);
+                });
             });
         });
         panel.querySelectorAll('.sd-styles-ur-name-inp, .sd-styles-ur-value-inp').forEach(function (inp) {
             inp.addEventListener('change', function () {
                 var ri = parseInt(this.dataset.urIdx, 10);
                 var di = parseInt(this.dataset.declIdx, 10);
-                var rules = _parseUserStyles(_userStylesGet());
-                if (!rules[ri] || !rules[ri].decls[di]) return;
                 var nameInp  = panel.querySelector('.sd-styles-ur-name-inp[data-ur-idx="'  + ri + '"][data-decl-idx="' + di + '"]');
                 var valueInp = panel.querySelector('.sd-styles-ur-value-inp[data-ur-idx="' + ri + '"][data-decl-idx="' + di + '"]');
                 var n = (nameInp.value || '').trim();
                 var v = (valueInp.value || '').trim();
-                if (!n) {
-                    rules[ri].decls.splice(di, 1);  // empty name = remove decl
-                } else {
-                    rules[ri].decls[di] = { name: n, value: v };
-                }
-                _writeUserStyles(rules);
+                _urEdit(ri, function (text, rule) {
+                    if (!rule.decls[di]) return text;
+                    // An empty name removes the declaration.
+                    return n ? PgUserStyles.setDecl(text, rule, di, n, v) : PgUserStyles.removeDecl(text, rule, di);
+                });
             });
         });
         panel.querySelectorAll('.sd-styles-ur-del-decl').forEach(function (b) {
             b.addEventListener('click', function () {
-                var ri = parseInt(this.dataset.urIdx, 10);
                 var di = parseInt(this.dataset.declIdx, 10);
-                var rules = _parseUserStyles(_userStylesGet());
-                if (rules[ri]) rules[ri].decls.splice(di, 1);
-                _writeUserStyles(rules);
+                _urEdit(parseInt(this.dataset.urIdx, 10), function (text, rule) {
+                    return PgUserStyles.removeDecl(text, rule, di);
+                });
             });
         });
         panel.querySelectorAll('.sd-styles-ur-add-decl').forEach(function (b) {
@@ -24438,10 +24436,9 @@ const StyleDesigner = (function () {
                 var n = (nameInp.value || '').trim();
                 var v = (valueInp.value || '').trim();
                 if (!n) { nameInp.focus(); return; }
-                var rules = _parseUserStyles(_userStylesGet());
-                if (!rules[ri]) return;
-                rules[ri].decls.push({ name: n, value: v });
-                _writeUserStyles(rules);
+                _urEdit(ri, function (text, rule) {
+                    return PgUserStyles.addDecl(text, rule, n, v);
+                });
             });
         });
         // Enter key in the add inputs triggers add-decl (UX parity with
@@ -24466,52 +24463,27 @@ const StyleDesigner = (function () {
         });
     }
 
-    // ── User-styles overlay: parse / serialise / mutate ────────────────────
+    // ── User-styles overlay: parse / write ───────────────────────────────
     // The user-styles content is a CSS string (the bottom-Styles Create
-    // button + the Overlays modal both write it). Parsing it into a flat
-    // [{ selector, decls: [{name, value}] }, …] lets the Styles panel
-    // render each rule with editable selector + decl rows like element.style.
-    // The parser is intentionally minimal: it only matches `selector { … }`
-    // blocks because every rule the editor generates is flat (no @media,
-    // nested rules, etc.). Comments are stripped first.
+    // button, the Overlays modal, block drops and design templates write
+    // it). PgUserStyles (assets/js/pg_user_styles.js) lists its style rules,
+    // those inside @media / @supports / @container / @layer included, as
+    // [{ selector, decls: [{ name, value }], media, …source offsets }], and
+    // edits one rule's characters in place. Rewriting the whole text from
+    // the list lost what it does not hold: comments, @font-face,
+    // @keyframes, and the @media wrapper of a rule inside one, which then
+    // applied at every width.
     function _parseUserStyles(text) {
-        if (!text) return [];
-        var noComments = String(text).replace(/\/\*[\s\S]*?\*\//g, '');
-        var rules = [];
-        var re = /([^{}]+)\{([^{}]*)\}/g;
-        var m;
-        while ((m = re.exec(noComments)) !== null) {
-            var sel = m[1].trim();
-            if (!sel) continue;
-            var decls = [];
-            m[2].split(';').forEach(function (line) {
-                var i = line.indexOf(':');
-                if (i === -1) return;
-                var k = line.slice(0, i).trim();
-                var v = line.slice(i + 1).trim();
-                if (k) decls.push({ name: k, value: v });
-            });
-            rules.push({ selector: sel, decls: decls });
-        }
-        return rules;
+        return window.PgUserStyles ? PgUserStyles.parse(text) : [];
     }
-    function _serializeUserStyles(rules) {
-        return rules.map(function (r) {
-            var body = r.decls
-                .filter(function (d) { return d.name; })
-                .map(function (d) { return '  ' + d.name + ': ' + (d.value || '') + ';'; })
-                .join('\n');
-            return r.selector + ' {' + (body ? '\n' + body + '\n' : '\n') + '}';
-        }).join('\n\n');
-    }
-    function _writeUserStyles(rules) {
+    function _writeUserStylesText(text) {
         if (typeof _assetsApi === 'undefined' || !_assetsApi || !_assetsApi.setUserStylesContent) return;
         // Snapshot BEFORE the mutation so undo restores the pre-edit state.
         // saveState() captures the css hidden field as part of `assets`, so
         // there's nothing else to do — restoring the snapshot rolls the
         // user-styles content back automatically.
         saveState();
-        _assetsApi.setUserStylesContent(_serializeUserStyles(rules));
+        _assetsApi.setUserStylesContent(text);
     }
 
     // ── Inline-style helpers (element.style block) ───────────────────────────
@@ -24735,10 +24707,9 @@ const StyleDesigner = (function () {
             if (cls.length) sel = '.' + cls.join('.');
             else            sel = (el.tagName || 'div').toLowerCase();
         }
-        var existing = _userStylesGet();
-        var snippet  = (existing && existing.replace(/\s+$/, '') ? existing.replace(/\s+$/, '') + '\n\n' : '') +
-                       sel + ' {\n  \n}\n';
-        _userStylesSet(snippet);
+        if (!window.PgUserStyles) return;
+        // One undo step, like every other User Styles edit.
+        _writeUserStylesText(PgUserStyles.appendRule(_userStylesGet(), sel));
         // No auto-scroll — user reported it was disorienting (panel jumps to
         // bottom on every Create click). The new rule appears in the User
         // Styles section near the top of the panel anyway, so the auto-scroll
@@ -36243,6 +36214,10 @@ const StyleDesigner = (function () {
         out.__event_date = true;
         out.__event_start_date = true;
         out.__event_end_date = true;
+        // Order view: typed by _pg_sw_order_view_dates().
+        out.__order_date = true;
+        out.__arrival_date = true;
+        out.__withdrawal_deadline = true;
         return out;
     })();
 
@@ -36270,15 +36245,14 @@ const StyleDesigner = (function () {
     // The widget kinds whose fill reads a text format. An allow-list: in a
     // fill that replaces ^^token^^ alone the format would print after the
     // value, so a kind offers the Format row only once its fill reads it.
-    // The shop kinds (catalog, catalog detail, cart, express order, order
-    // view) are not read yet.
     var _SD_FILTER_KINDS = {
         form_list_view: 1, form_item_view: 1, my_account: 1, login_form: 1, login_region: 1,
         cart_link: 1, forgot_password: 1, search_results: 1, registration: 1, membership: 1,
         custom_form: 1, calendar_view: 1, calendar_event_view: 1, account_profile: 1,
         change_password: 1, set_password: 1, email_preferences: 1, address_book: 1,
         account_security: 1, account_invoices: 1, account_email: 1, logout: 1, error_page: 1,
-        language_switcher: 1, comments: 1
+        language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
+        shopping_cart: 1, express_order: 1, order_view: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for

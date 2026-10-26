@@ -11,11 +11,11 @@ description: Working rule (2026-10-25) for the merging session: one merger, one 
 - The merging session need not live long: the open train PR, the `ready` labels and this file carry its state.
 
 ## When does the merging session merge?
-- In windows: a check every 30 minutes (other sessions wait on their merge to take the next step, so a ready, green PR goes into the next window). It does not react to each CI event in between. A security fix or a broken `development` may be merged at once, alone.
+- As soon as a train lands, the next one is built from the ready, green PRs waiting: sessions wait on their merge for the next step, and a full queue stops new work. With none waiting, a check every 30 minutes picks up new ones. It does not react to each CI event in between. A security fix or a broken `development` may be merged at once, alone.
 - A PR that changes only `docs/`, `CLAUDE.md` or `.github/` lands alone as soon as it is green, outside the windows: every new session reads the rules from `development`, so a rules PR behind a train means sessions working under old rules. It gets its own `--no-ff` merge commit `<PR title> (#n)` on `origin/development` (indexes regenerated with `php tools/memory_index.php`), pushed fast-forward. When a train is already waiting and both regenerate the same index, it rides that train instead, so `development` does not move under the train.
 
 ## Which PRs go into a train?
-- Open PRs whose CI is green on their head and that carry the `ready` label, or that have had no push for an hour while green. Smaller first. A PR over the size limit (`working-mode.md`) goes into a train of its own or with small PRs: a red train is then easy to blame.
+- Open PRs whose CI is green on their head and that carry the `ready` label, or that have had no push for an hour while green. Smaller first, up to about 12 a train. A PR over the size limit (`working-mode.md`) goes into a train of its own or with small PRs: a red train is then easy to blame.
 
 ## How is the train built?
 1. `git fetch origin && git checkout -b merge-train/<yyyymmdd-hhmm> origin/development`: from `origin`, never from a clone's local `development` (stale). `git config rerere.enabled true` once: a rebuild replays the resolutions.
