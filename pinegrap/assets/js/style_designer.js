@@ -32301,6 +32301,7 @@ const StyleDesigner = (function () {
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
             (n.props.regionType === 'system' ? _sdLayoutPropsHtml() : '') +
             (n.props.regionType === 'designer' ? _sdDesignerRegionPropsHtml(n) : '') +
+            _sdRegionWidgetPropsHtml(n) +
             designableHtml
         ) + commentsInfo;
     }
@@ -44312,6 +44313,63 @@ const StyleDesigner = (function () {
             .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
+    // The classic data-driven regions, the widget kind that draws each and
+    // the widget setting that names the region (the same name the region
+    // node holds).
+    var SD_REGION_WIDGETS = {
+        menu:          { kind: 'menu_region',          key: 'menu_name' },
+        menu_sequence: { kind: 'menu_sequence_region', key: 'menu_name' },
+        ad:            { kind: 'ad_region',            key: 'ad_region_name' },
+        tag_cloud:     { kind: 'tag_cloud_region',     key: 'search_page_name' }
+    };
+
+    function _sdRegionWidgetPropsHtml(n) {
+        if (!SD_REGION_WIDGETS[n.props.regionType] || !n.props.regionName) return '';
+        return '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-region-make-widget">' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Make designable')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Puts a widget showing the same region in its place, in a layout you design; the items stay where they are edited today. Inside a shared component every page that places it changes; elsewhere only this page.')) +
+            '</div></div>';
+    }
+
+    // A new widget of the region's kind, named after the region, takes the
+    // region node's place, in the page tree or in the shared component the
+    // node sits in; one undo step.
+    function _sdRegionMakeWidget(regionNode) {
+        var map = (regionNode && regionNode.type === 'region' && regionNode.props) ? SD_REGION_WIDGETS[regionNode.props.regionType] : null;
+        if (!map || !regionNode.props.regionName) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var regionName = regionNode.props.regionName;
+        var cfg = _swTypeDefaults({}, map.kind);
+        cfg[map.key] = regionName;
+        var start = _sdAnyParent(regionNode);
+        var name = _swAutoName(map.kind, null, { target: start ? start.parent : null });
+        _swCreateRow(name, cfg, _buildStarterTree(map.kind), function (newId, newName) {
+            // The node may have gone meanwhile (another tab, an undo); the
+            // widget is then listed in the design, unplaced.
+            var hit = _sdAnyParent(regionNode);
+            var parent = hit ? hit.parent : null;
+            var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(regionNode) : -1;
+            if (idx === -1) {
+                if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                return;
+            }
+            saveState();
+            if (hit.sid) _sharedDirty[hit.sid] = true;
+            var ref = { _id: gid(), type: 'shared_ref', props: { sharedId: newId, sharedName: newName }, children: [] };
+            parent.children.splice(idx, 1, ref);
+            selectedNode  = ref;
+            selectedNodes = [];
+            if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+            render();
+            if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+            sdToast(esc(_sdT('"{var}" is now a widget you design; its items are still edited where they were.', regionName)), 'success', 7000);
+        });
+    }
+
     // The system region of a page that draws a custom layout: its PHP in a
     // code-view tab, for the classic layout editor's role (_design.layoutCode),
     // and the generated layout to start again from.
@@ -47001,6 +47059,9 @@ const StyleDesigner = (function () {
         // A designer region becomes a shared component on this page.
         var dsgRegionBtn = document.getElementById('sd-designer-region-convert');
         if (dsgRegionBtn) dsgRegionBtn.addEventListener('click', function () { _sdDesignerRegionConvert(selectedNode); });
+        // A menu, menu sequence, ad or tag cloud region becomes its widget.
+        var regionWidgetBtn = document.getElementById('sd-region-make-widget');
+        if (regionWidgetBtn) regionWidgetBtn.addEventListener('click', function () { _sdRegionMakeWidget(selectedNode); });
         // A dynamic region's PHP code opens as a code-view tab.
         var dregionCodeBtn = document.getElementById('sd-dregion-code');
         if (dregionCodeBtn) dregionCodeBtn.addEventListener('click', function () {

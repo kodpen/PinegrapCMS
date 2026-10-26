@@ -26,4 +26,4 @@ description: Menu widget (menu_region, #1781): a classic menu region in the desi
 - On the front end, for a manager or a user granted the menu (`pg_mw_can_edit_menu()`), a chip opens `view_menu_items.php` for that menu.
 
 ## What is left out?
-- The menu's effect (pop-up, accordion and `software.init_menu()`), its `class` and `active_item_class` and the item `class` column: the design gives the look. A parent with sub-items is a dropdown toggle, not a link. Converting a page's `<menu>` region node into this widget is not done.
+- The menu's effect (pop-up, accordion and `software.init_menu()`), its `class` and `active_item_class` and the item `class` column: the design gives the look. A parent with sub-items is a dropdown toggle, not a link. A `<menu>` region node becomes this widget with "Make designable" ([[region-node-to-widget]]).
