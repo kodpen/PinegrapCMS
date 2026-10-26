@@ -30,7 +30,7 @@ OR in conditions; pg-hide-if-empty everywhere; words beside a value; code areas;
 - W2 done (#1582): palette double-click lands beside it.
 - W3 done (#1597): row position ([[widget-loop-position]]).
 - W4 done (#1665, [[widget-condition-panel]]).
-- W5 Layout gallery: Default, From templates, On this site; Try/Keep/Cancel. Not waiting.
+- W5 Layout gallery: Default and On this site, Try/Keep/Cancel #1879 ([[widget-layout-gallery]]); From templates left.
 - W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 Entity fields: products #1809, events #1828, quiz #1847; next order, addresses, account ([[widget-entity-fields-list]]).
 - W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).

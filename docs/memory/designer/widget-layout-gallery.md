@@ -15,11 +15,11 @@ description: W5 layout gallery of a system widget: sources (Default, On this sit
 ## How do Try, Keep and Cancel work?
 - Try puts a re-ided copy (`gid()`) on the canvas; nothing is marked unsaved. A bar at the foot of the window says what is tried, with Keep and Cancel. Another Try swaps the copy.
 - Keep puts back the original for one `saveState()`, then the copy, marks the widget dirty: one undo step (Ctrl+Z) brings the old layout back. Copied, never linked: the copy has its own node ids.
-- Cancel, Ctrl+Z, Ctrl+Y and closing the bar put the original back. Editing the tried layout keeps it first (`saveState()` hook). A save cancels a try before it serialises (`_saveAjaxImpl()`, `prepareFormData()`).
-- The widget's settings (form, product group) are never changed.
+- Cancel, Ctrl+Z and Ctrl+Y put the original back. Editing the tried layout keeps it first (`saveState()` hook). A save cancels a try before it serialises (`_saveAjaxImpl()`, `prepareFormData()`).
+- The widget's settings (form, product group) are never changed. The section replaced the old "Load the Default Layout" button (it asked, then replaced at once); the express order panel keeps its own server-tree button.
 
 ## Who may use it?
 - Shown only to an operator who may edit (`_collab.mayEdit`) and is not content-level (widgets never open to content editors); Try checks the same and nudges.
 
 ## What is left?
-- From templates: the design templates' layouts for the kind (`includes/design_templates/<id>.php` starter widgets), styled ones only in a design made from that template. The design needs to know its template id (not stored today); a template's plain (unstyled) layouts could be offered everywhere. Owner decision: [[widget-designability-decisions]].
+- From templates: the design templates' layouts for the kind (`includes/design_templates/<id>.php` starter widgets), styled ones only in a design made from that template. A design records its template in `style.style_template` (passed to the editor in `edit_system_style.php`), the key to match a template's starter widgets of the same kind. Owner decision: [[widget-designability-decisions]].
