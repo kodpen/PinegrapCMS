@@ -1,6 +1,6 @@
 ---
 name: menu-widget
-description: Menu widget (menu_region, #PR): a classic menu region in the designer; items stay in the menu screen; menu.children lists, row tokens, current item, access, window, edit chip, gaps.
+description: Menu widget (menu_region, #1781): a classic menu region in the designer; items stay in the menu screen; menu.children lists, row tokens, current item, access, window, edit chip, gaps.
 ---
 
 ## What is it?
