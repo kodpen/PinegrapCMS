@@ -551,9 +551,13 @@ function bs6_join_class_parts($value, $parts)
  * panel scripts (`el('div', 'mb-3')`, `h.el(…)`, `make(…)`, `button('btn …')`,
  * `icon('bi-x', 'me-2')`).
  */
-function bs6_find_class_lists($source)
+function bs6_find_class_lists($source, $strings = false)
 {
 	$found = array();
+
+	if ($strings) {
+		$found = bs6_find_class_strings($source);
+	}
 
 	$patterns = array(
 		// Not `$class = '...'`: a PHP variable assignment is code, not markup.
@@ -615,6 +619,56 @@ function bs6_find_class_lists($source)
 	}
 
 	return $unique;
+}
+
+// Whether the codemod reads class names in plain string literals of a file
+// (bs6_find_class_strings()): not in the editor's script, whose chrome code
+// names the canvas's Bootstrap 5 classes as data.
+function bs6_reads_class_strings($path)
+{
+	return str_replace('\\', '/', $path) !== 'assets/js/style_designer.js';
+}
+
+/**
+ * String literals in code that hold only class names, at least one of them a
+ * Bootstrap 5 class the rules change or report: a status map
+ * (`'expired' => 'text-bg-warning'`), a function's return value, a JS
+ * object of classes. Every token has a hyphen or is a class without one
+ * (`btn`, `badge`, …), so text and keys are not taken. Kind 'string'; a
+ * single class in one is converted like a class API argument (a class that
+ * would become two is reported), since the code may add it with classList.
+ */
+function bs6_find_class_strings($source)
+{
+	$bare = array('btn', 'badge', 'small', 'row', 'col', 'card', 'border', 'rounded', 'shadow', 'active', 'disabled', 'show', 'fade', 'container', 'table', 'alert', 'lead', 'collapse', 'clearfix', 'invisible', 'visible');
+	$found = array();
+
+	if (!preg_match_all('/([\'"])([A-Za-z][A-Za-z0-9:-]*(?: [A-Za-z][A-Za-z0-9:-]*)*)\1/', $source, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+		return $found;
+	}
+
+	foreach ($matches as $m) {
+		$tokens = explode(' ', $m[2][0]);
+		$v5 = false;
+
+		foreach ($tokens as $token) {
+			if (strpos($token, '-') === false && !in_array($token, $bare, true)) {
+				continue 2;
+			}
+
+			$mapped = bs6_map_token($token);
+
+			if ($mapped['review'] !== null || $mapped['tokens'] !== array($token)) {
+				$v5 = true;
+			}
+		}
+
+		if ($v5) {
+			$found[] = array('offset' => $m[2][1], 'length' => strlen($m[2][0]), 'value' => $m[2][0], 'kind' => 'string');
+		}
+	}
+
+	return $found;
 }
 
 // 1-based line number of a byte offset.
@@ -713,7 +767,7 @@ function bs6_in_ranges($offset, array $ranges)
  * Returns array('source', 'changed' => int, 'kept' => int, 'reviews' =>
  * array of array('line', 'token', 'reason')).
  */
-function bs6_convert_source($source, $lines = null)
+function bs6_convert_source($source, $lines = null, $strings = false)
 {
 	$out = '';
 	$position = 0;
@@ -722,7 +776,7 @@ function bs6_convert_source($source, $lines = null)
 	$reviews = array();
 	$site_output = bs6_site_output_ranges($source);
 
-	foreach (bs6_find_class_lists($source) as $list) {
+	foreach (bs6_find_class_lists($source, $strings) as $list) {
 		$line = bs6_line_of($source, $list['offset']);
 
 		if ($lines !== null && !isset($lines[$line])) {
@@ -734,7 +788,15 @@ function bs6_convert_source($source, $lines = null)
 			continue;
 		}
 
-		$result = bs6_convert_class_list($list['value'], in_array($list['kind'], array('class-list', 'jquery'), true));
+		$one_each = in_array($list['kind'], array('class-list', 'jquery'), true) || ($list['kind'] === 'string' && strpos(trim($list['value']), ' ') === false);
+
+		// A lone `text-bg-<colour>` string is a status badge's colour (code
+		// adds it after 'badge '): the badge's theme class.
+		if ($list['kind'] === 'string' && preg_match('/^text-bg-(' . implode('|', bs6_theme_colours()) . ')$/', $list['value'], $m)) {
+			$result = array('value' => 'theme-' . $m[1], 'changed' => 1, 'reviews' => array());
+		} else {
+			$result = bs6_convert_class_list($list['value'], $one_each);
+		}
 
 		foreach ($result['reviews'] as $review) {
 			$reviews[] = array($line, $review[0], $review[1]);
