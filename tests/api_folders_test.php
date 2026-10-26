@@ -85,3 +85,46 @@ function test_api_folders_within_finds_the_folder_and_its_branch()
 	pg_assert_same(false, api_folder_within($tree, 20, 10), 'a sibling branch');
 	pg_assert_same(false, api_folder_within($tree, 1, 10), 'its parent');
 }
+
+// aclfolder rows by folder and user, as api_folder_acl() loads them: user 7
+// reads 10, user 8 edits 10, user 9 reads 20 until 2026-12-31 and is shut out
+// of 12 by an expired row.
+function api_folders_test_acl()
+{
+	return array(
+		10 => array(
+			7 => array('rights' => 1, 'expires' => '0000-00-00'),
+			8 => array('rights' => 2, 'expires' => '0000-00-00'),
+		),
+		12 => array(
+			9 => array('rights' => 1, 'expires' => '2026-01-01'),
+		),
+		20 => array(
+			9 => array('rights' => 1, 'expires' => '2026-12-31'),
+		),
+	);
+}
+
+function test_api_folders_readers_come_from_the_nearest_row_of_each_user()
+{
+	$tree = api_folders_test_tree();
+	$acl = api_folders_test_acl();
+
+	pg_assert_same(array(7 => '9999-12-31', 8 => '9999-12-31'), api_folder_readers_walk($tree, $acl, 11, '2026-10-26'), 'inherited from 10');
+	pg_assert_same(array(7 => '9999-12-31', 8 => '9999-12-31'), api_folder_readers_walk($tree, $acl, 12, '2026-10-26'), 'an expired row shuts its user out and stops the walk for them only');
+	pg_assert_same(array(9 => '2026-12-31'), api_folder_readers_walk($tree, $acl, 20, '2026-10-26'), 'a row with an end date');
+	pg_assert_same(array(), api_folder_readers_walk($tree, $acl, 20, '2027-01-01'), 'that row once it has ended');
+	pg_assert_same(array(9 => '2026-12-31'), api_folder_readers_walk($tree, $acl, 11, '2026-10-26', array(11 => array('parent' => 20, 'access' => ''))), 'after 11 is moved under 20');
+}
+
+function test_api_folders_readers_widen_when_a_user_gains_or_keeps_access_longer()
+{
+	$both = array(7 => '9999-12-31', 8 => '9999-12-31');
+
+	pg_assert_same(false, api_folder_readers_widen($both, $both), 'the same list');
+	pg_assert_same(false, api_folder_readers_widen($both, array(7 => '9999-12-31')), 'fewer readers');
+	pg_assert_same(false, api_folder_readers_widen($both, array()), 'nobody but managers');
+	pg_assert_same(true, api_folder_readers_widen($both, array(7 => '9999-12-31', 9 => '9999-12-31')), 'a reader the source does not have');
+	pg_assert_same(true, api_folder_readers_widen(array(9 => '2026-12-31'), array(9 => '9999-12-31')), 'the same reader for longer');
+	pg_assert_same(false, api_folder_readers_widen(array(9 => '9999-12-31'), array(9 => '2026-12-31')), 'the same reader for less long');
+}

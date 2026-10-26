@@ -3703,6 +3703,8 @@
     "This card is linked to another account. Undo that link first.": "Bu kart başka bir cariye bağlı. Önce o bağı çözün.",
     "This category asks for nothing else. The article is ready to list.": "Bu kategori başka bir şey istemiyor. Ürün açılmaya hazır.",
     "This catering request could not be found, or it is not yours to see.": "Bu catering talebi bulunamadı ya da görme yetkiniz yok.",
+    "This change would let people open folders in this branch who cannot open them now. Change it on the folder screen.": "Bu değişiklik bu daldaki klasörleri şu an açamayan kişilerin açmasına izin verir. Değişikliği klasör ekranından yapın.",
+    "This change would let people open the page who cannot open it now. Move it on the page screen.": "Bu değişiklik sayfayı şu an açamayan kişilerin açmasına izin verir. Sayfayı sayfa ekranından taşıyın.",
     "This change would serve the folder as {var:1} instead of {var:2}, which opens what is in it to more people. Change it on the folder screen.": "Bu değişiklik klasörü {var:2} yerine {var:1} olarak sunar ve içindekileri daha çok kişiye açar. Bunu klasör ekranından değiştirin.",
     "This change would serve the page as {var:1} instead of {var:2}, which opens it to more people. Move it on the page screen.": "Bu değişiklik sayfayı {var:2} yerine {var:1} olarak sunar ve daha çok kişiye açar. Sayfayı sayfa ekranından taşıyın.",
     "This changes {var:1} records at once. Go on?": "Bu, {var:1} kaydı birden değiştirir. Devam edilsin mi?",
