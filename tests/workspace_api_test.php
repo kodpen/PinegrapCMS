@@ -846,6 +846,42 @@ function test_ws_api_mcp_catalogue_is_for_administrators_and_no_tool()
 	pg_assert_true(strpos($source, 'api_fail(403') !== false, 'the others get 403');
 }
 
+// The site's MCP servers over the API: an administrator's, no MCP tool,
+// every write rehearsed; the panel's tools form and add form call the same
+// checks and writes as the API.
+function test_ws_api_mcp_servers_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$expected = array(
+		'workspace.mcp_servers.list'    => array('GET', '/workspace/mcp-servers', 'workspace:read'),
+		'workspace.mcp_servers.create'  => array('POST', '/workspace/mcp-servers', 'workspace:write'),
+		'workspace.mcp_servers.probe'   => array('POST', '/workspace/mcp-servers/probe', 'workspace:write'),
+		'workspace.mcp_servers.refresh' => array('POST', '/workspace/mcp-servers/{id}/refresh', 'workspace:write'),
+		'workspace.mcp_servers.tools'   => array('POST', '/workspace/mcp-servers/{id}/tools', 'workspace:write'),
+	);
+
+	foreach ($expected as $id => $shape) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+		pg_assert_same($shape, array($routes[$id]['method'], $routes[$id]['path'], $routes[$id]['scope']), $id);
+		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+		pg_assert_true(strpos(ws_api_test_handler_source($routes[$id]['handler']), 'ws_api_mcp_admin()') !== false, $id . ': an administrator only');
+	}
+
+	$admin = ws_api_test_handler_source('ws_api_mcp_admin');
+	pg_assert_true(strpos($admin, "(int) \$viewer['role'] !== 0") !== false, 'role 0 only');
+	pg_assert_true(strpos($admin, 'api_fail(403') !== false, 'the others get 403');
+
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
+	pg_assert_true(strpos($panel, 'ws_mcp_tools_check($server, $wanted') !== false, 'the tools form meets the shared check');
+	pg_assert_true(strpos($panel, '$check = ws_mcp_save_check($server, $post);') !== false, 'the add form meets the shared check');
+	pg_assert_true(strpos($panel, 'ws_mcp_server_state($server)') !== false, 'the card badge is the shared state');
+}
+
 // The sync an app polls is a read and no tool: a model gains nothing from a
 // cursor, and a route can stay out of MCP by saying so.
 function test_ws_api_sync_is_a_read_and_no_tool()
@@ -2281,6 +2317,10 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
 		'ws_api_changes_propose'      => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_message_send_check(', 'ws_api_proposal_rows(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
 		'ws_api_task_changes_propose' => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_task_note_add_check(', 'ws_api_proposal_rows(', 'ws_task_delegation_open_run(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
+		'ws_api_mcp_servers_create'   => array('ws_api_mcp_admin(', 'ws_mcp_save_check(', 'api_dry_run_stop(', 'ws_mcp_save(', 'ws_mcp_refresh_tools('),
+		'ws_api_mcp_servers_refresh'  => array('ws_api_mcp_admin(', 'ws_mcp_refresh_check(', 'api_dry_run_stop(', 'ws_mcp_refresh_tools('),
+		'ws_api_mcp_servers_tools'    => array('ws_api_mcp_admin(', 'ws_mcp_tools_check(', 'api_dry_run_stop(', 'ws_mcp_tools_save('),
+		'ws_api_mcp_servers_probe'    => array('ws_api_mcp_admin(', 'ws_mcp_probe_check(', 'api_dry_run_stop(', 'ws_mcp_probe_address('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),
 	);

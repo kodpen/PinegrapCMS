@@ -3607,6 +3607,7 @@
     "These shared components place each other in a loop: {var:1}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var:1}",
     "These shared components place each other in a loop: {var}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var}",
     "These shortcuts work in the desktop and web apps. Press Ctrl+/ in the app to see them at any time.": "Bu kısayollar masaüstü ve web uygulamalarında çalışır. Hepsini istediğiniz an görmek için uygulamada Ctrl+/ tuşlarına basın.",
+    "These tools write, so they can be turned on only on a server people sign in to, each call approved: {var:1}": "Bu araçlar yazar; yalnızca kişilerin oturum açtığı bir sunucuda, her çağrı onaylanarak açılabilir: {var:1}",
     "These topics have no reply yet. A short answer is better than none.": "Bu konulara henüz yanıt verilmedi. Kısa bir yanıt, hiç yanıt olmamasından iyidir.",
     "These were announced in an earlier reminder. This is their second and last appearance; from now on they count only in the total below.": "Bunlar önceki bir hatırlatmada duyurulmuştu. Bu ikinci ve son görünüşleri; bundan sonra yalnız aşağıdaki toplamda sayılırlar.",
     "These widgets had no layout and drew nothing on the site: {var}. Their default layout was loaded; save to put it on the site.": "Bu widget'ların düzeni yoktu, sitede hiçbir şey göstermiyordu: {var}. Varsayılan düzenleri yüklendi; sitede görünmesi için kaydedin.",
