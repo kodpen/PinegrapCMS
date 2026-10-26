@@ -61182,18 +61182,17 @@ const StyleDesigner = (function () {
                 p[k] = (k === 'page_folder') ? (parseInt(el.value, 10) || 0) : el.value;
                 if (wasClean) p.baseline = _pgBaselineOf(p);
             }
-            // tagin draws its own chips from the input value; redraw them.
-            if (el.classList.contains('tagin') && typeof tagin === 'function') {
-                var sib = el.nextElementSibling;
-                if (sib && sib.classList.contains('tagin-wrapper')) sib.remove();
-                if (document.body.contains(el)) tagin(el);
-            }
         });
         _PG_CMT_FIELDS.forEach(function (k) {
             var el = document.querySelector('input[type="hidden"][name="' + k + '"]');
             if (!el) return;
             el.value = _PG_BOOL_FIELDS[k] ? (p[k] ? '1' : '0') : (p[k] == null ? '' : String(p[k]));
         });
+        // The keyword chips are drawn from their input; set() redraws them.
+        // Its change event reads every field back into the active page, so
+        // it runs only once all of them hold this page's values.
+        var kw = document.getElementById('pg_search_keywords');
+        if (kw && window.pgChips) pgChips.set(kw, pgChips.get(kw));
         _pgSyncDraftBox(p);
         // The page's meta tag rows are drawn from its hidden field.
         _sdMetaListRender('page');
