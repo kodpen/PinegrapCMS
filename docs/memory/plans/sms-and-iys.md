@@ -18,8 +18,8 @@ description: Plan (approved 2026-10-19; SMS layer, Netgsm, queue, order messages
 ## What remains?
 1. ~~Provider interface + Netgsm driver + settings card + test send~~ (done, PR #600). Commercial kinds are refused by `pg_sms_send()` until step 5.
 2. ~~`sms_outbox` step, queue sending in `job.php`, Mail Queue tab~~ (done, PR #610).
-3. ~~Order and shipping templates, hooks at `submit_order.php`, `update_order()` and `pg_shipment_delivered()` through `pg_sms_enqueue()` with a reference per order and event~~ (done, PR #PRNUM; `platform/sms-order-messages.md`).
-3b. COD code check at checkout (M), and member OTP: Netgsm's OTP route (`/sms/rest/v2/otp`: OTP package, 160 characters, no Turkish letters) for `otp` or not: owner question in PR #PRNUM. Codes use `expires_at` (`platform/sms-outbox-queue.md`).
+3. ~~Order and shipping templates, hooks at `submit_order.php`, `update_order()` and `pg_shipment_delivered()` through `pg_sms_enqueue()` with a reference per order and event~~ (done, PR #1839; `platform/sms-order-messages.md`).
+3b. COD code check at checkout (M), and member OTP: Netgsm's OTP route (`/sms/rest/v2/otp`: OTP package, 160 characters, no Turkish letters) for `otp` or not: owner question in PR #1839. Codes use `expires_at` (`platform/sms-outbox-queue.md`).
 4. ~~Consent writers at sign-up, account page, checkout, unsubscribe~~ (done, PR #1581; e-mail only, no screen asks for SMS: `core/consent-log-writers.md`).
 5. İYS client (`includes/iys/client.php`): brand/consent endpoints, push and pull jobs in the dispatcher (daily), status column on contacts, filter in campaign sending (M).
 6. API: `/contacts/{id}/consents` read, webhook `customer.consent_changed`.
