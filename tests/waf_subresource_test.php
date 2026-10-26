@@ -41,8 +41,9 @@ function test_waf_subresource_by_destination()
 	pg_assert_false(waf_fetch_is_subresource('', 'image', ''), 'no method');
 }
 
-// Without the header (Safari before 16.4) the first media type of Accept
-// stands in; a bare */* or an empty header is not taken for a sub-resource.
+// Without the header (a plain-http site, Safari before 16.4) the first media
+// type of Accept stands in; a bare */* or an empty header is not taken for a
+// sub-resource.
 function test_waf_subresource_by_accept_without_destination()
 {
 	pg_assert_true(waf_fetch_is_subresource('GET', '', 'image/avif,image/webp,*/*'), 'Firefox image');
@@ -50,7 +51,8 @@ function test_waf_subresource_by_accept_without_destination()
 	pg_assert_true(waf_fetch_is_subresource('GET', '', 'text/css,*/*;q=0.1'), 'style sheet');
 	pg_assert_true(waf_fetch_is_subresource('GET', '', 'video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5'), 'video');
 	pg_assert_true(waf_fetch_is_subresource('GET', '', 'audio/webm,audio/ogg,audio/wav,audio/*;q=0.9,application/ogg;q=0.7,video/*;q=0.6,*/*;q=0.5'), 'audio');
-	pg_assert_true(waf_fetch_is_subresource('GET', '', 'font/woff2;q=1.0,*/*;q=0.1'), 'font');
+	pg_assert_true(waf_fetch_is_subresource('GET', '', 'application/font-woff2;q=1.0,application/font-woff;q=0.9,*/*;q=0.8'), 'Firefox font');
+	pg_assert_true(waf_fetch_is_subresource('GET', '', 'font/woff2,*/*;q=0.1'), 'a font asked for by its own type');
 	pg_assert_true(waf_fetch_is_subresource('GET', '', ' IMAGE/WEBP , */* '), 'letter case and spaces');
 
 	pg_assert_false(waf_fetch_is_subresource('GET', '', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'), 'a page opening');

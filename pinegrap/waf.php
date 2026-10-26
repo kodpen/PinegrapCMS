@@ -1843,15 +1843,16 @@ function waf_sign_in_screens()
  * style sheet, a script, a font, a media file - rather than opening a
  * document?
  *
- * Read from Sec-Fetch-Dest, which every current browser sends with each
- * request and keeps across a redirect: it names what the page asked for, and
- * only the browser writes it. Without the header (Safari before 16.4, older
- * browsers) the first media type of Accept stands in: an image, style or
- * media fetch asks for its own kind first, a page opening asks for text/html.
- * A wildcard Accept alone (a script tag on such a browser, a command-line
- * client) is not taken for a sub-resource: this is asked in order to spare a
- * visitor a redirect or a count, so in doubt the request is treated as the
- * visitor's own.
+ * Read from Sec-Fetch-Dest, which a browser sends with each request to an
+ * https (or localhost) origin and keeps across a redirect: it names what the
+ * page asked for, and only the browser writes it. Without the header (a site
+ * served over plain http, Safari before 16.4) the first media type of Accept
+ * stands in: an image, style, font or media fetch asks for its own kind
+ * first, a page opening asks for text/html. A wildcard Accept alone (a script
+ * tag, a font or a media element in Chrome and Safari, a command-line client)
+ * is not taken for a sub-resource: this is asked in order to spare a visitor
+ * a redirect or a count, so in doubt the request is treated as the visitor's
+ * own.
  *
  * A frame, embed or object is not a sub-resource here: it draws a document,
  * so a sign-in screen in its place is something the visitor can use. Neither
@@ -1892,7 +1893,7 @@ function waf_fetch_is_subresource($method, $dest, $accept)
     $ranges = preg_split('/[,;]/', $accept, 2);
     $first = trim($ranges[0]);
 
-    foreach (array('image/', 'text/css', 'video/', 'audio/', 'font/') as $kind) {
+    foreach (array('image/', 'text/css', 'video/', 'audio/', 'font/', 'application/font-') as $kind) {
         if (strpos($first, $kind) === 0) {
             return true;
         }
