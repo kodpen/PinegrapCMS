@@ -111,6 +111,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // MailChimp key. Ahead of MailChimp's checks, which may create a store
     // there that a refusal here could not take back.
     $sms_settings_post = pg_sms_settings_check($_POST, $liveform);
+    $sms_messages_post = pg_sms_message_settings_check($_POST, $liveform);
 
     // ── MailChimp ──
     //
@@ -262,3 +263,4 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // The SMS account goes to the connected accounts' applications, after the
     // config row; the test message, when its button was pressed, after that.
     pg_sms_settings_save($sms_settings_post, USER_ID, $liveform);
+    pg_sms_message_settings_save($sms_messages_post, USER_ID);

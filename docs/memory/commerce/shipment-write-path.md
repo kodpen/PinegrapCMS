@@ -24,7 +24,7 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 - `update_order()`: `pg_shipment_delivery_entered($before, $after, $today)`, i.e. the save enters or changes the delivery date to a day that is not after today. The estimate sent back unchanged records nothing; a future date is an estimate.
 - `pg_shipment_delivered()` stamps `status` delivered, `delivered_at` on the address's numbered rows with `delivered_at` 0; it announces `order.delivered` (`pg_announce`) and starts `order_delivered` campaigns only when the stamp changed rows and none had arrived before. Resaves, corrections, re-sent polls and racing writers give one event; a parcel added later is stamped silently; the first arrival time is never moved; clearing the date does not undo a delivery.
 - An address with no numbered row uses `$opts['first']` (the caller's own transition), so there a correction past → past day announces again, and a number added after such a delivery can announce a second time.
-- `notify` false (API `notify` false, marketplace) skips the customer e-mail, not the event. The marketplace import calls it per address on every delivered poll; `first` is its "delivery_date was empty" update.
+- `notify` false (API `notify` false, marketplace) skips the customer e-mail and SMS, not the event. The marketplace import calls it per address on every delivered poll; `first` is its "delivery_date was empty" update.
 
 ## What is still open?
 - Phases 5 (mail-merge fields, readers of the row) and 7 (API fields) in `plans/shipping-management.md`; the order screen: `order-screen-shipments.md`.

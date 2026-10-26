@@ -4610,6 +4610,10 @@ function submit_order($type) {
         'id'           => (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
         'order_number' => $order_number
     ));
+
+    // The customer's text message, when the store sends one: only queued, so
+    // the provider is never waited on here.
+    pg_sms_order_received((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
     
     // we know the order number now, so if gift cards are enabled and there was a gift card error, then e-mail administrator and log activity
     if ((ECOMMERCE_GIFT_CARD == TRUE) && ($gift_card_error == TRUE)) {

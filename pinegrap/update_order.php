@@ -254,6 +254,12 @@ function update_order($request) {
                 ? $shipped_recipient['ship_date']
                 : null,
         ));
+
+        // The customer's text message, held back like the e-mail when the
+        // caller says the customer is not to be told.
+        if (!empty($shipped_recipient['shipped']) && !empty($shipped_recipient['tracking_numbers'])) {
+            pg_sms_order_shipped((int) $order['id'], (int) $shipped_recipient['id'], $shipped_recipient['tracking_numbers']);
+        }
     }
 
     // If at least one recipient was just shipped, then check if email needs to be sent to customer.
