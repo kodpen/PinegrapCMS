@@ -4680,7 +4680,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                     <div class="col-12 col-lg-4 my-2">
                                         <label for="name" class="form-label">*' . lang('Product ID / SKU') . '</label>
-                                        <input type="text" name="name" id="name" class="form-control" required value="' . h($v('name')) . '" />
+                                        <input type="text" name="name" id="name" class="form-control" required value="' . h($v('name')) . '" data-pg-name-except="' . (($pg_mode === 'edit') ? $pg_product_id : 0) . '" />
                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Used as the prefix of every variant SKU.') . '</div>
                                     </div>
@@ -5548,6 +5548,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         ]);
     </script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_name_check.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_name_check.js') . '"></script>
     ' . pg_ai_write_assets() . '
     ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
 </main>' . output_footer();

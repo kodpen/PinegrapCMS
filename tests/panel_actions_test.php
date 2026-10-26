@@ -51,7 +51,7 @@ function pg_test_panel_exempt_names()
 		'get_installment_options', 'get_notifications', 'get_product',
 		'get_product_barcodes', 'get_shipping_methods',
 		'get_unselected_products', 'get_widget_data', 'get_widgets_data',
-		'offer_editor',
+		'offer_editor', 'product_name_check',
 		'purge_cache', 'push_config', 'push_pending', 'push_subscribe',
 		'push_test', 'push_unsubscribe', 'remove_notifications',
 		'save_barcode_template', 'save_product_barcode',
