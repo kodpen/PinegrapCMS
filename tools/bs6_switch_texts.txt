@@ -351,3 +351,24 @@ ai.closest('.form-field')
 ===
                 var pick = el('input', poll.multiple ? 'check' : 'radio');
 >>>
+
+A select that opens the section it names when it holds a value: the last
+jQuery Collapse call (v6 has no jQuery plugins).
+
+@@ assets/js/backend.src.js
+<<<
+        var target = $(this).attr('data-bs-target');
+
+        $(target).collapse(($(this).val() === '') ? 'hide' : 'show');
+===
+        var target = $(this).attr('data-bs-target');
+        var hide = ($(this).val() === '');
+
+        $(target).each(function () {
+            var section = this;
+
+            pgUI.ready(function () {
+                pgUI[hide ? 'hide' : 'show']('collapse', section);
+            });
+        });
+>>>
