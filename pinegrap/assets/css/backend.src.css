@@ -16765,15 +16765,13 @@ button.ws-home-row:hover,
 }
 .ws-nb-intro {
     display: flex;
+    flex-direction: column;
     gap: .6rem;
-    align-items: flex-start;
+    align-items: center;
+    text-align: center;
     padding: .75rem;
     border: 1px dashed var(--pg-border-color);
     border-radius: var(--ws-radius-sm);
-}
-.ws-nb-intro > .bi {
-    font-size: 1.4rem;
-    opacity: .6;
 }
 .ws-nb-section {
     display: flex;
