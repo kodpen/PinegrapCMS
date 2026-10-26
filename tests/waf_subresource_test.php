@@ -107,7 +107,7 @@ function test_waf_subresource_get_file_redirects_through_the_helper()
 
 	pg_assert_same(0, preg_match_all('/header\(\'Location: \' \. URL_SCHEME \. HOSTNAME \. PATH \. SOFTWARE_DIRECTORY \. \'\/(index|registration_entrance|membership_entrance)\.php/', $source), 'no bare redirect to a sign-in screen');
 
-	pg_assert_same(5, substr_count($source, "\n" . 'get_file_sign_in_redirect(') + substr_count($source, ' get_file_sign_in_redirect('), 'the private, guest, registration and membership folders and the attachment refusal');
+	pg_assert_same(5, substr_count($source, "get_file_sign_in_redirect('"), 'the private, guest, registration and membership folders and the attachment refusal');
 	pg_assert_contains("get_file_sign_in_redirect('index.php');", $source);
 	pg_assert_contains("get_file_sign_in_redirect('registration_entrance.php?allow_guest=true');", $source);
 	pg_assert_contains("get_file_sign_in_redirect('membership_entrance.php');", $source);
