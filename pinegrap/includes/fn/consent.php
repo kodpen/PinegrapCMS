@@ -89,6 +89,107 @@ function pg_consent_parse($raw)
 }
 
 /**
+ * Whether a value is one the notice's script writes: version 1, then each
+ * known category letter at most once with 0 or 1. Stricter than
+ * pg_consent_parse(), which reads what it can: an answer posted to
+ * consent_answer.php that the script could not have written records nothing.
+ *
+ * @param mixed $raw
+ * @return bool
+ */
+function pg_consent_answer_valid($raw)
+{
+    if (!is_string($raw) || (preg_match('/^1((?:\.[a-z][01])*)$/', $raw, $match) !== 1)) {
+        return false;
+    }
+
+    $known = array_flip(pg_consent_category_letters());
+    $seen = array();
+
+    foreach (($match[1] === '') ? array() : explode('.', substr($match[1], 1)) as $part) {
+        $letter = $part[0];
+
+        if (!isset($known[$letter]) || isset($seen[$letter])) {
+            return false;
+        }
+
+        $seen[$letter] = true;
+    }
+
+    return true;
+}
+
+/**
+ * The consent_log rows an answer from the notice needs: one per category
+ * whose answer differs from the cookie value before it. A category the answer
+ * leaves out is no change; a value before it that cannot be read counts as no
+ * answer at all. The baseline is the visitor's own cookie, not the log: an
+ * anonymous visitor has no rows to compare with, and every browser answers
+ * for itself.
+ *
+ * @param mixed $before the pg_consent value before the answer
+ * @param mixed $answer the value the notice wrote
+ * @return array[]|null  list of array('channel' => 'cookie', 'purpose' => ..,
+ *                       'status' => granted | refused), or null when the
+ *                       answer is malformed (pg_consent_answer_valid())
+ */
+function pg_consent_answer_changes($before, $answer)
+{
+    if (!pg_consent_answer_valid($answer)) {
+        return null;
+    }
+
+    $old = pg_consent_parse($before);
+    $new = pg_consent_parse($answer);
+    $changes = array();
+
+    // In the order of the categories, whatever the order in the value.
+    foreach (array_keys(pg_consent_category_letters()) as $category) {
+        if (!isset($new[$category]) || (isset($old[$category]) && ($old[$category] === $new[$category]))) {
+            continue;
+        }
+
+        $changes[] = array('channel' => 'cookie', 'purpose' => $category, 'status' => $new[$category] ? 'granted' : 'refused');
+    }
+
+    return $changes;
+}
+
+/**
+ * Whether a post comes from a page of this site. The answer endpoint is
+ * anonymous and a cached page carries no form token, so this stands in for
+ * the CSRF check: Sec-Fetch-Site when the browser sends it, otherwise the
+ * Origin's host (and port) against the Host header. A post with neither is
+ * refused; every browser that runs the notice sends Origin on a POST.
+ *
+ * @param array $server $_SERVER
+ * @return bool
+ */
+function pg_consent_answer_same_origin(array $server)
+{
+    if (isset($server['HTTP_SEC_FETCH_SITE']) && is_string($server['HTTP_SEC_FETCH_SITE'])) {
+        return ($server['HTTP_SEC_FETCH_SITE'] === 'same-origin');
+    }
+
+    $origin = isset($server['HTTP_ORIGIN']) && is_string($server['HTTP_ORIGIN']) ? $server['HTTP_ORIGIN'] : '';
+    $host = isset($server['HTTP_HOST']) && is_string($server['HTTP_HOST']) ? strtolower(trim($server['HTTP_HOST'])) : '';
+
+    if (($origin === '') || ($host === '')) {
+        return false;
+    }
+
+    $parts = parse_url($origin);
+
+    if (!is_array($parts) || empty($parts['host'])) {
+        return false;
+    }
+
+    $from = strtolower($parts['host']) . (isset($parts['port']) ? ':' . $parts['port'] : '');
+
+    return hash_equals($host, $from);
+}
+
+/**
  * The answers this request's visitor has given, from the pg_consent cookie.
  *
  * @return array category => bool, only for the categories answered
@@ -465,9 +566,15 @@ function pg_consent_markup($content)
     // init.php has not run (tests/consent_test.php).
     $assets = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : '') . '/assets';
 
+    // Where the script records an answer in consent_log (consent_answer.php);
+    // with nothing optional to ask there is no answer to record.
+    $output_log = $optional
+        ? ' data-log="' . h((defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : '') . '/consent_answer.php') . '"'
+        : '';
+
     return '
 <link rel="stylesheet" href="' . $assets . '/css/pg_consent.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/css/pg_consent.css') . '">
-<div id="pg-cc" class="pg-cc" data-path="' . h($path) . '" data-categories="' . h(implode(',', $optional)) . '">
+<div id="pg-cc" class="pg-cc" data-path="' . h($path) . '" data-categories="' . h(implode(',', $optional)) . '"' . $output_log . '>
     <button type="button" class="pg-cc-fab" hidden aria-label="' . h(lang('Cookie settings')) . '" title="' . h(lang('Cookie settings')) . '" aria-controls="pg-cc-card" aria-expanded="false">' . pg_consent_icon() . '</button>
     <div class="pg-cc-card" id="pg-cc-card" role="dialog" aria-modal="false" aria-labelledby="pg-cc-title" hidden>
         <div class="pg-cc-head">

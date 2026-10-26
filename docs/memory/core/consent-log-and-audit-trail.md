@@ -15,8 +15,7 @@ description: consent_log and audit_log (11.0.16): the person token, consent row 
 - Current answer: `pg_consent_log_current(pg_consent_log_rows($person))`, the newest row per `channel:purpose` (time, then id); `$person` may add `previous_email`.
 
 ## Who writes consent rows today?
-- Double opt-in forms (`form-double-opt-in.md`); a person's own e-mail marketing answers, only when changed (`pg_consent_log_answers()`, `consent-log-writers.md`).
-- No writer yet for `cookie`, `contract`, `sms`, `call` or source `iys`.
+- Double opt-in forms (`form-double-opt-in.md`); a person's own e-mail marketing answers when changed (`consent-log-writers.md`); the cookie notice (`consent-log-cookie-notice.md`). None yet for `contract`, `sms`, `call`, `iys`.
 
 ## What does pg_audit() keep?
 - Only the fields that differ, compared as text (a DB row and a posted form disagree only on type). A side not given (before a create, after a delete) is `NULL`. An update that changed nothing writes nothing; an event given no fields (a key revoked) is always written.
@@ -30,6 +29,6 @@ description: consent_log and audit_log (11.0.16): the person token, consent row 
 - Both keep their rows in a backup (records of who did what, like `log`); `tests/backup_test.php` pins it.
 
 ## Tests?
-- `tests/privacy_test.php`, `tests/audit_log_test.php`. The writers were run against MariaDB 10.11 (quotes, Unicode, an unchanged update, a long text).
+- `tests/privacy_test.php`, `tests/audit_log_test.php`; the writers were run on MariaDB 10.11 (quotes, Unicode, an unchanged update, a long text).
 
 Related: docs/memory/core/audit-trail-writers.md, docs/memory/plans/privacy-data-pack-audit-log.md, docs/memory/platform/cookie-consent-notice.md

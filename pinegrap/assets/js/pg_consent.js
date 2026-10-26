@@ -19,6 +19,11 @@
  * each page, is sent as an update before a held script starts, so a Google
  * tag the answer releases reads it from its first command.
  *
+ * Each answer the visitor gives (Save, Accept all, Reject all, or closing
+ * before answering) is posted to consent_answer.php, which records the
+ * categories that changed in the consent log. The stored answer the page
+ * reads again on every view is not posted.
+ *
  * After an answer the notice folds into the cookie button in the corner,
  * which reopens it. Withdrawing consent has to stay as easy as giving it, so
  * the button is hidden only when the page itself links to the settings: any
@@ -65,14 +70,20 @@
 
     // ── The stored answer ───────────────────────────────────────────────
 
-    function read() {
+    function raw() {
         var match = document.cookie.match(/(?:^|;\s*)pg_consent=([^;]*)/);
 
-        if (!match) {
+        return match ? match[1] : null;
+    }
+
+    function read() {
+        var value = raw();
+
+        if (value === null) {
             return null;
         }
 
-        var parts = match[1].split('.');
+        var parts = value.split('.');
 
         if (parts.shift() !== '1') {
             return null;
@@ -104,6 +115,8 @@
 
         document.cookie = COOKIE + '=' + value + '; Max-Age=' + MAX_AGE + '; Path=' + path + '; SameSite=Lax'
             + (location.protocol === 'https:' ? '; Secure' : '');
+
+        return value;
     }
 
     // Answered when the cookie exists and covers every category on this page.
@@ -147,6 +160,37 @@
         (function () {
             layer.push(arguments);
         })('consent', 'update', states);
+    }
+
+    // ── Recording ───────────────────────────────────────────────────────
+
+    // The answer and the value before it go to the server, which writes a
+    // consent log row for each category that changed. A beacon outlives the
+    // reload a withdrawal triggers; it is sent as a form post, so it needs
+    // no preflight. Nothing is posted when the value did not change.
+    function report(before, after) {
+        var url = root.getAttribute('data-log');
+
+        if (!url || before === after) {
+            return;
+        }
+
+        var body = 'before=' + encodeURIComponent(before || '') + '&answer=' + encodeURIComponent(after);
+        var type = 'application/x-www-form-urlencoded';
+
+        try {
+            if (navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], { type: type }))) {
+                return;
+            }
+        } catch (e) {
+            // Fall through to a plain request.
+        }
+
+        var request = new XMLHttpRequest();
+
+        request.open('POST', url, true);
+        request.setRequestHeader('Content-Type', type);
+        request.send(body);
     }
 
     // ── Held scripts ────────────────────────────────────────────────────
@@ -239,6 +283,7 @@
     // ── Deciding ────────────────────────────────────────────────────────
 
     function decide(choices) {
+        var previous = raw();
         var before = read() || {};
         var merged = {};
         var patterns = [];
@@ -254,7 +299,7 @@
             merged[c] = !!choices[c];
         });
 
-        write(merged);
+        report(previous, write(merged));
 
         // Before anything starts, and before a reload, so a tag that is
         // already running stops being granted at once.
