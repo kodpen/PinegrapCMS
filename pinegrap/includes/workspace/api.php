@@ -46,6 +46,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_scheduled.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_commands.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -164,6 +165,8 @@ function ws_openapi_objects()
         'WorkspaceNoteRemoval'    => 'ws_api_note_removal_schema',
         'WorkspaceTemplate'        => 'ws_api_template_schema',
         'WorkspaceTemplateApplied' => 'ws_api_template_applied_schema',
+        'WorkspaceCommand'         => 'ws_api_command_schema',
+        'WorkspaceCommandArgument' => 'ws_api_command_argument_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
         'WorkspaceApproval'       => 'ws_api_approval_schema',
         'WorkspaceThread'           => 'ws_api_thread_schema',
@@ -1809,6 +1812,19 @@ function ws_api_routes()
             'returns'     => array('list' => 'WorkspaceTemplate'),
             'summary'     => 'List channel templates',
             'description' => 'The templates a channel can be set up with: the three built-in ones (ids such as builtin:new_customer, in the language of the site) and the site\'s own that are not archived (numeric ids as strings). tasks and notes count what a template brings; summary, pinned and welcome say whether it carries those texts.',
+            'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.commands.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/commands',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_commands_list',
+            'returns'     => array('list' => 'WorkspaceCommand'),
+            'mcp'         => false,
+            'summary'     => 'List the channel commands',
+            'description' => 'The / commands the owner of the application may type into a channel, in the order the panel\'s picker lists them, for an app that offers the same picker: names holds every name a command answers to (Turkish and English, each with its slash), name the one shown first in the language of the site, usage the name and its arguments (<required> [optional]), and args each argument in the order it is typed, with its kind and where the panel suggests values for it (suggest: people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, or null). anywhere true means the argument is read wherever it is written on the line; live true means the panel shows a line under the command while it is typed. A command the owner may not use is left out: /price, /stock and /product without the product rights, /claude and /ai until they are set up. Nothing is run here: what a command does has its own endpoint.',
             'params'      => array(),
         ),
 
