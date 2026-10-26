@@ -20,10 +20,10 @@
 // tree and what a category demands, open listings and read whether they were
 // approved, send stock and price, read the result of a batch, read order
 // packages (pulled, or delivered by their webhook), accept one (Picking),
-// report one shipped with the seller's own carrier, and register or remove
-// that webhook. What it does not name in the table below - invoices among
-// them - mp_can() answers no for, so nothing queues work this connector
-// cannot do.
+// report one shipped with the seller's own carrier, send the link of a
+// package's invoice, and register or remove that webhook. What it does not
+// name in the table below mp_can() answers no for, so nothing queues work this
+// connector cannot do.
 //
 // Four things about this provider shape the code:
 //
@@ -76,6 +76,7 @@ function mp_trendyol_connector() {
 		'order_stage'         => 'mp_trendyol_order_stage',
 		'approve_lines'       => 'mp_trendyol_approve_lines',
 		'ship_package'        => 'mp_trendyol_ship_package',
+		'send_invoice_link'   => 'mp_trendyol_send_invoice_link',
 		'webhook_packages'    => 'mp_trendyol_webhook_packages',
 		'register_webhook'    => 'mp_trendyol_register_webhook',
 		'remove_webhook'      => 'mp_trendyol_remove_webhook'
@@ -2455,6 +2456,119 @@ function mp_trendyol_ship_package($account, $package, $tracking_url, $transport 
 	}
 
 	return mp_ok(array('shipped' => true));
+
+}
+
+/* ---------------------------------------------------------------- invoices */
+
+// What is wrong with an invoice link before it is sent, or ''.
+//
+// Trendyol shows the link to the buyer as the package's invoice and asks that
+// it stays reachable for ten years, so it has to be a web address of the
+// document itself: http or https, a host, no spaces. The length cap is ours;
+// their documentation names none, and an address longer than this is a pasted
+// panel session rather than a document link.
+function mp_trendyol_invoice_link_problem($url) {
+
+	$url = is_scalar($url) ? trim((string)$url) : '';
+
+	if ($url === '') {
+
+		return lang('Type the address of the invoice (the e-Archive or e-Invoice PDF) first.');
+
+	}
+
+	if (strlen($url) > 1000 || preg_match('#^https?://[^\s/?\#@]+(?:[/?\#]\S*)?$#i', $url) !== 1) {
+
+		return lang('The invoice link has to be a web address that starts with http:// or https:// and opens the invoice itself, without spaces.');
+
+	}
+
+	return '';
+
+}
+
+// The body of their seller invoice link call. The package id is a JSON
+// number: it was checked with mp_trendyol_id_fits(), so it fits in 64 bits.
+// The invoice number and date are left out: they are required only for micro
+// export packages, which this shop's imports do not carry.
+function mp_trendyol_invoice_link_body($package_id, $url) {
+
+	return array(
+		'invoiceLink'       => trim((string)$url),
+		'shipmentPackageId' => (int)$package_id
+	);
+
+}
+
+// Send the address of a package's invoice, which Trendyol then shows to the
+// buyer.
+//
+// POST /integration/sellers/{sellerId}/seller-invoice-links answers 201 with
+// no documented body, so any 2xx is success. Their 409 means the package holds
+// an invoice already or the link was given to another package; their error
+// body here is {error, message, status, ...}, which the shared reader does not
+// take a message from, so the status is watched on its way through and that
+// message is read here. There is no call to replace a link: removing one needs
+// the buyer's customer id, which the import does not keep.
+function mp_trendyol_send_invoice_link($account, $package, $url, $transport = null) {
+
+	$package_id = isset($package['remote_package_id']) ? trim((string)$package['remote_package_id']) : '';
+
+	if (!mp_trendyol_id_fits($package_id)) {
+
+		return mp_error(lang('That order has no package number to send an invoice for.'));
+
+	}
+
+	$problem = mp_trendyol_invoice_link_problem($url);
+
+	if ($problem !== '') {
+
+		return mp_error($problem);
+
+	}
+
+	$send = ($transport === null) ? 'api_http_request' : $transport;
+
+	$status = 0;
+
+	$watched = function ($method, $address, $options) use ($send, &$status) {
+
+		$outcome = call_user_func($send, $method, $address, $options);
+
+		$status = isset($outcome['status']) ? (int)$outcome['status'] : 0;
+
+		return $outcome;
+
+	};
+
+	$result = mp_trendyol_call($account,
+		'/integration/sellers/' . mp_trendyol_seller_id($account) . '/seller-invoice-links',
+		65536, $watched, mp_trendyol_invoice_link_body($package_id, $url), 'POST', true);
+
+	if ($result['ok']) {
+
+		return mp_ok(array('sent' => true));
+
+	}
+
+	if ($status === 409) {
+
+		return mp_error(lang('Trendyol already holds an invoice for this package, or this link was already sent for another package. Check the order in your Trendyol seller panel.'));
+
+	}
+
+	$message = (isset($result['data']['message']) && is_scalar($result['data']['message']))
+		? trim((string)$result['data']['message']) : '';
+
+	if ($message !== '' && $status >= 400 && $status < 500) {
+
+		return mp_error(mb_substr($message, 0, 500), false, $result['data']);
+
+	}
+
+	return $result;
 
 }
 

@@ -1,6 +1,6 @@
 ---
 name: marketplace-trendyol-remaining-design
-description: Design of the open Trendyol steps (2b-ii, 5a-5c) from a full build finished 2026-10-24 that never reached GitHub; what to build, deviations, unverified doc facts
+description: Design of the open Trendyol steps (2b-ii, 5b, 5c) from a full build finished 2026-10-24 that never reached GitHub; what to build, deviations, unverified doc facts
 ---
 
 ## What is this?
@@ -16,8 +16,7 @@ description: Design of the open Trendyol steps (2b-ii, 5a-5c) from a full build 
 - Screen: tick boxes and "Send changes to Trendyol". Rows are queued for the selected account only, not through `mp_enqueue()`. A result never writes the mapping row; a failure shows under "What did not go through" as "Listing changes".
 
 ## 5a. Invoice link?
-- Fallback: the ERP e-document PDF is only behind the panel login, so there is no automatic job. Each Imported orders row has a "Send invoice link" form for a URL the operator types; success writes `invoice_sent`.
-- A refusal is a screen warning, not `last_error` (the own-carrier job skips rows that have one). Removing a link is not built: the delete call needs the buyer's customerId, which the import does not keep.
+- Built (#1747): `commerce/trendyol-invoice-link.md`.
 
 ## 5b and 5c. Returns and questions?
 - "Returns from Trendyol" card: reads the last 14 days on a button (at most 4 pages of 50); approve sends the waiting units of the last read after a confirm. Rejecting with reason codes is left.
@@ -28,4 +27,4 @@ description: Design of the open Trendyol steps (2b-ii, 5a-5c) from a full build 
 - `tests/marketplace_trendyol_remaining_test.php` (red first per part), claims and questions fixtures; `tests/message_values_commerce_test.php` counts the new escaped warnings.
 
 ## What did the docs not prove?
-- The content update's batch result line (assumed keyed by `requestItem.contentId`); the invoice-link 201 and 409 bodies; every claims field, the largest claims page and whether `orderOutboundPackageId` is the imported package id; a successful claim approval's and answer's bodies; a question's status after answering. The return reasons page was not read.
+- The content update's batch result line (assumed keyed by `requestItem.contentId`); every claims field, the largest claims page and whether `orderOutboundPackageId` is the imported package id; a successful claim approval's and answer's bodies; a question's status after answering. The return reasons page was not read.
