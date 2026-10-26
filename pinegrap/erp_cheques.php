@@ -144,7 +144,7 @@ $output_new = (!$ready || $readonly) ? '' : '
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="account_id">' . lang('Account') . '</label>
-                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'account_id', 'name' => 'account_id', 'class' => 'form-select select2', 'options' => $accounts)) . '
+                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'account_id', 'name' => 'account_id', 'class' => 'form-select', 'data-pg-combobox' => '', 'options' => $accounts)) . '
                         ' . erp_account_quick_link('#account_id', 'auto') . '
                     </div>
                     <div class="col-6 col-md-3">
@@ -153,14 +153,12 @@ $output_new = (!$ready || $readonly) ? '' : '
                     </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label" for="doc_date">' . lang('Date') . '</label>
-                        ' . $liveform->output_field(array('type' => 'text', 'id' => 'doc_date', 'name' => 'doc_date', 'class' => 'form-control', 'maxlength' => '10')) . '
+                        ' . $liveform->output_field(array('type' => 'text', 'id' => 'doc_date', 'data-pg-date' => '', 'name' => 'doc_date', 'class' => 'form-control', 'maxlength' => '10')) . '
                     </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label" for="due_date">' . lang('Due Date') . '</label>
-                        ' . $liveform->output_field(array('type' => 'text', 'id' => 'due_date', 'name' => 'due_date', 'class' => 'form-control', 'maxlength' => '10')) . '
-                        ' . get_date_picker_format() . '
-                        <script>$("#doc_date, #due_date").datepicker(datetimepicker_options);</script>
-                    </div>
+                        ' . $liveform->output_field(array('type' => 'text', 'id' => 'due_date', 'data-pg-date' => '', 'name' => 'due_date', 'class' => 'form-control', 'maxlength' => '10')) . '
+                        ' . get_date_picker_format() . pg_fields_script() . '                    </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label" for="serial_no">' . lang('Serial number') . '</label>
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'serial_no', 'name' => 'serial_no', 'class' => 'form-control', 'maxlength' => '40')) . '

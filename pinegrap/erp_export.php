@@ -289,14 +289,12 @@ pg_page_shell([
                         <div class="row">
                             <div class="col-12 col-sm-6 col-lg-3 my-2">
                                 <label for="from" class="form-label">' . lang('From') . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'from', 'name' => 'from', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off')) . '
+                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'from', 'data-pg-date' => '', 'name' => 'from', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off')) . '
                             </div>
                             <div class="col-12 col-sm-6 col-lg-3 my-2">
                                 <label for="to" class="form-label">' . lang('To') . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'to', 'name' => 'to', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off')) . '
-                                ' . get_date_picker_format() . '
-                                <script>$("#from, #to").datepicker(datetimepicker_options);</script>
-                            </div>
+                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'to', 'data-pg-date' => '', 'name' => 'to', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off')) . '
+                                ' . get_date_picker_format() . pg_fields_script() . '                            </div>
                             <div class="col-12 col-lg-6 my-2">
                                 <div class="form-text pt-lg-4">' . lang('The document date for invoices and receipts. Accounts are not filtered by date.') . '</div>
                             </div>
