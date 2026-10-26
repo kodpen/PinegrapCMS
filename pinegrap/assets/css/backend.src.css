@@ -13766,6 +13766,107 @@ a.ws-chip:hover {
   display: block;
   margin-bottom: .5rem;
 }
+/* An empty list with a drawing (emptyState() in workspace.js): the shapes
+   take their colours from .pg-tour-art (pg_tour.css); here only the size. */
+.ws-empty-friendly {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ws-space-2);
+  padding: var(--ws-space-4) var(--ws-space-3);
+}
+.ws-empty-friendly .ws-empty-art {
+  width: 7.5rem;
+  max-width: 100%;
+  margin: 0;
+  background: none;
+}
+.ws-empty-line {
+  max-width: 22rem;
+  font-size: .9rem;
+}
+.ws-empty-side {
+  padding: var(--ws-space-2) var(--ws-space-2) var(--ws-space-3);
+}
+.ws-empty-side .ws-empty-art {
+  width: 5rem;
+}
+.ws-empty-side .ws-empty-line {
+  font-size: .8rem;
+}
+.ws-nb-intro .ws-empty-friendly {
+  padding: 0;
+}
+/* Rows standing in for what is loading (skeleton() in workspace.js, the
+   first one in workspace.php). */
+.ws-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-3);
+  width: 100%;
+  max-width: 36rem;
+  padding: var(--ws-space-4);
+}
+.ws-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-3);
+}
+.ws-skeleton-dot,
+.ws-skeleton-bar {
+  display: block;
+  background: var(--pg-bg-2);
+}
+.ws-skeleton-dot {
+  flex: 0 0 auto;
+  width: var(--ws-avatar);
+  height: var(--ws-avatar);
+  border-radius: 50%;
+}
+.ws-skeleton-bar {
+  height: .75rem;
+  width: 70%;
+  border-radius: var(--ws-radius-xs);
+}
+.ws-skeleton-row:nth-child(3n) .ws-skeleton-bar { width: 52%; }
+.ws-skeleton-row:nth-child(3n+1) .ws-skeleton-bar { width: 84%; }
+.ws-skeleton-sm {
+  gap: var(--ws-space-2);
+  padding: var(--ws-space-1) 0;
+}
+.ws-skeleton-sm .ws-skeleton-dot {
+  width: var(--ws-avatar-xs);
+  height: var(--ws-avatar-xs);
+}
+.ws-skeleton-sm .ws-skeleton-bar {
+  height: .55rem;
+}
+/* The first rows and a start-up error fill the whole channel screen, not
+   only the column of the channel list. */
+.ws-app > .ws-boot {
+  grid-column: 1 / -1;
+  align-self: start;
+  justify-self: center;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ws-skeleton-dot,
+  .ws-skeleton-bar {
+    background: linear-gradient(90deg, var(--pg-bg-2) 25%, var(--pg-bg-1) 50%, var(--pg-bg-2) 75%);
+    background-size: 200% 100%;
+    animation: ws-skeleton-shine 1.4s ease-in-out infinite;
+  }
+  .ws-empty-friendly .ws-empty-art {
+    animation: ws-empty-in .35s ease-out both;
+  }
+}
+@keyframes ws-skeleton-shine {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@keyframes ws-empty-in {
+  from { opacity: 0; transform: translateY(.35rem); }
+  to { opacity: 1; transform: none; }
+}
 .ws-summary-view {
   max-width: 52rem;
   line-height: 1.6;
@@ -16671,15 +16772,13 @@ button.ws-home-row:hover,
 }
 .ws-nb-intro {
     display: flex;
+    flex-direction: column;
     gap: .6rem;
-    align-items: flex-start;
+    align-items: center;
+    text-align: center;
     padding: .75rem;
     border: 1px dashed var(--pg-border-color);
     border-radius: var(--ws-radius-sm);
-}
-.ws-nb-intro > .bi {
-    font-size: 1.4rem;
-    opacity: .6;
 }
 .ws-nb-section {
     display: flex;
