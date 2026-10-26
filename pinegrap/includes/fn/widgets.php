@@ -8195,14 +8195,28 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     $probe = json_encode($tree);
     $has_grid = ($view !== 'upcoming') && (strpos($probe, '"section":"month_grid"') !== false);
     $has_grid_lists = ($view !== 'upcoming') && (strpos($probe, '"source":"calendar.') !== false);
-    $needs_detail = $has_grid || $has_grid_lists || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
+    // The event's allow-listed values (widgets_entity_fields.php) come from
+    // the details too, and two columns the details leave out from one query.
+    $entity_wanted = pg_sw_entity_wanted('calendar_event', $probe);
+    $needs_detail = $has_grid || $has_grid_lists || $entity_wanted || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
+    $entity_extra = array();
+    if ($entity_wanted) {
+        $entity_ids = array();
+        foreach ($events as $ev) $entity_ids[] = (int)$ev['id'];
+        $entity_extra = pg_sw_entity_event_read($entity_ids);
+    }
     $rows = array();
     $row_events = array();
     $by_day = array();
     foreach ($events as $ev) {
         $detail = $needs_detail ? get_calendar_event($ev['id'], $ev['recurrence_number']) : null;
         $vals = _pg_sw_calendar_event_values($ev, $detail, $link_base, $date_format, $calendar_names);
-        $rows[] = $vals;
+        // Main loop rows only: a grid list's event rows keep the loop's own tokens.
+        $rows[] = $entity_wanted
+            ? $vals + pg_sw_entity_values('calendar_event',
+                is_array($detail) ? $detail + (isset($entity_extra[(int)$ev['id']]) ? $entity_extra[(int)$ev['id']] : array()) : null,
+                array('date_format' => $date_format))
+            : $vals;
         $row_events[] = $ev;
         $first  = strtotime($ev['event_start_date']);
         $last   = $first;
@@ -8424,6 +8438,18 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
             }
         }
     }
+
+    // The event's allow-listed values (widgets_entity_fields.php); the two
+    // columns get_calendar_event() leaves out are read only when bound.
+    $entity_row = null;
+    if ($shown) {
+        $entity_extra = pg_sw_entity_wanted('calendar_event', $tree_json) ? pg_sw_entity_event_read(array($event_id)) : array();
+        $entity_row = $event + (isset($entity_extra[$event_id]) ? $entity_extra[$event_id] : array());
+        if (!empty($entity_row['last_modified_timestamp'])) {
+            $times['__event_updated_date'] = array('type' => 'date and time', 'data' => date('Y-m-d H:i:s', (int)$entity_row['last_modified_timestamp']));
+        }
+    }
+    $values += pg_sw_entity_values('calendar_event', $entity_row, array('date_format' => pg_sw_default_date_format('date')));
 
     pg_cf_apply_section_bindings($tree, array('reserve_form' => $reserve_form));
     // Visibility bindings (eo_visible_if): the event's own blocks give way to
