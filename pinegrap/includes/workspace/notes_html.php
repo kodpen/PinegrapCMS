@@ -315,11 +315,12 @@ function ws_note_html_data_picture($source)
  * @param int|null $bytes_max bytes of pictures in all; null for WS_NOTE_IMPORT_FILES_BYTES
  * @param int|null $html_max  bytes the file may have; null for WS_NOTE_HTML_MAX
  * @return array ok, error, title, created, updated, body (Markdown, its
- *               pictures linked under attachments/1/), files (name, mime, bytes)
+ *               pictures linked under attachments/1/), files (name, mime,
+ *               bytes), source (the address it was saved from, '' if none)
  */
 function ws_note_html_read($bytes, $file_max = null, $bytes_max = null, $html_max = null)
 {
-    $out = array('ok' => false, 'error' => '', 'title' => '', 'created' => 0, 'updated' => 0, 'body' => '', 'files' => array());
+    $out = array('ok' => false, 'error' => '', 'title' => '', 'created' => 0, 'updated' => 0, 'body' => '', 'files' => array(), 'source' => '');
     $html_max = ($html_max !== null) ? (int) $html_max : WS_NOTE_HTML_MAX;
     $file_max = ($file_max !== null) ? (int) $file_max : (function_exists('ws_upload_max_bytes') ? ws_upload_max_bytes() : 20971520);
     $bytes_max = ($bytes_max !== null) ? (int) $bytes_max : WS_NOTE_IMPORT_FILES_BYTES;
@@ -413,6 +414,7 @@ function ws_note_html_read($bytes, $file_max = null, $bytes_max = null, $html_ma
     $out['title'] = $meta['title'];
     $out['created'] = $meta['created'];
     $out['updated'] = $meta['updated'];
+    $out['source'] = $meta['source'];
     $out['body'] = $body;
 
     return $out;
@@ -468,7 +470,8 @@ function ws_note_html_stage($dir, $source, $name)
     $title = ($read['title'] !== '') ? $read['title'] : trim(pg_file_name_stem(str_replace('\\', '/', (string) $name)));
     $taken = array();
     $time = ($read['updated'] > 0) ? $read['updated'] : $read['created'];
-    $text = ws_note_enex_file(array('title' => $title, 'created' => $read['created'], 'updated' => $read['updated'], 'tags' => array()), $read['body']);
+    $id = ws_note_source_id('html', array('address' => $read['source'], 'name' => (string) $name));
+    $text = ws_note_enex_file(array('title' => $title, 'created' => $read['created'], 'updated' => $read['updated'], 'tags' => array(), 'id' => $id), $read['body']);
 
     if (@file_put_contents($dir . '/files/0.txt', $text) === false) {
         ws_note_import_log_failure('writing the note of an HTML import');
