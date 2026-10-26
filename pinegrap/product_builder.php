@@ -1451,7 +1451,7 @@ function pg_pb_form_template_ready()
         return $ready;
     }
 
-    $ready = (bool) db_item("SHOW COLUMNS FROM form_fields LIKE 'product_group_id'");
+    $ready = pg_schema_has('form_fields', 'product_group_id');
 
     return $ready;
 }
@@ -1978,11 +1978,11 @@ function pg_pb_delete_product($product_id)
     // Stored SEO structure findings. Guarded on the table existing, because
     // a product can be deleted on an installation that has not run the
     // upgrade that creates it.
-    if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+    if (pg_schema_has('seo_issue')) {
         db("DELETE FROM seo_issue WHERE (entity_type = 'product') AND (entity_id = '$product_id')");
     }
 
-    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+    if (pg_schema_has('seo_link')) {
         db("DELETE FROM seo_link WHERE (from_type = 'product') AND (from_id = '$product_id')");
         db("DELETE FROM seo_link WHERE (to_type = 'product') AND (to_id = '$product_id')");
     }
@@ -2093,11 +2093,11 @@ function pg_pb_delete_variant_set($group_id, $delete_products = TRUE)
 
     // Stored SEO structure findings, guarded the same way as the product
     // path above.
-    if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+    if (pg_schema_has('seo_issue')) {
         db("DELETE FROM seo_issue WHERE (entity_type = 'product_group') AND (entity_id = '$group_id')");
     }
 
-    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+    if (pg_schema_has('seo_link')) {
         db("DELETE FROM seo_link WHERE (from_type = 'product_group') AND (from_id = '$group_id')");
         db("DELETE FROM seo_link WHERE (to_type = 'product_group') AND (to_id = '$group_id')");
     }

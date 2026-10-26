@@ -38,7 +38,7 @@ function pg_signature_ready()
     if ($ready === null) {
         $ready = false;
 
-        if (db_value("SHOW TABLES LIKE 'form_signatures'")) {
+        if (pg_schema_has('form_signatures')) {
             $column = db_item("SHOW COLUMNS FROM form_fields WHERE Field = 'type'");
 
             $ready = (is_array($column) && isset($column['Type']) && (stripos($column['Type'], "'signature'") !== false));
