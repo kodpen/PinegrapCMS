@@ -294,6 +294,7 @@
     "^^store^^: Your order ^^order_number^^ has been delivered.": "^^store^^: ^^order_number^^ numaralı siparişiniz teslim edildi.",
     "^^store^^: Your order ^^order_number^^ has been received. Total: ^^total^^.": "^^store^^: ^^order_number^^ numaralı siparişiniz alındı. Tutar: ^^total^^.",
     "^^store^^: Your order ^^order_number^^ has been shipped. ^^carrier^^ ^^tracking_number^^ ^^tracking_url^^": "^^store^^: ^^order_number^^ numaralı siparişiniz kargoya verildi. ^^carrier^^ ^^tracking_number^^ ^^tracking_url^^",
+    "^^store^^: ^^product^^, which you asked us about, is back in stock. ^^url^^": "^^store^^: Sorduğunuz ^^product^^ yeniden stokta. ^^url^^",
     "{1} cell(s) changed.": "{1} hücre değişti.",
     "{1} changes": "{1} değişiklik",
     "{1} paragraph(s) changed.": "{1} paragraf değişti.",
