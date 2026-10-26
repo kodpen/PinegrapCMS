@@ -5,8 +5,9 @@
 # (PHPCompatibility) of the product tree against their baselines, a
 # JavaScript syntax check of the large panel scripts, whether every .min.js
 # and the code editor bundle still match their sources and whether the memory
-# index (docs/memory/README.md) matches the files it lists. None of them needs
-# a database. tools/pre_push.sh runs the fast ones before a push
+# index (docs/memory/README.md) matches the files it lists, and on a pull
+# request the guards on its branch's commits, changelog and size. None of them
+# needs a database. tools/pre_push.sh runs the fast ones before a push
 # (docs/memory/workflow/pre-push-checks.md): a step or a node --check file
 # added here that takes seconds is added there too.
 #
@@ -109,6 +110,44 @@ jobs:
       - name: Memory index matches its files (tools/memory_index.php --check)
         if: ${{ hashFiles('tools/memory_index.php') != '' }}
         run: php tools/memory_index.php --check
+
+  # What the pull request's branch carries (tools/check_pr.php): no commit
+  # with a Co-Authored-By: or Claude-Session: trailer, Erdal Güral as every
+  # commit's author and committer (GitHub's own committer allowed, for a merge
+  # made in the web UI), no change to pinegrap/changelog.txt, and a warning
+  # above about 1,000 product lines. A merge train and a Dependabot pull
+  # request skip all but the trailer check. Its commits are those
+  # origin/development does not reach, so the full history is fetched.
+  guards:
+    name: branch guards (trailers, commit author, changelog, size)
+    if: ${{ github.event_name == 'pull_request' && github.base_ref == 'development' && (!github.event.pull_request.draft || startsWith(github.head_ref, 'merge-train/')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up PHP
+        if: ${{ hashFiles('tools/check_pr.php') != '' }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: none
+
+      - name: Branch guards (tools/check_pr.php)
+        if: ${{ hashFiles('tools/check_pr.php') != '' }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          set -- origin/development "$HEAD_SHA" "--branch=$HEAD_REF"
+          if [ "$PR_AUTHOR" = 'dependabot[bot]' ]; then
+            set -- "$@" --identity-exempt
+          fi
+          php tools/check_pr.php "$@"
 
   # The oldest PHP the product supports. The job above runs on 8.3 and skips
   # the bundled libraries, and PHPCompatibility reads the product tree alone,
