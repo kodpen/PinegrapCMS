@@ -73,6 +73,7 @@ function pg_sw_default_part_tokens()
             array('__breadcrumb_inner_html', 'pg_sw_part_catalog_crumbs'),
             array('section:breadcrumb', 'pg_sw_part_catalog_crumbs'),
             array('content:breadcrumb', 'pg_sw_part_catalog_breadcrumb_item'),
+            array('__cross_sell_html', 'pg_sw_part_catalog_cross_sell'),
         ),
     );
 }
@@ -124,13 +125,18 @@ function pg_sw_default_tail_parts()
 // row placed none of their tokens, now default parts added to the end of
 // the main loop once, by widget kind: pairs of the tokens that place the
 // block (the old token, the list the part draws) and the function that
-// builds it. In the order the renderer added them.
+// builds it, then 'tree' when the block is placed by its tokens anywhere in
+// the tree (one block a page, added to the end of the tree when there is no
+// main loop). In the order the renderer added them.
 function pg_sw_default_loop_tail_parts()
 {
     return array(
         'order_view' => array(
             array(array('__item_form_data_html', 'order.item_forms'), 'pg_sw_part_order_item_form'),
             array(array('__item_gift_card_html', 'order.item_gift_cards'), 'pg_sw_part_order_item_gift_card'),
+        ),
+        'catalog_item_view' => array(
+            array(array('__cross_sell_html', 'product.related'), 'pg_sw_part_catalog_cross_sell', 'tree'),
         ),
     );
 }
@@ -159,13 +165,20 @@ function pg_sw_default_loop_tails(&$tree, $kind, $cfg)
 {
     $all = pg_sw_default_loop_tail_parts();
     if (!isset($all[$kind])) return false;
+    $placed = $tree;
     $loop = &pg_sw_main_loop_ref($tree);
-    if ($loop === null) return false;
-    $row = array('type' => 'root', 'children' => isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array());
+    $row = array('type' => 'root', 'children' => ($loop !== null && isset($loop['children']) && is_array($loop['children'])) ? $loop['children'] : array());
     $added = false;
     foreach ($all[$kind] as $pair) {
-        if (pg_sw_placed($row, $pair[0])) continue;
-        $loop['children'] = array_merge(isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array(), call_user_func($pair[1], $cfg));
+        $whole = !empty($pair[2]);
+        if (pg_sw_placed($whole ? $placed : $row, $pair[0])) continue;
+        if ($loop !== null) {
+            $loop['children'] = array_merge(isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array(), call_user_func($pair[1], $cfg));
+        } elseif ($whole) {
+            $tree['children'] = array_merge(isset($tree['children']) && is_array($tree['children']) ? $tree['children'] : array(), call_user_func($pair[1], $cfg));
+        } else {
+            continue;
+        }
         $added = true;
     }
     return $added;
@@ -668,6 +681,59 @@ function pg_sw_part_catalog_breadcrumb_listing($cfg = array())
 function pg_sw_part_catalog_breadcrumb_item($cfg = array())
 {
     return pg_sw_part_catalog_breadcrumb('pg-civ-breadcrumb mb-3');
+}
+
+// The products bought together with the one a catalog detail view shows,
+// as the view added them after its record: a box the variant script finds
+// (data-pg-civ-cross-sell), drawn unless switched off (__has_related
+// empty), holding, when there are any (__has_related 1, 0 for none), a
+// heading and a row of up to four cards (product.related), each a link
+// around the picture (or a grey box without one), the short description
+// (else the name) and the price, struck through beside the sale price when
+// a discount applies. The pictures' shape is in pg_carousel_layout.css.
+function pg_sw_part_catalog_cross_sell($cfg = array())
+{
+    $value = function ($tag, $class, $name, $token, $op = '', $test = '') {
+        $props = array('text' => '', '_bindings' => array('text' => $token));
+        if ($op !== '') {
+            $props['_bindings']['show_if'] = $test !== '' ? $test : $token;
+            $props['_bindParams'] = array('show_if' => array('op' => $op));
+        }
+        return pg_sw_part_el($tag, $class, $name, $props);
+    };
+    $has = pg_sw_part_when('__has_related', 'eq', '1');
+    $card = pg_sw_part_el('a', 'card h-100 text-decoration-none text-body', 'Product card', array('href' => '#', '_bindings' => array('href' => '__related_url')), array(
+        array('type' => 'content', 'props' => array(
+            'contentType' => 'image', 'src' => '', 'alt' => '', 'fluid' => false, 'rounded' => false, 'loading' => 'lazy',
+            'cssClass' => 'card-img-top', 'customName' => 'Picture',
+            '_bindings' => array('src' => '__related_image_url', 'show_if' => '__related_image_url'),
+            '_bindParams' => array('show_if' => array('op' => 'not_empty')),
+        ), 'children' => array()),
+        pg_sw_part_el('div', 'card-img-top bg-body-tertiary', 'No picture', pg_sw_part_when('__related_image_url', 'empty')),
+        pg_sw_part_el('div', 'card-body p-2', 'Card Body', array(), array(
+            $value('div', 'small fw-semibold text-truncate', 'Short Description', '__related_short_description', 'not_empty'),
+            $value('div', 'small fw-semibold text-truncate', 'Name', '__related_name', 'empty', '__related_short_description'),
+            pg_sw_part_el('div', 'small mt-1', 'Price', array(), array(
+                pg_sw_part_el('span', 'pg-price-block has-discount', 'Discounted price', pg_sw_part_when('__related_original_price', 'not_empty'), array(
+                    $value('span', 'pg-price-original', 'Price before the discount', '__related_original_price'),
+                    $value('span', 'pg-price-current', 'Price', '__related_price'),
+                )),
+                pg_sw_part_el('span', 'pg-price-block', 'Price', pg_sw_part_when('__related_original_price', 'empty'), array(
+                    $value('span', 'pg-price', 'Price', '__related_price'),
+                )),
+            )),
+        )),
+    ));
+    return array(pg_sw_part_el('div', 'pg-civ-cross-sell mt-4', 'Products bought together', array_merge(array(
+        '_attrs' => array(array('name' => 'data-pg-civ-cross-sell', 'value' => '1')),
+    ), pg_sw_part_when('__has_related', 'not_empty')), array(
+        pg_sw_part_el('h3', 'h5 mb-3', 'Heading', array_merge(array('text' => lang('Frequently bought together')), $has)),
+        pg_sw_part_el('div', 'row g-3', 'Products', $has, array(
+            array('type' => 'loop_area', 'props' => array('source' => 'product.related', 'limit' => 4), 'children' => array(
+                pg_sw_part_el('div', 'col-6 col-md-3', 'Product', array(), array($card)),
+            )),
+        )),
+    )));
 }
 
 // The stylesheet a page needs for the parts in a widget's output $html

@@ -3594,27 +3594,6 @@ function _pg_format_price_with_discount($original_cents, $effective_cents, $curr
 }
 
 /**
- * Render the catalog_item_view "cross-sell" section for a given product.
- *
- * Cross-sell = "ordered together" suggestions from the legacy
- * get_cross_sell_items() helper (analyzes order_items history). Output is
- * a horizontal-scroll row of compact product cards. Empty when no
- * suggestions can be computed (new sites with no order history, or
- * products that have never been ordered together with anything).
- *
- * The variant chooser JS (pg_civ_variants.js) re-fetches via the
- * `get_cross_sell_items` API endpoint when the visitor switches variants,
- * so the cross-sell row always reflects the currently-displayed product.
- *
- * @param int   $product_id           Source product (the product being viewed).
- * @param int   $catalog_detail_pid   Page id used to build per-card detail URLs.
- *                                    When 0, cards link to '#'.
- * @param int   $count                Max number of items (default 4).
- * @return string                     Wrapped <div> containing the row HTML.
- *                                    Always wrapped (even when empty) so the
- *                                    JS refresh has a stable target.
- */
-/**
  * Expand `<!--pg-variant-attr:base64(cfg)-->` markers in $html by cloning
  * the configured template once per shared attribute in $vattrs.
  *
@@ -3771,9 +3750,8 @@ function _civ_expand_variant_attr_markers($html, $vattrs, $defaults = array())
  *     'image_url'=>…, 'url'=>…, 'price'=>'199.95',
  *     'original_price'=>'199.95', 'has_discount'=>0|1], …]
  *
- * The same shape is consumed by _civ_render_cross_sell_html (server-side
- * card markup) AND the new `get_cross_sell_for_product` API action (JSON
- * for the variant-chooser JS refresh path), keeping output consistent.
+ * The same shape feeds the product.related list (the cross-sell part's
+ * cards) and the `get_cross_sell_for_product` API action.
  *
  * @param int $product_id        Source product (the product being viewed).
  * @param int $catalog_detail_pid Page id used for per-card detail URLs.
@@ -3857,6 +3835,86 @@ function _civ_get_cross_sell_items($product_id, $catalog_detail_pid, $count = 4)
     return $items;
 }
 
+// The cross-sell part of a catalog detail view's tree (the first node
+// classed pg-civ-cross-sell, pg_sw_part_catalog_cross_sell()), null for none.
+function _civ_cross_sell_part_node($node)
+{
+    if (!is_array($node)) return null;
+    $cls = isset($node['props']['cssClass']) ? ' ' . (string)$node['props']['cssClass'] . ' ' : '';
+    if (strpos($cls, ' pg-civ-cross-sell ') !== false) return $node;
+    foreach (isset($node['children']) && is_array($node['children']) ? $node['children'] : array() as $child) {
+        $found = _civ_cross_sell_part_node($child);
+        if ($found !== null) return $found;
+    }
+    return null;
+}
+
+// Whether the detail view tree $node holds a list of the products bought
+// together (product.related) that still shows with cross-sell switched
+// off, when __has_related is empty: one that no condition on __has_related
+// cuts, on a node above it. The cross-sell part's list stands under such
+// conditions (pg_sw_part_catalog_cross_sell()), so with cross-sell off
+// nothing is read for it; a list the design placed elsewhere is read as
+// before. A condition that cannot be read draws nothing, and one on a
+// node holding a required control is ignored, as in _render_tree_node().
+function _civ_related_list_shown_when_off($node)
+{
+    if (!is_array($node)) return false;
+    if (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'product.related') return true;
+    $type = isset($node['type']) ? (string)$node['type'] : '';
+    if (isset($node['props']['_bindings']['show_if']) && !in_array($type, array('root', 'loop_area', 'recipient_loop_area'), true)) {
+        $cond = pg_sw_cond_spec($node['props']);
+        if ($cond !== null && pg_sw_cond_holds_required($node)) $cond = null;
+        if ($cond === false) return false;
+        if (is_array($cond) && strtolower($cond['token']) === '__has_related' && !pg_sw_cond_eval($cond['op'], '', $cond['operand'])) {
+            return false;
+        }
+    }
+    foreach (isset($node['children']) && is_array($node['children']) ? $node['children'] : array() as $child) {
+        if (_civ_related_list_shown_when_off($child)) return true;
+    }
+    return false;
+}
+
+// The cross-sell part $node drawn alone for product $product_id of widget
+// $sid with the related rows $rows (pg_sw_list_product_related_rows()), as
+// the detail view draws it: the design's own elements and classes, values
+// of other tokens empty.
+function _civ_cross_sell_part_draw($node, $sid, $product_id, $rows)
+{
+    $scope = pg_sw_finish_open(array('sid' => (int)$sid, 'kind' => 'catalog_item_view', 'email' => false));
+    try {
+        $html = _render_tree_node($node, 0, 0);
+        if (pg_sw_list_wanted('product')) pg_sw_list_publish('product', array('product.related' => array((int)$product_id => $rows)));
+        $values = pg_sw_escape_token_values(array('__id' => (string)(int)$product_id, '__has_related' => $rows ? '1' : ''));
+        $html = pg_sw_sweep_tokens(pg_sw_fill_longest($html, $values));
+    } finally {
+        pg_sw_finish_close();
+    }
+    return trim(pg_sw_finish_widget_html($html, $scope));
+}
+
+// The cross-sell part of catalog detail widget $sid drawn for a variant the
+// visitor picked ($product_id, enabled), its cards linking to page
+// $detail_page_id; '' when the widget has no such part, is switched off or
+// the product has nothing to suggest (the script then keeps the cards it
+// shows). The get_cross_sell_for_product API action answers with it.
+function _civ_cross_sell_part_html($sid, $product_id, $detail_page_id)
+{
+    $row = db_item("SELECT tree_json, system_region_config FROM shared_components WHERE id = '" . (int)$sid . "' LIMIT 1");
+    $cfg = $row ? json_decode((string)$row['system_region_config'], true) : null;
+    if (!is_array($cfg) || !isset($cfg['regionType']) || $cfg['regionType'] !== 'catalog_item_view') return '';
+    if (isset($cfg['cross_sell_enabled']) && !$cfg['cross_sell_enabled']) return '';
+    $tree = json_decode(pg_sw_default_parts_apply((string)$row['tree_json'], 'catalog_item_view', $cfg), true);
+    $node = _civ_cross_sell_part_node($tree);
+    if ($node === null) return '';
+    $p = db_item("SELECT id, image_name FROM products WHERE id = '" . (int)$product_id . "' AND enabled = 1 LIMIT 1");
+    if (!$p) return '';
+    $read = pg_sw_list_product_read(array($p), array('product.related' => true), (int)$detail_page_id);
+    $rows = isset($read['product.related'][(int)$p['id']]) ? $read['product.related'][(int)$p['id']] : array();
+    return $rows ? _civ_cross_sell_part_draw($node, (int)$sid, (int)$p['id'], $rows) : '';
+}
+
 /**
  * Normalize a cross-sell item from either tier into a stable shape.
  * Resolves URL, image URL, and adds discount fields from $disc_prices.
@@ -3905,89 +3963,6 @@ function _civ_normalize_xsell_item($it, $url_prefix, $disc_prices)
         'discount_percent'         => ($has_d && $orig_cents > 0) ? (string)((int)round((($orig_cents - $eff_cents) / $orig_cents) * 100)) : '',
         'price_block_html'         => _pg_format_price_with_discount($orig_cents, $eff_cents, $currency),
     );
-}
-
-function _civ_render_cross_sell($product_id, $catalog_detail_pid, $opts = array())
-{
-    // Designer-tunable knobs (passed via $cfg from catalog_item_view widget):
-    //   • count            — how many items to show (default 4, max 12)
-    //   • columns          — Bootstrap col split (1 / 2 / 3 / 4 / 6)
-    //   • heading          — heading text override (default "Birlikte sıkça
-    //                         satın alınanlar" / "Benzer ürünler" depending
-    //                         on which tier provided the items)
-    //   • heading_tag      — h2 / h3 / h4 / h5 / h6 (default h3)
-    //   • show_heading     — bool (default true)
-    //   • show_price       — bool (default true)
-    //   • card_class       — extra CSS classes appended to every <a class="card …">
-    //                         so designer can tune card look without touching PHP
-    //   • image_aspect     — aspect-ratio for card thumbnails (default '1/1')
-    //   • root_class       — extra CSS classes on the wrapper div (so the
-    //                         designer can target via custom CSS / utility
-    //                         spacing classes)
-    if (!is_array($opts)) $opts = array();
-    $count = isset($opts['count']) ? max(1, min(12, (int)$opts['count'])) : 4;
-    $columns = isset($opts['columns']) ? (int)$opts['columns'] : 4;
-    if (!in_array($columns, array(1, 2, 3, 4, 6), true)) $columns = 4;
-    $col_md = (int)(12 / $columns);
-    $col_sm = $columns >= 4 ? 6 : 12;  // tighten to 2-up on phones for 4+/cols layouts
-    $heading_tag    = isset($opts['heading_tag']) && in_array($opts['heading_tag'], array('h2','h3','h4','h5','h6'), true)
-                        ? $opts['heading_tag'] : 'h3';
-    $show_heading   = !isset($opts['show_heading']) || $opts['show_heading'];
-    $show_price     = !isset($opts['show_price'])   || $opts['show_price'];
-    $card_class     = isset($opts['card_class']) ? trim((string)$opts['card_class']) : '';
-    $image_aspect   = isset($opts['image_aspect']) ? (string)$opts['image_aspect'] : '1/1';
-    $root_class     = isset($opts['root_class']) ? trim((string)$opts['root_class']) : 'mt-4';
-    $custom_heading = isset($opts['heading']) && (string)$opts['heading'] !== '' ? (string)$opts['heading'] : null;
-
-    $wrapper_open  = '<div class="pg-civ-cross-sell ' . h($root_class) . '" data-pg-civ-cross-sell="1"'
-                   . ' data-pg-civ-source-id="' . (int)$product_id . '"'
-                   . ' data-pg-civ-detail-page="' . (int)$catalog_detail_pid . '"'
-                   . ' data-pg-civ-count="' . (int)$count . '"'
-                   . ' data-pg-civ-columns="' . (int)$columns . '"'
-                   . ' data-pg-civ-card-class="' . h($card_class) . '"'
-                   . ' data-pg-civ-image-aspect="' . h($image_aspect) . '"'
-                   . ' data-pg-civ-show-price="' . ($show_price ? '1' : '0') . '"'
-                   . '>';
-    $wrapper_close = '</div>';
-    if ($product_id <= 0) return $wrapper_open . $wrapper_close;
-
-    // Pull items via the shared helper — same logic the API endpoint uses
-    // so SSR + JS-refresh produce identical output.
-    $items   = _civ_get_cross_sell_items($product_id, $catalog_detail_pid, $count);
-    $heading = $custom_heading !== null
-                ? $custom_heading
-                : (lang('Frequently bought together'));
-
-    if (empty($items)) {
-        return $wrapper_open . $wrapper_close;
-    }
-
-    $cs_html = '';
-    if ($show_heading) {
-        $cs_html .= '<' . $heading_tag . ' class="h5 mb-3">' . h($heading) . '</' . $heading_tag . '>';
-    }
-    $cs_html .= '<div class="row g-3">';
-    $card_extra = $card_class !== '' ? ' ' . h($card_class) : '';
-    foreach ($items as $it) {
-        $cs_name  = isset($it['name']) ? h($it['name']) : '';
-        $cs_short = isset($it['short_description']) ? h($it['short_description']) : '';
-        $cs_image = isset($it['image_url']) ? (string)$it['image_url'] : '';
-        $cs_url   = isset($it['url']) ? (string)$it['url'] : '#';
-        $cs_price_block = isset($it['price_block_html']) ? (string)$it['price_block_html'] : '';
-        $cs_html .= '<div class="col-' . (int)$col_sm . ' col-md-' . (int)$col_md . '">'
-                  . '<a href="' . h($cs_url) . '" class="card h-100 text-decoration-none text-body' . $card_extra . '">'
-                  . ($cs_image !== ''
-                        ? '<img src="' . h($cs_image) . '" class="card-img-top" alt="" loading="lazy" style="aspect-ratio:' . h($image_aspect) . ';object-fit:cover">'
-                        : '<div class="card-img-top bg-body-tertiary" style="aspect-ratio:' . h($image_aspect) . '"></div>')
-                  . '<div class="card-body p-2">'
-                  . '<div class="small fw-semibold text-truncate">' . ($cs_short !== '' ? $cs_short : $cs_name) . '</div>'
-                  . ($show_price ? '<div class="small mt-1">' . $cs_price_block . '</div>' : '')
-                  . '</div>'
-                  . '</a>'
-                  . '</div>';
-    }
-    $cs_html .= '</div>';
-    return $wrapper_open . $cs_html . $wrapper_close;
 }
 
 function _apply_catalog_item_view_bindings(&$node, $context)
@@ -4931,11 +4906,12 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             'default_selection' => $default_selection,
             'currency_symbol'   => $currency_symbol,
             'api_url'           => $base_path . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software') . '/api.php',
-            // Visitor-facing text the script renders itself; the heading
-            // mirrors the one _civ_render_cross_sell() prints server-side.
+            // The widget, whose cross-sell part the server draws again for
+            // a variant picked (_civ_cross_sell_part_html()).
+            'widget_id'         => (int)$widget_id,
+            // Visitor-facing text the script renders itself.
             'labels'            => array(
                 'no_match'           => lang('No products match this selection.'),
-                'cross_sell_heading' => lang('Frequently bought together'),
                 // The words of pg_carousel_image_label(), numbers filled in
                 // by the script when it rebuilds the gallery.
                 'image_of'           => lang(array('string' => 'Image {var:1} of {var:2}', 'vars' => array('{n}', '{total}'))),
@@ -5052,7 +5028,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__select_group_id'      => '0',
             '__select_group_name'    => '',
             '__variant_picker'       => '',
-            '__cross_sell_html'      => '',
+            '__has_related'          => '',
             // No breadcrumb in not-found state.
             '__has_breadcrumb'       => '',
             // Discount tokens — empty in not-found state so designer's
@@ -5233,10 +5209,16 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             return $_civ_detail_page;
         };
         $_civ_listed         = pg_sw_list_wanted('product');
-        $_civ_related_listed = isset($_civ_listed['product.related']);
         $_civ_xsell_off      = isset($cfg['cross_sell_enabled']) && !$cfg['cross_sell_enabled'];
-        $_civ_xsell_placed   = (strpos($loop_template, '^^__cross_sell_html^^') !== false)
-                            || (strpos($static_html, '^^__cross_sell_html^^') !== false);
+        // Switched off, the cross-sell part draws nothing (__has_related
+        // stays empty): the products bought together are read only for a
+        // list of them the design placed where it still shows.
+        if ($_civ_xsell_off && isset($_civ_listed['product.related']) && !_civ_related_list_shown_when_off($tree_decoded)) {
+            unset($_civ_listed['product.related']);
+        }
+        // The variant script asks the server to draw the cross-sell part
+        // again with cards linking to the same page.
+        if ($variant_data && !$_civ_xsell_off) $variant_data['detail_page_id'] = $_civ_detail_pid();
 
         $values = array(
             // Basic
@@ -5365,38 +5347,21 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // back at the listing page; without it crumbs render as words.
             '__has_breadcrumb'       => '1',
 
-            // Cross-sell items ("birlikte satın alınanlar" / "benzer ürünler")
-            // — pre-rendered server-side. Tier 1: order-history-based via
-            // get_cross_sell_items (when site has order data). Tier 2:
-            // same-product-group fallback (siblings) when order history is
-            // empty. The variant chooser JS refreshes this block via API
-            // when the visitor switches variants so the suggestions reflect
-            // the active product.
-            //
-            // Toggle: cfg['cross_sell_enabled'] — when explicitly false the
-            // token resolves to '' and the auto-append below is skipped, so
-            // designer can fully turn off cross-sell from the widget
-            // settings panel without re-saving the tree. Default: ON.
-            //
-            // catalog_detail page id source order:
-            //   1. cfg['catalog_detail_page_id'] (designer-set in widget config)
-            //   2. The current page's id (visitor IS on the catalog detail page)
-            // Falling back to the current page is what every catalog item
-            // detail page actually wants — sibling products link to the
-            // same detail-page route the visitor came in via.
-            //
-            // A list of the products bought together (product.related)
-            // takes the block's place: the block is drawn only where its
-            // token is placed.
-            '__cross_sell_html'      => ($_civ_xsell_off || ($_civ_related_listed && !$_civ_xsell_placed))
-                ? ''
-                : _civ_render_cross_sell((int)$p_id, $_civ_detail_pid()),
+            // Products bought together (the cross-sell part, a
+            // product.related list): set below from the rows read.
+            '__has_related'          => '',
         );
 
         // The rows of the product lists the tree draws, read for this
         // product alone (widgets_lists_product.php).
+        // __has_related draws the cross-sell part: empty with
+        // cfg['cross_sell_enabled'] switched off (a list the design placed
+        // itself stays as it is), else 1 with products to suggest, 0
+        // without (the part's empty box the variant script fills).
         if ($_civ_listed) {
-            pg_sw_list_publish('product', pg_sw_list_product_read(array($p), $_civ_listed, isset($_civ_listed['product.related']) ? $_civ_detail_pid() : 0));
+            $_civ_list_rows = pg_sw_list_product_read(array($p), $_civ_listed, isset($_civ_listed['product.related']) ? $_civ_detail_pid() : 0);
+            pg_sw_list_publish('product', $_civ_list_rows);
+            if (!$_civ_xsell_off) $values['__has_related'] = !empty($_civ_list_rows['product.related'][(int)$p_id]) ? '1' : '0';
         }
     }
 
@@ -5513,29 +5478,6 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // A breadcrumb shows only where the tree places one: its default part
     // (widgets_parts.php), which the old content type, section binding and
     // tokens are given before this render. Never auto-injected.
-
-    // ── Auto-append cross-sell at end if not placed by designer ──────────
-    // Designers can place `^^__cross_sell_html^^` anywhere they want. When
-    // they don't, we append it AFTER the loop_template (or AFTER the loop
-    // slot in static_html) so it sits at the bottom of the widget — the
-    // conventional location for "ordered together" suggestions on a
-    // product detail page.
-    if (isset($values['__cross_sell_html']) && $values['__cross_sell_html'] !== '') {
-        $_cs_token = '^^__cross_sell_html^^';
-        $_cs_already_placed = (strpos($loop_template, $_cs_token) !== false)
-                           || (strpos($static_html,   $_cs_token) !== false);
-        if (!$_cs_already_placed) {
-            if ($loop_template !== '') {
-                $loop_template = $loop_template . $_cs_token;
-            } elseif ($static_html !== '') {
-                $static_html = str_replace(
-                    '<!--pg-loop-slot-->',
-                    '<!--pg-loop-slot-->' . $_cs_token,
-                    $static_html
-                );
-            }
-        }
-    }
 
     // ── Apply tokens to template + static_html (single render, NO loop) ──
     // Longest keys first so '^^__out_of_stock_message^^' is replaced before
@@ -5655,7 +5597,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '6';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '7';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'

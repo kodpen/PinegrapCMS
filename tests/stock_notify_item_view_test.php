@@ -184,7 +184,7 @@ function test_stock_notify_item_view_renderer()
 	pg_assert_contains('name="send_to"', $view, 'back to the product page');
 	pg_assert_contains("strpos(\$_civ_html, 'form=\"' . \$_civ_notify_form . '\"')", $view, 'only when a control is drawn');
 	pg_assert_contains("data-pg-stock-notify=\"' . h(\$_civ_notify_form)", $view, 'the widget form names it for the variant script');
-	pg_assert_contains("\$_civ_v_v   = '6';", $view, 'the variant script is fetched again');
+	pg_assert_contains("\$_civ_v_v   = '7';", $view, 'the variant script is fetched again');
 
 	$close = strpos($view, ". '</form>'\n         . \$_civ_notify_html");
 	pg_assert_true($close !== false, 'printed after the add-to-cart form, never inside it');

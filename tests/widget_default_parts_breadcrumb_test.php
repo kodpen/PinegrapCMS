@@ -135,10 +135,13 @@ function _parts_bc_root($children)
 	return array('type' => 'root', 'props' => array(), 'children' => $children);
 }
 
+// The main loop: a card, and an empty list of the products bought together
+// that draws nothing and keeps the detail view's cross-sell part out.
 function _parts_bc_loop()
 {
 	return array('type' => 'loop_area', 'props' => array(), 'children' => array(
 		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'card', 'text' => 'Card'), 'children' => array()),
+		array('type' => 'loop_area', 'props' => array('source' => 'product.related'), 'children' => array()),
 	));
 }
 
@@ -293,6 +296,7 @@ function test_widget_parts_breadcrumb_editor_twin()
 		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => '^^__breadcrumb_inner_html^^'), 'children' => array()),
 		array('type' => 'content', 'props' => array('contentType' => 'breadcrumb', 'cssClass' => 'mb-3'), 'children' => array()),
 		array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => ' ^^__breadcrumb_html^^ '), 'children' => array()),
+		array('type' => 'loop_area', 'props' => array('source' => 'product.related'), 'children' => array()),
 	));
 	$lead = _parts_bc_root(array(array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array(_parts_bc_loop()))));
 	$stubs = "var _n = 0; function gid() { return 'n' + (++_n); }\nfunction _sdT(s) { return s; }\n"
