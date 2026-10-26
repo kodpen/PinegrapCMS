@@ -1084,6 +1084,7 @@
     "Override Folder's Default Page Styles": "Klasörün Varsayılan Sayfa Stillerini Geçersiz Kılar",
     "Override Layout Type": "Düzen Türünün Üzerine Yaz",
     "Overrides all user settings. Leave empty to disable.": "Tüm kullanıcı ayarlarını geçersiz kılar. Devre dışı bırakmak için boş bırakın.",
+    "Overrides {var}": "{var} sınıfını geçersiz kılar",
     "Overview": "Genel Bakış",
     "Overwrite the changes to the file. Do not create one more file.": "Dosyadaki değişikliklerin üzerine yazar. Bir dosya daha oluşturmaz.",
     "Own account": "Kendi hesabı",
