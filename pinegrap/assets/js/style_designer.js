@@ -13544,7 +13544,7 @@ const StyleDesigner = (function () {
                 var rn = node.props.regionName ? ': ' + node.props.regionName : '';
                 rg.innerHTML = '<span class="bi ' + ico + '"></span>' + esc(rl) + esc(rn) +
                     (SD_LEGACY_REGIONS[node.props.regionType] ? ' ' + _sdLegacyBadge() : '');
-                if (node.props.regionType === 'system') _sdLegacyRegionAppend(doc, rg);
+                if (_sdLegacyRegionOwn(node)) _sdLegacyRegionAppend(doc, rg);
                 return rg;
             case 'component':
                 var comp = COMPONENTS[node.props.componentType];
@@ -14132,14 +14132,31 @@ const StyleDesigner = (function () {
 
     // Decide preview value for a bound prop based on the prop name + node context.
     // ── Legacy region preview ────────────────────────────────────────────
-    // The system region of a classic page that draws a custom layout prints
-    // <system></system>, which the server fills from the layout. Under the
-    // region's label the canvas shows it as the server draws it for the
-    // signed-in user (api.php designer/legacy_region_preview): the page's
-    // saved state, read only. Canvas-only DOM like the ghost records: inert,
-    // no scripts, event attributes or ids, never in the tree JSON. Asked for once per page and
-    // again after a Save or a save of the page's layout tab.
+    // The page's own system region of a classic page that draws a custom
+    // layout prints <system></system>, which the server fills from the
+    // layout. Under the region's label the canvas shows it as the server
+    // draws it for the signed-in user (api.php designer/legacy_region_preview):
+    // the page's saved state, read only. A named system region draws another
+    // page's region and keeps the plain placeholder. Canvas-only DOM like the
+    // ghost records: inert, never in the tree JSON, and nothing that would run
+    // in the editor, which shares the site's origin and holds the designer's
+    // session: no scripts, frames, plugins, event attributes or javascript:
+    // addresses, and no ids. Asked for once per page and again after a Save or
+    // a save of the page's layout tab.
     var _sdLegacyRegionCache = {};   // page id → { html, loading, stale }
+
+    // The page's own system region: the unnamed one, the only one the server
+    // marks for the cut (get_page_content.php).
+    function _sdLegacyRegionOwn(node) {
+        return !!(node && node.props && node.props.regionType === 'system' && !node.props.regionName);
+    }
+
+    // Whether an attribute value is a javascript: address. Read as the browser
+    // reads one, and a little wider: C0 controls and spaces are left out
+    // wherever they stand, and the case does not count.
+    function _sdLegacyRegionJsUrl(value) {
+        return String(value == null ? '' : value).replace(/[\x00-\x20]+/g, '').toLowerCase().indexOf('javascript:') === 0;
+    }
 
     // Ask again at the next render; the last answer stays on screen meanwhile.
     function _sdLegacyRegionForget(pageId) {
@@ -14169,10 +14186,13 @@ const StyleDesigner = (function () {
 
         var tpl = doc.createElement('template');
         tpl.innerHTML = entry.html;
-        tpl.content.querySelectorAll('script').forEach(function (el) { el.remove(); });
+        // A frame or plugin runs even inside an inert box (a srcdoc or
+        // javascript: frame would run in the editor's origin), so they go
+        // with the scripts.
+        tpl.content.querySelectorAll('script, iframe, object, embed').forEach(function (el) { el.remove(); });
         tpl.content.querySelectorAll('*').forEach(function (el) {
             Array.prototype.slice.call(el.attributes).forEach(function (a) {
-                if (a.name === 'id' || a.name.slice(0, 2) === 'on') el.removeAttribute(a.name);
+                if (a.name === 'id' || a.name.slice(0, 2) === 'on' || _sdLegacyRegionJsUrl(a.value)) el.removeAttribute(a.name);
             });
         });
         var box = doc.createElement('div');
