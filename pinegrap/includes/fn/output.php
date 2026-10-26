@@ -5310,10 +5310,22 @@ function pg_page_actions($page_id, $style_id, $user, $send_to = null)
         // Ctrl+G handler clicks it by that name, and page_designer.js turns it
         // into "Close Page Designer" while the designer is open.
         if ($style_type == 'system') {
+
+            // A converted classic page that draws a custom layout: Ctrl+G
+            // opened the classic page designer on that layout, so it lands
+            // on the designer's layout tab. The URL then differs from "Edit
+            // Page Style", which still opens the canvas, and both stay.
+            $layout_tab = '';
+
+            if ($style_page !== '') {
+                require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+                $layout_tab = pg_layout_tab_param($page_id, pg_layout_custom_page_ids(array($page_id)), $user['role'], pg_hosted());
+            }
+
             $actions[] = array(
                 'icon'  => 'easel',
                 'label' => lang('Open Style Designer'),
-                'url'   => $software . 'edit_system_style.php?id=' . urlencode($style_id) . $style_page . '&send_to=' . $send_to,
+                'url'   => $software . 'edit_system_style.php?id=' . urlencode($style_id) . $style_page . $layout_tab . '&send_to=' . $send_to,
                 'class' => 'page_designer_button');
         } else {
             $actions[] = array(

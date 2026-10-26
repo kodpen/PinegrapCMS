@@ -54,6 +54,8 @@ function pg_sw_default_part_tokens()
         'order_view' => array(
             array('__timeline', 'pg_sw_part_order_timeline'),
             array('__order_status_badge', 'pg_sw_part_order_status_badge'),
+            array('__item_form_data_html', 'pg_sw_part_order_item_form'),
+            array('__item_gift_card_html', 'pg_sw_part_order_item_gift_card'),
         ),
     );
 }
@@ -71,6 +73,57 @@ function pg_sw_default_tail_parts()
             array(array('__legal_preinfo_url', '__legal_contract_url'), 'pg_sw_part_order_legal_documents'),
         ),
     );
+}
+
+// The blocks a renderer added after each row of a widget's main loop whose
+// row placed none of their tokens, now default parts added to the end of
+// the main loop once, by widget kind: pairs of the tokens that place the
+// block (the old token, the list the part draws) and the function that
+// builds it. In the order the renderer added them.
+function pg_sw_default_loop_tail_parts()
+{
+    return array(
+        'order_view' => array(
+            array(array('__item_form_data_html', 'order.item_forms'), 'pg_sw_part_order_item_form'),
+            array(array('__item_gift_card_html', 'order.item_gift_cards'), 'pg_sw_part_order_item_gift_card'),
+        ),
+    );
+}
+
+// The main loop of the widget tree $node (its first loop_area without a
+// source, lists not searched), by reference; null for none.
+function &pg_sw_main_loop_ref(&$node)
+{
+    $none = null;
+    if (!is_array($node) || pg_sw_list_is_sourced($node)) return $none;
+    if (isset($node['type']) && $node['type'] === 'loop_area') return $node;
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) {
+            $found = &pg_sw_main_loop_ref($node['children'][$i]);
+            if ($found !== null) return $found;
+            unset($found);
+        }
+    }
+    return $none;
+}
+
+// Adds to the end of $tree's main loop each row block of $kind its row
+// does not place (pg_sw_default_loop_tail_parts()). Returns whether
+// anything was added.
+function pg_sw_default_loop_tails(&$tree, $kind, $cfg)
+{
+    $all = pg_sw_default_loop_tail_parts();
+    if (!isset($all[$kind])) return false;
+    $loop = &pg_sw_main_loop_ref($tree);
+    if ($loop === null) return false;
+    $row = array('type' => 'root', 'children' => isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array());
+    $added = false;
+    foreach ($all[$kind] as $pair) {
+        if (pg_sw_placed($row, $pair[0])) continue;
+        $loop['children'] = array_merge(isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array(), call_user_func($pair[1], $cfg));
+        $added = true;
+    }
+    return $added;
 }
 
 // $tree_json with every node that draws an old token of $kind given its
@@ -92,13 +145,23 @@ function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = f
     foreach (isset($tails[$kind]) ? $tails[$kind] : array() as $pair) {
         if (!pg_sw_placed($tree_json, $pair[0])) $due[] = $pair[1];
     }
+    // A row block is due unless the whole tree places it (then the row
+    // itself is read below).
+    $loop_due = false;
+    $loop_tails = pg_sw_default_loop_tail_parts();
+    foreach (isset($loop_tails[$kind]) ? $loop_tails[$kind] : array() as $pair) {
+        if (!pg_sw_placed($tree_json, $pair[0])) { $loop_due = true; break; }
+    }
     $mail = $email && strpos($tree_json, 'pg-ov-timeline') !== false;
-    if (!$found && !$due && !$mail) return $tree_json;
+    if (!$found && !$due && !$loop_due && !$mail) return $tree_json;
 
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return $tree_json;
     $cfg = is_array($cfg) ? $cfg : array();
     $changed = $found ? pg_sw_default_parts_tree($tree, $parts, $cfg) : false;
+    if (!pg_sw_tree_is_placeholder($tree)) {
+        $changed = pg_sw_default_loop_tails($tree, $kind, $cfg) || $changed;
+    }
     if ($due && !pg_sw_tree_is_placeholder($tree)) {
         $placed = $tree;
         if (!isset($tree['children']) || !is_array($tree['children'])) $tree['children'] = array();
@@ -290,6 +353,94 @@ function pg_sw_part_order_status_badge($cfg = array())
         ));
     }
     return $out;
+}
+
+// The props of an element showing $token, $sample on the canvas, drawn
+// only when $token passes $op when one is given.
+function pg_sw_part_value($token, $sample, $op = '')
+{
+    $props = array('text' => $sample, '_bindings' => array('text' => $token));
+    if ($op !== '') {
+        $props['_bindings']['show_if'] = $token;
+        $props['_bindParams'] = array('show_if' => array('op' => $op));
+    }
+    return $props;
+}
+
+// The heading of an item's form or gift card: its name, and its number
+// among the item's when there is more than one.
+function pg_sw_part_order_item_legend($props, $name, $number, $count)
+{
+    return pg_sw_part_el('legend', 'float-none w-auto px-2 fs-6 fw-semibold', 'Heading', $props, array(
+        pg_sw_part_el('span', '', 'Name', $name),
+        pg_sw_part_el('span', '', 'Number', array_merge(array('text' => ' (^^' . $number . '^^ / ^^' . $count . '^^)'), pg_sw_part_when($count, 'gt', '1'))),
+    ));
+}
+
+// One label above its value, as the order view prints a form's answers:
+// the value element takes $props and $children.
+function pg_sw_part_order_item_line($label, $props, $children = array())
+{
+    return pg_sw_part_el('div', 'mb-2', $label, array(), array(
+        pg_sw_part_el('div', 'form-label mb-0 fw-semibold', 'Label', array('text' => $label)),
+        pg_sw_part_el('div', 'pg-ov-form-value', $label, $props, $children),
+    ));
+}
+
+// The answers an item's buyer gave in the product's order form, printed: a
+// box per form (order.item_forms; one per unit for 'One Form per
+// Quantity'), its heading, then each field's label above its answer
+// (order.item_form_fields); an information field shows its label and text.
+// The box carries the item's id for page scripts (data-pg-ov-item-form).
+function pg_sw_part_order_item_form($cfg = array())
+{
+    return array(pg_sw_part_el('div', 'pg-ov-item-form mt-2', 'Product Form Answers', array_merge(
+        array('_attrs' => array(array('name' => 'data-pg-ov-item-form', 'value' => '{{__item_id}}'))),
+        pg_sw_part_when('__item_has_form_data', 'not_empty')
+    ), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'order.item_forms'), 'children' => array(
+            pg_sw_part_el('fieldset', 'pg-ov-item-form-block border rounded p-3 mt-2', 'Form', array(), array(
+                pg_sw_part_order_item_legend(pg_sw_part_when('__form_has_legend', 'not_empty'),
+                    pg_sw_part_value('__form_name', 'Order Form'), '__form_number', '__form_count'),
+                array('type' => 'loop_area', 'props' => array('source' => 'order.item_form_fields'), 'children' => array(
+                    pg_sw_part_el('div', 'mb-2', 'Field', pg_sw_part_when('__field_is_info', 'empty'), array(
+                        pg_sw_part_el('div', 'form-label mb-0 fw-semibold', 'Label', pg_sw_part_value('__field_label', 'Label')),
+                        pg_sw_part_el('div', 'pg-ov-form-value', 'Answer', pg_sw_part_value('__field_value_html', 'Answer')),
+                    )),
+                    pg_sw_part_el('div', 'mb-2 small', 'Information', pg_sw_part_when('__field_is_info', 'not_empty'), array(
+                        pg_sw_part_el('div', 'fw-semibold', 'Label', pg_sw_part_value('__field_label', 'Label', 'not_empty')),
+                        pg_sw_part_el('div', 'text-muted', 'Information', pg_sw_part_value('__field_info_html', '')),
+                    )),
+                )),
+            )),
+        )),
+    )));
+}
+
+// An item's gift cards, printed: a box per card filled in
+// (order.item_gift_cards), its heading, then the amount, the recipient's
+// address, the sender's name, the message and the delivery date, each
+// label above its value. The box carries the item's id for page scripts
+// (data-pg-ov-item-gift-card).
+function pg_sw_part_order_item_gift_card($cfg = array())
+{
+    return array(pg_sw_part_el('div', 'pg-ov-item-gift-card mt-2', 'Gift Card Details', array_merge(
+        array('_attrs' => array(array('name' => 'data-pg-ov-item-gift-card', 'value' => '{{__item_id}}'))),
+        pg_sw_part_when('__item_has_gift_card', 'not_empty')
+    ), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'order.item_gift_cards'), 'children' => array(
+            pg_sw_part_el('fieldset', 'pg-ov-item-gift-card-block border rounded p-3 mt-2', 'Gift card', array(), array(
+                pg_sw_part_order_item_legend(array(), array('text' => lang('Gift card')), '__gift_card_number', '__gift_card_count'),
+                pg_sw_part_order_item_line(lang('Amount'), array(), array(
+                    pg_sw_part_el('strong', '', 'Amount', pg_sw_part_value('__gift_card_amount', '100,00')),
+                )),
+                pg_sw_part_order_item_line(lang('Recipient Email'), pg_sw_part_value('__gift_card_email', 'name@example.com')),
+                pg_sw_part_order_item_line(lang('Your Name'), pg_sw_part_value('__gift_card_from_name', 'Name')),
+                pg_sw_part_order_item_line(lang('Message'), pg_sw_part_value('__gift_card_message_html', 'Message')),
+                pg_sw_part_order_item_line(lang('Delivery Date'), pg_sw_part_value('__gift_card_delivery', '20.10.2026')),
+            )),
+        )),
+    )));
 }
 
 // A card added after the order view: the shell the returns and legal
