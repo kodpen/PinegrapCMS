@@ -406,7 +406,10 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That scheduled action could not be found.'));
             }
 
-            return ws_action_ok(array('item' => ws_scheduled_present($viewer, $scheduled, true)));
+            $item = ws_scheduled_present($viewer, $scheduled, true);
+
+            // The graph "Show on canvas" draws (ws_scheduled_graph()).
+            return ws_action_ok(array('item' => $item, 'graph' => ws_scheduled_graph($item)));
 
         case 'ws_scheduled_save':
             $result = ws_scheduled_save($viewer, array(
