@@ -33060,7 +33060,7 @@ const StyleDesigner = (function () {
                     ) +
                     // Offset and the list's own page parameter
                     // (pg_sw_list_offset(), pg_sw_list_page_param()).
-                    (_isFormListView ? row(_sdT('Skip the first records'),
+                    ((_isFormListView || _isCatalogListing) ? row(_sdT('Skip the first records'),
                         '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="offset" data-sw-cfg-kind="int" min="0" max="100000" value="' + _swListOffset(_cfg) + '">' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The list starts after this many records, for example beside a box that shows the newest one.')) + '</div>'
                     ) + row(_sdT('Page number in the address'),
@@ -34063,6 +34063,14 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Results per page'),
                         '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="results_per_page" data-sw-cfg-kind="int" min="1" max="200" value="' + _srPerPage + '">'
+                    ) +
+                    // As a form list's (pg_sw_list_offset(), pg_sw_list_page_param()).
+                    row(_sdT('Skip the first results'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="offset" data-sw-cfg-kind="int" min="0" max="100000" value="' + _swListOffset(_cfg) + '">'
+                    ) +
+                    row(_sdT('Page number in the address'),
+                        '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="page_param" data-sw-cfg-kind="param" maxlength="32" value="' + esc(_swUrlParamName(_cfg.page_param)) + '" placeholder="page_number">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty to share page_number with the other lists on the page. A name of its own (letters, digits, underscores) lets this list turn its pages alone.')) + '</div>'
                     ) +
                     row(_sdT('No results message'),
                         '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="empty_message" value="' + esc(_srNoResults) + '" maxlength="255">'
@@ -38032,6 +38040,13 @@ const StyleDesigner = (function () {
             ['__attribute_filters_html', _sdT('Attribute filter UI HTML (legacy)')],
             ['__active_filters_html',    _sdT('Active attribute filter chips HTML (legacy)')],
             ['__has_active_filters',     _sdT('Whether a filter is active (1/0)')]
+        ]},
+        // pg_sw_list_paging(), as in a form list.
+        { label: _sdT('Pages'), tokens: [
+            ['__page_number',   _sdT('Page shown')],
+            ['__page_count',    _sdT('Number of pages')],
+            ['__prev_page_url', _sdT('Previous page link')],
+            ['__next_page_url', _sdT('Next page link')]
         ]}
         // There is no add-to-cart TOKEN. Use the `catalog_add_to_cart` action
         // binding on a real button (that's what the starter tree does): the
@@ -38835,6 +38850,9 @@ const StyleDesigner = (function () {
             ['__results_heading',  _sdT('Results heading ("Found 12 results for: …")')],
             ['__result_count',     _sdT('Number of results')],
             ['__page_count',       _sdT('Number of pages')],
+            ['__page_number',      _sdT('Page shown')],
+            ['__prev_page_url',    _sdT('Previous page link')],
+            ['__next_page_url',    _sdT('Next page link')],
             ['__empty_message',    _sdT('No results message')]
         ]},
         { label: _sdT('Result Item (loop_area)'), tokens: [
@@ -40007,13 +40025,20 @@ const StyleDesigner = (function () {
         search_results: [
             ['has_query',   _sdT('Something was searched')],
             ['has_results', _sdT('The search found results')],
-            ['no_results',  _sdT('The search found nothing')]
+            ['no_results',  _sdT('The search found nothing')],
+            ['has_prev_page',  _sdT('A previous page exists')],
+            ['has_next_page',  _sdT('A next page exists')],
+            ['has_more_pages', _sdT('The list runs over more than one page')]
         ],
         // The rating of the card's product (listing) or of the product shown
         // (detail): verified, starred reviews, as __rating_count counts them.
         catalog_listing: [
             ['has_rating', _sdT('Row: the product has a rating from verified reviews')],
-            ['no_rating',  _sdT('Row: the product has no rating yet')]
+            ['no_rating',  _sdT('Row: the product has no rating yet')],
+            // Outside the card only (the listing's surround).
+            ['has_prev_page',  _sdT('A previous page exists')],
+            ['has_next_page',  _sdT('A next page exists')],
+            ['has_more_pages', _sdT('The list runs over more than one page')]
         ],
         catalog_item_view: [
             ['has_rating', _sdT('The product has a rating from verified reviews')],
