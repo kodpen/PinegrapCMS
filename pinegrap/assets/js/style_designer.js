@@ -51641,11 +51641,13 @@ const StyleDesigner = (function () {
             ]
         },
         // The product sources (pg_sw_list_product_sources()): what the
-        // product a catalog detail view shows holds; none takes a field.
+        // product of a catalog detail view or of a listing's card holds
+        // (the products bought together in the detail view alone); none
+        // takes a field.
         'product.images': {
             label: _sdT('Images of the product'),
             arg: '', argRequired: false,
-            kinds: ['catalog_item_view'],
+            kinds: ['catalog_item_view', 'catalog_listing'],
             rows: [
                 ['__gallery_url', _sdT('Image address')]
             ]
@@ -51653,7 +51655,7 @@ const StyleDesigner = (function () {
         'product.attributes': {
             label: _sdT('Attributes of the product'),
             arg: '', argRequired: false,
-            kinds: ['catalog_item_view'],
+            kinds: ['catalog_item_view', 'catalog_listing'],
             rows: [
                 ['__attr_name',  _sdT('Attribute')],
                 ['__attr_value', _sdT('Attribute value')]
@@ -51872,6 +51874,12 @@ const StyleDesigner = (function () {
         return (kind === 'submitted_forms_list' || kind === 'form_list' || kind === 'blog_list') ? 'form_list_view' : kind;
     }
 
+    // Whether a list in a widget of `kind` must sit in the main loop: in a
+    // list of records only the record template fills it.
+    function _sdListNeedsMainLoop(kind) {
+        return kind === 'form_list_view' || kind === 'catalog_listing';
+    }
+
     // Whether `node` is the widget's main loop or inside it.
     function _sdInMainLoopAt(node) {
         var cur = node;
@@ -51916,7 +51924,7 @@ const StyleDesigner = (function () {
         var kind = _sdListWidgetKind(sid);
         if (!kind) return false;
         if (_sdKindLists(kind).indexOf(source) === -1 && !(list && _isInsideSystemWidget(list) === sid)) return false;
-        if (kind === 'form_list_view' && !_sdInMainLoopAt(target)) return false;
+        if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(target)) return false;
         var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : 1);
         return depth <= SW_LIST_MAX_DEPTH;
     }
@@ -52000,7 +52008,7 @@ const StyleDesigner = (function () {
         }
         var kind = _sdListWidgetKind(_isInsideSystemWidget(node));
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
-        if (kind === 'form_list_view' && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
+        if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (_sdListsAbove(node).length >= SW_LIST_MAX_DEPTH) return { off: true, text: _sdT('{var}: more than four lists deep, nothing is drawn', src.label) };
         var name = src.label;
         if (spec.arg) {

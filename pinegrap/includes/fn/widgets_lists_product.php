@@ -9,15 +9,17 @@
  */
 
 // A module of functions.php: the product sources of the lists inside a
-// record (widgets_lists.php), drawn in the catalog detail widget.
+// record (widgets_lists.php), drawn in the catalog detail and listing widgets.
 //
 // Loaded by functions.php through require_once, never on its own.
 //
 // A product list repeats what one product holds: its images, its attribute
-// values, the products bought with it. The catalog detail renderer reads
-// the rows of the sources its tree lists (pg_sw_list_wanted()) for the
-// product it shows and publishes them (pg_sw_list_publish('product', …));
-// the finish pass draws each span from them, keyed by ^^__id^^. The rows
+// values, the products bought with it. The catalog detail and listing
+// renderers read the rows of the sources their tree lists
+// (pg_sw_list_wanted()) for the products they show and publish them
+// (pg_sw_list_publish('product', …)); the finish pass draws each span from
+// them, keyed by ^^__id^^ (a group card in a listing reads none:
+// pg_sw_list_key_guard()). The rows
 // are built here from what the queries return, so the row shape is tested
 // without a database.
 if (!defined('PG_FUNCTIONS_DIR')) {
@@ -127,39 +129,54 @@ function pg_sw_list_product_related_rows($items)
     return $out;
 }
 
-// What the catalog detail renderer publishes for product $p (its id and
-// image_name read): source => product id => rows, for each source in
-// $sources (source => true). One query per source; $detail_page_id is the
+// What a catalog renderer publishes for the products it shows ($products:
+// rows with their id and image_name): source => product id => rows, for
+// each source in $sources (source => true). One query per source for all
+// the products, but the products bought together: one cross-sell lookup
+// per product (only the detail view offers them). $detail_page_id is the
 // page a related product links to (0: none, as the cross-sell block).
-function pg_sw_list_product_read($p, $sources, $detail_page_id)
+function pg_sw_list_product_read($products, $sources, $detail_page_id = 0)
 {
-    $out = array();
-    $pid = (is_array($p) && isset($p['id'])) ? (int)$p['id'] : 0;
-    if ($pid <= 0 || !is_array($sources)) return $out;
+    $out  = array();
+    $main = array();
+    foreach (is_array($products) ? $products : array() as $p) {
+        $pid = (is_array($p) && isset($p['id'])) ? (int)$p['id'] : 0;
+        if ($pid > 0) $main[$pid] = isset($p['image_name']) ? (string)$p['image_name'] : '';
+    }
+    if (!$main || !is_array($sources)) return $out;
+    $ids = implode(',', array_keys($main));
 
     if (isset($sources['product.images'])) {
-        $extra = db_items(
-            "SELECT file_name FROM products_images_xref
-             WHERE product = '$pid' AND file_name != ''
-             ORDER BY file_name ASC
-             LIMIT 100"
+        $by = array();
+        $rows = db_items(
+            "SELECT product, file_name FROM products_images_xref
+             WHERE product IN ($ids) AND file_name != ''
+             ORDER BY product ASC, file_name ASC"
         );
-        $out['product.images'][$pid] = pg_sw_list_product_image_rows(isset($p['image_name']) ? $p['image_name'] : '', $extra);
+        foreach (is_array($rows) ? $rows : array() as $row) $by[(int)$row['product']][] = $row;
+        foreach ($main as $pid => $image) {
+            $out['product.images'][$pid] = array_slice(pg_sw_list_product_image_rows($image, isset($by[$pid]) ? $by[$pid] : array()), 0, 100);
+        }
     }
     if (isset($sources['product.attributes'])) {
-        $attrs = db_items(
-            "SELECT pa.name, pa.label, pao.label AS option_label, pao.no_value
+        $by = array();
+        $rows = db_items(
+            "SELECT pax.product_id, pa.name, pa.label, pao.label AS option_label, pao.no_value
              FROM products_attributes_xref pax
              INNER JOIN product_attributes pa ON pa.id = pax.attribute_id
              INNER JOIN product_attribute_options pao ON pao.id = pax.option_id
-             WHERE pax.product_id = '$pid'
-             ORDER BY pa.id ASC, pao.sort_order ASC
-             LIMIT 100"
+             WHERE pax.product_id IN ($ids)
+             ORDER BY pax.product_id ASC, pa.id ASC, pao.sort_order ASC"
         );
-        $out['product.attributes'][$pid] = pg_sw_list_product_attr_rows($attrs);
+        foreach (is_array($rows) ? $rows : array() as $row) $by[(int)$row['product_id']][] = $row;
+        foreach (array_keys($main) as $pid) {
+            $out['product.attributes'][$pid] = array_slice(pg_sw_list_product_attr_rows(isset($by[$pid]) ? $by[$pid] : array()), 0, 100);
+        }
     }
     if (isset($sources['product.related'])) {
-        $out['product.related'][$pid] = pg_sw_list_product_related_rows(_civ_get_cross_sell_items($pid, (int)$detail_page_id, 12));
+        foreach (array_keys($main) as $pid) {
+            $out['product.related'][$pid] = pg_sw_list_product_related_rows(_civ_get_cross_sell_items($pid, (int)$detail_page_id, 12));
+        }
     }
     return $out;
 }
