@@ -4,6 +4,7 @@ description: How a green merge train lands (2026-10-25): one fast-forward push, 
 ---
 
 ## How does a green train land?
+- `php tools/merge_train.php --land` runs the checks below and the push ([[merge-train-tool]]).
 - `git fetch origin development`; `origin/development` must be an ancestor of the train (`git merge-base --is-ancestor origin/development merge-train/<time>`), else merge it in and run CI again.
 - One push: `git push origin merge-train/<time>:development`, a fast-forward; `tools/pre_push.sh` runs on the tip. GitHub marks every PR whose head commit is now reachable from `development` as merged and closes it, the train PR included, which wakes each PR's session for its next step (`session-lifecycle.md`). Nothing is pushed to a PR branch, so no PR runs CI again; the push runs `development`'s own workflows once on the new tip. A bot PR taken with `--squash` (`merge-train.md`) is closed by hand with a comment naming its commit.
 - `git log --first-parent development` reads one line per PR, `<PR title> (#n)`; the PR's own commits sit below its merge commit.
@@ -18,4 +19,4 @@ description: How a green merge train lands (2026-10-25): one fast-forward push, 
 ## Is GitHub's merge queue an option?
 - It does the same (groups PRs, tests the merged result, merges) but needs rulesets on `development` and a `merge_group:` trigger in `php-checks.yml`, and it cannot settle a language-file conflict. With the Turkish wording in sorted shards ([[lang-files]]) it is the next step (plan [[merge-flow-tools]]); until then, the train.
 
-Related: docs/memory/workflow/merge-train.md, docs/memory/workflow/merge-review.md
+Related: docs/memory/workflow/merge-train-tool.md, docs/memory/workflow/merge-train.md, docs/memory/workflow/merge-review.md

@@ -1,6 +1,6 @@
 ---
 name: merge-flow-tools
-description: Plan (2026-10-25, steps 2, 3 and 5 done): merge_train.php (lock, build, fast-forward landing), CI guards, filtered install matrix, generated fn-module map, lang cache, merge queue
+description: Plan (2026-10-25, steps 1, 2, 3 and 5 done): merge_train.php (lock, build, fast-forward landing), CI guards, filtered install matrix, generated fn-module map, lang cache, merge queue
 ---
 
 ## Why?
@@ -10,7 +10,7 @@ description: Plan (2026-10-25, steps 2, 3 and 5 done): merge_train.php (lock, bu
 - A green train lands by one fast-forward push (`workflow/merge-train-landing.md`); a PR is handed over with the `ready` label; the PR size is about 1,000 product lines; the queue limit is 15 non-draft, non-train PRs, checked before the draft PR that claims a task; a PR of rules and memory only lands alone at once (`workflow/working-mode.md`); no issues between sessions, a claim is a draft PR on which CI does not run (`CLAUDE.md`).
 
 ## What are the steps (one PR each)?
-1. `tools/merge_train.php`: `--start` refuses while an open `merge-train/*` PR exists (the lock); `--list` prints the eligible PRs (green head, `ready` label or quiet for an hour, product lines) in train order; `--build` fetches `refs/pull/<n>/head`, merges each with `--no-ff --no-commit`, runs `tr_resolve.php`, `memory_index.php` and `build_js.php` on conflicts and writes `changelog.txt` from the Changelog section of each body; `--land` checks `merge-base --is-ancestor` and pushes fast-forward. The pure parts (train order, the Changelog section parser, the product-line count) in `includes/`-free `tools/` code with `tests/merge_train_test.php`.
+1. `tools/merge_train.php`: `--start` refuses while an open `merge-train/*` PR exists (the lock); `--list` prints the eligible PRs (green head, `ready` label or quiet for an hour, product lines) in train order; `--build` fetches `refs/pull/<n>/head`, merges each with `--no-ff --no-commit`, runs `tr_resolve.php`, `memory_index.php` and `build_js.php` on conflicts and writes `changelog.txt` from the Changelog section of each body; `--land` checks `merge-base --is-ancestor` and pushes fast-forward. The pure parts (train order, the Changelog section parser, the product-line count) in `includes/`-free `tools/` code with `tests/merge_train_test.php`. Done in #2002 (`workflow/merge-train-tool.md`): `--start --stack` starts on the newest open train's tip, as trains are now stacked; a `[SCHEME]` item and a logic conflict stop `--build` for the hand.
 2. CI guards in `php-checks.yml`: a PR whose head is not `merge-train/*` fails when it changes `pinegrap/changelog.txt`; a commit on the PR with a `Co-Authored-By:` or `Claude-Session:` trailer or an author other than `Erdal Güral` fails; more than 1,000 product lines prints a warning annotation, never a failure. `tools/pre_push.sh` gets the trailer and author check too. Done in #1878 (`workflow/branch-guards.md`).
 3. `install-check.yml` runs its six-database matrix only when `pinegrap/install/**`, the migration files or `tools/` change, and always on a `merge-train/*` head; Done in #1985 (`workflow/ci-workflows.md`).
 4. `docs/memory/core/fn-module-map-additions.md` is append-only like the old `tr.json` (8 commits in three days): generate it with `tools/memory_index.php` from a `module:` frontmatter field of the memory files, and drop the hand-written file.
@@ -21,4 +21,4 @@ description: Plan (2026-10-25, steps 2, 3 and 5 done): merge_train.php (lock, bu
 - Whether the merging session is a fresh session per window (a routine that creates a session on each firing); the lock makes it safe either way.
 
 ## Where to start?
-- Step 1: a draft PR titled `[plan:merge-flow-tools] 1 — merge_train.php` claims it. Step 4 is independent of it.
+- Step 4 (independent) or step 6.
