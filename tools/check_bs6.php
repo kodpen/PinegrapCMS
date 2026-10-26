@@ -13,6 +13,9 @@
  * stay on Bootstrap 5 and are not read, nor is code marked
  * `/* @pg-site-output *\/` (bs6_site_output_ranges()).
  *
+ * After the switch (the panel head loads Bootstrap 6) a class the v6 dist
+ * defines is read as a v6 class, so converted sizes (`p-5`) are not counted.
+ *
  * Usage:  php tools/check_bs6.php [--verbose] [--strict] [--top=N]
  *
  * --verbose  every finding with its file and line
@@ -46,6 +49,15 @@ foreach ($argv as $arg) {
 }
 
 $product = dirname(__DIR__) . '/pinegrap';
+
+// After the switch the panel head loads Bootstrap 6 and panel markup holds v6
+// classes: a class the v6 dist defines (`p-5`, `md:col-6`) is then not a v5
+// class to rewrite. Before it every class is read as Bootstrap 5.
+$converted = bs6_panel_head_is_v6($product);
+
+if ($converted) {
+	bs6_converted_tree_classes(bs6_dist_classes((string) file_get_contents($product . '/assets/lib/bootstrap-6/css/bootstrap.css')));
+}
 
 // Checks read from the source text. Each counts its matches per line.
 $text_checks = array(
@@ -159,6 +171,6 @@ foreach ($stats as $check => $kinds) {
 	}
 }
 
-echo "\n$panel_total findings in panel files; shared and editor files are counted apart (docs/memory/ui/bootstrap-6-codemod.md).\n";
+echo "\n$panel_total findings in panel files (" . ($converted ? 'converted tree: classes the Bootstrap 6 dist defines are not counted' : 'Bootstrap 5 tree') . "); shared and editor files are counted apart (docs/memory/ui/bootstrap-6-codemod.md).\n";
 
 exit(($strict && $panel_total > 0) ? 1 : 0);
