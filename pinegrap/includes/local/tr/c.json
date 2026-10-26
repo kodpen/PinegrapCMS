@@ -1046,6 +1046,7 @@
     "Collapsed": "Kapalı",
     "Collation": "Karşılaştırma düzeni",
     "Collect later": "Sonra tahsil et",
+    "Collect overdue invoice {var:1}": "Vadesi geçmiş {var:1} faturasını tahsil et",
     "Collect the changes": "Değişiklikleri topla",
     "Collect the content": "İçeriği topla",
     "Collected": "Tahsil edildi",

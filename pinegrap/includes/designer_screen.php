@@ -2340,6 +2340,7 @@ function pg_designer_settings_modal($ctx)
             <h3 class="sd-settings-group-title">' . lang('Page Type') . ': <span id="sd-page-type-name">—</span></h3>
             <p class="sd-set-help">' . lang('This page draws its system region from its page type. These settings are stored with their own button, at once, not with the next Save or Publish.') . '</p>
             <div id="sd-page-type-fields" class="sd-page-type-fields"></div>
+            <div id="sd-page-type-links" class="d-flex flex-wrap gap-2 mt-2"></div>
             <div class="d-flex align-items-center gap-2 mt-3">
                 <button type="button" class="btn btn-sm btn-primary" id="sd-page-type-save" disabled><span class="bi bi-floppy me-1" aria-hidden="true"></span>' . lang('Save') . '</button>
                 <span class="sd-set-status" id="sd-page-type-status" aria-live="polite"></span>

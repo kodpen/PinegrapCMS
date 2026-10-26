@@ -201,7 +201,7 @@ function pg_seo_build_link_graph()
     // before it adds seo_link_score, so a run interrupted between the two
     // leaves the table present and the column missing - and this function both
     // reads and writes that column.
-    if (!pg_seo_structure_schema_ready() || !pg_seo_link_schema_ready() || !db_item("SHOW TABLES LIKE 'seo_link'")) {
+    if (!pg_seo_structure_schema_ready() || !pg_seo_link_schema_ready() || !pg_schema_has('seo_link')) {
         return 0;
     }
 

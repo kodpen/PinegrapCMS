@@ -50983,6 +50983,7 @@ const StyleDesigner = (function () {
         if (!show || _sdPageType.pageId !== p.page_id) {
             _sdPageType.pageId = 0;
             box.innerHTML = '';
+            _sdPageTypeLinks([]);
             var status = document.getElementById('sd-page-type-status');
             if (status) status.textContent = '';
             var save = document.getElementById('sd-page-type-save');
@@ -51015,17 +51016,36 @@ const StyleDesigner = (function () {
                 if (window.jQuery) window.jQuery(box).html(data.html || '');
                 else box.innerHTML = data.html || '';
                 // The classic screen prints every type's rows hidden for its
-                // type picker; the pane keeps the page's own type, so only
-                // the shown rows stay and post.
+                // type picker; the pane keeps the page's own type, so the
+                // hidden rows of the other types go. Its own rows stay, shown
+                // or hidden by their switches (show_or_hide_*()).
+                var prefix = String(data.page_type || '').replace(/ /g, '_') + '_';
                 box.querySelectorAll('#options_row .card-body > .row > [style*="display: none"]').forEach(function (row) {
+                    if (row.id === 'layout_type_row' || row.id.indexOf(prefix) === 0) return;
                     row.remove();
                 });
+                // The notices point at the classic screen's "Save & Continue";
+                // the pane links to the form's editor once it is saved.
+                box.querySelectorAll('[id$="_form_notice"]').forEach(function (el) { el.classList.add('d-none'); });
                 var options = box.querySelector('#options_row');
                 if (options) options.classList.remove('collapse');
                 if (typeof pgInitInjected === 'function') pgInitInjected(box);
+                _sdPageTypeLinks(data.links);
                 if (save) save.disabled = !_collab.mayEdit;
             })
             .catch(function () { failed(''); _sdPageType.pageId = 0; });
+    }
+
+    // The editors of the page type's own forms and views, as the classic
+    // screen's button bar offers them; they open beside the designer.
+    function _sdPageTypeLinks(links) {
+        var box = document.getElementById('sd-page-type-links');
+        if (!box) return;
+        var back = '&send_to=' + encodeURIComponent(window.location.href);
+        box.innerHTML = (links || []).map(function (l) {
+            return '<a class="btn btn-sm btn-outline-light" target="_blank" rel="noopener" href="' + esc(l.url + back) + '">' +
+                '<span class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></span>' + esc(l.label) + '</a>';
+        }).join('');
     }
 
     function _sdPageTypeSave() {
@@ -51055,13 +51075,20 @@ const StyleDesigner = (function () {
         var done = function (ok, message) {
             _sdPageType.busy = false;
             save.disabled = !_collab.mayEdit;
-            if (status) status.textContent = ok ? _sdT('Saved.') : (message || _sdT('Network error'));
+            if (status) status.textContent = message || (ok ? _sdT('Saved.') : _sdT('Network error'));
             if (!ok) sdToast(esc(message || _sdT('Network error')), 'danger', 5000);
         };
         fetch(_sdPageTypeUrl(p.page_id), { method: 'POST', body: body, credentials: 'same-origin',
                                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (r) { return r.json(); })
-            .then(function (data) { done(!!(data && data.ok), data && data.message); })
+            .then(function (data) {
+                var ok = !!(data && data.ok);
+                // What a basic user may not change was kept as stored; the
+                // server says which.
+                if (ok && data.warnings && data.warnings.length) sdToast(esc(data.warnings.join(' ')), 'warning', 8000);
+                if (ok) _sdPageTypeLinks(data.links);
+                done(ok, data && data.message);
+            })
             .catch(function () { done(false, ''); });
     }
 

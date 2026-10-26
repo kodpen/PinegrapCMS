@@ -734,7 +734,7 @@ if (!$_POST) {
         $edit_user_current_selector = (string) $edit_user_cookie_parts[0];
     }
 
-    $edit_user_pin_column = (bool) db_item("SHOW COLUMNS FROM auth_tokens LIKE 'pinned'");
+    $edit_user_pin_column = pg_schema_has('auth_tokens', 'pinned');
 
     $edit_user_sessions = db_items(
         "SELECT selector, user_agent, ip_address, created_at, last_used_at, expires_at"
