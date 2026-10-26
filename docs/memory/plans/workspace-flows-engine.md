@@ -32,12 +32,11 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 - `WS_FLOW_*`: 100 boxes, 200 box runs a run, 60 starts a flow an hour, 500 open runs, result 16 KB, finished runs kept 30 days.
 
 ## Shared steps and idempotency?
-- steps.php: `ws_step_kinds()` (check, run, rehearsal, effect, flow-only); `ws_scheduled_do()` delegates, unchanged; steps also return `task_id`, `approval_id`, `data` for `{{node.<id>.<field>}}` (`ws_scheduled_fill()`).
-- Task, change, row save `effect` at once; a stale step with one resumes, else (as post, email, notify) turns interrupted: a person retries or skips. Webhook: `Idempotency-Key` from run, node, pass.
+- Built (F4a): steps.php, workspace/workspace-flows-steps.md. Left: steps return `approval_id`; change, row save `effect` at once; a stale begun step turns interrupted (F5: a person retries or skips). Webhook: `Idempotency-Key` from run, node, pass.
 
 ## API and MCP?
 - /workspace/flows, /{id}, /publish, /resume (`ws_api_own_words_only()`, `'mcp' => false`), /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip; `dry_run`; `workspace:read`, `:write`.
 
 ## Where to start?
 - Built: F1 #1503, F3a #1551 (workspace-flows-runner.md)
-- F4: a) #1835 post, email boxes, owner's rights at publish and run, `{{node.<id>.<field>}}`, effect `began:<kind>`, canvas forms; b) other steps; c) condition; d) anchor triggers; e) box dry-run. Then F5.
+- F4: a) #1835 post, email; b) notify, task without waiting, webhook, web_check (in progress); b2) task_digest, report, change, checkin, trigger; c) condition; d) anchor triggers; e) box dry-run. Then F5.
