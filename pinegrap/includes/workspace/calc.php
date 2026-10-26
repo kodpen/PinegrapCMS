@@ -1914,9 +1914,12 @@ function ws_calc_inline($line)
 
     $text = substr($line, 0, -1);
 
-    // Tags, links and emphasis marks are not figures.
+    // Tags, links and emphasis marks are not figures. A highlight's signs go
+    // before the last "=" is looked for, so "Rent ==15.000== + 750 =" adds
+    // up; a lone "==" stays.
     $text = preg_replace('/<[@#][a-z_]+:[0-9]+>/', ' ', $text);
     $text = preg_replace('#\[([^\]\n]*)\]\([^)\n]*\)#', ' ', $text);
+    $text = preg_replace('/(?<!=)==(?=\S)([^=\n]{1,300}?)(?<=\S)==(?!=)/u', ' $1 ', $text);
     $text = str_replace(array('**', '~~', '`'), ' ', $text);
 
     $at = strrpos($text, '=');

@@ -69,11 +69,14 @@ function ws_format_text($text)
         return "\x01" . (count($kept) - 1) . "\x01";
     };
 
-    // **bold**, _italic_, ~~struck~~. An underscore inside a word
-    // (file_name_here) is not italic.
+    // **bold**, _italic_, ~~struck~~, ==highlighted==. An underscore inside
+    // a word (file_name_here) is not italic. A highlight opens and closes on
+    // a pair of signs alone, touching its words, so "a == b", "===",
+    // "== Title ==" and "=====" stay text, as stored before highlights.
     $emphasis = function ($html) {
         $html = preg_replace('/\*\*([^*\n]{1,300})\*\*/', '<strong>$1</strong>', $html);
         $html = preg_replace('/~~([^~\n]{1,300})~~/', '<del>$1</del>', $html);
+        $html = preg_replace('/(?<!=)==(?=\S)([^=\n]{1,300}?)(?<=\S)==(?!=)/u', '<mark>$1</mark>', $html);
 
         return preg_replace('/(?<![\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])/u', '<em>$1</em>', $html);
     };
@@ -809,6 +812,8 @@ function ws_plain_text($viewer, $body, $refs = null)
         $text = preg_replace('/^\s*:::\s+(.+)$/mu', '$1:', $text);
         $text = preg_replace('#\[([^\]\n]{1,300})\]\(((?:https?://|mailto:)[^\s()<>"]{1,1000})\)#i', '$1', $text);
         $text = preg_replace('/(?<![\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])/u', '$1', $text);
+        // A highlight only as a pair (ws_format_text()): "a == b" keeps its signs.
+        $text = preg_replace('/(?<!=)==(?=\S)([^=\n]{1,300}?)(?<=\S)==(?!=)/u', '$1', $text);
 
         return trim(preg_replace('/\s+/u', ' ', str_replace(array('**', '`', '~~'), '', $text)));
     };
