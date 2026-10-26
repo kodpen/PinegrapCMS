@@ -15,7 +15,7 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 - Payout/settlement reconciliation stays out (ERP roadmap B4).
 
 ## What is done?
-- Trendyol 1 driver and categories (#880), 2 listing create (#906), 2b-i approval status (#1539), 3 stock/price queue (#932), 4a order import (#1452), 4b webhook receiver (#1453), 4c own-carrier shipping (#1493), 5a invoice link (#PRNUM), 6 API endpoint and order events (#1667), A hardening (#1675), B schema 11.0.37 (#1687).
+- Trendyol 1 driver and categories (#880), 2 listing create (#906), 2b-i approval status (#1539), 3 stock/price queue (#932), 4a order import (#1452), 4b webhook receiver (#1453), 4c own-carrier shipping (#1493), 5a invoice link (#1747), 6 API endpoint and order events (#1667), A hardening (#1675), B schema 11.0.37 (#1687).
 
 ## What is open? (any session; claim one step at a time)
 - How each step was designed in a build that never reached GitHub: `marketplace-trendyol-remaining-design.md`. Follow it unless the code says otherwise.
