@@ -86,3 +86,61 @@ function test_order_preview_widget_registered()
 	pg_assert_contains("{ type: 'order_preview'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'order_preview': {", $js, 'has a starter tree');
 }
+
+function test_order_preview_widget_method_classes()
+{
+	$text = function ($token) {
+		return array('type' => 'content', 'props' => array('contentType' => 'span', 'text' => '0', 'cssClass' => '', '_bindings' => array('text' => $token)));
+	};
+	$row = function ($token, $flag, $css) use ($text) {
+		$p = array('tag' => 'div', 'cssClass' => $css);
+		if ($flag !== '') $p['_bindings'] = array('eo_visible_if' => $flag);
+		return array('type' => 'semantic', 'props' => $p, 'children' => array(
+			array('type' => 'content', 'props' => array('contentType' => 'span', 'text' => 'Label', 'cssClass' => '')),
+			array('type' => 'semantic', 'props' => array('tag' => 'span', 'cssClass' => 'text-nowrap'), 'children' => array($text($token))),
+		));
+	};
+	$input = function ($name) {
+		return array('type' => 'semantic', 'props' => array('tag' => 'input', 'cssClass' => 'form-control',
+			'_attrs' => array(array('name' => 'type', 'value' => 'text'), array('name' => 'name', 'value' => $name))));
+	};
+	$tree = array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => ''), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'border-top'), 'children' => array(
+			$row('__cart_subtotal', 'shows_subtotal', 'd-flex'),
+			$row('__cart_total', '', 'd-flex fw-bold'),
+			$row('__cart_surcharge', 'has_surcharge', 'd-flex'),
+			$row('__cart_total_with_surcharge', 'has_surcharge', 'd-flex fw-bold'),
+		)),
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'form-check', '_bindings' => array('eo_visible_if' => 'pays_by_card')),
+			'children' => array($input('payment_method'))),
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'border rounded', '_bindings' => array('eo_visible_if' => 'pays_by_card')),
+			'children' => array(array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'row'), 'children' => array($input('card_number'), $input('expiration'))))),
+	));
+	$css = function ($t, $path) {
+		foreach ($path as $i) $t = $t['children'][$i];
+		return $t['props']['cssClass'];
+	};
+
+	$many = $tree;
+	pg_op_stamp_method_classes($many, array('many_payment_methods' => true, 'has_surcharge' => true));
+	pg_assert_same('d-flex', $css($many, array(0, 0)), 'the subtotal row is left alone');
+	pg_assert_same('d-flex fw-bold total_row', $css($many, array(0, 1)), 'the total row');
+	pg_assert_same('d-flex surcharge_row', $css($many, array(0, 2)), 'the surcharge row');
+	pg_assert_same('d-flex fw-bold surcharge_total_row', $css($many, array(0, 3)), 'the total with the surcharge');
+	pg_assert_same('', $css($many, array(0, 1, 1, 0)), 'the class goes on the row, not on the figure');
+	pg_assert_same('form-check', $css($many, array(1)), 'the card radio row keeps showing');
+	pg_assert_same('border rounded credit_debit_card', $css($many, array(2)), 'the card fields follow the method');
+
+	$plain = $tree;
+	pg_op_stamp_method_classes($plain, array('many_payment_methods' => true, 'has_surcharge' => false));
+	pg_assert_same('d-flex fw-bold', $css($plain, array(0, 1)), 'no surcharge, the total row stays put');
+	pg_assert_same('border rounded credit_debit_card', $css($plain, array(2)), 'card fields without a surcharge');
+
+	$one = $tree;
+	pg_op_stamp_method_classes($one, array('many_payment_methods' => false, 'has_surcharge' => true));
+	pg_assert_same($tree, $one, 'one method, nothing switches');
+
+	$again = $many;
+	pg_op_stamp_method_classes($again, array('many_payment_methods' => true, 'has_surcharge' => true));
+	pg_assert_same($many, $again, 'a class is stamped once');
+}
