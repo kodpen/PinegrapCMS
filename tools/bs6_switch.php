@@ -38,6 +38,8 @@
  *            to --bs-menu-*, offcanvas to drawer, modal to dialog)
  *   shell    the v5 look the panel keeps: flush drawers, the menu caret, the
  *            menu wrapper's positioning (bs6_switch_shell_rules())
+ *   breakpoints  own media queries at v5's lg/xl/xxl widths (992, 1200,
+ *            1400) move to v6's (1024, 1280, 1536)
  *   texts    hand fixes found by their exact text (bs6_switch_texts())
  *
  * @author      Erdal Güral (Kodpen)
@@ -104,6 +106,10 @@ function bs6_switch_plan($root)
 	}
 
 	$plan[] = array('assets/css/backend.src.css', 'shell', 'bs6_switch_shell_rules');
+
+	foreach (bs6_switch_breakpoint_files($root) as $path) {
+		$plan[] = array($path, 'breakpoints', 'bs6_switch_breakpoints');
+	}
 
 	foreach (bs6_switch_style_files() as $path) {
 		$plan[] = array($path, 'style', 'bs6_switch_style_blocks');
@@ -176,6 +182,24 @@ function bs6_switch_shell_files($root)
 	sort($paths);
 
 	return $paths;
+}
+
+// Panel stylesheets and the pages the codemod converts that hold a media
+// query (their inline <style> blocks), sorted. Scripts are left out: the
+// editor writes Bootstrap 5's breakpoints into the canvas on purpose.
+function bs6_switch_breakpoint_files($root)
+{
+	$paths = bs6_switch_stylesheets($root);
+
+	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
+		if (bs6_codemod_converts($path) && preg_match('/\.php$/', $path) && strpos((string) file_get_contents(rtrim($root, '/') . '/' . $path), '@media') !== false) {
+			$paths[] = $path;
+		}
+	}
+
+	sort($paths);
+
+	return array_values(array_unique($paths));
 }
 
 // Panel and editor stylesheets (not minified copies), sorted.
