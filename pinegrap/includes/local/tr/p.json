@@ -267,6 +267,7 @@
     "Paraşüt would not search its contacts: {var:1}": "Paraşüt carilerini aramadı: {var:1}",
     "Paraşüt would not show the lines of the invoice: {var:1}": "Paraşüt faturanın kalemlerini göstermedi: {var:1}",
     "Paraşüt would not take the invoice: {var:1}": "Paraşüt faturayı almadı: {var:1}",
+    "Parcel": "Koli",
     "Parcels of the order": "Siparişin kolileri",
     "Parcels whose shipping method does not name a courier are linked to this one.": "Kargo yöntemi bir firma adı taşımayan koliler bu firmaya bağlanır.",
     "Parent": "Üst Çerçeve",

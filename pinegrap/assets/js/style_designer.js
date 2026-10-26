@@ -22284,7 +22284,12 @@ const StyleDesigner = (function () {
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
                 { label: _sdT('Days of the week'), type: 'loop_area', icon: 'bi-calendar-week', extra: { listSource: 'calendar.weekdays' } },
                 { label: _sdT('Days of the calendar'), type: 'loop_area', icon: 'bi-calendar-day', extra: { listSource: 'calendar.days' } },
-                { label: _sdT('Events of the day'), type: 'loop_area', icon: 'bi-calendar-event', extra: { listSource: 'calendar.events' } }
+                { label: _sdT('Events of the day'), type: 'loop_area', icon: 'bi-calendar-event', extra: { listSource: 'calendar.events' } },
+                { label: _sdT('Recipients of the order'), type: 'loop_area', icon: 'bi-people', extra: { listSource: 'order.shipments' } },
+                { label: _sdT('Items of the order'), type: 'loop_area', icon: 'bi-box', extra: { listSource: 'order.items' } },
+                { label: _sdT('Parcels of the order'), type: 'loop_area', icon: 'bi-truck', extra: { listSource: 'order.parcels' } },
+                { label: _sdT('Steps of the order'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'order.steps' } },
+                { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
@@ -31734,7 +31739,12 @@ const StyleDesigner = (function () {
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
             'calendar.weeks':     _sdT('One row for every week the monthly or weekly view shows. Put a list of the days of the calendar inside the row: it lists that week\'s days.'),
             'calendar.days':      _sdT('One row for every day: inside a list of weeks that week\'s days, else every day the view shows. Days of the next or previous month hold no events; a condition on "Day of another month" or "Today" styles them.'),
-            'calendar.events':    _sdT('One row for every event of the day, inside a list of the days of the calendar. An event lasting several days is on each of them.')
+            'calendar.events':    _sdT('One row for every event of the day, inside a list of the days of the calendar. An event lasting several days is on each of them.'),
+            'order.shipments':    _sdT('One row for every address the order goes to. Put a list of the items or the parcels inside the row: it lists that recipient\'s.'),
+            'order.items':        _sdT('One row for every item of the order; inside a list of the recipients, that recipient\'s items. The receipt e-mail draws it too.'),
+            'order.parcels':      _sdT('One row for every tracking number of the order; inside a list of the recipients, that recipient\'s. A parcel whose carrier is not known has no tracking link: a condition on "Shipment tracking link" shows the number without one.'),
+            'order.steps':        _sdT('One row for every step of the order: created, paid, shipped, delivered, cancelled. A shipping or delivery date still to come is estimated; a condition on "Estimated" marks it.'),
+            'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.')
         };
         if (about[p.source]) html += note(about[p.source], false);
         html += note(_sdT('A list without rows draws nothing. The canvas shows its row once.'), false);
@@ -51961,7 +51971,16 @@ const StyleDesigner = (function () {
         __day_weekday:   _sdT('Monday'),
         __day_is_today:  '',
         __day_is_outside: '',
-        __day_event_count: '1'
+        __day_event_count: '1',
+        __ship_to_key:     '1',
+        __ship_to_item_count: '2',
+        __step_label:      _sdT('Order Created'),
+        __step_date:       '20.10.2026 10:00',
+        __step_kind:       'created',
+        __step_note:       '',
+        __step_is_estimate: '',
+        __order_is_cancelled: '',
+        __order_url:       '#'
     };
 
     // The orders a list's rows take (props.order).
@@ -52081,6 +52100,7 @@ const StyleDesigner = (function () {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
+        if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0) return _sdOrderListStarter(source, bs);
         var row = (source === 'form_record.files')
             ? createNode('semantic', { tag: 'a', cssClass: bs ? 'd-block' : '', text: _sdT('File Name'), href: '#', target: '_blank',
                 customName: _sdT('Attachment link'), _bindings: { href: '__file_url', text: '__file_name' } }, [])
@@ -52092,7 +52112,111 @@ const StyleDesigner = (function () {
     // How many lists deep a new list of `source` lands (_sdListStarter()):
     // a month grid is weeks > days > events, a days list holds its events.
     function _sdListStarterDepth(source) {
-        return (source === 'calendar.weeks') ? 3 : ((source === 'calendar.days') ? 2 : 1);
+        if (source === 'calendar.weeks') return 3;
+        return (source === 'calendar.days' || source === 'order.shipments') ? 2 : 1;
+    }
+
+    // A new order or account list. Recipients: a card each, the name, the
+    // address, the shipping method and the arrival date, the recipient's
+    // items and parcels inside. Items: a list group of display name,
+    // quantity and row total. Parcels: the number linked to the carrier,
+    // plain where no link is known. Steps: label, date, an "Estimated"
+    // badge and the cancellation's reason. The member's orders: a list
+    // group of links, a "Cancelled" badge on a cancelled one. Every word is
+    // the designer's to restyle or translate.
+    function _sdOrderListStarter(source, bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var text = function (tag, cls, name, sample, token, when, op) {
+            var p = { text: sample, _bindings: { text: token } };
+            if (when) {
+                p._bindings.show_if = when;
+                p._bindParams = { show_if: { op: op || 'not_empty' } };
+            }
+            return sem(tag, cls, name, p);
+        };
+        var items = function () {
+            return sem('ul', 'list-group list-group-flush mb-0', _sdT('Items of the order'), {}, [createNode('loop_area', { source: 'order.items' }, [
+                sem('li', 'list-group-item d-flex justify-content-between align-items-start gap-2 px-0', _sdT('Item'), {}, [
+                    sem('div', '', _sdT('Product'), {}, [
+                        text('div', 'fw-semibold', _sdT('Short description (display name)'), _sdT('Example product'), '__item_short_description'),
+                        sem('div', 'small text-body-secondary', _sdT('Quantity'), {}, [
+                            text('span', '', _sdT('Quantity'), '1', '__item_qty'),
+                            sem('span', '', _sdT('Times'), { text: ' × ' }),
+                            text('span', '', _sdT('Unit price'), '₺99,90', '__item_price')
+                        ])
+                    ]),
+                    text('div', 'fw-semibold text-nowrap', _sdT('Row total'), '₺99,90', '__item_total')
+                ])
+            ])]);
+        };
+        var parcels = function () {
+            return sem('ul', 'list-unstyled small mb-0', _sdT('Parcels of the order'), {}, [createNode('loop_area', { source: 'order.parcels' }, [
+                sem('li', '', _sdT('Parcel'), {}, [
+                    sem('a', '', _sdT('Shipment tracking link (carrier deep link)'), { text: 'TR123456', href: '#', target: '_blank',
+                        _bindings: { href: '__tracking_link', text: '__tracking_code', show_if: '__tracking_link' }, _bindParams: { show_if: { op: 'not_empty' } } }),
+                    text('span', '', _sdT('Shipment tracking number'), 'TR123456', '__tracking_code', '__tracking_link', 'empty'),
+                    text('span', 'text-body-secondary ms-1', _sdT('Carrier name'), _sdT('Carrier name'), '__tracking_company_name', '__tracking_company_name')
+                ])
+            ])]);
+        };
+        if (source === 'order.shipments') {
+            return sem('div', 'vstack gap-3', _sdT('Recipients of the order'), {}, [createNode('loop_area', { source: source }, [
+                sem('div', 'card', _sdT('Recipient'), {}, [
+                    sem('div', 'card-body', _sdT('Card Body'), {}, [
+                        text('h3', 'h6 card-title mb-1', _sdT('Recipient Full Name'), _sdT('Recipient Full Name'), '__shipping_name'),
+                        text('p', 'small text-body-secondary mb-2', _sdT('Full address (single line)'), _sdT('Full address (single line)'), '__shipping_full_address'),
+                        sem('p', 'small mb-2', _sdT('Shipping method / carrier'), {}, [
+                            text('span', '', _sdT('Shipping method / carrier'), _sdT('Shipping method / carrier'), '__shipping_method'),
+                            text('span', 'text-body-secondary ms-2', _sdT('Estimated delivery date'), '30.10.2026', '__arrival_date', '__arrival_date')
+                        ]),
+                        items(),
+                        parcels()
+                    ])
+                ])
+            ])]);
+        }
+        if (source === 'order.items') return items();
+        if (source === 'order.parcels') return parcels();
+        if (source === 'order.steps') {
+            return sem('ol', 'list-unstyled mb-0', _sdT('Steps of the order'), {}, [createNode('loop_area', { source: source }, [
+                sem('li', 'border-start border-2 ps-3 pb-3', _sdT('Step'), {}, [
+                    sem('div', 'd-flex align-items-center gap-2', _sdT('Step'), {}, [
+                        text('span', 'fw-semibold', _sdT('Step'), _sdT('Order Created'), '__step_label'),
+                        sem('span', 'badge text-bg-light border', _sdT('Estimated'), { text: _sdT('Estimated'),
+                            _bindings: { show_if: '__step_is_estimate' }, _bindParams: { show_if: { op: 'not_empty' } } })
+                    ]),
+                    text('div', 'small text-body-secondary', _sdT('Date'), '20.10.2026 10:00', '__step_date'),
+                    text('div', 'small', _sdT('Note (the reason of a cancellation)'), _sdT('Note (the reason of a cancellation)'), '__step_note', '__step_note')
+                ])
+            ])]);
+        }
+        return sem('div', 'list-group', _sdT('Orders of the member'), {}, [createNode('loop_area', { source: 'account.orders' }, [
+            sem('a', 'list-group-item list-group-item-action d-flex justify-content-between align-items-center', _sdT('Order'),
+                { href: '#', _bindings: { href: '__order_url' } }, [
+                sem('span', '', _sdT('Order'), {}, [
+                    sem('span', 'fw-semibold', _sdT('Order number'), {}, [
+                        sem('span', '', '#', { text: '#' }),
+                        text('span', '', _sdT('Order number'), '1001', '__order_no')
+                    ]),
+                    text('span', 'small text-body-secondary ms-2', _sdT('Order date'), '20.10.2026', '__order_date'),
+                    sem('span', 'badge text-bg-secondary ms-2', _sdT('Cancelled'), { text: _sdT('Cancelled'),
+                        _bindings: { show_if: '__order_is_cancelled' }, _bindParams: { show_if: { op: 'not_empty' } } })
+                ]),
+                text('span', '', _sdT('Grand total'), '₺99,90', '__order_total')
+            ])
+        ])]);
+    }
+
+    // Whether a list of `source` draws nothing where it stands for want of
+    // its key: a list of the recipients or the steps inside a list of the
+    // recipients (they list the whole order alone).
+    function _sdOrderListKeyless(source, node) {
+        if (source !== 'order.shipments' && source !== 'order.steps') return false;
+        return _sdListsAbove(node).some(function (l) { return l.props.source === 'order.shipments'; });
     }
 
     // A new calendar list. The month grid: a table, its heads from the days
@@ -52278,6 +52402,9 @@ const StyleDesigner = (function () {
         // The calendar's grid lists read the calendar, not an event: never
         // in the event loop.
         if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
+        // The order lists read the order, not an item row: never in the
+        // items loop.
+        if (kind === 'order_view' && _sdInMainLoopAt(target)) return false;
         var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : _sdListStarterDepth(source));
         return depth <= SW_LIST_MAX_DEPTH;
     }
@@ -52363,6 +52490,8 @@ const StyleDesigner = (function () {
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
         if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
+        if (kind === 'order_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
+        if (_sdOrderListKeyless(spec.source, node)) return { off: true, text: _sdT('{var}: inside a list of the recipients, nothing is drawn', src.label) };
         if (spec.source === 'calendar.events' && !_sdListsAbove(node).some(function (l) { return l.props.source === 'calendar.days'; })) {
             return { off: true, text: _sdT('{var}: outside a list of days, nothing is drawn', src.label) };
         }
