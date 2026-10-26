@@ -473,11 +473,11 @@ if (!empty($audit_logs)) {
         elseif (stripos($action, 'login') !== false) $badge_class = 'bg-info';
 
         $audit_rows .= '<tr>
-            <td><small>'.htmlspecialchars($timestamp).'</small></td>
-            <td><span class="badge '.$badge_class.'">'.htmlspecialchars($action).'</span></td>
-            <td>'.htmlspecialchars($actor).'</td>
-            <td><small>'.htmlspecialchars($resource).'</small></td>
-            <td><small>'.htmlspecialchars($zone_name).'</small></td>
+            <td><small>'.htmlspecialchars($timestamp, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</small></td>
+            <td><span class="badge '.$badge_class.'">'.htmlspecialchars($action, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</span></td>
+            <td>'.htmlspecialchars($actor, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</td>
+            <td><small>'.htmlspecialchars($resource, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</small></td>
+            <td><small>'.htmlspecialchars($zone_name, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'</small></td>
         </tr>';
     }
 } else {
@@ -493,11 +493,11 @@ if (!empty($audit_logs)) {
 $fw_rows = '';
 if (!empty($firewall_events)) {
     foreach ($firewall_events as $event) {
-        $fw_action = isset($event['dimensions']['action']) ? htmlspecialchars((string)$event['dimensions']['action']) : '-';
-        $fw_ip     = isset($event['dimensions']['clientIP']) ? htmlspecialchars((string)$event['dimensions']['clientIP']) : '-';
-        $fw_ray    = isset($event['dimensions']['rayName']) ? htmlspecialchars((string)$event['dimensions']['rayName']) : '-';
+        $fw_action = isset($event['dimensions']['action']) ? htmlspecialchars((string)$event['dimensions']['action'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) : '-';
+        $fw_ip     = isset($event['dimensions']['clientIP']) ? htmlspecialchars((string)$event['dimensions']['clientIP'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) : '-';
+        $fw_ray    = isset($event['dimensions']['rayName']) ? htmlspecialchars((string)$event['dimensions']['rayName'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) : '-';
         $fw_count  = isset($event['sum']['requests']) ? (int)$event['sum']['requests'] : 0;
-        $fw_time   = isset($event['max']['occurred_at']) ? htmlspecialchars((string)$event['max']['occurred_at']) : '-';
+        $fw_time   = isset($event['max']['occurred_at']) ? htmlspecialchars((string)$event['max']['occurred_at'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) : '-';
 
         $fw_badge = 'bg-secondary';
         if ($fw_action === 'block') $fw_badge = 'bg-danger';
@@ -521,8 +521,8 @@ if (!empty($firewall_events)) {
 
 
 // Log date range values for form
-$log_start_val = isset($_REQUEST['log_start']) ? htmlspecialchars($_REQUEST['log_start']) : date('Y-m-d', strtotime('-7 days'));
-$log_end_val   = isset($_REQUEST['log_end'])   ? htmlspecialchars($_REQUEST['log_end'])   : date('Y-m-d');
+$log_start_val = isset($_REQUEST['log_start']) ? htmlspecialchars($_REQUEST['log_start'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) : date('Y-m-d', strtotime('-7 days'));
+$log_end_val   = isset($_REQUEST['log_end'])   ? htmlspecialchars($_REQUEST['log_end'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401)   : date('Y-m-d');
 
 
 // -------------------- ANALYTICS --------------------
@@ -678,10 +678,10 @@ switch ($period) {
 $table_rows = '';
 foreach ($records as $r) {
     $data_content = isset($r['content']) ? $r['content'] : (isset($r['data']['target']) ? $r['data']['target'] : '');
-        $attrs = 'data-id="'.htmlspecialchars((string)$r['id']).'" 
-              data-type="'.htmlspecialchars((string)$r['type']).'" 
-              data-name="'.htmlspecialchars((string)$r['name']).'" 
-              data-content="'.htmlspecialchars((string)$data_content).'" 
+        $attrs = 'data-id="'.htmlspecialchars((string)$r['id'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'" 
+              data-type="'.htmlspecialchars((string)$r['type'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'" 
+              data-name="'.htmlspecialchars((string)$r['name'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'" 
+              data-content="'.htmlspecialchars((string)$data_content, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'" 
               data-ttl="'.(int)$r['ttl'].'" 
               data-proxied="'.(!empty($r['proxied']) ? '1' : '0').'"';
 
@@ -689,7 +689,7 @@ foreach ($records as $r) {
     if ($r['type'] === 'SRV' && !empty($r['data'])) {
         foreach ($r['data'] as $k => $v) {
             $v = is_array($v) ? json_encode($v) : (string)$v;
-            $attrs .= ' data-'.htmlspecialchars((string)$k).'="'.htmlspecialchars((string)$v).'"';
+            $attrs .= ' data-'.htmlspecialchars((string)$k, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'="'.htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'"';
 
         }
     }
@@ -697,7 +697,7 @@ foreach ($records as $r) {
     if ($r['type'] === 'CAA' && !empty($r['data'])) {
         foreach ($r['data'] as $k => $v) {
             $v = is_array($v) ? json_encode($v) : (string)$v;
-            $attrs .= ' data-' . htmlspecialchars((string)$k) . '="' . htmlspecialchars((string)$v) . '"';
+            $attrs .= ' data-' . htmlspecialchars((string)$k, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '="' . htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '"';
 
         }
     }
@@ -711,11 +711,11 @@ foreach ($records as $r) {
             <form method="post" style="display:inline" onsubmit="event.preventDefault(); var f=this; pgConfirm({title:\'' . h(escape_javascript(lang('Delete'))) . '\', message:\'' . h(escape_javascript(lang('Are you sure you want to delete this record?'))) . '\', confirmText:\'' . h(escape_javascript(lang('Delete'))) . '\', cancelText:\'' . h(escape_javascript(lang('Cancel'))) . '\', variant:\'danger\'}).then(function(ok){if(ok) f.submit();}); return false;">
                 '.get_token_field().'
                 <input type="hidden" name="action" value="delete_record">
-                <input type="hidden" name="id" value="' . htmlspecialchars((string)$r['id']) . '">
+                <input type="hidden" name="id" value="' . htmlspecialchars((string)$r['id'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '">
                 <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
             </form>
         </td>
-        <td><span class="badge bg-info">' . htmlspecialchars((string)$r['type']) . '</span></td>
+        <td><span class="badge bg-info">' . htmlspecialchars((string)$r['type'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '</span></td>
         <td>'.truncate($r['name'],50).'</td>
         <td>'.truncate($data_content,50).'</td>
         <td>'.(($r['ttl'] == 1) ? lang('Auto') : (int)$r['ttl']).'</td>
@@ -770,10 +770,10 @@ print pg_page_shell([
       <input type="hidden" name="period" value="custom">
       <div class="row g-2">
         <div class="col-md-4">
-          <input type="date" name="start_date" value="' . htmlspecialchars((string)isset($_REQUEST['start_date']) ? $_REQUEST['start_date'] : '') . '" class="form-control" required>
+          <input type="date" name="start_date" value="' . htmlspecialchars((string)isset($_REQUEST['start_date']) ? $_REQUEST['start_date'] : '', ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '" class="form-control" required>
         </div>
         <div class="col-md-4">
-          <input type="date" name="end_date" value="' . htmlspecialchars((string)isset($_REQUEST['end_date']) ? $_REQUEST['end_date'] : '') . '" class="form-control" required>
+          <input type="date" name="end_date" value="' . htmlspecialchars((string)isset($_REQUEST['end_date']) ? $_REQUEST['end_date'] : '', ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '" class="form-control" required>
         </div>
         <div class="col-md-4">
           <button type="submit" class="btn btn-primary">' . lang('Apply') . '</button>
