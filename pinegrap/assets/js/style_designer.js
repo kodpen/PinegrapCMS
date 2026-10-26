@@ -37804,6 +37804,32 @@ const StyleDesigner = (function () {
         ['__member_affiliate_code',   _sdT('Affiliate code (approved affiliates)')]
     ];
 
+    // A recipient's allow-listed values (pg_sw_entity_fields('ship_to')),
+    // offered by the order view (its receipt e-mail too) for the first
+    // recipient and by a list of the order's recipients for each.
+    var SW_SHIP_TO_ENTITY_TOKENS = [
+        ['__ship_to_name',            _sdT('Ship-to name')],
+        ['__shipping_salutation',     _sdT('Salutation (Mr/Ms)')],
+        ['__shipping_address_type',   _sdT('Address type (Residential address, Business address)')],
+        ['__shipping_ship_date',      _sdT('Ship date (shipped or planned)')],
+        ['__shipping_delivered_date', _sdT('Delivered date')]
+    ];
+
+    // A saved recipient's allow-listed values (pg_sw_entity_fields(
+    // 'address_book')), offered by the address book's row loop.
+    var SW_ADDRESS_BOOK_ENTITY_TOKENS = [
+        ['__recipient_salutation',   _sdT('Salutation (Mr/Ms)')],
+        ['__recipient_first_name',   _sdT('First name')],
+        ['__recipient_last_name',    _sdT('Last name')],
+        ['__recipient_address_1',    _sdT('Address line 1')],
+        ['__recipient_address_2',    _sdT('Address line 2')],
+        ['__recipient_city',         _sdT('City')],
+        ['__recipient_state',        _sdT('State / Province')],
+        ['__recipient_zip',          _sdT('Zip Code')],
+        ['__recipient_country',      _sdT('Country')],
+        ['__recipient_address_type', _sdT('Address type (Residential address, Business address)')]
+    ];
+
     // Whether a palette entry is offered only as a condition (yes/no).
     function _swTokenCondOnly(t) {
         return !!(t && t[2] === 'cond');
@@ -38223,6 +38249,7 @@ const StyleDesigner = (function () {
             ['__recipient_edit_url',     _sdT('Edit address (href)')],
             ['__recipient_remove_url',   _sdT('Remove address (href)')]
         ]},
+        { label: _sdT('More recipient details (loop)'), tokens: SW_ADDRESS_BOOK_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__my_account_url',         _sdT('My account page address (the link drops when there is none)')],
             ['__login_url',              _sdT('Sign-in page address (signed-out view)')]
@@ -38960,6 +38987,7 @@ const StyleDesigner = (function () {
             ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
         { label: _sdT('More order details'), tokens: SW_ORDER_ENTITY_TOKENS },
+        { label: _sdT('More recipient details'), tokens: SW_SHIP_TO_ENTITY_TOKENS },
         { label: _sdT('More item details (loop)'), tokens: SW_ORDER_LINE_ENTITY_TOKENS },
         { label: _sdT('Item\'s product details (loop)'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Order item (loop_area)'), tokens: [
@@ -41339,6 +41367,7 @@ const StyleDesigner = (function () {
             if (_listRows.length) {
                 html += '<optgroup label="' + esc(_sdT('Row of the list')) + '">';
                 _listRows.forEach(function (o) {
+                    if (o.cond && o.token !== currentVal) return;
                     html += '<option value="' + esc(o.token) + '"' + (o.token === currentVal ? ' selected' : '') + '>' + esc(o.label) + '</option>';
                 });
                 html += '</optgroup>';
@@ -53907,7 +53936,7 @@ const StyleDesigner = (function () {
                 ['__shipping_method',       _sdT('Shipping method / carrier')],
                 ['__arrival_date',          _sdT('Estimated delivery date')],
                 ['__ship_to_item_count',    _sdT('Number of items')]
-            ]
+            ].concat(SW_SHIP_TO_ENTITY_TOKENS)
         },
         'order.items': {
             label: _sdT('Items of the order'),
@@ -53928,7 +53957,7 @@ const StyleDesigner = (function () {
                 ['__item_ship_to',           _sdT('This item\'s shipping address')],
                 ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],
                 ['__item_has_gift_card',     _sdT('Has gift cards (1 or empty)')]
-            ]
+            ].concat(SW_ORDER_LINE_ENTITY_TOKENS, SW_PRODUCT_ENTITY_TOKENS)
         },
         'order.parcels': {
             label: _sdT('Parcels of the order'),
@@ -54170,7 +54199,8 @@ const StyleDesigner = (function () {
     }
 
     // The row tokens of the lists `node` is drawn in, as { token, label },
-    // the nearest list's first; a token a nearer list gives is that list's
+    // with cond: true on a yes/no value (offered as a condition only), the
+    // nearest list's first; a token a nearer list gives is that list's
     // (the site fills it so) and is not offered twice.
     function _sdListRowOptions(node) {
         var out = [], seen = {};
@@ -54179,19 +54209,19 @@ const StyleDesigner = (function () {
             (src ? src.rows : []).forEach(function (r) {
                 if (seen[r[0]]) return;
                 seen[r[0]] = true;
-                out.push({ token: r[0], label: r[1] });
+                out.push(r[2] === 'cond' ? { token: r[0], label: r[1], cond: true } : { token: r[0], label: r[1] });
             });
         });
         return out;
     }
 
     // The row tokens of the nearest list `node` is drawn in, as [token,
-    // label] pairs: the values a page link may take from the row
-    // (_pg_sw_page_link_walk() reads the nearest list alone).
+    // label] pairs: the values a page link may take from the row, a yes/no
+    // value left out (_pg_sw_page_link_walk() reads the nearest list alone).
     function _sdPageLinkRowTokens(node) {
         var list = _sdListsAbove(node)[0];
         var src = list ? SW_LIST_SOURCES[list.props.source] : null;
-        return src ? src.rows.slice() : [];
+        return src ? src.rows.filter(function (r) { return r[2] !== 'cond'; }) : [];
     }
 
     // The label of a list row token, or '' for any other token.

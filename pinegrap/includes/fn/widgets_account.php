@@ -994,6 +994,8 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
                     ((string)$r['state'] !== (string)$r['city']) ? (string)$r['state'] : ''), 'strlen'))),
                 $country,
             ), 'strlen'));
+            // Then the recipient's allow-listed values (pg_sw_entity_fields(
+            // 'address_book')); its type only where the form asks for it.
             $html = _pg_sw_fill_tokens($template, array(
                 '__recipient_id'           => (string)$rid,
                 '__recipient_name'         => h((string)$r['ship_to_name']),
@@ -1005,7 +1007,10 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
                 '__recipient_edit_url'     => h($self . (strpos($self, '?') === false ? '?' : '&') . 'id=' . $rid),
                 '__recipient_remove_url'   => h(_pg_acct_software_path() . '/remove_recipient.php?id=' . $rid
                                               . '&token=' . urlencode($token) . '&send_to=' . urlencode($self)),
-            ));
+            ) + array_map('h', pg_sw_entity_values('address_book', array(
+                'country'      => $country,
+                'address_type' => $type_on ? (string)$r['address_type'] : '',
+            ) + $r)));
             $rows .= pg_sw_uniquify_row_ids(pg_sw_sweep_tokens($html), $widget_id, $rid);
         }
     }

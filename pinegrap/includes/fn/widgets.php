@@ -6627,7 +6627,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         "SELECT ship_tos.first_name, ship_tos.last_name, ship_tos.company,
                 ship_tos.phone_number, ship_tos.address_1, ship_tos.address_2,
                 ship_tos.city, ship_tos.state, ship_tos.zip_code, ship_tos.country,
-                ship_tos.arrival_date,
+                ship_tos.arrival_date" . pg_sw_entity_select('ship_to', 'ship_tos') . ",
                 shipping_methods.name AS shipping_method
          FROM ship_tos
          LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
@@ -7219,7 +7219,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 "SELECT ship_tos.id, ship_tos.first_name, ship_tos.last_name, ship_tos.company,
                         ship_tos.phone_number, ship_tos.address_1, ship_tos.address_2,
                         ship_tos.city, ship_tos.state, ship_tos.zip_code, ship_tos.country,
-                        ship_tos.arrival_date, shipping_methods.name AS shipping_method
+                        ship_tos.arrival_date" . pg_sw_entity_select('ship_to', 'ship_tos') . ",
+                        shipping_methods.name AS shipping_method
                  FROM ship_tos
                  LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
                  WHERE ship_tos.order_id = '$oid_esc' AND ship_tos.complete = 1
@@ -7437,6 +7438,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'format_stamp'    => function ($ts) use ($_fmt_ts) { return $_fmt_ts($ts, false); },
         )));
     }
+    // The first recipient's allow-listed values (pg_sw_entity_fields(
+    // 'ship_to')), read by the ship_tos query above.
+    $static_values += array_map('h', pg_sw_entity_values('ship_to', $ship_to, array(
+        'format_stamp' => function ($ts) use ($_fmt_ts) { return $_fmt_ts($ts, false); },
+    )));
     // The dates a format can read (^^__order_date^^%%d.m.Y H:i%%).
     $_ov_typed = _pg_sw_order_view_dates(
         $order_date_ts,
