@@ -12,6 +12,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
   - Slice 1 (#1738): `btn-text` to `pg-btn-label` in 129 panel files (`tools/bs6_rename_collisions.php`), `view_folders.php` `.submenu` to `.pg-submenu`.
   - Left: `#menu` and the toggles in `includes/fn/output.php`; `btn-text` in `edit_contact.php`, `add_gift_card.php`, `edit_gift_card.php`, `add_shipping_method.php`, `edit_shipping_method.php`, `edit_erp_invoice.php`, `add_erp_receipt.php`, `add_erp_expense.php`, `add_erp_transfer.php`, `add_erp_return.php`, `erp_export.php`, and `add_page.php`/`edit_page.php` together with `backend.src.js` (`#create_button .btn-text`). Rerun the tool on them.
 - B6 Wrappers with a switchable engine (v5 engine now): `pgChips`, `pgCombobox`, `pgDatePicker`, `pgDateTimeField`; call sites move to `data-pg-*` hooks.
+  - Slice 1 (#1733): `pg_fields.js`, liveform `data-pg-*`, `pg_fields_script()`; gift cards, shipping methods, ERP screens (`ui/pg-field-wrappers.md`). Left: `backend.src.js` generic inits and `pgInitInjected()`, the other panel screens (users, contacts, products, orders, forms, calendar, firewall, `view_order.php`, `mass_edit.php`, menus, zones, campaigns, `product_builder.*`, `offer_editor.js`), `fn/auth.php` and `fn/content.php` pickers.
 - B7 Visual editor stage 0: `/* @pg-site-output */` on the 54 site-output members of style_designer.js with a CI test, the chrome look pinned in style_designer.css, editor calls through `pgUI`.
 
 ## What happens at and after the switch?

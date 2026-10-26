@@ -3028,6 +3028,8 @@ function ws_ai_changes_guide($asker, $channel_id)
                 return ' (' . (int) $field[1] . '-letter code)';
             case 'lines':
                 return ' (the whole list, as a list of lines)';
+            case 'erp_lines':
+                return ' (a JSON list of line objects: product_id, description, quantity, unit, unit_price in minor units, discount_rate, tax_rate, tax2_rate, withholding_code, withholding_rate; a line with a product_id takes the product\'s name and VAT rate when they are left out, any other needs description and tax_rate)';
             case 'answers':
                 return ' (an object of field name => new answer, only the ones to change)';
             default:
@@ -3066,6 +3068,11 @@ function ws_ai_changes_guide($asker, $channel_id)
 
         if (!empty($type['members'])) {
             $line .= '. add and remove take product_ids instead of fields';
+        }
+
+        // Added whole: the lines are one field, given at once.
+        if ($key === 'erp_quote') {
+            $line .= '. A new one is a sales quote (never a cart quote) and needs account_id and lines; give lines in one call, the whole list';
         }
 
         $lines[] = $line . '.';
@@ -3482,7 +3489,7 @@ function ws_ai_tools($row)
             'action' => array('type' => 'string', 'enum' => array('update', 'create', 'delete', 'add', 'remove')),
             'id'     => array('type' => 'integer', 'description' => 'The record id, as read; 0 for create.'),
             'field'  => array('type' => 'string', 'description' => 'The field to set; empty for delete; product_ids for add and remove.'),
-            'value'  => array('type' => 'string', 'description' => 'The new value as text; a list as comma-separated items.'),
+            'value'  => array('type' => 'string', 'description' => 'The new value as text; a list as comma-separated items; a sales quote\'s lines as a JSON list of line objects.'),
             'reason' => array('type' => 'string', 'description' => 'One line on why.'),
         ), array('type', 'action'));
     }
@@ -3640,7 +3647,9 @@ function ws_ai_tool_run($row, &$state, $name, $args)
                     $details = array();
 
                     foreach ($present['fields'] as $field => $value) {
-                        if (is_string($value) && (mb_strlen($value) > 160)) {
+                        // Long words, and a document's lines (a list of
+                        // objects), are read with read_record.
+                        if ((is_string($value) && (mb_strlen($value) > 160)) || (is_array($value) && is_array(reset($value)))) {
                             continue;
                         }
 

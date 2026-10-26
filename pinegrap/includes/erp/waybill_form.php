@@ -278,20 +278,20 @@ function erp_waybill_form_cards($liveform, $options = array())
                     <label for="account_id" class="form-label">' . lang('Account') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
-                        'class' => 'form-select select2', 'options' => $account_options)) . '
+                        'class' => 'form-select', 'data-pg-combobox' => '', 'options' => $account_options)) . '
                     ' . erp_account_quick_link('#account_id', 'customer') . '
                 </div>
                 <div class="col-6 col-lg-2 my-2">
                     <label for="issue_date" class="form-label">' . lang('Date') . '</label>
                     ' . $liveform->output_field(array(
-                        'type' => 'text', 'id' => 'issue_date', 'name' => 'issue_date',
+                        'type' => 'text', 'id' => 'issue_date', 'data-pg-date' => '', 'name' => 'issue_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                 </div>
                 <div class="col-6 col-lg-2 my-2">
                     <label for="ship_date" class="form-label">' . lang('Shipment Date') . '</label>
                     ' . $liveform->output_field(array(
-                        'type' => 'text', 'id' => 'ship_date', 'name' => 'ship_date',
+                        'type' => 'text', 'id' => 'ship_date', 'data-pg-date' => '', 'name' => 'ship_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                     <div class="form-text">' . lang('Empty means the date above.') . '</div>
@@ -306,9 +306,7 @@ function erp_waybill_form_cards($liveform, $options = array())
             </div>
         </div>
     </div>
-    ' . get_date_picker_format() . '
-    <script>$("#issue_date, #ship_date").datepicker(datetimepicker_options);</script>
-
+    ' . get_date_picker_format() . pg_fields_script() . '
     <div class="card my-4">
         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
             ' . lang('Delivered to') . '

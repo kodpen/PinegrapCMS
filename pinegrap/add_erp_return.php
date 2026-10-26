@@ -160,12 +160,10 @@ if (!$_POST) {
                             <div class="col-12 col-sm-4 col-lg-3 my-2">
                                 <label for="issue_date" class="form-label">' . lang('Date') . '</label>
                                 ' . $liveform->output_field(array(
-                                    'type' => 'text', 'id' => 'issue_date', 'name' => 'issue_date',
+                                    'type' => 'text', 'id' => 'issue_date', 'data-pg-date' => '', 'name' => 'issue_date',
                                     'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                                     'autocomplete' => 'off')) . '
-                                ' . get_date_picker_format() . '
-                                <script>$("#issue_date").datepicker(datetimepicker_options);</script>
-                            </div>
+                                ' . get_date_picker_format() . pg_fields_script() . '                            </div>
                         </div>
                     </div>
                 </div>

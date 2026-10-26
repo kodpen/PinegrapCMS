@@ -2675,6 +2675,23 @@ function get_time_picker_format()
     timeFormat:  "h:mm TT"};</script>';
 }
 
+// The <script> tag of assets/js/pg_fields.js, which draws the panel's
+// data-pg-chips, data-pg-combobox, data-pg-date, data-pg-datetime and
+// data-pg-time fields; empty after the first call of a request, so every
+// part of a screen can ask for it.
+function pg_fields_script()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '"></script>';
+}
+
 
 // Used to find all custom formats in a theme.
 // This deals with <custom_formats>, <add_custom_formats>, and <remove_custom_formats>.
