@@ -3187,7 +3187,7 @@ if (!$_POST) {
         // panel can know, and it is what lets the pending-refund queue drain.
         $order_id = (int) $liveform->get('id');
 
-        if (!db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'")) {
+        if (!pg_schema_has('orders', 'refund_status')) {
             output_error(lang('The refund columns do not exist yet. Please run the software upgrade to create them.'));
         }
 
