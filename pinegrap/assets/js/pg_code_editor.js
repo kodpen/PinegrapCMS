@@ -11,7 +11,8 @@
  * feature added later (a completion source, a lint, a keymap, Emmet) is
  * registered here once and reaches every editor.
  *
- *   PgCodeEditor.configure({ bundle: url, phrases: {...} })   once per page
+ *   PgCodeEditor.configure({ bundle: url, phrases: {...},     once per page
+ *                            minimap: bool })
  *   PgCodeEditor.open(host, opts).then(function (ed) { ... })  load + create
  *   PgCodeEditor.attach(textarea, opts)                        like fromTextArea
  *   PgCodeEditor.addCompletionSource(language, source)         registry
@@ -21,7 +22,8 @@
  *
  * An editor instance (see pgCeCreate) offers getValue / setValue,
  * setLanguage, setReadOnly, setTheme, goTo and scrollTo, the search panel,
- * format (CSS, JavaScript and JSON; Shift+Alt+F in both keymaps), tracked
+ * format (CSS, JavaScript and JSON; Shift+Alt+F in both keymaps), an
+ * optional minimap beside the scroll bar (`minimap`, setMinimap), tracked
  * ranges that follow the text as it is edited (track / tracked / trackedAt)
  * and locks: ranges no edit may touch, each with optional "islands" inside
  * it that stay editable. A lock without islands is read-only as a whole; a
@@ -49,7 +51,8 @@
 
     var _cfg = {
         bundle: '',          // URL of cm6.bundle.js; derived from this script's URL when empty
-        phrases: null        // engine texts: { 'Find': '…', 'Replace': '…', … }
+        phrases: null,       // engine texts: { 'Find': '…', 'Replace': '…', … }
+        minimap: false       // page default of opts.minimap
     };
     var _loading = null;     // Promise while the bundle is on its way
     var _completions = {};   // language → [source]
@@ -72,6 +75,7 @@
         opts = opts || {};
         if (typeof opts.bundle === 'string' && opts.bundle) _cfg.bundle = opts.bundle;
         if (opts.phrases && typeof opts.phrases === 'object') _cfg.phrases = opts.phrases;
+        if (typeof opts.minimap === 'boolean') _cfg.minimap = opts.minimap;
     }
 
     function isLoaded() {
@@ -734,6 +738,28 @@
         }
     }
 
+    // The minimap is opt-in: the editor's own `minimap` option, else the page
+    // default from configure().
+    function _minimapOn(opts) {
+        return (typeof opts.minimap === 'boolean') ? opts.minimap : _cfg.minimap;
+    }
+
+    // The bundle's minimap beside the scroll bar, or nothing. Lines are drawn
+    // as blocks (cheaper than characters on a long page) and the viewport
+    // overlay shows only while the pointer is over the minimap.
+    function _minimapExtension(cm, on) {
+        if (!on || !cm.minimap || !cm.minimap.showMinimap) return [];
+        return cm.minimap.showMinimap.of({
+            create: function () {
+                var dom = document.createElement('div');
+                dom.className = 'pg-ce-minimap';
+                return { dom: dom };
+            },
+            displayText: 'blocks',
+            showOverlay: 'mouse-over'
+        });
+    }
+
     // ── Instance ─────────────────────────────────────────────────────────
     function pgCeCreate(host, opts) {
         if (!isLoaded()) throw new Error('PgCodeEditor.create() before the bundle loaded; use PgCodeEditor.open().');
@@ -746,7 +772,7 @@
         var inst = {};
         var langComp = new S.Compartment(), readOnlyComp = new S.Compartment(), wrapComp = new S.Compartment();
         var completionsComp = new S.Compartment(), lintComp = new S.Compartment(), keymapComp = new S.Compartment();
-        var themeComp = new S.Compartment();
+        var themeComp = new S.Compartment(), minimapComp = new S.Compartment();
         var useVscode = (opts.keymap !== 'default');
         var lockHitAt = 0;
         var destroyed = false;
@@ -827,6 +853,7 @@
             // and the search panel work, only changes are refused.
             readOnlyComp.of(S.EditorState.readOnly.of(!!opts.readOnly)),
             wrapComp.of(opts.lineWrapping ? V.EditorView.lineWrapping : []),
+            minimapComp.of(_minimapExtension(cm, _minimapOn(opts))),
             fields.trackedField,
             fields.lockField,
             fields.decorations,
@@ -963,6 +990,10 @@
         inst.isReadOnly = function () { return view.state.readOnly; };
         inst.setLineWrapping = function (on) {
             view.dispatch({ effects: wrapComp.reconfigure(on ? V.EditorView.lineWrapping : []) });
+        };
+        inst.setMinimap = function (on) {
+            opts.minimap = !!on;
+            view.dispatch({ effects: minimapComp.reconfigure(_minimapExtension(cm, opts.minimap)) });
         };
         // 'dark' | 'light', while the editor is open: the panel's colour
         // scheme switch pushes it to every editor on the page.

@@ -115,7 +115,7 @@ if (($status !== 0) || !is_file($output)) {
 }
 
 // The bundle carries the licenses of what it bundles: every package is MIT
-// (CodeMirror and js-beautify), and the versions are the ones the lock file
+// (CodeMirror, Replit's minimap and keymap, js-beautify), and the versions are the ones the lock file
 // pinned.
 $manifest = json_decode(file_get_contents($source_dir . '/package.json'), true);
 $packages = array();
@@ -126,12 +126,14 @@ foreach ((isset($manifest['dependencies']) ? $manifest['dependencies'] : array()
 $banner = "/*!\n"
 	. " * Pinegrap - Enterprise Website Platform\n"
 	. " *\n"
-	. " * Code editor bundle: CodeMirror 6 and its language packages, and the\n"
-	. " * js-beautify formatter, built by tools/build_code_editor.php from\n"
+	. " * Code editor bundle: CodeMirror 6 and its language packages, the\n"
+	. " * minimap and the js-beautify formatter, built by\n"
+	. " * tools/build_code_editor.php from\n"
 	. " * tools/code_editor/entry.js. Do not edit; change the sources and rebuild.\n"
 	. " * Reachable on the page as window.PgCM.\n"
 	. " *\n"
 	. " * Bundled packages (MIT License; https://codemirror.net/,\n"
+	. " * https://github.com/replit/codemirror-minimap,\n"
 	. " * https://github.com/beautifier/js-beautify):\n"
 	. implode("\n", $packages) . "\n"
 	. " *\n"
