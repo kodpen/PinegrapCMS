@@ -412,9 +412,10 @@ function test_ws_proposal_takes_a_scheduled_draft()
 	pg_assert_contains('$for_proposal', pg_test_ws_proposals_between($code, "'scheduled'", 'ws_scheduled_draft_proposal_row('), 'only in an application\'s proposal');
 	pg_assert_contains('$task_id', pg_test_ws_proposals_between($code, "'scheduled'", 'ws_scheduled_draft_proposal_row('), 'not on a task');
 
-	$param = ws_api_changes_param('the person', true);
+	$param = ws_api_changes_param('the person', true, true);
 	pg_assert_same('object', $param['of']['data'], 'data is described');
 	pg_assert_contains('scheduled', $param['description'], 'and the kind');
+	pg_assert_false(isset(ws_api_changes_param('the person', true)['of']['data']), 'not where no draft is taken');
 
 	pg_assert_contains("'scheduled'", pg_test_ws_proposals_code('ws_change_apply_check'), 'applying a draft stays refused');
 
