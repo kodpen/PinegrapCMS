@@ -16,9 +16,10 @@
  *         php tools/bs6_migrate.php [--write] [--verbose] --diff=<base>
  *
  * path ...      files, relative to the repository or to pinegrap/
- * --all         every panel file
+ * --all         every panel file and the marked editor file (outside its
+ *               `/* @pg-site-output *\/` code)
  * --diff=<ref>  only the lines added since the merge base of <ref> and the
- *               working tree (`git diff -U0`), in panel files
+ *               working tree (`git diff -U0`), in those files
  * --write       write the converted files
  * --verbose     list each class that needs a hand, with its line
  * --force       also convert named files that are not panel files (shared,
@@ -78,7 +79,7 @@ $targets = array();
 
 if ($all) {
 	foreach (bs6_scope_files($product) as $path => $kind) {
-		if ($kind === 'panel') {
+		if (bs6_codemod_converts($path)) {
 			$targets[$path] = null;
 		}
 	}
@@ -100,7 +101,7 @@ if ($all) {
 	foreach (bs6_parse_added_lines($diff['out']) as $path => $lines) {
 		$path = preg_replace('#^pinegrap/#', '', $path);
 
-		if (bs6_scope_kind($path) === 'panel') {
+		if (bs6_codemod_converts($path)) {
 			$targets[$path] = $lines;
 		}
 	}
@@ -115,7 +116,7 @@ if ($all) {
 			exit(1);
 		}
 
-		if ($kind !== 'panel' && !$force) {
+		if (!bs6_codemod_converts($path) && !$force) {
 			fwrite(STDERR, "Skipped pinegrap/$path: a $kind file (--force converts it anyway).\n");
 			continue;
 		}
@@ -125,6 +126,7 @@ if ($all) {
 }
 
 $total_changed = 0;
+$total_kept = 0;
 $total_reviews = 0;
 $files_changed = 0;
 $failed = false;
@@ -144,6 +146,7 @@ foreach ($targets as $path => $lines) {
 	}
 
 	$total_reviews += count($result['reviews']);
+	$total_kept += $result['kept'];
 
 	if ($result['changed'] === 0) {
 		continue;
@@ -170,6 +173,10 @@ foreach ($targets as $path => $lines) {
 }
 
 echo "\n" . ($write ? 'Converted' : 'Would convert') . " $total_changed classes in $files_changed of " . count($targets) . " files.\n";
+
+if ($total_kept > 0) {
+	echo "$total_kept class lists kept on Bootstrap 5 in site-output code.\n";
+}
 
 if ($total_reviews > 0) {
 	echo "$total_reviews classes need a hand" . ($verbose ? '' : ' (--verbose lists them)') . ":\n";

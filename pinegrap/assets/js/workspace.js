@@ -12881,6 +12881,76 @@
             }
 
             strip.appendChild(row);
+            this.commandLive(argument);
+        },
+
+        // Under /task's usage: what sending the line now would do, read by
+        // the parser that runs it (ws_command_suggest), and what it cannot
+        // read, such as a typed @name no team member, or several, answer to. The last
+        // answer stays on screen until the next one comes.
+        commandLive: function (argument) {
+            var self = this;
+            var body = self.inputText();
+
+            if (!self.channel || (argument.entry.key !== 'task')) {
+                return;
+            }
+
+            if (self.cmdLive) {
+                self.drawCommandLive(self.cmdLive);
+            }
+
+            if (self.cmdLive && (self.cmdLive.body === body)) {
+                return;
+            }
+
+            var channelId = self.channel.id;
+
+            clearTimeout(self.cmdLiveTimer);
+            self.cmdLiveTimer = setTimeout(function () {
+                api('ws_command_suggest', { channel_id: channelId, body: body }).then(function (data) {
+                    if (!self.channel || (self.channel.id !== channelId)) {
+                        return;
+                    }
+
+                    self.cmdLive = { body: body, line: data.line || '', warnings: data.warnings || [] };
+
+                    if (self.inputText() === body) {
+                        self.drawCommandLive(self.cmdLive);
+                    }
+                }).catch(function () {});
+            }, 300);
+        },
+
+        drawCommandLive: function (live) {
+            var strip = this.commandStrip;
+
+            // An empty strip: the command was sent or taken out meanwhile.
+            if (!strip || !strip.firstChild) {
+                return;
+            }
+
+            var old = strip.querySelector('.ws-cmd-live');
+
+            if (old) {
+                old.remove();
+            }
+
+            if (!live.line && !live.warnings.length) {
+                return;
+            }
+
+            var row = el('div', 'ws-cmd-strip ws-cmd-live flex-column align-items-start gap-0');
+
+            if (live.line) {
+                row.appendChild(el('span', 'text-body', live.line));
+            }
+
+            live.warnings.forEach(function (text) {
+                row.appendChild(el('span', 'text-warning-emphasis', text));
+            });
+
+            strip.appendChild(row);
         },
 
         // Is what follows a # still a search? Not once it is a tag that was

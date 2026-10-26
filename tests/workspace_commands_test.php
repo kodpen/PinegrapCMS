@@ -354,3 +354,158 @@ function test_workspace_command_product_fields()
 		'a price of nothing is written'
 	);
 }
+
+// "next week" in two words, and its Turkish twins, is seven days on, the
+// same as "haftaya" (2026-10-21 is a Wednesday).
+function test_workspace_command_parse_task_reads_next_week()
+{
+	foreach (array('next week', 'Next Week', 'gelecek hafta', 'önümüzdeki hafta', 'onumuzdeki hafta', 'haftaya') as $words) {
+		$task = ws_command_parse_task('Rapor ' . $words, '2026-10-21');
+
+		pg_assert_same('2026-10-28', $task['due_date'], $words);
+		pg_assert_same('Rapor', $task['title'], $words . ' leaves the title');
+	}
+
+	$task = ws_command_parse_task('Next steps', '2026-10-21');
+
+	pg_assert_same('Next steps', $task['title'], '"next" alone is a word of the title');
+	pg_assert_same(null, $task['due_date'], '"next" alone is no day');
+}
+
+// A day word in the dative is the same day: "cumaya", "yarına", a date with
+// its suffix after an apostrophe.
+function test_workspace_command_date_words_in_the_dative()
+{
+	$cases = array(
+		'pazartesiye' => '2026-10-26', 'salıya' => '2026-10-27', 'saliya' => '2026-10-27',
+		'çarşambaya' => '2026-10-21', 'perşembeye' => '2026-10-22', 'persembeye' => '2026-10-22',
+		'cumaya' => '2026-10-23', 'cumartesiye' => '2026-10-24', 'pazara' => '2026-10-25',
+		'yarına' => '2026-10-22', 'yarina' => '2026-10-22', 'bugüne' => '2026-10-21',
+		"25.10'a" => '2026-10-25', "3.11'e" => '2026-11-03', "3.11’e" => '2026-11-03',
+		"cuma'ya" => '2026-10-23',
+	);
+
+	foreach ($cases as $word => $date) {
+		pg_assert_same($date, ws_parse_date_word($word, '2026-10-21'), $word);
+	}
+
+	pg_assert_same('', ws_parse_date_word('pazarlık', '2026-10-21'), 'a word that only starts like a day');
+	pg_assert_same('', ws_parse_date_word("ali'ye", '2026-10-21'), 'a name with a suffix');
+}
+
+// A time written as hour:minute is the due time; alone it is today's,
+// "saat" or "at" before it is not a word of the title.
+function test_workspace_command_parse_task_reads_a_time()
+{
+	$task = ws_command_parse_task('Toplantı cuma 14:00', '2026-10-21');
+
+	pg_assert_same('Toplantı', $task['title'], 'title');
+	pg_assert_same('2026-10-23', $task['due_date'], 'the day');
+	pg_assert_same('14:00', $task['due_time'], 'the time');
+
+	$task = ws_command_parse_task('Ara saat 9:30', '2026-10-21');
+
+	pg_assert_same('Ara', $task['title'], '"saat" before the time');
+	pg_assert_same('2026-10-21', $task['due_date'], 'a time alone is today');
+	pg_assert_same('09:30', $task['due_time'], 'one-digit hour');
+
+	$task = ws_command_parse_task("Call at 16:45 tomorrow", '2026-10-21');
+
+	pg_assert_same('Call', $task['title'], '"at" before the time');
+	pg_assert_same('2026-10-22', $task['due_date'], 'tomorrow');
+	pg_assert_same('16:45', $task['due_time'], 'the time before the day');
+
+	$task = ws_command_parse_task("Sunum 14:00'te", '2026-10-21');
+
+	pg_assert_same('14:00', $task['due_time'], 'a suffix after the time');
+
+	$task = ws_command_parse_task('Skor 25:61', '2026-10-21');
+
+	pg_assert_same('Skor 25:61', $task['title'], 'no such time');
+	pg_assert_same(null, $task['due_time'], 'no time');
+	pg_assert_same(null, $task['due_date'], 'no day');
+
+	$task = ws_command_parse_task('Rapor', '2026-10-21');
+
+	pg_assert_same(null, $task['due_time'], 'nothing written');
+}
+
+// "1.5 saat" is how long, not the first of May: a number before an hour or
+// minute word is the estimate.
+function test_workspace_command_parse_task_number_before_a_unit_is_no_date()
+{
+	$task = ws_command_parse_task('Toplantı 1.5 saat', '2026-10-21');
+
+	pg_assert_same(null, $task['due_date'], '1.5 saat is no date');
+	pg_assert_same(90, $task['estimate_minutes'], '1.5 saat');
+	pg_assert_same('Toplantı', $task['title'], 'title');
+
+	$task = ws_command_parse_task('Kontrol 45 dk', '2026-10-21');
+
+	pg_assert_same(45, $task['estimate_minutes'], '45 dk');
+
+	$task = ws_command_parse_task('Review 2 hours friday', '2026-10-21');
+
+	pg_assert_same(120, $task['estimate_minutes'], '2 hours');
+	pg_assert_same('2026-10-23', $task['due_date'], 'the day beside it');
+	pg_assert_same('Review', $task['title'], 'title');
+
+	$task = ws_command_parse_task('Teslim 1.5', '2026-10-21');
+
+	pg_assert_same('2026-05-01', ws_parse_date_word('1.5', '2026-04-21'), 'a date without a unit is still a date');
+	pg_assert_same('Teslim', $task['title'], 'the date leaves the title');
+}
+
+// A typed @word that is no tag is kept in the title and reported, so the
+// live line can warn that nobody was picked.
+function test_workspace_command_parse_task_reports_typed_people()
+{
+	$task = ws_command_parse_task('Logo @ayse <@user:5> @Mehmet. cuma', '2026-10-21');
+
+	pg_assert_same(array('ayse', 'Mehmet'), $task['typed_people'], 'the typed names');
+	pg_assert_same(array(5), $task['assignees'], 'the tag still assigns');
+	pg_assert_same('Logo @ayse @Mehmet.', $task['title'], 'kept in the title');
+
+	$task = ws_command_parse_task('Mail info@example.com', '2026-10-21');
+
+	pg_assert_same(array(), $task['typed_people'], 'an address is no person');
+}
+
+// A typed @name assigns when it is exactly one team member's username, in
+// any case and with or without the Turkish letters; it then leaves the
+// title. A name nobody has, or several people share, assigns nobody and
+// stays in the title for the warning.
+function test_workspace_command_typed_people_assign_on_one_exact_username()
+{
+	$team = array(
+		array('id' => 7, 'username' => 'arzu'),
+		array('id' => 8, 'username' => 'ahmet'),
+		array('id' => 9, 'username' => 'Ayşe'),
+		array('id' => 10, 'username' => 'deniz'),
+		array('id' => 11, 'username' => 'DENIZ'),
+	);
+
+	$task = ws_command_typed_assignees(ws_command_parse_task('Tedarikçiyi ara @arzu', '2026-10-21'), $team);
+
+	pg_assert_same(array(7), $task['assignees'], 'one exact username');
+	pg_assert_same('Tedarikçiyi ara', $task['title'], 'the name leaves the title');
+	pg_assert_same(array(), $task['typed_unknown'], 'nothing unknown');
+	pg_assert_same(array(), $task['typed_ambiguous'], 'nothing ambiguous');
+
+	$task = ws_command_typed_assignees(ws_command_parse_task('Logo <@user:5> @AYSE, cuma', '2026-10-21'), $team);
+
+	pg_assert_same(array(5, 9), $task['assignees'], 'beside a picked person, letters and case folded');
+	pg_assert_same('Logo', $task['title'], 'punctuation after the name goes with it');
+
+	$task = ws_command_typed_assignees(ws_command_parse_task('Ara @a @deniz @zeynep', '2026-10-21'), $team);
+
+	pg_assert_same(array(), $task['assignees'], 'nobody from a prefix, a shared name or an unknown one');
+	pg_assert_same(array('a', 'zeynep'), $task['typed_unknown'], 'no such username, a prefix included');
+	pg_assert_same(array('deniz'), $task['typed_ambiguous'], 'two people answer to it');
+	pg_assert_same('Ara @a @deniz @zeynep', $task['title'], 'unassigned names stay in the title');
+
+	$task = ws_command_typed_assignees(ws_command_parse_task('Ara @arzu @arzu', '2026-10-21'), $team);
+
+	pg_assert_same(array(7), $task['assignees'], 'written twice, assigned once');
+	pg_assert_same('Ara', $task['title'], 'both leave the title');
+}

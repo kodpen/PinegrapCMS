@@ -272,7 +272,7 @@ function pg_panel_actions()
         'ws_scheduled_run_now', 'ws_scheduled_preview', 'ws_scheduled_draft',
         'ws_scheduled_message_save', 'ws_scheduled_messages',
         'ws_scheduled_message_delete', 'ws_scheduled_message_send',
-        'ws_sync', 'ws_messages_before', 'ws_send', 'ws_edit', 'ws_delete',
+        'ws_sync', 'ws_messages_before', 'ws_send', 'ws_command_suggest', 'ws_edit', 'ws_delete',
         'ws_mark', 'ws_attach', 'ws_library_browse', 'ws_library_channels',
         'ws_library_attach', 'ws_channel_create', 'ws_templates',
         'ws_template_apply', 'ws_template_from_channel',

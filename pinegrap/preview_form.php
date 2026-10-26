@@ -119,6 +119,7 @@ $output = pg_page_shell( array(
                                             <table>
                                                 ' . $form_info['content'] . '
                                             </table>
+                                            ' . $form_info['picker_scripts'] . '
                                         </div>
                                     </fieldset>
                                 </div>

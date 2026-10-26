@@ -661,13 +661,13 @@ function ws_command_unescape($body)
 function ws_weekday_number($word)
 {
     $days = array(
-        'pazartesi' => 1, 'pzt' => 1, 'monday' => 1, 'mon' => 1,
-        'salı' => 2, 'sali' => 2, 'tuesday' => 2, 'tue' => 2,
-        'çarşamba' => 3, 'carsamba' => 3, 'çarşambaya' => 3, 'wednesday' => 3, 'wed' => 3,
-        'perşembe' => 4, 'persembe' => 4, 'thursday' => 4, 'thu' => 4,
+        'pazartesi' => 1, 'pazartesiye' => 1, 'pzt' => 1, 'monday' => 1, 'mon' => 1,
+        'salı' => 2, 'sali' => 2, 'salıya' => 2, 'saliya' => 2, 'tuesday' => 2, 'tue' => 2,
+        'çarşamba' => 3, 'carsamba' => 3, 'çarşambaya' => 3, 'carsambaya' => 3, 'wednesday' => 3, 'wed' => 3,
+        'perşembe' => 4, 'persembe' => 4, 'perşembeye' => 4, 'persembeye' => 4, 'thursday' => 4, 'thu' => 4,
         'cuma' => 5, 'cumaya' => 5, 'friday' => 5, 'fri' => 5,
-        'cumartesi' => 6, 'saturday' => 6, 'sat' => 6,
-        'pazar' => 7, 'sunday' => 7, 'sun' => 7,
+        'cumartesi' => 6, 'cumartesiye' => 6, 'saturday' => 6, 'sat' => 6,
+        'pazar' => 7, 'pazara' => 7, 'sunday' => 7, 'sun' => 7,
     );
 
     return $days[$word] ?? 0;
@@ -687,6 +687,12 @@ function ws_parse_date_word($word, $today)
     $plain = rtrim(mb_strtolower((string) $word, 'UTF-8'), '.,;');
     $word = rtrim(ws_lower($word), '.,;');
 
+    // A suffix after an apostrophe ("25.10'a", "cuma'ya") is the same day.
+    if (preg_match('/^(.+?)[\'’]\p{L}{1,4}$/u', $word, $match)) {
+        $plain = preg_replace('/[\'’]\p{L}{1,4}$/u', '', $plain);
+        $word = $match[1];
+    }
+
     if (($plain !== $word) && (ws_parse_date_word_lower($plain, $today) !== '')) {
         return ws_parse_date_word_lower($plain, $today);
     }
@@ -705,11 +711,11 @@ function ws_parse_date_word_lower($word, $today)
 {
     $base = strtotime($today . ' 12:00:00');
 
-    if (in_array($word, array('bugün', 'bugun', 'today'), true)) {
+    if (in_array($word, array('bugün', 'bugun', 'bugüne', 'bugune', 'today'), true)) {
         return $today;
     }
 
-    if (in_array($word, array('yarın', 'yarin', 'tomorrow'), true)) {
+    if (in_array($word, array('yarın', 'yarin', 'yarına', 'yarina', 'tomorrow'), true)) {
         return date('Y-m-d', strtotime('+1 day', $base));
     }
 
@@ -787,6 +793,49 @@ function ws_parse_estimate($word)
 }
 
 /**
+ * A time of day written as hour:minute ("14:00", "9:30", "14:00'te"), as
+ * H:i, or ''.
+ *
+ * @param string $word
+ * @return string
+ */
+function ws_parse_time_word($word)
+{
+    if (!preg_match('/^([01]?[0-9]|2[0-3]):([0-5][0-9])(?:[\'’]\p{L}{1,4})?[.,;]?$/u', (string) $word, $match)) {
+        return '';
+    }
+
+    return sprintf('%02d:%02d', (int) $match[1], (int) $match[2]);
+}
+
+/**
+ * The estimate a number and an hour or minute word make ("1.5 saat",
+ * "45 dk", "2 hours"), in minutes, or 0.
+ *
+ * @param string $number
+ * @param string $unit
+ * @return int
+ */
+function ws_parse_estimate_words($number, $unit)
+{
+    if (!preg_match('/^[0-9]{1,4}(?:[.,][0-9]{1,2})?$/', (string) $number)) {
+        return 0;
+    }
+
+    $units = array(
+        'saat' => 'sa', 'sa' => 'sa', 'hour' => 'h', 'hours' => 'h', 'hr' => 'h', 'hrs' => 'h', 'h' => 'h',
+        'dk' => 'dk', 'dakika' => 'dk', 'min' => 'min', 'mins' => 'min', 'minute' => 'min', 'minutes' => 'min',
+    );
+    $unit = ws_command_fold(rtrim((string) $unit, '.,;'));
+
+    if (!isset($units[$unit])) {
+        return 0;
+    }
+
+    return ws_parse_estimate('~' . $number . $units[$unit]);
+}
+
+/**
  * A priority written after ! ("!acil", "!urgent", "!yüksek", "!low").
  *
  * @param string $word
@@ -807,11 +856,14 @@ function ws_parse_priority($word)
 /**
  * Reads a task out of the words after /task.
  *
- * @param string $text
+ * @param string      $text
+ * @param string|null $today Y-m-d, the server's day when not given
  * @return array title, assignees, department_id, refs, priority, estimate_minutes,
- *               start_date, due_date
+ *               start_date, due_date, due_time (H:i), typed_people (the names
+ *               written after an @ that is no tag, kept in the title until
+ *               ws_command_typed_assignees() reads them)
  */
-function ws_command_parse_task($text)
+function ws_command_parse_task($text, $today = null)
 {
     $out = array(
         'title'            => '',
@@ -822,6 +874,8 @@ function ws_command_parse_task($text)
         'estimate_minutes' => 0,
         'start_date'       => null,
         'due_date'         => null,
+        'due_time'         => null,
+        'typed_people'     => array(),
     );
 
     foreach (ws_tokens($text) as $token) {
@@ -839,12 +893,50 @@ function ws_command_parse_task($text)
     $out['assignees'] = array_values($out['assignees']);
 
     $text = preg_replace('/<[@#][a-z]+:[0-9]{1,10}>/', ' ', (string) $text);
-    $today = date('Y-m-d');
+    $today = ($today === null) ? date('Y-m-d') : (string) $today;
     $dates = array();
     $title = array();
+    $words = array_values(array_filter(preg_split('/\s+/u', trim($text)), 'strlen'));
+    $count = count($words);
 
-    foreach (preg_split('/\s+/u', trim($text)) as $word) {
-        if ($word === '') {
+    for ($i = 0; $i < $count; $i++) {
+        $word = $words[$i];
+        $next = ($i + 1 < $count) ? $words[$i + 1] : '';
+        $folded = ws_command_fold($word);
+
+        if (preg_match('/^@([\p{L}\p{N}_.\-]{1,40})[,;:!?]*$/u', $word, $match)) {
+            $out['typed_people'][] = rtrim($match[1], '.-');
+            $title[] = $word;
+            continue;
+        }
+
+        // "next week", "gelecek hafta", "önümüzdeki hafta": seven days on,
+        // like "haftaya".
+        if (($next !== '') && in_array($folded, array('next', 'gelecek', 'onumuzdeki'), true) && in_array(ws_command_fold(rtrim($next, '.,;')), array('week', 'hafta'), true)) {
+            $dates[] = ws_parse_date_word('haftaya', $today);
+            $i++;
+            continue;
+        }
+
+        // A number before an hour or minute word is how long ("1.5 saat"),
+        // never a day and a month.
+        $estimate = ($next !== '') ? ws_parse_estimate_words($word, $next) : 0;
+
+        if ($estimate > 0) {
+            $out['estimate_minutes'] = $estimate;
+            $i++;
+            continue;
+        }
+
+        // "saat 14:00", "at 14:00": the word before a time is not the title's.
+        if (in_array($folded, array('saat', 'at'), true) && ($next !== '') && (ws_parse_time_word($next) !== '')) {
+            continue;
+        }
+
+        $time = ws_parse_time_word($word);
+
+        if ($time !== '') {
+            $out['due_time'] = $time;
             continue;
         }
 
@@ -892,9 +984,64 @@ function ws_command_parse_task($text)
         $out['due_date'] = $dates[count($dates) - 1];
     }
 
+    // A time without a day is today's.
+    if (($out['due_time'] !== null) && ($out['due_date'] === null)) {
+        $out['due_date'] = $today;
+    }
+
     $out['title'] = trim(implode(' ', $title), " \t-–—:,");
 
     return $out;
+}
+
+/**
+ * Gives a parsed task the people whose usernames were typed after an @
+ * instead of picked: a name that is exactly one team member's username, in
+ * any case and with or without the Turkish letters, assigns that person and
+ * leaves the title; one nobody has, or several share, assigns nobody and
+ * stays in the title for the live line's warning.
+ *
+ * @param array   $parsed ws_command_parse_task()
+ * @param array[] $team   briefs with id and username (ws_team_members())
+ * @return array $parsed with assignees and title changed, typed_unknown and
+ *               typed_ambiguous (names as typed)
+ */
+function ws_command_typed_assignees($parsed, $team)
+{
+    $parsed['typed_unknown'] = array();
+    $parsed['typed_ambiguous'] = array();
+
+    $usernames = array();
+
+    foreach ((array) $team as $person) {
+        $usernames[ws_command_fold($person['username'] ?? '')][] = (int) $person['id'];
+    }
+
+    $title = (string) $parsed['title'];
+
+    foreach (array_unique((array) ($parsed['typed_people'] ?? array())) as $name) {
+        $ids = $usernames[ws_command_fold($name)] ?? array();
+
+        if (count($ids) > 1) {
+            $parsed['typed_ambiguous'][] = $name;
+            continue;
+        }
+
+        if (empty($ids)) {
+            $parsed['typed_unknown'][] = $name;
+            continue;
+        }
+
+        if (!in_array($ids[0], $parsed['assignees'], true)) {
+            $parsed['assignees'][] = $ids[0];
+        }
+
+        $title = preg_replace('/(^|\s)@' . preg_quote($name, '/') . '[.\-]*[,;:!?]*(?=\s|$)/u', '$1', $title);
+    }
+
+    $parsed['title'] = trim(preg_replace('/\s+/u', ' ', $title), " \t-–—:,");
+
+    return $parsed;
 }
 
 /**
@@ -1118,7 +1265,7 @@ function ws_command_run($viewer, $channel, $body, $options = array())
  */
 function ws_command_task($viewer, $channel, $text, $options)
 {
-    $parsed = ws_command_parse_task($text);
+    $parsed = ws_command_typed_assignees(ws_command_parse_task($text), ws_team_members());
 
     if ($parsed['title'] === '') {
         return array('type' => 'error', 'error' => lang('Write what the task is after the command.'));
@@ -1159,7 +1306,7 @@ function ws_command_task($viewer, $channel, $text, $options)
                 'title'      => $parsed['title'],
                 'people'     => array_values($people),
                 'department' => $department ? $department['name'] : '',
-                'due'        => $parsed['due_date'] ? ws_task_due_label(array('due_date' => $parsed['due_date'], 'status' => 'todo')) : lang('No due date'),
+                'due'        => $parsed['due_date'] ? ws_task_due_label(array('due_date' => $parsed['due_date'], 'due_time' => $parsed['due_time'], 'status' => 'todo')) : lang('No due date'),
                 'start'      => $parsed['start_date'] ? ws_day_label($parsed['start_date']) : '',
                 'estimate'   => ($parsed['estimate_minutes'] > 0) ? ws_minutes_label($parsed['estimate_minutes']) : lang(array('string' => 'not estimated (counted as {var:1})', 'vars' => ws_minutes_label(WS_DEFAULT_TASK_MINUTES))),
                 'priority'   => ws_task_priorities()[$parsed['priority']],
@@ -1175,7 +1322,7 @@ function ws_command_task($viewer, $channel, $text, $options)
         return array('type' => 'error', 'error' => lang('Somebody on this task is away then. Only a lead or somebody with the team board can hand it over anyway.'));
     }
 
-    $result = ws_task_create($viewer, array(
+    $data = array(
         'title'            => $parsed['title'],
         'priority'         => $parsed['priority'],
         'start_date'       => $parsed['start_date'],
@@ -1185,7 +1332,15 @@ function ws_command_task($viewer, $channel, $text, $options)
         'channel_id'       => $channel['id'],
         'assignees'        => $parsed['assignees'],
         'refs'             => $parsed['refs'],
-    ));
+    );
+
+    // Checked and written by ws_task_reminder_validate() when the site has
+    // the column.
+    if ($parsed['due_time'] !== null) {
+        $data['due_time'] = $parsed['due_time'];
+    }
+
+    $result = ws_task_create($viewer, $data);
 
     if (!$result['ok']) {
         return array('type' => 'error', 'error' => $result['error']);
@@ -1198,6 +1353,81 @@ function ws_command_task($viewer, $channel, $text, $options)
     }
 
     return array('type' => 'done', 'task_id' => $result['task_id'], 'message_id' => $sent['message_id'] ?? 0);
+}
+
+/**
+ * The live line under a command being written: what sending it now would
+ * do, read by the same parser that runs it, and what it cannot read. Only
+ * /task has one yet; any other command answers with an empty line.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $body the line as written so far
+ * @return array line (text, '' for none), warnings (texts)
+ */
+function ws_command_suggest($viewer, $channel, $body)
+{
+    $out = array('line' => '', 'warnings' => array());
+    $split = ws_command_split($body);
+
+    if (!$split || ($split['command'] !== 'task') || ($split['rest'] === '')) {
+        return $out;
+    }
+
+    $parsed = ws_command_typed_assignees(ws_command_parse_task($split['rest']), ws_team_members());
+
+    foreach ($parsed['typed_unknown'] as $name) {
+        $out['warnings'][] = lang(array('string' => 'Nobody in the team has the username {var:1}, so nobody is assigned by it: pick the person from the @ list.', 'vars' => '@' . $name));
+    }
+
+    foreach ($parsed['typed_ambiguous'] as $name) {
+        $out['warnings'][] = lang(array('string' => 'Several people have the username {var:1}, so nobody is assigned by it: pick the person from the @ list.', 'vars' => '@' . $name));
+    }
+
+    if ($parsed['title'] === '') {
+        $out['warnings'][] = lang('Write what the task is after the command.');
+
+        return $out;
+    }
+
+    $parts = array('“' . $parsed['title'] . '”');
+
+    if (!empty($parsed['assignees'])) {
+        $names = array();
+
+        foreach (ws_people($parsed['assignees']) as $person) {
+            $names[] = $person['name'];
+        }
+
+        $parts[] = implode(', ', $names);
+    } elseif ($parsed['department_id'] > 0) {
+        $department = ws_department($parsed['department_id']);
+        $parts[] = $department ? $department['name'] : '';
+    } else {
+        $parts[] = lang('Yours');
+    }
+
+    if ($parsed['start_date']) {
+        $parts[] = lang(array('string' => 'from {var:1}', 'vars' => ws_day_label($parsed['start_date'])));
+    }
+
+    $parts[] = $parsed['due_date'] ? ws_task_due_label(array('due_date' => $parsed['due_date'], 'due_time' => $parsed['due_time'], 'status' => 'todo')) : lang('No due date');
+
+    if ($parsed['estimate_minutes'] > 0) {
+        $parts[] = ws_minutes_label($parsed['estimate_minutes']);
+    }
+
+    if ($parsed['priority'] !== 'normal') {
+        $parts[] = ws_task_priorities()[$parsed['priority']];
+    }
+
+    $out['line'] = lang(array('string' => 'Will create: {var:1}', 'vars' => implode(' · ', array_filter($parts, 'strlen'))));
+
+    if (!empty($parsed['assignees']) && !ws_can_assign_to($viewer, $parsed['assignees'])) {
+        $out['warnings'][] = lang('You may only give tasks to yourself or to the people in the departments you lead.');
+    }
+
+    return $out;
 }
 
 /**

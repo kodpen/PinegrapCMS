@@ -4,16 +4,8 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 ---
 
 ## Which steps run before the switch (on 5.3.8, nothing visible changes)?
-- Done: B0a, B0b, B1a, B1b, B2a, B2b, B3, B5 (`bootstrap-6-panel-done.md`).
-- B4 Collisions: drop `class="menu"` from `#menu`, rename `<span class="btn-text">` and the own `.submenu`; `data-bs-display="static"` on the account and notification toggles.
-  - Slice 1 (#1738): `btn-text` to `pg-btn-label` in 129 panel files (`tools/bs6_rename_collisions.php`), `view_folders.php` `.submenu` to `.pg-submenu`.
-  - Slice 2 (#1751): the same rename on the gift card, shipping method and ERP screens and `erp_export.php`.
-  - Slice 3 (#1762): `add_page.php`, `edit_page.php` and the `#create_button` selectors in `backend.src.js`.
-  - Slice 4 (#1797): `#menu` without `class="menu"`, `data-bs-display="static"` on the account and notification toggles (`includes/fn/output.php`; both sit in `nav#header.navbar`, where 5.3.8 already skips Popper). No CSS selected `.btn-text` or `.menu`, so no transition selectors are left to drop.
-  - Left: `php tools/bs6_rename_collisions.php --write edit_contact.php` (two spans; #1794 holds the file). Then B4 moves to `bootstrap-6-panel-done.md`.
-- B6 Wrappers with a switchable engine (v5 engine now): `pgChips`, `pgCombobox`, `pgDatePicker`, `pgDateTimeField`; call sites move to `data-pg-*` hooks.
-  - Slice 1 (#1733): `pg_fields.js`, liveform `data-pg-*`, `pg_fields_script()`; gift cards, shipping methods, ERP screens (`ui/pg-field-wrappers.md`). Slice 2 (#1741): firewall card, `edit_page.php`, `mass_edit.php`, `view_contacts.php`. Slice 3 (#1750): `pgInitInjected()`, ACL expiry pickers. Slice 4 (#1764): menus, product groups, zones, verified addresses, product builder selects, campaigns, arrival dates, featured items, add contact, key code, commerce end-of-day time; no `select2`/`timepicker` class is left in panel markup. Slice 5 (#1775): generic inits gone, shipping cut-off rows, submitted form pickers, `view_order.php` tracking chips, API settings IP chips. Slice 6 (#1787): `pgFields.destroy()`/`switchKind()`, calendar all-day switch, comment publish date. Slice 7 (#1794): `edit_contact.php`, `view_order.php` ship and delivery dates (`data-pg-date="plain"`), `offer_editor.js`, the Google category in `product_builder` (`data-pg-source`; the stored value is printed again, it was lost on save). Left (#1781 holds both): `fn/content.php` pickers and the visual editor's keyword box (`designer_screen.php` markup, its tagin redraw in `style_designer.js`).
-- B7 Visual editor stage 0: `/* @pg-site-output */` on the 54 site-output members of style_designer.js with a CI test, the chrome look pinned in style_designer.css, editor calls through `pgUI`.
+- Done: B0a, B0b, B1a, B1b, B2a, B2b, B3, B4, B5, B6 (`bootstrap-6-panel-done.md`).
+- B7 Visual editor stage 0: B7a done (#1822, site-output markers and `pgUI` calls, `ui/bootstrap-6-editor-markers.md`). B7b: mark the two members listed there after #1808, pin the chrome look in style_designer.css.
 
 ## What happens at and after the switch?
 - B8 Switch: `bootstrap-6-switch.md`.
