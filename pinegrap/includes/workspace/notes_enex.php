@@ -858,23 +858,47 @@ function ws_note_enex_table($table, &$state)
  */
 function ws_note_enex_markdown($enml, $media = array())
 {
+    $root = ws_note_enex_root($enml);
+
+    if ($root) {
+        return ws_note_enex_markdown_node($root, $media);
+    }
+
+    $plain = preg_replace('#<br\s*/?>|</(?:div|p|li|h[1-6]|tr)>#i', "\n", (string) $enml);
+
+    return array('text' => ws_note_enex_tidy(explode("\n", html_entity_decode(strip_tags($plain), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 'used' => array());
+}
+
+/**
+ * The content of an element already parsed as the workspace's Markdown
+ * (notes_html.php hands in a page read by the HTML parser).
+ *
+ * @param DOMNode $root
+ * @param array[] $media as ws_note_enex_markdown() takes them
+ * @return array text, used (indexes of $media the note shows)
+ */
+function ws_note_enex_markdown_node($root, $media = array())
+{
     $state = array(
         'media' => array_values((array) $media),
         'used'  => array(),
         'crypt' => lang('[encrypted text]'),
     );
 
-    $root = ws_note_enex_root($enml);
+    $lines = ws_note_enex_flow($root, $state);
 
-    if ($root) {
-        $lines = ws_note_enex_flow($root, $state);
-    } else {
-        $plain = preg_replace('#<br\s*/?>|</(?:div|p|li|h[1-6]|tr)>#i', "\n", (string) $enml);
-        $lines = explode("\n", html_entity_decode(strip_tags($plain), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-    }
+    return array('text' => ws_note_enex_tidy($lines), 'used' => array_keys($state['used']));
+}
 
-    // No empty line at either end, never two in a row; a code block keeps
-    // its own.
+/**
+ * Lines as one text: no empty line at either end, never two in a row; a
+ * code block keeps its own.
+ *
+ * @param string[] $lines
+ * @return string
+ */
+function ws_note_enex_tidy($lines)
+{
     $out = array();
     $blank = true;
     $fence = false;
@@ -901,7 +925,7 @@ function ws_note_enex_markdown($enml, $media = array())
         array_pop($out);
     }
 
-    return array('text' => implode("\n", $out), 'used' => array_keys($state['used']));
+    return implode("\n", $out);
 }
 
 /* ---------------------------------------------------------------------------

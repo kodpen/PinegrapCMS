@@ -234,6 +234,7 @@
     "Upload a list of customers and suppliers. Matching accounts can be updated or left alone; nothing is written until the last step.": "Müşteri ve tedarikçi listesi yükleyin. Eşleşen cari hesaplar güncellenebilir ya da olduğu gibi bırakılabilir; son adıma kadar hiçbir şey yazılmaz.",
     "Upload and Extract": "Yükle ve Çıkart",
     "Upload limit": "Yükleme sınırı",
+    "Upload one web page (.html) on its own, without other files.": "Tek bir web sayfasını (.html) başka dosya olmadan tek başına yükleyin.",
     "Upload submitted form data for any existing custom form.": "Mevcut herhangi bir özel form için form verilerini yükleyin.",
     "Upload to": "Yükleme klasörü",
     "Uploaded files available to your pages": "Sayfalarınızın kullanabileceği yüklenmiş dosyalar",
