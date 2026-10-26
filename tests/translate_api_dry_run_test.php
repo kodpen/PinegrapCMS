@@ -46,7 +46,7 @@ function test_translate_api_writes_can_be_rehearsed()
 	}
 
 	foreach (array(
-		'translations.write' => array('translate_api_write', 'translate_api_write_one('),
+		'translations.write' => array('translate_api_write', 'log_activity('),
 		'translations.refresh' => array('translate_api_refresh', 'pg_tr_scope_extract('),
 		'translations.status' => array('translate_api_status', 'log_activity('),
 		'translations.glossary.save' => array('translate_api_glossary_save', 'INSERT INTO translation_glossary'),

@@ -418,6 +418,28 @@ function pg_tr_result_check($source, $translated, $format = 'text', $keep_terms 
 }
 
 /**
+ * Judges one engine answer for a string without writing it: sanitised for
+ * its format, its tags and tokens in place.
+ *
+ * @param array  $string     translation_strings row
+ * @param string $language
+ * @param string $translated raw answer (joined text, or the engine's HTML)
+ * @return array('ok' => bool, 'error' => string, 'suspicious' => bool, 'clean' => string)
+ */
+function pg_tr_result_judge($string, $language, $translated)
+{
+    $format = $string['format'];
+    $clean = pg_tr_sanitize_incoming($translated, $format);
+    $check = pg_tr_result_check($string['source_text'], $clean, $format, pg_tr_keep_terms($language));
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error'], 'suspicious' => false, 'clean' => '');
+    }
+
+    return array('ok' => true, 'error' => '', 'suspicious' => (bool) $check['suspicious'], 'clean' => $clean);
+}
+
+/**
  * Writes one engine answer for a string, after sanitising and checking it.
  *
  * @param array  $string     translation_strings row
@@ -429,15 +451,13 @@ function pg_tr_result_check($source, $translated, $format = 'text', $keep_terms 
  */
 function pg_tr_accept_result($string, $language, $translated, $engine, $user_id = 0)
 {
-    $format = $string['format'];
-    $clean = pg_tr_sanitize_incoming($translated, $format);
-    $check = pg_tr_result_check($string['source_text'], $clean, $format, pg_tr_keep_terms($language));
+    $judged = pg_tr_result_judge($string, $language, $translated);
 
-    if (!$check['ok']) {
-        return array('ok' => false, 'error' => $check['error'], 'suspicious' => false);
+    if (!$judged['ok']) {
+        return array('ok' => false, 'error' => $judged['error'], 'suspicious' => false);
     }
 
-    pg_tr_save_translation((int) $string['id'], $language, $clean, $engine, 'machine', $user_id, $check['suspicious'] ? 1 : 0);
+    pg_tr_save_translation((int) $string['id'], $language, $judged['clean'], $engine, 'machine', $user_id, $judged['suspicious'] ? 1 : 0);
 
-    return array('ok' => true, 'error' => '', 'suspicious' => $check['suspicious']);
+    return array('ok' => true, 'error' => '', 'suspicious' => $judged['suspicious']);
 }
