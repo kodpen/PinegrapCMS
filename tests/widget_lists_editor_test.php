@@ -66,7 +66,7 @@ function _widget_lists_editor_run_js($script, $stubs = '')
 	pg_assert_true(strpos($js, "\n    var SW_LIST_MAX_DEPTH = 4;\n") !== false, 'the depth is four, as the site draws');
 	pg_assert_true(strpos($cut, 'SW_LIST_SOURCES') !== false && strpos($cut, 'SW_LIST_ORDERS') !== false, 'the list tables are found');
 	foreach (array('_sdT', '_sdListIsSourced', '_sdListSpec', '_sdKindLists', '_sdListsAbove', '_sdListRowOptions', '_sdListRowLabel',
-		'_sdListName', '_sdListStarter', '_sdProductListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdListWidgetKind', '_sdListNeedsMainLoop', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
+		'_sdListName', '_sdListStarter', '_sdProductListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdOrderListStarter', '_sdOrderListKeyless', '_sdListWidgetKind', '_sdListNeedsMainLoop', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
 		'_sdListWrite', '_sdListFieldOf', '_sdListFieldFits', '_sdListBand', 'isDescendantOf', '_subtreeContainsLoopArea', '_sdFirstLoopArea') as $name) {
 		$fn = _widget_lists_editor_js_function($js, $name);
 		pg_assert_true($fn !== '', $name . ' is found');
@@ -615,4 +615,104 @@ JS;
 	pg_assert_same(1, substr_count($out, 'badge text-bg-primary'), 'one today');
 	pg_assert_true(strpos($out, '>Concert</a>') !== false && strpos($out, '>20:00</span>') !== false, 'the event');
 	pg_assert_same(false, strpos($out, '^^'));
+}
+
+// The order lists land beside the item loop, never in it nor in another
+// kind; recipients count two lists deep; a list of the recipients or the
+// steps inside a recipient draws nothing; the member's orders land in the
+// my account widget; the recipients starter draws on the site.
+function test_widget_lists_editor_order()
+{
+	$stubs = _widget_lists_editor_trees_js() . <<<'JS'
+var item9  = N('semantic', { tag: 'li' });
+var its9   = N('loop_area', { source: 'order.items' }, [item9]);
+var steps9 = N('loop_area', { source: 'order.steps' }, []);
+var card9  = N('semantic', { tag: 'div' }, [its9, steps9]);
+var ship9  = N('loop_area', { source: 'order.shipments' }, [card9]);
+var box9   = N('semantic', { tag: 'div' }, [ship9]);
+var row9   = N('semantic', { tag: 'article' });
+var inLoop9 = N('loop_area', { source: 'order.parcels' }, []);
+var main9  = N('loop_area', {}, [row9, inLoop9]);
+var root9  = N('root', {}, [box9, main9]);
+_sharedCache[9] = { tree: root9, system_region_config: JSON.stringify({ regionType: 'order_view' }) };
+var acc10  = N('semantic', { tag: 'div' });
+var root10 = N('root', {}, [acc10]);
+_sharedCache[10] = { tree: root10, system_region_config: JSON.stringify({ regionType: 'my_account' }) };
+function createNode(type, props, children) { return N(type, props, children); }
+function _sdUsesBootstrap() { return true; }
+JS;
+	$script = <<<'JS'
+var band = function (n) { var b = _sdListBand(n); return [b.off, b.text]; };
+var ships = _sdOrderListStarter('order.shipments', true);
+var sources = [];
+(function walk(n) { if (n.type === 'loop_area') sources.push(n.props.source); (n.children || []).forEach(walk); })(ships);
+console.log(JSON.stringify({
+    beside:   _sdListPlaceOk(palette('order.shipments'), box9),
+    inLoop:   _sdListPlaceOk(palette('order.items'), row9),
+    inCard:   _sdListPlaceOk(palette('order.parcels'), card9),
+    calendar: _sdListPlaceOk(palette('order.items'), box8),
+    account:  _sdListPlaceOk(palette('account.orders'), acc10),
+    accountNoItems: _sdListPlaceOk(palette('order.items'), acc10),
+    depth: [_sdListStarterDepth('order.shipments'), _sdListNesting(ships), _sdListStarterDepth('order.items')],
+    sources: sources,
+    bands: [band(ship9), band(its9), band(steps9), band(inLoop9)],
+    tree: N('root', {}, [ships, _sdOrderListStarter('order.steps', true)]),
+    account_tree: N('root', {}, [_sdListStarter('account.orders')])
+}));
+JS;
+	$a = _widget_lists_editor_run_js($script, _widget_lists_editor_calendar_js() . $stubs);
+	if ($a === null) {
+		return;
+	}
+	pg_assert_true($a['beside'], 'beside the item loop');
+	pg_assert_true(!$a['inLoop'], 'never in the item loop');
+	pg_assert_true($a['inCard'], 'parcels in a recipient');
+	pg_assert_true(!$a['calendar'], 'never in a calendar');
+	pg_assert_true($a['account'], 'the member\'s orders in my account');
+	pg_assert_true(!$a['accountNoItems'], 'no order items in my account');
+	pg_assert_same(array(2, 2, 1), $a['depth']);
+	pg_assert_same(array('order.shipments', 'order.items', 'order.parcels'), $a['sources']);
+	pg_assert_same(false, $a['bands'][0][0]);
+	pg_assert_same(false, $a['bands'][1][0]);
+	pg_assert_same(array(true, 'Steps of the order: inside a list of the recipients, nothing is drawn'), $a['bands'][2]);
+	pg_assert_same(array(true, 'Parcels of the order: inside the item loop, nothing is drawn'), $a['bands'][3]);
+
+	// The starters as the site draws them.
+	$scope = pg_sw_finish_open(array('sid' => 49, 'kind' => 'order_view', 'email' => true));
+	try {
+		$html = trim(_render_tree_node($a['tree'], 0, 0));
+		$arrival = function ($ymd) { return $ymd; };
+		pg_sw_list_publish('order', pg_sw_list_order_rows(
+			array(pg_sw_list_order_shipment_row(array('id' => 5, 'first_name' => 'Ayşe', 'shipping_method' => 'Kargo'), $arrival)),
+			array(array('id' => 1, 'short_description' => 'Mug', 'qty' => 2, 'unit_price' => '₺5,00', 'line_total' => '₺10,00', 'ship_to_id' => 5)),
+			array(array('number' => 'P1', 'url' => '', 'carrier' => '', 'ship_to' => 5), array('number' => 'P2', 'url' => 'https://t.example/P2', 'carrier' => 'Aras', 'ship_to' => 5)),
+			array(array('label' => 'Shipped', 'ts' => '28.10.2026', 'kind' => 'shipped', 'estimate' => true))
+		));
+		$html = pg_sw_sweep_tokens(pg_sw_fill_longest($html, array('__ship_to_key' => '0')));
+	} finally {
+		pg_sw_finish_close();
+	}
+	$out = pg_sw_finish_widget_html($html, $scope);
+	pg_assert_same(false, strpos($out, '^^'));
+	pg_assert_true(strpos($out, '>Ayşe</h3>') !== false, 'the recipient');
+	pg_assert_true(strpos($out, '>Mug</div>') !== false && strpos($out, '>₺10,00</div>') !== false, 'the recipient\'s item');
+	pg_assert_true(strpos($out, '>P1</span>') !== false && strpos($out, '>P1</a>') === false, 'a parcel without a link as text');
+	pg_assert_true(strpos($out, 'href="https://t.example/P2"') !== false && strpos($out, '>Aras</span>') !== false, 'a parcel with its link and carrier');
+	pg_assert_same(1, substr_count($out, '>Estimated</span>'), 'the estimate badge');
+
+	$scope = pg_sw_finish_open(array('sid' => 50, 'kind' => 'my_account', 'email' => false));
+	try {
+		$html = trim(_render_tree_node($a['account_tree'], 0, 0));
+		pg_sw_list_publish('account', pg_sw_list_account_rows(7, array(
+			array('id' => 9, 'order_number' => '1009', 'order_date' => mktime(12, 0, 0, 10, 20, 2026), 'total' => '5', 'status' => 'cancelled'),
+			array('id' => 8, 'order_number' => '1008', 'order_date' => mktime(12, 0, 0, 10, 19, 2026), 'total' => '5', 'status' => 'complete'),
+		), '/view-order', 'd.m.Y'));
+		$html = pg_sw_sweep_tokens(pg_sw_fill_longest($html, array('account_id' => '7')));
+	} finally {
+		pg_sw_finish_close();
+	}
+	$out = pg_sw_finish_widget_html($html, $scope);
+	pg_assert_same(2, substr_count($out, 'list-group-item-action'));
+	pg_assert_true(strpos($out, 'href="/view-order?id=8"') !== false, 'the order link');
+	pg_assert_same(1, substr_count($out, 'badge text-bg-secondary'), 'the cancelled badge on the cancelled order only');
 }
