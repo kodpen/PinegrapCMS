@@ -257,11 +257,12 @@ function erp_alert_low_stock()
  * (includes/erp/quotes.php), so it is announced again when its new date
  * comes near. Run from the ERP's hourly job.
  *
- * @return array ['ran' => bool, 'count' => int, 'notification_id' => int]
+ * @return array ['ran' => bool, 'count' => int, 'notification_id' => int,
+ *               'followups' => int (opened, ERP_QUOTE_EXPIRY_FOLLOWUP)]
  */
 function erp_alert_quote_expiry()
 {
-    $result = array('ran' => false, 'count' => 0, 'notification_id' => 0);
+    $result = array('ran' => false, 'count' => 0, 'notification_id' => 0, 'followups' => 0);
     $settings = erp_alert_settings();
 
     if (!$settings['quote_expiry'] || !function_exists('erp_quotes_ready') || !erp_quotes_ready()
@@ -272,10 +273,9 @@ function erp_alert_quote_expiry()
     $result['ran'] = true;
 
     $days = (int) $settings['quote_expiry_days'];
-    $today = date('Y-m-d');
-    $last = date('Y-m-d', strtotime($today . ' +' . $days . ' days'));
+    list($today, $last) = erp_quote_expiry_window(date('Y-m-d'), $days);
 
-    $rows = (array) db_items("SELECT id FROM erp_quotes
+    $rows = (array) db_items("SELECT id, full_number, account_id, valid_until, created_by FROM erp_quotes
         WHERE status = 'open' AND valid_until BETWEEN '" . escape($today) . "' AND '" . escape($last) . "' AND expiry_notified_at = 0
         ORDER BY valid_until ASC, id ASC
         LIMIT 200");
@@ -303,7 +303,74 @@ function erp_alert_quote_expiry()
 
     db("UPDATE erp_quotes SET expiry_notified_at = UNIX_TIMESTAMP() WHERE id IN (" . implode(', ', $ids) . ")");
 
+    if (ERP_QUOTE_EXPIRY_FOLLOWUP) {
+        $result['followups'] = erp_quote_expiry_followups($rows);
+    }
+
     return $result;
+}
+
+/**
+ * A Workspace follow-up for each sales quote the bell has just announced
+ * (ERP_QUOTE_EXPIRY_FOLLOWUP): opened as the person who made it, on the
+ * most recently active channel about its account (or the account's contact)
+ * they may post in, else theirs alone. A quote whose date is moved forward is announced
+ * again; an open follow-up of it is then handed back, not opened twice.
+ * Nobody to open it as - the maker gone or no longer a Workspace member -
+ * and the bell row is all that is left.
+ *
+ * @param array[] $quotes id, full_number, account_id, valid_until, created_by
+ * @return int how many were opened
+ */
+function erp_quote_expiry_followups($quotes)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED || !function_exists('pg_load_user_row')) {
+        return 0;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    $opened = 0;
+    $viewers = array();
+
+    foreach ($quotes as $quote) {
+        $user_id = (int) $quote['created_by'];
+
+        if (!array_key_exists($user_id, $viewers)) {
+            $row = ($user_id > 0) ? pg_load_user_row($user_id) : null;
+            $viewer = (is_array($row) && ((int) ($row['id'] ?? 0) > 0)) ? ws_viewer($row) : null;
+            $viewers[$user_id] = (is_array($viewer) && !empty($viewer['member'])) ? $viewer : null;
+        }
+
+        $viewer = $viewers[$user_id];
+
+        if ($viewer === null) {
+            continue;
+        }
+
+        $channel_id = 0;
+
+        foreach (ws_customer_channels('erp_account', (int) $quote['account_id']) as $channel) {
+            if (ws_can_post_channel($viewer, $channel)) {
+                $channel_id = (int) $channel['id'];
+                break;
+            }
+        }
+
+        $input = erp_quote_followup_input($quote, $channel_id, WS_TASK_REMIND_DAY_TIME);
+
+        if ($input === null) {
+            continue;
+        }
+
+        $made = ws_followup_task_open($viewer, $input, true);
+
+        if ($made['ok'] && !$made['existing']) {
+            $opened++;
+        }
+    }
+
+    return $opened;
 }
 
 /**

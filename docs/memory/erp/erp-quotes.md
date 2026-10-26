@@ -23,7 +23,7 @@ description: ERP sales quotes (4.92) and their signature (8.58): own table, numb
 - An ordinary electronic signature, not a qualified one.
 
 ## When is a quote about to run out announced?
-- Hourly, once per quote (`erp_quotes.expiry_notified_at`): erp-alerts.md.
+- Hourly, once per quote (`erp_quotes.expiry_notified_at`), with an optional follow-up: erp-alerts.md.
 
 ## How is a quote tagged in the Workspace?
 - Tag kind `erp_quote`, "Sales quote" / "Satış teklifi" (never a bare "quote": an Offer is "Teklif", a quoted message "Alıntı"); `#satis` or `#salesquote` picks it, Offer keeps `#teklif`. Shown with the ERP right (`manage_erp`), as the quote screens; read over the API and by the assistants with `erp:read`.
