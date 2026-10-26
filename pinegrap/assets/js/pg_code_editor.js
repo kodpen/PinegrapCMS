@@ -20,7 +20,8 @@
  *   PgCodeEditor.findAll(text, query)                          hits, no editor
  *
  * An editor instance (see pgCeCreate) offers getValue / setValue,
- * setLanguage, setReadOnly, setTheme, goTo and scrollTo, the search panel, tracked
+ * setLanguage, setReadOnly, setTheme, goTo and scrollTo, the search panel,
+ * format (CSS, JavaScript and JSON; Shift+Alt+F in both keymaps), tracked
  * ranges that follow the text as it is edited (track / tracked / trackedAt)
  * and locks: ranges no edit may touch, each with optional "islands" inside
  * it that stay editable. A lock without islands is read-only as a whole; a
@@ -709,6 +710,30 @@
         });
     }
 
+    // The text formatted by the bundle's js-beautify with the editor's indent
+    // unit, or null when the language has no formatter (HTML: the designer's
+    // page view is printed by its emitter already) or the formatter failed.
+    // JSON goes through the JavaScript formatter, which keeps its quotes.
+    function _formatText(cm, lang, text, unit) {
+        var fn = (lang === 'css') ? cm.format.css : ((lang === 'javascript' || lang === 'json') ? cm.format.js : null);
+        if (!fn) return null;
+        unit = String(unit || '    ');
+        var tab = (unit.indexOf('\t') !== -1);
+        try {
+            return fn(String(text), {
+                indent_size: tab ? 1 : unit.length,
+                indent_char: tab ? '\t' : ' ',
+                indent_with_tabs: tab,
+                eol: '\n',
+                end_with_newline: /\n$/.test(text),
+                preserve_newlines: true,
+                max_preserve_newlines: 2
+            });
+        } catch (e) {
+            return null;
+        }
+    }
+
     // ── Instance ─────────────────────────────────────────────────────────
     function pgCeCreate(host, opts) {
         if (!isLoaded()) throw new Error('PgCodeEditor.create() before the bundle loaded; use PgCodeEditor.open().');
@@ -751,7 +776,7 @@
         };
 
         function keymapExtensions() {
-            var list = [];
+            var list = [V.keymap.of([{ key: 'Shift-Alt-f', run: function () { return inst.format(); } }])];
             if (useVscode) {
                 list.push(V.keymap.of(cm.vscodeKeymap));
             } else {
@@ -875,6 +900,33 @@
                 filter: false,
                 annotations: [S.Transaction.addToHistory.of(false)]
             });
+        };
+        // Formats the whole text (_formatText). Only the part that differs is
+        // replaced, in one change through the lock filter: one undo step that
+        // onChange hears like typing. The cursor stays before the same
+        // non-blank character. False when the language has no formatter, the
+        // editor is read-only or a lock covers the part that would change.
+        inst.format = function () {
+            if (view.state.readOnly) return false;
+            var text = view.state.doc.toString();
+            var out = _formatText(cm, lang, text, view.state.facet(L.indentUnit));
+            if (out === null) return false;
+            if (out === text) return true;
+            var from = 0, toA = text.length, toB = out.length;
+            while (from < toA && from < toB && text.charCodeAt(from) === out.charCodeAt(from)) from++;
+            while (toA > from && toB > from && text.charCodeAt(toA - 1) === out.charCodeAt(toB - 1)) { toA--; toB--; }
+            if (!inst.canEdit(from, toA)) return false;
+            var head = view.state.selection.main.head, seen = 0, at = 0;
+            for (var i = 0; i < head; i++) if (!/\s/.test(text.charAt(i))) seen++;
+            while (at < out.length && (seen > 0 || /\s/.test(out.charAt(at)))) { if (!/\s/.test(out.charAt(at))) seen--; at++; }
+            var refused = inst._refused;
+            view.dispatch({
+                changes: { from: from, to: toA, insert: out.slice(from, toB) },
+                selection: { anchor: Math.min(at, out.length) },
+                userEvent: 'input.format',
+                scrollIntoView: true
+            });
+            return inst._refused === refused;
         };
         // The engine's syntax tree of the whole document (parsed to the end
         // when it is not yet), for callers that read the structure back.
