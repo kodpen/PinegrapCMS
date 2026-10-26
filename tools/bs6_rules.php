@@ -209,6 +209,26 @@ function bs6_map_plain_token($token)
 		return array('tokens' => $renames[$token], 'review' => null);
 	}
 
+	// Light and dark have no theme in v6: the nearest neutral keeps the look
+	// (v5's light is a pale grey surface, its dark a near-black one, in both
+	// colour modes).
+	$light_dark = array(
+		'text-dark' => array('fg-black'),
+		'text-light' => array('fg-white'),
+		'bg-light' => array('bg-1'),
+		'bg-dark' => array('bg-black'),
+		'text-bg-light' => array('bg-1', 'fg-body'),
+		'text-bg-dark' => array('bg-black', 'fg-white'),
+		'alert-light' => array('theme-secondary'),
+		'btn-light' => array('btn-subtle', 'theme-secondary'),
+		'btn-dark' => array('btn-solid', 'theme-inverse'),
+		'border-dark' => array('border-inverse'),
+	);
+
+	if (isset($light_dark[$token])) {
+		return array('tokens' => $light_dark[$token], 'review' => null);
+	}
+
 	if (preg_match('/^text-bg-(' . $colours . ')$/', $token, $m)) {
 		return array('tokens' => array('bg-' . $m[1], 'fg-contrast-' . $m[1]), 'review' => null);
 	}
@@ -363,7 +383,8 @@ function bs6_is_dynamic_v5_stem($piece)
  * array of array('token', 'reason')).
  *
  * In a list holding `badge`, `bg-<colour>` and `text-bg-<colour>` become
- * `theme-<colour>` (v6 badges take the theme class).
+ * `theme-<colour>` (v6 badges take the theme class); a light badge becomes
+ * `badge-subtle theme-secondary`, a dark one `theme-inverse`.
  *
  * With $one_class_each (an argument of classList or addClass/removeClass/
  * toggleClass) a class that would become two or none is kept and reported:
@@ -421,6 +442,8 @@ function bs6_convert_class_list($value, $one_class_each = false)
 			$mapped = array('tokens' => array($part), 'review' => null);
 		} elseif ($is_badge && preg_match('/^(text-bg|bg)-(' . $colours . ')$/', $part, $m)) {
 			$mapped = array('tokens' => array('theme-' . $m[2]), 'review' => null);
+		} elseif ($is_badge && preg_match('/^(text-bg|bg)-(light|dark)$/', $part, $m)) {
+			$mapped = array('tokens' => $m[2] === 'light' ? array('badge-subtle', 'theme-secondary') : array('theme-inverse'), 'review' => null);
 		} else {
 			$mapped = bs6_map_token($part);
 		}
