@@ -156,6 +156,7 @@
         pinch: null,
         tap: null,
         panel: '',          // 'runs' while the side panel lists the runs
+        section: '',        // 'scheduled' while staff's scheduled actions are shown
         runs: { flow: 0, items: [], next: null, loading: false, error: '' }, // error: why the last load failed
         run: null,          // the run shown on the canvas (ws_flow_run_get)
         stash: null,        // what the run view put aside: the draft, selection, view, edit
@@ -406,6 +407,7 @@
         bindWindow();
 
         var asked = parseInt((/[?&]flow=([0-9]+)/.exec(window.location.search) || [])[1], 10) || 0;
+        var section = FL.scheduled && /[?&]view=scheduled(&|$)/.test(window.location.search);
 
         K.api('ws_flow_list').then(function (data) {
             state.flows = data.flows || [];
@@ -417,7 +419,9 @@
             var mine = state.flows.filter(function (flow) { return flow.mine; });
             var first = (mine[0] || state.flows[0] || {}).id || 0;
 
-            if (asked || first) {
+            if (section) {
+                showScheduled();
+            } else if (asked || first) {
                 open(asked || first, first);
             } else {
                 showNone();
@@ -500,8 +504,13 @@
         ui.outlineBox = el('div', 'wsf-outline d-none');
         ui.outlineBox.setAttribute('role', 'region');
         ui.outlineBox.setAttribute('aria-label', t('fl_outline'));
+        // Staff's scheduled actions, in place of the canvas.
+        ui.scheduled = el('div', 'ws-pane ws-sa-view h-100 d-none');
+        ui.scheduled.setAttribute('role', 'region');
+        ui.scheduled.setAttribute('aria-label', t('sa_title'));
         ui.main.appendChild(ui.stage);
         ui.main.appendChild(ui.outlineBox);
+        ui.main.appendChild(ui.scheduled);
 
         ui.app.appendChild(ui.listCol);
         ui.app.appendChild(ui.main);
@@ -573,6 +582,31 @@
 
             ui.listCol.appendChild(list);
         });
+
+        // Staff's scheduled actions: one entry, the section it opens.
+        if (FL.scheduled) {
+            var item = el('li');
+            var link = el('button', 'wsf-list-item' + ((state.section === 'scheduled') ? ' active' : ''));
+            var list = el('ul', 'list-unstyled mb-3 pt-2 border-top');
+
+            link.type = 'button';
+            link.appendChild(K.icon('bi-alarm'));
+            link.appendChild(el('span', 'wsf-list-text', t('sa_title')));
+            link.setAttribute('data-refocus', 'scheduled');
+
+            if (state.section === 'scheduled') {
+                link.setAttribute('aria-current', 'true');
+            }
+
+            link.addEventListener('click', function () {
+                ui.app.classList.remove('wsf-show-list');
+                state.refocus = 'scheduled';
+                showScheduled();
+            });
+            item.appendChild(link);
+            list.appendChild(item);
+            ui.listCol.appendChild(list);
+        }
     }
 
     function statusBadge(flow, small) {
@@ -627,6 +661,8 @@
             // An address that cannot be changed changes nothing else.
         }
 
+        state.section = '';
+        ui.scheduled.classList.add('d-none');
         ui.problemBox.classList.add('d-none');
         ui.app.classList.add('wsf-nothing');
         K.clear(ui.side);
@@ -653,6 +689,38 @@
 
             return K.ask(t('fl_leave_ask'), t('fl_leave'), true);
         });
+    }
+
+    // The Scheduled actions section: the scheduled screen's list, cards and
+    // form (scheduledList() in workspace.js), New in the toolbar's first slot.
+    function showScheduled() {
+        leaveFlow().then(function (go) {
+            if (!go) {
+                refocus();
+                return;
+            }
+
+            window.clearTimeout(state.saveTimer);
+            showNone();
+            state.section = 'scheduled';
+
+            try {
+                window.history.replaceState(null, '', window.location.pathname + '?view=scheduled');
+            } catch (error) {
+                // An address that cannot be changed leaves the section open all the same.
+            }
+
+            K.clear(ui.bar);
+            K.clear(ui.scheduled);
+            ui.empty.classList.add('d-none');
+            ui.stage.classList.add('d-none');
+            ui.scheduled.classList.remove('d-none');
+            ui.scheduled.appendChild(el('h2', 'h5 mb-3', t('sa_title')));
+            K.scheduledList(ui.scheduled, ui.bar);
+            listToggle();
+            drawList();
+            refocus();
+        }).catch(K.fail);
     }
 
     // fallback: the flow opened instead when this one cannot be.
@@ -709,6 +777,8 @@
         state.dirty = false;
         state.saveError = '';
         state.conflict = '';
+        state.section = '';
+        ui.scheduled.classList.add('d-none');
         ui.app.classList.remove('wsf-nothing');
         ui.app.classList.toggle('wsf-readonly', !state.edit);
         ui.conflictBox.classList.add('d-none');
@@ -2034,10 +2104,9 @@
         var dialog = document.getElementById('ws-ask');
 
         if (dialog) {
-            dialog.addEventListener('shown.bs.modal', function shown() {
-                dialog.removeEventListener('shown.bs.modal', shown);
+            pgUI.dialog.on(dialog, 'shown', function () {
                 pick.focus();
-            });
+            }, { once: true });
         }
     }
 
@@ -2396,7 +2465,7 @@
         modal.appendChild(dialog);
         document.body.appendChild(modal);
 
-        modal.addEventListener('hidden.bs.modal', function () {
+        pgUI.dialog.on(modal, 'hidden', function () {
             state.share = null;
             state.refocus = 'more';
             refocus();
@@ -2426,7 +2495,7 @@
             state.share = { flow: flow, data: data, busy: false };
             modal.querySelector('.modal-title').textContent = t('fl_share_title', flow.name);
             drawShares();
-            bootstrap.Modal.getOrCreateInstance(modal).show();
+            pgUI.dialog.show(modal);
         }).catch(K.fail);
     }
 

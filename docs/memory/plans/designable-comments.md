@@ -1,40 +1,28 @@
 ---
 name: designable-comments
-description: Plan (1-19 and 3b done; 20 deferred): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
+description: Plan (1-19 and 3b done; 20 open, waits for the owner): comments as a designable system widget kind; what slice 20 (product and event threads) needs and where to start
 ---
 
 ## What did the owner decide (2026-10-23)?
 - Comments become a general system widget kind `comments`, drawn from the designer like form_item_view; no forum-only widget or table. Contract: [[designable-comments-contract]].
 - The layout and display options live in the widget row (shared on purpose); the comments and every policy setting stay per page (page columns, `allow_new_comments_for_items`). One widget on many pages shows each page's own thread.
 - A general "Make a copy for this page" button for every widget kind with other placements.
-- A member's new comment on a designed page is stored under the contact's display name (7r); old comments keep their stored name.
+- A member's new comment on a designed page is stored under the contact's display name; old comments keep their stored name.
 - `comments.parent_id` plus indexes `(parent_id)` and `(page_id, item_type, item_id, created_timestamp)` in one 2026.11.0 sub-step (approved under rule 5).
 - Narrow extraction: only the rule functions of the legacy block move to `includes/fn/comments.php`; its HTML builder is untouched and checked byte for byte.
 - Per-product and per-event threads in the widget are deferred until after the forum template (slice 20, own decision).
-- Featured comments: new `featured: 'first'` (pinned on top, others shown) is the default of a new widget; `'filter'` keeps today's behaviour for converted pages.
+- Featured comments: `featured: 'first'` (pinned on top, others shown) is the default of a new widget; `'filter'` keeps today's behaviour for converted pages.
 
-## What are the slices? (one PR each, in order)
-1. Refuse forged threads on designed record pages: `pg_comment_thread_verify()` in new `includes/fn/comments.php`, `add_comment.php`. Done (#1461).
-2. Verify product and calendar_event ids on classic pages (same helper). Done (#1498).
-3. 7t: edit_comment.php, job.php and the API refresh `submitted_form_info` and mail the submitter on designed record pages. Done (#1475).
-3b. One-time data step (owner, 2026-10-23): recount `submitted_form_info` for every (page, record) on designed record pages, no schema. Done (#1525).
-4. 7r: member display name (`pg_comment_member_name()`), add_comment.php and the prefill. Done (#1490).
-5. Schema: `comments.parent_id` and the two indexes. Done (#1467).
-6. add_comment.php accepts replies (`pg_comment_parent_ok()`, `?reply_to=`), API `parent_id`. Done (#1525).
-7. Shared rule helpers for the legacy block (settings, allow-new, viewer, rows, `pg_comments_thread_order()`). Done (#1550).
-8. `page_id` in `pg_sw_render_context()`; `pg_comments_widget_drawn()` hand-off so the legacy pass skips a page the widget drew. Done (#1558).
-9. "Make a copy for this page" button (style_designer.js). Done (#1472).
-10. Read-only Comments widget: renderer `includes/fn/widgets_comments.php`, SW_TYPES, tokens, flags, default layout in three places. Done (#1558).
-11. The add-comment form in the widget (bindings, CAPTCHA, rating, publish section, frontend twins). Done (#1558).
-12. Replies and quotes (layout flat/threaded, `max_depth`). Done (#1567).
-13. Watch box and staff controls. Done (#1567).
-14. Pagination (`?comments_page`) and permalinks (`?comment=<id>`). Done (#1567).
-15. Designer panel: page comment settings shown on the widget, shared Display section. Done (#1618).
-16. Page columns the designer cannot set yet (attachments, choose a name, intro and closed messages, watchers managed by submitter); template keys. Done (#1618).
-17. Canvas samples and Preview. Done (#1618).
-18. "Make designable" / "Back to the fixed block", save warnings, templates may ship the kind. The forum template ([[design-template-forum]]) needs 1-18. Done (#1618).
-19. Designable comment e-mails (after 18). Done (#1620).
-20. Deferred: product and event threads in the widget.
+## What is done?
+- Slices 1-19 and 3b, one PR each (#1461-#1620): thread checks on designed and classic pages, counters and submitter mail on moderation, member names, `parent_id` and replies, the shared rule helpers, the widget (read, form, replies and quotes, watch and staff controls, pages and permalinks), its panel, canvas and Preview, Make designable and back, save warnings, template kinds, comment e-mails. The recent mode followed (#1619, #1638, #1679), and the forum template uses the widget since 1.1.0 (#1658). Topic files: [[comments-widget]] and the `comments-widget-*` files in designer/.
+
+## What is left?
+- 20. Product and event threads in the widget. Today `pg_comments_widget_classic_thread()` leaves a `catalog` (product_group), `catalog detail` (product, product_group) or `calendar event view` (calendar_event) page without a top-level record view to the classic block, which picks the item in the address (`pg_comment_classic_item_types()`, [[comments-widget-hand-off]]).
+- It needs: the thread key from the address as the classic block reads it (product or group id, event id and recurrence); `pg_comment_thread_verify()` already checks those ids (slice 2); the review rules of a product thread (verified purchase, store reply, rating recount `pg_review_comment_changed()`: `commerce/product-reviews-verified.md`, `product-review-store-reply.md`); tokens and flags for them, the canvas samples and the panel; the search index's per-event comments; then `pg_comments_widget_classic_thread()` hands those pages to the widget, and Make designable offers them.
+- Size: more than one PR; cut it into steps of about 1,000 product lines when the owner says go.
+
+## Open question for the owner
+- Build slice 20, or drop it and keep the classic block on product and event pages? If dropped: move the decisions above to designer/ (with that answer) and delete this plan.
 
 ## Where to start?
-- Nothing open: slices 1-19 are merged (#1461-#1620). Slice 20 (product and event threads) waits for the owner; the forum template is on the widget since 1.1.0 (#1658). When 20 is dropped or built, move the lasting decisions to designer/ and delete this plan.
+- Ask the owner the question above first. If it is a go: read [[comments-widget-hand-off]] and [[designable-comments-contract]], then write the steps of slice 20 into this file before the first draft PR.

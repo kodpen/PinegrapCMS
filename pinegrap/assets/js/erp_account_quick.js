@@ -137,7 +137,7 @@
     function open(trigger) {
         var selector = trigger.getAttribute('data-target') || '';
         var select = selector ? document.querySelector(selector) : null;
-        if (!select || select.tagName !== 'SELECT' || !window.bootstrap || !window.fetch || !window.FormData) {
+        if (!select || select.tagName !== 'SELECT' || !window.pgUI || !window.fetch || !window.FormData) {
             return false;
         }
         target = select;
@@ -148,7 +148,7 @@
         form.elements.kind.value = kind;
         // A supplier is usually a firm; a person is the usual buyer.
         form.querySelector('input[name="is_person"][value="' + (kind === 'supplier' ? '0' : '1') + '"]').checked = true;
-        bootstrap.Modal.getOrCreateInstance(modal).show();
+        pgUI.dialog.show(modal);
         return true;
     }
 
@@ -165,7 +165,7 @@
         }
     }, true);
 
-    modal.addEventListener('shown.bs.modal', function () {
+    pgUI.dialog.on(modal, 'shown', function () {
         form.elements.title.focus();
     });
 
@@ -237,7 +237,7 @@
 
                 if (answer.ok) {
                     pick(answer);
-                    bootstrap.Modal.getOrCreateInstance(modal).hide();
+                    pgUI.dialog.hide(modal);
                     if (typeof window.pgToast === 'function' && answer.message) {
                         window.pgToast({ message: answer.message, variant: 'success' });
                     }

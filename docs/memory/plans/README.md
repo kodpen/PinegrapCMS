@@ -15,7 +15,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
-- bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a (#1643), B0b (#1654), B1a (#1670), B2a (#1677) done, B1b and B2b-B12 open; claim as [plan:bootstrap-6-panel] B<n>
+- bootstrap-6-panel-done.md: Finished steps of the Bootstrap 6 panel plan with their PRs and topic files; the open steps are in bootstrap-6-panel-steps.md
+- bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
 - bootstrap-6-redesign.md: Steps B10-B12 of plans/bootstrap-6-panel.md: token tuning, the redesign of legacy form screens and tables, jQuery UI out of the panel; decisions and open points
 - bootstrap-6-switch.md: Step B8 of plans/bootstrap-6-panel.md: rehearsal, hand fixes, the owner's check, merge and the bs6-switch tag, open PRs after it, memory rewritten with it
@@ -23,7 +24,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
-- designable-comments.md: Plan (1-19 and 3b done; 20 deferred): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
+- designable-comments.md: Plan (1-19 and 3b done; 20 open, waits for the owner): comments as a designable system widget kind; what slice 20 (product and event threads) needs and where to start
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
 - designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
@@ -45,7 +46,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex and Keep import, note revision and delete done; N3c sources, HTML reader, later Notion/OneNote; slices, open questions
 - passkeys.md: Plan (approved 2026-10-19; steps 1-3 done, 3b and 4 left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
-- payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873; 2b, 3b open): payment drivers beside submit_order.php; iyzico and Stripe on it, PayTR, PayPal v2 next
+- payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 5 done; 3b, 4a-4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, 8.1-8.5 deprecations, dead remnants; done: items 3 (#972), 4 (#1039), CSV $escape (#1450), imagedestroy (#1669)
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows, retention done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), retention
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1-3 done: #738, #813, #905, #1383, #938; step 4 in #1706): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
@@ -65,26 +66,26 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - system-widget-missing-types.md: Plan (2026-10-19, not started): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
-- widget-designability.md: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W14 part 1 #1602): legacy-layout power in system widgets by one finish pass: conditions, rows, lists, fields
+- widget-designability.md: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets by one finish pass
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, not started, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
-- workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1 (#1462) and 2 (#1523) done; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
-- workspace-canvas-workflow-tables.md: Plan (2026-10-23, not started, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+- workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1 (#1462), 2 (#1523), 3 (#1726) done; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
+- workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1 done #1708, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-catalog-create.md: Plan (2026-10-23, 1a #1603, 1b #1604, 2 #1613, answers 1 and 3 given): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 - workspace-channel-icons.md: Plan (2026-10-23, slices 1-3 done #1510, answers given): left: channel templates carry icon and colour, optional group icons
-- workspace-composer-lists.md: Step 2 of plans/workspace-composer-tools.md (lists and quotes), not started on development: an unmerged branch, its 9 open review findings, the split into 2a (server) and 2b (editor)
+- workspace-composer-lists.md: Step 2 of plans/workspace-composer-tools.md (lists and quotes): 2a server done (#1725); 2b editor open, with an unmerged reference branch and its editor findings
 - workspace-composer-tools.md: Plan (2026-10-23, 1 done #1554, 2 handed over, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, 4 #1681, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
-- workspace-flows-scheduled-merge.md: Plan (2026-10-24, slice 0 #1590, answers 1-3 given): scheduled actions move into Flows, no feature lost; one screen, a read-only graph, boxes for every part, opt-in convert
+- workspace-flows-scheduled-merge.md: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, answers 1-3 given): scheduled actions move into Flows, no feature lost; one screen, a read-only graph, boxes for every part, opt-in convert
 - workspace-flows-scheduled-parity.md: Parity rows of plans/workspace-flows-scheduled-merge.md: every scheduled-action key and rule and the slice that keeps it; the test that maps them is in workspace/workspace-flows-parity-test.md
 - workspace-flows.md: Plan (2026-10-24, F1-F2 done #1503 #1529, F3a #1551, F3b #1555, F7 #1578): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, channel colour in the header, empty-state art, motion (avatar moved to bootstrap-6-panel); no schema; slices U1-U6 and open questions
 - workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules
 - workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route
-- workspace-mcp-capabilities.md: Plan (2026-10-23, steps 1-2 done #1468, 3 #1564, 4 #1598, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route for every plan, resources and prompts, API gaps
+- workspace-mcp-capabilities.md: Plan (2026-10-23, steps 1-4 done #1468, #1564, #1598, 5 #1716, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route, resources and prompts, API gaps
 - workspace-mcp-connectors.md: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521; answers 1, 3, 4): Workspace MCP client like Claude's connectors: protocol, card fixes, catalogue, URL-only add, API
 - workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; left: command registry over the API, ERP overdue to task, designer task panel
-- workspace-quotes.md: Plan (2026-10-23, 1 done #1546, 2 done #1614, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
+- workspace-quotes.md: Plan (2026-10-23, 1 done #1546, 2 done #1614, 3 done #1705, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 - workspace-slash-commands.md: Plan (2026-10-23, 1 done #1440, 2-3 done #1499, answer 2a): fix /task (Enter on the preview, Turkish names), a command registry, Tab argument suggestions, more commands, GET /workspace/commands
-- workspace-voice-messages.md: Plan (2026-10-23, V1 done #1457, V2 done #1494, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+- workspace-voice-messages.md: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read

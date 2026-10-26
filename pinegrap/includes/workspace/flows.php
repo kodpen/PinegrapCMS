@@ -1148,6 +1148,20 @@ function ws_flow_graph_present($graph)
 }
 
 /**
+ * Are this person's scheduled actions listed in Flows (a section of the
+ * flows screen) rather than on the scheduled screen? Staff's are, once the
+ * flow tables are there; their scheduled messages stay on the scheduled
+ * screen, and so does everything without the flow tables.
+ *
+ * @param array $viewer
+ * @return bool
+ */
+function ws_flows_scheduled($viewer)
+{
+    return function_exists('ws_can_schedule') && ws_can_schedule($viewer) && ws_flows_nav_visible($viewer);
+}
+
+/**
  * Does the Workspace show Flows to this person? Staff, who build them,
  * anybody who may run the live flow of a channel they read, and anybody a
  * flow is shared with, themselves or in a channel they read.
@@ -1313,6 +1327,7 @@ function ws_flow_js_strings()
 {
     return array(
         'fl_nav'              => lang('Flows'),
+        'fl_sa_moved'         => lang('Your scheduled actions are in Flows.'),
         'fl_toolbar'          => lang('Flow tools'),
         'fl_settings'         => lang('Settings of what is selected'),
         'fl_canvas'           => lang('Canvas'),
@@ -1515,7 +1530,7 @@ function ws_flow_js_config($viewer, $mode)
         return array('nav' => false);
     }
 
-    $config = array('nav' => ws_flows_nav_visible($viewer));
+    $config = array('nav' => ws_flows_nav_visible($viewer), 'scheduled' => ws_flows_scheduled($viewer));
 
     if ($mode !== 'flows') {
         return $config;

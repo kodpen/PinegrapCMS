@@ -2,9 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for pg_http_byte_range() in includes/fn/files.php: which part of a
- * file a Range header asks for, when the whole file is sent instead, and
- * when the range lies past the end (416).
+ * Tests for includes/http_range.php: which part of a file a Range header
+ * asks for, when the whole file is sent instead, when the range lies past the
+ * end (416), what If-Range does to it and the Content-Range that goes out.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -55,4 +55,38 @@ function test_pg_http_byte_range_ignored()
 	foreach (array('', 'bytes=', 'bytes=-', 'items=0-10', 'bytes=0-10,20-30', 'bytes=200-100', 'bytes=a-b', 'bytes 0-10', 'bytes=0-10;x') as $header) {
 		pg_assert_same(null, pg_http_byte_range($header, 1000), var_export($header, true));
 	}
+}
+
+// If-Range sends the part only while the file is the one the client holds a
+// piece of: the validator it names must be one the response carries (an ETag
+// for the API, the Last-Modified date for get_file.php).
+function test_pg_http_range_answer_if_range()
+{
+	$date = 'Sun, 25 Oct 2026 10:00:00 GMT';
+
+	pg_assert_same(array(0, 99), pg_http_range_answer('bytes=0-99', '', array($date), 1000), 'no If-Range');
+	pg_assert_same(array(0, 99), pg_http_range_answer('bytes=0-99', $date, array($date), 1000), 'the same date');
+	pg_assert_same(array(0, 99), pg_http_range_answer('bytes=0-99', ' "abc" ', array('"abc"'), 1000), 'the same ETag');
+	pg_assert_same(null, pg_http_range_answer('bytes=0-99', 'Sat, 24 Oct 2026 10:00:00 GMT', array($date), 1000), 'another date: the whole file');
+	pg_assert_same(null, pg_http_range_answer('bytes=0-99', '"abc"', array($date), 1000), 'an ETag the response has none of');
+	pg_assert_same(null, pg_http_range_answer('bytes=0-99', 'W/"abc"', array('"abc"'), 1000), 'a weak ETag never matches');
+	pg_assert_same(null, pg_http_range_answer('bytes=5000-', $date . 'x', array($date), 1000), 'a changed file is sent whole, not refused');
+}
+
+// Without If-Range the answer is the Range header's own.
+function test_pg_http_range_answer_range()
+{
+	pg_assert_same(null, pg_http_range_answer('', '', array(), 1000), 'no Range');
+	pg_assert_same(array(900, 999), pg_http_range_answer('bytes=-100', '', array(), 1000), 'the last bytes');
+	pg_assert_false(pg_http_range_answer('bytes=1000-', '', array(), 1000), 'past the end');
+	pg_assert_same(null, pg_http_range_answer('bytes=0-1,5-9', '', array(), 1000), 'several ranges');
+}
+
+// The Content-Range of a part (206) and of a refused range (416).
+function test_pg_http_content_range()
+{
+	pg_assert_same('bytes 0-99/1000', pg_http_content_range(array(0, 99), 1000), 'a part');
+	pg_assert_same('bytes 999-999/1000', pg_http_content_range(array(999, 999), 1000), 'the last byte');
+	pg_assert_same('bytes */1000', pg_http_content_range(false, 1000), 'unsatisfiable');
+	pg_assert_same('bytes */0', pg_http_content_range(false, 0), 'an empty file');
 }

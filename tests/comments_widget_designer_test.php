@@ -856,7 +856,7 @@ JS;
 
 	$res = comments_widget_designer_test_node(
 		array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts',
-			'_sdCommentsCanvasFlags', '_sdCommentsModeOffBindings', '_sdCommentsEmailDrops', '_sdCommentsEmailDrawsComment', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
+			'_sdCommentsCanvasFlags', '_sdCommentsModeOffBindings', '_sdCommentsEmailDrops', '_sdCommentsEmailDrawsComment', '_sdListIsSourced', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
 		comments_widget_designer_test_canvas_script($body));
 	if ($res === null) {
 		return;

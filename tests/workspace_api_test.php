@@ -2162,6 +2162,94 @@ function test_ws_api_every_write_rehearses()
 	}
 }
 
+// The scheduled actions' routes (api_scheduled.php): staff only, all four
+// tools, pause and cancel through one rehearsed write; the panel's write
+// meets the same check.
+function test_ws_api_scheduled_actions_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$expected = array(
+		'workspace.scheduled_actions.list'   => array('GET', '/workspace/scheduled-actions', 'workspace:read', 'ws_api_scheduled_actions_list'),
+		'workspace.scheduled_actions.get'    => array('GET', '/workspace/scheduled-actions/{id}', 'workspace:read', 'ws_api_scheduled_actions_get'),
+		'workspace.scheduled_actions.pause'  => array('POST', '/workspace/scheduled-actions/{id}/pause', 'workspace:write', 'ws_api_scheduled_actions_pause'),
+		'workspace.scheduled_actions.cancel' => array('POST', '/workspace/scheduled-actions/{id}/cancel', 'workspace:write', 'ws_api_scheduled_actions_cancel'),
+	);
+
+	foreach ($expected as $id => $shape) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+
+		if (!isset($routes[$id])) {
+			continue;
+		}
+
+		pg_assert_same($shape, array($routes[$id]['method'], $routes[$id]['path'], $routes[$id]['scope'], $routes[$id]['handler']), $id . ' method, path, scope, handler');
+		pg_assert_true(pg_mcp_route_is_offered($routes[$id]), $id . ' is a tool');
+		pg_assert_contains('ws_api_scheduled_viewer()', ws_api_test_handler_source($routes[$id]['handler']) . ws_api_test_handler_source('ws_api_scheduled_actions_set_status'), $id . ' is for staff only');
+	}
+
+	pg_assert_same('ws_api_scheduled_action_schema', ws_openapi_objects()['WorkspaceScheduledAction'] ?? null, 'the object is declared');
+	pg_assert_contains('ws_can_schedule($viewer)', ws_api_test_handler_source('ws_api_scheduled_viewer'), 'staff are told apart by ws_can_schedule()');
+
+	foreach (array('ws_api_scheduled_actions_pause' => "'paused'", 'ws_api_scheduled_actions_cancel' => "'cancelled'") as $handler => $to) {
+		pg_assert_contains('ws_api_scheduled_actions_set_status($params, ' . $to . ')', ws_api_test_handler_source($handler), $handler . ' sets ' . $to);
+	}
+
+	// Never a scheduled message nor a flow's anchor row.
+	$one = ws_api_test_handler_source('ws_api_scheduled_action_or_404');
+
+	pg_assert_contains('ws_scheduled_action(', $one, 'only the action kind is reached');
+	pg_assert_contains('ws_api_scheduled_is_flow_anchor(', $one, 'a flow\'s row is a 404');
+	pg_assert_true(ws_api_scheduled_is_flow_anchor(array('flow_id' => '7')), 'flow_id set is an anchor');
+	pg_assert_false(ws_api_scheduled_is_flow_anchor(array('flow_id' => '0')), 'flow_id 0 is an action');
+	pg_assert_false(ws_api_scheduled_is_flow_anchor(array()), 'no flow_id column is an action');
+
+	$list = ws_api_test_handler_source('ws_api_scheduled_actions_list');
+
+	pg_assert_contains('ws_scheduled_actions_only()', $list, 'the listing leaves scheduled messages out');
+	pg_assert_contains('flow_id = 0', $list, 'the listing leaves flow anchors out');
+
+	// The panel's pause, resume and cancel run the same check.
+	$panel = ws_api_test_handler_source('ws_scheduled_set_status');
+
+	pg_assert_true(strpos($panel, 'ws_scheduled_set_status_check(') < strpos($panel, 'UPDATE ws_scheduled_actions'), 'the panel checks before it writes');
+}
+
+// The channels an action names, and its sentences given only when the
+// caller reads every one of them.
+function test_ws_api_scheduled_channel_ids()
+{
+	$row = array(
+		'channel_id' => 4,
+		'rules'      => array(array('type' => 'join', 'channel_id' => 9), array('type' => 'workday'), 'junk'),
+		'action'     => array('type' => 'post', 'channel_id' => -1, 'body' => 'Hi'),
+		'follow'     => array(array('on' => 'done', 'do' => array('type' => 'post', 'channel_id' => 12)), array('on' => 'failed', 'do' => array('type' => 'trigger', 'target_id' => 3)), array('on' => 'done', 'do' => array('type' => 'post', 'channel_id' => 4))),
+	);
+
+	pg_assert_same(array(4, 9, 12), ws_api_scheduled_channel_ids($row), 'home, rule and follow-up channels, once, the joined channel left out');
+	pg_assert_same(array(), ws_api_scheduled_channel_ids(array('channel_id' => 0, 'rules' => array(), 'action' => null, 'follow' => array())), 'none');
+
+	pg_assert_true(ws_api_scheduled_texts_given(array(4, 9), array(4 => true, 9 => true)), 'all read');
+	pg_assert_false(ws_api_scheduled_texts_given(array(4, 9), array(4 => true, 9 => false)), 'one not read');
+	pg_assert_false(ws_api_scheduled_texts_given(array(4, 9), array(4 => true)), 'one not looked at');
+	pg_assert_true(ws_api_scheduled_texts_given(array(), array()), 'no channel named');
+
+	$present = ws_api_test_handler_source('ws_api_scheduled_action_present');
+
+	pg_assert_contains('ws_api_scheduled_channel_open(', $present, 'each channel is looked at');
+	pg_assert_contains('ws_can_read_channel(', ws_api_test_handler_source('ws_api_scheduled_channel_open'), 'by the owner\'s reach');
+	pg_assert_contains('ws_claude_channel_allowed(', ws_api_test_handler_source('ws_api_scheduled_channel_open'), 'and Claude\'s');
+	pg_assert_same(array_keys(ws_api_scheduled_action_schema()), array_keys(array(
+		'id' => 1, 'name' => 1, 'status' => 1, 'next_run_at' => 1, 'repeats' => 1, 'on_event' => 1, 'joins' => 1, 'trigger_only' => 1, 'texts_withheld' => 1,
+		'when' => 1, 'conditions' => 1, 'action_type' => 1, 'action_text' => 1, 'follow' => 1, 'starters' => 1, 'channel_id' => 1, 'channel_name' => 1,
+		'message_id' => 1, 'run_count' => 1, 'last_run' => 1, 'can_change' => 1, 'created_by' => 1, 'created_at' => 1, 'updated_at' => 1, 'history' => 1,
+	)), 'the schema names the fields');
+}
+
 // A rehearsal meets the panel's own checks and stops before the panel's
 // write: the *_check() function first, then the stop, then the write.
 function test_ws_api_rehearsal_stops_before_the_write()
@@ -2187,6 +2275,7 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
 		'ws_api_flow_runs_start'      => array('ws_flow_run_start_check(', 'api_dry_run_stop(', 'ws_flow_run_start('),
 		'ws_api_flow_runs_cancel'     => array('ws_flow_run_cancel_check(', 'api_dry_run_stop(', 'ws_flow_run_cancel('),
+		'ws_api_scheduled_actions_set_status' => array('ws_api_scheduled_viewer(', 'ws_api_scheduled_action_or_404(', 'ws_scheduled_set_status_check(', 'api_dry_run_stop(', 'ws_scheduled_set_status('),
 		'ws_api_flow_shares_set'      => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_set_check(', 'api_dry_run_stop(', 'ws_flow_share_set('),
 		'ws_api_flow_shares_delete'   => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_remove_check(', 'api_dry_run_stop(', 'ws_flow_share_remove('),
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),

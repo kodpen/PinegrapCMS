@@ -214,7 +214,7 @@ if (!defined('PG_INIT_LOADED')) {
         // label lives in the popover instance once the page has loaded.
         function relabel(btn, text) {
             btn.attr('title', text).attr('data-bs-original-title', text);
-            var popover = window.bootstrap && bootstrap.Popover ? bootstrap.Popover.getInstance(btn[0]) : null;
+            var popover = window.pgUI ? pgUI.popover.find(btn[0]) : null;
             if (popover) {
                 popover.hide();
                 popover.setContent({ '.popover-header': text });

@@ -979,7 +979,7 @@ function ws_poll_close($viewer, $poll)
     }
 
     $asker = ws_viewer((array) pg_load_user_row((int) $poll['created_by']));
-    $question = ws_plain_text($asker, (string) db_value("SELECT body FROM ws_messages WHERE id = '" . (int) $poll['message_id'] . "'"));
+    $question = ws_plain_line($asker, (string) db_value("SELECT body FROM ws_messages WHERE id = '" . (int) $poll['message_id'] . "'"));
     $result_id = 0;
 
     if (count($winners) === 1) {

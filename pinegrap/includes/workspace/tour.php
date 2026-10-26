@@ -148,8 +148,18 @@ function ws_tour_steps($viewer)
         'text'      => lang('Mentions, tasks given to you, notes shared with you and the answers to your questions wait here until you have read them.'),
     );
 
-    // Staff only, and only where the list shows them.
-    if (function_exists('ws_can_schedule') && ws_can_schedule($viewer)) {
+    // Staff only, and only where the list shows them: the Flows entry once
+    // Flows lists their scheduled actions (ws_flows_scheduled()).
+    if (function_exists('ws_flows_scheduled') && ws_flows_scheduled($viewer)) {
+        $steps[] = array(
+            'art'       => 'scheduled',
+            'target'    => array('#ws-root [data-ws-nav="flows"]'),
+            'placement' => 'right',
+            'optional'  => true,
+            'title'     => lang('Flows'),
+            'text'      => lang('Processes drawn as boxes and arrows, and the scheduled actions: work the workspace does by itself at the times you set, a reminder, a summary, a task, a webhook, one after another if need be.'),
+        );
+    } elseif (function_exists('ws_can_schedule') && ws_can_schedule($viewer)) {
         $steps[] = array(
             'art'       => 'scheduled',
             'target'    => array('#ws-root [data-ws-nav="scheduled"]'),

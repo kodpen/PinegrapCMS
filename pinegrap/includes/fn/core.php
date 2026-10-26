@@ -2675,6 +2675,23 @@ function get_time_picker_format()
     timeFormat:  "h:mm TT"};</script>';
 }
 
+// The <script> tag of assets/js/pg_fields.js, which draws the panel's
+// data-pg-chips, data-pg-combobox, data-pg-date, data-pg-datetime and
+// data-pg-time fields; empty after the first call of a request, so every
+// part of a screen can ask for it.
+function pg_fields_script()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '"></script>';
+}
+
 
 // Used to find all custom formats in a theme.
 // This deals with <custom_formats>, <add_custom_formats>, and <remove_custom_formats>.
@@ -4786,4 +4803,37 @@ function pg_hosted() {
 // schedule. It is a hosted site as well, and it sends no e-mail.
 function pg_demo() {
     return defined('PG_DEMO') && (PG_DEMO === true);
+}
+
+// Makes a key with openssl_pkey_new(). OpenSSL reads a configuration file
+// before it makes a key, and on a server where none is installed (Windows
+// unless someone put one there, or a host whose OPENSSL_CONF points at a path
+// that has since gone) the call fails with "configuration file routines: no
+// such file" whatever the arguments. The file shipped in includes/ is the
+// fallback, so the second attempt is worth making before giving up. Returns
+// the key and the arguments that made it, to be passed on to
+// openssl_pkey_export(), which reads the same file; false when no key could
+// be made.
+function pg_openssl_key_new($arguments)
+{
+    if (!function_exists('openssl_pkey_new')) {
+        return false;
+    }
+
+    $key = @openssl_pkey_new($arguments);
+
+    if (!$key) {
+        $configuration = PG_FUNCTIONS_DIR . '/includes/openssl.cnf';
+
+        if (file_exists($configuration)) {
+            $arguments['config'] = $configuration;
+            $key = @openssl_pkey_new($arguments);
+        }
+    }
+
+    if (!$key) {
+        return false;
+    }
+
+    return array('key' => $key, 'arguments' => $arguments);
 }

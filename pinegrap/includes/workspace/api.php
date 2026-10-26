@@ -45,6 +45,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_scheduled.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -167,6 +168,7 @@ function ws_openapi_objects()
         'WorkspaceApproval'       => 'ws_api_approval_schema',
         'WorkspaceThread'           => 'ws_api_thread_schema',
         'WorkspaceScheduledMessage' => 'ws_api_scheduled_message_schema',
+        'WorkspaceScheduledAction'  => 'ws_api_scheduled_action_schema',
         'WorkspaceNoteVersion'      => 'ws_api_note_version_schema',
         'WorkspacePlanItem'         => 'ws_api_plan_item_schema',
         'WorkspaceSearchHit'        => 'ws_api_search_hit_schema',
@@ -1168,7 +1170,7 @@ function ws_api_routes()
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('pending', 'applying', 'applied', 'dismissed', 'stale', 'failed')),
                 array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
                 array('name' => 'task_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the changes proposed on this task.'),
-                array('name' => 'type', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A kind of record: product, stock, order, contact, erp_account, product_group, channel, user, page, form, file, offer, calendar_event, task, task_note or note, of the ones this site runs; or mcp_call for the calls of MCP server tools.'),
+                array('name' => 'type', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A kind of record: product, stock, order, contact, erp_account, erp_quote, product_group, channel, user, page, form, file, offer, calendar_event, task, task_note or note, of the ones this site runs; or mcp_call for the calls of MCP server tools.'),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
             ),
@@ -2085,7 +2087,8 @@ function ws_api_routes()
 
     );
 
-    // Asking Claude in a channel (api_claude.php), and the changes an
-    // application proposes (api_proposals.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes());
+    // Asking Claude in a channel (api_claude.php), the changes an
+    // application proposes (api_proposals.php) and the scheduled actions
+    // (api_scheduled.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_scheduled_api_routes());
 }

@@ -4,8 +4,8 @@ description: System widget data flow via _bindings.* (text, src, href, action, e
 ---
 
 ## What is the rule for data flow in system widgets?
-- ALL data flow and functions in system widgets go through data binding. No magic CSS classes.
-- The designer picks an element's binding in the right panel (text, src, href, action, eo_field, section, value); the backend processes the element by it.
+- ALL data flow and functions in system widgets go through data binding. No magic CSS classes. A value in any other attribute: [[widget-attr-bindings]].
+- The designer picks an element's binding in the right panel (text, src, href, action, eo_field, section, value); the backend acts on it.
 
 ## Which binding types exist?
 | Binding | Element | Effect |
@@ -34,7 +34,7 @@ description: System widget data flow via _bindings.* (text, src, href, action, e
 - `wishlist_remove` / `wishlist_add_to_cart` (wishlist loop button): a submit button for a hidden form printed after the widget (`wishlist-widget.md`).
 
 ## What happens to the URL field when href is bound?
-- Hidden via `_sdHrefIsBound()` + `_sdBoundHrefNotice()` (style_designer.js) in four panels: Link Options, Button Options, semantic `<a>`, generic component href row. Reason: server rewrites href at render, so a typed URL did nothing ("visible but non-functional" is forbidden).
+- Hidden via `_sdHrefIsBound()` + `_sdBoundHrefNotice()` (style_designer.js) in four panels: Link Options, Button Options, semantic `<a>`, generic component href row. Reason: the server rewrites href, so a typed URL did nothing.
 - Changing the binding select calls `renderProperties()` **only for `href`**: the custom token input calls `_setBinding()` on every keystroke and a re-render there would steal focus.
 
 ## How do HTML-producing tokens preview on the canvas?

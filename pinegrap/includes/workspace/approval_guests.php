@@ -286,7 +286,9 @@ function ws_approval_guest_details_html($body)
 }
 
 /**
- * The same details as plain text, for the e-mail.
+ * The same details as plain text, for the e-mail: a list's items and a
+ * quote's lines on lines of their own ("- item", "1. item", "> line"). A
+ * line break is one: nl2br() keeps its own newline after each <br>.
  *
  * @param string $body
  * @return string
@@ -299,7 +301,9 @@ function ws_approval_guest_details_text($body)
         return '';
     }
 
-    return trim(html_entity_decode(strip_tags(str_replace(array('<br>', '<br/>', '<br />'), "\n", $html)), ENT_QUOTES, 'UTF-8'));
+    $text = preg_replace('#<br\s*/?>\n?#', "\n", ws_html_blocks_text($html));
+
+    return trim(html_entity_decode(strip_tags($text), ENT_QUOTES, 'UTF-8'));
 }
 
 /**

@@ -2630,26 +2630,55 @@ function pg_sw_page_link_spec($spec)
 // spec is collected under that token, with an empty 'base' that
 // pg_sw_page_link_resolve() fills. A node with a spec under another binding
 // is left alone: the spec is kept for the editor and does nothing here.
+// A link drawn in a list inside the record (a loop_area with a source) may
+// take a value from the list's row (__value_param, __file_name): such a
+// param is marked 'row', and the list's node lists the link's token in
+// props._pgRowLinks, which its row template keeps (pg_sw_list_span()) so
+// the pass fills the address per row (pg_sw_page_link_row_value()). Only
+// the nearest list's row tokens count, as the editor offers them.
 function pg_sw_page_link_bindings(&$tree)
 {
     $links = array();
-    _pg_sw_page_link_walk($tree, $links);
+    $none  = array();
+    _pg_sw_page_link_walk($tree, $links, 0, $none, array());
     return $links;
 }
 
-function _pg_sw_page_link_walk(&$node, &$links, $depth = 0)
+function _pg_sw_page_link_walk(&$node, &$links, $depth, &$row_links, $row_tokens)
 {
     if (!is_array($node) || $depth > 80) return;
     if (isset($node['props']['_bindings']['href']) && $node['props']['_bindings']['href'] === '__page_link') {
         $token = '__page_link_' . count($links);
         $node['props']['_bindings']['href'] = $token;
         $spec = pg_sw_page_link_spec(isset($node['props']['_bindParams']['href']) ? $node['props']['_bindParams']['href'] : null);
+        $by_row = false;
+        foreach ($spec['params'] as $i => $param) {
+            if (!isset($row_tokens[$param['token']])) continue;
+            $spec['params'][$i]['row'] = true;
+            $by_row = true;
+        }
         $links[$token] = array('page_id' => $spec['page_id'], 'params' => $spec['params'], 'base' => '');
+        if ($by_row) $row_links[] = $token;
     }
-    if (!empty($node['children']) && is_array($node['children'])) {
-        foreach ($node['children'] as &$child) _pg_sw_page_link_walk($child, $links, $depth + 1);
+    if (empty($node['children']) || !is_array($node['children'])) return;
+    if (pg_sw_list_is_sourced($node)) {
+        $sources = pg_sw_list_sources();
+        $mine    = array();
+        $tokens  = array();
+        if (isset($sources[$node['props']['source']])) {
+            foreach ($sources[$node['props']['source']]['tokens'] as $pair) $tokens[$pair[0]] = true;
+        }
+        foreach ($node['children'] as &$child) _pg_sw_page_link_walk($child, $links, $depth + 1, $mine, $tokens);
         unset($child);
+        if ($mine) {
+            $node['props']['_pgRowLinks'] = $mine;
+        } else {
+            unset($node['props']['_pgRowLinks']);
+        }
+        return;
     }
+    foreach ($node['children'] as &$child) _pg_sw_page_link_walk($child, $links, $depth + 1, $row_links, $row_tokens);
+    unset($child);
 }
 
 // The tokens the links read their values from, as a lookup set, so the
@@ -2766,21 +2795,88 @@ function pg_sw_page_link_url($base, $pairs)
 // The finished token values of one record: token => the escaped address.
 // pg_sw_apply_tokens() prints the values of its $extra map as they are, so
 // the address is escaped here, once: '&' between the values becomes '&amp;'
-// and a value's own '&' is %26 before that.
+// and a value's own '&' is %26 before that. A link with a value from a list
+// row is not finished yet while a widget renders: its value is a placeholder
+// carrying the page and the record's values (pg_sw_page_link_defer()),
+// which the list fills per row.
 function pg_sw_page_link_values($links, $row, $custom, $extra_raw)
 {
     $values = array();
     foreach ((array)$links as $token => $link) {
         $base  = isset($link['base']) ? (string)$link['base'] : '';
         $pairs = array();
+        $defer = array();
         if ($base !== '' && !empty($link['params']) && is_array($link['params'])) {
             foreach ($link['params'] as $param) {
-                $pairs[$param['name']] = pg_sw_raw_token_value($param['token'], $row, $custom, $extra_raw);
+                $by_row  = !empty($param['row']);
+                $value   = $by_row ? '' : pg_sw_raw_token_value($param['token'], $row, $custom, $extra_raw);
+                $pairs[$param['name']] = $value;
+                $defer[] = array($param['name'], $by_row ? $param['token'] : '', $value);
             }
         }
-        $values[$token] = h(pg_sw_page_link_url($base, $pairs));
+        $values[$token] = ($base !== '' && pg_sw_finish_active() && pg_sw_page_link_has_row($link))
+            ? pg_sw_page_link_defer($base, $defer)
+            : h(pg_sw_page_link_url($base, $pairs));
     }
     return $values;
+}
+
+// Whether a link takes a value from a list row.
+function pg_sw_page_link_has_row($link)
+{
+    if (empty($link['params']) || !is_array($link['params'])) return false;
+    foreach ($link['params'] as $param) {
+        if (!empty($param['row'])) return true;
+    }
+    return false;
+}
+
+// The placeholder of a link whose address waits for a list row: plain
+// characters (base64 with '.', '_' and '~' for '+', '/' and '='), so it
+// passes every fill and h() unchanged, with this request's nonce, so a
+// value shaped like one is text. $pairs: array(name, row token or '', the
+// record's value) each, in the link's order.
+function pg_sw_page_link_defer($base, $pairs)
+{
+    $json = json_encode(array((string)$base, array_values($pairs)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return 'pgpl-' . pg_sw_marker_nonce() . '-' . strtr(base64_encode((string)$json), '+/=', '._~') . '-';
+}
+
+// The escaped address one placeholder opens, its row values read from $row
+// (token => raw value, as a list source gives it; null: no row, those values
+// are left out). __value_param is already address-encoded and is decoded
+// first, so it is encoded once. '' for text that is no placeholder of $nonce.
+function pg_sw_page_link_row_value($placeholder, $nonce, $row)
+{
+    $head = 'pgpl-' . $nonce . '-';
+    $placeholder = (string)$placeholder;
+    if (strncmp($placeholder, $head, strlen($head)) !== 0 || substr($placeholder, -1) !== '-') return '';
+    $json = base64_decode(strtr(substr($placeholder, strlen($head), -1), '._~', '+/='), true);
+    $data = ($json === false) ? null : json_decode($json, true);
+    if (!is_array($data) || count($data) !== 2 || !is_string($data[0]) || !is_array($data[1])) return '';
+
+    $pairs = array();
+    foreach ($data[1] as $pair) {
+        if (!is_array($pair) || count($pair) !== 3) continue;
+        $value = (string)$pair[2];
+        if ((string)$pair[1] !== '') {
+            $value = (is_array($row) && isset($row[$pair[1]])) ? (string)$row[$pair[1]] : '';
+            if ($pair[1] === '__value_param') $value = rawurldecode($value);
+        }
+        $pairs[(string)$pair[0]] = $value;
+    }
+    return h(pg_sw_page_link_url($data[0], $pairs));
+}
+
+// $html with every link placeholder of $nonce still standing (a link no list
+// row filled) as its address without the row values.
+function pg_sw_page_link_settle($html, $nonce)
+{
+    if (!is_string($html) || strpos($html, 'pgpl-' . $nonce . '-') === false) return $html;
+    $out = preg_replace_callback('/pgpl-' . preg_quote($nonce, '/') . '-[A-Za-z0-9._~]*-/', function ($m) use ($nonce) {
+        return pg_sw_page_link_row_value($m[0], $nonce, null);
+    }, $html);
+    return ($out === null) ? $html : $out;
 }
 
 // A widget tree with the links' unpublished pages ('tab:<key>' in
@@ -7134,12 +7230,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 '__item_form_data_html'    => (string)$item['form_data_html'],
                 '__item_gift_card_html'    => (string)$item['gift_card_html'],
             );
-            $row_html = $loop_template;
-            $rkeys = array_keys($row_values);
-            usort($rkeys, function ($a, $b) { return strlen($b) - strlen($a); });
-            foreach ($rkeys as $k) {
-                $row_html = str_replace('^^' . $k . '^^', $row_values[$k], $row_html);
-            }
+            $row_html = pg_sw_fill_longest($loop_template, $row_values);
             $row_html = pg_sw_sweep_tokens($row_html);
 
             // Auto-append the read-only form / gift-card blocks when the row
@@ -7314,23 +7405,20 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__legal_contract_url'      => h($legal_urls['contract']),
         '__withdrawal_deadline'     => h($withdrawal_date),
     );
+    // The dates a format can read (^^__order_date^^%%d.m.Y H:i%%).
+    $_ov_typed = _pg_sw_order_view_dates(
+        $order_date_ts,
+        isset($ship_to['arrival_date']) ? $ship_to['arrival_date'] : '',
+        is_array($withdrawal) ? $withdrawal['deadline'] : ''
+    );
 
     if ($static_html === '') {
         // No loop_area — replace tokens in the single rendered template
-        $rendered = $loop_template;
-        $skeys = array_keys($static_values);
-        usort($skeys, function ($a, $b) { return strlen($b) - strlen($a); });
-        foreach ($skeys as $k) {
-            $rendered = str_replace('^^' . $k . '^^', $static_values[$k], $rendered);
-        }
+        $rendered = pg_sw_fill_longest($loop_template, $static_values, $_ov_typed);
         return pg_sw_sweep_tokens($rendered) . $_ov_returns_tail . $legal_block;
     }
 
-    $skeys = array_keys($static_values);
-    usort($skeys, function ($a, $b) { return strlen($b) - strlen($a); });
-    foreach ($skeys as $k) {
-        $static_html = str_replace('^^' . $k . '^^', $static_values[$k], $static_html);
-    }
+    $static_html = pg_sw_fill_longest($static_html, $static_values, $_ov_typed);
     $static_html = pg_sw_sweep_tokens($static_html);
 
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $_ov_returns_tail . $legal_block;
@@ -7872,6 +7960,25 @@ function _pg_sw_calendar_event_times($start_ts, $end_ts = null, $all_day = false
         $times['__event_end_date'] = array('type' => $type, 'data' => date($layout, $end_ts));
     }
     return $times;
+}
+
+// The order view's date tokens typed for a date format (pg_sw_fill_typed()):
+// the order's time (a unix time stamp) as a date and time, the planned
+// arrival and the last day of withdrawal ('Y-m-d') as dates. A date left
+// out (none, or 0000-00-00) leaves its token to the configured format.
+function _pg_sw_order_view_dates($order_ts, $arrival_date, $withdrawal_deadline)
+{
+    $dates = array();
+    if ((int)$order_ts > 0) {
+        $dates['__order_date'] = array('type' => 'date and time', 'data' => date('Y-m-d H:i:s', (int)$order_ts));
+    }
+    foreach (array('__arrival_date' => $arrival_date, '__withdrawal_deadline' => $withdrawal_deadline) as $key => $day) {
+        $day = substr(trim((string)$day), 0, 10);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) && $day !== '0000-00-00') {
+            $dates[$key] = array('type' => 'date', 'data' => $day);
+        }
+    }
+    return $dates;
 }
 
 // The month (or week) grid for section=month_grid: a Bootstrap table, one

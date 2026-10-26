@@ -21,7 +21,8 @@ description: A session from green CI to its next step: the ready label, staying 
 - The merging session fixes a small blocker on the branch itself and says so in a comment; nothing is needed from you.
 - A larger one gets one comment naming it, and the PR stays out of the train: push the fix and mark it ready again. If you have ended, a new session does it (nobody else is on the branch).
 
-## And under a coordinator?
-- A worker started by a coordinator follows the same steps; a question for the owner goes under `## Questions for the owner` in the PR body, and the answer comes back as a PR comment (`coordinator.md`).
+## What if I need the owner's answer?
+- Write the question under `## Questions for the owner` in the PR body, then turn the PR back to draft (`gh pr ready <n> --undo`; in a cloud session `mcp__github__update_pull_request` with `draft: true`) and take its `ready` label off (`gh api -X DELETE repos/kodpen/pinegrapcms/issues/<n>/labels/ready`). A PR waiting on the owner cannot go into a train, so it gives its place in the queue to work that can.
+- The answer comes back as a PR comment (from the account's coordinator, `coordinator.md`), which wakes you: finish the work, mark the PR ready again and label it once CI is green.
 
 Related: docs/memory/workflow/working-mode.md, docs/memory/workflow/merge-review.md, docs/memory/workflow/coordinator.md

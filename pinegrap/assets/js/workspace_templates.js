@@ -285,7 +285,7 @@
         clear(applyModal.querySelector('[data-ws-tpl-list]')).appendChild(list.node);
 
         var ok = applyModal.querySelector('[data-ws-tpl-ok]');
-        var modal = window.bootstrap.Modal.getOrCreateInstance(applyModal);
+        var modal = pgUI.dialog.get(applyModal);
 
         ok.textContent = t('tpl_apply_button');
         ok.disabled = false;

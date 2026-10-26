@@ -298,7 +298,7 @@ if ($status === 'paid') {
             </div>
             <div class="col-6 col-md-2">
                 <label class="form-label small mb-1" for="paid_date">' . lang('Paid on') . '</label>
-                <input type="text" class="form-control form-control-sm" id="paid_date" name="paid_date" value="' . h(prepare_form_data_for_output(date('Y-m-d'), 'date')) . '" maxlength="10" autocomplete="off" />
+                <input type="text" class="form-control form-control-sm" id="paid_date" name="paid_date" data-pg-date value="' . h(prepare_form_data_for_output(date('Y-m-d'), 'date')) . '" maxlength="10" autocomplete="off" />
             </div>
             <div class="col-12 col-md-2">
                 <button type="submit" class="btn btn-sm btn-success w-100"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . lang('Pay') . '</button>
@@ -490,7 +490,7 @@ if (erp_expense_recurring_ready()) {
                 </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label small mb-1" for="repeat_end">' . lang('Until (optional)') . '</label>
-                    <input type="text" class="form-control form-control-sm" id="repeat_end" name="repeat_end" maxlength="10" autocomplete="off" />
+                    <input type="text" class="form-control form-control-sm" id="repeat_end" name="repeat_end" data-pg-date maxlength="10" autocomplete="off" />
                 </div>
                 <div class="col-12 col-md-2">
                     <button type="submit" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Make it repeat') . '</button>
@@ -611,11 +611,7 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' . get_date_picker_format() . '
-<script>
-if (document.getElementById("paid_date")) { $("#paid_date").datepicker(datetimepicker_options); }
-if (document.getElementById("repeat_end")) { $("#repeat_end").datepicker(datetimepicker_options); }
-</script>
+' . get_date_picker_format() . pg_fields_script() . '
 ' .
 output_footer();
 

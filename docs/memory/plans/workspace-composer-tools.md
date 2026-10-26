@@ -9,7 +9,7 @@ description: Plan (2026-10-23, 1 done #1554, 2 handed over, answers open): one t
 ## What is there today?
 - One engine, `assets/js/workspace_editor.js` (`PGWsEditor`): selection bar, shortcuts, own undo, `pastePlain()`, table, checklist, code (also on ```), calc windows.
 - Slice 1 (#1554): `PGWsEditor.toolbar()` draws the rows of `composer()` (now with B/I/S, undo, redo), the notes `toolbar()` and `richField().tools()`; `format()` makes every mark on the nodes, no `execCommand` (docs/memory/workspace/workspace-editor-toolbar.md).
-- `ws_render_body()` (`includes/workspace/render.php`, escape first) draws bold, italic, strike, code, links, tables, checklists, fences, `::: Title`; headings, lists, quotes, `---`, images stay raw. `ws_plain_text()` folds lines into one; guest pages also use `ws_guest_render()`. The import (`ws_note_import_convert()`) makes headings and `==x==` bold.
+- `ws_render_body()` (`includes/workspace/render.php`, escape first) draws bold, italic, strike, code, links, tables, checklists, fences, `::: Title`; lists and quotes (workspace/workspace-text-lists.md); headings, `---`, images stay raw. `ws_plain_text()` folds lines into one; guest pages also use `ws_guest_render()`. The import (`ws_note_import_convert()`) makes headings and `==x==` bold.
 
 ## What is proposed? (not approved yet)
 - New tools: item names in `PGWsEditor.toolbar()`, then `format()` / `applyMark()`; `php tools/build_js.php`.
@@ -19,7 +19,7 @@ description: Plan (2026-10-23, 1 done #1554, 2 handed over, answers open): one t
 
 ## Slices
 1. Shared toolbar, no schema: factory, `format()`; the composer gains undo/redo and B/I/S; notes drop `execCommand`. PR #1554.
-2. Lists and quotes, no schema: `- `, `1. ` (one level, Tab, Enter continues, Shift+Enter in the composer), `> `. Two PRs, 2a server, 2b editor: plans/workspace-composer-lists.md (an unmerged branch, 9 findings).
+2. Lists and quotes, no schema: `- `, `1. ` (one level, Tab, Enter continues, Shift+Enter in the composer), `> `. Two PRs, 2a server (done, #1725), 2b editor: plans/workspace-composer-lists.md.
 3. Headings `#`-`###` and `---` after question 1, no schema; the import keeps headings.
 4. Highlight `==x==` (import keeps it; not read by `ws_calc_inline()`), autoformat (one Ctrl+Z undoes, IME guard, off switch), no schema.
 5. Link Text field, Ctrl+/ shortcut sheet, "Aa" expanded composer after question 2, no schema.
@@ -39,4 +39,4 @@ description: Plan (2026-10-23, 1 done #1554, 2 handed over, answers open): one t
 5. Dictation (Chrome sends audio to Google): (a) offer, privacy line, (b) not now → owner.
 
 ## Where to start?
-- Step 2a: plans/workspace-composer-lists.md.
+- Step 2b: plans/workspace-composer-lists.md.

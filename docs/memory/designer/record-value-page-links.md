@@ -4,12 +4,12 @@ description: A form list or detail link opening another page with the record's v
 ---
 
 ## What does it do, and where?
-- Bind Data option "Another page, with values from the record" on a link's href (content link, `<a>`, Button) in `form_list_view` (and three old names) or `form_item_view`: `/board?board=<board>`.
+- Bind Data option "Another page, with values from the record" on a link's href (content link, `<a>`, Button) in `form_list_view` (and three old names) or `form_item_view`: `/board?board=<board>`. In a list row: [[page-link-list-rows]].
 - Stored: `_bindings.href = '__page_link'`, `_bindParams.href = {page_id, params: [{name, token}]}`; `page_id`: an id, `tab:<key>` until Publish, or 0.
 
 ## How does the renderer draw it?
 - `pg_sw_page_link_bindings(&$tree)`, beside `pg_sw_record_href_bindings()`, makes each link `__page_link_<n>` (like `__link_label_<n>`) and collects `pg_sw_page_link_spec()`.
-- `pg_sw_page_link_resolve()`: one page query (static per request), `pg_sw_page_link_base()`. Runs before the list's `$stitch` (captures by value) and the detail's `$tree_designed` copy.
+- `pg_sw_page_link_resolve()`: one page query per request, `pg_sw_page_link_base()`. Before the list's `$stitch` (captures by value) and the detail's `$tree_designed` copy.
 - `pg_sw_page_link_tokens()` joins the record query's tokens, so a param's standard field is read.
 
 ## How is it escaped?
@@ -27,7 +27,7 @@ description: A form list or detail link opening another page with the record's v
 ## How is a tab: page resolved and exported?
 - Templates write `'page_id' => '{{tab:<key>}}'`; `_pg_tpl_fill()` gives `tab:<tab key>`.
 - Publish: `pg_designer_resolve_tab_refs()` also matches `tree_json LIKE '%"page_id":"tab:%'`, resolves with `pg_sw_page_link_resolve_tabs()` (only `_bindParams.*.page_id`), writes via `pg_designer_tree_encode()`.
-- Editor: `_swResolveTabRefs()` runs `_swResolveTreeTabRefs()` on `_sharedCache` trees and snapshots (swapped, never retaken).
+- Editor: `_swResolveTabRefs()` runs `_swResolveTreeTabRefs()` on `_sharedCache` trees and snapshots (swapped).
 - From a design: `_pg_dtc_tokenize_props()` writes a design page as `{{tab:<key>}}`; params untouched.
 
 ## How does the editor offer it?
@@ -35,7 +35,7 @@ description: A form list or detail link opening another page with the record's v
 - `_sdPageLinkRows()`: page by `_swPageOptions()`/`_swPageVal()`, rows of name + field (standard fields minus `_swStandardYields()`); edits `_sdPageLinkEdit()`.
 - `_swPageLinkNameWarn()`: an earlier row takes a name only if sent (field, usable name), as on the server.
 - `_swPageLinkPageGone()`: a `_pages` tab is live (`_allPagesCache` is fetched once a session).
-- `SW_PAGE_LINK_TOKEN` is in no palette (`{{` never offers it; no `check_bindings` exemption).
+- `SW_PAGE_LINK_TOKEN` is in no palette (`{{` never offers it).
 
 ## What does the code view do with the spec?
 - `_sdNodeSetBinding()` never touches `_bindParams`; the panel's `_setBinding()` seeds or drops it. A half token or a literal keeps the spec, inert; `{{__page_link}}` typed again finds it.

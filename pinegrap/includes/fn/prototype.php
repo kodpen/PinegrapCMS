@@ -1188,9 +1188,16 @@ function pg_proto_shell_html($view)
 <link rel="stylesheet" href="' . h($software) . '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css') . '">
 <link rel="stylesheet" href="' . h($software) . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . $version('/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
 <style>
+/* Token layer of this page, which does not load backend.src.css: the
+   --pg-* names its rules read, mapped to the Bootstrap variables. */
+:root, [data-bs-theme] {
+  --pg-bg-1: var(--bs-tertiary-bg);
+  --pg-bg-body: var(--bs-body-bg);
+  --pg-border-color: var(--bs-border-color);
+}
 html, body { height: 100%; }
-body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidden; background: var(--bs-tertiary-bg); }
-.pg-proto-bar { display: flex; align-items: center; gap: .5rem 1rem; flex-wrap: wrap; padding: .375rem 1rem; background: var(--bs-body-bg); border-bottom: 1px solid var(--bs-border-color); }
+body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidden; background: var(--pg-bg-1); }
+.pg-proto-bar { display: flex; align-items: center; gap: .5rem 1rem; flex-wrap: wrap; padding: .375rem 1rem; background: var(--pg-bg-body); border-bottom: 1px solid var(--pg-border-color); }
 .pg-proto-title { display: flex; align-items: center; gap: .5rem; min-width: 0; flex: 1 1 12rem; }
 .pg-proto-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pg-proto-nav { display: flex; align-items: center; gap: .375rem; flex: 0 1 auto; min-width: 0; }

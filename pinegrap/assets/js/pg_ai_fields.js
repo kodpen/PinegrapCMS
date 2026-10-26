@@ -107,12 +107,12 @@
     function hideTooltips(marker) {
         var tips = marker.querySelectorAll('[data-bs-toggle="tooltip"]');
 
-        if (!window.bootstrap || !window.bootstrap.Tooltip || (typeof window.bootstrap.Tooltip.getInstance !== 'function')) {
+        if (!window.pgUI) {
             return;
         }
 
         for (var i = 0; i < tips.length; i++) {
-            var tip = window.bootstrap.Tooltip.getInstance(tips[i]);
+            var tip = window.pgUI.tooltip.find(tips[i]);
 
             if (tip) {
                 tip.hide();

@@ -36,6 +36,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/server_config.php');
 // The image engine and its responsive derivatives. Shared with get_file.php,
 // which makes a derivative on the first request for it.
 require_once(PG_FUNCTIONS_DIR . '/includes/image_engine.php');
+// Byte ranges (206 Partial Content). Shared with get_file.php, which answers
+// a media player's Range request with them.
+require_once(PG_FUNCTIONS_DIR . '/includes/http_range.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/core.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mfa.php');
@@ -57,6 +60,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_themes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_theme_vars.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_finish.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_attrs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_fill.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');

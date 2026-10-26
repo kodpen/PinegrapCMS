@@ -93,12 +93,10 @@ if (!$_POST) {
                             <div class="col-12 col-sm-4 col-lg-3 my-2">
                                 <label for="doc_date" class="form-label">' . lang('Date') . '</label>
                                 ' . $liveform->output_field(array(
-                                    'type' => 'text', 'id' => 'doc_date', 'name' => 'doc_date',
+                                    'type' => 'text', 'id' => 'doc_date', 'data-pg-date' => '', 'name' => 'doc_date',
                                     'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                                     'autocomplete' => 'off')) . '
-                                ' . get_date_picker_format() . '
-                                <script>$("#doc_date").datepicker(datetimepicker_options);</script>
-                            </div>
+                                ' . get_date_picker_format() . pg_fields_script() . '                            </div>
                             <div class="col-12 col-lg-9 my-2">
                                 <label for="description" class="form-label">' . lang('Description') . '</label>
                                 ' . $liveform->output_field(array(

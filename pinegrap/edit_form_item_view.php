@@ -322,10 +322,8 @@ if (!$_POST) {
             var button = event.target.closest("[data-pg-insert]");
             if (!button) return;
             var text = button.getAttribute("data-pg-insert");
-            if (window.bootstrap && bootstrap.Tooltip) {
-                var tip = bootstrap.Tooltip.getInstance(button);
-                if (tip) tip.hide();
-            }
+            var tip = window.pgUI ? pgUI.tooltip.find(button) : null;
+            if (tip) tip.hide();
             var editor = window.pgCodeEditors && window.pgCodeEditors.layout;
             if (editor && typeof editor.insertAtCursor === "function") {
                 editor.insertAtCursor(text);

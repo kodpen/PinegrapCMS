@@ -1,19 +1,13 @@
 ---
 name: bootstrap-6-panel-steps
-description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a (#1643), B0b (#1654), B1a (#1670), B2a (#1677) done, B1b and B2b-B12 open; claim as [plan:bootstrap-6-panel] B<n>
+description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 ---
 
 ## Which steps run before the switch (on 5.3.8, nothing visible changes)?
-- B0a References: the four skills, `ui/bootstrap-6.md`, the plan files. Done (#1643).
-- B0b `assets/lib/bootstrap-6` holds the npm 6.0.0-alpha.1 dist (CSS, bundle and standalone JS, maps; `document.txt` names version and hashes). Done (#1654).
-- B1a Tools: `tools/bs6_rules.php`, `tools/bs6_migrate.php`, `tools/check_bs6.php` with `tests/bs6_migrate_test.php` (`ui/bootstrap-6-codemod.md`). Done (#1670).
-- B1b A screenshot script (sample records, light/dark, wide/phone; images never committed, shown on a private page the PR links), run against an instance (`tools/setup_sandbox.sh`).
-- B2a The `pgUI` adapter (`assets/js/pg_ui.js`, `ui/pg-ui-adapter.md`) with `window.pgBootstrapReady`, loaded after Bootstrap's bundle. Done (#1677).
-- B2b and on: move the calls and listeners onto pgUI area by area (cold areas first; `check_bs6.php` counts what is left), fix the 3 parse-time scripts (welcome.php, api_settings.php, erp_lists.js), read open state with `isOpen()`, add `preventDefault()` to the settings drawer's Escape handler. Leave style_designer.js to B7.
-- B3 Token layer: panel CSS reads `--pg-*` tokens, mapped to v5 variables in one block.
+- Done: B0a, B0b, B1a, B1b, B2a, B2b, B3, B5 (`bootstrap-6-panel-done.md`).
 - B4 Collisions: drop `class="menu"` from `#menu`, rename `<span class="btn-text">` and the own `.submenu`; `data-bs-display="static"` on the account and notification toggles.
-- B5 Server: `validate_time()` and `prepare_form_data_for_input()` accept 24-hour time, with tests; a JS port of `validate_password_strength()` tested against the PHP cases through node.
 - B6 Wrappers with a switchable engine (v5 engine now): `pgChips`, `pgCombobox`, `pgDatePicker`, `pgDateTimeField`; call sites move to `data-pg-*` hooks.
+  - Slice 1 (#1733): `pg_fields.js`, liveform `data-pg-*`, `pg_fields_script()`; gift cards, shipping methods, ERP screens (`ui/pg-field-wrappers.md`). Slice 2 (#1741): firewall card, `edit_page.php`, `mass_edit.php`, `view_contacts.php`. Left: `backend.src.js` generic inits, `pgInitInjected()` and the ACL expiry pickers it binds (`fn/auth.php`), `fn/content.php` pickers, the screens #1738 holds (contacts, users, products, orders, forms, calendar, menus, zones, campaigns, `view_order.php`, `product_builder.*`, `offer_editor.js`), the visual editor's keyword box (`designer_screen.php`).
 - B7 Visual editor stage 0: `/* @pg-site-output */` on the 54 site-output members of style_designer.js with a CI test, the chrome look pinned in style_designer.css, editor calls through `pgUI`.
 
 ## What happens at and after the switch?
@@ -23,4 +17,4 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 
 ## Where do I start?
 - After the claim check, take the lowest open step whose dependencies are done and that no open PR holds; independent steps run in parallel sessions, one draft PR each; a step over about 1,000 product lines goes in several PRs, one after the other (`workflow/working-mode.md`). B1-B5 are independent; B6 needs B2a; B7 needs B1a and B2a; B8 needs B1a-B7; B9 needs B8 (B9c also B5); B10 needs B9; B11 needs B10; B12 needs B9c.
-- Pre-switch PRs show their screens unchanged on the B1b screenshots once they exist; later PRs show before and after. Mark a step done here with its PR numbers.
+- Pre-switch PRs show their screens unchanged on the B1b screenshots (`ui/panel-screenshots.md`); later PRs show before and after. Mark a step done here with its PR numbers; once all its parts are done, its line moves to `bootstrap-6-panel-done.md`.

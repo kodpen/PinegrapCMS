@@ -554,16 +554,18 @@ function pg_dashboard_widget_1($request, $user)
                     });
                 });
 
-                // Popper in fixed strategy. The menu lives inside
+                // Fixed positioning strategy. The menu lives inside
                 // the map panel, and that panel is a scroll box:
                 // absolutely positioned, the menu is cut off at its
                 // edge. Fixed takes it out of that box entirely.
+                // pgUI hands the option to the loaded version
+                // (floatingConfig under Bootstrap 6).
                 var menu = document.getElementById("pg_smap_menu");
 
-                if ((menu) && (window.bootstrap) && (window.bootstrap.Dropdown)) {
+                if ((menu) && (window.pgUI)) {
 
-                    new window.bootstrap.Dropdown(menu, {
-                        popperConfig: function (config) {
+                    pgUI.menu.get(menu, {
+                        floatingConfig: function (config) {
                             config.strategy = "fixed";
                             return config;
                         }

@@ -255,7 +255,7 @@ if ((string) $statement['status'] === 'mapping') {
                     }
                 }
 
-                $action .= '<div class="mt-1">' . $post_form($hidden . '<input type="hidden" name="erp_action" value="record" /><select class="form-select form-select-sm select2" id="erp_bank_line_account_id" name="account_id" style="max-width:16rem" required aria-label="' . h(lang('Account')) . '"><option value="">' . lang('Choose an account') . '</option>' . $all_accounts . '</select>',
+                $action .= '<div class="mt-1">' . $post_form($hidden . '<input type="hidden" name="erp_action" value="record" /><select class="form-select form-select-sm" data-pg-combobox id="erp_bank_line_account_id" name="account_id" style="max-width:16rem" required aria-label="' . h(lang('Account')) . '"><option value="">' . lang('Choose an account') . '</option>' . $all_accounts . '</select>',
                     $in ? lang('Record as a collection') : lang('Record as a payment'), 'btn-primary')
                     . erp_account_quick_link('#erp_bank_line_account_id', $in ? 'customer' : 'supplier') . '</div>';
                 $output_bank_quick = erp_account_quick_modal();
@@ -332,7 +332,8 @@ pg_page_shell([
             ' . $output_body . '
         </div>
     </div>
-</main>' .
+</main>
+' . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();

@@ -343,13 +343,14 @@ function ws_scheduled_webhook_formats()
 
 /**
  * The kinds of change a scheduled action does not make: a channel's summary,
- * and the workspace's own tasks and notes, which an assistant proposes.
+ * the workspace's own tasks and notes, which an assistant proposes, and a
+ * sales quote, which is only ever added.
  *
  * @return string[]
  */
 function ws_scheduled_change_skipped()
 {
-    return array('channel', 'task', 'task_note', 'note');
+    return array('channel', 'task', 'task_note', 'note', 'erp_quote');
 }
 
 /**
@@ -365,8 +366,9 @@ function ws_scheduled_record_types()
     $out = array();
 
     foreach (ws_change_types() as $type => $info) {
-        // A task note or a note is only ever added: nothing to wait on.
-        if (in_array($type, array('channel', 'task_note', 'note'), true)) {
+        // A task note, a note or a sales quote is only ever added from here:
+        // nothing to wait on.
+        if (in_array($type, array('channel', 'task_note', 'note', 'erp_quote'), true)) {
             continue;
         }
 
@@ -2910,22 +2912,23 @@ function ws_scheduled_preview($viewer, $data)
 }
 
 /**
- * Pauses, resumes or cancels a scheduled action. A cancelled one takes its
- * waiting starts out of the queue with it.
+ * May this scheduled action be paused, resumed or cancelled now? The panel
+ * and the API meet the same refusals; next is the time it is set to run
+ * from (a resumed one from the next time it falls on from now).
  *
  * @param array  $viewer
  * @param array  $row decoded
  * @param string $to  paused | active | cancelled
- * @return array ok, error
+ * @return array ok, status (403 | 422 on a refusal), error, next
  */
-function ws_scheduled_set_status($viewer, $row, $to)
+function ws_scheduled_set_status_check($viewer, $row, $to)
 {
     if (!ws_can_schedule($viewer)) {
-        return array('ok' => false, 'error' => lang('Only staff can schedule actions.'));
+        return array('ok' => false, 'status' => 403, 'error' => lang('Only staff can schedule actions.'), 'next' => 0);
     }
 
     if (!in_array($to, array('paused', 'active', 'cancelled'), true) || in_array($row['status'], array('done', 'cancelled'), true)) {
-        return array('ok' => false, 'error' => lang('Invalid request.'));
+        return array('ok' => false, 'status' => 422, 'error' => lang('Invalid request.'), 'next' => 0);
     }
 
     $next = (int) $row['next_run_at'];
@@ -2938,9 +2941,31 @@ function ws_scheduled_set_status($viewer, $row, $to)
         $next = $rule ? ws_scheduled_next_run($rule, time()) : 0;
 
         if (($next <= 0) && !ws_scheduled_trigger_only($row)) {
-            return array('ok' => false, 'error' => lang('Its time has already gone by. Change it to run again.'));
+            return array('ok' => false, 'status' => 422, 'error' => lang('Its time has already gone by. Change it to run again.'), 'next' => 0);
         }
     }
+
+    return array('ok' => true, 'status' => 200, 'error' => '', 'next' => $next);
+}
+
+/**
+ * Pauses, resumes or cancels a scheduled action. A cancelled one takes its
+ * waiting starts out of the queue with it.
+ *
+ * @param array  $viewer
+ * @param array  $row decoded
+ * @param string $to  paused | active | cancelled
+ * @return array ok, error
+ */
+function ws_scheduled_set_status($viewer, $row, $to)
+{
+    $checked = ws_scheduled_set_status_check($viewer, $row, $to);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
+    }
+
+    $next = (int) $checked['next'];
 
     db("UPDATE ws_scheduled_actions SET status = '" . e($to) . "', next_run_at = '" . (int) $next . "',
             updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'

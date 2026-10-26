@@ -5,8 +5,8 @@ description: The code editor facade window.PgCodeEditor (assets/js/pg_code_edito
 
 ## What is the code editor and where does it live?
 - Engine: CodeMirror 6, one bundle `assets/lib/code_editor/cm6.bundle.js` (~600 KB, `window.PgCM`). Nothing calls PgCM directly; screens call the facade `assets/js/pg_code_editor.js` (`window.PgCodeEditor`), served raw.
-- The bundle is fetched the first time an editor opens (`PgCodeEditor.load()`), so a page that never opens one never downloads it. The page says where it is: `PgCodeEditor.configure({ bundle: '…/cm6.bundle.js?v=<stamp>' })` (`pg_code_editor_includes()`, `designer_screen.php`).
-- The product's only code editor (CodeMirror 5 removed in 2026.11.0): designer code view and dialog (`codemirror_modal.js`), panel fields (docs/memory/ui/panel-code-fields.md), legacy page designer, CKEditor source mode.
+- The bundle is fetched the first time an editor opens (`PgCodeEditor.load()`), so a page without one never downloads it. The page says where it is: `PgCodeEditor.configure({ bundle: '…/cm6.bundle.js?v=<stamp>' })` (`pg_code_editor_includes()`, `designer_screen.php`).
+- The product's only code editor: designer code view and dialog (`codemirror_modal.js`), panel fields (docs/memory/ui/panel-code-fields.md), legacy page designer, CKEditor source mode.
 
 ## How does a screen open an editor?
 - `PgCodeEditor.open(host, opts).then(function (ed) {})` = load + create; `PgCodeEditor.attach(textarea, opts)` takes a textarea's place and writes every edit back into it.
@@ -20,7 +20,7 @@ description: The code editor facade window.PgCodeEditor (assets/js/pg_code_edito
 - `ed.track([{ id, from, to, data, grow, cls }])`: ranges mapped through every edit; `ed.tracked(id)`, `ed.allTracked()`, `ed.trackedAt(pos)` (innermost first). `grow` as for islands, `cls` draws it. `ed.mark(id, from, to)` highlights one; the others keep `grow`/`cls` (PR #1108).
 
 ## How are features added?
-- `PgCodeEditor.addCompletionSource('html', source)`: joins every editor of that language; the source gets `(context, { tree, node })`, the syntax around the cursor, so it never touches PgCM (the designer's `_sdCodeClassCompletion()` is the pattern). `PgCodeEditor.addExtension(function (opts, cm, inst) { return ext; })`: any engine extension (Emmet, minimap, a linter) for every editor created after it.
+- `PgCodeEditor.addCompletionSource('html', source)`: joins every editor of that language; the source gets `(context, { tree, node })`, the syntax around the cursor, so it never touches PgCM (pattern: the designer's `_sdCodeClassCompletion()`; more in `code-editor-completion.md`). `PgCodeEditor.addExtension(function (opts, cm, inst) { return ext; })`: any engine extension (Emmet, minimap, a linter) for every editor created after it.
 - The VS Code keymap replaces the default keymaps, so `autocompletion({ defaultKeymap: false })` when it is on.
 
 ## How is the bundle built and checked?
