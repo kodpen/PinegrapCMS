@@ -5696,12 +5696,12 @@ function change_page_type(page_type) {
     ) {
 
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the submit button should contain the normal "Save"
     } else {
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5719,13 +5719,13 @@ function show_or_hide_billing_information_custom_billing_form() {
     if ((document.getElementById('billing_information_form').checked == true) && (original_billing_information_form != 1)) {
         document.getElementById('billing_information_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
         document.getElementById('billing_information_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5739,13 +5739,13 @@ function toggle_express_order_custom_shipping_form() {
     ) {
         document.getElementById('express_order_shipping_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
         // Otherwise the form is disabled or the form was already enabled, so do not show notice and
         // update the submit button to contain "Save"
     } else {
         document.getElementById('express_order_shipping_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5762,13 +5762,13 @@ function show_or_hide_express_order_custom_billing_form() {
     if ((document.getElementById('express_order_form').checked == true) && (original_express_order_form != 1)) {
         document.getElementById('express_order_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
         document.getElementById('express_order_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
         // we check if its checked before
         toggle_express_order_custom_shipping_form();
     }
@@ -5787,12 +5787,12 @@ function show_or_hide_custom_shipping_form() {
     if ((document.getElementById('shipping_address_and_arrival_form').checked == true) && (original_shipping_address_and_arrival_form != 1)) {
         document.getElementById('shipping_address_and_arrival_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
         document.getElementById('shipping_address_and_arrival_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
