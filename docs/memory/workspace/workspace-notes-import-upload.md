@@ -6,10 +6,10 @@ description: The notes import's upload: picked list, checks, unreadable files, X
 ## What does the person see from picking to the preview?
 - Picking or dropping only lists the files (PR #1570) (`drawPick()` in `openImport()`, workspace.js), file manager style: name, size, a count heading (over the limit, other kind, unreadable), rows that will not go dimmed with "not allowed here", "unreadable" or their size in red. "Upload" sends, "Clear" empties; a refused upload comes back to the list with its message (`role="alert"`).
 - Each file is a note: two different todo.md are two rows, the same file (name, size, time and bytes) one. `sameBytes()` compares copies of one name, size and time (unreadable: the same). A file changed on disk since fails every request (ERR_UPLOAD_FILE_CHANGED); `probe()` tells by its first byte. Only that row gives way to a new pick of its name; a failed request probes the files sent, names the unreadable, leaves them out.
-- Sending: "Uploading… 42%", the shared `progressBar()`, "1.4 MB of 6.0 MB", "Cancel upload". Last byte sent: "Reading the files…" with a striped, moving bar, then the preview. `.ws-progress` sets only `background-color`: the shorthand hid the stripes.
+- Sending: "Uploading… 42%", the shared `progressBar()`, "1.4 MB of 6.0 MB", "Cancel upload". Last byte sent: "Reading the files…" with a striped, moving bar, then the preview. `.ws-progress` sets only `background-color` (the shorthand hid the stripes).
 
 ## Why XMLHttpRequest for the upload step only?
-- fetch() reports no upload progress; the JSON steps keep `send()`. A lost connection: "The request failed. Please try again."
+- fetch() reports no upload progress; the JSON steps keep `send()`.
 - An HTML 413/404 (nginx, IIS 404.13): larger than the server takes in one request; other HTML (504): the generic text.
 - Upload events after a cancel or the answer are ignored.
 
