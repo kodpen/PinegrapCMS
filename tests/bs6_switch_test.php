@@ -138,3 +138,46 @@ function test_bs6_switch_plan_finds_every_place()
 
 	pg_assert_same(array(), $missing);
 }
+
+function test_bs6_switch_checks()
+{
+	$in = "<div class=\"form-check form-switch mb-3\">\n"
+		. "  <input class=\"form-check-input\" type=\"checkbox\" role=\"switch\" id=\"a\"' . ((\$ttl > 0) ? ' checked' : '') . '>\n"
+		. "  <label class=\"form-check-label\" for=\"a\">A</label>\n"
+		. "</div>\n"
+		. "<div class=\"form-check form-check-inline\"><input type=\"radio\" class=\"form-check-input\" id=\"b\"><label class=\"form-check-label small\" for=\"b\">B</label></div>\n"
+		. "<div class=\"form-check\"><input class=\"form-check-input\" type=\"checkbox\" id=\"c\"></div>\n";
+	$result = bs6_switch_checks($in);
+	$out = $result['source'];
+
+	pg_assert_same('applied', $result['status']);
+	pg_assert_contains("<div class=\"form-field mb-3\">\n  <div class=\"switch\"><input class=\"\" type=\"checkbox\" role=\"switch\" id=\"a\"' . ((\$ttl > 0) ? ' checked' : '') . '></div>", $out, 'switch box past the PHP comparison');
+	pg_assert_contains('<label class="" for="a">', $out);
+	pg_assert_contains('<div class="form-field d-inline-grid me-5"><input type="radio" class="radio" id="b"><label class="small" for="b">', $out, 'inline radio');
+	pg_assert_contains('<div class="form-field"><input class="check" type="checkbox" id="c"></div>', $out);
+	pg_assert_same('done', bs6_switch_checks($out)['status'], 'second run');
+
+	$field = "<div class=\"form-check form-switch\">\n    ' . \$liveform->output_field(array('type' => 'checkbox', 'name' => 'x', 'label' => lang('A (b)'), 'class' => 'form-check-input')) . '\n    <label class=\"form-check-label\" for=\"x\">X</label>\n</div>\n"
+		. "<div class=\"form-check\">' . \$liveform->output_field(array('type' => 'radio', 'name' => 'y', 'class' => 'form-check-input')) . '</div>";
+	$out = bs6_switch_checks($field)['source'];
+	pg_assert_contains("<div class=\"form-field\">\n    <div class=\"switch\">' . \$liveform->output_field(array('type' => 'checkbox', 'name' => 'x', 'label' => lang('A (b)'), 'class' => '')) . '</div>\n", $out, 'liveform switch');
+	pg_assert_contains("'type' => 'radio', 'name' => 'y', 'class' => 'radio'", $out, 'liveform radio by its type key');
+}
+
+function test_bs6_switch_selectors()
+{
+	$in = ".a .btn-primary:hover, .form-check-input:checked + .form-check-label, .col-md-6 > .p-3, .modal-content { color: red; }\n.x { background: url(a.text-white.png); }\n.form-select-sm, .text-white { margin: 0; }";
+	$result = bs6_switch_selectors($in);
+
+	pg_assert_same(".a .btn-solid.theme-primary:hover, :is(.check, .radio):checked + :is(.form-field > label), .md\\:col-6 > .p-3, .modal-content { color: red; }\n.x { background: url(a.text-white.png); }\n.form-control-sm, .fg-white { margin: 0; }", $result['source']);
+	pg_assert_same('done', bs6_switch_selectors($result['source'])['status'], 'second run');
+}
+
+function test_bs6_switch_pins()
+{
+	$pairs = array(array("'bg-warning'", "'theme-warning'"));
+	$result = bs6_switch_pins("a('bg-warning'); b('bg-warning');", $pairs);
+	pg_assert_same(array('source' => "a('theme-warning'); b('theme-warning');", 'status' => 'applied'), $result);
+	pg_assert_same('done', bs6_switch_pins($result['source'], $pairs)['status']);
+	pg_assert_same('missing', bs6_switch_pins('changed', $pairs)['status']);
+}
