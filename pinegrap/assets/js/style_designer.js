@@ -27699,7 +27699,7 @@ const StyleDesigner = (function () {
             // field, printed ahead of the Attributes panel's style
             // (_sdNodeStyle()), is folded into it.
             if (p.inlineStyle) p.inlineStyle = '';
-            _sdApplyInlineStyle(node, now || '');
+            _sdApplyInlineStyle(node, _sdCodeTakeSizing(node, was, now || ''));
             return;
         }
         var key = _sdCodeAttrProp(node, name);
@@ -27716,6 +27716,60 @@ const StyleDesigner = (function () {
         if (now === undefined) { if (idx !== -1) p._attrs.splice(idx, 1); }
         else if (idx === -1) p._attrs.push({ name: name, value: now });
         else p._attrs[idx].value = now;
+    }
+
+    // The Display & Sizing declarations a typed style held where the
+    // emitter printed them (getNodeExtraStyle(), between the type's own
+    // style and the Attributes panel's) go back to their props: a changed
+    // value sets the prop, a deleted one clears it, an unchanged one leaves
+    // it as stored ('600' printed as 600px). Returns the rest of the typed
+    // style for _sdApplyInlineStyle(); without this the sizing was copied
+    // into _attrs.style and printed twice, and deleting it changed nothing.
+    // An image's width and height stay with _sdInlineStyleProps(). When the
+    // printed style does not hold the sizing where expected (a component's
+    // own markup), the typed style is returned as it is.
+    function _sdCodeTakeSizing(node, was, now) {
+        var p = node.props;
+        var isContent = node.type === 'content';
+        var isImg = isContent && p.contentType === 'image';
+        if (!isContent && node.type !== 'semantic' && ['container', 'row', 'col'].indexOf(node.type) === -1) return now;
+        if (isImg && _sdImgInRatio(p)) return now;
+        var sizing = _parseInlineStyle(getNodeExtraStyle(isContent ? _sdContentSizingNode(node) : node));
+        if (!sizing.length) return now;
+        var wasDecls = _parseInlineStyle(was || '');
+        var user = _parseInlineStyle(_sdUserAttrValue(p._attrs, 'style'));
+        var at = wasDecls.length - sizing.length - user.length;
+        if (at < 0) return now;
+        for (var i = 0; i < sizing.length; i++) {
+            var w = wasDecls[at + i];
+            if (w.name !== sizing[i].name || w.value !== sizing[i].value) return now;
+        }
+        var props = {
+            'z-index': 'zIndex', 'width': 'width', 'min-width': 'minWidth', 'max-width': 'maxWidth',
+            'height': 'height', 'min-height': 'minHeight', 'max-height': 'maxHeight',
+            'overflow': 'overflow', 'overflow-x': 'overflowX', 'overflow-y': 'overflowY',
+            'top': 'top', 'right': 'right', 'bottom': 'bottom', 'left': 'left',
+            '--bs-aspect-ratio': 'aspectRatioCustom'
+        };
+        var nowDecls = _parseInlineStyle(now);
+        var lower = function (d) { return String(d.name).toLowerCase(); };
+        sizing.forEach(function (d, si) {
+            var name = d.name, prop = props[name];
+            if (!prop || (isImg && (name === 'width' || name === 'height'))) return;
+            // The sizing declaration is the n-th of its name in the printed
+            // style (a font or old inline style may have written one before).
+            var nth = 0;
+            for (var k = 0; k < at + si; k++) if (lower(wasDecls[k]) === name) nth++;
+            var hit = -1;
+            for (var j = 0; j < nowDecls.length; j++) {
+                if (lower(nowDecls[j]) === name && nth-- === 0) { hit = j; break; }
+            }
+            if (hit === -1) { p[prop] = ''; return; }
+            var v = String(nowDecls[hit].value).trim();
+            nowDecls.splice(hit, 1);
+            if (v !== d.value) p[prop] = v;
+        });
+        return _serializeInlineDecls(nowDecls);
     }
 
     // The title and tooltip attributes _sdNodeTitleAttrs() printed go back
