@@ -176,3 +176,19 @@ function test_bs6_shell_own_classes()
 	pg_assert_same("<a class=\"pg-link-secondary small pg-print-none\">x</a> .pg-link-body-emphasis:hover {} ws-link-secondary link-light\n/* @pg-site-output */\nfunction site() {\n    return '<a class=\"link-danger\">';\n}\n", $result['source']);
 	pg_assert_same('done', bs6_switch_own_classes($result['source'])['status'], 'second run');
 }
+
+function test_bs6_shell_script_checks()
+{
+	$in = "var wrap = el('div', 'form-check form-switch mb-3');\nvar input = el('input', 'form-check-input');\nvar label = el('label', 'form-check-label small', x);\n"
+		. "input.type = 'checkbox';\nwrap.appendChild(input);\nwrap.appendChild(label);\n"
+		. "var row = el('div', 'form-check');\nvar radio = el('input', 'form-check-input');\nradio.type = 'radio';\n"
+		. "var box = el('input', 'form-check-input');\nbox.type = 'checkbox';\nvar odd = el('input', 'form-check-input');\nodd.type = kind;\n";
+	$result = bs6_switch_script_checks($in);
+
+	pg_assert_same("var wrap = el('div', 'form-field mb-3');\nvar input = el('input', '');\nvar label = el('label', 'small', x);\n"
+		. "input.type = 'checkbox';\nwrap.appendChild(el('div', 'switch')).appendChild(input);\nwrap.appendChild(label);\n"
+		. "var row = el('div', 'form-field');\nvar radio = el('input', 'radio');\nradio.type = 'radio';\n"
+		. "var box = el('input', 'check');\nbox.type = 'checkbox';\nvar odd = el('input', 'form-check-input');\nodd.type = kind;\n", $result['source']);
+	pg_assert_same(1, $result['left'], 'a type set by code');
+	pg_assert_same('done', bs6_switch_script_checks($result['source'])['status'], 'second run');
+}
