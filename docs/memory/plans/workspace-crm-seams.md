@@ -1,6 +1,6 @@
 ---
 name: workspace-crm-seams
-description: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, 4 #1681, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
+description: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, 4 #1681, 5 #1790, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -17,7 +17,7 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 2. PR #1622 (workspace/workspace-customer-summary.md): `ws_customer_identity()`, `ws_customer_summary()`, `GET /workspace/channels/{id}/customer`; cart quotes a seam until plans/workspace-quotes.md slice 5; its MCP resource: MCP plan.
 3. PR #1666 (workspace/workspace-customer-card.md): a customer card on the channel's Summary tab, the summary through `ws_channel_customer`.
 4. PR #1681 (workspace/workspace-customer-history.md): `ws_customer_history()`, union read; route; History on the card. Cart quotes join with quotes slice 5.
-5. Follow-ups: owns `ws_followup_task_open()` (proposed: tagged task, channel or person, `ws_task_reminder_set()`) for "Remind me about this customer" [3], Sales quote expiry (plans/workspace-quotes.md), ERP overdue (plans/workspace-phase3-leftovers.md item 4).
+5. PR #1790 (workspace/workspace-followups.md): `ws_followup_task_open()`, "Remind me" on the card; next callers: quote expiry (plans/workspace-quotes.md), ERP overdue (plans/workspace-phase3-leftovers.md 4).
 6. Lead intake: new `ws_scheduled_do()` step (no new kind) on the `form.submitted` event rule opens a `builtin:new_customer` channel for `forms.contact_id` (else by e-mail) or reuses one (`ws_customer_channels()`); hourly cap; duplicates: view_contacts.php, `merge_contacts()`. After #1352, Workspace canvas S1, form protection #1386, #1401 [2].
 7. Merge, behaviour change, ask first: `merge_contacts()` re-points (question 2) by one list (proposed) of every `contact_id` holder, shared with erasure (plans/privacy-data-pack-audit-log.md step 4), with `cart_quotes` (proposed), workflow-table cells.
 8. Contacts in the audit trail: plans/privacy-data-pack-audit-log.md; writers core/audit-trail-writers.md.
@@ -34,4 +34,4 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 - 4. Summary route (2): per channel (a), as built.
 
 ## Where to start?
-- Slice 5: `ws_followup_task_open()`, "Remind me about this customer" on the card.
+- Slice 6 once its prerequisites landed; 7, 9, 10 ask first.

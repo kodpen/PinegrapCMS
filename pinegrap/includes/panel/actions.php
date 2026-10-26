@@ -323,6 +323,7 @@ function pg_panel_actions()
         'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
         'ws_channel_customer', 'ws_channel_customer_history',
+        'ws_channel_customer_followup',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
     }

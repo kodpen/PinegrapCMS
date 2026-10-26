@@ -812,6 +812,7 @@
     "A task can wait for {var:1} tasks at most.": "Bir görev en çok {var:1} görevi bekleyebilir.",
     "A task cannot wait for itself.": "Bir görev kendini bekleyemez.",
     "A task changes status": "Görevin durumu değişti",
+    "A task for you on this channel, tagged with the customer. You are reminded on the day, in your inbox and by e-mail, at the time you pick or at {var:1}.": "Bu kanalda size müşterinin etiketlendiği bir görev açılır. O gün, seçtiğiniz saatte (seçmezseniz {var:1}) gelen kutunuzda ve e-postayla hatırlatılırsınız.",
     "A task is completed": "Görev tamamlandı",
     "A task needs a title.": "Görevin bir başlığı olmalı.",
     "A task repeats every 1 to 99 days, weeks, months or years.": "Bir görev 1 ile 99 arasında gün, hafta, ay ya da yılda bir tekrarlanır.",

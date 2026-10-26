@@ -154,3 +154,109 @@ function test_ws_followup_task_data_reminder()
 
 	pg_assert_true($overdue['ok'], 'a day gone by, with no reminder: already overdue, as a job may open it');
 }
+
+// The body of a function with its comment lines left out.
+function workspace_followup_test_source($function)
+{
+	$reflection = new ReflectionFunction($function);
+	$lines = file($reflection->getFileName());
+
+	return preg_replace('~^\s*(//|\*|/\*\*).*$~m', '', implode('', array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1)));
+}
+
+// A follow-up is a task the person makes, with every check of one made by
+// hand; a channel they can no longer write in leaves it theirs alone, and a
+// job that runs again is handed back the open one.
+function test_ws_followup_task_open_goes_through_the_task_checks()
+{
+	$source = workspace_followup_test_source('ws_followup_task_open');
+
+	pg_assert_contains("empty(\$viewer['member'])", $source, 'members of the team only');
+	pg_assert_contains('ws_followup_task_data(', $source, 'laid out and checked first');
+	pg_assert_contains('ws_can_post_channel($viewer, ws_channel(', $source, 'a channel the person may write in');
+	pg_assert_contains('ws_followup_task_find(', $source, 'one open follow-up when asked');
+	pg_assert_contains('ws_task_create($viewer, $data)', $source, 'made as a task of that person');
+	pg_assert_false(strpos($source, 'INSERT') !== false, 'never written around ws_task_create()');
+}
+
+// Finding an open follow-up again reads the statuses a task is open in.
+function test_ws_followup_task_find_reads_open_tasks()
+{
+	$source = workspace_followup_test_source('ws_followup_task_find');
+
+	pg_assert_true((bool) preg_match("~t\\.status IN \\(([^)]*)\\)~", $source, $match), 'by status');
+
+	$listed = array_map(function ($status) {
+		return trim($status, " '");
+	}, explode(',', $match[1] ?? ''));
+	$open = array_values(array_filter(array_keys(ws_task_statuses()), 'ws_task_is_open'));
+
+	sort($listed);
+	sort($open);
+
+	pg_assert_same($open, $listed, 'the statuses ws_task_is_open() calls open');
+	pg_assert_contains("r.source_type = 'task'", $source, 'by the task\'s tag of the record');
+}
+
+// "Remind me about this customer": the channel's customer tagged, for the
+// person asking, on the channel; an empty title names the channel, never the
+// customer a reader without the right sees only by kind and number.
+function test_ws_customer_followup_open()
+{
+	$source = workspace_followup_test_source('ws_customer_followup_open');
+
+	pg_assert_contains('ws_channel_customer_of($channel)', $source, 'the record the channel is about');
+	pg_assert_contains("'assignees'  => array((int) \$viewer['id'])", $source, 'for the person asking');
+	pg_assert_contains("'channel_id' => (int) \$channel['id']", $source, 'on the channel');
+	pg_assert_contains("'Follow up: {var:1}', 'vars' => array((string) \$channel['name'])", $source, 'an empty title names the channel');
+	pg_assert_false(strpos($source, "'remind_minutes'") !== false, 'reminded at the due time');
+}
+
+// The panel action asks for a channel the person may write in, and is a row
+// of the panel action table.
+function test_ws_channel_customer_followup_action()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$start = strpos($source, "case 'ws_channel_customer_followup':");
+
+	pg_assert_true($start !== false, 'the Workspace actions answer ws_channel_customer_followup');
+
+	if ($start !== false) {
+		$case = substr($source, $start, 500);
+
+		pg_assert_contains("ws_action_channel(\$viewer, \$request, 'post')", $case, 'a channel the person may write in');
+		pg_assert_contains('ws_customer_followup_open($viewer, $channel, $request)', $case, 'the follow-up for that person');
+	}
+
+	if (!defined('PG_API_PANEL')) {
+		define('PG_API_PANEL', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
+
+	$actions = pg_panel_actions();
+
+	pg_assert_true(isset($actions['ws_channel_customer_followup']), 'a row of the panel action table');
+	pg_assert_same('pg_panel_ws', $actions['ws_channel_customer_followup']['handler'] ?? '', 'handled by the Workspace');
+}
+
+// The card offers "Remind me" only where the reader may write, asks the
+// action, and every word it shows is in the screen's strings.
+function test_ws_customer_card_remind_me()
+{
+	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_customer.js');
+
+	pg_assert_contains("'ws_channel_customer_followup'", $card, 'the card asks the panel action');
+	pg_assert_contains('channel.can_post && !channel.archived', $card, 'only where the reader may write');
+
+	$strings = ws_customer_js_strings();
+
+	foreach (array('cust_remind', 'cust_remind_help', 'cust_remind_what', 'cust_remind_default', 'cust_remind_day', 'cust_remind_time', 'cust_remind_save', 'cust_remind_note', 'cust_remind_done') as $key) {
+		pg_assert_true(isset($strings[$key]) && ($strings[$key] !== ''), $key);
+		pg_assert_contains("'" . $key . "'", $card, $key . ' is shown');
+	}
+
+	pg_assert_contains('{1}', $strings['cust_remind_default'], 'the channel\'s name filled in by the card');
+	pg_assert_contains('{2}', $strings['cust_remind_done'], 'the task and its day filled in by the card');
+	pg_assert_contains(WS_TASK_REMIND_DAY_TIME, $strings['cust_remind_note'], 'the day\'s reminder time named');
+}
