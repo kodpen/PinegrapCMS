@@ -1161,6 +1161,7 @@
     "Commission": "Komisyon",
     "Commission Rate": "Komisyon Oranı",
     "Commission Rate Limit": "Komisyon Oranı Limiti",
+    "Commission {var:1} %": "Komisyon %{var:1}",
     "Commissionable": "Komisyona Tabi",
     "Commissions": "Komisyonlar",
     "Common Questions": "Sıkça Sorulanlar",

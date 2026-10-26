@@ -25,7 +25,7 @@ description: Trendyol listing approval read onto the mapping row: the two filter
 - Matched products, for a connector with `listing_status`: "On Trendyol" once `remote_id` is set, "Rejected" with the reason, "Awaiting approval" for an active row without it; a note on a non-error row is shown under the code.
 
 ## What is not stored?
-- `commission`, `productUrl`, `onSale`: no column (no schema change). Commission shown read-only needs one (plan step 2b-ii, owner question).
+- `productUrl`, `onSale`: no column. `commission`: `trendyol-listing-update.md`.
 
 ## What is unverified?
 - No live call; fixtures follow the doc samples. Whether `barcodes` takes a comma list; whether a rejected listing re-enters approval on a new create or needs the update call; whether `docNeeded` turns false once the document is in.
