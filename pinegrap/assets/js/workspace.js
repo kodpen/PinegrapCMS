@@ -146,6 +146,149 @@
         return node;
     }
 
+    // ── Drawings ───────────────────────────────────────────────────────
+
+    // Plain shapes, no words, coloured by the panel's theme (.pg-tour-art in
+    // assets/css/pg_tour.css, loaded on every panel screen), so a drawing
+    // reads the same in every language and in light and dark alike. The
+    // channel screen's tour (workspace_tour.js) draws its steps with the
+    // same kit, read from window.PGWsArt. Only numbers and fixed class
+    // names go into the markup.
+    var ART = (function () {
+        function rect(x, y, w, h, r, cls) {
+            return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + r + '" class="' + cls + '"/>';
+        }
+
+        function circle(cx, cy, r, cls) {
+            return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" class="' + cls + '"/>';
+        }
+
+        function path(d, cls) {
+            return '<path d="' + d + '" class="' + cls + '"/>';
+        }
+
+        // A line of text, as a rounded bar.
+        function bar(x, y, w, cls) {
+            return rect(x, y, w, 5, 2.5, cls || 'a-line');
+        }
+
+        // A "#" sign.
+        function hash(x, y, cls) {
+            return path('M' + (x + 2) + ' ' + y + 'l-1 8M' + (x + 6) + ' ' + y + 'l-1 8M' + x + ' ' + (y + 2.5) + 'h8M' + (x - 1) + ' ' + (y + 5.5) + 'h8', cls || 'a-stroke');
+        }
+
+        // A padlock.
+        function lock(x, y, cls) {
+            return path('M' + (x + 1.5) + ' ' + (y + 4) + 'v-1.5a2.5 2.5 0 0 1 5 0v1.5', cls || 'a-stroke') + rect(x, y + 4, 8, 5.5, 1.2, 'a-ink');
+        }
+
+        function face(cx, cy, r, cls) {
+            return circle(cx, cy, r, cls || 'a-acc-soft') + circle(cx, cy - r * 0.25, r * 0.38, 'a-ink') + path('M' + (cx - r * 0.6) + ' ' + (cy + r * 0.72) + 'a' + (r * 0.6) + ' ' + (r * 0.5) + ' 0 0 1 ' + (r * 1.2) + ' 0', 'a-ink');
+        }
+
+        // A round badge with a tick in it.
+        function tick(cx, cy, r, cls) {
+            return circle(cx, cy, r, cls || 'a-ok') + path('M' + (cx - r * 0.45) + ' ' + cy + 'l' + (r * 0.32) + ' ' + (r * 0.32) + ' ' + (r * 0.6) + '-' + (r * 0.6), 'a-stroke-white');
+        }
+
+        // The tour's drawings are 300 by 120; an empty list's are 120 by 80.
+        function svg(body, viewBox, extra) {
+            return '<svg class="pg-tour-art' + (extra ? ' ' + extra : '') + '" viewBox="' + (viewBox || '0 0 300 120') + '" role="img" aria-hidden="true" focusable="false">' + body + '</svg>';
+        }
+
+        // What an empty list shows above its line.
+        var EMPTY = {
+            channels: function () {
+                var out = path('M34 12h40a12 12 0 0 1 12 12v20a12 12 0 0 1-12 12h-32l-10 9v-9.4a12 12 0 0 1-10-11.6v-20a12 12 0 0 1 12-12z', 'a-panel');
+
+                out += hash(36, 25, 'a-stroke-acc') + bar(48, 26.5, 26, 'a-acc');
+                out += bar(36, 39, 38);
+                out += circle(90, 18, 10, 'a-acc') + path('M90 13v10M85 18h10', 'a-stroke-white');
+                out += circle(100, 50, 2, 'a-warn') + circle(16, 30, 1.8, 'a-acc-soft');
+
+                return out;
+            },
+
+            tasks: function () {
+                var out = rect(28, 8, 60, 64, 9, 'a-panel');
+
+                for (var i = 0; i < 3; i++) {
+                    var y = 19 + (i * 15);
+
+                    out += rect(36, y, 9, 9, 2.5, 'a-acc-soft') + path('M38 ' + (y + 4.5) + 'l2 2 3.5-3.5', 'a-stroke-acc');
+                    out += bar(50, y + 2, 28 - (i * 6));
+                }
+
+                out += tick(88, 60, 11);
+                out += circle(102, 24, 2, 'a-warn') + circle(18, 56, 1.8, 'a-acc-soft');
+
+                return out;
+            },
+
+            inbox: function () {
+                var out = path('M28 44l9-22h46l9 22v20a5 5 0 0 1-5 5h-54a5 5 0 0 1-5-5z', 'a-panel');
+
+                out += path('M28 44h19l4 7h18l4-7h19', 'a-stroke');
+                out += tick(90, 18, 10);
+                out += circle(22, 22, 2, 'a-warn') + circle(104, 48, 1.8, 'a-acc-soft') + circle(60, 10, 1.6, 'a-acc');
+
+                return out;
+            },
+
+            notes: function () {
+                var out = rect(32, 8, 52, 64, 7, 'a-panel');
+
+                out += bar(40, 18, 26, 'a-ink');
+                out += bar(40, 29, 36) + bar(40, 38, 30) + bar(40, 47, 22);
+                out += path('M70 68l20-20 6 6-20 20h-6z', 'a-acc') + path('M86 52l6 6', 'a-stroke-white');
+                out += circle(100, 22, 2, 'a-warn') + circle(20, 50, 1.8, 'a-acc-soft');
+
+                return out;
+            }
+        };
+
+        function empty(kind) {
+            return EMPTY[kind] ? svg(EMPTY[kind](), '0 0 120 80', 'ws-empty-art') : '';
+        }
+
+        return { rect: rect, circle: circle, path: path, bar: bar, hash: hash, lock: lock, face: face, tick: tick, svg: svg, empty: empty };
+    })();
+
+    window.PGWsArt = ART;
+
+    // An empty list: a small drawing (channels, tasks, inbox, notes) and one
+    // line saying so.
+    function emptyState(kind, text, extra) {
+        var box = el('div', 'ws-empty ws-empty-friendly' + (extra ? ' ' + extra : ''));
+
+        setHtml(box, ART.empty(kind));
+        box.appendChild(el('div', 'ws-empty-line', text));
+
+        return box;
+    }
+
+    // In place of a "Loading…" line: grey rows standing for what is on its
+    // way; the word stays for screen readers. Removed by whatever clears the
+    // box it sits in once the answer is there.
+    function skeleton(rows, extra) {
+        var box = el('div', 'ws-skeleton' + (extra ? ' ' + extra : ''));
+
+        box.setAttribute('role', 'status');
+        box.setAttribute('aria-busy', 'true');
+        box.appendChild(el('span', 'visually-hidden', t('loading')));
+
+        for (var i = 0; i < (rows || 3); i++) {
+            var row = el('div', 'ws-skeleton-row');
+
+            row.setAttribute('aria-hidden', 'true');
+            row.appendChild(el('span', 'ws-skeleton-dot'));
+            row.appendChild(el('span', 'ws-skeleton-bar'));
+            box.appendChild(row);
+        }
+
+        return box;
+    }
+
     // options.keepalive: the request is finished even when the page is left
     // meanwhile (a save as the page closes); browsers refuse such a body over
     // 64 KiB.
@@ -643,7 +786,7 @@
         } else if (file.office && file.message_id) {
             // Read on the server, drawn here (ws_file_office).
             var box = el('div', 'ws-preview-office office-view');
-            box.appendChild(el('div', 'ws-empty', t('loading')));
+            box.appendChild(skeleton(3));
             body.appendChild(box);
 
             var editing = OFFICE_EDIT_NAME.test(file.name || '');
@@ -2617,7 +2760,7 @@
             load();
         }
 
-        clear(list).appendChild(el('div', 'ws-empty', t('loading')));
+        clear(list).appendChild(skeleton(3));
         search.addEventListener('input', debounce(load, 250));
         showOffcanvas(node);
         load();
@@ -4104,7 +4247,7 @@
         var list = el('div', 'ws-era-list');
 
         box.appendChild(el('div', 'form-label', t('era_list')));
-        list.appendChild(el('div', 'small text-body-secondary', t('loading')));
+        list.appendChild(skeleton(2, 'ws-skeleton-sm'));
         box.appendChild(list);
 
         function draw(data) {
@@ -4806,17 +4949,14 @@
         });
         footer.appendChild(all);
 
-        body.appendChild(el('div', 'text-body-secondary small', t('loading')));
+        body.appendChild(skeleton(3));
         showOffcanvas(node);
 
         api('ws_inbox').then(function (data) {
             clear(body);
 
             if (!data.items.length) {
-                var empty = el('div', 'ws-empty');
-                empty.appendChild(icon('bi-inbox'));
-                empty.appendChild(document.createTextNode(t('inbox_empty')));
-                body.appendChild(empty);
+                body.appendChild(emptyState('inbox', t('inbox_empty')));
                 return;
             }
 
@@ -5303,7 +5443,7 @@
                     });
 
                     if (!list.length) {
-                        box.appendChild(el('div', 'small text-body-secondary px-2', t('no_channels')));
+                        box.appendChild(emptyState('channels', t('no_channels'), 'ws-empty-side'));
                     }
                 }
 
@@ -5894,7 +6034,7 @@
 
             footer.classList.remove('d-none');
             comment.rows = 3;
-            slot.appendChild(el('div', 'small text-body-secondary', t('loading')));
+            slot.appendChild(skeleton(2, 'ws-skeleton-sm'));
             body.appendChild(formRow(t('fwd_note_pick'), slot));
             body.appendChild(formRow(t('fwd_comment'), comment));
 
@@ -6259,7 +6399,7 @@
             var body = clear(node.querySelector('.offcanvas-body'));
 
             node.querySelector('.offcanvas-footer').classList.add('d-none');
-            body.appendChild(el('div', 'small text-body-secondary', t('loading')));
+            body.appendChild(skeleton(2, 'ws-skeleton-sm'));
             showOffcanvas(node);
 
             function personName(id) {
@@ -6862,7 +7002,7 @@
             center.appendChild(head);
 
             var body = el('div', 'ws-home');
-            body.appendChild(el('div', 'ws-empty', t('loading')));
+            body.appendChild(skeleton(3));
             center.appendChild(body);
 
             if (asked && window.history && window.history.replaceState) {
@@ -9219,7 +9359,7 @@
                         view.classList.remove('d-none');
                         area.classList.add('d-none');
                         setHtml(view, '');
-                        view.appendChild(el('div', 'small text-body-secondary', t('loading')));
+                        view.appendChild(skeleton(2, 'ws-skeleton-sm'));
 
                         api('ws_calc', { body: area.value, markdown: true }).then(function (result) {
                             setHtml(view, result.html);
@@ -13513,7 +13653,7 @@
             var self = this;
             var pane = self.pane;
 
-            pane.appendChild(el('div', 'small text-body-secondary', t('loading')));
+            pane.appendChild(skeleton(2, 'ws-skeleton-sm'));
 
             api(action, { channel_id: self.channel.id }).then(function (data) {
                 clear(pane);
@@ -13542,7 +13682,7 @@
             var self = this;
             var pane = self.pane;
 
-            pane.appendChild(el('div', 'small text-body-secondary', t('loading')));
+            pane.appendChild(skeleton(2, 'ws-skeleton-sm'));
 
             api('ws_channel_files', { channel_id: self.channel.id }).then(function (data) {
                 clear(pane);
@@ -15555,7 +15695,7 @@
             var delay = saNumber(data.delay || 0, 0, 10080);
             var target = null;
 
-            slot.appendChild(el('div', 'small text-body-secondary', t('loading')));
+            slot.appendChild(skeleton(2, 'ws-skeleton-sm'));
             detail.appendChild(saLabelled(t('sa_target'), slot));
             detail.appendChild(saLabelled(t('sa_delay'), delay, t('sa_delay_help')));
             detail.appendChild(el('div', 'form-text', t('sa_chain_help', config.depth || 8)));
@@ -16934,7 +17074,7 @@
     // every channel (0), into a box.
     function scheduledMessagesList(box, channelId, onChange, onEdit) {
         clear(box);
-        box.appendChild(el('div', 'small text-body-secondary', t('loading')));
+        box.appendChild(skeleton(2, 'ws-skeleton-sm'));
 
         api('ws_scheduled_messages', { channel_id: channelId || 0 }).then(function (data) {
             clear(box);
@@ -16964,10 +17104,7 @@
         clear(container);
 
         if (!tasks.length) {
-            var empty = el('div', 'ws-empty');
-            empty.appendChild(icon('bi-check2-square'));
-            empty.appendChild(document.createTextNode(t('no_tasks')));
-            container.appendChild(empty);
+            container.appendChild(emptyState('tasks', t('no_tasks')));
             return;
         }
 
@@ -18648,7 +18785,7 @@
         node.querySelector('.offcanvas-title').textContent = t('workspace') + (label ? ' · ' + label : '');
         footer.classList.remove('d-none');
         body.appendChild(fieldsBox);
-        body.appendChild(el('div', 'small text-body-secondary', t('loading')));
+        body.appendChild(skeleton(2, 'ws-skeleton-sm'));
         showOffcanvas(node);
 
         quickEditLoad(fieldsBox, type, id, !!(options && options.edit), reopen);
@@ -19031,7 +19168,7 @@
         node.classList.add('ws-record-drawer');
         node.querySelector('.offcanvas-title').textContent = t(type === 'product_group' ? 'qc_new_group' : 'qc_new_product');
         footer.classList.add('d-none');
-        body.appendChild(el('div', 'small text-body-secondary', t('loading')));
+        body.appendChild(skeleton(2, 'ws-skeleton-sm'));
         showOffcanvas(node);
 
         api('ws_record_fields', { type: type, id: 0 }).then(function (data) {
@@ -20134,7 +20271,7 @@
 
             if (!lists.mine.length && !lists.shared.length && !search) {
                 var intro = el('div', 'ws-nb-intro');
-                intro.appendChild(icon('bi-journal'));
+                intro.appendChild(emptyState('notes', t('notes_none')));
                 intro.appendChild(el('div', 'small text-body-secondary', t('notes_intro')));
                 list.appendChild(intro);
             }
@@ -22299,7 +22436,7 @@
                 go.disabled = true;
                 picked = [];
                 clear(list);
-                list.appendChild(el('div', 'small text-body-secondary', t('loading')));
+                list.appendChild(skeleton(2, 'ws-skeleton-sm'));
 
                 api('ws_meeting_transfer', { note_id: note.id, channel_id: parseInt(choice.value, 10) || 0 }).then(function (data) {
                     clear(list);
@@ -22642,7 +22779,7 @@
 
             if (root) {
                 clear(root);
-                root.appendChild(el('div', 'alert alert-warning', error.message));
+                root.appendChild(el('div', 'alert alert-warning ws-boot m-3', error.message));
             }
         });
     }
