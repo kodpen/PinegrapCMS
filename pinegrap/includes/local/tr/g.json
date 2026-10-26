@@ -88,6 +88,7 @@
     "Gift card code": "Hediye kartı kodu",
     "Gift card details (read-only HTML)": "Hediye kartı bilgileri (salt okunur HTML)",
     "Gift card discount (currency)": "Hediye kartı indirimi (₺)",
+    "Gift card discount (with symbol)": "Hediye kartı indirimi (simgeyle)",
     "Gift card recipient details block (HTML)": "Hediye kartı alıcı bilgileri bloku (HTML)",
     "Gift cards": "Hediye kartları",
     "Gift cards are automatically created when a Gift Card Product is ordered. You can also manually create Gift Cards.": "Bir Hediye Kartı Ürünü sipariş edildiğinde hediye kartları otomatik olarak oluşturulur. Ayrıca Hediye Kartlarını manuel olarak da oluşturabilirsiniz.",

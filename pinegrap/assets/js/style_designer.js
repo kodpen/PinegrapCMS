@@ -37344,6 +37344,26 @@ const StyleDesigner = (function () {
         ['__event_is_recurring',      _sdT('Is a recurring event'), 'cond']
     ];
 
+    // An order's allow-listed values (pg_sw_entity_fields('order')), offered
+    // by the order view (its receipt e-mail too): the owner's own order only.
+    var SW_ORDER_ENTITY_TOKENS = [
+        ['__order_po_number',            _sdT('PO number')],
+        ['__order_custom_field_1',       _sdT('Custom field 1')],
+        ['__order_custom_field_1_label', _sdT('Custom field 1 label (from the billing information page)')],
+        ['__order_custom_field_2',       _sdT('Custom field 2')],
+        ['__order_custom_field_2_label', _sdT('Custom field 2 label (from the billing information page)')],
+        ['__billing_fax',                _sdT('Fax')],
+        ['__order_gift_card_discount',   _sdT('Gift card discount (with symbol)')],
+        ['__order_currency',             _sdT('Currency code')],
+        ['__order_paid_date',            _sdT('Payment date')],
+        ['__order_cancelled_date',       _sdT('Cancellation date')],
+        ['__order_cancellation_reason',  _sdT('Cancellation reason')],
+        ['__order_refund_status',        _sdT('Refund status (Refunded, Refund in progress)')],
+        ['__order_refunded_amount',      _sdT('Refunded amount (with symbol)')],
+        ['__order_refunded_date',        _sdT('Refund date')],
+        ['__order_is_tax_exempt',        _sdT('Is tax exempt'), 'cond']
+    ];
+
     // Whether a palette entry is offered only as a condition (yes/no).
     function _swTokenCondOnly(t) {
         return !!(t && t[2] === 'cond');
@@ -38477,6 +38497,7 @@ const StyleDesigner = (function () {
             ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')],
             ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
+        { label: _sdT('More order details'), tokens: SW_ORDER_ENTITY_TOKENS },
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
             ['__item_name',              _sdT('Product name (products.name)')],
@@ -40275,6 +40296,7 @@ const StyleDesigner = (function () {
                 SW_ORDER_VIEW_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
