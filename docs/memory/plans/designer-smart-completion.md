@@ -35,7 +35,7 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 - F5 Attributes and Styles read-only at content level (builds on #1479, merged).
 - F6 done #1702: facade primer, `addCompletionRanker`, css/js sources inside HTML, swatches ([[code-editor-completion]]).
 - 1 done #1704: vocabulary from tools/build_designer_vocab.php ([[designer-bootstrap-vocabulary]]).
-- 2 Breakpoint-aware class dedupe (~23686, ~41142).
+- 2 done #1728: breakpoint-aware dedupe ([[designer-class-dedupe]]).
 - 3 done #1722: predictor ([[style-predictor]]).
 - 4 Loader and class field; `class_suggestions.js` removed (clean_up.php).
 - 5 Attribute rows and Styles panel inputs.
