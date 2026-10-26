@@ -422,17 +422,20 @@ function bs6_convert_class_list($value, $one_class_each = false)
 		if (!bs6_is_literal_token($part)) {
 			if (bs6_is_dynamic_v5_stem($part)) {
 				$reviews[] = array($part, 'class built in code from a Bootstrap 5 stem');
-			} elseif (preg_match_all('/[\'"]([A-Za-z0-9][A-Za-z0-9_:-]*)|([A-Za-z0-9][A-Za-z0-9_:-]*)[\'"]/', $part, $quoted, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
-				// A class quoted in the code (`? 'text-success' : ''`) is a
-				// string the code prints into the list: it is rewritten in
+			} elseif (preg_match_all('/[\'"]([A-Za-z0-9][A-Za-z0-9_:-]*)|([A-Za-z0-9][A-Za-z0-9_:-]*)[\'"]|\?>([A-Za-z0-9][A-Za-z0-9_:-]*)(?=<\?)/', $part, $quoted, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+				// A class quoted in the code (`? 'text-success' : ''`), or
+				// printed between two PHP blocks (a class right after a PHP close tag), is
+				// text the code prints into the list: it is rewritten in
 				// place. One that needs a hand, or one that would split in a
 				// class API call, is reported.
 				$rewritten = $part;
 
 				foreach (array_reverse($quoted) as $q) {
-					$hit = ($q[1][0] !== '') ? $q[1] : $q[2];
+					$hit = ($q[1][0] !== '') ? $q[1] : ((isset($q[2]) && $q[2][0] !== '') ? $q[2] : $q[3]);
 					$inner = $hit[0];
-					$mapped = bs6_map_token($inner);
+					$mapped = ($is_badge && preg_match('/^(text-bg|bg)-(' . $colours . ')$/', $inner, $m))
+						? array('tokens' => array('theme-' . $m[2]), 'review' => null)
+						: bs6_map_token($inner);
 
 					if ($mapped['review'] === null && $mapped['tokens'] === array($inner)) {
 						continue;
