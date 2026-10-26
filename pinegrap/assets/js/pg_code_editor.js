@@ -17,6 +17,7 @@
  *   PgCodeEditor.addCompletionSource(language, source)         registry
  *   PgCodeEditor.addCompletionRanker(language, ranker)         registry
  *   PgCodeEditor.addExtension(function (opts) { return ext })  registry
+ *   PgCodeEditor.findAll(text, query)                          hits, no editor
  *
  * An editor instance (see pgCeCreate) offers getValue / setValue,
  * setLanguage, setReadOnly, setTheme, goTo and scrollTo, the search panel, tracked
@@ -1064,6 +1065,43 @@
         return inst;
     }
 
+    // Every match of a search in a text, without an editor: a screen that
+    // searches several editors at once (the designer's file tabs) reads
+    // their texts and lists the hits itself. `query` is the search panel's
+    // { search, caseSensitive, regexp, wholeWord } or a plain string. A
+    // regexp is read per line for ^ and $, as the search panel reads it;
+    // an empty match (^, a*) is skipped. A hit is { from, to, text, line
+    // (1-based), col, lineFrom, lineText }; at most `limit` hits (1000),
+    // `truncated` when more were left out; an invalid pattern gives `error`
+    // and no hits.
+    function findAll(text, query, limit) {
+        text = String(text == null ? '' : text);
+        var q = (query && typeof query === 'object') ? query : { search: String(query == null ? '' : query) };
+        var out = { matches: [], truncated: false, error: null };
+        var search = String(q.search == null ? '' : q.search);
+        if (search === '') return out;
+        limit = (limit > 0) ? limit : 1000;
+        var re;
+        try {
+            re = new RegExp(q.regexp ? search : search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gm' + (q.caseSensitive ? '' : 'i'));
+        } catch (e) {
+            out.error = e && e.message ? e.message : String(e);
+            return out;
+        }
+        var word = /[\w\u00c0-\uffff]/;
+        var line = 1, lineFrom = 0, nl = text.indexOf('\n'), m;
+        while ((m = re.exec(text)) !== null) {
+            if (m[0] === '') { re.lastIndex++; continue; }
+            var from = m.index, to = from + m[0].length;
+            if (q.wholeWord && ((from > 0 && word.test(text.charAt(from - 1))) || (to < text.length && word.test(text.charAt(to))))) continue;
+            if (out.matches.length >= limit) { out.truncated = true; break; }
+            while (nl !== -1 && nl < from) { line++; lineFrom = nl + 1; nl = text.indexOf('\n', lineFrom); }
+            out.matches.push({ from: from, to: to, text: m[0], line: line, col: from - lineFrom, lineFrom: lineFrom,
+                               lineText: text.slice(lineFrom, nl === -1 ? text.length : nl) });
+        }
+        return out;
+    }
+
     // load() + create(): the way a screen opens an editor.
     function open(host, opts) {
         return load().then(function () { return pgCeCreate(host, opts); });
@@ -1141,6 +1179,7 @@
         addCompletionSource: addCompletionSource,
         addCompletionRanker: addCompletionRanker,
         addExtension: addExtension,
+        findAll: findAll,
         normalizeLanguage: _normLanguage
     };
 })();

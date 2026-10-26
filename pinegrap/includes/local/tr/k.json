@@ -77,6 +77,8 @@
     "Keyboard shortcuts": "Klavye kısayolları",
     "Keyboard shortcuts (?)": "Klavye kısayolları (?)",
     "Keyword": "Anahtar Kelime",
+    "Keyword (loop_area)": "Anahtar kelime (loop_area)",
+    "Keyword as stored (untranslated)": "Kaydedildiği hâliyle anahtar kelime (çevrilmemiş)",
     "Keywords": "Anahtar Kelimeler",
     "Keywords are missing": "Anahtar kelimeler eksik",
     "Keywords used for site-wide search indexing.": "Site içi aramada kullanılan anahtar kelimeler.",

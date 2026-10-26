@@ -177,11 +177,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         db("UPDATE config SET mfa_required_role = " . $mfa_post_role);
 
         // Accounts the rule now covers but did not before, and that have no
-        // second factor, lose their remembered devices: a remembered sign-in
-        // would otherwise keep opening a session on a password typed before
-        // the rule applied. The operator saving the rule keeps their own
-        // session (the session is bound to its token) and is asked at their
-        // next sign-in; a pinned device is left to the sign-in gate, which
+        // second factor (authenticator key or passkey), lose their remembered
+        // devices: a remembered sign-in would otherwise keep opening a
+        // session on a password typed before the rule applied. The operator
+        // saving the rule keeps their own session (the session is bound to
+        // its token) and is asked at their next sign-in; a pinned device is left to the sign-in gate, which
         // sends it to setup on its next use.
         if (($mfa_post_role < 99) && ($mfa_post_role > $mfa_previous_role)
             && function_exists('pg_mfa_table_exists') && pg_mfa_table_exists()
@@ -194,7 +194,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 WHERE user.user_role <= " . $mfa_post_role . "
                     AND user.user_role > " . $mfa_previous_bound . "
                     AND user.user_id <> '" . (int) USER_ID . "'
-                    AND (user_mfa.user_id IS NULL OR user_mfa.enabled_at = 0 OR user_mfa.totp_secret = '')");
+                    AND (user_mfa.user_id IS NULL OR user_mfa.enabled_at = 0 OR user_mfa.totp_secret = '')"
+                    // A passkey satisfies the rule where the site can ask for one.
+                    . ((function_exists('pg_passkeys_available') && pg_passkeys_available())
+                        ? " AND NOT EXISTS (SELECT 1 FROM user_passkeys WHERE user_passkeys.user_id = user.user_id)"
+                        : ""));
 
             foreach ($mfa_uncovered_ids as $mfa_uncovered_id) {
                 db("DELETE FROM auth_tokens WHERE user_id = '" . (int) $mfa_uncovered_id . "'"

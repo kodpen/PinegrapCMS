@@ -31,10 +31,19 @@ function test_erp_receipt_refuses_a_document_that_is_not_an_invoice()
 	$cash = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/cash.php');
 	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/api_resources.php');
 
-	$post = substr($cash, strpos($cash, 'function erp_post_receipt('));
+	$post = substr($cash, strpos($cash, 'function erp_post_receipt($data)'));
 	$post = substr($post, 0, strpos($post, 'erp_invoice_open_amount($invoice)'));
 	pg_assert_contains('SELECT id, account_id, direction, doc_type,', $post, 'erp_post_receipt() reads the doc_type');
-	pg_assert_contains("if ((string) \$invoice['doc_type'] !== 'invoice') {", $post, 'and refuses what is not an invoice');
+	pg_assert_contains('erp_receipt_invoice_refusal($invoice,', $post, 'and asks erp_receipt_invoice_refusal()');
+
+	$check = substr($cash, strpos($cash, 'function erp_post_receipt_check('));
+	$check = substr($check, 0, strpos($check, 'function erp_receipt_invoice_refusal('));
+	pg_assert_contains('SELECT id, account_id, direction, doc_type,', $check, 'erp_post_receipt_check() reads the doc_type');
+	pg_assert_contains('erp_receipt_invoice_refusal($invoice,', $check, 'and asks the same');
+
+	$refusal = substr($cash, strpos($cash, 'function erp_receipt_invoice_refusal('));
+	$refusal = substr($refusal, 0, strpos($refusal, 'erp_invoice_open_amount($invoice)'));
+	pg_assert_contains("if ((string) \$invoice['doc_type'] !== 'invoice') {", $refusal, 'which refuses what is not an invoice');
 
 	$create = substr($api, strpos($api, "\$invoice = db_item(\"SELECT id, account_id, doc_type, status FROM erp_invoices"));
 	pg_assert_contains("api_fail_validation(lang('That document is not an invoice; a receipt does not close it.'), 'invoice_id');", substr($create, 0, 800), 'POST /erp/receipts answers 422');

@@ -250,6 +250,14 @@ function test_workspace_notes_import_upload_repick_keeps_namesakes()
 	pg_assert_true(preg_match('/picked\[picked\.indexOf\(\w+\)\]\s*=\s*entry;/', $add) === 1, 'the file picked again takes the row in place');
 	pg_assert_true(strpos($probe, 'new FileReader()') !== false && strpos($probe, '.slice(0, 1)') !== false, 'a file is tried by its first byte');
 	pg_assert_true(strpos($probe, 'entry.stale = true;') !== false, 'one that cannot be read is marked');
+
+	// Two copies of todo.md from two folders can share name, size and time
+	// and still hold different text: only their bytes tell them apart.
+	$same = pg_test_notes_upload_between($screen, 'function sameBytes(one, two)', 'function add(entries)');
+
+	pg_assert_true(strpos($add, 'firstSame(') !== false, 'a listed file of the same name, size and time is compared by what it holds');
+	pg_assert_true(strpos($same, 'readAsArrayBuffer(') !== false && strpos($same, 'return false;') !== false, 'the bytes are read and a difference makes a row of its own');
+	pg_assert_true(strpos($same, '.catch(function () { return true; })') !== false, 'a file that cannot be compared counts as the same, as before');
 }
 
 // A file the browser cannot read is left out of the upload like a file of
@@ -267,6 +275,8 @@ function test_workspace_notes_import_upload_unreadable_file_named()
 	pg_assert_true(($check !== '') && ($draw !== '') && ($upload !== '') && ($send !== ''), 'check(), drawPick(), upload() and sendFiles() are found');
 	pg_assert_true(strpos($check, "entry.state = 'stale';") !== false, 'an unreadable file is left out');
 	pg_assert_true(strpos($draw, "t('notes_import_unreadable')") !== false, 'and its row says so');
+	pg_assert_true(strpos($check, 'result.stale++;') !== false, 'the unreadable files are counted');
+	pg_assert_true(strpos($draw, "t('notes_import_stale', result.stale)") !== false, 'and the heading says how many will not be sent');
 	pg_assert_true(strpos($draw, 'var said = error || result.error;') !== false && strpos($draw, 'result.error || error') === false, 'a refused upload is said ahead of the list\'s own rule');
 	pg_assert_true(strpos($send, 'error.network = true;') !== false, 'a request the browser could not send is told apart');
 	pg_assert_true(strpos($upload, 'error.network') !== false && strpos($upload, 'probe(') !== false, 'after it the files sent are read');

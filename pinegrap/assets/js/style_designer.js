@@ -11123,6 +11123,7 @@ const StyleDesigner = (function () {
                     menu_region:          _sdT('Menu'),
                     menu_sequence_region: _sdT('Menu Sequence'),
                     ad_region:            _sdT('Ad Region'),
+                    tag_cloud_region:     _sdT('Tag Cloud'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -27257,6 +27258,7 @@ const StyleDesigner = (function () {
         host.className = 'sd-html-code';
         host.innerHTML =
             '<div class="sd-code-tabs" id="sd-code-tabs"></div>' +
+            '<div class="sd-code-find d-none" id="sd-code-find"></div>' +
             '<div class="sd-code-panes" id="sd-code-panes">' +
                 '<div class="sd-code-pane pg-code-editor sd-code-pane-active" data-key="page" id="sd-code-pane-page"></div>' +
             '</div>';
@@ -27326,7 +27328,8 @@ const StyleDesigner = (function () {
             lockTitle: _sdCodeLockTitle,
             onSelection: _sdCodeOnSelection,
             onChange: _sdCodeOnChange,
-            onLockHit: _sdCodeOnLockHit
+            onLockHit: _sdCodeOnLockHit,
+            keys: [_sdCodeFindKey()]
         }).then(function (ed) {
             _sdCode.loading = false;
             _sdCode.ed = ed;
@@ -28682,7 +28685,7 @@ const StyleDesigner = (function () {
             readOnly: true,
             phrases: _sdCodePhrases(),
             labels: { syntaxError: _sdT('Syntax error') },
-            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }],
+            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }, _sdCodeFindKey()],
             onChange: function () {
                 if (!tab.loaded || tab.dirty) return;
                 tab.dirty = true;
@@ -28860,6 +28863,7 @@ const StyleDesigner = (function () {
                 '</button>';
         });
         html += '<span class="sd-code-tabs-spacer"></span>';
+        html += '<button type="button" class="sd-code-tab sd-code-find-toggle' + (_sdCodeFind && _sdCodeFind.open ? ' sd-code-tab-active' : '') + '" id="sd-code-find-toggle" title="' + esc(_sdT('Search in all tabs (Ctrl+Shift+F)')) + '"><span class="bi bi-search"></span></button>';
         if (active && active.key !== 'page' && active.spec) {
             if (active.spec.url) {
                 html += '<input type="text" class="sd-code-url" id="sd-code-url" value="' + esc(active.spec.url.value || '') + '" placeholder="https://" title="' + esc(_sdT('External URL:')) + '">';
@@ -28879,6 +28883,7 @@ const StyleDesigner = (function () {
                 if (e.button === 1 && this.getAttribute('data-key') !== 'page') { e.preventDefault(); _sdCodeTabClose(this.getAttribute('data-key')); }
             });
         });
+        strip.querySelector('#sd-code-find-toggle').addEventListener('click', function () { _sdCodeFindShow(!_sdCodeFind.open); });
         var save = strip.querySelector('#sd-code-file-save');
         if (save) save.addEventListener('click', function () { _sdCodeTabSave(active.key); });
         var url = strip.querySelector('#sd-code-url');
@@ -28886,6 +28891,142 @@ const StyleDesigner = (function () {
             url.addEventListener('change', function () { active.spec.url.onSave(this.value.trim()); });
             url.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); this.blur(); } });
         }
+    }
+
+    // ===================== CODE VIEW: SEARCH IN ALL TABS =====================
+    // One search over the page and every loaded file tab: a bar under the
+    // strip lists the hits by tab, a hit opens its tab and selects it. The
+    // texts are read from the editors as they are now (unsaved changes
+    // included); PgCodeEditor.findAll() does the matching. Enter / Shift+
+    // Enter in the field walk the hits, Escape closes the bar.
+    var _sdCodeFind = { open: false, query: { search: '', caseSensitive: false, wholeWord: false, regexp: false }, hits: [], at: -1, timer: 0 };
+    var _SD_CODE_FIND_LIMIT = 500;   // hits per tab
+
+    function _sdCodeFindKey() {
+        return { key: 'Mod-Shift-f', run: function () { _sdCodeFindShow(true); return true; } };
+    }
+
+    function _sdCodeFindShow(on) {
+        var bar = document.getElementById('sd-code-find');
+        if (!bar) return;
+        _sdCodeFind.open = !!on;
+        bar.classList.toggle('d-none', !on);
+        _sdCodeTabsRender();
+        if (!on) { bar.innerHTML = ''; _sdCodeFind.hits = []; return; }
+        // A one-line selection in the active tab is what is looked for.
+        var tab = _sdCodeActiveTab();
+        if (tab && tab.ed) {
+            var sel = tab.ed.selection();
+            var picked = sel.to > sel.from ? tab.ed.sliceDoc(sel.from, sel.to) : '';
+            if (picked && picked.indexOf('\n') === -1) _sdCodeFind.query.search = picked;
+        }
+        var q = _sdCodeFind.query;
+        var opt = function (name, label, icon) {
+            return '<button type="button" class="sd-code-find-opt' + (q[name] ? ' active' : '') + '" data-opt="' + name + '" title="' + esc(label) + '" aria-pressed="' + (q[name] ? 'true' : 'false') + '">' + icon + '</button>';
+        };
+        bar.innerHTML =
+            '<div class="sd-code-find-row">' +
+                '<span class="bi bi-search"></span>' +
+                '<input type="search" class="sd-code-find-input" id="sd-code-find-input" placeholder="' + esc(_sdT('Search in all tabs')) + '" value="' + esc(q.search) + '" spellcheck="false">' +
+                opt('caseSensitive', _sdT('match case'), 'Aa') + opt('wholeWord', _sdT('by word'), 'ab') + opt('regexp', _sdT('regexp'), '.*') +
+                '<span class="sd-code-find-count" id="sd-code-find-count"></span>' +
+                '<button type="button" class="sd-code-find-opt" data-close="1" title="' + esc(_sdT('Close')) + '">&times;</button>' +
+            '</div>' +
+            '<div class="sd-code-find-results" id="sd-code-find-results"></div>';
+        var input = bar.querySelector('#sd-code-find-input');
+        input.addEventListener('input', function () {
+            q.search = this.value;
+            clearTimeout(_sdCodeFind.timer);
+            _sdCodeFind.timer = setTimeout(_sdCodeFindRun, 200);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _sdCodeFindShow(false); return; }
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            clearTimeout(_sdCodeFind.timer);
+            if (q.search !== '' && !_sdCodeFind.hits.length) _sdCodeFindRun();
+            var n = _sdCodeFind.hits.length;
+            if (n) _sdCodeFindPick(((_sdCodeFind.at + (e.shiftKey ? -1 : 1)) % n + n) % n, true);
+        });
+        bar.querySelectorAll('.sd-code-find-opt').forEach(function (b) {
+            b.addEventListener('click', function () {
+                if (this.getAttribute('data-close')) { _sdCodeFindShow(false); return; }
+                var name = this.getAttribute('data-opt');
+                q[name] = !q[name];
+                this.classList.toggle('active', q[name]);
+                this.setAttribute('aria-pressed', q[name] ? 'true' : 'false');
+                _sdCodeFindRun();
+            });
+        });
+        bar.querySelector('#sd-code-find-results').addEventListener('click', function (e) {
+            var hit = e.target.closest('[data-hit]');
+            if (hit) _sdCodeFindPick(parseInt(hit.getAttribute('data-hit'), 10), false);
+        });
+        input.focus();
+        input.select();
+        _sdCodeFindRun();
+    }
+
+    function _sdCodeFindRun() {
+        var list = document.getElementById('sd-code-find-results');
+        var count = document.getElementById('sd-code-find-count');
+        if (!list || !count) return;
+        var q = _sdCodeFind.query;
+        var hits = [], html = '', error = '', truncated = false, tabs = 0;
+        if (q.search !== '' && typeof PgCodeEditor !== 'undefined') {
+            _sdCode.tabs.forEach(function (t) {
+                if (!t.ed || (t.key !== 'page' && !t.loaded) || error) return;
+                var r = PgCodeEditor.findAll(t.ed.getValue(), q, _SD_CODE_FIND_LIMIT);
+                if (r.error) { error = r.error; return; }
+                if (!r.matches.length) return;
+                truncated = truncated || r.truncated;
+                tabs++;
+                var title = t.key === 'page' ? _sdT('Page') : t.title;
+                html += '<div class="sd-code-find-tab"><span class="bi ' + esc(t.icon) + '"></span>' + esc(title) + '<span class="sd-code-find-n">' + r.matches.length + '</span></div>';
+                r.matches.forEach(function (m) {
+                    html += '<div class="sd-code-find-hit" data-hit="' + hits.length + '"><span class="sd-code-find-ln">' + m.line + '</span>' + _sdCodeFindPreview(m) + '</div>';
+                    hits.push({ key: t.key, from: m.from, to: m.to, text: m.text });
+                });
+            });
+        }
+        _sdCodeFind.hits = error ? [] : hits;
+        _sdCodeFind.at = -1;
+        if (error) {
+            count.textContent = _sdT('Invalid regular expression');
+            list.innerHTML = '';
+        } else {
+            count.textContent = q.search === '' ? '' : (hits.length ? _sdT('{var:1} results in {var:2} tabs', [hits.length + (truncated ? '+' : ''), tabs]) : _sdT('No results'));
+            list.innerHTML = html;
+        }
+        count.classList.toggle('text-danger', !!error);
+    }
+
+    // The hit's line, cut to the words around the match, the match marked.
+    function _sdCodeFindPreview(m) {
+        var line = m.lineText, end = Math.min(line.length, m.col + m.text.length);
+        var start = Math.max(0, m.col - 40);
+        var before = line.slice(start, m.col).replace(/^\s+/, '');
+        var after = line.slice(end, end + 80);
+        return '<span class="sd-code-find-text">' + (start > 0 ? '&hellip;' : '') + esc(before) +
+            '<mark>' + esc(line.slice(m.col, end)) + '</mark>' + esc(after) + (end + 80 < line.length ? '&hellip;' : '') + '</span>';
+    }
+
+    // Opens the hit's tab and selects it; a text that changed since the
+    // search (typed, a canvas edit, a closed tab) is searched again first.
+    function _sdCodeFindPick(i, keepFocus) {
+        var hit = _sdCodeFind.hits[i];
+        if (!hit) return;
+        var tab = _sdCodeTabFind(hit.key);
+        if (!tab || !tab.ed || tab.ed.sliceDoc(hit.from, hit.to) !== hit.text) { _sdCodeFindRun(); return; }
+        _sdCodeFind.at = i;
+        if (_sdCode.active !== hit.key) _sdCodeTabActivate(hit.key);
+        tab.ed.goTo(hit.from, hit.to, { focus: !keepFocus });
+        var list = document.getElementById('sd-code-find-results');
+        if (!list) return;
+        list.querySelectorAll('.sd-code-find-hit.active').forEach(function (el) { el.classList.remove('active'); });
+        var row = list.querySelector('[data-hit="' + i + '"]');
+        if (row) { row.classList.add('active'); row.scrollIntoView({ block: 'nearest' }); }
+        if (keepFocus) { var input = document.getElementById('sd-code-find-input'); if (input) input.focus(); }
     }
 
     // ── Shared Context Menu Builder ────────────────────────────────────────────────
@@ -32423,6 +32564,7 @@ const StyleDesigner = (function () {
             var _isMenuRegion      = (_regionType === 'menu_region');
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
             var _isAdRegion        = (_regionType === 'ad_region');
+            var _isTagCloud        = (_regionType === 'tag_cloud_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -32473,6 +32615,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isOrderPreview) {
                 _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
+            } else if (_isTagCloud) {
+                _sourceInfoHtml = _sdT('The 25 keywords used most by what a search results page searches (its catalog items, or the site\'s pages), in alphabetical order, each a link to that page searching for it. The keywords are written on the products and pages; the more often a keyword is used, the higher its weight (1 to 5), which the design shows by its size.');
             } else if (_isAdRegion) {
                 _sourceInfoHtml = _sdT('The ads of an ad region, read on every visit: they are written, ordered and given captions under Ads, by the users who may edit that region. A static region shows one ad picked at random; a dynamic one every ad, in its order, turning by the region\'s slideshow settings. Nothing is drawn while ads are switched off.');
             } else if (_isMenuSequence) {
@@ -33611,6 +33755,25 @@ const StyleDesigner = (function () {
                     row(_sdT('Menu'),
                         '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The items are added, ordered and linked under Menus; without a menu the widget draws no items.')) + '</div>'
+                    )
+                );
+            }
+
+            // ── tag_cloud_region settings ────────────────────────────────────
+            if (_isTagCloud) {
+                var _tcNames = (regionData && regionData.tag_cloud_regions) || [];
+                var _tcName = typeof _cfg.search_page_name === 'string' ? _cfg.search_page_name : '';
+                var _tcOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
+                _tcNames.forEach(function (nm) {
+                    _tcOpts += '<option value="' + esc(nm) + '"' + (nm === _tcName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                });
+                if (_tcName !== '' && _tcNames.indexOf(_tcName) === -1) {
+                    _tcOpts += '<option value="' + esc(_tcName) + '" selected>' + esc(_sdT('{var} (not found)', _tcName)) + '</option>';
+                }
+                systemSection += sect('bi-tags', _sdT('Tag Cloud Settings'),
+                    row(_sdT('Search Results Page'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="search_page_name">' + _tcOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Each keyword links to this page searching for it; without a page the widget draws no keyword.')) + '</div>'
                     )
                 );
             }
@@ -37043,7 +37206,8 @@ const StyleDesigner = (function () {
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
-        order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1
+        order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
+        tag_cloud_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37342,6 +37506,26 @@ const StyleDesigner = (function () {
         ['__event_reservations_open', _sdT('Takes reservations'), 'cond'],
         ['__event_spots_limited',     _sdT('Places are limited'), 'cond'],
         ['__event_is_recurring',      _sdT('Is a recurring event'), 'cond']
+    ];
+
+    // An order's allow-listed values (pg_sw_entity_fields('order')), offered
+    // by the order view (its receipt e-mail too): the owner's own order only.
+    var SW_ORDER_ENTITY_TOKENS = [
+        ['__order_po_number',            _sdT('PO number')],
+        ['__order_custom_field_1',       _sdT('Custom field 1')],
+        ['__order_custom_field_1_label', _sdT('Custom field 1 label (from the billing information page)')],
+        ['__order_custom_field_2',       _sdT('Custom field 2')],
+        ['__order_custom_field_2_label', _sdT('Custom field 2 label (from the billing information page)')],
+        ['__billing_fax',                _sdT('Fax')],
+        ['__order_gift_card_discount',   _sdT('Gift card discount (with symbol)')],
+        ['__order_currency',             _sdT('Currency code')],
+        ['__order_paid_date',            _sdT('Payment date')],
+        ['__order_cancelled_date',       _sdT('Cancellation date')],
+        ['__order_cancellation_reason',  _sdT('Cancellation reason')],
+        ['__order_refund_status',        _sdT('Refund status (Refunded, Refund in progress)')],
+        ['__order_refunded_amount',      _sdT('Refunded amount (with symbol)')],
+        ['__order_refunded_date',        _sdT('Refund date')],
+        ['__order_is_tax_exempt',        _sdT('Is tax exempt'), 'cond']
     ];
 
     // Whether a palette entry is offered only as a condition (yes/no).
@@ -38168,6 +38352,23 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // tag_cloud_region token palette — has loop_area (one row per keyword).
+    // Mirrors _render_system_widget_tag_cloud_region() in widgets_tag_cloud.php.
+    var SW_TAG_CLOUD_TOKEN_GROUPS = [
+        { label: _sdT('Tag Cloud'), tokens: [
+            ['__search_page_name', _sdT('Search results page name')],
+            ['__tag_total',        _sdT('Number of keywords shown')]
+        ]},
+        { label: _sdT('Keyword (loop_area)'), tokens: [
+            ['__tag_name',         _sdT('Keyword')],
+            ['__tag_keyword',      _sdT('Keyword as stored (untranslated)')],
+            ['__tag_url',          _sdT('Search link of the keyword')],
+            ['__tag_count',        _sdT('Number of items with the keyword')],
+            ['__tag_size',         _sdT('Font size in percent (100 to 200)')],
+            ['__tag_weight',       _sdT('Weight from 1 (used least) to 5 (used most)')]
+        ]}
+    ];
+
     // ad_region token palette — has loop_area (one row per ad shown).
     // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
     var SW_AD_REGION_TOKEN_GROUPS = [
@@ -38222,7 +38423,8 @@ const StyleDesigner = (function () {
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
         menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
-        ad_region:         SW_AD_REGION_TOKEN_GROUPS
+        ad_region:         SW_AD_REGION_TOKEN_GROUPS,
+        tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -38477,6 +38679,7 @@ const StyleDesigner = (function () {
             ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')],
             ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
+        { label: _sdT('More order details'), tokens: SW_ORDER_ENTITY_TOKENS },
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
             ['__item_name',              _sdT('Product name (products.name)')],
@@ -39394,6 +39597,10 @@ const StyleDesigner = (function () {
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
         ],
+        tag_cloud_region: [
+            ['has_tags',        _sdT('The search results page has a keyword to show')],
+            ['no_tags',         _sdT('No page is chosen, or it has no keyword')]
+        ],
         ad_region: [
             ['has_ads',         _sdT('The region has an ad to show')],
             ['no_ads',          _sdT('No region is chosen, or it has no ad')],
@@ -40275,6 +40482,7 @@ const StyleDesigner = (function () {
                 SW_ORDER_VIEW_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -51954,7 +52162,8 @@ const StyleDesigner = (function () {
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
         { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
-        { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' }
+        { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
+        { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -52133,6 +52342,9 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
+        } else if (newType === 'tag_cloud_region') {
+            // The site's first search results page, so a new widget shows keywords at once.
+            if (cfg.search_page_name === undefined) cfg.search_page_name = ((regionData && regionData.tag_cloud_regions) || [])[0] || '';
         } else if (newType === 'ad_region') {
             // The site's first ad region, so a new widget shows ads at once.
             if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
@@ -58104,6 +58316,29 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'tag_cloud_region': {
+                // The keywords of a search results page as a row of links:
+                // the loop repeats the keywords in alphabetical order, each
+                // drawn by the link of its weight (1 used least, 5 used
+                // most), larger as the weight grows, as the classic cloud
+                // sizes them. Mirrors _render_system_widget_tag_cloud_region().
+                var tcSizes = ['fs-6', 'fs-5', 'fs-4', 'fs-3', 'fs-2'];
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'nav', cssClass: 'd-flex flex-wrap align-items-baseline column-gap-3 row-gap-1', customName: _sdT('Tag Cloud'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Tag Cloud') }],
+                        _bindings: { eo_visible_if: 'has_tags' } }, [
+                        createNode('loop_area', {}, [
+                            createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Keyword') }, tcSizes.map(function (cls, i) {
+                                return createNode('semantic', { tag: 'a', cssClass: cls + ' text-decoration-none', text: _sdT('Keyword'), href: '#',
+                                    customName: _sdT('Weight {var}', String(i + 1)),
+                                    _bindings: { href: '__tag_url', text: '__tag_name', show_if: '__tag_weight' },
+                                    _bindParams: { show_if: { op: 'eq', value: String(i + 1) } } });
+                            }))
+                        ])
+                    ])
+                ]);
+            }
+
             case 'ad_region': {
                 // The ads of a region as a Bootstrap carousel: the loop
                 // repeats the ads (the server marks the first one active),
@@ -58811,7 +59046,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
@@ -60289,7 +60524,7 @@ const StyleDesigner = (function () {
         html = _sdInsertBeforeBodyEnd(html, _pvJsInject);
 
         // The preview's own harness, ahead of the page's scripts.
-        html = html.replace('</head>', function () { return _sdPreviewHarness(html) + '</head>'; });
+        html = html.replace('</head>', function () { return _sdPreviewHarness(html) + _sdPreviewPlayHarness(_siteUrl) + '</head>'; });
 
         return html;
     }
@@ -60409,6 +60644,88 @@ const StyleDesigner = (function () {
         return '    <script id="pg-preview-harness">' + js + '<\/script>\n';
     }
 
+    // The open tabs a Preview link plays, by lower-cased page name: the
+    // name typed on each tab (saved or not) first, then a renamed tab's
+    // saved name; '' is the home page's tab. Locked tabs do not open, so
+    // their links go to the site.
+    function _sdPreviewPlayMap() {
+        var map = {}, nameEl = document.getElementById('sd-page-name');
+        var add = function (name, key) {
+            name = String(name == null ? '' : name).trim().toLowerCase();
+            if (!Object.prototype.hasOwnProperty.call(map, name)) map[name] = key;
+        };
+        var open = _pages.filter(function (p) { return p && p.access !== 'locked'; });
+        open.forEach(function (p) {
+            var n = (p.key === _activeKey && nameEl) ? nameEl.value : p.page_name;
+            if (String(n || '').trim()) add(n, p.key);
+        });
+        open.forEach(function (p) { if (p.savedName) add(p.savedName, p.key); });
+        open.forEach(function (p) { if (p.page_home) add('', p.key); });
+        return map;
+    }
+
+    // The Preview as a prototype: a plain click on a link to a page of an
+    // open tab asks the editor to play that tab (_sdPreviewPlay()), any
+    // other web link opens the site in a new tab, so the preview window
+    // stays. A link one path segment below the site address is a page link.
+    // The hotspots button outlines the links (page links solid, site links
+    // dashed); its state lives in the window's sessionStorage, so it
+    // survives the live preview's reloads.
+    /* @pg-site-output */
+    function _sdPreviewPlayHarness(siteUrl) {
+        var json = function (v) { return JSON.stringify(v).replace(/</g, '\\u003c'); };
+        var js = '(function(){var S=' + json(siteUrl) + ',M=' + json(_sdPreviewPlayMap()) + ',C=' + json(_activeKey) + ',' +
+                'L=' + json(_sdT('Hotspots')) + ',T=' + json(_sdT('Outline the links you can click')) + ',K="pgPreviewHotspots";' +
+            'function link(e){if(!e.target||!e.target.closest)return null;var a=e.target.closest("a[href]");' +
+                'if(!a||(a.getAttribute("href")||"").charAt(0)==="#"||!/^https?:$/.test(a.protocol))return null;return a;}' +
+            'function tab(a){var u=a.href;if(u.indexOf(S)!==0)return null;' +
+                'var r=u.slice(S.length).split(/[?#]/)[0];if(r.indexOf("/")!==-1)return null;' +
+                'try{r=decodeURIComponent(r);}catch(x){}r=r.trim().toLowerCase();' +
+                'return Object.prototype.hasOwnProperty.call(M,r)?M[r]:null;}' +
+            'window.addEventListener("click",function(e){if(e.defaultPrevented||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;' +
+                'var a=link(e);if(!a)return;var k=tab(a);e.preventDefault();' +
+                'if(k!==null&&k===C){window.scrollTo(0,0);return;}' +
+                'if(k!==null&&window.opener){try{window.opener.postMessage({pgPreviewPlay:k},location.origin);return;}catch(x){}}' +
+                'window.open(a.href,"_blank","noopener");});' +
+            'function on(){try{return sessionStorage.getItem(K)==="1";}catch(x){return false;}}' +
+            'function mark(){var l=document.querySelectorAll("a[href]");for(var i=0;i<l.length;i++){var a=l[i];' +
+                'if(a.hasAttribute("data-bs-toggle")||!/^https?:$/.test(a.protocol)||(a.getAttribute("href")||"").charAt(0)==="#")continue;' +
+                'a.setAttribute("data-pg-pv",tab(a)!==null?"tab":"site");}}' +
+            'function show(b,v){document.documentElement.classList.toggle("pg-pv-hot",v);b.setAttribute("aria-pressed",v?"true":"false");' +
+                'b.style.background=v?"#0d6efd":"#fff";b.style.color=v?"#fff":"#212529";if(v)mark();}' +
+            'function init(){var st=document.createElement("style");' +
+                'st.textContent="html.pg-pv-hot a[data-pg-pv]{outline:2px solid rgba(13,110,253,.8)!important;outline-offset:2px!important}' +
+                    'html.pg-pv-hot a[data-pg-pv=site]{outline-style:dashed!important;outline-color:rgba(108,117,125,.9)!important}";' +
+                'document.head.appendChild(st);var b=document.createElement("button");b.type="button";b.id="pg-pv-hotspots";' +
+                'b.textContent=L;b.title=T;b.style.cssText="position:fixed;left:12px;bottom:12px;z-index:2147483647;' +
+                    'font:13px/1.2 system-ui,sans-serif;padding:6px 10px;border:1px solid #adb5bd;border-radius:6px;' +
+                    'box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer";' +
+                'b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var v=!on();' +
+                    'try{sessionStorage.setItem(K,v?"1":"0");}catch(x){}show(b,v);});' +
+                'document.body.appendChild(b);show(b,on());}' +
+            'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();' +
+            '})();';
+        return '    <script id="pg-preview-play">' + js + '<\/script>\n';
+    }
+
+    // A page link clicked in the Preview (_sdPreviewPlayHarness()): the
+    // editor opens that tab and the preview draws it at once, from the top.
+    function _sdPreviewPlay(key) {
+        var p = _pgPageByKey(key);
+        if (!p || p.access === 'locked') return;
+        if (key !== _activeKey) _pgTabsSwitch(key);
+        if (key !== _activeKey) return;
+        _sdLive.top = true;
+        clearTimeout(_sdLive.timer);
+        _sdLivePreviewRefresh();
+    }
+
+    window.addEventListener('message', function (e) {
+        if (!_sdPreviewWin || e.source !== _sdPreviewWin || e.origin !== location.origin) return;
+        var d = e.data;
+        if (d && typeof d.pgPreviewPlay === 'string') _sdPreviewPlay(d.pgPreviewPlay);
+    });
+
     // The request body of designer/preview_widgets for the system widgets
     // in a marked-up page, or null when the page has none.
     function _sdPreviewWidgetPayload(raw) {
@@ -60515,7 +60832,8 @@ const StyleDesigner = (function () {
     //     drawing the widgets queues exactly one more pass.
     // busy counts the preview_widgets requests in flight (the live pass and
     // an explicit Preview may overlap once).
-    var _sdLive = { timer: 0, busy: 0, again: false, sig: null, widgetHtml: null };
+    // top: the next document starts at the top (a page played from a link).
+    var _sdLive = { timer: 0, busy: 0, again: false, sig: null, widgetHtml: null, top: false };
 
     // Whether the preview window is still open; forgets it once closed.
     function _sdLivePreviewOpen() {
@@ -60575,11 +60893,13 @@ const StyleDesigner = (function () {
     // operator was reading. A window that has followed a link to another
     // site cannot be read; it is simply brought back to the preview.
     function _sdLivePreviewWrite(html) {
+        var top = _sdLive.top;
+        _sdLive.top = false;
         if (html === _sdPreviewSent) return;
         var w = _sdPreviewWin;
         var x = 0, y = 0, oldDoc = null;
         try {
-            if (w.location.href === _sdPreviewUrl) {
+            if (!top && w.location.href === _sdPreviewUrl) {
                 x = w.scrollX || 0;
                 y = w.scrollY || 0;
                 oldDoc = w.document;
@@ -68653,16 +68973,10 @@ const StyleDesigner = (function () {
     // safety), like choices, files and buttons.
     var _SD_ENTRY_NOT_TYPED = ['hidden', 'password', 'submit', 'button', 'reset', 'image', 'checkbox', 'radio', 'file', 'range', 'color'];
 
-    // Asked twice by the software itself: the registration and membership
-    // forms post to pg_member_register() / pg_member_activate(), which
-    // require the address again; a design cannot drop the field.
-    var _SD_ENTRY_SOFTWARE_TWICE = ['email_verify', 'email_address_verify'];
-
     // What a field asks for: its autocomplete purpose, or its name without a
     // "confirm" / "repeat" / "tekrar" part. '' when it says nothing usable.
     function _sdEntryPurpose(el) {
         var name = String(el.getAttribute('name') || '').toLowerCase().replace(/\[\]$/, '');
-        if (_SD_ENTRY_SOFTWARE_TWICE.indexOf(name) !== -1) return '';
         var ac = String(el.getAttribute('autocomplete') || '').toLowerCase().replace(/\s+/g, ' ').trim();
         if (ac && ac !== 'on' && ac !== 'off') return 'ac:' + ac;
         name = name.replace(/(^|[_\-.])(confirm|confirmation|repeat|again|verify|retype|tekrar|dogrula|dogrulama|onay)(?=$|[_\-.])/g, '$1')

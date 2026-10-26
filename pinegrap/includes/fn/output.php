@@ -3083,6 +3083,8 @@ function output_menu($properties = false)
             if (pg_not_found_log_ready()) {
                 $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_not_found_log.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-sign-dead-end bi-me-2\'>' . lang('404 Log') . '</a>';
             }
+            // PAGES > Accessibility report (view_accessibility.php, managers and up).
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_accessibility.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-universal-access bi-me-2\'>' . lang('Accessibility report') . '</a>';
         }
         // PAGES > Auto Dialogs (the screens are gated at manager level, so users do not get the entries)
         if ($user['role'] < 3) {
@@ -3720,6 +3722,7 @@ function output_menu($properties = false)
         case 'add_short_link.php':
         case 'edit_short_link.php':
         case 'view_not_found_log.php':
+        case 'view_accessibility.php':
         case 'view_auto_dialogs.php':
         case 'add_auto_dialog.php':
         case 'edit_auto_dialog.php':
