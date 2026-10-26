@@ -6272,7 +6272,7 @@ else {
 			));
 			curl_exec($ca_probe);
 			$ca_probe_errno = (int) curl_errno($ca_probe);
-			curl_close($ca_probe);
+			unset($ca_probe);
 
 			if (in_array($ca_probe_errno, array(35, 51, 60, 77), true)) {
 				$config_data = pg_config_insert_line($config_data, "define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem');");

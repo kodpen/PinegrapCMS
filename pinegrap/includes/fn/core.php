@@ -970,6 +970,63 @@ function csv_cell($value)
     return str_replace('"', '""', $value);
 }
 
+// Opens an uploaded CSV file for fgetcsv(), which splits lines only on LF.
+// LF and CRLF files are returned as they are; a classic Mac file, whose first
+// line break is a lone CR, is copied into a temporary stream with each lone CR
+// turned into LF. This replaces the auto_detect_line_endings setting,
+// deprecated since PHP 8.1, and reads the same rows on every version.
+// Returns the handle, or false when the file cannot be opened.
+function pg_csv_open($path)
+{
+    $handle = @fopen($path, 'r');
+
+    if (!$handle) {
+        return false;
+    }
+
+    $head = (string) fread($handle, 8192);
+
+    // A CR at the end of the sample may be the first half of a CRLF.
+    if (substr($head, -1) === "\r") {
+        $head .= (string) fread($handle, 1);
+    }
+
+    $cr = strpos($head, "\r");
+    $lf = strpos($head, "\n");
+
+    rewind($handle);
+
+    if (($cr === false) || (($lf !== false) && ($lf <= $cr + 1))) {
+        return $handle;
+    }
+
+    $copy = fopen('php://temp', 'w+');
+    $pending = '';
+
+    while (!feof($handle)) {
+        $chunk = $pending . (string) fread($handle, 65536);
+        $pending = '';
+
+        // Hold back a trailing CR until the next byte shows whether an LF
+        // follows it.
+        if ((substr($chunk, -1) === "\r") && !feof($handle)) {
+            $pending = "\r";
+            $chunk = substr($chunk, 0, -1);
+        }
+
+        fwrite($copy, preg_replace('/\r(?!\n)/', "\n", $chunk));
+    }
+
+    if ($pending !== '') {
+        fwrite($copy, "\n");
+    }
+
+    fclose($handle);
+    rewind($copy);
+
+    return $copy;
+}
+
 // glob() with brace alternatives ("{csv,xlsx}", "{,.}") on every PHP build.
 // GLOB_BRACE is a GNU extension: PHP built against musl (Alpine images) or
 // another non-GNU libc does not define the constant, and naming it there is a

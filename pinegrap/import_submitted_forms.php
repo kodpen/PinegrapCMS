@@ -150,13 +150,8 @@ if (!$_POST) {
     
     // if an error does not exist
     if ($liveform->check_form_errors() == false) {
-        // Fix classic Mac (CR-only) line endings: fgetcsv() splits only on LF unless this
-        // setting is on. It is deprecated since PHP 8.1 but still functional through 8.5,
-        // so the E_DEPRECATED notice is suppressed instead of dropping CR support.
-        @ini_set('auto_detect_line_endings', true);
-        
         // get file handle for uploaded CSV file
-        $handle = fopen($_FILES['file']['tmp_name'], "r");
+        $handle = pg_csv_open($_FILES['file']['tmp_name']);
         
         // get column names from first row of CSV file
         $columns = fgetcsv($handle, 100000, ",", '"', '\\');
