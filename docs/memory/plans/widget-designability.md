@@ -34,7 +34,7 @@ OR in conditions; pg-hide-if-empty everywhere; words beside a value; code areas;
 - W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 Entity fields: products #1809, events #1828, quiz #1847, order #1873, account #1890, order line #1903; next addresses ([[widget-entity-fields-list]]).
 - W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
-- W15 done (#1734). W16 Placed beats pushed, default parts: order view #1808 #1824 #1863, stars #1908 ([[widget-default-parts]]); rest left.
+- W15 done (#1734). W16 Placed beats pushed, default parts: order view #1808 #1824 #1863, stars #1908, breadcrumb #PR ([[widget-default-parts]]); rest left.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
 - W19 #1904 #1914 ([[widget-condition-canvas]]); main loop rows left.
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.

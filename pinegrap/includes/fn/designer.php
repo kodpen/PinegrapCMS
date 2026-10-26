@@ -5813,11 +5813,10 @@ function _render_content_html($props, $pad, $kids = '')
             break;
 
         case 'breadcrumb':
-            // Marker for catalog_item_view / catalog_listing render to
-            // substitute with the live breadcrumb HTML (Main Catalog →
-            // Group → Subgroup → Product). Each widget detects the
-            // marker via strpos AFTER its own breadcrumb computation.
-            // Outside a catalog widget the marker simply disappears.
+            // Inside a catalog widget the node is given the breadcrumb
+            // part before the render (pg_sw_default_parts_apply()), so
+            // only a node outside one reaches here: the marker prints
+            // nothing.
             $html .= $pad . '<!--pg-breadcrumb-placeholder-->' . "\n";
             break;
 

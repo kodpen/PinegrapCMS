@@ -208,7 +208,7 @@ function test_widget_finish_invalid_spec_renders_nothing()
 		_widget_finish_node('title', 'title', array('op' => 'between', 'value' => '1')),
 		_widget_finish_node('title', 'title', array('op' => 'gt')),
 		_widget_finish_node('title', '__edit_url'),
-		_widget_finish_node('title', '__breadcrumb_html'),
+		_widget_finish_node('title', '__group_tree_html'),
 	);
 	foreach ($bad as $i => $node) {
 		pg_assert_same('', _widget_finish_in_scope('form_list_view', function () use ($node) {
