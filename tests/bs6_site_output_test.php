@@ -102,6 +102,7 @@ function test_bs6_site_output_codemod_scope()
 	pg_assert_false(bs6_codemod_converts('assets/js/pg_style_predict.js'), 'the designer vocabulary is data');
 	pg_assert_false(bs6_codemod_converts('includes/fn/forms.php'), 'shared file');
 	pg_assert_true(bs6_codemod_converts('includes/fn/output.php'), 'the panel head, menu and footer');
+	pg_assert_true(bs6_codemod_converts('includes/designer_screen.php'), 'the editor screen');
 	pg_assert_false(bs6_codemod_converts('get_page.php'), 'site file');
 }
 

@@ -977,11 +977,13 @@ function bs6_syntax_error($path, $source)
 	return trim($result['err'] . ' ' . $result['out']);
 }
 
-// The visual editor's files whose site-output code carries the
-// `/* @pg-site-output */` marker, so the codemod may rewrite the rest.
+// The visual editor's files the codemod may rewrite: style_designer.js
+// outside the code marked `/* @pg-site-output */`, and the editor screen
+// (designer_screen.php), whose markup is all panel chrome printed under
+// pg_page_shell().
 function bs6_marked_editor_files()
 {
-	return array('assets/js/style_designer.js');
+	return array('assets/js/style_designer.js', 'includes/designer_screen.php');
 }
 
 // Whether --all, --diff and a named path rewrite this file without --force.
