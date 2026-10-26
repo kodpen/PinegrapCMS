@@ -74,7 +74,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-composer-lists.md: Step 2 of plans/workspace-composer-tools.md (lists and quotes): 2a server done (#1725); 2b editor open, with an unmerged reference branch and its editor findings
 - workspace-composer-tools.md: Plan (2026-10-23, 1 done #1554, 2 handed over, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, 4 #1681, 5 #1790, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
-- workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, F4 node data, rest open): Flows engine: tables, runs, steps, wake-ups, drivers, shared steps, idempotency, versions, limits, API
+- workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, F4 #1840, rest open): Flows engine: tables, runs, steps, wake-ups, drivers, shared steps, idempotency, versions, limits, API
 - workspace-flows-scheduled-merge.md: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, slice 2 #1810, answers 1-3): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes, opt-in convert
 - workspace-flows-scheduled-parity.md: Parity rows of plans/workspace-flows-scheduled-merge.md: every scheduled-action key and rule and the slice that keeps it; the test that maps them is in workspace/workspace-flows-parity-test.md
 - workspace-flows.md: Plan (2026-10-24, F1-F2 done #1503 #1529, F3a #1551, F3b #1555, F7 #1578): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine

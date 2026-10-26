@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-engine
-description: Plan (2026-10-24, F1 #1503, F3a #1551, F4 node data, rest open): Flows engine: tables, runs, steps, wake-ups, drivers, shared steps, idempotency, versions, limits, API
+description: Plan (2026-10-24, F1 #1503, F3a #1551, F4 #1840, rest open): Flows engine: tables, runs, steps, wake-ups, drivers, shared steps, idempotency, versions, limits, API
 ---
 
 ## What does it reuse?
@@ -40,5 +40,5 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, F4 node data, rest open): Fl
 - /workspace/flows, /{id}, /publish, /resume (`ws_api_own_words_only()`, `'mcp' => false`), /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip; `dry_run`; `workspace:read`, `:write`.
 
 ## Where to start?
-- Built: F1 #1503, F3a #1551 (manual, task, end; workspace/workspace-flows-runner.md), F4 node data (workspace-flows-node-data.md)
+- Built: F1 #1503, F3a #1551 (manual, task, end; workspace/workspace-flows-runner.md), F4 #1840 (workspace-flows-node-data.md)
 - Next: F5 retry and skip.
