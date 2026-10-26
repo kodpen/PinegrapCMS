@@ -72,10 +72,19 @@ function db_connect()
         }
     }
 
-    // If there's already a working connection, return early.
-    if (isset(db::$con) && db::$con && function_exists('mysqli_ping')) {
-        $ping = @mysqli_ping(db::$con);
+    // If there's already a working connection, return early. A trivial query
+    // tells whether it is alive: mysqli_ping() is deprecated since PHP 8.4,
+    // and on a closed connection PHP 8 throws instead of returning false.
+    if (isset(db::$con) && db::$con) {
+        try {
+            $ping = @mysqli_query(db::$con, 'SELECT 1');
+        } catch (Throwable $e) {
+            $ping = false;
+        }
         if ($ping) {
+            if ($ping instanceof mysqli_result) {
+                mysqli_free_result($ping);
+            }
             return;
         }
     }
@@ -3999,7 +4008,7 @@ function url_exists($url)
         $httpCode = 0;
         if ($ch) {
             $httpCode = (int) @curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            unset($ch);
         }
 
         // Consider resource existing if status is 2xx or 3xx
@@ -4379,7 +4388,7 @@ function detect_mime_type($file_path)
         $finfo = @finfo_open($const);
         if ($finfo) {
             $mime = finfo_file($finfo, $file_path);
-            finfo_close($finfo);
+            unset($finfo);
             if ($mime !== false) {
                 return $mime;
             }

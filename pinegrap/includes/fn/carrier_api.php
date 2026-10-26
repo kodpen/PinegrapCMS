@@ -415,7 +415,7 @@ function pg_carrier_api_http($method, $url, $headers, $body = '')
     $errno = curl_errno($ch);
     $error = curl_error($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch);
 
     if ($errno) {
         return array(

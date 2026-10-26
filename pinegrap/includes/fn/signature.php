@@ -1178,7 +1178,7 @@ function pg_signature_request_stamp($digest, $settings = null, &$reason = null)
     $errno = curl_errno($curl);
     $error = curl_error($curl);
 
-    curl_close($curl);
+    unset($curl);
 
     if (($response === false) || ($response === '')) {
         $reason = 'cURL ' . $errno . ': ' . $error . (function_exists('pg_curl_tls_hint') ? ' ' . pg_curl_tls_hint($errno) : '');

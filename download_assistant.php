@@ -108,7 +108,7 @@ function da_download($url, $destination)
 
         $body = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch);
 
         if ($body !== false && $status === 200) {
             $bytes = $body;
@@ -426,7 +426,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         $response = curl_exec($ch);
         $curl_errno = curl_errno($ch);
         $curl_error = curl_error($ch);
-        curl_close($ch);
+        unset($ch);
 
         if ($response === false) {
             $_SESSION['software']['download_assistant']['message'] =

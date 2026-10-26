@@ -75,7 +75,7 @@ function cf_request($method, $path, $body = null, $apiBase = '', $token = '') {
     }
     $response = curl_exec($ch);
     $status   = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    curl_close($ch);
+    unset($ch);
     return [
         'status' => $status,
         'json'   => json_decode($response, true)
@@ -101,7 +101,7 @@ function cf_graphql($body, $token) {
     ]);
     $response = curl_exec($ch);
     $status   = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    curl_close($ch);
+    unset($ch);
     return [
         'status' => $status,
         'json'   => json_decode($response, true)

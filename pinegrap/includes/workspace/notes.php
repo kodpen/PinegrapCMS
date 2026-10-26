@@ -1838,7 +1838,7 @@ function ws_note_file_store_bytes($viewer, $note, $original_name, $binary)
         $mime = $finfo ? (string) @finfo_file($finfo, $path) : '';
 
         if ($finfo) {
-            @finfo_close($finfo);
+            unset($finfo);
         }
 
         if (preg_match('#^(text/html|application/xhtml|application/x-php|text/x-php|application/x-httpd|application/x-msdownload|application/x-dosexec|application/x-sh|text/x-shellscript|application/x-executable|image/svg|application/javascript|text/javascript)#i', $mime)) {
