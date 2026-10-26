@@ -18,4 +18,4 @@ description: Tag Cloud widget (tag_cloud_region): the classic <tcloud> region in
 - Not as the classic inline `font-size: N% !important` (`style` is refused as an attribute value, [[widget-attr-bindings]]). The starter row holds five links, one per weight, each with `show_if __tag_weight eq N` and a Bootstrap size class (`fs-6` .. `fs-2`, about 100% to 200%): real elements a design restyles one by one.
 
 ## What is left out?
-- The classic `software_tag_cloud` class and the `&nbsp;` separators: the starter is a flex row with gaps. Turning a page's `tag_cloud` region node into this widget is not done.
+- The classic `software_tag_cloud` class and the `&nbsp;` separators: the starter is a flex row with gaps. A `tag_cloud` region node becomes this widget with "Make designable" ([[region-node-to-widget]]).

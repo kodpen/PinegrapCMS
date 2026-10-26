@@ -64,6 +64,7 @@
     "\"{var}\" added.": "\"{var}\" eklendi.",
     "\"{var}\" has no Account E-mail widget yet, so the e-mail cannot show the member's name or links. Add one to that page.": "\"{var}\" sayfasında henüz Hesap E-postası widget'ı yok; e-posta üyenin adını ve bağlantılarını gösteremez. O sayfaya bir tane ekleyin.",
     "\"{var}\" is a draft. A draft page is not sent: publish it.": "\"{var}\" bir taslak. Taslak sayfa gönderilmez: yayınlayın.",
+    "\"{var}\" is now a widget you design; its items are still edited where they were.": "\"{var}\" artık tasarladığınız bir widget; öğeleri yine eskiden düzenlendikleri yerde düzenlenir.",
     "\"{var}\" was turned into a shared component.": "\"{var}\" ortak bileşene dönüştürüldü.",
     "\"{var}\" will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open it; administrators will.": "\"{var}\" yayından kaldırılıp özel Taslaklar klasöründe saklanacak. Ziyaretçiler açamayacak, yöneticiler açabilecek.",
     "# is where the number goes: urun-### gives urun-001. {name} is the name it has now.": "# numaranın geleceği yerdir: urun-### → urun-001. {name} şu anki addır.",
