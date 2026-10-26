@@ -4416,10 +4416,48 @@ const StyleDesigner = (function () {
         var now = Date.now();
         if (now - _sdContentNudgeAt < 2500) return;
         _sdContentNudgeAt = now;
-        var msg = (why === 'shared')
-            ? _sdT('System widgets and shared components are managed by designers.')
-            : _sdT('You can edit text, and anything inside an area marked as editable.');
-        if (typeof sdToast === 'function') sdToast(esc(msg), 'info', 4000);
+        if (typeof sdToast === 'function') sdToast(esc(_sdContentReasonText(why)), 'info', 4000);
+    }
+
+    // What the content level says about a refused change: 'shared' (a
+    // widget or a shared component not opened to the operator), 'design'
+    // (the design's User Styles), anything else outside a marked area.
+    function _sdContentReasonText(why) {
+        if (why === 'shared') return _sdT('System widgets and shared components are managed by designers.');
+        if (why === 'design') return _sdT('User Styles belong to the whole design and are managed by designers.');
+        return _sdT('You can edit text, and anything inside an area marked as editable.');
+    }
+
+    // At content level, why the Attributes panel and the inline style of the
+    // selected nodes are not the operator's: 'shared', 'area', or '' when
+    // every node is theirs (a marked area). Outside one the save takes only
+    // text and image addresses (pg_designer_merge_restricted_tree()), so a
+    // class, id, attribute or style typed there showed on the canvas and was
+    // dropped by the save. All or none, as _sdMayEditAll().
+    function _sdPanelLockReason(nodes) {
+        if (!_sdIsContentLevel()) return '';
+        var list = [].concat(nodes || []);
+        for (var i = 0; i < list.length; i++) {
+            var n = list[i];
+            if (!n || _sdCanEditNode(n)) continue;
+            return _sdInClosedShared(n) ? 'shared' : 'area';
+        }
+        return '';
+    }
+
+    // Draws a panel or one of its cards read-only: every field and button is
+    // switched off (the values stay in view), a class chip loses its remove
+    // mark and a line on top says why. Nothing is wired off: a disabled
+    // control sends no event.
+    function _sdPanelLock(box, why) {
+        if (!box || !why) return;
+        box.classList.add('sd-panel-readonly');
+        box.querySelectorAll('input, textarea, select, button').forEach(function (el) { el.disabled = true; });
+        box.querySelectorAll('.sd-class-tag-remove').forEach(function (el) { el.parentNode.removeChild(el); });
+        var note = document.createElement('div');
+        note.className = 'sd-panel-ro-note';
+        note.innerHTML = '<span class="bi bi-lock-fill me-1"></span>' + esc(_sdContentReasonText(why));
+        box.insertBefore(note, box.firstChild);
     }
 
     var _sdReadOnlyNudgeAt = 0;
@@ -24472,6 +24510,13 @@ const StyleDesigner = (function () {
                 if (v) v.focus();
             });
         });
+        // At content level the inline style is the operator's only inside a
+        // marked area; User Styles are the design's, which this level never
+        // writes (style_custom_css), so a rule changed there was lost.
+        if (_sdIsContentLevel()) {
+            _sdPanelLock(panel.querySelector('.sd-styles-element-style'), _sdPanelLockReason(selectedNode));
+            _sdPanelLock(panel.querySelector('.sd-styles-user-rules'), 'design');
+        }
     }
 
     // ── User-styles overlay: parse / write ───────────────────────────────
@@ -25176,6 +25221,7 @@ const StyleDesigner = (function () {
                 }
             });
         }
+        _sdPanelLock(panel, _sdPanelLockReason(n));
     }
 
     // One undo step per edit of an Attributes text field, taken before its
@@ -25325,6 +25371,7 @@ const StyleDesigner = (function () {
             });
             ci.addEventListener('blur', function() { if (this.value.trim()) _addMultiClass(this.value); });
         }
+        _sdPanelLock(panel, _sdPanelLockReason(nodes));
     }
 
     // ── Class suggestions ──────────────────────────────────────────────────────
@@ -63690,7 +63737,8 @@ const StyleDesigner = (function () {
         if (designOpen && pageBtn && window.bootstrap && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(pageBtn).show();
         // …and the panels that edit the design's stylesheets, scripts, fonts
         // and themes, wherever they live in the left rail.
-        ['sd-assets-panel', 'sd-themes-panel', 'sd-bp-assets', 'sd-bp-themes'].forEach(function (id) {
+        ['sd-assets-panel', 'sd-themes-panel', 'sd-bp-assets', 'sd-bp-themes',
+         'sd-styles-create', 'sd-styles-extract'].forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });

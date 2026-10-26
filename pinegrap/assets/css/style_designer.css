@@ -5459,6 +5459,17 @@ body.sd-view-mode .sd-pane-locked > *:not(.sd-page-locked-note) { pointer-events
     white-space: nowrap;
 }
 
+/* Attributes panel or Styles card a content-level operator does not own:
+   the values stay readable, the controls are switched off. */
+.sd-panel-ro-note {
+    padding: 4px 8px;
+    font-size: .68rem;
+    color: var(--sd-text-muted);
+    border-bottom: 1px solid var(--sd-panel-border);
+}
+.sd-panel-readonly input:disabled,
+.sd-panel-readonly button:disabled { cursor: not-allowed; opacity: .7; }
+
 /* Properties panel for a block a content-level operator does not own. */
 .sd-props-readonly { padding: 10px 12px; }
 .sd-props-readonly-head {
