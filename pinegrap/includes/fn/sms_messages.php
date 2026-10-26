@@ -344,7 +344,23 @@ function pg_sms_message_queue($event, $to, $fields, $reference)
 }
 
 /**
- * The order's own fields and its customer's number.
+ * Whether the shop texts the customer of an order (pure): not for an order a
+ * marketplace sold (orders.type 'marketplace'). The marketplace tells its own
+ * buyer, and the phone on the order may be the marketplace's relay; the
+ * cancellation e-mail stays away from it too
+ * (pg_order_cancellation_mails_customer()).
+ *
+ * @param array $order a row with `type`
+ * @return bool
+ */
+function pg_sms_order_texted($order)
+{
+    return !(isset($order['type']) && ((string) $order['type'] === 'marketplace'));
+}
+
+/**
+ * The order's own fields and its customer's number; null for an order the
+ * shop does not text (pg_sms_order_texted()).
  *
  * @param int $order_id
  * @return array|null phone, fields
@@ -352,11 +368,11 @@ function pg_sms_message_queue($event, $to, $fields, $reference)
 function pg_sms_message_order($order_id)
 {
     $order = db_item(
-        "SELECT order_number, billing_first_name, billing_phone_number, total
+        "SELECT order_number, billing_first_name, billing_phone_number, total, type
         FROM orders
         WHERE id = '" . (int) $order_id . "'");
 
-    if (!$order) {
+    if (!$order || !pg_sms_order_texted($order)) {
         return null;
     }
 
