@@ -86,3 +86,17 @@ function test_workspace_notes_revision_schema_and_api()
 	pg_assert_contains("'revision'    => 'integer?',", $resources, 'the note object declares it');
 	pg_assert_contains("\$data['revision'] = (int) \$params['revision'];", $resources, 'the update hands it to the check');
 }
+
+function test_workspace_notes_revision_panel_sends_it()
+{
+	$actions = workspace_notes_revision_test_source('includes/workspace/actions.php');
+
+	pg_assert_contains("foreach (array('title', 'body', 'pinned', 'base', 'revision') as \$field) {", $actions, 'the panel\'s save hands the revision to the check');
+
+	$script = workspace_notes_revision_test_source('assets/js/workspace.js');
+
+	pg_assert_contains("revision: force ? 0 : (current.revision || 0),", $script, 'the screen sends the revision it read; keeping its own text sends none');
+	pg_assert_contains("'updated_at', 'revision', 'updated_by'", $script, 'a save takes the new revision back');
+	pg_assert_contains('function newer(fresh, held)', $script, 'the poll reloads a note whose revision moved, a pin or an import included');
+	pg_assert_contains('current.revision = Math.max(current.revision || 0, data.note.revision || 0);', $script, 'a pin made here does not turn the next save into a conflict');
+}

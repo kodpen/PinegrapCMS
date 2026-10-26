@@ -9,6 +9,9 @@ description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys
 - `passkey.php`: POST + session token, JSON only. `register_options` only for an account with TOTP on and after the password and a code (PR #1384, step 3: `core/passkey-account-section.md`); `register` needs the ceremony only that begins; both refused while logged in as another user. `signin_options` serves a sign-in waiting in `mfa.php` verify mode.
 - `mfa.php` verify mode shows "Use a passkey" when the account has one and the browser can (`assets/js/pg_passkey.js`). The answer is posted to `mfa.php` (`pg_mfa_action=passkey`), counts against `pg_mfa_attempt_blocked()` and completes through `pg_mfa_screen_complete()`.
 
+## Where are they managed?
+- The classic account page (`core/passkey-account-section.md`) and the designed `account_security` widget (`designer/passkey-widget-list.md`, PR #1843).
+
 ## What removes an account's passkeys?
 - `pg_mfa_reset()`: the administrator two-step reset on `edit_user.php` (after a suspected compromise an old passkey must not answer the second step once TOTP is set up again) and both account deletion paths (PR #672).
 - The account page's remove, one at a time (`core/passkey-account-section.md`).
@@ -25,5 +28,4 @@ description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys
 - One sentence per site/session/list code (`unavailable`, `host`, `challenge`, `none`, `limit`, `duplicate`); every refusal of the credential itself reads "The passkey was not accepted." The code goes to the activity log (`access denied (passkey not accepted: …)`, `passkey not added (…)`).
 
 ## What is not built yet? (plans/passkeys.md)
-- The designed `account_security` widget (step 3b); the classic account page has the list, add, rename and remove.
 - The gate: an account with passkeys but no TOTP is not asked for a second step; a required role still sets up TOTP. Passwordless sign-in: `pg_passkey_signin_begin(0)` and the check already handle it (user handle required, UV required) but no screen offers it.

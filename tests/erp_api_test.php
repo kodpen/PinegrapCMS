@@ -276,3 +276,39 @@ function test_erp_alert_rows_carry_the_actor()
 		pg_assert_false(strpos($bodies[$function] ?? '', 'USER_ID') !== false || strpos($bodies[$function] ?? '', 'USER_USERNAME') !== false, $function . '() does not read the panel\'s constants itself');
 	}
 }
+
+// Opening and changing an account card can be tried first: every check runs
+// (the tax number, a customer already linked, the period lock on the opening
+// balance), and the rehearsal stops before the card, the link or the opening
+// entry is written.
+function test_erp_api_account_writes_can_be_rehearsed()
+{
+	$routes = array();
+
+	foreach (erp_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	foreach (array('erp.accounts.create' => 'erp_api_accounts_create', 'erp.accounts.update' => 'erp_api_accounts_update') as $id => $handler) {
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' takes X-Dry-Run');
+
+		$function = new ReflectionFunction($handler);
+		$lines = file($function->getFileName());
+		$source = preg_replace('~^\s*(//|\*).*$~m', '', implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1)));
+		$stop = strpos($source, 'api_dry_run_stop(');
+
+		pg_assert_true($stop !== false, $handler . ' stops a rehearsal');
+		pg_assert_true($stop < strpos($source, 'erp_account_save('), $handler . ' stops before the card is written');
+		pg_assert_true($stop > strpos($source, "'tax_number')"), $handler . ' checks the tax number first');
+
+		if (strpos($source, 'erp_account_link_contact(') !== false) {
+			pg_assert_true($stop < strpos($source, 'erp_account_link_contact('), $handler . ' stops before the link');
+		}
+	}
+
+	$create = (string) file_get_contents((new ReflectionFunction('erp_api_accounts_create'))->getFileName());
+	$create = substr($create, strpos($create, 'function erp_api_accounts_create('));
+	$create = substr($create, 0, strpos($create, 'erp_account_save('));
+
+	pg_assert_contains('erp_lock_refusal(', $create, 'the opening date is checked against the lock before anything is written');
+}

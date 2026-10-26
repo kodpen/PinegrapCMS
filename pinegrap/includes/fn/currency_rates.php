@@ -169,13 +169,7 @@ function pg_currency_rates_fetch($base_code, array $codes)
  */
 function pg_currency_rates_table_exists()
 {
-    static $exists = null;
-
-    if ($exists === null) {
-        $exists = (count((array) db_items("SHOW TABLES LIKE 'currency_rates'")) > 0);
-    }
-
-    return $exists;
+    return pg_schema_has('currency_rates');
 }
 
 /**

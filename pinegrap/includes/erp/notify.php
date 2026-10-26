@@ -36,6 +36,18 @@ if (!defined('PG_ERP_ENTRY')) {
     exit;
 }
 
+// true in config.php: an overdue sales invoice announced for the first time
+// also opens a Workspace collection follow-up (erp_overdue_followups()).
+if (!defined('ERP_OVERDUE_FOLLOWUP')) {
+    define('ERP_OVERDUE_FOLLOWUP', false);
+}
+
+// A user id in config.php: every collection follow-up is opened as, and for,
+// this person; 0 opens each one as the person who made the invoice.
+if (!defined('ERP_OVERDUE_FOLLOWUP_USER')) {
+    define('ERP_OVERDUE_FOLLOWUP_USER', 0);
+}
+
 /**
  * Whether a table has a column, asked once per request.
  *
@@ -812,7 +824,8 @@ function erp_overdue_unsnooze($invoice_id)
  * @return array  ['ran' => bool, 'reason' => string, 'new' => rows, 'second' => rows,
  *                 'known' => rows, 'snoozed' => rows, 'notification_id' => int,
  *                 'email' => bool|null, 'push' => bool, 'recipients' => array,
- *                 'customers' => ['sent' => int, 'skipped' => int, 'failed' => int]]
+ *                 'customers' => ['sent' => int, 'skipped' => int, 'failed' => int],
+ *                 'followups' => int]
  */
 function erp_overdue_check($force = false, $from_job = false)
 {
@@ -828,6 +841,7 @@ function erp_overdue_check($force = false, $from_job = false)
         'push'            => false,
         'recipients'      => array(),
         'customers'       => array('sent' => 0, 'skipped' => 0, 'failed' => 0),
+        'followups'       => 0,
     );
 
     if (!erp_overdue_notify_enabled()) {
@@ -983,7 +997,145 @@ function erp_overdue_check($force = false, $from_job = false)
         db("UPDATE erp_invoices SET overdue_second_notified_at = '" . $now . "' WHERE id IN (" . implode(',', $ids_second) . ")");
     }
 
+    // After the stamp: a document is announced for the first time once, so
+    // it opens its follow-up once even if the task is closed in the meantime.
+    if (ERP_OVERDUE_FOLLOWUP && $candidates['new']) {
+        $result['followups'] = erp_overdue_followups($candidates['new']);
+    }
+
     db("UPDATE config SET erp_overdue_notify_sent_at = '" . $now . "'");
 
     return $result;
+}
+
+/**
+ * Who an overdue invoice's collection follow-up is opened as: the person
+ * chosen in config.php (ERP_OVERDUE_FOLLOWUP_USER), else the person who made
+ * the invoice. An order's automatic invoice has no maker: nobody, unless a
+ * person is chosen.
+ *
+ * @param int $chosen     ERP_OVERDUE_FOLLOWUP_USER
+ * @param int $created_by erp_invoices.created_by
+ * @return int user id, 0 for nobody
+ */
+function erp_overdue_followup_owner($chosen, $created_by)
+{
+    return ((int) $chosen > 0) ? (int) $chosen : max(0, (int) $created_by);
+}
+
+/**
+ * The Workspace follow-up an overdue sales invoice becomes, as
+ * ws_followup_task_open() takes it: tagged with the invoice, for the person
+ * it is opened as, due on the day it is announced until 23:59 and reminded
+ * that day at the Workspace's reminder time (at once when that has passed).
+ * The title names the invoice by its number, never its account: whoever sees
+ * the task without the ERP right reads the tag only by kind and number.
+ *
+ * @param array  $row        id, full_number (an erp_overdue_notify_candidates() row)
+ * @param int    $user_id    the person it is opened as and for
+ * @param int    $channel_id the customer's channel, 0 for none
+ * @param string $today      Y-m-d
+ * @param string $day_time   H:MM, the day's reminder time
+ * @return array|null null when there is nobody to open it as, no invoice or no day
+ */
+function erp_overdue_followup_input($row, $user_id, $channel_id, $today, $day_time)
+{
+    $id = (int) ($row['id'] ?? 0);
+    $user_id = (int) $user_id;
+
+    if (($id <= 0) || ($user_id <= 0) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $today)) {
+        return null;
+    }
+
+    $number = trim((string) ($row['full_number'] ?? ''));
+    $parts = array_map('intval', explode(':', (string) $day_time) + array(0, 0));
+
+    return array(
+        'title'          => lang(array('string' => 'Collect overdue invoice {var:1}', 'vars' => array(($number !== '') ? $number : '#' . $id))),
+        'refs'           => array(array('type' => 'invoice', 'id' => $id)),
+        'channel_id'     => max(0, (int) $channel_id),
+        'assignees'      => array($user_id),
+        'due_date'       => (string) $today,
+        'due_time'       => '23:59',
+        'remind_minutes' => max(0, (23 * 60 + 59) - ($parts[0] * 60 + $parts[1])),
+    );
+}
+
+/**
+ * A Workspace collection follow-up for each overdue sales invoice the digest
+ * has just announced for the first time (ERP_OVERDUE_FOLLOWUP): opened as the
+ * person erp_overdue_followup_owner() names, on the most recently active
+ * channel about its account (or the account's contact) that person may post
+ * in, else theirs alone. An open follow-up of the invoice is handed back, not
+ * opened twice. Nobody to open it as - no maker and nobody chosen, or the
+ * person gone or no longer a Workspace member - and the digest is all that
+ * is left.
+ *
+ * @param array[] $rows erp_overdue_notify_candidates() rows: id, full_number, account_id
+ * @return int how many were opened
+ */
+function erp_overdue_followups($rows)
+{
+    if (!$rows || !defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED || !function_exists('pg_load_user_row')) {
+        return 0;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    $ids = array();
+
+    foreach ($rows as $row) {
+        $ids[] = (int) $row['id'];
+    }
+
+    $makers = array();
+
+    foreach ((array) db_items("SELECT id, created_by FROM erp_invoices WHERE id IN (" . implode(',', $ids) . ")") as $invoice) {
+        $makers[(int) $invoice['id']] = (int) $invoice['created_by'];
+    }
+
+    $today = date('Y-m-d');
+    $opened = 0;
+    $viewers = array();
+
+    foreach ($rows as $row) {
+        $user_id = erp_overdue_followup_owner(ERP_OVERDUE_FOLLOWUP_USER, $makers[(int) $row['id']] ?? 0);
+
+        if (!array_key_exists($user_id, $viewers)) {
+            $user = ($user_id > 0) ? pg_load_user_row($user_id) : null;
+            $viewer = (is_array($user) && ((int) ($user['id'] ?? 0) > 0)) ? ws_viewer($user) : null;
+            $viewers[$user_id] = (is_array($viewer) && !empty($viewer['member'])) ? $viewer : null;
+        }
+
+        $viewer = $viewers[$user_id];
+
+        if ($viewer === null) {
+            continue;
+        }
+
+        $channel_id = 0;
+
+        if ((int) $row['account_id'] > 0) {
+            foreach (ws_customer_channels('erp_account', (int) $row['account_id']) as $channel) {
+                if (ws_can_post_channel($viewer, $channel)) {
+                    $channel_id = (int) $channel['id'];
+                    break;
+                }
+            }
+        }
+
+        $input = erp_overdue_followup_input($row, $user_id, $channel_id, $today, WS_TASK_REMIND_DAY_TIME);
+
+        if ($input === null) {
+            continue;
+        }
+
+        $made = ws_followup_task_open($viewer, $input, true);
+
+        if ($made['ok'] && !$made['existing']) {
+            $opened++;
+        }
+    }
+
+    return $opened;
 }

@@ -1,6 +1,6 @@
 ---
 name: erp-overdue-reminders
-description: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients.
+description: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients, Workspace collection follow-up.
 ---
 
 ## What does the overdue reminder do?
@@ -18,6 +18,14 @@ description: ERP overdue receivable reminders (erp_overdue_check): thresholds, o
 ## How is it scheduled?
 - Two ways: registry job `erp_overdue_job` (86400) plus an hourly attempt from the dashboard that calls `erp_overdue_check()` (WAF bot list pattern, `config.erp_overdue_notify_checked`). The job script does not wait for the hour.
 - The period is computed from "now" (`erp_overdue_notify_slot`): a late check does not skip a period, an early one does not send twice.
+
+## How does an overdue invoice become a Workspace task? (#1860)
+- Only with `define('ERP_OVERDUE_FOLLOWUP', true);` in config.php and the Workspace on; the reminder must be on too (it supplies the threshold and the once-stamp). A Settings switch or person picker would need a `config` column (schema), so both are config.php constants, as the quote follow-up (erp-alerts.md).
+- `erp_overdue_check()` calls `erp_overdue_followups($candidates['new'])` after the stamps: only documents announced for the first time, so a second notice or a closed task never opens another one.
+- Opened as `ERP_OVERDUE_FOLLOWUP_USER` (a user id, 0 = none) or else the invoice's `created_by` (`erp_overdue_followup_owner()`); an order's automatic invoice has no maker and is skipped unless a person is chosen. `pg_load_user_row()`, `ws_viewer()`, members only.
+- Channel: the first of `ws_customer_channels('erp_account', account)` the person may post in; none: their own task.
+- `erp_overdue_followup_input()` (pure): tag `<#invoice:id>`, title "Collect overdue invoice <number>" (never the account's name), due the day it is announced at 23:59, reminded that day at `WS_TASK_REMIND_DAY_TIME` (at once when passed). `ws_followup_task_open(..., true)` hands back an open one.
+- The job's CLI line prints how many were opened. Tests: tests/erp_overdue_followup_test.php. Not run against a database.
 
 ## Where is the `config` column rule?
 - New config fields for this feature must be TEXT, never VARCHAR: see docs/memory/data/config-table-no-varchar.md.

@@ -642,6 +642,7 @@ function api_openapi_objects()
         'TopContent'   => 'api_top_content_schema',
         'VisitorBreakdown' => 'api_visitor_breakdown_schema',
         'SiteLogEntry' => 'api_site_log_schema',
+        'AuditLogEntry' => 'api_audit_log_schema',
         'Campaign'     => 'api_campaign_schema',
         'CampaignRecipient' => 'api_campaign_recipient_schema',
         'ContactGroup' => 'api_contact_group_schema',

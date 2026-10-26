@@ -4,7 +4,8 @@
  *
  * Scheduled job: overdue receivable reminders. Sends the period's digest of
  * sales invoices that have newly passed the reminder threshold, over the
- * channels chosen on the ERP settings card. The decision and the wording live
+ * channels chosen on the ERP settings card, and, with ERP_OVERDUE_FOLLOWUP on,
+ * opens a Workspace collection follow-up for each. The decision and the wording live
  * in includes/erp/notify.php; this script only decides who may start it.
  *
  * Runs from the job dispatcher, from a crontab line, or by hand from the
@@ -47,6 +48,7 @@ if (php_sapi_name() === 'cli') {
     print 'overdue reminders: ' . ($result['ran']
         ? ('sent, ' . count($result['new']) . ' new, ' . count($result['second'] ?? array()) . ' second, ' . (int) ($result['customers']['sent'] ?? 0) . ' customer(s) e-mailed')
         : ('skipped (' . $result['reason'] . ')')) . "\n";
+    print 'collection follow-ups: ' . ((defined('ERP_OVERDUE_FOLLOWUP') && ERP_OVERDUE_FOLLOWUP) ? ((int) ($result['followups'] ?? 0) . ' opened') : 'off') . "\n";
 } elseif (!pg_cron_is_background_run()) {
     // Started by hand from the panel: back to the dashboard, which shows the
     // standing overdue total whether or not a digest went out.

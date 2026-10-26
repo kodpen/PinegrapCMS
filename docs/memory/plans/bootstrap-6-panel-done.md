@@ -13,6 +13,7 @@ description: Finished steps of the Bootstrap 6 panel plan with their PRs and top
 - B3 Token layer: panel CSS reads `--pg-*` tokens, mapped to v5 variables in one block (`ui/panel-css-tokens.md`). B3a the block, the v5 `-rgb` uses and the accent role variables (#1694); B3b the neutral variables in backend.src.css (#1711); B3c the other panel stylesheets and inline style blocks (#1723).
 - B4 Collisions: `btn-text` to `pg-btn-label` (`tools/bs6_rename_collisions.php`), own `.submenu` to `.pg-submenu`, `#menu` without `class="menu"`, `data-bs-display="static"` on the account and notification toggles. Slices #1738, #1751, #1762, #1797, #1820 (`edit_contact.php`).
 - B6 Wrappers `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField` (v5 engine) and `data-pg-*` hooks on every panel call site (`ui/pg-field-wrappers.md`). Slices #1733, #1741, #1750, #1764, #1775, #1787, #1794, #1820 (form preview pickers, visual editor keyword box).
+- B7 Visual editor stage 0: `/* @pg-site-output */` on the site-output members of style_designer.js with a CI test (`ui/bootstrap-6-editor-markers.md`), editor calls through `pgUI`, editor CSS on `--pg-*` tokens. Slices #1822, #1841.
 - B5 Server: `validate_time()` and `prepare_form_data_for_input()` accept 24-hour time, with tests; a JS port of `validate_password_strength()` tested against the PHP cases through node. Done (#1698): `ui/form-time-24-hour.md`, `ui/password-strength-js.md`.
 
 ## When does a step move here?

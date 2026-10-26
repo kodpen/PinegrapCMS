@@ -120,7 +120,8 @@ function test_bs6_site_output_members_marked()
 		'_buildExpressOrderStarterTree', '_swFormFieldNodes', '_swAcctField', '_swAcctSelect', '_swAcctSubmit',
 		'_swAcctLinks', '_swAcctSignedOut', '_swAcctPage', '_sdWishlistHeart', '_buildStarterTree',
 		'_ensureMessagesNode', '_sdEmitNode', 'generateHTML', '_sdThemeHeadHtml', '_sdPreviewDocHtml',
-		'_sdCanvasOpenRestore', '_sdPalInfo', '_sdPartEl', '_sdPartOrderTimeline',
+		'_sdCanvasOpenRestore', '_sdPalInfo', '_sdPartEl', '_sdPartOrderTimeline', 'SD_OV_STATUS_CLASS_DEFAULTS',
+		'_SD_HTML_PREVIEW_TOKENS',
 	);
 
 	foreach ($expected as $name) {

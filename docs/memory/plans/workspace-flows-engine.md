@@ -4,7 +4,6 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 ---
 
 ## What does it reuse?
-- Proposed: `ws_flow*`, `ws_step_kinds()`, `WS_FLOW_*`, flows.php, steps.php, routes.
 - Steps `ws_scheduled_do()`, checks `ws_scheduled_action_input()`, conditions `ws_scheduled_rules_hold()`, outcomes done/failed, assignees `ws_template_assignees()`.
 - Trigger: a hidden anchor row in `ws_scheduled_actions` (kind action, new `flow_id`, step `{type:'flow'}`) keeps time, event, join rules, lock, hourly cap; lists and `ws_scheduled_action()` skip it by a new filter (`ws_scheduled_actions_only()` also feeds event and join starts); `ws_scheduled_report()` stays silent.
 - Legacy actions run unchanged on `ws_scheduled_execute()`; flow-only steps never reach their form.
@@ -24,11 +23,11 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 
 ## How do events wake it?
 - `ws_events_awaited()` also reads waiting `wait_event`s, else `ws_event()` drops them; then `ws_events_process()` calls `ws_flow_wake()`: `workspace.task.status_changed` (done, cancelled) by `task:<id>`, `workspace.approval.decided` by `approval:<id>`.
-- Lost events: waiting steps recheck at `wake_at`, hourly.
+- Lost events: waiting steps recheck hourly.
 
 ## Drivers, budgets, limits?
 - `ws_scheduled_run()` (ws_tick, both jobs) calls `ws_flow_advance()` before its early returns; `ws_scheduled_due()` sees due steps (job.php's gate).
-- Time budget (today a count): no box starts after 10 s in ws_tick, 25 s in a job; 3 boxes a run per request.
+- Time budget: no box starts after 10 s in ws_tick, 25 s in a job; 3 boxes a run per request.
 - A run's events carry its depth (`ws_event_depth()`); `pg_event_record()` will too (today only `ws_event()`).
 - `WS_FLOW_*`: 100 boxes, 200 box runs a run, 60 starts a flow an hour, 500 open runs, result 16 KB, finished runs kept 30 days.
 
@@ -40,5 +39,5 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 - /workspace/flows, /{id}, /publish, /resume (`ws_api_own_words_only()`, `'mcp' => false`), /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip; `dry_run`; `workspace:read`, `:write`.
 
 ## Where to start?
-- Built: F1 #1503, F3a #1551 (manual, task, end; workspace/workspace-flows-runner.md)
-- Next: F4 (`{{node.*}}` reads `result.data`), F5 retry and skip.
+- Built: F1 #1503, F3a #1551 (workspace-flows-runner.md)
+- F4: a) #1835 post, email boxes, owner's rights at publish and run, `{{node.<id>.<field>}}`, effect `began:<kind>`, canvas forms; b) other steps; c) condition; d) anchor triggers; e) box dry-run. Then F5.

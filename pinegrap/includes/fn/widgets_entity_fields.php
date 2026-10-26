@@ -69,6 +69,14 @@ function pg_sw_entity_fields($entity)
         );
     }
 
+    // A forms row with its form's custom_form_pages.quiz as 'quiz'. Only the
+    // record's own view offers these: a list would show other people's scores.
+    if ($entity === 'form_record') {
+        return array(
+            '__quiz_score' => array('quiz_score', 'number', array('when' => array('quiz'))),
+        );
+    }
+
     return array();
 }
 

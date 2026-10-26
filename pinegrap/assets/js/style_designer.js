@@ -11122,6 +11122,7 @@ const StyleDesigner = (function () {
                     order_preview:        _sdT('Order Preview'),
                     menu_region:          _sdT('Menu'),
                     menu_sequence_region: _sdT('Menu Sequence'),
+                    ad_region:            _sdT('Ad Region'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -13633,6 +13634,7 @@ const StyleDesigner = (function () {
     // lockstep. The status badge part (_sdPartOrderStatusBadge()) takes a
     // widget's own status_class_* setting, else these; once the part is in
     // the tree each badge's classes are the designer's.
+    /* @pg-site-output */
     var SD_OV_STATUS_CLASS_DEFAULTS = {
         complete:  'badge bg-success',
         pending:   'badge bg-warning text-dark',
@@ -13779,6 +13781,7 @@ const StyleDesigner = (function () {
     // approximation from the SAME markup shapes the PHP renderer emits.
     //
     // Preview only: never saved to the tree, never sent to the server.
+    /* @pg-site-output */
     var _SD_HTML_PREVIEW_TOKENS = {
         // Mirrors pg_comments_stars_html(): five stars, four of them filled.
         '__comment_stars_html': function () {
@@ -22295,7 +22298,8 @@ const StyleDesigner = (function () {
                 { label: _sdT('Steps of the order'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'order.steps' } },
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
-                { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } }
+                { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } },
+                { label: _sdT('Passkeys of the member'), type: 'loop_area', icon: 'bi-fingerprint', extra: { listSource: 'security.passkeys' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
@@ -32234,6 +32238,7 @@ const StyleDesigner = (function () {
             'order.steps':        _sdT('One row for every step of the order: created, paid, shipped, delivered, cancelled. A shipping or delivery date still to come is estimated; a condition on "Estimated" marks it.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
+            'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
             'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.')
         };
         if (about[p.source]) html += note(about[p.source], false);
@@ -32417,6 +32422,7 @@ const StyleDesigner = (function () {
             var _isOrderPreview    = (_regionType === 'order_preview');
             var _isMenuRegion      = (_regionType === 'menu_region');
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
+            var _isAdRegion        = (_regionType === 'ad_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -32467,6 +32473,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isOrderPreview) {
                 _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
+            } else if (_isAdRegion) {
+                _sourceInfoHtml = _sdT('The ads of an ad region, read on every visit: they are written, ordered and given captions under Ads, by the users who may edit that region. A static region shows one ad picked at random; a dynamic one every ad, in its order, turning by the region\'s slideshow settings. Nothing is drawn while ads are switched off.');
             } else if (_isMenuSequence) {
                 _sourceInfoHtml = _sdT('Links to the page before and after the one shown, in the order of a menu\'s pages: each item before the items under it, a page once. On the last page the next link goes back to the first; on a page the menu does not link to, the links are not drawn. The menu is edited under Menus.');
             } else if (_isMenuRegion) {
@@ -33607,6 +33615,25 @@ const StyleDesigner = (function () {
                 );
             }
 
+            // ── ad_region settings ───────────────────────────────────────────
+            if (_isAdRegion) {
+                var _arNames = (regionData && regionData.ad_regions) || [];
+                var _arName = typeof _cfg.ad_region_name === 'string' ? _cfg.ad_region_name : '';
+                var _arOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
+                _arNames.forEach(function (nm) {
+                    _arOpts += '<option value="' + esc(nm) + '"' + (nm === _arName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                });
+                if (_arName !== '' && _arNames.indexOf(_arName) === -1) {
+                    _arOpts += '<option value="' + esc(_arName) + '" selected>' + esc(_sdT('{var} (not found)', _arName)) + '</option>';
+                }
+                systemSection += sect('bi-badge-ad', _sdT('Ad Region Settings'),
+                    row(_sdT('Ad Region'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="ad_region_name">' + _arOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The ads, their order and the slideshow are set under Ads; without a region the widget draws no ad.')) + '</div>'
+                    )
+                );
+            }
+
             // ── order_preview settings ───────────────────────────────────────
             // Written into the page's order_preview_pages row, which the
             // handler and submit_order() read; a setting never touched leaves
@@ -34623,7 +34650,7 @@ const StyleDesigner = (function () {
                     account_profile:   'first_name, last_name, title, company, business_address_1, business_address_2, business_city, business_state, business_zip_code, business_country, business_phone, mobile_phone, home_phone, business_fax, salutation, suffix, tax_number, tax_office, timezone',
                     email_preferences: 'email_address, opt_in, contact_group',
                     address_book:      'ship_to_name, salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number',
-                    account_security:  'code, current_password'
+                    account_security:  'code, current_password, name'
                 }[_regionType];
                 if (_acNames) {
                     _acRows += row(_sdT('Controls'),
@@ -36897,9 +36924,14 @@ const StyleDesigner = (function () {
         ['__ai_perplexity_url', _sdT('Summarize with Perplexity (address)')],
         ['__ai_google_url',     _sdT('Summarize with Google AI Mode (address)')]
     ];
+    // A form record's allow-listed values (pg_sw_entity_fields('form_record')),
+    // in the record's own view only: a list would show other people's scores.
+    var SW_FORM_RECORD_ENTITY_TOKENS = [
+        ['__quiz_score', _sdT('Quiz score (percent, quiz forms)')]
+    ];
     var SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat([
         ['not_found', _sdT('Not-found message (filled when there is no record)')]
-    ], SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS, SW_FORM_ITEM_VIEW_AI_TOKENS);
+    ], SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS, SW_FORM_ITEM_VIEW_AI_TOKENS, SW_FORM_RECORD_ENTITY_TOKENS);
 
     // The format a date binding prints in, as the classic screens take it:
     // ^^submitted_date_and_time^^%%d.m.Y%%. The value lives on the node under
@@ -37011,7 +37043,7 @@ const StyleDesigner = (function () {
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
-        order_preview: 1, menu_region: 1, menu_sequence_region: 1
+        order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37160,7 +37192,8 @@ const StyleDesigner = (function () {
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
-        '__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html'
+        '__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html',
+        '__ad_content_html', '__ad_caption_html'
     ];
     // Twin of pg_sw_attr_name_ok().
     function _sdAttrBindNameOk(name) {
@@ -37764,6 +37797,17 @@ const StyleDesigner = (function () {
         { label: _sdT('Connected sign-ins'), tokens: [
             ['__signin_connect_buttons',      _sdT('Connect buttons of the sign-ins not connected yet (HTML)')]
         ]},
+        { label: _sdT('Passkeys'), tokens: [
+            ['__passkey_count',               _sdT('Number of passkeys')],
+            ['__passkey_notice',              _sdT('Why no passkey can be added (the site, the address or the limit)')]
+        ]},
+        { label: _sdT('Passkey (passkey list)'), tokens: [
+            ['__passkey_id',                  _sdT('Passkey identifier (the Rename and Remove buttons carry it)')],
+            ['__passkey_name',                _sdT('Passkey name')],
+            ['__passkey_added',               _sdT('Added (date)')],
+            ['__passkey_last_used',           _sdT('Last used (relative time, else "Never")')],
+            ['__passkey_is_synced',           _sdT('Synced to the member\'s other devices (1 or empty)')]
+        ]},
         { label: _sdT('Signed Out'), tokens: [
             ['__login_url',                   _sdT('Sign-in page address (signed-out view)')],
             ['__not_logged_in',               _sdT('Signed-out message')]
@@ -38124,6 +38168,24 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // ad_region token palette — has loop_area (one row per ad shown).
+    // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
+    var SW_AD_REGION_TOKEN_GROUPS = [
+        { label: _sdT('Ad Region'), tokens: [
+            ['__ad_region_name',  _sdT('Ad region name')],
+            ['__ad_count',        _sdT('Number of ads shown')],
+            ['__ad_ride',         _sdT('Slideshow start ("carousel" or "false", for data-bs-ride)')],
+            ['__ad_interval',     _sdT('Slideshow interval in milliseconds ("false" without a slideshow)')],
+            ['__ad_wrap',         _sdT('Slideshow starts again after the last ad ("true" or "false")')]
+        ]},
+        { label: _sdT('Ad (loop_area)'), tokens: [
+            ['__ad_name',         _sdT('Ad name')],
+            ['__ad_label',        _sdT('Ad label')],
+            ['__ad_content_html', _sdT('Ad content (HTML)')],
+            ['__ad_caption_html', _sdT('Ad caption (HTML)')]
+        ]}
+    ];
+
     // menu_sequence_region token palette — no loop_area. Mirrors
     // _render_system_widget_menu_sequence_region() in widgets_menu.php.
     var SW_MENU_SEQUENCE_TOKEN_GROUPS = [
@@ -38159,7 +38221,8 @@ const StyleDesigner = (function () {
         billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS,
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
-        menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS
+        menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
+        ad_region:         SW_AD_REGION_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -39303,7 +39366,17 @@ const StyleDesigner = (function () {
             ['mfa_on',              _sdT('Two-step verification is on')],
             ['mfa_key_unreadable',  _sdT('It is on but the key cannot be read (recovery codes only)')],
             ['mfa_can_regenerate',  _sdT('New recovery codes can be made')],
-            ['mfa_required',        _sdT('The member\'s role requires two-step verification')]
+            ['mfa_required',        _sdT('The member\'s role requires two-step verification')],
+            ['passkeys_shown',        _sdT('The passkeys part has something to say (the site can use them, or the account keeps some)')],
+            ['has_passkeys',          _sdT('The account has passkeys')],
+            ['no_passkeys',           _sdT('The account has no passkey')],
+            ['passkey_can_change',    _sdT('Passkeys can be renamed and removed here (not while signed in as the member)')],
+            ['passkey_can_add',       _sdT('A passkey can be added')],
+            ['passkey_needs_mfa',     _sdT('Adding a passkey waits for two-step verification')],
+            ['passkey_limit',         _sdT('The account keeps as many passkeys as it may')],
+            ['passkey_unavailable',   _sdT('Passkeys cannot be used on this site or at this address')],
+            ['passkey_asks_password', _sdT('Adding or removing a passkey asks for the password')],
+            ['passkey_asks_code',     _sdT('Removing a passkey asks for a code')]
         ],
         account_invoices: [
             ['has_documents',      _sdT('There are documents to list')],
@@ -39320,6 +39393,12 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        ad_region: [
+            ['has_ads',         _sdT('The region has an ad to show')],
+            ['no_ads',          _sdT('No region is chosen, or it has no ad')],
+            ['has_several_ads', _sdT('More than one ad is shown')],
+            ['ad_has_caption',  _sdT('Row: the ad has a caption')]
         ],
         menu_sequence_region: [
             ['in_sequence',     _sdT('The page shown is one of the menu\'s pages')],
@@ -39590,6 +39669,8 @@ const StyleDesigner = (function () {
                 aOpts.push(['mfa_codes_seen',          _sdT('Recovery codes saved')]);
                 aOpts.push(['mfa_recovery_regenerate', _sdT('New recovery codes')]);
                 aOpts.push(['mfa_disable',             _sdT('Turn off two-step verification')]);
+                aOpts.push(['passkey_rename',          _sdT('Rename the passkey (passkey list)')]);
+                aOpts.push(['passkey_remove',          _sdT('Remove the passkey (passkey list)')]);
             }
             // Only a button can post a list action's form; a link bound to
             // one is dropped on the page (_pg_wishlist_wire_actions()), so a
@@ -39607,7 +39688,10 @@ const StyleDesigner = (function () {
             if (region === 'shopping_cart')        fOpts.push(['coupon_form', _sdT('Offer Code Form (shopping_cart)')]);
             else if (region === 'catalog_listing') fOpts.push(['search_form', _sdT('Search Form (catalog_listing)')]);
             else if (region === 'search_results')  fOpts.push(['search_form', _sdT('Search Form')]);
-            else if (region === 'account_security') fOpts.push(['account_security_form', _sdT('Account security form')]);
+            else if (region === 'account_security') {
+                fOpts.push(['account_security_form', _sdT('Account security form')]);
+                fOpts.push(['passkey_add_form',      _sdT('Add a passkey form')]);
+            }
             else if (region === 'comments') {
                 fOpts.push(['comment_form',           _sdT('Add-comment form')]);
                 fOpts.push(['comment_watch_form',     _sdT('Watch form (notify me of new comments)')]);
@@ -50899,6 +50983,7 @@ const StyleDesigner = (function () {
         if (!show || _sdPageType.pageId !== p.page_id) {
             _sdPageType.pageId = 0;
             box.innerHTML = '';
+            _sdPageTypeLinks([]);
             var status = document.getElementById('sd-page-type-status');
             if (status) status.textContent = '';
             var save = document.getElementById('sd-page-type-save');
@@ -50931,17 +51016,36 @@ const StyleDesigner = (function () {
                 if (window.jQuery) window.jQuery(box).html(data.html || '');
                 else box.innerHTML = data.html || '';
                 // The classic screen prints every type's rows hidden for its
-                // type picker; the pane keeps the page's own type, so only
-                // the shown rows stay and post.
+                // type picker; the pane keeps the page's own type, so the
+                // hidden rows of the other types go. Its own rows stay, shown
+                // or hidden by their switches (show_or_hide_*()).
+                var prefix = String(data.page_type || '').replace(/ /g, '_') + '_';
                 box.querySelectorAll('#options_row .card-body > .row > [style*="display: none"]').forEach(function (row) {
+                    if (row.id === 'layout_type_row' || row.id.indexOf(prefix) === 0) return;
                     row.remove();
                 });
+                // The notices point at the classic screen's "Save & Continue";
+                // the pane links to the form's editor once it is saved.
+                box.querySelectorAll('[id$="_form_notice"]').forEach(function (el) { el.classList.add('d-none'); });
                 var options = box.querySelector('#options_row');
                 if (options) options.classList.remove('collapse');
                 if (typeof pgInitInjected === 'function') pgInitInjected(box);
+                _sdPageTypeLinks(data.links);
                 if (save) save.disabled = !_collab.mayEdit;
             })
             .catch(function () { failed(''); _sdPageType.pageId = 0; });
+    }
+
+    // The editors of the page type's own forms and views, as the classic
+    // screen's button bar offers them; they open beside the designer.
+    function _sdPageTypeLinks(links) {
+        var box = document.getElementById('sd-page-type-links');
+        if (!box) return;
+        var back = '&send_to=' + encodeURIComponent(window.location.href);
+        box.innerHTML = (links || []).map(function (l) {
+            return '<a class="btn btn-sm btn-outline-light" target="_blank" rel="noopener" href="' + esc(l.url + back) + '">' +
+                '<span class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></span>' + esc(l.label) + '</a>';
+        }).join('');
     }
 
     function _sdPageTypeSave() {
@@ -50971,13 +51075,20 @@ const StyleDesigner = (function () {
         var done = function (ok, message) {
             _sdPageType.busy = false;
             save.disabled = !_collab.mayEdit;
-            if (status) status.textContent = ok ? _sdT('Saved.') : (message || _sdT('Network error'));
+            if (status) status.textContent = message || (ok ? _sdT('Saved.') : _sdT('Network error'));
             if (!ok) sdToast(esc(message || _sdT('Network error')), 'danger', 5000);
         };
         fetch(_sdPageTypeUrl(p.page_id), { method: 'POST', body: body, credentials: 'same-origin',
                                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (r) { return r.json(); })
-            .then(function (data) { done(!!(data && data.ok), data && data.message); })
+            .then(function (data) {
+                var ok = !!(data && data.ok);
+                // What a basic user may not change was kept as stored; the
+                // server says which.
+                if (ok && data.warnings && data.warnings.length) sdToast(esc(data.warnings.join(' ')), 'warning', 8000);
+                if (ok) _sdPageTypeLinks(data.links);
+                done(ok, data && data.message);
+            })
             .catch(function () { done(false, ''); });
     }
 
@@ -51842,7 +51953,8 @@ const StyleDesigner = (function () {
         { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' },
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
-        { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' }
+        { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
+        { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -52021,6 +52133,9 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
+        } else if (newType === 'ad_region') {
+            // The site's first ad region, so a new widget shows ads at once.
+            if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
         } else if (newType === 'menu_region' || newType === 'menu_sequence_region') {
             // The site's first menu, so a new widget shows items at once.
             if (cfg.menu_name === undefined) cfg.menu_name = ((regionData && regionData.menu_regions) || [])[0] || '';
@@ -53211,6 +53326,18 @@ const StyleDesigner = (function () {
                 ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
                 ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
             ]
+        },
+        'security.passkeys': {
+            label: _sdT('Passkeys of the member'),
+            arg: '', argRequired: false,
+            kinds: ['account_security'],
+            rows: [
+                ['__passkey_id',        _sdT('Passkey identifier (the Rename and Remove buttons carry it)')],
+                ['__passkey_name',      _sdT('Passkey name')],
+                ['__passkey_added',     _sdT('Added (date)')],
+                ['__passkey_last_used', _sdT('Last used (relative time, else "Never")')],
+                ['__passkey_is_synced', _sdT('Synced to the member\'s other devices (1 or empty)')]
+            ]
         }
     };
 
@@ -53257,7 +53384,12 @@ const StyleDesigner = (function () {
         __menu_item_target: '',
         __menu_item_has_children: '',
         __menu_item_is_current: '',
-        __menu_item_holds_current: ''
+        __menu_item_holds_current: '',
+        __passkey_id:        '1',
+        __passkey_name:      _sdT('My phone'),
+        __passkey_added:     '20.10.2026',
+        __passkey_last_used: _sdT('2 days ago'),
+        __passkey_is_synced: '1'
     };
 
     // The orders a list's rows take (props.order).
@@ -53386,6 +53518,16 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'a', cssClass: '', text: _sdT('Menu item'), href: '#', customName: _sdT('Link'),
                             _bindings: { href: '__menu_item_url', text: '__menu_item_name' } })
                     ])
+                ])
+            ]);
+        }
+        if (source === 'security.passkeys') {
+            return createNode('loop_area', { source: source }, [
+                createNode('semantic', { tag: 'div', cssClass: bs ? 'list-group-item d-flex flex-wrap align-items-center gap-2' : '', customName: _sdT('Passkey') }, [
+                    createNode('semantic', { tag: 'span', cssClass: bs ? 'fw-semibold' : '', text: _sdT('My phone'), customName: _sdT('Passkey name'),
+                        _bindings: { text: '__passkey_name' } }),
+                    createNode('semantic', { tag: 'span', cssClass: bs ? 'small text-body-secondary' : '', text: '20.10.2026', customName: _sdT('Added (date)'),
+                        _bindings: { text: '__passkey_added' } })
                 ])
             ]);
         }
@@ -53717,6 +53859,8 @@ const StyleDesigner = (function () {
         // The order and cart lists read the order or the cart, not an item
         // row: never in the items loop.
         if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(target)) return false;
+        // The passkeys are the account's, not a device row's.
+        if (kind === 'account_security' && _sdInMainLoopAt(target)) return false;
         var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : _sdListStarterDepth(source));
         return depth <= SW_LIST_MAX_DEPTH;
     }
@@ -57385,6 +57529,102 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
+                // Passkeys: the list of the member's passkeys, each with a
+                // rename and a remove form, and the add form, which
+                // pg_passkey_add_form_script() keeps hidden until the
+                // browser can make passkeys. Mirrors
+                // pg_passkey_account_section().
+                var asPassword = function (suffix) {
+                    return createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password'),
+                        _bindings: { eo_visible_if: 'passkey_asks_password' } }, [
+                        _swAcctField(_sdT('Current password'), asId + suffix, 'password', 'current_password',
+                            { required: true, autocomplete: 'current-password' })
+                    ]);
+                };
+                var asDetails = function (summary, kids) {
+                    return createNode('semantic', { tag: 'details', cssClass: '', customName: summary }, [
+                        createNode('semantic', { tag: 'summary', cssClass: 'small', text: summary, customName: _sdT('Summary') })
+                    ].concat(kids));
+                };
+                var asPasskey = createNode('loop_area', { source: 'security.passkeys' }, [
+                    createNode('semantic', { tag: 'div', cssClass: 'list-group-item', customName: _sdT('Passkey') }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-2', customName: _sdT('Passkey name') }, [
+                            createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('My phone'), customName: _sdT('Name'),
+                                _bindings: { text: '__passkey_name' } }),
+                            createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-secondary fw-normal', text: _sdT('Synced'), customName: _sdT('Synced Badge'),
+                                _attrs: [{ name: 'title', value: _sdT('Kept in a password manager or cloud account, so your other devices can use it too.') }],
+                                _bindings: { show_if: '__passkey_is_synced' }, _bindParams: { show_if: { op: 'not_empty' } } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'small text-muted d-flex flex-wrap gap-3', customName: _sdT('Dates') }, [
+                            createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Added') }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Added'), customName: _sdT('Label') }),
+                                createNode('semantic', { tag: 'span', cssClass: '', text: '20.10.2026', customName: _sdT('Value'),
+                                    _bindings: { text: '__passkey_added' } })
+                            ]),
+                            createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Last used') }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Last used'), customName: _sdT('Label') }),
+                                createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('2 days ago'), customName: _sdT('Value'),
+                                    _bindings: { text: '__passkey_last_used' } })
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-4 mt-2', customName: _sdT('Passkey Actions'),
+                            _bindings: { eo_visible_if: 'passkey_can_change' } }, [
+                            asDetails(_sdT('Rename'), [
+                                asForm(_sdT('Rename Form'), '', 'mt-2', [
+                                    _swAcctField(_sdT('Name'), asId + '_pk_name', 'text', 'name', {
+                                        attrs: [{ name: 'maxlength', value: '100' }, { name: 'value', value: '{{__passkey_name}}' }] }),
+                                    asButton(_sdT('Save'), 'passkey_rename', 'btn btn-sm btn-primary', _sdT('Rename Button'))
+                                ])
+                            ]),
+                            asDetails(_sdT('Remove'), [
+                                asForm(_sdT('Remove Form'), '', 'mt-2', [
+                                    createNode('content', { contentType: 'paragraph', cssClass: 'small mb-2',
+                                        text: _sdT('After removing it here, delete it from your device or password manager as well.') }),
+                                    asPassword('_pk_remove_password'),
+                                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Code'),
+                                        _bindings: { eo_visible_if: 'passkey_asks_code' } }, [
+                                        asCode(_sdT('Code from your authenticator app or a recovery code'), '_pk_remove_code')
+                                    ]),
+                                    asButton(_sdT('Remove'), 'passkey_remove', 'btn btn-sm btn-outline-danger', _sdT('Remove Button'))
+                                ])
+                            ])
+                        ])
+                    ])
+                ]);
+                var asPasskeys = createNode('semantic', { tag: 'div', cssClass: 'border-top pt-4 mt-4', customName: _sdT('Passkeys'),
+                    _bindings: { eo_visible_if: 'passkeys_shown' } }, [
+                    createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Passkeys'), cssClass: 'mb-2' }),
+                    createNode('content', { contentType: 'paragraph', cssClass: 'mb-3',
+                        text: _sdT('A passkey lets your fingerprint, face or screen lock, or a security key, stand in for the code from your authenticator app when you sign in.') }),
+                    createNode('semantic', { tag: 'p', cssClass: 'mb-0', customName: _sdT('Passkey Count'),
+                        _bindings: { eo_visible_if: 'is_impersonated' } }, [
+                        createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Passkeys of this account:'), customName: _sdT('Label') }),
+                        createNode('semantic', { tag: 'span', cssClass: '', text: '2', customName: _sdT('Value'),
+                            _bindings: { text: '__passkey_count' } })
+                    ]),
+                    createNode('content', { contentType: 'paragraph', text: _sdT('This account has no passkey.'), cssClass: 'text-muted mb-3',
+                        _bindings: { eo_visible_if: 'no_passkeys' } }),
+                    createNode('semantic', { tag: 'div', cssClass: 'list-group mb-3', customName: _sdT('Passkey List'),
+                        _bindings: { eo_visible_if: 'has_passkeys' } }, [asPasskey]),
+                    createNode('content', { contentType: 'paragraph', text: _sdT('Passkeys cannot be used on this site.'), cssClass: 'text-muted mb-0',
+                        _bindings: { text: '__passkey_notice', eo_visible_if: 'passkey_unavailable' } }),
+                    createNode('content', { contentType: 'paragraph', text: _sdT('Turn on two-step verification first; a passkey then stands in for its code.'), cssClass: 'text-muted mb-0',
+                        _bindings: { eo_visible_if: 'passkey_needs_mfa' } }),
+                    createNode('content', { contentType: 'paragraph', text: _sdT('An account can keep at most 20 passkeys. Remove one first.'), cssClass: 'text-muted mb-0',
+                        _bindings: { text: '__passkey_notice', eo_visible_if: 'passkey_limit' } }),
+                    createNode('semantic', { tag: 'form', cssClass: '', customName: _sdT('Add Passkey Form'),
+                        _bindings: { action: 'passkey_add_form', eo_visible_if: 'passkey_can_add' } }, [
+                        createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Add a passkey'), cssClass: 'mb-2' }),
+                        _swAcctField(_sdT('Name'), asId + '_pk_add_name', 'text', 'name', {
+                            attrs: [{ name: 'maxlength', value: '100' }, { name: 'placeholder', value: _sdT('My phone') }] }),
+                        asPassword('_pk_add_password'),
+                        asCode(_sdT('Code from your authenticator app or a recovery code'), '_pk_add_code'),
+                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Add a passkey'), customName: _sdT('Add Button'),
+                            _attrs: [{ name: 'type', value: 'submit' }] }),
+                        createNode('semantic', { tag: 'div', cssClass: 'text-danger small mt-2', customName: _sdT('Message'),
+                            _attrs: [{ name: 'role', value: 'alert' }, { name: 'data-pg-passkey-message', value: '' }] })
+                    ])
+                ]);
                 return _swAcctPage(_sdT('Account Security Card'), '10', '8', [
                     createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Sign-in and devices'), cssClass: 'card-title mb-3' }),
                     createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Account Security'),
@@ -57507,7 +57747,8 @@ const StyleDesigner = (function () {
                                     asButton(_sdT('Turn off'), 'mfa_disable', 'btn btn-outline-danger', _sdT('Turn Off Button'))
                                 ])
                             ])
-                        ])
+                        ]),
+                        asPasskeys
                     ]),
                     _swAcctSignedOut()
                 ], true);
@@ -57859,6 +58100,43 @@ const StyleDesigner = (function () {
                             createNode('content', { contentType: 'link', text: _sdT('Back to the cart'), href: '#', cssClass: '',
                                 _bindings: { href: '__cart_url' } })
                         ])
+                    ])
+                ]);
+            }
+
+            case 'ad_region': {
+                // The ads of a region as a Bootstrap carousel: the loop
+                // repeats the ads (the server marks the first one active),
+                // the controls show with more than one ad, and the region's
+                // slideshow settings fill the carousel's data-bs-* values.
+                // Mirrors _render_system_widget_ad_region().
+                var arId = 'ads_' + Math.random().toString(36).slice(2, 7);
+                var arControl = function (dir, label) {
+                    return createNode('semantic', { tag: 'button', cssClass: 'carousel-control-' + dir, customName: label,
+                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + arId }, { name: 'data-bs-slide', value: dir }],
+                        _bindings: { eo_visible_if: 'has_several_ads' } }, [
+                        createNode('semantic', { tag: 'span', cssClass: 'carousel-control-' + dir + '-icon', customName: _sdT('Icon'),
+                            _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+                        createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', text: label, customName: _sdT('Label') })
+                    ]);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: 'carousel slide', id: arId, customName: _sdT('Ad Region'),
+                        _attrs: [{ name: 'data-bs-ride', value: '{{__ad_ride}}' }, { name: 'data-bs-interval', value: '{{__ad_interval}}' },
+                                 { name: 'data-bs-wrap', value: '{{__ad_wrap}}' }],
+                        _bindings: { eo_visible_if: 'has_ads' } }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'carousel-inner', customName: _sdT('Ads') }, [
+                            createNode('loop_area', {}, [
+                                createNode('semantic', { tag: 'div', cssClass: 'carousel-item', customName: _sdT('Ad') }, [
+                                    createNode('semantic', { tag: 'div', cssClass: '', text: _sdT('Ad content (HTML)'), customName: _sdT('Ad Content'),
+                                        _bindings: { text: '__ad_content_html' } }),
+                                    createNode('semantic', { tag: 'div', cssClass: 'carousel-caption d-none d-md-block', text: _sdT('Ad caption (HTML)'), customName: _sdT('Caption'),
+                                        _bindings: { text: '__ad_caption_html', eo_visible_if: 'ad_has_caption' } })
+                                ])
+                            ])
+                        ]),
+                        arControl('prev', _sdT('Previous')),
+                        arControl('next', _sdT('Next'))
                     ])
                 ]);
             }
@@ -58533,7 +58811,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {

@@ -191,7 +191,7 @@ if (pg_seo_structure_schema_ready()) {
 
 // The link filters read seo_flags bits the graph pass fills in, which needs
 // the 2026.4.2 columns.
-if (pg_seo_structure_schema_ready() && db_item("SHOW TABLES LIKE 'seo_link'")) {
+if (pg_seo_structure_schema_ready() && pg_schema_has('seo_link')) {
     $filters_in_array['seo_broken_links'] = lang('Pages With Broken Internal Links');
     $filters_in_array['seo_orphan'] = lang('Orphan Pages');
 }

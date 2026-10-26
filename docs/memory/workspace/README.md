@@ -39,6 +39,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-change-proposals.md: Record changes an application proposes as cards (proposals.php, api_proposals.php): routes, agents oauth:/app:, checks, role-3 contacts, the hourly limit and its lock, who applies, what is written
 - workspace-change-text-limits.md: Workspace change catalogue text limits must fit their columns (non-strict cuts in silence): the six once over, the channel summary kept, longer values, line breaks in one-line drawer fields, the test
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet
+- workspace-channel-icon-templates.md: A channel template's colour and icon onto a channel made from it (ws_template_channel_look()), only where the creator chose none; the form's free bi- class vs the curated list
 - workspace-channel-icon.md: A Workspace channel's own icon (ws_channels.icon, 11.0.81): the curated Bootstrap Icons list, chosen vs kind icon, the corner badge, who may choose, where it is drawn, colour and icon in the API
 - workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
@@ -54,8 +55,9 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php, no schema change): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
+- workspace-flows-steps.md: Step boxes of a flow (steps.php, F4a PR #1835): post and email as box kinds run by ws_scheduled_do(), outcomes done/failed, owner's rights at publish and run, {{node.ID.FIELD}}, never run twice
 - workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
-- workspace-followups.md: Workspace follow-ups (followups.php, PR #1790): ws_followup_task_open() opens a tagged task on a channel or for a person, reminded on its day; "Remind me" on the customer card; sales quote expiry
+- workspace-followups.md: Workspace follow-ups (followups.php, #1790): ws_followup_task_open() opens a tagged, reminded task; "Remind me" on the customer card; quote expiry and overdue receivable jobs
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card
 - workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
@@ -68,7 +70,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-notes-import-upload.md: The notes import's upload: picked list, checks, unreadable files, XHR progress, cancel, reading step, focus, request_max cap, per-file sentences, session closed before staging
 - workspace-notes-import-zip-names.md: How the notes import reads zip entry names (UTF-8 flag, CP857 from Windows/7-Zip on a Turkish system, libzip's CP437 guess) and why "Toplantì notlarì" happened
 - workspace-notes-import.md: Notes brought in from other apps (workspace_notes_import.php, notes_import.php): Markdown/text or a zip staged, previewed, written in batches; how an export of ours updates its own note
-- workspace-notes-revision.md: A note's revision (ws_notes.revision, schema 11.0.84, PR #1663): which writes move it, the API's revision field and 409, why code checks for the column, base kept
+- workspace-notes-revision.md: A note's revision (ws_notes.revision, schema 11.0.84, PR #1663): which writes move it, the API's revision field and 409, the panel's revision, why code checks for the column, base kept
 - workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
 - workspace-notes.md: Workspace notes (ws_notes): tables, limits, body format, versions, an assistant's answer under the line that asked, the paged list, what the API offers and lacks
 - workspace-office-edits.md: The cells of an Excel file or the paragraphs of a Word file posted in a channel, changed in its preview window (ws_file_office, ws_file_office_save, PR #656, #702): who may, replace or copy

@@ -101,7 +101,7 @@ function test_widget_lists_editor_tables_are_not_palettes()
 // offer them.
 function test_widget_lists_editor_sources_match_the_server()
 {
-	$kinds = array('form_list_view', 'form_item_view', 'catalog_item_view', 'catalog_listing', 'comments', 'custom_form', 'calendar_view', '');
+	$kinds = array('form_list_view', 'form_item_view', 'catalog_item_view', 'catalog_listing', 'comments', 'custom_form', 'calendar_view', 'account_security', '');
 	$a = _widget_lists_editor_run_js(
 		'var kinds = ' . json_encode($kinds) . ";\n"
 		. "var out = { sources: {}, kinds: {} };\n"
