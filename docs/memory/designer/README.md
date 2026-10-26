@@ -251,6 +251,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - system-widget-render-rules.md: System widget renderer rules: Messages node named after the liveform, state messages fitted to the loop parent, pg-hide-if-empty, stretched links, the PHP tree renderer mirroring the exporter.
 - system-widget-test-pages.md: System widget test URLs (/c /d /e /b/<slug>), the two dev.pinegrap.com backends, legacy page confusion, saved-cart link, stale-output causes.
 - system-widget-type-and-name.md: Designer system widget rules: SW_TYPES, auto names, empty widget, gated type change (fork/all/cancel), the panel's copy button, walking all page tabs, pg_shared_component_usage() and usage_all rows.
+- tag-cloud-widget.md: Tag Cloud widget (tag_cloud_region): the classic <tcloud> region in the designer; which keywords, their order, size and weight, the search links, translation, what is left out.
 - text-inner-elements.md: Elements written inside a heading, paragraph, link or span text (span, strong, a, badge, icon) are picked by themselves on the canvas and in the overview, and edited through the text.
 - token-dictionary.md: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
 - user-styles-card-edits.md: How the Styles panel's User Styles cards read and edit the User Styles text (assets/js/pg_user_styles.js): which rules are listed, edits in place, Create as one undo step
