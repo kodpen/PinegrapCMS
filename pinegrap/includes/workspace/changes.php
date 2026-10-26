@@ -5168,7 +5168,14 @@ function ws_change_write_product_group($viewer, $action, $record, $values)
  */
 function ws_change_write_variant_set($viewer, $action, $record, $values)
 {
-    $created = pg_catalog_variant_set_create(ws_change_variant_set_data($values, (int) $viewer['id']), $viewer, array(
+    $data = ws_change_variant_set_data($values, (int) $viewer['id']);
+
+    // Parent 0 would be a second catalogue root, which the storefront, search and feeds never read.
+    if ($data['parent_id'] <= 0) {
+        $data['parent_id'] = pg_catalog_group_top_id();
+    }
+
+    $created = pg_catalog_variant_set_create($data, $viewer, array(
         'submit_form'  => array(),
         'barcode_auto' => false,
     ));

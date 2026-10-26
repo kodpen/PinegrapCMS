@@ -238,7 +238,25 @@ function test_workspace_variant_set_writer_input()
 
 	pg_assert_same(true, $on['enabled'], 'on sale when asked');
 	pg_assert_same('1', $on['common']['enabled'], 'its products too');
-	pg_assert_same(0, ws_change_variant_set_data(array('parent_id' => array()) + $values, 7)['parent_id'], 'the top of the catalogue');
+	pg_assert_same(0, ws_change_variant_set_data(array('parent_id' => array()) + $values, 7)['parent_id'], 'no parent named: 0, which the writer files under the top group');
+}
+
+// A set proposed without a parent is filed under the catalogue's top group,
+// as pg_catalog_group_create_input() files a new group: the writer turns the
+// 0 of the data built (which reads no table) into pg_catalog_group_top_id()
+// before the set writer sees it. A group with parent 0 is a second root,
+// which no catalogue page, search or product feed reads.
+function test_workspace_variant_set_without_a_parent_goes_under_the_top_group()
+{
+	$writer = workspace_variant_set_change_test_source('ws_change_write_variant_set');
+	$when = strpos($writer, "if (\$data['parent_id'] <= 0) {");
+	$resolved = strpos($writer, "\$data['parent_id'] = pg_catalog_group_top_id();");
+	$written = strpos($writer, 'pg_catalog_variant_set_create($data, ');
+
+	pg_assert_true($when !== false, 'only when no parent was named');
+	pg_assert_true($resolved !== false, 'the parent becomes the catalogue\'s top group');
+	pg_assert_true($written !== false, 'the set writer is given that data');
+	pg_assert_true(($when !== false) && ($resolved !== false) && ($written !== false) && ($when < $resolved) && ($resolved < $written), 'before the set is written');
 }
 
 // Checked and written by the catalogue's set writer: the refusal asks its
