@@ -1,6 +1,6 @@
 ---
 name: system-widget-missing-types
-description: Plan (2026-10-19, step 1 done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
+description: Plan (2026-10-19, steps 1-2 done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
 ---
 
 ## Which classic page types have no widget?
@@ -41,4 +41,5 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 
 ## Which steps are there?
 1. Shipping address and arrival: done (#1746), [[shipping-address-widget]]; the verified addresses box is left.
-2. Shipping method: next; its page takes the step's `*_pages` row as in step 1. 3. Billing information. 4. Order preview. Then the owner's list.
+2. Shipping method: done (#PR), [[shipping-method-widget]].
+3. Billing information: next. 4. Order preview. Then the owner's list.
