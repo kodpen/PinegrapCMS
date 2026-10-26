@@ -736,8 +736,8 @@ const BS6_SWITCH_SHELL_NOTE = '/* Bootstrap 6 shell: what the panel keeps of Boo
 // Rules at the top of backend.src.css's custom layer that keep the v5 look
 // of the converted components: drawers flush with the screen edge and
 // square (v6 floats them with an inset and a radius), the caret v6 no
-// longer draws on a menu toggle, and the wrapper a menu used to position
-// against.
+// longer draws on a menu toggle, the wrapper a menu used to position
+// against, and the scrim of a dialog printed open (bs6_shell_open_sheet()).
 function bs6_switch_shell_rules($source)
 {
 	if (strpos($source, BS6_SWITCH_SHELL_NOTE) !== false) {
@@ -755,7 +755,9 @@ function bs6_switch_shell_rules($source)
 		. ".pg-menu-wrap {\n  position: relative;\n}\n"
 		. ".pg-menu-caret::after {\n  display: inline-block;\n  margin-left: 0.255em;\n  vertical-align: 0.255em;\n  content: \"\";\n"
 		. "  border-top: 0.3em solid;\n  border-right: 0.3em solid transparent;\n  border-bottom: 0;\n  border-left: 0.3em solid transparent;\n}\n"
-		. ".pg-menu-caret:empty::after {\n  margin-left: 0;\n}\n\n";
+		. ".pg-menu-caret:empty::after {\n  margin-left: 0;\n}\n"
+		. ".pg-open-sheet {\n  position: fixed;\n  inset: 0;\n  z-index: 1055;\n  overflow-y: auto;\n  padding: 1.75rem 0;\n}\n"
+		. ".pg-open-sheet > .dialog {\n  position: relative;\n  max-height: none;\n}\n\n";
 
 	return bs6_switch_result(str_replace($open, $open . $rules, $source), 'applied');
 }
@@ -765,20 +767,45 @@ function bs6_switch_shell_rules($source)
  * array(from, to) pairs applied like the test pins (bs6_switch_pins()), after
  * every other fix. Each names a place the scripted fixes cannot reach: a
  * selector on a dropped box (`.modal-dialog`, `.modal-content`), a box built
- * apart from its dialog, a backdrop rule.
+ * apart from its dialog, a backdrop rule. They are kept in
+ * tools/bs6_switch_texts.txt:
+ *
+ *   @@ path/under/pinegrap
+ *   <<<
+ *   text to find (every occurrence is replaced)
+ *   ===
+ *   its replacement
+ *   >>>
+ *
+ * Lines before the first `@@` and between blocks are comments.
  */
-function bs6_switch_texts()
+function bs6_switch_texts($file = null)
 {
-	return array(
-		'assets/css/backend.src.css' => array(
-			array(".pg-keys-modal .modal-dialog {\n  max-width: 30rem;\n}", ".pg-keys-modal.dialog {\n  --bs-dialog-width: 30rem;\n}"),
-			array(".software_warning,\n.modal-content,\n", ".software_warning,\n.dialog,\n"),
-			array(".pg-settings-modal .modal-content.pg-sm", ".pg-settings-modal.pg-sm"),
-			array("#pg_settings_modal_extras .modal-content", "#pg_settings_modal_extras .dialog"),
-			array(".advanced-visuals.pg-settings-open .modal-backdrop {\n  --bs-backdrop-opacity: 0.25;\n}", ".advanced-visuals.pg-settings-open .dialog {\n  --bs-dialog-backdrop-bg: rgba(0, 0, 0, 0.25);\n}"),
-			array(".pg-settings-modal .modal-dialog {\n  max-width: min(1180px, calc(100vw - 3rem));\n}", ".pg-settings-modal.dialog {\n  --bs-dialog-width: min(1180px, calc(100vw - 3rem));\n}"),
-			array("  .pg-settings-modal .modal-dialog {\n    max-width: none;\n  }\n", ""),
-			array(".ws-palette .modal-dialog {", ".ws-palette.dialog {"),
-		),
-	);
+	$file = $file !== null ? $file : __DIR__ . '/bs6_switch_texts.txt';
+	$texts = array();
+	$path = null;
+	$from = null;
+	$to = null;
+	$mode = null;
+
+	foreach (explode("\n", str_replace("\r\n", "\n", (string) file_get_contents($file))) as $line) {
+		if ($mode === null && strncmp($line, '@@ ', 3) === 0) {
+			$path = trim(substr($line, 3));
+		} elseif ($mode === null && $line === '<<<' && $path !== null) {
+			$mode = 'from';
+			$from = array();
+		} elseif ($mode === 'from' && $line === '===') {
+			$mode = 'to';
+			$to = array();
+		} elseif ($mode === 'to' && $line === '>>>') {
+			$texts[$path][] = array(implode("\n", $from), implode("\n", $to));
+			$mode = null;
+		} elseif ($mode === 'from') {
+			$from[] = $line;
+		} elseif ($mode === 'to') {
+			$to[] = $line;
+		}
+	}
+
+	return $texts;
 }
