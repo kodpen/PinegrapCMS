@@ -40,5 +40,5 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - The multi-step checkout first (every existing shop uses it), then the owner's list; one widget per PR.
 
 ## Which steps are there?
-1. Shipping address and arrival: done (#PR), [[shipping-address-widget]]; the verified addresses box is left.
+1. Shipping address and arrival: done (#1746), [[shipping-address-widget]]; the verified addresses box is left.
 2. Shipping method: next; its page takes the step's `*_pages` row as in step 1. 3. Billing information. 4. Order preview. Then the owner's list.
