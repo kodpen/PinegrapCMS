@@ -860,7 +860,8 @@ function ws_parse_priority($word)
  * @param string|null $today Y-m-d, the server's day when not given
  * @return array title, assignees, department_id, refs, priority, estimate_minutes,
  *               start_date, due_date, due_time (H:i), typed_people (the names
- *               written after an @ that is no tag, kept in the title)
+ *               written after an @ that is no tag, kept in the title until
+ *               ws_command_typed_assignees() reads them)
  */
 function ws_command_parse_task($text, $today = null)
 {
@@ -903,7 +904,7 @@ function ws_command_parse_task($text, $today = null)
         $next = ($i + 1 < $count) ? $words[$i + 1] : '';
         $folded = ws_command_fold($word);
 
-        if (preg_match('/^@([\p{L}\p{N}_.\-]{1,40})$/u', $word, $match)) {
+        if (preg_match('/^@([\p{L}\p{N}_.\-]{1,40})[,;:!?]*$/u', $word, $match)) {
             $out['typed_people'][] = rtrim($match[1], '.-');
             $title[] = $word;
             continue;
@@ -991,6 +992,56 @@ function ws_command_parse_task($text, $today = null)
     $out['title'] = trim(implode(' ', $title), " \t-–—:,");
 
     return $out;
+}
+
+/**
+ * Gives a parsed task the people whose usernames were typed after an @
+ * instead of picked: a name that is exactly one team member's username, in
+ * any case and with or without the Turkish letters, assigns that person and
+ * leaves the title; one nobody has, or several share, assigns nobody and
+ * stays in the title for the live line's warning.
+ *
+ * @param array   $parsed ws_command_parse_task()
+ * @param array[] $team   briefs with id and username (ws_team_members())
+ * @return array $parsed with assignees and title changed, typed_unknown and
+ *               typed_ambiguous (names as typed)
+ */
+function ws_command_typed_assignees($parsed, $team)
+{
+    $parsed['typed_unknown'] = array();
+    $parsed['typed_ambiguous'] = array();
+
+    $usernames = array();
+
+    foreach ((array) $team as $person) {
+        $usernames[ws_command_fold($person['username'] ?? '')][] = (int) $person['id'];
+    }
+
+    $title = (string) $parsed['title'];
+
+    foreach (array_unique((array) ($parsed['typed_people'] ?? array())) as $name) {
+        $ids = $usernames[ws_command_fold($name)] ?? array();
+
+        if (count($ids) > 1) {
+            $parsed['typed_ambiguous'][] = $name;
+            continue;
+        }
+
+        if (empty($ids)) {
+            $parsed['typed_unknown'][] = $name;
+            continue;
+        }
+
+        if (!in_array($ids[0], $parsed['assignees'], true)) {
+            $parsed['assignees'][] = $ids[0];
+        }
+
+        $title = preg_replace('/(^|\s)@' . preg_quote($name, '/') . '[.\-]*[,;:!?]*(?=\s|$)/u', '$1', $title);
+    }
+
+    $parsed['title'] = trim(preg_replace('/\s+/u', ' ', $title), " \t-–—:,");
+
+    return $parsed;
 }
 
 /**
@@ -1214,7 +1265,7 @@ function ws_command_run($viewer, $channel, $body, $options = array())
  */
 function ws_command_task($viewer, $channel, $text, $options)
 {
-    $parsed = ws_command_parse_task($text);
+    $parsed = ws_command_typed_assignees(ws_command_parse_task($text), ws_team_members());
 
     if ($parsed['title'] === '') {
         return array('type' => 'error', 'error' => lang('Write what the task is after the command.'));
@@ -1323,10 +1374,14 @@ function ws_command_suggest($viewer, $channel, $body)
         return $out;
     }
 
-    $parsed = ws_command_parse_task($split['rest']);
+    $parsed = ws_command_typed_assignees(ws_command_parse_task($split['rest']), ws_team_members());
 
-    foreach (array_unique($parsed['typed_people']) as $name) {
-        $out['warnings'][] = lang(array('string' => '@{var:1} is not tagged, so nobody is assigned by it: pick the person from the @ list.', 'vars' => $name));
+    foreach ($parsed['typed_unknown'] as $name) {
+        $out['warnings'][] = lang(array('string' => 'Nobody in the team has the username {var:1}, so nobody is assigned by it: pick the person from the @ list.', 'vars' => '@' . $name));
+    }
+
+    foreach ($parsed['typed_ambiguous'] as $name) {
+        $out['warnings'][] = lang(array('string' => 'Several people have the username {var:1}, so nobody is assigned by it: pick the person from the @ list.', 'vars' => '@' . $name));
     }
 
     if ($parsed['title'] === '') {

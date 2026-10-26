@@ -918,6 +918,7 @@
     "Nobody has written to you lately.": "Son zamanlarda sana yazan olmadı.",
     "Nobody has written yet. Start the discussion.": "Henüz kimse yazmadı. Tartışmayı başlatın.",
     "Nobody holds access on this group itself.": "Bu grubun kendisinde kimsenin yetkisi yok.",
+    "Nobody in the team has the username {var:1}, so nobody is assigned by it: pick the person from the @ list.": "Ekipte {var:1} kullanıcı adına sahip kimse yok, bu yüzden kimseye atanmıyor: kişiyi @ listesinden seçin.",
     "Nobody is on the site right now.": "Şu anda sitede kimse yok.",
     "Nobody is waiting for a reply.": "Yanıt bekleyen kimse yok.",
     "Nobody on it": "Kimseye verilmemiş",

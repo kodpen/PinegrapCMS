@@ -470,3 +470,42 @@ function test_workspace_command_parse_task_reports_typed_people()
 
 	pg_assert_same(array(), $task['typed_people'], 'an address is no person');
 }
+
+// A typed @name assigns when it is exactly one team member's username, in
+// any case and with or without the Turkish letters; it then leaves the
+// title. A name nobody has, or several people share, assigns nobody and
+// stays in the title for the warning.
+function test_workspace_command_typed_people_assign_on_one_exact_username()
+{
+	$team = array(
+		array('id' => 7, 'username' => 'arzu'),
+		array('id' => 8, 'username' => 'ahmet'),
+		array('id' => 9, 'username' => 'Ayşe'),
+		array('id' => 10, 'username' => 'deniz'),
+		array('id' => 11, 'username' => 'DENIZ'),
+	);
+
+	$task = ws_command_typed_assignees(ws_command_parse_task('Tedarikçiyi ara @arzu', '2026-10-21'), $team);
+
+	pg_assert_same(array(7), $task['assignees'], 'one exact username');
+	pg_assert_same('Tedarikçiyi ara', $task['title'], 'the name leaves the title');
+	pg_assert_same(array(), $task['typed_unknown'], 'nothing unknown');
+	pg_assert_same(array(), $task['typed_ambiguous'], 'nothing ambiguous');
+
+	$task = ws_command_typed_assignees(ws_command_parse_task('Logo <@user:5> @AYSE, cuma', '2026-10-21'), $team);
+
+	pg_assert_same(array(5, 9), $task['assignees'], 'beside a picked person, letters and case folded');
+	pg_assert_same('Logo', $task['title'], 'punctuation after the name goes with it');
+
+	$task = ws_command_typed_assignees(ws_command_parse_task('Ara @a @deniz @zeynep', '2026-10-21'), $team);
+
+	pg_assert_same(array(), $task['assignees'], 'nobody from a prefix, a shared name or an unknown one');
+	pg_assert_same(array('a', 'zeynep'), $task['typed_unknown'], 'no such username, a prefix included');
+	pg_assert_same(array('deniz'), $task['typed_ambiguous'], 'two people answer to it');
+	pg_assert_same('Ara @a @deniz @zeynep', $task['title'], 'unassigned names stay in the title');
+
+	$task = ws_command_typed_assignees(ws_command_parse_task('Ara @arzu @arzu', '2026-10-21'), $team);
+
+	pg_assert_same(array(7), $task['assignees'], 'written twice, assigned once');
+	pg_assert_same('Ara', $task['title'], 'both leave the title');
+}

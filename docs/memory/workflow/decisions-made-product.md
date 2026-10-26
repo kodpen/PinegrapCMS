@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product
-description: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, widget conditions, publish-only editing, robots.txt vs noindex, ERP limits.
+description: Decisions list, product part: express order and preview totals, cookie window texts, widget conditions, publish-only editing, robots.txt vs noindex, ERP limits, typed @name in /task.
 ---
 
 ## Which checkout and storefront behaviour stays?
@@ -21,3 +21,6 @@ description: Decisions list, product part: express order and order preview total
 
 ## What about ERP features that do not exist?
 - What ERP deliberately does not do today (automatic settlement matching, e-waybill, one order over several invoices, a payment link on invoices, payout imports, a bank API, an official income statement) is a phase limit, not a gap: `erp/erp-not-built-on-purpose.md`.
+
+## Does a typed @name in /task assign?
+- Yes, when it is exactly one team member's username (case and Turkish letters folded); a name nobody has, a prefix (`@a`) or one several people share assigns nobody and the live line warns (`ws_command_typed_assignees()`, `workspace/workspace-command-live-line.md`). Owner decision (2026-10-26, #1731): a name typed by hand assigns like a picked one, so a task can be given without opening the list; only an exact, single match assigns, so a guess never gives the task to the wrong person.

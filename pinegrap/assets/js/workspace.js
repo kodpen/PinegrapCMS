@@ -12878,7 +12878,7 @@
 
         // Under /task's usage: what sending the line now would do, read by
         // the parser that runs it (ws_command_suggest), and what it cannot
-        // read, such as an @name typed without picking the person. The last
+        // read, such as a typed @name no team member, or several, answer to. The last
         // answer stays on screen until the next one comes.
         commandLive: function (argument) {
             var self = this;
