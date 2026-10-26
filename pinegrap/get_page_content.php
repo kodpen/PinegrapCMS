@@ -5246,6 +5246,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
         }
         
+        // The visual designer's canvas cuts the page's own system region out
+        // of a whole page render (pg_layout_region_preview()).
+        if ($primary_system_region && function_exists('pg_layout_region_marking') && pg_layout_region_marking()) {
+            $system_output = '<!--pg-layout-region-start-->' . $system_output . '<!--pg-layout-region-end-->';
+        }
+
         $content = preg_replace('/<system>' . $system_page_name . '<\/system>/i', pg_regex_replacement($system_output), $content);
     }
 
