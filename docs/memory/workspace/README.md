@@ -54,6 +54,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php, no schema change): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
+- workspace-flows-steps.md: Step boxes of a flow (steps.php, F4a PR #1835): post and email as box kinds run by ws_scheduled_do(), outcomes done/failed, owner's rights at publish and run, {{node.ID.FIELD}}, never run twice
 - workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
 - workspace-followups.md: Workspace follow-ups (followups.php, PR #1790): ws_followup_task_open() opens a tagged task on a channel or for a person, reminded on its day; "Remind me" on the customer card; sales quote expiry
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card
