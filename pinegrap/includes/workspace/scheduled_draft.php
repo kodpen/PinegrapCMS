@@ -626,7 +626,7 @@ function ws_scheduled_draft_condition($rule, $lists)
                 $param = max(0, ws_scheduled_draft_int($rule['param'] ?? 5));
             }
 
-            // Money is kept in minor units, the way the form sends it back.
+            // Money is kept in minor units, the way the form reads it.
             $value = ($metric['kind'] === 'money') ? (int) round(((float) $raw) * 100) : (int) round((float) $raw);
 
             return array('type' => 'metric', 'metric' => $key, 'param' => $param, 'op' => $operator, 'value' => $value);
@@ -914,7 +914,8 @@ function ws_scheduled_draft_ai_step($row, $state, $steps)
  * form still needs before it can be saved.
  *
  * @param array $viewer
- * @param array $data       ws_scheduled_draft_tidy() data
+ * @param array $data       a draft as the form reads it: ws_scheduled_draft_tidy()
+ *                          data, or an application's (ws_scheduled_form_data())
  * @param int   $channel_id the channel the form is opened in
  * @return array lines (name, label, text), problem
  */
@@ -924,7 +925,9 @@ function ws_scheduled_draft_outline($viewer, $data, $channel_id)
     $preview = ws_scheduled_preview($viewer, array(
         'id'         => 0,
         'name'       => (string) ($data['name'] ?? ''),
-        'rules'      => (array) ($data['rules'] ?? array()),
+        // The preview reads the rules as the form sends them, money in major
+        // units; the draft keeps them as the form reads them, in minor units.
+        'rules'      => ws_scheduled_rules_as_sent((array) ($data['rules'] ?? array()), ws_scheduled_money_metrics()),
         'action'     => is_array($data['action'] ?? null) ? $data['action'] : null,
         'follow'     => (array) ($data['follow'] ?? array()),
         'channel_id' => (int) $channel_id,
@@ -1054,8 +1057,9 @@ function ws_scheduled_draft_proposal_input($change, $channel_id)
  * save rehearsed with the person it is proposed to (ws_scheduled_save_check(),
  * the panel's and the API's own check), so a step they could not save is
  * refused now; then kept as Pinegrap AI's drafts are, a ws_ai_changes row of
- * record_type 'scheduled', action 'draft'. Nothing is scheduled: the person
- * opens it in the form and saves it in their own name.
+ * record_type 'scheduled', action 'draft', holding what the check read in the
+ * shape the form opens it in. Nothing is scheduled: the person opens it in
+ * the form and saves it in their own name.
  *
  * @param int   $asker_id   the person it is proposed to
  * @param mixed $change     the change, as sent
@@ -1090,13 +1094,17 @@ function ws_scheduled_draft_proposal_row($asker_id, $change, $channel_id)
         return $fail(($checked['field'] !== '') ? $checked['field'] . ': ' . $checked['error'] : $checked['error']);
     }
 
+    // The form reads a draft as it reads a saved action, so the draft is kept
+    // as the check read it, in that shape (ws_scheduled_form_data()): a record
+    // named by its own name, money in minor units, the addresses as a list.
+    // Nothing else the application sent reaches the form.
     return array('ok' => true, 'error' => '', 'row' => array(
         'type'      => 'scheduled',
         'action'    => 'draft',
         'record_id' => 0,
         'fields'    => array(),
         'reason'    => '',
-        'snapshot'  => array('sentence' => '', 'data' => $input['data'], 'notes' => $input['notes'], 'channel_id' => $input['channel_id']),
+        'snapshot'  => array('sentence' => '', 'data' => ws_scheduled_form_data($viewer, $checked['row']), 'notes' => $input['notes'], 'channel_id' => $input['channel_id']),
     ));
 }
 

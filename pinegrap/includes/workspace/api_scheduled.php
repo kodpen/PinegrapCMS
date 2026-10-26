@@ -524,7 +524,7 @@ function ws_api_scheduled_own_session_refusal()
  *
  * @param array $row    decoded
  * @param array $params the route's values
- * @param array $money  the metrics kept in minor units (ws_scheduled_metrics() kind money)
+ * @param array $money  the metrics kept in minor units (ws_scheduled_money_metrics())
  * @return array id, name, rules, action, follow
  */
 function ws_api_scheduled_change_data($row, $params, $money = array())
@@ -538,48 +538,10 @@ function ws_api_scheduled_change_data($row, $params, $money = array())
     // Rules kept from the action are as stored, money in minor units, while
     // the save reads them as the form sends them and multiplies money by 100.
     if (!array_key_exists('rules', $params) || ($params['rules'] === null)) {
-        $data['rules'] = ws_api_scheduled_rules_as_sent((array) $data['rules'], $money);
+        $data['rules'] = ws_scheduled_rules_as_sent((array) $data['rules'], $money);
     }
 
     return $data;
-}
-
-/**
- * Stored rules as the form sends them (pure): a money condition's value back
- * in major units with two decimals, the way the panel loads it.
- *
- * @param array $rules as stored
- * @param array $money the money metrics' keys
- * @return array
- */
-function ws_api_scheduled_rules_as_sent($rules, $money)
-{
-    foreach ($rules as $i => $rule) {
-        if (is_array($rule) && (($rule['type'] ?? '') === 'metric') && isset($rule['value'])
-            && in_array((string) ($rule['metric'] ?? ''), (array) $money, true)) {
-            $rules[$i]['value'] = number_format(((int) $rule['value']) / 100, 2, '.', '');
-        }
-    }
-
-    return $rules;
-}
-
-/**
- * The keys of the conditions counted in money, kept in minor units.
- *
- * @return array
- */
-function ws_api_scheduled_money_metrics()
-{
-    $keys = array();
-
-    foreach (ws_scheduled_metrics() as $key => $metric) {
-        if ($metric['kind'] === 'money') {
-            $keys[] = $key;
-        }
-    }
-
-    return $keys;
 }
 
 /**
@@ -647,7 +609,7 @@ function ws_api_scheduled_actions_update($params)
     ws_api_own_words_only(ws_api_scheduled_own_session_refusal());
     $viewer = ws_api_scheduled_viewer();
     $row = ws_api_scheduled_action_or_404($params['id']);
-    $id = ws_api_scheduled_save($viewer, ws_api_scheduled_change_data($row, $params, ws_api_scheduled_money_metrics()), false);
+    $id = ws_api_scheduled_save($viewer, ws_api_scheduled_change_data($row, $params, ws_scheduled_money_metrics()), false);
 
     api_ok(ws_api_scheduled_action_present($viewer, ws_scheduled_action($id), true));
 }
