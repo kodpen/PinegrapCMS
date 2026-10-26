@@ -9,7 +9,7 @@ description: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where
 - `pg_mfa_table_exists()` probes both tables by exact name; before the upgrade callers treat it as off. `pg_mfa_available()` also needs `ENCRYPTION_KEY` and openssl.
 - Pre-build audit: `git show 88e7ac6d:docs/_tespit_2026_10_08/2fa_kesif_raporu.md`
 - Not built: e-mail codes, trusted devices. QR: inline SVG from `includes/fn/qr.php` (qr-code-generator.md).
-- `mfa.php` verify mode also takes a passkey (same attempt counter and completion): passkey-ceremonies.md.
+- A passkey also answers verify mode and alone is a factor: passkey-second-factor.md.
 - `pg_mfa_reauth_refusal()`: the account page's shared proof check (TOTP off, passkey add or remove).
 
 ## Where does the gate sit?

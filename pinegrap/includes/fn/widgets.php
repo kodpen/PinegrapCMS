@@ -84,6 +84,7 @@ function pg_sw_type_labels()
         'menu_region'         => lang('Menu'),
         'menu_sequence_region' => lang('Menu Sequence'),
         'ad_region'           => lang('Ad Region'),
+        'tag_cloud_region'    => lang('Tag Cloud'),
     );
 }
 
@@ -7447,6 +7448,15 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // whole order.
         '__ship_to_key'             => '0',
     );
+    // The order's allow-listed values (pg_sw_entity_fields('order')), read
+    // in one more query only when the tree names one; dates as the widget's
+    // other dates read.
+    if (pg_sw_entity_wanted('order', pg_sw_cond_tree_json($tree_decoded))) {
+        $static_values += array_map('h', pg_sw_entity_values('order', pg_sw_entity_order_read((int)$order['id']), array(
+            'currency_symbol' => $currency_symbol,
+            'format_stamp'    => function ($ts) use ($_fmt_ts) { return $_fmt_ts($ts, false); },
+        )));
+    }
     // The dates a format can read (^^__order_date^^%%d.m.Y H:i%%).
     $_ov_typed = _pg_sw_order_view_dates(
         $order_date_ts,

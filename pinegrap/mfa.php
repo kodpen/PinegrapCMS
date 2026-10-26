@@ -8,9 +8,11 @@
  * second factor - or of an account whose role must have one - stashes a
  * short-lived pending record (pg_mfa_gate()) and sends the visitor here
  * before anything is signed in. 'verify' asks for a code from the
- * authenticator app or a recovery code; 'setup' has the account add a key to
- * its app, confirm it with the first code and save its recovery codes. Only
- * then is the sign-in completed, in the same order the sign-in flows use.
+ * authenticator app, a recovery code or a passkey (a passkey only, for an
+ * account with passkeys and no authenticator key); 'setup' has the account
+ * add a key to its app, confirm it with the first code and save its recovery
+ * codes. Only then is the sign-in completed, in the same order the sign-in
+ * flows use.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -284,14 +286,20 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
 
     $title = lang('Two-Step Verification');
 
+    // An account with passkeys and no authenticator key is asked for a
+    // passkey only: without a key there are no codes to type (turning the
+    // key off removed its recovery codes too).
+    $totp_on = pg_mfa_enabled($user_id);
+
     // A passkey of the account, offered above the code when the browser can
     // use one (the script shows the block). The browser's answer is posted
     // back here and checked like a code.
     $passkey_block = '';
 
-    if (pg_passkeys_available() && (count(pg_passkeys_of_user($user_id)) > 0)) {
+    if (pg_mfa_has_passkey($user_id)) {
         $passkey_block =
-            '<div id="mfa_passkey" class="d-none">
+            ($totp_on ? '' : '<div id="mfa_passkey_unsupported" class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h(lang('Your browser could not use a passkey here.')) . '</div>') . '
+            <div id="mfa_passkey" class="d-none">
                 <form name="mfa_passkey" action="' . $form_action . '" method="post">
                     ' . $hidden . '
                     <input type="hidden" name="pg_mfa_action" value="passkey"/>
@@ -299,7 +307,7 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
                     <button type="button" id="mfa_passkey_button" class="btn btn-primary w-100"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Use a passkey')) . '</button>
                 </form>
                 <div id="mfa_passkey_error" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
-                <p class="text-center text-muted small my-3">' . h(lang('or enter a code')) . '</p>
+                ' . ($totp_on ? '<p class="text-center text-muted small my-3">' . h(lang('or enter a code')) . '</p>' : '') . '
             </div>
             <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_passkey.js?v=' . (int) @filemtime(dirname(__FILE__) . '/assets/js/pg_passkey.js') . '"></script>
             <script>
@@ -316,6 +324,10 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
                     'failed'    => lang('Your browser could not use a passkey here.'),
                 ), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
                 block.classList.remove("d-none");
+                var unsupported = document.getElementById("mfa_passkey_unsupported");
+                if (unsupported) {
+                    unsupported.classList.add("d-none");
+                }
                 button.addEventListener("click", function () {
                     button.disabled = true;
                     notice.classList.add("d-none");
@@ -335,17 +347,28 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
             </script>';
     }
 
-    $body =
-        '<p class="text-muted mb-3">' . h(lang('Enter the 6-digit code from your authenticator app, or one of your recovery codes.')) . '</p>
-        ' . (pg_mfa_available() ? '' : '<div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h(lang('The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.')) . '</div>') . '
-        ' . $messages . '
-        ' . $passkey_block . '
-        <form name="mfa_verify" action="' . $form_action . '" method="post" autocomplete="off">
-            ' . $hidden . '
-            ' . $code_input . '
-            <button type="submit" name="pg_mfa_action" value="verify" class="btn btn-primary w-100">' . h(lang('Verify')) . '</button>
-            ' . $cancel_button . '
-        </form>';
+    if (!$totp_on) {
+        $body =
+            '<p class="text-muted mb-3">' . h(lang('Use one of your passkeys to finish signing in.')) . '</p>
+            ' . $messages . '
+            ' . $passkey_block . '
+            <form name="mfa_cancel" action="' . $form_action . '" method="post">
+                ' . $hidden . '
+                ' . $cancel_button . '
+            </form>';
+    } else {
+        $body =
+            '<p class="text-muted mb-3">' . h(lang('Enter the 6-digit code from your authenticator app, or one of your recovery codes.')) . '</p>
+            ' . (pg_mfa_available() ? '' : '<div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h(lang('The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.')) . '</div>') . '
+            ' . $messages . '
+            ' . $passkey_block . '
+            <form name="mfa_verify" action="' . $form_action . '" method="post" autocomplete="off">
+                ' . $hidden . '
+                ' . $code_input . '
+                <button type="submit" name="pg_mfa_action" value="verify" class="btn btn-primary w-100">' . h(lang('Verify')) . '</button>
+                ' . $cancel_button . '
+            </form>';
+    }
 }
 
 echo output_header_secure(array('title' => $title))

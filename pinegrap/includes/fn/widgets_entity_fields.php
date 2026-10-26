@@ -29,12 +29,15 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //   number      a whole number, zero included ('0' places left)
 //   money       integer minor units; zero gives '', else the visitor's money text
 //   rate        a percentage column that may be NULL (no rate of its own): ''
-//   stamp       a unix time stamp as a date in $ctx['date_format']; 0 gives ''
+//   stamp       a unix time stamp as a date in $ctx['date_format'] (or through
+//               $ctx['format_stamp'], a callable taking the stamp); 0 gives ''
 //   period      a recurring product's payment period, as translated words
 //   recurrence  a calendar event's recurrence type, as translated words
+//   refund      an order's refund status, as translated words
 //   yesno       '1' or '' (a condition reads it; never shown as text)
 // Options: 'when' => columns that must all be non-zero, else the value is '';
-// 'is' => the value that means yes (yesno), else any non-zero value does.
+// 'is' => the value that means yes (yesno), else any non-zero value does;
+// 'from' => the table the reader takes the column from, when not the entity's.
 function pg_sw_entity_fields($entity)
 {
     if ($entity === 'product') {
@@ -74,6 +77,30 @@ function pg_sw_entity_fields($entity)
     if ($entity === 'form_record') {
         return array(
             '__quiz_score' => array('quiz_score', 'number', array('when' => array('quiz'))),
+        );
+    }
+
+    // A pg_sw_entity_order_read() row. Only the order's own view and its
+    // receipt e-mail offer these: the owner sees what the classic receipt
+    // showed them. Card details, IP, referrer, UTM codes, notes, commission
+    // and accounting or marketplace ids stay off.
+    if ($entity === 'order') {
+        return array(
+            '__order_po_number'            => array('po_number', 'text'),
+            '__order_custom_field_1'       => array('custom_field_1', 'text'),
+            '__order_custom_field_1_label' => array('custom_field_1_label', 'text', array('when' => array('custom_field_1'), 'from' => 'billing_information_pages')),
+            '__order_custom_field_2'       => array('custom_field_2', 'text'),
+            '__order_custom_field_2_label' => array('custom_field_2_label', 'text', array('when' => array('custom_field_2'), 'from' => 'billing_information_pages')),
+            '__billing_fax'                => array('billing_fax_number', 'text'),
+            '__order_gift_card_discount'   => array('gift_card_discount', 'money'),
+            '__order_currency'             => array('currency_code', 'text'),
+            '__order_paid_date'            => array('paid_at', 'stamp'),
+            '__order_cancelled_date'       => array('cancelled_at', 'stamp'),
+            '__order_cancellation_reason'  => array('cancellation_reason', 'text', array('when' => array('cancelled_at'))),
+            '__order_refund_status'        => array('refund_status', 'refund'),
+            '__order_refunded_amount'      => array('refunded_amount', 'money'),
+            '__order_refunded_date'        => array('refunded_at', 'stamp'),
+            '__order_is_tax_exempt'        => array('tax_exempt', 'yesno'),
         );
     }
 
@@ -139,6 +166,18 @@ function pg_sw_entity_recurrence_words($type)
     return isset($words[$type]) ? (string)$words[$type] : '';
 }
 
+// The words of an order's refund status (orders.refund_status) as the
+// customer reads them, in the interface language; '' for none. A refund
+// still to do by hand or one the gateway refused reads "in progress", as
+// the cancellation e-mail tells the customer: a failure is the shop's to fix.
+function pg_sw_entity_refund_words($status)
+{
+    if ($status === 'refunded') return (string)lang('Refunded');
+    if ($status === 'pending' || $status === 'failed' || $status === 'manual_required') return (string)lang('Refund in progress');
+
+    return '';
+}
+
 // A number column as plain text: '12.5000' gives '12.5', '0.0000' gives ''.
 function pg_sw_entity_number($value)
 {
@@ -181,11 +220,14 @@ function pg_sw_entity_value($spec, $row, $ctx = array())
             return pg_money_text(pg_visitor_amount((int)$value / 100), $symbol, $suffix);
         case 'stamp':
             if ((int)$value <= 0) return '';
+            if (isset($ctx['format_stamp']) && is_callable($ctx['format_stamp'])) return (string)call_user_func($ctx['format_stamp'], (int)$value);
             return date(isset($ctx['date_format']) && $ctx['date_format'] !== '' ? (string)$ctx['date_format'] : 'Y-m-d', (int)$value);
         case 'period':
             return pg_sw_entity_period_words((string)$value);
         case 'recurrence':
             return pg_sw_entity_recurrence_words((string)$value);
+        case 'refund':
+            return pg_sw_entity_refund_words((string)$value);
         case 'yesno':
             if (isset($opts['is'])) return ((string)$value === (string)$opts['is']) ? '1' : '';
             return !empty($value) ? '1' : '';
@@ -227,6 +269,62 @@ function pg_sw_entity_event_read($ids)
     }
 
     return $out;
+}
+
+// The order $id's allow-listed columns, as pg_sw_entity_fields('order')
+// reads them; null when there is no such order. One query for the order
+// (a column a migration added and this database lacks reads as empty), one
+// for the custom field labels: those of the billing information page this
+// session passed, else of the site's first billing information page. The
+// caller has already checked that the visitor may see the order.
+function pg_sw_entity_order_read($id)
+{
+    $id = (int)$id;
+    if ($id <= 0) return null;
+
+    $columns = array();
+    foreach (pg_sw_entity_fields('order') as $spec) {
+        if (isset($spec[2]['from'])) continue;
+        $columns[$spec[0]] = true;
+    }
+
+    $select = array();
+    foreach (array_keys($columns) as $column) {
+        $select[] = pg_schema_has('orders', $column) ? $column : 'NULL AS ' . $column;
+    }
+
+    $row = db_item("SELECT " . implode(', ', $select) . " FROM orders WHERE id = '" . $id . "' LIMIT 1");
+    if (!is_array($row)) return null;
+
+    // Tax exemption shows only where the checkout offers it, as on the
+    // classic receipt.
+    if (!(defined('ECOMMERCE_TAX') && ECOMMERCE_TAX && defined('ECOMMERCE_TAX_EXEMPT') && ECOMMERCE_TAX_EXEMPT)) {
+        $row['tax_exempt'] = 0;
+    }
+
+    $row['custom_field_1_label'] = '';
+    $row['custom_field_2_label'] = '';
+    if ((string)$row['custom_field_1'] !== '' || (string)$row['custom_field_2'] !== '') {
+        $page_id = isset($_SESSION['ecommerce']['billing_information_page_id']) ? (int)$_SESSION['ecommerce']['billing_information_page_id'] : 0;
+        $labels = ($page_id > 0)
+            ? db_item("SELECT custom_field_1_label, custom_field_2_label FROM billing_information_pages WHERE page_id = '" . $page_id . "' LIMIT 1")
+            : null;
+        if (!is_array($labels)) {
+            $labels = db_item(
+                "SELECT billing_information_pages.custom_field_1_label, billing_information_pages.custom_field_2_label
+                 FROM billing_information_pages
+                 INNER JOIN page ON page.page_id = billing_information_pages.page_id
+                 WHERE page.page_type = 'billing information'
+                 ORDER BY billing_information_pages.page_id
+                 LIMIT 1");
+        }
+        if (is_array($labels)) {
+            $row['custom_field_1_label'] = (string)$labels['custom_field_1_label'];
+            $row['custom_field_2_label'] = (string)$labels['custom_field_2_label'];
+        }
+    }
+
+    return $row;
 }
 
 // Whether a widget tree binds any allow-listed value of $entity, read from

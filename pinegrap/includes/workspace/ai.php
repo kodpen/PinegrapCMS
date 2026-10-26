@@ -1501,7 +1501,7 @@ function ws_ai_step($row)
         $name = $call['function']['name'];
 
         if (!$call['valid']) {
-            $state['messages'][] = ws_ai_tool_message($call['id'], array('error' => 'The arguments were not valid JSON. Call the tool again with valid JSON.'));
+            $state['messages'][] = ws_ai_tool_message($call['id'], null, 'The arguments were not valid JSON. Call the tool again with valid JSON.');
             $page_trouble = $page_trouble || (strpos($name, 'page_') === 0);
             continue;
         }
@@ -1522,22 +1522,19 @@ function ws_ai_step($row)
                     $ran[] = array('tool' => $written['name'], 'result' => ws_ai_tool_run($row, $state, $written['name'], $written['args']));
                 }
 
-                $state['messages'][] = ws_ai_tool_message($call['id'], array(
-                    'error' => 'The answer had tool calls written into its text. They were made now; their results are in "ran". Fix what they report, then call answer again with only the words for the person, no tool calls in them.',
-                    'ran'   => $ran,
-                ));
+                $state['messages'][] = ws_ai_tool_message($call['id'], array('ran' => $ran), 'The answer had tool calls written into its text. They were made now; their results are in "ran" below. Fix what they report, then call answer again with only the words for the person, no tool calls in them.');
                 continue;
             }
 
             if ($page_trouble && ($steps < WS_AI_MAX_STEPS - 2)) {
-                $state['messages'][] = ws_ai_tool_message($call['id'], array('error' => 'A page tool above answered with an error or a warning. Fix that first, then call answer again.'));
+                $state['messages'][] = ws_ai_tool_message($call['id'], null, 'A page tool above answered with an error or a warning. Fix that first, then call answer again.');
                 continue;
             }
 
             // A scheduled action asked for in the same turn is drafted
             // first: the answer would come before its draft.
             if (!empty($state['scheduled_todo']) && ($steps < WS_AI_MAX_STEPS - 2)) {
-                $state['messages'][] = ws_ai_tool_message($call['id'], array('error' => 'The scheduled action is drafted first. Call answer again once you are told how it came out.'));
+                $state['messages'][] = ws_ai_tool_message($call['id'], null, 'The scheduled action is drafted first. Call answer again once you are told how it came out.');
                 continue;
             }
 
@@ -1746,7 +1743,7 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
     }
 
     if ($call_id !== '') {
-        $state['messages'][] = ws_ai_tool_message($call_id, array('error' => $result['error']));
+        $state['messages'][] = ws_ai_tool_message($call_id, null, (string) $result['error']);
     } else {
         $state['messages'][] = array('role' => 'assistant', 'content' => $content);
         $state['messages'][] = array('role' => 'user', 'content' => 'That could not be written: ' . $result['error'] . ' Call the answer tool.');
@@ -2101,22 +2098,37 @@ function ws_ai_clean($text)
 }
 
 /**
- * A tool's answer as the model reads it.
+ * A tool's answer as the model reads it. What the tool returned - records,
+ * pages, what people wrote - goes inside a data block (pg_ai_data_block()),
+ * cut at 12,000 characters; the site's own words about the call (arguments
+ * that were not valid, an answer held back) go before it, where they still
+ * tell the model what to do.
  *
  * @param string $call_id
- * @param mixed  $data
+ * @param mixed  $data null when the note says everything
+ * @param string $note the site's own words
  * @return array
  */
-function ws_ai_tool_message($call_id, $data)
+function ws_ai_tool_message($call_id, $data, $note = '')
 {
-    $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
-    $text = is_string($data) ? $data : (string) json_encode($data, $flags);
+    $out = array();
 
-    if (mb_strlen($text) > 12000) {
-        $text = mb_substr($text, 0, 12000) . ' …[cut]';
+    if ((string) $note !== '') {
+        $out[] = (string) $note;
     }
 
-    return array('role' => 'tool', 'tool_call_id' => (string) $call_id, 'content' => $text);
+    if ($data !== null) {
+        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
+        $text = is_string($data) ? $data : (string) json_encode($data, $flags);
+
+        if (mb_strlen($text) > 12000) {
+            $text = mb_substr($text, 0, 12000) . ' …[cut]';
+        }
+
+        $out[] = pg_ai_data_block('tool answer', $text);
+    }
+
+    return array('role' => 'tool', 'tool_call_id' => (string) $call_id, 'content' => implode("\n", $out));
 }
 
 /**
@@ -3233,13 +3245,13 @@ function ws_ai_start($row)
             return array('ok' => false, 'error' => lang('The note could not be found.'), 'state' => null);
         }
 
-        $parts[] = 'The note "' . (string) $note['title'] . '", as written (formulas shown with their values):';
-        $parts[] = ws_ai_text($asker, (string) $note['body'], null, 12000);
+        $parts[] = 'The note, as written (formulas shown with their values):';
+        $parts[] = pg_ai_data_block('note', 'Title: ' . (string) $note['title'] . "\n\n" . ws_ai_text($asker, (string) $note['body'], null, 12000));
         $parts[] = '';
         $request_text = ws_ai_text($asker, (string) $row['note_text'], null, 2000);
 
         $parts[] = 'The line of the note that asks you:';
-        $parts[] = $request_text;
+        $parts[] = pg_ai_data_block('request', $request_text);
     } elseif ((int) ($row['task_id'] ?? 0) > 0) {
         // A run on a task (delegation.php): the task is the context, with its
         // channel when it has one the assistant may be asked in.
@@ -3262,28 +3274,30 @@ function ws_ai_start($row)
         $parts[] = $context['delegated']
             ? 'The task, handed to you. The people on it stay responsible for it:'
             : 'The task. A note on it asks you; it is not handed to you:';
-        $parts[] = (string) json_encode($present, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $parts[] = pg_ai_data_block('task', (string) json_encode($present, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
         $parts[] = '';
 
         // The channel's words go along only to somebody who reads the channel:
         // a person on a task of a private channel may not be in it.
         if ($channel && ws_can_read_channel($asker, $channel)) {
-            $parts[] = ws_ai_channel_context($asker, $channel, ($tries > 0) ? 10 : 20, ($tries > 0) ? 200 : 300, ($tries > 0) ? 800 : 2000);
+            $parts[] = pg_ai_data_block('channel', ws_ai_channel_context($asker, $channel, ($tries > 0) ? 10 : 20, ($tries > 0) ? 200 : 300, ($tries > 0) ? 800 : 2000));
             $parts[] = '';
         }
 
         $parts[] = 'People in the workspace:';
-        $parts[] = ws_ai_team_text();
+        $parts[] = pg_ai_data_block('people', ws_ai_team_text());
         $parts[] = '';
 
         if (!empty($context['earlier'])) {
             $parts[] = 'What the assistants were asked on this task before, and what they answered:';
+            $earlier = array();
 
             foreach ($context['earlier'] as $item) {
-                $parts[] = '- ' . $item['asked_by'] . ' asked ' . $item['agent'] . ': ' . (($item['instruction'] !== '') ? mb_substr($item['instruction'], 0, 600) : '(the task itself)')
+                $earlier[] = '- ' . $item['asked_by'] . ' asked ' . $item['agent'] . ': ' . (($item['instruction'] !== '') ? mb_substr($item['instruction'], 0, 600) : '(the task itself)')
                     . (($item['answer'] !== '') ? "\n  Answer: " . mb_substr($item['answer'], 0, 1200) : "\n  Not done: " . $item['error']);
             }
 
+            $parts[] = pg_ai_data_block('earlier answers', implode("\n", $earlier));
             $parts[] = 'Carry the work on from there.';
             $parts[] = '';
         }
@@ -3291,7 +3305,7 @@ function ws_ai_start($row)
         $request_text = ws_ai_text($asker, (string) $row['note_text'], null, 2000);
 
         $parts[] = 'The instruction of ' . ws_person_name($asker['id']) . ':';
-        $parts[] = ($request_text !== '') ? $request_text : '(none: work on the task as its title, description and notes say)';
+        $parts[] = ($request_text !== '') ? pg_ai_data_block('request', $request_text) : '(none: work on the task as its title, description and notes say)';
 
         if ($request_text === '') {
             $request_text = (string) $task['title'] . ' ' . (string) $task['description'];
@@ -3317,7 +3331,7 @@ function ws_ai_start($row)
         // reads a long prompt slowly, and a call that ran out of time is
         // tried again with less.
         $tries = (int) ($row['ai_attempts'] ?? 0);
-        $parts[] = ws_ai_channel_context($asker, $channel, ($tries > 0) ? 15 : 30, ($tries > 0) ? 250 : 400, ($tries > 1) ? 1000 : (($tries > 0) ? 2000 : 3500));
+        $parts[] = pg_ai_data_block('channel', ws_ai_channel_context($asker, $channel, ($tries > 0) ? 15 : 30, ($tries > 0) ? 250 : 400, ($tries > 1) ? 1000 : (($tries > 0) ? 2000 : 3500)));
         $parts[] = '';
 
         // A discussion (threads.php) talks over one message of a channel:
@@ -3327,13 +3341,13 @@ function ws_ai_start($row)
         $parent = $thread ? ws_thread_parent_channel($channel) : null;
 
         if ($about && $parent && ((int) $about['deleted_at'] === 0)) {
-            $parts[] = 'This is a discussion about message ' . (int) $about['id'] . ' of the channel #' . $parent['name'] . ', by ' . ws_ai_author($about) . ': '
-                . ws_ai_text($asker, (string) $about['body'], null, 2000);
+            $parts[] = 'This is a discussion about message ' . (int) $about['id'] . ' of the channel #' . $parent['name'] . ':';
+            $parts[] = pg_ai_data_block('message', ws_ai_author($about) . ': ' . ws_ai_text($asker, (string) $about['body'], null, 2000));
             $parts[] = 'Decisions marked and tasks opened here go into #' . $parent['name'] . ' as well.';
             $parts[] = '';
         }
         $parts[] = 'People in the workspace:';
-        $parts[] = ws_ai_team_text();
+        $parts[] = pg_ai_data_block('people', ws_ai_team_text());
         $parts[] = '';
 
         // Written as a reply (to one of the assistant's answers, say): the
@@ -3341,7 +3355,8 @@ function ws_ai_start($row)
         $parent = ((int) $message['parent_id'] > 0) ? ws_message($message['parent_id']) : null;
 
         if ($parent && ((int) $parent['deleted_at'] === 0)) {
-            $parts[] = 'The request answers message ' . (int) $parent['id'] . ' by ' . ws_ai_author($parent) . ': ' . ws_ai_text($asker, (string) $parent['body'], null, 2000);
+            $parts[] = 'The request answers message ' . (int) $parent['id'] . ':';
+            $parts[] = pg_ai_data_block('message', ws_ai_author($parent) . ': ' . ws_ai_text($asker, (string) $parent['body'], null, 2000));
             $parts[] = 'Carry the conversation on from there.';
             $parts[] = '';
         }
@@ -3349,7 +3364,7 @@ function ws_ai_start($row)
         $request_text = ws_ai_text($asker, (string) $message['body'], null, 4000);
 
         $parts[] = 'The request (message ' . (int) $message['id'] . '):';
-        $parts[] = $request_text;
+        $parts[] = pg_ai_data_block('request', $request_text);
     }
 
     $parts[] = '';

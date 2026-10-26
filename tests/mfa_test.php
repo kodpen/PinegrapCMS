@@ -248,3 +248,31 @@ function test_mfa_reauth_message()
 		pg_mfa_reauth_message('attempts'));
 	pg_assert_contains('15', pg_mfa_reauth_message('locked', 15), 'lockout minutes');
 }
+
+// Which step a sign-in owes: a code or a passkey is asked for when the
+// account has either; setup only when its role requires a factor and it
+// has neither.
+function test_mfa_gate_mode()
+{
+	pg_assert_same('verify', pg_mfa_gate_mode(true, false, false));
+	pg_assert_same('verify', pg_mfa_gate_mode(true, false, true));
+	pg_assert_same('verify', pg_mfa_gate_mode(false, true, false));
+	pg_assert_same('verify', pg_mfa_gate_mode(false, true, true));
+	pg_assert_same('verify', pg_mfa_gate_mode(true, true, true));
+	pg_assert_same('setup', pg_mfa_gate_mode(false, false, true));
+	pg_assert_same('', pg_mfa_gate_mode(false, false, false));
+}
+
+// A passkey counts as a second step wherever a code does: a request that
+// carries only a password (api.php, ShipWorks) is refused for an account
+// with either, and the user screen shows two-step on, with its reset, for
+// an account whose only factor is a passkey.
+function test_mfa_password_only_paths_count_passkeys()
+{
+	$auth = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
+	pg_assert_contains("if (\$api_password_ok && pg_mfa_has_factor(\$cred['user_id']))", $auth, 'api.php password sign-in');
+	$shipworks = (string) file_get_contents(PG_FUNCTIONS_DIR . '/shipworks.php');
+	pg_assert_contains("pg_mfa_has_factor((int) \$user['id'])", $shipworks, 'ShipWorks');
+	$edit_user = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_user.php');
+	pg_assert_contains("pg_mfa_table_exists() && pg_mfa_has_factor((int) \$_GET['id'])", $edit_user, 'user screen state and reset');
+}

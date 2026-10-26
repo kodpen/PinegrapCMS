@@ -1133,6 +1133,12 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_ad_region($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'tag_cloud_region' — the keywords of a search results page (widgets_tag_cloud.php).
+            if ($region_type === 'tag_cloud_region') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_tag_cloud_region($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'billing_information' — the third step of the classic checkout,
             // posting to billing_information.php (widgets_billing_information.php).
             if ($region_type === 'billing_information') {

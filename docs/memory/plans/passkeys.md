@@ -1,6 +1,6 @@
 ---
 name: passkeys
-description: Plan (approved 2026-10-19; steps 1-3b done, 4 left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
+description: Plan (approved 2026-10-19; steps 1-3b and 4a done, 4b-4c left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
 ---
 
 ## Why?
@@ -17,11 +17,14 @@ description: Plan (approved 2026-10-19; steps 1-3b done, 4 left): WebAuthn passk
 ## What is built?
 - Step 1 (PR #594): the verifier and its tests, docs/memory/core/webauthn-verifier.md.
 - Step 2 (PR #672): `user_passkeys` (11.0.13, with `alg`, `backup_eligible`, `backup_state`, `user_handle`), `includes/fn/passkeys.php`, `passkey.php` (registration, sign-in options), the passkey button and answer in `mfa.php` verify mode, `assets/js/pg_passkey.js`; docs/memory/core/passkey-ceremonies.md. Changed from the sketch: the sign-in answer is posted to the screen that owns the step (`mfa.php`), because completing a sign-in redirects; `pg_mfa_reset()` removes passkeys (admin reset, both deletes).
-- Step 3 (PR #1384): the classic account page (`pg_passkey_account_section()`: list, add, rename, remove), `passkey.php` registration behind re-authentication (`pg_mfa_reauth_refusal()`; only with TOTP on), the `passkeys` export section; docs/memory/core/passkey-account-section.md.
+- Step 3 (PR #1384): the classic account page, registration behind re-authentication (only with TOTP on), the `passkeys` export section; docs/memory/core/passkey-account-section.md.
 - Step 3b (PR #1843): the designed `account_security` widget, the `security.passkeys` list, the add form and its script; docs/memory/designer/passkey-widget-list.md. Design templates needed nothing: they take the starter tree.
 
+- Step 4a (PR #1862): the gate counts a passkey; a passkey-only account gets `verify` mode, a passkey satisfies `mfa_required_role`: docs/memory/core/passkey-second-factor.md.
+
 ## What remains?
-4. Sign-in form conditional UI (passwordless: `pg_passkey_signin_begin(0)`, answer posted to the sign-in screens), two-step integration: the account found by the passkey must still exist, an account with a passkey and no TOTP gets `verify` mode, a passkey satisfies `mfa_required_role`, recovery codes for passkey-only accounts (S–M).
+4b. Sign-in form conditional UI (passwordless: `pg_passkey_signin_begin(0)`, answer posted to the sign-in screens: `index.php`, `membership_entrance.php`, `registration_entrance.php`); the account found by the passkey must still exist and be enabled; it then completes as after the second step. Settings switch. (M)
+4c. Recovery codes for passkey-only accounts and adding a passkey without TOTP (waits on the open question below). (S)
 5. Memory: update `core/passkey-ceremonies.md` and `two-step-sign-in.md` with each step.
 
 ## Open questions?
@@ -29,4 +32,4 @@ description: Plan (approved 2026-10-19; steps 1-3b done, 4 left): WebAuthn passk
 - Step 4: what an account without TOTP proves to add a passkey (adding needs TOTP on until then), and whether removing one then needs more than its password.
 
 ## Where to start?
-- Step 4: `core/passkey-ceremonies.md` (what exists, refusal words), `two-step-sign-in.md` and `social-sign-in.md` for the session and remember-me rules.
+- Step 4b: `pg_mfa_gate()` / `mfa.php`'s `pg_mfa_screen_complete()` for the completion order, `core/passkey-ceremonies.md` (what exists, refusal words), `two-step-sign-in.md` and `social-sign-in.md` for the session and remember-me rules.
