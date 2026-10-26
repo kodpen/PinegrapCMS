@@ -55,11 +55,13 @@ if ($_POST) {
 
 	// Every field here holds one value, except the category attributes
 	// (attribute[id]), the matched products ticked for a listing update
-	// (map_ids[]) and the return units ticked for a rejection (unit_ids[]).
-	// One posted as a list (provider[]=x) stopped the request
-	// in trim(), and account_id[]=x or group_id[]=x was read as record 1.
+	// (map_ids[]) and the return units ticked for a rejection (unit_ids[]);
+	// a rejection's documents (claim_files[]) arrive in $_FILES, and are
+	// named only because the form draws them as a list. One posted as a list
+	// (provider[]=x) stopped the request in trim(), and account_id[]=x or
+	// group_id[]=x was read as record 1.
 	// Nothing is written, so every account and match stays as it was.
-	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1, 'map_ids' => 1, 'unit_ids' => 1));
+	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1, 'map_ids' => 1, 'unit_ids' => 1, 'claim_files' => 1));
 
 	if ($mp_settings_lists) {
 
