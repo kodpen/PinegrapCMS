@@ -654,3 +654,36 @@ function test_widget_lists_wiring()
 	pg_assert_true($take !== false && $take < $return, 'taken before the first return');
 	pg_assert_true($positions !== false && $expand !== false && $resolve !== false && $positions < $expand && $expand < $resolve, 'positions, lists, conditions');
 }
+
+// A row token's format is read when the row is filled; a position token's
+// is dropped; a record token keeps its format through its carrier; a row
+// without a format fills as strtr() did.
+function test_widget_lists_row_formats()
+{
+	$data = array(
+		_widget_lists_data(1, 12, 'section', 'yemek & içecek'),
+		_widget_lists_data(1, 11, 'section', 'istanbul'),
+	);
+	$chip = array(
+		_widget_lists_text('__value_text', 'val', 'span', array('_bindFormats' => array('text' => 'upper'))),
+		_widget_lists_text('__value_text', 'cut', 'span', array('_bindFormats' => array('text' => 'truncate:3'))),
+		_widget_lists_text('__loop_index', 'no', 'span', array('_bindFormats' => array('text' => 'number:2'))),
+		_widget_lists_text('title', 'ttl', 'span', array('_bindFormats' => array('text' => 'lower'))),
+		_widget_lists_text('__value_text', 'raw'),
+	);
+	$out = _widget_lists_finished(_widget_lists_card_tree('form_record.values', 'section', array(), $chip), array(1 => 'First'), $data);
+	_widget_lists_no_markers($out);
+	pg_assert_same(array('ISTANBUL', 'YEMEK &amp; IÇECEK'), _widget_lists_texts($out, 'val'), 'a filter on a row token (not a Turkish page)');
+	pg_assert_same(array('ist…', 'yem…'), _widget_lists_texts($out, 'cut'), 'a filter with a number');
+	pg_assert_same(array('1', '2'), _widget_lists_texts($out, 'no'), 'a position token\'s format is dropped');
+	pg_assert_same(array('first', 'first'), _widget_lists_texts($out, 'ttl'), 'a record token, formatted by the renderer');
+	pg_assert_same(array('istanbul', 'yemek &amp; içecek'), _widget_lists_texts($out, 'raw'), 'no format');
+
+	$map = array('^^a^^' => '^^b^^', '^^b^^' => 'B', '^^c^^%%upper%%' => 'C!');
+	foreach (array('<i>^^a^^ ^^b^^ ^^x^^</i>', '^^c^^%%upper%% ^^b^^', '') as $html) {
+		if (strpos($html, '^^%%') === false) {
+			pg_assert_same(strtr($html, $map), pg_sw_lists_fill_row($html, $map), 'strtr: ' . $html);
+		}
+	}
+	pg_assert_same('C! ^^b^^ b ^^x^^%%upper%%', pg_sw_lists_fill_row('^^c^^%%upper%% ^^a^^ ^^b^^%%lower%% ^^x^^%%upper%%', $map), 'one pass, carriers whole');
+}

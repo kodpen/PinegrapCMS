@@ -212,20 +212,23 @@ function pg_sw_list_span($node, $indent = 0, $depth = 0)
     }
     if (trim($template) === '') return '';
 
-    // The row tokens and the position tokens are the list's own; a format
-    // suffix after one is dropped (list rows take no format). Every other
+    // The row tokens and the position tokens are the list's own. A row
+    // token keeps its format suffix, read when the row is filled
+    // (pg_sw_lists_fill_row()); a position token's is dropped. Every other
     // token reads its record's value through a carrier, its suffix kept so
     // the renderer formats it (a date field's %%d.m.Y%%).
     $own = array_flip(_pg_sw_list_position_names());
+    $row = array();
     foreach ($descriptor['tokens'] as $pair) {
         $own[$pair[0]] = true;
+        $row[$pair[0]] = true;
     }
     $key     = '^^' . $descriptor['key'] . '^^';
     $parents = array($key);
     $seen    = array($key => true);
-    $out = preg_replace_callback('/\^\^([^\^]+?)\^\^(%%.*?%%)?/', function ($m) use ($own, &$parents, &$seen) {
+    $out = preg_replace_callback('/\^\^([^\^]+?)\^\^(%%.*?%%)?/', function ($m) use ($own, $row, &$parents, &$seen) {
         $name = strtolower($m[1]);
-        if (isset($own[$name])) return '^^' . $name . '^^';
+        if (isset($own[$name])) return '^^' . $name . '^^' . ((isset($row[$name]) && !empty($m[2])) ? $m[2] : '');
         if (!isset($seen[$m[0]])) {
             $seen[$m[0]] = true;
             $parents[]   = $m[0];
@@ -574,10 +577,29 @@ function _pg_sw_lists_strip($html, $nonce)
     return ($left === null) ? $html : $left;
 }
 
+// Fill a list row from $map (token text => value, as strtr() takes it):
+// one strtr() as before when no format follows a token. Otherwise one pass
+// that never rescans what it wrote: a text $map holds whole (a carrier's
+// token with its suffix) takes its value as it is, a row token with a
+// suffix takes its value formatted (pg_sw_fill_value()), any other token
+// stays for the sweep.
+function pg_sw_lists_fill_row($html, $map)
+{
+    if (strpos($html, '^^%%') === false) return strtr($html, $map);
+    $out = preg_replace_callback('/\^\^([^\^]+?)\^\^(?:%%(.*?)%%)?/', function ($m) use ($map) {
+        if (isset($map[$m[0]])) return $map[$m[0]];
+        $bare = '^^' . $m[1] . '^^';
+        if (!isset($map[$bare])) return $m[0];
+        if (!isset($m[2])) return $map[$bare];
+        return pg_sw_fill_value($map[$bare], unhtmlspecialchars($m[2]));
+    }, $html);
+    return ($out === null) ? strtr($html, $map) : $out;
+}
+
 // The pass half (stage 2 of pg_sw_finish_widget_html()): every list span
 // of $nonce drawn from $published (pg_sw_list_take()), level by level, at
 // most four levels of lists in lists. Each row is the template filled in
-// one strtr(): the row's values escaped once, its position among the
+// one pass (pg_sw_lists_fill_row()): the row's values escaped once, its position among the
 // list's rows (after order and limit), and each carrier's value (escaped by
 // the renderer) for its token text, the longest text first. Row ids are
 // made the row's own, then the span's (a list drawn for several records).
@@ -648,7 +670,7 @@ function pg_sw_lists_expand($html, $nonce, $scope, $published, &$cut)
                 foreach ($t['parents'] as $p => $text) {
                     if (!isset($map[$text])) $map[$text] = $span[6][$p];
                 }
-                $filled = pg_sw_sweep_tokens(strtr($t['html'], $map));
+                $filled = pg_sw_sweep_tokens(pg_sw_lists_fill_row($t['html'], $map));
                 $out   .= pg_sw_uniquify_row_ids(pg_sw_uniquify_row_ids($filled, $t['n'], $i + 1), $sid, $copy + 1);
             }
         }

@@ -16,7 +16,7 @@ description: A bound widget value's format (_bindFormats): text filters or a dat
 ## Which fills read it?
 - `pg_sw_apply_tokens()` (form views, my_account, the comment date): a filter works on the field's output (a date in its default format, a counter as a number) and on `$extra` values; a date format on a date field as before.
 - `_pg_sw_fill_tokens()` and `_pg_member_apply_tokens()` (custom form too): a template holding `^^%%` goes through `pg_sw_fill_typed()`, one pass that never rescans what it wrote (the old member loop re-filled a token inside a value); one without fills byte for byte as before (strtr / str_replace loop).
-- The shop kinds (catalog, catalog detail, cart, express order, order view) too: [[widget-fill-shop]].
+- The shop kinds (catalog, catalog detail, cart, express order, order view) too: [[widget-fill-shop]]; list rows: [[widget-lists]].
 - `_SD_FILTER_KINDS` is an allow-list: a kind added later gets the Format row only once its fill reads it; `wishlist` and `comments_recent` have none. The old form-list aliases count as `form_list_view` (`_swNameKind()`).
 
 ## Why decode, filter, then escape once?
