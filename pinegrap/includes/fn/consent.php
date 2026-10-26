@@ -38,6 +38,21 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * How many answers one address may record in the window, counted with the
+ * firewall's counters, which work with the firewall off. A visitor answers a
+ * few times an hour at most; a script posting in a loop is stopped here.
+ */
+define('PG_CONSENT_ANSWER_WRITE_LIMIT', 20);
+define('PG_CONSENT_ANSWER_WRITE_WINDOW', 3600);
+
+/**
+ * The longest pg_consent value an answer post may carry. A value the script
+ * writes is a few bytes per category; a longer one is refused before it is
+ * split.
+ */
+define('PG_CONSENT_ANSWER_MAX_LENGTH', 32);
+
+/**
  * Whether the site asks for consent. False before the schema step has run.
  */
 function pg_consent_enabled()
@@ -99,7 +114,8 @@ function pg_consent_parse($raw)
  */
 function pg_consent_answer_valid($raw)
 {
-    if (!is_string($raw) || (preg_match('/^1((?:\.[a-z][01])*)$/', $raw, $match) !== 1)) {
+    if (!is_string($raw) || (strlen($raw) > PG_CONSENT_ANSWER_MAX_LENGTH)
+        || (preg_match('/^1((?:\.[a-z][01])*)$/', $raw, $match) !== 1)) {
         return false;
     }
 
@@ -131,11 +147,13 @@ function pg_consent_answer_valid($raw)
  * @param mixed $answer the value the notice wrote
  * @return array[]|null  list of array('channel' => 'cookie', 'purpose' => ..,
  *                       'status' => granted | refused), or null when the
- *                       answer is malformed (pg_consent_answer_valid())
+ *                       answer is malformed (pg_consent_answer_valid()) or
+ *                       the value before it is longer than any the script
+ *                       writes
  */
 function pg_consent_answer_changes($before, $answer)
 {
-    if (!pg_consent_answer_valid($answer)) {
+    if (!pg_consent_answer_valid($answer) || (is_string($before) && (strlen($before) > PG_CONSENT_ANSWER_MAX_LENGTH))) {
         return null;
     }
 
@@ -153,6 +171,47 @@ function pg_consent_answer_changes($before, $answer)
     }
 
     return $changes;
+}
+
+/**
+ * Whether this request's address has recorded too many answers in the
+ * window (PG_CONSENT_ANSWER_WRITE_LIMIT). The same-origin check stops other
+ * sites' pages, not scripts, and the firewall's own limits refuse nothing
+ * while it is off or in monitor mode, so the endpoint counts for itself.
+ *
+ * @return bool
+ */
+function pg_consent_answer_throttled()
+{
+    if (!function_exists('waf_rate_exceeded') || !function_exists('waf_client_ip') || !function_exists('waf_ip_subject')) {
+        return false;
+    }
+
+    $ip = (string) waf_client_ip();
+
+    if ($ip === '') {
+        return false;
+    }
+
+    $exceeded = waf_rate_exceeded(waf_ip_subject($ip), 'consent_answer', PG_CONSENT_ANSWER_WRITE_LIMIT, PG_CONSENT_ANSWER_WRITE_WINDOW);
+
+    if (function_exists('waf_rate_sweep') && (mt_rand(1, 50) === 1)) {
+        waf_rate_sweep();
+    }
+
+    if (!$exceeded) {
+        return false;
+    }
+
+    if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
+        waf_log_event('rate', 'rate-consent-answer', 'rate', 5, 'consent_answer.php', PG_CONSENT_ANSWER_WRITE_LIMIT . '/' . (int) round(PG_CONSENT_ANSWER_WRITE_WINDOW / 60) . 'min');
+    }
+
+    if (function_exists('waf_text_log')) {
+        waf_text_log('DENY', $ip, array('rule' => 'rate-consent-answer'));
+    }
+
+    return true;
 }
 
 /**

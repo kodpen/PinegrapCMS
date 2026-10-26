@@ -388,6 +388,12 @@ function test_consent_answer_changes_refuses_a_malformed_answer()
 	foreach (array('', '1.a1.a0', '1.z1', '2.a1', null) as $raw) {
 		pg_assert_same(null, pg_consent_answer_changes('', $raw), var_export($raw, true));
 	}
+
+	// Longer than any value the script writes: refused before it is split.
+	pg_assert_same(null, pg_consent_answer_changes(str_repeat('1.a1', 9), '1.a1'), 'long value before');
+	pg_assert_same(null, pg_consent_answer_changes(str_repeat('1.a1', 8 * 1024 * 1024 / 4), '1.a1'), 'very long value before');
+	pg_assert_false(pg_consent_answer_valid('1' . str_repeat('.a1', 11)), 'long answer');
+	pg_assert_same(array(), pg_consent_answer_changes('1.a1.m1', '1.a1.m1'), 'a value at the usual length');
 }
 
 // The endpoint takes posts from the site's own pages only: Sec-Fetch-Site
@@ -419,4 +425,18 @@ function test_consent_notice_names_the_answer_endpoint()
 
 	pg_assert_contains('report(', $decide, 'decide reports');
 	pg_assert_same(2, substr_count($script, 'report('), 'one definition, one call');
+}
+
+// The endpoint counts per address before it writes and reads the signed-in
+// user from initialize_user(), not from the session's user name.
+function test_consent_answer_endpoint_throttles_before_writing()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/consent_answer.php');
+	$throttle = strpos($source, 'pg_consent_answer_throttled()');
+
+	pg_assert_true($throttle !== false, 'throttled');
+	pg_assert_true($throttle < strpos($source, 'pg_consent_log_record('), 'before the write');
+	pg_assert_contains('429', $source, 'refused with 429');
+	pg_assert_contains('USER_EMAIL_ADDRESS', $source, 'user from initialize_user()');
+	pg_assert_false(strpos($source, 'sessionusername') !== false, 'no lookup by user name');
 }

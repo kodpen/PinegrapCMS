@@ -12,12 +12,14 @@ description: How the cookie notice's answers reach consent_log: consent_answer.p
 - The answer must be a value the script writes (`pg_consent_answer_valid()`: `1`, then known letters once each with 0 or 1); anything else is 400 and writes nothing.
 
 ## Who is the person on a row?
-- Anonymous: none (only ip and user agent, as `pg_consent_log_record()` takes them from the request). Signed in: `user_id` and the person token of `user_email`. While staff ghost a customer the row has no person: the answer is the staff member's.
+- Anonymous: none (only ip and user agent, as `pg_consent_log_record()` takes them from the request). Signed in: `USER_ID` and the person token of `USER_EMAIL_ADDRESS` (`initialize_user()`, loaded by id, so a rename does not lose it). While staff ghost a customer the row has no person: the answer is the staff member's.
 - No id is kept in the cookie, so anonymous rows of one browser cannot be tied together; asked of the owner in the PR.
 
 ## How is the endpoint protected?
 - `consent_answer.php` (root, URL-called): POST only (405), `pg_consent_answer_same_origin($_SERVER)` instead of a form token, because a cached page carries none (403): `Sec-Fetch-Site` must be `same-origin` when sent, otherwise the `Origin` host and port must equal `Host`; neither header is refused. Writes nothing while the setting is off or before 11.0.16.
-- Rate: every POST is a sensitive request for the firewall (`waf_is_sensitive_request()`), so an anonymous visitor gets `waf_rate_limit_sensitive` (30/min) plus the global limit; `waf.php` was not changed. Staff are exempt as everywhere.
+- Rate: `pg_consent_answer_throttled()` counts per address (`waf_rate_exceeded()`, scope `consent_answer`, 20 an hour), which works with the firewall off; past it 429, nothing written, logged as `rate-consent-answer`. The firewall's own limits are not enough: it is off and in monitor mode by default, and the origin check stops pages, not scripts (a curl loop wrote two rows per request).
+- Both fields are refused over 32 bytes (`PG_CONSENT_ANSWER_MAX_LENGTH`) before they are split: an 8 MB value exhausted memory in `explode()`.
+- `pg_page_cache_request_dirties()` skips the script, so a signed-in answer does not clear the page cache.
 - The script posts with `navigator.sendBeacon` (a form-encoded Blob, no preflight, survives the reload a withdrawal triggers), falling back to an XHR. The URL comes from the notice's `data-log`, drawn only when the page has an optional category.
 
 ## Tests?

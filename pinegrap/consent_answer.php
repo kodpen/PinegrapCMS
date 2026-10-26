@@ -13,8 +13,11 @@
  * every view is never posted.
  *
  * Anonymous by design, so there is no form token (a cached page has none):
- * posts from other sites are refused by pg_consent_answer_same_origin(). As
- * a POST it counts towards the firewall's sensitive rate limit.
+ * posts from other sites are refused by pg_consent_answer_same_origin().
+ * Scripts are not stopped by that, and the firewall refuses nothing while it
+ * is off or in monitor mode, so each address may record only
+ * PG_CONSENT_ANSWER_WRITE_LIMIT answers an hour (pg_consent_answer_throttled());
+ * past it the answer is 429 and nothing is written.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -52,20 +55,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 }
 
 // A site that no longer asks, or has not run the 11.0.16 step, records nothing.
-if ($changes && pg_consent_enabled() && pg_consent_log_ready()) {
+if ($changes && pg_consent_enabled() && pg_consent_log_ready() && pg_consent_answer_throttled()) {
+    $status = 429;
+    $reply = array('error' => 'rate');
+} elseif ($changes && pg_consent_enabled() && pg_consent_log_ready()) {
     $person = array();
 
     // While staff browse as a customer the answer is the staff member's, not
-    // the customer's: it is recorded without a person.
-    if (!empty($_SESSION['sessionusername']) && empty($_SESSION['software']['ghost'])) {
-        $user = db_item(
-            "SELECT user_id, user_email
-            FROM user
-            WHERE user_username = '" . e($_SESSION['sessionusername']) . "'");
-
-        if ($user) {
-            $person = array('user_id' => (int) $user['user_id'], 'email' => (string) $user['user_email']);
-        }
+    // the customer's: it is recorded without a person. The user comes from
+    // initialize_user(), loaded by id, so a renamed account still matches.
+    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && empty($_SESSION['software']['ghost'])) {
+        $person = array('user_id' => (int) USER_ID, 'email' => (string) USER_EMAIL_ADDRESS);
     }
 
     foreach ($changes as $change) {
