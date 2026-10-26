@@ -1,6 +1,6 @@
 ---
 name: sms-and-iys
-description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card done; left: first İYS live run, COD code and member OTP, consent API
+description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API done; left: first İYS live run, COD code and member OTP
 ---
 
 ## Why?
@@ -19,7 +19,7 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 3b. COD code check at checkout (M), and member OTP: Netgsm's OTP route (`/sms/rest/v2/otp`: OTP package, 160 characters, no Turkish letters) for `otp` or not: owner question in PR #1839. Codes use `expires_at` (`platform/sms-outbox-queue.md`).
 5. ~~İYS client, daily push/pull job, contact status column, campaign filter~~ (done, PR #1895; `platform/iys-client.md`; dry run by default, inert until 5b).
 5b. ~~İYS settings card~~ (done, PR #1940; `platform/iys-settings-card.md`). Left: the first live run against the sandbox once the owner gives İYS test credentials.
-6. API: `/contacts/{id}/consents` read, webhook `customer.consent_changed`.
+6. ~~API: consents read, webhook `customer.consent_changed`~~ (done, PR #1940; `api/api-customer-consents.md`).
 
 ## Open questions?
 - Member OTP by SMS replaces nothing: TOTP stays; SMS OTP is an extra sign-in option only when a provider is configured.
