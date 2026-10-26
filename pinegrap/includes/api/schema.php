@@ -1091,6 +1091,32 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Audit trail -------------------------------------------------- */
+
+		array(
+			'id'      => 'audit_log.list',
+			'method'  => 'GET',
+			'path'    => '/audit-log',
+			'scope'   => 'system:read',
+			'handler' => 'api_audit_log_list',
+			'returns' => array('list' => 'AuditLogEntry'),
+			'summary' => 'Audit trail',
+			'description' => 'Who changed what, newest first, cursor paged, as the Audit trail screen lists it: settings, users, products, pages, orders, files, offers, API keys and personal data exports and erasures, each line with the record (entity_type, entity_id and label, its name at that moment) and only the fields that changed. source is panel (an operator), api (an application: username is its name, user_id its owner) or job (a scheduled job; no user). before and after are the changed fields as stored: null for a side that holds nothing (before a create, after a delete); a secret is "***", an empty one stays empty; a long text is {truncated, length, sha1, start}; a JSON text is the decoded object or list; a side too large as a whole is {truncated: true, fields: [names]}. Lines written by one request share request_id. Read only.',
+			'params'  => array(
+				array('name' => 'from',        'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'to',          'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'source',      'in' => 'query', 'type' => 'enum', 'values' => array('panel', 'api', 'job')),
+				array('name' => 'user',        'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'A number is a user id (the operator, or the owner of an application); any other text matches part of the name the line was written under.'),
+				array('name' => 'action',      'in' => 'query', 'type' => 'string', 'max_length' => 64, 'description' => 'create, update, delete, recycle, restore, rotate, revoke, cancel, refund, export or erase.'),
+				array('name' => 'entity_type', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'settings, user, product, page, order, order_return, file, offer, api_app, api_key, api_device, oauth_client, person or audit.'),
+				array('name' => 'entity_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'One record\'s history, with entity_type.'),
+				array('name' => 'q',           'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'Matches the record\'s name (label).'),
+				array('name' => 'request_id',  'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'Every line one request wrote.'),
+				array('name' => 'limit',       'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',      'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
 		/* ----- Gift cards -------------------------------------------------- */
 
 		array(
