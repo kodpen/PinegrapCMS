@@ -855,6 +855,8 @@ function bs6_switch_shell_rules($source)
 		. ".pg-menu-caret::after {\n  display: inline-block;\n  margin-left: 0.255em;\n  vertical-align: 0.255em;\n  content: \"\";\n"
 		. "  border-top: 0.3em solid;\n  border-right: 0.3em solid transparent;\n  border-bottom: 0;\n  border-left: 0.3em solid transparent;\n}\n"
 		. ".pg-menu-caret:empty::after {\n  margin-left: 0;\n}\n"
+		. "/* A closed .dialog keeps display: flex (Bootstrap 6 hides it with visibility),\n   so the UA's absolute position would let a tall one stretch the page. */\n"
+		. ".dialog:not(:modal) {\n  position: fixed;\n}\n"
 		. ".pg-open-sheet {\n  position: fixed;\n  inset: 0;\n  z-index: 1055;\n  overflow-y: auto;\n  padding: 1.75rem 0;\n}\n"
 		. ".pg-open-sheet > .dialog {\n  position: relative;\n  max-height: none;\n}\n"
 		. ".pg-link-body-emphasis {\n  color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-opacity, 1) * 100%), transparent) !important;\n"
