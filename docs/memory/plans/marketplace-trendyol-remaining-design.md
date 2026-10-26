@@ -7,7 +7,7 @@ description: Design of the open Trendyol steps (5b, 5c) from a full build finish
 - A build of every open step of `marketplace-trendyol-hepsiburada.md` was finished and tested on 2026-10-24 (branch `feature/trendyol-remaining-steps`, 9 commits, never pushed). These are its decisions, so a session rebuilding a step follows them. Names of the open steps do not exist on development yet.
 
 ## 2b-ii. Listing update?
-- Built (#PRNUM): `commerce/trendyol-listing-update.md`.
+- Built (#1761): `commerce/trendyol-listing-update.md`.
 
 ## 5a. Invoice link?
 - Built (#1747): `commerce/trendyol-invoice-link.md`.
