@@ -40,7 +40,7 @@ OR in conditions; pg-hide-if-empty everywhere; words beside a value; code areas;
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
 
 ## How are other sessions kept clear?
-- Claim with a draft PR `[plan:widget-designability] Wn`. A new kind reads its saved-tree checks through `pg_sw_cond_tree_json()`.
+- Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.
 
 ## Where to start?
 - W16, or W8's address family.
