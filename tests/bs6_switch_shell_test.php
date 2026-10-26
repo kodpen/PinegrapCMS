@@ -156,3 +156,14 @@ function test_bs6_shell_editor_dialogs()
 		. "        el.innerHTML =\n            '<div class=\"dialog-body\"><button data-bs-dismiss=\"dialog\"></button></div>';\n"
 		. "        canvasDoc.querySelectorAll('.dropdown-menu.show, .modal-body');\n", $out);
 }
+
+function test_bs6_shell_breakpoints()
+{
+	$in = "@media (min-width: 992px) and (max-width: 1199.98px) { .a { width: 992px; } }\n@media only screen and (max-width: 991px) {}\n"
+		. "x = \"@media (max-width:991px)\";\n/* @pg-site-output */\nfunction site() {\n    return '@media (min-width: 1200px) {';\n}\n";
+	$result = bs6_switch_breakpoints($in);
+
+	pg_assert_same("@media (min-width: 1024px) and (max-width: 1279.98px) { .a { width: 992px; } }\n@media only screen and (max-width: 1023px) {}\n"
+		. "x = \"@media (max-width:991px)\";\n/* @pg-site-output */\nfunction site() {\n    return '@media (min-width: 1200px) {';\n}\n", $result['source']);
+	pg_assert_same('done', bs6_switch_breakpoints($result['source'])['status'], 'second run');
+}
