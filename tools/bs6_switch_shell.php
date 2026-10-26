@@ -961,3 +961,53 @@ function bs6_switch_editor_dialogs($source)
 
 	return array('source' => $result['source'], 'status' => ($edits || $result['status'] === 'applied') ? 'applied' : 'done', 'left' => $result['left']);
 }
+
+// Bootstrap 5's lg, xl and xxl breakpoints in a media query, with their
+// Bootstrap 6 values (lg 1024, xl 1280, 2xl 1536).
+function bs6_shell_breakpoint_map()
+{
+	return array(
+		'991.98px' => '1023.98px', '991px' => '1023px', '992px' => '1024px',
+		'1199.98px' => '1279.98px', '1199px' => '1279px', '1200px' => '1280px',
+		'1399.98px' => '1535.98px', '1399px' => '1535px', '1400px' => '1536px',
+	);
+}
+
+/**
+ * The panel's own media queries at Bootstrap 5's lg, xl and xxl widths move
+ * to Bootstrap 6's, so a rule written beside a `lg:` class or a
+ * `lg-down:dialog-fullscreen` dialog switches at the same width as it.
+ * Only `@media` preludes are read, outside site-output code.
+ */
+function bs6_switch_breakpoints($source)
+{
+	$site_output = bs6_site_output_ranges($source);
+	$map = bs6_shell_breakpoint_map();
+	$count = 0;
+
+	$edits = array();
+
+	if (preg_match_all('/@media\b[^{;\'"]*\{/', $source, $matches, PREG_OFFSET_CAPTURE)) {
+		foreach ($matches[0] as $match) {
+			if ($site_output && bs6_in_ranges($match[1], $site_output)) {
+				continue;
+			}
+
+			$out = preg_replace_callback('/\b(\d{3,4}(?:\.98)?px)/', function ($n) use ($map, &$count) {
+				if (isset($map[$n[1]])) {
+					$count++;
+					return $map[$n[1]];
+				}
+				return $n[1];
+			}, $match[0]);
+
+			if ($out !== $match[0]) {
+				$edits[] = array($match[1], $match[1] + strlen($match[0]), $out);
+			}
+		}
+	}
+
+	$source = bs6_shell_apply($source, $edits);
+
+	return array('source' => $source, 'status' => $count > 0 ? 'applied' : 'done', 'left' => 0);
+}
