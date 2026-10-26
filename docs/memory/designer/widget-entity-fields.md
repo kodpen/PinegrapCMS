@@ -1,10 +1,10 @@
 ---
 name: widget-entity-fields
-description: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, which families are built (product, event, quiz, order, order line, account), the group card.
+description: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, which families are built (product, event, quiz, order, order line, account, addresses), the group card.
 ---
 
 ## How does a widget get an entity's values?
-- One allow-list per entity: `pg_sw_entity_fields($entity)` (`includes/fn/widgets_entity_fields.php`), token => (column, kind[, options]). Kinds: text, measure, count, number (zero kept), money (minor units, visitor's money text), rate (NULL: ''), stamp (a date), day (a DATE column; both take `format_stamp` in the context formats it the widget's way), period, recurrence and refund (translated words), yesno (`'1'` or `''`). Options: `when` (gate columns, all non-zero), `is` (the yes value), `from` (a column the reader takes from another table). Zero and NULL read as `''`, so `show_if empty` holds fallback words ([[widget-fill-shop]]).
+- One allow-list per entity: `pg_sw_entity_fields($entity)` (`includes/fn/widgets_entity_fields.php`), token => (column, kind[, options]). Kinds: text, measure, count, number (zero kept), money (minor units, visitor's money text), rate (NULL: ''), stamp (a date), day (a DATE column; both take `format_stamp` in the context formats it the widget's way), period, recurrence, refund and place (an address type; translated words), yesno (`'1'` or `''`). Options: `when` (gate columns, all non-zero), `is` (the yes value), `from` (a column the reader takes from another table). Zero and NULL read as `''`, so `show_if empty` holds fallback words ([[widget-fill-shop]]).
 - `pg_sw_entity_select($entity, $alias)` adds the columns to the renderer's own query (a column a migration added and the database lacks reads as NULL); `pg_sw_entity_values()` gives the values, merged with `+=` before the renderer's one escape.
 - The editor's twin lists (`SW_PRODUCT_ENTITY_TOKENS`, `SW_EVENT_ENTITY_TOKENS`) land as a "More … details" group; an entry marked `'cond'` (yes/no) is offered by "Show only when a value…" only, never as a text binding (`_swTokenCondOnly()`). `tests/widget_entity_fields_test.php` keeps the twins equal.
 - Rules and the owner's reasons: [[widget-designability-decisions]]. A token on the list is never removed.
@@ -16,10 +16,11 @@ description: W8, entity values a system widget may show (owner allow-list 2026-1
 - Form record (#1847), in the form item view only (a list would show other people's scores): `__quiz_score` (percent, `0` shows), only on a quiz form (`custom_form_pages.quiz`).
 - Order (#1873) and order line (#1903), in the order view and its receipt e-mail: [[widget-entity-fields-order]].
 - Account (#1890), in my account, the profile, the login region and the account e-mails: [[widget-entity-fields-account]].
+- Addresses: the order's recipients (order view, receipt e-mail, recipient list) and the address book: [[widget-entity-fields-address]].
 - Keywords of products and groups, and group details, are extracted for the site translation (`pg_tr_extract_catalog()`).
 
 ## What is still to build?
-- The other families of the owner's allow-list, one slice each: [[widget-entity-fields-list]].
+- Nothing of the owner's allow-list; what stays off: [[widget-entity-fields-list]].
 
 ## What is not done yet?
 - The detail page's variant switch (`pg_civ_variants.js`) does not rewrite these values: they show the product the page opened with.

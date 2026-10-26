@@ -1025,6 +1025,7 @@
     "Ship Date Adjustments": "Gönderim Tarihi Ayarlamaları",
     "Ship To": "Gönderilecek Adres",
     "Ship date": "Sevk tarihi",
+    "Ship date (shipped or planned)": "Kargo tarihi (verilen ya da planlanan)",
     "Ship to": "Alıcı",
     "Ship to Name": "İsmine Postalama",
     "Ship to {var:1}": "{var:1} hedefine gönderi",
