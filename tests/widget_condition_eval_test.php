@@ -304,3 +304,48 @@ function test_widget_condition_eval_timeline_sample_rows()
 	pg_assert_same(0, $code, $printed);
 	pg_assert_same(array('bg-primary', 'bg-success', 'bg-info', 'bg-secondary'), json_decode($printed, true), $printed);
 }
+
+// The main loop's sample rows: two in a kind that repeats it without real
+// records or sample comments; none in a single-record kind, a kind with
+// server ghosts, the comments widget, inside a sample, or on a second loop.
+function test_widget_condition_eval_main_loop_sample_rows()
+{
+	if (!_cond_eval_node_ok()) return;
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$cut = function ($from, $to) use ($js) {
+		$a = strpos($js, $from);
+		pg_assert_true($a !== false, 'found: ' . trim($from));
+		$b = strpos($js, $to, $a);
+		return substr($js, $a, $b + strlen($to) - $a);
+	};
+	$src = $cut("\n    var _SD_GHOST_TYPES = ", ";\n")
+		. $cut("\n    var _SW_ACCOUNT_SINGLE = ", ";\n")
+		. $cut("\n    var _SW_ONE_SCREEN = ", ";\n");
+	foreach (array('_sdLoopIsSingle', '_sdListSampleRows', '_sdFirstLoopArea', '_sdListIsSourced', '_swKindOf') as $fn) {
+		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
+	}
+	$stubs = "var _sdGhostsOn = true, _sdListSample = null, _sdCommentSample = null, _sysWidgetRenderCfg = null, _sysWidgetRenderTreeRoot = null;\n"
+		. "var SW_LIST_SOURCES = {}, SD_LIST_SAMPLE_ROWS = {};\n";
+	$script = "var loop = { type: 'loop_area', props: {}, children: [{ type: 'semantic', props: {} }] };\n"
+		. "var second = { type: 'loop_area', props: {}, children: [] };\n"
+		. "var root = { type: 'root', props: {}, children: [loop, second] };\n"
+		. "var rows = function (cfg, node) { _sysWidgetRenderCfg = cfg; _sysWidgetRenderTreeRoot = root; return _sdListSampleRows(node || loop).length; };\n"
+		. "var out = { cart: rows({ regionType: 'shopping_cart' }), order: rows({ regionType: 'order_view' }), second: rows({ regionType: 'shopping_cart' }, second),\n"
+		. "  item: rows({ regionType: 'form_item_view' }), listing: rows({ regionType: 'catalog_listing' }), forms: rows({ regionType: 'blog_list' }),\n"
+		. "  comments: rows({ regionType: 'comments' }), recent: rows({ regionType: 'comments', mode: 'recent' }), profile: rows({ regionType: 'account_profile' }),\n"
+		. "  account: rows({ regionType: 'my_account' }), accountList: rows({ regionType: 'my_account', show_submissions: true }) };\n"
+		. "_sdListSample = {}; out.inSample = rows({ regionType: 'shopping_cart' }); _sdListSample = null;\n"
+		. "_sdGhostsOn = false; out.off = rows({ regionType: 'shopping_cart' });\n"
+		. "console.log(JSON.stringify(out));\n";
+	$file = @tempnam(sys_get_temp_dir(), 'pgcond');
+	if ($file === false) return;
+	file_put_contents($file, $stubs . $src . $script);
+	$out = array();
+	$code = 1;
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	pg_assert_same(array('cart' => 2, 'order' => 2, 'second' => 0, 'item' => 0, 'listing' => 0, 'forms' => 0, 'comments' => 0, 'recent' => 0,
+		'profile' => 0, 'account' => 0, 'accountList' => 2, 'inSample' => 0, 'off' => 0), json_decode($printed, true), $printed);
+}

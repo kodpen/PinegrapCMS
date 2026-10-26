@@ -1,6 +1,6 @@
 ---
 name: php-compatibility-and-bugs
-description: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1450, #1669, #1744, #1757
+description: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
 ---
 
 ## Where does this come from?
@@ -8,7 +8,7 @@ description: Open items of the 2026-10-19 static analysis: undefined variables, 
 
 ## Which bugs are confirmed? (one PR each)
 1. `get_catalog.php:556-568`: `$output_featured_items`, `$output_image`, `$output_short_description`, `$output_price` used before assignment in the "top items" branch; legacy custom style layer, ask before touching.
-2. Duplicate array key: `includes/fn/files.php:199` (`'å'` twice, the second mapping is dead; which letter was meant?).
+2. Done (#1930): the second `'å' => 'a'` of `pg_ascii_file_name()` (`includes/fn/files.php`) is gone with its baseline entry; both mapped to `a`, so no file name changed.
 3. Done (#972): the named functions declared inside functions are closures or plain values; the PHPStan baseline holds none (`code-audit-2026-10-followups.md` item 2).
 4. Done (#1039): the unguarded `imagecreatefrombmp()` of `edit_file.php`'s WebP conversion is gone with the screen's own GD code; its Rotate and WebP buttons go through `pg_process_image_file()` (`platform/image-processing-engine.md`).
 
