@@ -4,7 +4,7 @@ description: tools/bs6_migrate.php and tools/check_bs6.php for the panel's Boots
 ---
 
 ## What do the tools do?
-- `tools/bs6_rules.php` holds the rules (tests: `tests/bs6_migrate_test.php`). `php tools/bs6_migrate.php <paths>|--all|--diff=<ref>` reports what it would rewrite; `--write` writes, and refuses a file whose result fails `php -l` or `node --check`. `php tools/check_bs6.php` lists what is still Bootstrap 5 in panel files; `--strict` exits 1 (CI from the switch, step B8).
+- `tools/bs6_rules.php` holds the rules (tests: `tests/bs6_migrate_test.php`). `php tools/bs6_migrate.php <paths>|--all|--diff=<ref>` reports what it would rewrite; `--write` writes, and refuses a file whose result fails `php -l` or `node --check`. `--switch` makes the switch's scripted hand fixes (`tools/bs6_switch.php`, tests `tests/bs6_switch_test.php`; list in `plans/bootstrap-6-switch.md`). `php tools/check_bs6.php` lists what is still Bootstrap 5 in panel files; `--strict` exits 1 (CI from the switch, step B8).
 - Contexts read: `class="…"` attributes (escaped quotes too, not `$class = …`), PHP array keys ending in class or classes (`'class' => 'form-select'`), JS `class:`/`className:` keys, `.className =`, jQuery `addClass`/`removeClass`/`toggleClass`/`hasClass`, `classList` methods. Code inside a list (`' . $x . '`, `${x}`, ternaries) is never edited; a v5 class quoted in it is reported with its target.
 
 ## What is rewritten, what only reported?

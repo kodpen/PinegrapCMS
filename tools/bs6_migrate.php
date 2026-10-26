@@ -14,12 +14,16 @@
  * Usage:  php tools/bs6_migrate.php [--write] [--verbose] [--force] path ...
  *         php tools/bs6_migrate.php [--write] [--verbose] --all
  *         php tools/bs6_migrate.php [--write] [--verbose] --diff=<base>
+ *         php tools/bs6_migrate.php [--write] --switch
  *
  * path ...      files, relative to the repository or to pinegrap/
  * --all         every panel file and the marked editor file (outside its
  *               `/* @pg-site-output *\/` code)
  * --diff=<ref>  only the lines added since the merge base of <ref> and the
  *               working tree (`git diff -U0`), in those files
+ * --switch      the switch's hand fixes a script can make (tools/bs6_switch.php),
+ *               run after --all on the switch branch; a fix already made is
+ *               left as it is
  * --write       write the converted files
  * --verbose     list each class that needs a hand, with its line
  * --force       also convert named files that are not panel files (shared,
@@ -39,6 +43,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once(__DIR__ . '/bs6_rules.php');
+require_once(__DIR__ . '/bs6_switch.php');
 
 $repository = dirname(__DIR__);
 $product = $repository . '/pinegrap';
@@ -47,6 +52,7 @@ $write = false;
 $verbose = false;
 $force = false;
 $all = false;
+$switch = false;
 $diff_base = null;
 $paths = array();
 
@@ -59,6 +65,8 @@ foreach (array_slice($argv, 1) as $arg) {
 		$force = true;
 	} elseif ($arg === '--all') {
 		$all = true;
+	} elseif ($arg === '--switch') {
+		$switch = true;
 	} elseif (strncmp($arg, '--diff=', 7) === 0) {
 		$diff_base = substr($arg, 7);
 	} elseif (strncmp($arg, '--', 2) === 0) {
@@ -69,9 +77,35 @@ foreach (array_slice($argv, 1) as $arg) {
 	}
 }
 
-if ((int) $all + (int) ($diff_base !== null) + (int) (count($paths) > 0) !== 1) {
-	fwrite(STDERR, "Give file paths, --all or --diff=<ref> (one of them).\n");
+if ((int) $all + (int) $switch + (int) ($diff_base !== null) + (int) (count($paths) > 0) !== 1) {
+	fwrite(STDERR, "Give file paths, --all, --diff=<ref> or --switch (one of them).\n");
 	exit(1);
+}
+
+if ($switch) {
+	$failed = false;
+	$counts = array();
+
+	foreach (bs6_switch_run($product, $write) as $line) {
+		list($path, $fix, $status, $error) = $line;
+		$counts[$status] = isset($counts[$status]) ? $counts[$status] + 1 : 1;
+
+		if ($status === 'applied' && !$write) {
+			$status = 'would apply';
+		}
+
+		echo sprintf("%-12s %-8s pinegrap/%s%s\n", $status, $fix, $path, $error !== null ? "\n  $error" : '');
+		$failed = $failed || $line[2] === 'failed' || $line[2] === 'missing';
+	}
+
+	echo "\n";
+	foreach ($counts as $status => $count) {
+		echo sprintf("  %3d  %s\n", $count, $status);
+	}
+
+	// A missing place means the text a fix looks for has changed on
+	// development: the fix needs updating before the switch.
+	exit($failed ? 1 : 0);
 }
 
 // path relative to pinegrap/ => array of line numbers to convert (null: all)
