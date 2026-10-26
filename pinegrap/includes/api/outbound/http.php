@@ -143,6 +143,17 @@ function api_http_post($url, $body, $headers = array(), $timeout = 10) {
 //             curl reports the stop as error 23 (a write refused), which is
 //             not passed on. Without it the body is read as before.
 //
+// Options for a caller that reads public pages rather than sending anything
+// (the design importer), all off by default:
+//
+//   allow_http       true to accept a plain http address (api_http_check_url()'s
+//                    $allow_http); the address check is the same
+//   user_agent       the whole user agent, in place of the Pinegrap one
+//   decode           true to accept any compression curl can undo
+//   head_get_on_405  true to ask again with GET when a HEAD is answered 405
+//
+// max_body 0 keeps the whole body.
+//
 // Answers array('ok', 'status', 'body', 'error', 'errno', 'duration_ms'), and
 // 'headers' with response_headers. errno is curl's error number when the
 // request failed in curl (28 is a timeout), 0 otherwise - also for an address
@@ -162,14 +173,14 @@ function api_http_request($method, $url, $options = array()) {
 
 	}
 
-	$method   = strtoupper((string)$method);
-	$body     = isset($options['body'])     ? $options['body']     : null;
-	$headers  = isset($options['headers'])  ? $options['headers']  : array();
-	$timeout  = isset($options['timeout'])  ? (int)$options['timeout']  : 10;
-	$max_body = isset($options['max_body']) ? (int)$options['max_body'] : 1000;
-	$agent    = isset($options['agent'])    ? (string)$options['agent']  : 'outbound';
+	$settings = api_http_request_settings($method, $options);
 
-	$check = api_http_check_url($url);
+	$method   = $settings['method'];
+	$body     = $settings['body'];
+	$headers  = $settings['headers'];
+	$max_body = $settings['max_body'];
+
+	$check = api_http_check_url($url, $settings['allow_http']);
 
 	if (!$check['ok']) {
 
@@ -197,6 +208,13 @@ function api_http_request($method, $url, $options = array()) {
 
 	curl_setopt($handle, CURLOPT_CUSTOMREQUEST, $method);
 
+	// A HEAD answer has no body; without this curl waits for one.
+	if ($method === 'HEAD') {
+
+		curl_setopt($handle, CURLOPT_NOBODY, true);
+
+	}
+
 	if ($body !== null && $method !== 'GET' && $method !== 'HEAD') {
 
 		curl_setopt($handle, CURLOPT_POSTFIELDS, $body);
@@ -205,9 +223,15 @@ function api_http_request($method, $url, $options = array()) {
 
 	curl_setopt($handle, CURLOPT_HTTPHEADER, $headers);
 	curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($handle, CURLOPT_TIMEOUT, $timeout);
-	curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 5);
+	curl_setopt($handle, CURLOPT_TIMEOUT, $settings['timeout']);
+	curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, $settings['connect_timeout']);
 	curl_setopt($handle, CURLOPT_FOLLOWLOCATION, false);
+
+	if ($settings['decode']) {
+
+		curl_setopt($handle, CURLOPT_ENCODING, '');
+
+	}
 
 	// The certificate is verified, and a server whose CA store is not on the
 	// default search path says where one is in data/config.php - the same
@@ -222,8 +246,7 @@ function api_http_request($method, $url, $options = array()) {
 		curl_setopt($handle, CURLOPT_CAINFO, CURL_CA_BUNDLE);
 	}
 
-	curl_setopt($handle, CURLOPT_USERAGENT,
-		'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (+' . $agent . ')');
+	curl_setopt($handle, CURLOPT_USERAGENT, $settings['user_agent']);
 
 	// The address that was checked is the address that is called.
 	curl_setopt($handle, CURLOPT_RESOLVE, array($parts['host'] . ':' . $port . ':' . $check['ip']));
@@ -262,6 +285,18 @@ function api_http_request($method, $url, $options = array()) {
 	}
 
 	$response = curl_exec($handle);
+
+	// A server that refuses HEAD is asked the same with GET; the headers
+	// start over at the new status line.
+	if (($response !== false) && api_http_retry_as_get($method, (int)curl_getinfo($handle, CURLINFO_HTTP_CODE), $settings)) {
+
+		curl_setopt($handle, CURLOPT_CUSTOMREQUEST, 'GET');
+		curl_setopt($handle, CURLOPT_NOBODY, false);
+		curl_setopt($handle, CURLOPT_HTTPGET, true);
+
+		$response = curl_exec($handle);
+
+	}
 
 	// Read to the end, or stopped on purpose: either way the body is what the
 	// write function kept, and the status is the one already received.
@@ -302,6 +337,39 @@ function api_http_request($method, $url, $options = array()) {
 	$result['duration_ms'] = (int)round((microtime(true) - $started) * 1000);
 
 	return $result;
+
+}
+
+// The settings api_http_request() works with, from its method and options.
+// Without the opt-in options a request is what it always was: the Pinegrap
+// user agent, https only, no decoding, 10 seconds, 1000 bytes of body kept,
+// 5 seconds to connect.
+function api_http_request_settings($method, $options) {
+
+	$agent = isset($options['agent']) ? (string)$options['agent'] : 'outbound';
+
+	return array(
+		'method'          => strtoupper((string)$method),
+		'body'            => isset($options['body'])     ? $options['body']          : null,
+		'headers'         => isset($options['headers'])  ? $options['headers']       : array(),
+		'timeout'         => isset($options['timeout'])  ? (int)$options['timeout']  : 10,
+		'connect_timeout' => 5,
+		'max_body'        => isset($options['max_body']) ? (int)$options['max_body'] : 1000,
+		'user_agent'      => (isset($options['user_agent']) && ((string)$options['user_agent'] !== ''))
+			? (string)$options['user_agent']
+			: 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (+' . $agent . ')',
+		'allow_http'      => !empty($options['allow_http']),
+		'decode'          => !empty($options['decode']),
+		'head_get_on_405' => !empty($options['head_get_on_405'])
+	);
+
+}
+
+// Whether a HEAD answered with $status is asked again with GET: only a 405
+// (method not allowed), and only when the caller asked for it.
+function api_http_retry_as_get($method, $status, $settings) {
+
+	return ($method === 'HEAD') && ((int)$status === 405) && !empty($settings['head_get_on_405']);
 
 }
 

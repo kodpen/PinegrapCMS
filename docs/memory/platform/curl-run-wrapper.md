@@ -1,6 +1,6 @@
 ---
 name: curl-run-wrapper
-description: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the opt-in address rule, which calls use it and which wait.
+description: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the opt-in address rule, which calls use it, which wait; the importer is on api_http_request().
 ---
 
 ## What does pg_curl_run() do?
@@ -18,4 +18,5 @@ description: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the
 - What changed for them: the update checks set `VERIFYHOST 2` again after `pg_curl_tls()`, so with `ALLOW_INSECURE_UPDATE_TLS` on they still checked the host name; now the flag turns both checks off, as for every other caller. Cloudflare now honours `CURL_CA_BUNDLE`, the flag and `PROXY_ADDRESS`, and accepts no redirect.
 - Since 1b: StopForumSpam (`pg_form_spam_ip_listed()`), the currency-rate fallback (`pg_currency_rates_http_get()`), the AI bot ranges (3 https redirects), `pg_sms_http()` (Netgsm, İYS), `_parasut_request()`, `_parasut_token_exchange()`, `erp_edoc_http()`. Timeouts, headers, bodies and error texts kept; they now also honour `PROXY_ADDRESS` and refuse http: a Paraşüt PDF address given as http:// fails as unreadable, and so does an İşbaşı API address typed as http:// ("Protocol http not supported").
 - Since 1c (PR #1965): both licence checks (`license_check()` in `output.php`, dashboard widget 14) through `pg_license_request_options()`, and `pg_captcha_verify_request()`. Headers, bodies, timeouts and diagnostics kept. Widget 14 set `VERIFYHOST 2` after `pg_curl_tls()`: with `ALLOW_INSECURE_UPDATE_TLS` on it still checked the host name, now the flag turns both checks off. The status check followed any redirect, now at most 5, https only. CAPTCHA now honours `PROXY_ADDRESS`.
-- Not moved: the CA store probe in `pg_ca_bundle_config_state()` asks whether the host's own store verifies, which the flag would hide; the package download (`includes/panel/software.php`), `download_assistant.php`, the payment files, the importers' redirect walk; the location database and S3 backups stream to or from a file, which the wrapper does not; time-stamp authorities are often plain http. Remaining work: `plans/code-audit-2026-10-followups.md` item 1.
+- The design importer (a typed address) is on `api_http_request()` (1d): `import-design-fetch.md`.
+- Not moved: the CA store probe in `pg_ca_bundle_config_state()` (the flag would hide the host's store); the package download, `download_assistant.php`, the payment files, `migration.php`'s fetch; the location database and S3 backups (stream to or from a file); time-stamp authorities (often plain http). Remaining work: `plans/code-audit-2026-10-followups.md` item 1.
