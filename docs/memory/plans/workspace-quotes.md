@@ -1,6 +1,6 @@
 ---
 name: workspace-quotes
-description: Plan (2026-10-23, 1 done #1546, 2 done #1614, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
+description: Plan (2026-10-23, 1 done #1546, 2 done #1614, 3 done #1705, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -18,10 +18,10 @@ description: Plan (2026-10-23, 1 done #1546, 2 done #1614, answers 1, 3 given): 
 ## Slices
 1. PR #1546: the `erp_quote` tag (workspace/workspace-record-kinds.md, erp/erp-quotes.md).
 2. PR #1614 (no schema): "New sales quote" in the channel menu opens add_erp_quote.php `?account_id=` on the account the customer is or links to; none found, no item; never `erp_account_for_contact()` (workspace/workspace-new-sales-quote.md).
-3. No schema (the MCP plan's slice 3 is in, #1564): `erp_quote` change kind in `ws_change_types()`, a structured line kind (`lines` is text), writer `erp_quote_save()`, proposed via `workspace.changes.propose`; direct AI writes per the MCP plan's question.
+3. PR #1705 (no schema): `erp_quote` change kind, create only, line kind `erp_lines`, writer `erp_quote_save()`, proposed via `workspace.changes.propose`, in `ws_api_changes_param()` and Pinegrap AI's guide (workspace/workspace-sales-quote-change.md). Not built: changing an open quote from a card.
 4. Schema, ask first (next free ERP label): `erp_quote_templates` (proposed: name, scope, owner, `form_data`); "From template" on add_erp_quote.php, ERP API routes (`dry_run`). Tell the ERP owner (local work: plans/erp-edocument-leftovers.md).
 5. Schema, ask first (next free general label): `cart_quotes`, `cart_quote_items` (proposed: token, contact, `valid_until`, status, order id) in `get_tables()`; a PR each: panel, channel form; a root file adding lines by `add_order_item()` (stock, min/max, `pg_order_item_active_sql()`), get_express_order.php, get_order_preview.php, get_shopping_cart.php totals unchanged; tag (`sepet`, `cartquote`); routes (`dry_run`, shared `*_check()`, `cart_quote.*` events); later the cart of plans/storefront-api-agentic-commerce.md. Link: GET changes nothing (previews, mail scanners): confirm page, POST with form token; token hashed with a hint (`ws_approval_guests`); WAF rate limit; no contact data to any holder. `cart_quotes.contact_id` reaches `pg_privacy_export_find()`, erasure, contact merge.
-6. No schema: this plan owns the expiry metric (`erp_quote_expiring_count()`) beside the bell; an optional sales-quote-tagged task on its channel or for `created_by` via `ws_followup_task_open()` (proposed, CRM seams slice 5). Invoicing from the card: only an `erp_quote` change action.
+6. No schema: this plan owns the expiry metric (`erp_quote_expiring_count()`) beside the bell; an optional sales-quote-tagged task on its channel or for `created_by` via `ws_followup_task_open()` with `$once` (workspace/workspace-followups.md). Invoicing from the card: only an `erp_quote` change action.
 7. Ask first (link token, maybe schema): a guest accepts a sales quote by link with the signature evidence (`erp_signatures`, `erp_quote_status_refusal()`; erp/erp-quotes.md), never a bare status flip.
 
 ## Which are answered? (owner, 2026-10-24: 1 a, 3 b)
@@ -30,4 +30,4 @@ Open: 2. Template scope: personal, channel, site-wide → personal, site-wide.
 3. Cart quote: own tables at catalogue prices, valid until expired or ordered; a single-use offer code later; never a per-line price (not the saved-cart link).
 
 ## Where to start?
-- Slices 1 and 2 are built; slice 3 is free to start (the propose route, #1564, is in); 4, 5 and 7 ask first.
+- Slices 1-3 are built. Slice 6 needs `ws_followup_task_open()` (CRM seams slice 5, not built on 2026-10-25); its invoicing action is an `erp_quote` change action beside create. 4, 5 and 7 ask first.

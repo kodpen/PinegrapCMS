@@ -1091,6 +1091,38 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_comments($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'shipping_address_and_arrival' — the first step of the classic
+            // checkout, posting to shipping_address_and_arrival.php
+            // (widgets_shipping_address.php).
+            if ($region_type === 'shipping_address_and_arrival') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_shipping_address_and_arrival($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'shipping_method' — the second step of the classic checkout,
+            // posting to shipping_method.php (widgets_shipping_method.php).
+            if ($region_type === 'shipping_method') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_shipping_method($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'billing_information' — the third step of the classic checkout,
+            // posting to billing_information.php (widgets_billing_information.php).
+            if ($region_type === 'billing_information') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_billing_information($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'order_preview' — the last step of the classic checkout,
+            // posting to order_preview.php (widgets_order_preview.php). The
+            // visitor's last submit is read before rendering, as for the
+            // express order: the widget drops the form from the session.
+            if ($region_type === 'order_preview') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                $legal_values = pg_legal_documents_form_values('order_preview');
+                return pg_legal_documents_inject(_render_system_widget_order_preview($tree_json, $sid, $cfg, $mode), $legal_values);
+            }
+
             // Future region types handled here.
             // For now return empty — renders nothing rather than a broken page.
             return '';
@@ -4516,6 +4548,9 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     $_parents[] = array('type' => $type, 'class' => isset($props['cssClass']) ? (string)$props['cssClass'] : '');
 
     $_sz = _build_node_sizing_attrs($props);  // {style, class} — applied per-case below
+    // The carriers of the values in this element's attributes are written
+    // after it (widgets_attrs.php).
+    $_attr_mark = pg_sw_attr_mark();
 
     switch ($type) {
         case 'root':
@@ -4730,7 +4765,7 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
 
     array_pop($_stretch);
     array_pop($_parents);
-    return $html;
+    return $html . pg_sw_attr_take($_attr_mark);
 }
 
 // One entry per element being drawn, outermost first: its node type and
@@ -4865,6 +4900,19 @@ function _build_col_classes($props)
     return implode(' ', $classes);
 }
 
+// The attribute a dynamic region node hands to its code: get_page_content.php
+// reads `<dregion "x">name</dregion>` up to the next double quote and the tag
+// up to the first `>`, and the page is run as PHP before the tag is expanded,
+// so quotes, angle brackets and line breaks are dropped; the rest stays as
+// typed, as it would in a style's own tag. Twin: _sdDregionAttr() in
+// style_designer.js.
+function pg_dregion_attribute_clean($value)
+{
+    if (!is_string($value)) return '';
+    $value = trim(preg_replace('/["<>\x00-\x1f\x7f]/', '', $value));
+    return (mb_strlen($value, 'UTF-8') > 255) ? mb_substr($value, 0, 255, 'UTF-8') : $value;
+}
+
 // Render a region node as its custom tag (pregion, cregion, system, etc.)
 function _render_region_tag($props)
 {
@@ -4875,7 +4923,9 @@ function _render_region_tag($props)
         case 'page': return '<pregion></pregion>';
         case 'system': return $name ? '<system>' . $name . '</system>' : '<system></system>';
         case 'common': case 'designer': return '<cregion>' . $name . '</cregion>';
-        case 'dynamic': return '<dregion>' . $name . '</dregion>';
+        case 'dynamic':
+            $attr = pg_dregion_attribute_clean(isset($props['regionAttr']) ? $props['regionAttr'] : '');
+            return '<dregion' . ($attr !== '' ? ' "' . $attr . '"' : '') . '>' . $name . '</dregion>';
         case 'menu': return '<menu>' . $name . '</menu><div style="clear: both"></div>';
         case 'menu_sequence': return '<menu_sequence>' . $name . '</menu_sequence>';
         case 'login': return '<login>' . $name . '</login>';
@@ -4936,7 +4986,8 @@ function _render_extra_attrs($props, $skip_names = array(), $title = false)
             // written once after the id (here or by the semantic case).
             if ($lname === 'data-pg-search-section' && !empty($props['id']) && !empty($props['searchSection'])) continue;
             $val = isset($a['value']) ? (string)$a['value'] : '';
-            $out .= ' ' . h($name) . '="' . h($val) . '"';
+            // A {{token}} in it is a value of the widget's record.
+            $out .= ' ' . h($name) . '="' . pg_sw_attr_value_html($lname, $val) . '"';
         }
     }
     return $out;
@@ -4976,7 +5027,7 @@ function _pg_node_title_attrs($props)
     $title = $tip ? (string)$props['tooltipTitle']
         : ((isset($props['title']) && is_scalar($props['title'])) ? (string)$props['title'] : '');
     $out = '';
-    if ($title !== '' && !in_array('title', $written, true)) $out .= ' title="' . h($title) . '"';
+    if ($title !== '' && !in_array('title', $written, true)) $out .= ' title="' . pg_sw_attr_value_html('title', $title) . '"';
     if ($tip) {
         $out .= ' data-bs-toggle="tooltip"';
         if (!in_array('data-bs-placement', $written, true)) {

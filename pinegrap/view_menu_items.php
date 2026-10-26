@@ -302,7 +302,7 @@ pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button
             <nav class="buttons navigation text-center position-sticky mb-4" id="reorder_actions" style="bottom:.5rem;display:none" aria-label="reorder buttons">
                 <div class="container">
                     <div class="btn-group flex-wrap justify-content-center">
-                        <button type="button" id="save_sort_order" class="btn my-1 btn-success"><i class="bi bi-check-lg me-2"></i><span class="btn-text">' . lang('Save Order') . '</span></button>
+                        <button type="button" id="save_sort_order" class="btn my-1 btn-success"><i class="bi bi-check-lg me-2"></i><span class="pg-btn-label">' . lang('Save Order') . '</span></button>
                         <button type="button" id="cancel_reorder" class="btn my-1 btn-outline-secondary">' . lang('Cancel') . '</button>
                     </div>
                 </div>

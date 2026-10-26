@@ -343,13 +343,14 @@ function ws_scheduled_webhook_formats()
 
 /**
  * The kinds of change a scheduled action does not make: a channel's summary,
- * and the workspace's own tasks and notes, which an assistant proposes.
+ * the workspace's own tasks and notes, which an assistant proposes, and a
+ * sales quote, which is only ever added.
  *
  * @return string[]
  */
 function ws_scheduled_change_skipped()
 {
-    return array('channel', 'task', 'task_note', 'note');
+    return array('channel', 'task', 'task_note', 'note', 'erp_quote');
 }
 
 /**
@@ -365,8 +366,9 @@ function ws_scheduled_record_types()
     $out = array();
 
     foreach (ws_change_types() as $type => $info) {
-        // A task note or a note is only ever added: nothing to wait on.
-        if (in_array($type, array('channel', 'task_note', 'note'), true)) {
+        // A task note, a note or a sales quote is only ever added from here:
+        // nothing to wait on.
+        if (in_array($type, array('channel', 'task_note', 'note', 'erp_quote'), true)) {
             continue;
         }
 
@@ -938,6 +940,22 @@ function ws_scheduled_clock_ok($clock)
 }
 
 /**
+ * A day as the form sends it (YYYY-MM-DD) that is on the calendar:
+ * strtotime() alone takes 2027-02-29 and moves it to 1 March.
+ *
+ * @param string $date
+ * @return bool
+ */
+function ws_scheduled_date_ok($date)
+{
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', (string) $date, $part)) {
+        return false;
+    }
+
+    return checkdate((int) $part[2], (int) $part[3], (int) $part[1]);
+}
+
+/**
  * One rule.
  *
  * @param array $viewer
@@ -959,7 +977,7 @@ function ws_scheduled_rule_input($viewer, $rule)
             $clock = (string) ($rule['time'] ?? '');
             $repeat = (string) ($rule['repeat'] ?? 'none');
 
-            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || (strtotime($date . ' 12:00:00') === false)) {
+            if (!ws_scheduled_date_ok($date)) {
                 return $fail(lang('The date is not valid.'));
             }
 
@@ -1010,7 +1028,7 @@ function ws_scheduled_rule_input($viewer, $rule)
             $until = (string) ($rule['until'] ?? '');
 
             if ($until !== '') {
-                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $until) || (strtotime($until . ' 12:00:00') === false)) {
+                if (!ws_scheduled_date_ok($until)) {
                     return $fail(lang('The last day is not valid.'));
                 }
 

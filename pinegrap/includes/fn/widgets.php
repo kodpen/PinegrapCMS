@@ -77,6 +77,10 @@ function pg_sw_type_labels()
         'language_switcher'   => lang('Language Switcher'),
         'comments'            => lang('Comments'),
         'comments_recent'     => lang('Recent Comments'),
+        'shipping_address_and_arrival' => lang('Shipping Address and Arrival'),
+        'shipping_method'     => lang('Shipping Method'),
+        'billing_information' => lang('Billing Information'),
+        'order_preview'       => lang('Order Preview'),
     );
 }
 
@@ -2630,26 +2634,55 @@ function pg_sw_page_link_spec($spec)
 // spec is collected under that token, with an empty 'base' that
 // pg_sw_page_link_resolve() fills. A node with a spec under another binding
 // is left alone: the spec is kept for the editor and does nothing here.
+// A link drawn in a list inside the record (a loop_area with a source) may
+// take a value from the list's row (__value_param, __file_name): such a
+// param is marked 'row', and the list's node lists the link's token in
+// props._pgRowLinks, which its row template keeps (pg_sw_list_span()) so
+// the pass fills the address per row (pg_sw_page_link_row_value()). Only
+// the nearest list's row tokens count, as the editor offers them.
 function pg_sw_page_link_bindings(&$tree)
 {
     $links = array();
-    _pg_sw_page_link_walk($tree, $links);
+    $none  = array();
+    _pg_sw_page_link_walk($tree, $links, 0, $none, array());
     return $links;
 }
 
-function _pg_sw_page_link_walk(&$node, &$links, $depth = 0)
+function _pg_sw_page_link_walk(&$node, &$links, $depth, &$row_links, $row_tokens)
 {
     if (!is_array($node) || $depth > 80) return;
     if (isset($node['props']['_bindings']['href']) && $node['props']['_bindings']['href'] === '__page_link') {
         $token = '__page_link_' . count($links);
         $node['props']['_bindings']['href'] = $token;
         $spec = pg_sw_page_link_spec(isset($node['props']['_bindParams']['href']) ? $node['props']['_bindParams']['href'] : null);
+        $by_row = false;
+        foreach ($spec['params'] as $i => $param) {
+            if (!isset($row_tokens[$param['token']])) continue;
+            $spec['params'][$i]['row'] = true;
+            $by_row = true;
+        }
         $links[$token] = array('page_id' => $spec['page_id'], 'params' => $spec['params'], 'base' => '');
+        if ($by_row) $row_links[] = $token;
     }
-    if (!empty($node['children']) && is_array($node['children'])) {
-        foreach ($node['children'] as &$child) _pg_sw_page_link_walk($child, $links, $depth + 1);
+    if (empty($node['children']) || !is_array($node['children'])) return;
+    if (pg_sw_list_is_sourced($node)) {
+        $sources = pg_sw_list_sources();
+        $mine    = array();
+        $tokens  = array();
+        if (isset($sources[$node['props']['source']])) {
+            foreach ($sources[$node['props']['source']]['tokens'] as $pair) $tokens[$pair[0]] = true;
+        }
+        foreach ($node['children'] as &$child) _pg_sw_page_link_walk($child, $links, $depth + 1, $mine, $tokens);
         unset($child);
+        if ($mine) {
+            $node['props']['_pgRowLinks'] = $mine;
+        } else {
+            unset($node['props']['_pgRowLinks']);
+        }
+        return;
     }
+    foreach ($node['children'] as &$child) _pg_sw_page_link_walk($child, $links, $depth + 1, $row_links, $row_tokens);
+    unset($child);
 }
 
 // The tokens the links read their values from, as a lookup set, so the
@@ -2766,21 +2799,88 @@ function pg_sw_page_link_url($base, $pairs)
 // The finished token values of one record: token => the escaped address.
 // pg_sw_apply_tokens() prints the values of its $extra map as they are, so
 // the address is escaped here, once: '&' between the values becomes '&amp;'
-// and a value's own '&' is %26 before that.
+// and a value's own '&' is %26 before that. A link with a value from a list
+// row is not finished yet while a widget renders: its value is a placeholder
+// carrying the page and the record's values (pg_sw_page_link_defer()),
+// which the list fills per row.
 function pg_sw_page_link_values($links, $row, $custom, $extra_raw)
 {
     $values = array();
     foreach ((array)$links as $token => $link) {
         $base  = isset($link['base']) ? (string)$link['base'] : '';
         $pairs = array();
+        $defer = array();
         if ($base !== '' && !empty($link['params']) && is_array($link['params'])) {
             foreach ($link['params'] as $param) {
-                $pairs[$param['name']] = pg_sw_raw_token_value($param['token'], $row, $custom, $extra_raw);
+                $by_row  = !empty($param['row']);
+                $value   = $by_row ? '' : pg_sw_raw_token_value($param['token'], $row, $custom, $extra_raw);
+                $pairs[$param['name']] = $value;
+                $defer[] = array($param['name'], $by_row ? $param['token'] : '', $value);
             }
         }
-        $values[$token] = h(pg_sw_page_link_url($base, $pairs));
+        $values[$token] = ($base !== '' && pg_sw_finish_active() && pg_sw_page_link_has_row($link))
+            ? pg_sw_page_link_defer($base, $defer)
+            : h(pg_sw_page_link_url($base, $pairs));
     }
     return $values;
+}
+
+// Whether a link takes a value from a list row.
+function pg_sw_page_link_has_row($link)
+{
+    if (empty($link['params']) || !is_array($link['params'])) return false;
+    foreach ($link['params'] as $param) {
+        if (!empty($param['row'])) return true;
+    }
+    return false;
+}
+
+// The placeholder of a link whose address waits for a list row: plain
+// characters (base64 with '.', '_' and '~' for '+', '/' and '='), so it
+// passes every fill and h() unchanged, with this request's nonce, so a
+// value shaped like one is text. $pairs: array(name, row token or '', the
+// record's value) each, in the link's order.
+function pg_sw_page_link_defer($base, $pairs)
+{
+    $json = json_encode(array((string)$base, array_values($pairs)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return 'pgpl-' . pg_sw_marker_nonce() . '-' . strtr(base64_encode((string)$json), '+/=', '._~') . '-';
+}
+
+// The escaped address one placeholder opens, its row values read from $row
+// (token => raw value, as a list source gives it; null: no row, those values
+// are left out). __value_param is already address-encoded and is decoded
+// first, so it is encoded once. '' for text that is no placeholder of $nonce.
+function pg_sw_page_link_row_value($placeholder, $nonce, $row)
+{
+    $head = 'pgpl-' . $nonce . '-';
+    $placeholder = (string)$placeholder;
+    if (strncmp($placeholder, $head, strlen($head)) !== 0 || substr($placeholder, -1) !== '-') return '';
+    $json = base64_decode(strtr(substr($placeholder, strlen($head), -1), '._~', '+/='), true);
+    $data = ($json === false) ? null : json_decode($json, true);
+    if (!is_array($data) || count($data) !== 2 || !is_string($data[0]) || !is_array($data[1])) return '';
+
+    $pairs = array();
+    foreach ($data[1] as $pair) {
+        if (!is_array($pair) || count($pair) !== 3) continue;
+        $value = (string)$pair[2];
+        if ((string)$pair[1] !== '') {
+            $value = (is_array($row) && isset($row[$pair[1]])) ? (string)$row[$pair[1]] : '';
+            if ($pair[1] === '__value_param') $value = rawurldecode($value);
+        }
+        $pairs[(string)$pair[0]] = $value;
+    }
+    return h(pg_sw_page_link_url($data[0], $pairs));
+}
+
+// $html with every link placeholder of $nonce still standing (a link no list
+// row filled) as its address without the row values.
+function pg_sw_page_link_settle($html, $nonce)
+{
+    if (!is_string($html) || strpos($html, 'pgpl-' . $nonce . '-') === false) return $html;
+    $out = preg_replace_callback('/pgpl-' . preg_quote($nonce, '/') . '-[A-Za-z0-9._~]*-/', function ($m) use ($nonce) {
+        return pg_sw_page_link_row_value($m[0], $nonce, null);
+    }, $html);
+    return ($out === null) ? $html : $out;
 }
 
 // A widget tree with the links' unpublished pages ('tab:<key>' in
@@ -3819,6 +3919,12 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         '__display_name' => h($full_name !== '' ? $full_name : ($user_row ? (string)$user_row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : ''))),
         'not_logged_in' => '',
     ) + $link_values;
+
+    // A list of the member's orders (widgets_lists_order.php): the order
+    // history's rows, filed only when the tree drew one.
+    if (pg_sw_list_wanted('account')) {
+        pg_sw_list_publish('account', pg_sw_list_account_rows($values['account_id'], $extras['orders'], $extras['order_view_url'], pg_sw_default_date_format('date')));
+    }
 
     // ── No loop_area — render entire tree once with account tokens ─────────
     if ($split['loop_children'] === null) {
@@ -6691,6 +6797,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 'image'             => $image_url,
                 'url'               => $item_url,
                 'ship_to'           => $item_ship_to,
+                'ship_to_id'        => (int)$r['ship_to_id'],
             );
         }
     }
@@ -6757,6 +6864,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // own shape (pg_shipping_carrier). The helpers read the site's default
     // themselves, as they do on every other order screen.
     $tracking_rows = db_items("SELECT shipping_tracking_numbers.number,
+            shipping_tracking_numbers.ship_to_id,
             ship_tos.shipping_method_code
         FROM shipping_tracking_numbers
         LEFT JOIN ship_tos ON ship_tos.id = shipping_tracking_numbers.ship_to_id
@@ -6777,6 +6885,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'number'  => $parcel_number,
             'url'     => get_shipping_tracking_url($parcel_number, $parcel_method),
             'carrier' => get_shipping_carrier_name($parcel_number, $parcel_method),
+            'ship_to' => (int)($tracking_row['ship_to_id'] ?? 0),
         );
     }
 
@@ -6863,6 +6972,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => 'primary',
             'label' => lang('Order Created'),
             'ts'    => $_fmt_ts($order_date_ts, true),
+            'kind'  => 'created',
         );
     }
     // Paid — paid_at is stamped when the money is confirmed: by the gateway
@@ -6878,6 +6988,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => 'success',
             'label' => lang('Payment Received'),
             'ts'    => $_fmt_ts($paid_at_ts, true),
+            'kind'  => 'paid',
         );
     } elseif (trim((string)$order['transaction_id']) !== '' && $order_date_ts > 0) {
         $timeline_events[] = array(
@@ -6885,6 +6996,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => 'success',
             'label' => lang('Payment Received'),
             'ts'    => $_fmt_ts($order_date_ts, true),
+            'kind'  => 'paid',
         );
     }
     // ship_date / delivery_date are worked out at checkout from the
@@ -6897,6 +7009,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => ($shipping_ts > $_today_ts) ? 'secondary' : 'info',
             'label' => ($shipping_ts > $_today_ts) ? lang('Estimated shipping') : lang('Shipped'),
             'ts'    => $_fmt_ts($shipping_ts, false),
+            'kind'     => 'shipped',
+            'estimate' => ($shipping_ts > $_today_ts),
         );
     }
     if ($delivery_ts > 0) {
@@ -6905,6 +7019,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => ($delivery_ts > $_today_ts) ? 'secondary' : 'success',
             'label' => ($delivery_ts > $_today_ts) ? lang('Estimated delivery') : lang('Delivered'),
             'ts'    => $_fmt_ts($delivery_ts, false),
+            'kind'     => 'delivered',
+            'estimate' => ($delivery_ts > $_today_ts),
         );
     }
     if ($cancelled_at_ts > 0) {
@@ -6915,6 +7031,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => 'danger',
             'label' => lang('Cancelled') . ($cancellation_reason !== '' ? ' — ' . $cancellation_reason : ''),
             'ts'    => $_fmt_ts($cancelled_at_ts, true),
+            // A list of the steps shows the reason in an element of its own.
+            'kind'       => 'cancelled',
+            'step_label' => lang('Cancelled'),
+            'note'       => $cancellation_reason,
         );
     }
     $timeline_html = _eo_render_order_timeline($timeline_events);
@@ -7093,6 +7213,30 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         }
         $loop_template = trim($loop_template);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
+    }
+
+    // The order lists' rows (widgets_lists_order.php), filed once the tree
+    // is drawn: only a widget that drew such a list keeps them, and only a
+    // list of the recipients reads them.
+    $_ov_listed = pg_sw_list_wanted('order');
+    if ($_ov_listed) {
+        $_ov_shipments = array();
+        if (isset($_ov_listed['order.shipments'])) {
+            $_ov_st_rows = db_items(
+                "SELECT ship_tos.id, ship_tos.first_name, ship_tos.last_name, ship_tos.company,
+                        ship_tos.phone_number, ship_tos.address_1, ship_tos.address_2,
+                        ship_tos.city, ship_tos.state, ship_tos.zip_code, ship_tos.country,
+                        ship_tos.arrival_date, shipping_methods.name AS shipping_method
+                 FROM ship_tos
+                 LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
+                 WHERE ship_tos.order_id = '$oid_esc' AND ship_tos.complete = 1
+                 ORDER BY ship_tos.id ASC"
+            );
+            foreach ((array)$_ov_st_rows as $_ov_st) {
+                $_ov_shipments[] = pg_sw_list_order_shipment_row($_ov_st, $fmt_gc_date);
+            }
+        }
+        pg_sw_list_publish('order', pg_sw_list_order_rows($_ov_shipments, $items, $tracking_parcels, $timeline_events));
     }
 
     // Build loop output
@@ -7308,6 +7452,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__legal_preinfo_url'       => h($legal_urls['preinfo']),
         '__legal_contract_url'      => h($legal_urls['contract']),
         '__withdrawal_deadline'     => h($withdrawal_date),
+        // The key the order lists read outside a list of recipients: the
+        // whole order.
+        '__ship_to_key'             => '0',
     );
     // The dates a format can read (^^__order_date^^%%d.m.Y H:i%%).
     $_ov_typed = _pg_sw_order_view_dates(
@@ -8055,11 +8202,12 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
 
     // Row values; the details (end time, location, the full range) cost a
     // query per event, so they are read only when the layout asks for them —
-    // or when the month grid needs an event's end to show it on every day
-    // it spans.
+    // or when the month grid (the section or the grid lists) needs an
+    // event's end to show it on every day it spans.
     $probe = json_encode($tree);
     $has_grid = ($view !== 'upcoming') && (strpos($probe, '"section":"month_grid"') !== false);
-    $needs_detail = $has_grid || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
+    $has_grid_lists = ($view !== 'upcoming') && (strpos($probe, '"source":"calendar.') !== false);
+    $needs_detail = $has_grid || $has_grid_lists || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
     $rows = array();
     $row_events = array();
     $by_day = array();
@@ -8103,18 +8251,19 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
                 . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Update')) . '</button>'
                 . '</form>';
     }
+    // The days the grid draws: a week, or a month padded to whole weeks.
+    $grid_start  = $range_start;
+    $grid_end    = $range_end;
+    $focus_month = null;
+    if ($view === 'monthly') {
+        $focus_month = (int)date('n', $range_start);
+        $lead  = ($week_start === 'sunday') ? (int)date('w', $range_start) : ((int)date('N', $range_start) - 1);
+        $trail = ($week_start === 'sunday') ? (6 - (int)date('w', $range_end)) : (7 - (int)date('N', $range_end));
+        $grid_start = strtotime('-' . $lead . ' days', $range_start);
+        $grid_end   = strtotime('+' . $trail . ' days', $range_end);
+    }
     $grid = '';
     if ($view !== 'upcoming') {
-        $grid_start = $range_start;
-        $grid_end   = $range_end;
-        $focus_month = null;
-        if ($view === 'monthly') {
-            $focus_month = (int)date('n', $range_start);
-            $lead  = ($week_start === 'sunday') ? (int)date('w', $range_start) : ((int)date('N', $range_start) - 1);
-            $trail = ($week_start === 'sunday') ? (6 - (int)date('w', $range_end)) : (7 - (int)date('N', $range_end));
-            $grid_start = strtotime('-' . $lead . ' days', $range_start);
-            $grid_end   = strtotime('+' . $trail . ' days', $range_end);
-        }
         $grid = _pg_sw_calendar_grid_html($grid_start, $grid_end, $focus_month, $by_day, $week_start, $link_base);
     }
     pg_cf_apply_section_bindings($tree, array('calendar_picker' => $picker, 'month_grid' => $grid));
@@ -8135,6 +8284,11 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         foreach ($split['loop_children'] as $child) $loop_template .= _render_tree_node($child, 0, 0);
         $loop_template = trim($loop_template);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
+    }
+    // The grid lists' rows (widgets_lists_calendar.php), filed once the
+    // tree is drawn: only a widget that drew such a list keeps them.
+    if ($has_grid_lists) {
+        pg_sw_list_publish('calendar', pg_sw_list_calendar_rows($grid_start, $grid_end, $focus_month, $by_day, $week_start, $date_format, date('Y-m-d')));
     }
 
     $loop_rendered = '';
@@ -8172,6 +8326,8 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         '__event_count'   => (string)count($rows),
         '__view'          => $view,
         '__empty_message' => $rows ? '' : $empty_message,
+        // The key the grid lists read outside a weeks list: the whole grid.
+        '__week_key'      => '0',
     ));
     if ($static_html === '') {
         return pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $static_values));

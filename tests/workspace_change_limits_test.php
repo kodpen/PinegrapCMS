@@ -85,6 +85,7 @@ function workspace_change_limits_test_upgrade_tables()
 {
 	return array(
 		'erp_accounts'  => 'created by the ERP module\'s upgrade (2026.4.4); its tax_number was widened to 32 later in the same version',
+		'erp_quotes'    => 'created by the ERP module\'s upgrade (2026.4.4, step 4.92)',
 		'ws_channels'   => 'created by the Workspace\'s upgrade (2026.4.4)',
 		'ws_tasks'      => 'created by the Workspace\'s upgrade (2026.4.4)',
 		'ws_task_notes' => 'created by the Workspace\'s upgrade (2026.4.4)',
@@ -113,6 +114,8 @@ function workspace_change_limits_test_upgrade_columns()
 		'erp_accounts.country_code'  => 2,
 		'erp_accounts.currency'      => 3,
 		'erp_accounts.invoice_email' => 255,
+		'erp_quotes.currency'        => 3,
+		'erp_quotes.notes'           => 16383,
 		'ws_channels.summary'        => 16383,
 		'ws_tasks.title'             => 255,
 		'ws_tasks.description'       => 16383,

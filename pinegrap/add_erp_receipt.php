@@ -240,7 +240,7 @@ if (!$_POST) {
                                     )) . '</div>'
                                     : $liveform->output_field(array(
                                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
-                                        'class' => 'form-select select2', 'options' => $account_options))
+                                        'class' => 'form-select', 'data-pg-combobox' => '', 'options' => $account_options))
                                     . erp_account_quick_link('#account_id', $is_collection ? 'customer' : 'supplier')) . '
                             </div>
                             <div class="col-12 col-lg-4 my-2">
@@ -288,12 +288,10 @@ if (!$_POST) {
                             <div class="col-12 col-sm-4 col-lg-3 my-2">
                                 <label for="doc_date" class="form-label">' . lang('Date') . '</label>
                                 ' . $liveform->output_field(array(
-                                    'type' => 'text', 'id' => 'doc_date', 'name' => 'doc_date',
+                                    'type' => 'text', 'id' => 'doc_date', 'data-pg-date' => '', 'name' => 'doc_date',
                                     'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                                     'autocomplete' => 'off')) . '
-                                ' . get_date_picker_format() . '
-                                <script>$("#doc_date").datepicker(datetimepicker_options);</script>
-                            </div>
+                                ' . get_date_picker_format() . pg_fields_script() . '                            </div>
                             <div class="col-12 col-sm-4 col-lg-3 my-2">
                                 <label for="payment_method" class="form-label">' . lang('Payment Method') . '</label>
                                 ' . $liveform->output_field(array(
@@ -312,7 +310,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>

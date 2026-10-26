@@ -228,8 +228,11 @@
         };
     }
 
-    // One modal reused for every question the screens ask.
+    // One modal reused for every question the screens ask. askUp holds from
+    // its show until its hidden event: while it fades out it is no longer
+    // open, yet it cannot be opened again.
     var dialog = null;
+    var askUp = false;
 
     function ask(message, okLabel, danger, details) {
         return new Promise(function (resolve) {
@@ -242,6 +245,13 @@
                     + '<div class="modal-footer"><button type="button" class="btn btn-sm btn-ghost" data-bs-dismiss="modal" data-ws-ask-cancel></button>'
                     + '<button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-ws-ask-ok></button></div></div></div>';
                 document.body.appendChild(dialog);
+
+                pgUI.dialog.on(dialog, 'show', function () {
+                    askUp = true;
+                });
+                pgUI.dialog.on(dialog, 'hidden', function () {
+                    askUp = false;
+                });
             }
 
             dialog.querySelector('[data-ws-ask-text]').textContent = message;
@@ -282,7 +292,7 @@
     // again (it cannot while it is still fading out).
     function askClosed() {
         return new Promise(function (resolve) {
-            if (!dialog || (dialog.style.display !== 'block')) {
+            if (!dialog || !askUp) {
                 resolve();
                 return;
             }
@@ -4561,11 +4571,9 @@
     // same address as SVG markup drawn by the server (pg_qr_svg()); nothing
     // else goes into that string, so it is inserted as it is.
     function guestLinkShow(url, qr) {
-        var shown = document.getElementById('ws-ask');
-
         // The question before it is still on its way out.
-        if (shown && (shown.style.display === 'block')) {
-            pgUI.dialog.on(shown, 'hidden', function () {
+        if (dialog && askUp) {
+            pgUI.dialog.on(dialog, 'hidden', function () {
                 guestLinkShow(url, qr);
             }, { once: true });
             return;

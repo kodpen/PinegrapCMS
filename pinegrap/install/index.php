@@ -3009,7 +3009,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		.pg-install-logo {
 			padding: 7px;
 			border-radius: 24px;
-			border: 1px solid var(--bs-border-color);
+			border: 1px solid var(--pg-border-color);
 			background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
 		}
 		.pg-wizard-on .pg-step-panel { display: none; }
@@ -3026,14 +3026,14 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			background: transparent;
 			color: inherit;
 		}
-		.pg-step:hover { background: var(--bs-secondary-bg); }
-		.pg-step.active { background: var(--bs-secondary-bg); border-color: var(--bs-border-color); }
+		.pg-step:hover { background: var(--pg-bg-2); }
+		.pg-step.active { background: var(--pg-bg-2); border-color: var(--pg-border-color); }
 		.pg-step-dot {
 			width: 28px;
 			height: 28px;
 			border-radius: 50%;
-			border: 2px solid var(--bs-border-color);
-			background: var(--bs-body-bg);
+			border: 2px solid var(--pg-border-color);
+			background: var(--pg-bg-body);
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -3041,31 +3041,31 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			font-size: .78rem;
 			font-weight: 700;
 		}
-		.pg-step.active .pg-step-dot { background: var(--bs-primary); border-color: var(--bs-primary); color: var(--bs-body-bg); }
-		.pg-step.done .pg-step-dot { background: var(--bs-success); border-color: var(--bs-success); color: var(--bs-body-bg); }
+		.pg-step.active .pg-step-dot { background: var(--pg-primary); border-color: var(--pg-primary); color: var(--pg-bg-body); }
+		.pg-step.done .pg-step-dot { background: var(--pg-success); border-color: var(--pg-success); color: var(--pg-bg-body); }
 		.pg-source {
 			display: flex;
 			gap: .75rem;
 			align-items: flex-start;
 			padding: .8rem .9rem;
 			margin-bottom: .6rem;
-			border: 2px solid var(--bs-border-color);
+			border: 2px solid var(--pg-border-color);
 			border-radius: 1rem;
-			background: var(--bs-body-bg);
+			background: var(--pg-bg-body);
 			cursor: pointer;
 		}
-		.pg-source.selected { border-color: var(--bs-primary); background: color-mix(in srgb, var(--pg-primary) 8%, transparent); }
+		.pg-source.selected { border-color: var(--pg-primary); background: color-mix(in srgb, var(--pg-primary) 8%, transparent); }
 		.pg-source.disabled { opacity: .55; cursor: not-allowed; }
 		.pg-design-points li { display: flex; gap: .4rem; margin-top: .2rem; }
-		.pg-design-custom { padding: 1rem; border: 1px solid var(--bs-border-color); border-radius: 1rem; background: var(--bs-tertiary-bg); }
-		.pg-design-swatch { display: inline-flex; width: 28px; height: 28px; padding: 0; border-radius: 50%; overflow: hidden; border: 2px solid transparent; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--bs-border-color); cursor: pointer; }
+		.pg-design-custom { padding: 1rem; border: 1px solid var(--pg-border-color); border-radius: 1rem; background: var(--pg-bg-1); }
+		.pg-design-swatch { display: inline-flex; width: 28px; height: 28px; padding: 0; border-radius: 50%; overflow: hidden; border: 2px solid transparent; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--pg-border-color); cursor: pointer; }
 		.pg-design-swatch i { flex: 1; }
-		.btn-check:checked + .pg-design-swatch { border-color: var(--bs-body-bg); box-shadow: 0 0 0 2px var(--bs-emphasis-color); }
-		.btn-check:focus-visible + .pg-design-swatch { box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-primary) 35%, transparent), 0 0 0 1px var(--bs-border-color); }
-		.pg-design-frame { position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: var(--bs-body-bg); }
+		.btn-check:checked + .pg-design-swatch { border-color: var(--pg-bg-body); box-shadow: 0 0 0 2px var(--pg-fg-emphasis); }
+		.btn-check:focus-visible + .pg-design-swatch { box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-primary) 35%, transparent), 0 0 0 1px var(--pg-border-color); }
+		.pg-design-frame { position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden; border: 1px solid var(--pg-border-color); border-radius: .75rem; background: var(--pg-bg-body); }
 		.pg-design-frame iframe { position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0; transform-origin: 0 0; background: #fff; }
-		.pg-design-frame.pg-mobile { aspect-ratio: auto; height: 34rem; background: var(--bs-secondary-bg); }
-		.pg-design-frame.pg-mobile iframe { left: 50%; width: 390px; height: 100%; margin-left: -195px; transform: none; box-shadow: 0 0 0 1px var(--bs-border-color); }
+		.pg-design-frame.pg-mobile { aspect-ratio: auto; height: 34rem; background: var(--pg-bg-2); }
+		.pg-design-frame.pg-mobile iframe { left: 50%; width: 390px; height: 100%; margin-left: -195px; transform: none; box-shadow: 0 0 0 1px var(--pg-border-color); }
 		.pg-design-frame-wait { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: color-mix(in srgb, var(--pg-bg-body) 70%, transparent); font-size: .875rem; }
 		.pg-design-frame.pg-loading .pg-design-frame-wait { display: flex; }
 		.pg-radio {
@@ -3073,31 +3073,31 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			height: 20px;
 			margin-top: .15rem;
 			border-radius: 50%;
-			border: 2px solid var(--bs-border-color);
+			border: 2px solid var(--pg-border-color);
 			flex: none;
 			display: flex;
 			align-items: center;
 			justify-content: center;
 		}
-		.pg-source.selected .pg-radio { border-color: var(--bs-primary); }
+		.pg-source.selected .pg-radio { border-color: var(--pg-primary); }
 		.pg-source.selected .pg-radio:after {
 			content: "";
 			width: 10px;
 			height: 10px;
 			border-radius: 50%;
-			background: var(--bs-primary);
+			background: var(--pg-primary);
 		}
 		.pg-drop {
-			border: 2px dashed var(--bs-border-color);
+			border: 2px dashed var(--pg-border-color);
 			border-radius: 1rem;
 			padding: 1.1rem;
 			text-align: center;
-			background: var(--bs-body-bg);
+			background: var(--pg-bg-body);
 		}
 		.pg-changelog { max-height: 320px; overflow: auto; }
 		.pg-tag { font-size: .62rem; height: fit-content; }
 		.pg-review { display: grid; grid-template-columns: 1fr; gap: 0 1.5rem; }
-		.pg-review div { display: flex; justify-content: space-between; gap: 1rem; padding: .4rem 0; border-bottom: 1px dashed var(--bs-border-color); }
+		.pg-review div { display: flex; justify-content: space-between; gap: 1rem; padding: .4rem 0; border-bottom: 1px dashed var(--pg-border-color); }
 		@media (min-width: 768px) { .pg-review { grid-template-columns: 1fr 1fr; } }
 		main#content.pg-install { max-width: 1280px; }
 		.pg-wizard-grid { display: grid; gap: 1.15rem; grid-template-columns: minmax(0, 1fr); }
@@ -3123,10 +3123,10 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			top: 2.4rem;
 			height: calc(100% - 1.6rem);
 			width: 2px;
-			background: var(--bs-border-color);
+			background: var(--pg-border-color);
 			z-index: -1;
 		}
-		.pg-step.done:not(:last-of-type):after { background: var(--bs-success); opacity: .5; }
+		.pg-step.done:not(:last-of-type):after { background: var(--pg-success); opacity: .5; }
 		#pg_progress_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
 
 		/* softer notices, closer to the rest of the screen */
@@ -3136,23 +3136,23 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			padding: .7rem .9rem;
 			font-size: .85rem;
 		}
-		.pg-install .alert-primary { background: color-mix(in srgb, var(--pg-primary) 10%, transparent); color: var(--bs-body-color); }
-		.pg-install .alert-primary i { color: var(--bs-primary); }
-		.pg-install .alert-warning { background: color-mix(in srgb, var(--pg-warning) 13%, transparent); color: var(--bs-body-color); }
-		.pg-install .alert-warning i { color: var(--bs-warning-text-emphasis); }
-		.pg-install .alert-danger { background: color-mix(in srgb, var(--pg-danger) 12%, transparent); color: var(--bs-body-color); }
-		.pg-install .alert-danger i { color: var(--bs-danger); }
-		.pg-install .alert-success { background: color-mix(in srgb, var(--pg-success) 12%, transparent); color: var(--bs-body-color); }
-		.pg-install .alert-success i { color: var(--bs-success); }
-		.pg-install .alert-secondary { background: var(--bs-secondary-bg); color: var(--bs-body-color); }
+		.pg-install .alert-primary { background: color-mix(in srgb, var(--pg-primary) 10%, transparent); color: var(--pg-fg-body); }
+		.pg-install .alert-primary i { color: var(--pg-primary); }
+		.pg-install .alert-warning { background: color-mix(in srgb, var(--pg-warning) 13%, transparent); color: var(--pg-fg-body); }
+		.pg-install .alert-warning i { color: var(--pg-warning-fg-emphasis); }
+		.pg-install .alert-danger { background: color-mix(in srgb, var(--pg-danger) 12%, transparent); color: var(--pg-fg-body); }
+		.pg-install .alert-danger i { color: var(--pg-danger); }
+		.pg-install .alert-success { background: color-mix(in srgb, var(--pg-success) 12%, transparent); color: var(--pg-fg-body); }
+		.pg-install .alert-success i { color: var(--pg-success); }
+		.pg-install .alert-secondary { background: var(--pg-bg-2); color: var(--pg-fg-body); }
 
 		/* buttons keep the size of their text, so an icon does not make them tall */
 		.pg-install .btn i { font-size: 1rem; line-height: 1; }
 		.pg-install .btn .material-icons { font-size: 1.1rem; }
 
 		.pg-strength { display: flex; gap: .25rem; margin-top: .4rem; }
-		.pg-strength i { height: 4px; flex: 1; border-radius: 999px; background: var(--bs-border-color); }
-		.pg-strength i.on { background: var(--bs-success); }
+		.pg-strength i { height: 4px; flex: 1; border-radius: 999px; background: var(--pg-border-color); }
+		.pg-strength i.on { background: var(--pg-success); }
 
 		/* the question about replacing an existing site */
 		.pg-danger-panel {
@@ -3708,7 +3708,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					</div>
     	  	  	  	<div class="buttons navigation text-center" id="install_submit_nav" aria-label="data edit buttons ">
     	  	  	        	<div class=" btn-group flex-wrap justify-content-center">
-    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success "><i class="bi ' . $output_submit_button_icon . ' me-2"></i><span class="btn-text" >' . $output_submit_button_label . '</span></button>
+    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success "><i class="bi ' . $output_submit_button_icon . ' me-2"></i><span class="pg-btn-label" >' . $output_submit_button_label . '</span></button>
     	  	  	        	</div>
     	  	  	  	</div>
     	  	  	</form>
@@ -3721,11 +3721,11 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	  		if ($("input[name=\'install_type\']").length > 0) {
 				if(	$("#upgrade").is(":checked")) {
 					$("#submit").val("Upgrade");
-					$("#submit").html("<i class=\'bi bi-arrow-up-circle me-2\'></i><span class=\'btn-text\'>' . escape_javascript($output_upgrade_button_label) . '</span>");
+					$("#submit").html("<i class=\'bi bi-arrow-up-circle me-2\'></i><span class=\'pg-btn-label\'>' . escape_javascript($output_upgrade_button_label) . '</span>");
 				}
 				if(	$("#install").is(":checked")) {
 					$("#submit").val("Install");
-					$("#submit").html("<i class=\'bi bi-play-fill me-2\'></i><span class=\'btn-text\'>' . lang('Start the installation') . '</span>");
+					$("#submit").html("<i class=\'bi bi-play-fill me-2\'></i><span class=\'pg-btn-label\'>' . lang('Start the installation') . '</span>");
 				}
     		}
 		}
@@ -6272,7 +6272,7 @@ else {
 			));
 			curl_exec($ca_probe);
 			$ca_probe_errno = (int) curl_errno($ca_probe);
-			curl_close($ca_probe);
+			unset($ca_probe);
 
 			if (in_array($ca_probe_errno, array(35, 51, 60, 77), true)) {
 				$config_data = pg_config_insert_line($config_data, "define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem');");
@@ -6664,7 +6664,7 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 			.pg-install-logo {
 				padding: 8px;
 				border-radius: 26px;
-				border: 1px solid var(--bs-border-color);
+				border: 1px solid var(--pg-border-color);
 				background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
 			}
 		</style>
@@ -6768,7 +6768,7 @@ function start_install_stream() {
 		.pg-install-logo {
 			padding: 8px;
 			border-radius: 26px;
-			border: 1px solid var(--bs-border-color);
+			border: 1px solid var(--pg-border-color);
 			background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
 		}
 		#pg_stream_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
@@ -7929,14 +7929,14 @@ function output_install_lock_screen() {
 		.install-lock-logo {
 			padding: 10px;
 			border-radius: 32px;
-			border: 1px solid var(--bs-border-color);
+			border: 1px solid var(--pg-border-color);
 			background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
 		}
 		.install-lock-ghost {
 			height: 54px;
 			border-radius: 1.25rem;
-			border: 2px solid var(--bs-border-color);
-			background: var(--bs-secondary-bg);
+			border: 2px solid var(--pg-border-color);
+			background: var(--pg-bg-2);
 		}
 		.install-lock-ghosts {
 			filter: blur(5px);

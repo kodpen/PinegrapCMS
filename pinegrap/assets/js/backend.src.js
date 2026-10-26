@@ -284,7 +284,7 @@ $(document).ready(function () {
             if (confirmation == true) {
                 // if this is parasut export button, than output page refresh for user to see the changed order results.
                 if (value == 'Export Orders For Parasut') {
-                    $('#xlsl_setup_modal').modal('hide');
+                    pgUI.dialog.hide('#xlsl_setup_modal');
                     //reload this page to show user exported orders.
                     $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: #e3e3e3ab;position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
                     $('body').attr('style', 'overflow:hidden');
@@ -475,7 +475,7 @@ $(document).ready(function () {
                         // with Ctrl+Q where it would still open find area,
                         // even though we run preventDefault above.
                         setTimeout(function () {
-                            notifications.dropdown('toggle');
+                            pgUI.menu.toggle(notifications);
                         }, 0);
                     }
 
@@ -588,14 +588,20 @@ $(document).ready(function () {
     }).disableSelection();
 
     //classic Tooltips
-    var ClassicTooltip = $('[data-bs-toggle="tooltip"]').tooltip({ placement: 'auto' });
-    $('[data-bs-toggle="tooltip"]').on('click', function () {
-        ClassicTooltip.tooltip('hide');
+    var classicTooltips = $('[data-bs-toggle="tooltip"]').each(function () {
+        pgUI.tooltip.get(this, { placement: 'auto' });
+    });
+    classicTooltips.on('click', function () {
+        classicTooltips.each(function () {
+            pgUI.tooltip.hide(this);
+        });
     });
     //classic popover
-    var popover = $('[data-bs-toggle="popover"]:not([ data-bs-custom-class="contextmenu"])').popover({
-        placement: 'auto',
-        html: true
+    $('[data-bs-toggle="popover"]:not([ data-bs-custom-class="contextmenu"])').each(function () {
+        pgUI.popover.get(this, {
+            placement: 'auto',
+            html: true
+        });
     });
 
 
@@ -797,7 +803,7 @@ $(document).ready(function () {
         // A menu of the header opens over the screen below it, and the drawer
         // is drawn above the header's layer: left open, it would cover the
         // account sheet on a phone. Opening any of them puts the drawer away.
-        $('#header').on('show.bs.dropdown', function () {
+        pgUI.menu.on('#header', 'show', function () {
             if (isMenuDrawerOpen()) {
                 closeMenuDrawer();
             }
@@ -1527,19 +1533,19 @@ $(document).ready(function () {
 
     //#notifications
     $('#notification_toggle').on('click', function () {
-        if ($(this).hasClass("show")) {
+        if (pgUI.menu.isOpen(this)) {
             get_notifications(true);
         } else {
             $('#notifications').scrollTop(0);
         }
     });
     //shown #notifications
-    $('#notifications').on('shown.bs.dropdown', function () {
+    pgUI.menu.on('#notifications', 'shown', function () {
         $('#notification_toggle').addClass('show');
         get_notifications(true);
     });
     //hidden #notifications
-    $('#notifications').on('hidden.bs.dropdown', function () {
+    pgUI.menu.on('#notifications', 'hidden', function () {
         $('#notification_toggle').removeClass('show');
         $('#notifications').scrollTop(0);
     });
@@ -1573,11 +1579,12 @@ $(document).ready(function () {
 
     $(document).on("change", "select.collapse-if-selected", function () {
         var target = $(this).attr("data-bs-target");
-        if ($(this).val() == '') {
-            $(target).collapse("hide");
-        } else {
-            $(target).collapse("show");
-        }
+        var open = ($(this).val() != '');
+        // toggle: false, or a new instance would toggle on creation.
+        $(target).each(function () {
+            pgUI.collapse.get(this, { toggle: false });
+            pgUI.collapse[open ? 'show' : 'hide'](this);
+        });
     });
     $(document).on("click change", "input.collapse-switcher", function () {
         var target = $(this).attr("data-bs-target");
@@ -1725,10 +1732,6 @@ $(document).ready(function () {
             + "&redirect_uri=" + encodeURIComponent("urn:ietf:wg:oauth:2.0:oob") + "&response_type=code");
     });
 
-    if ($("input.timepicker").length > 0) {
-        $("input.timepicker").timepicker(timepicker_options);
-    };
-
     if ($("input[name=convert_to_metric_system]").length > 0) {
         var unit_lb_label = $("input[name=weight]").parent().find("label.unit");
         var unit_lb_label_text = unit_lb_label.text();
@@ -1846,13 +1849,6 @@ $(document).ready(function () {
         }
     });
 
-    if ($("select.select2").length) {
-        $("select.select2").each(function () {
-            var opts = { theme: "bootstrap-5" };
-            if ($(this).data('allowClear')) opts.allowClear = true;
-            $(this).select2(opts);
-        });
-    }
     $(".show-password-btn").each(function () {
         $(this).on("click", function () {
             var input = $(this).siblings("input");
@@ -2016,11 +2012,11 @@ $(document).ready(function () {
         $(document).on('keydown', function (e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
-                $modal.modal($modal.hasClass('show') ? 'hide' : 'show');
+                pgUI.dialog[pgUI.dialog.isOpen($modal) ? 'hide' : 'show']($modal);
             }
         });
 
-        $modal.on('shown.bs.modal', function () {
+        pgUI.dialog.on($modal, 'shown', function () {
             $input.focus();
             // Pre-fetch actions silently to cache them — nothing rendered until user types
             prefetchActions();
@@ -2072,7 +2068,7 @@ $(document).ready(function () {
                 $wrap.append($('<span class="text-truncate lh-sm fw-medium"></span>').text(r.name));
                 if (r.sub) { $wrap.append($('<span class="text-truncate small text-muted lh-sm"></span>').text(r.sub)); }
                 $btn.append($wrap);
-                $btn.on('click', function () { $modal.modal('hide'); leave(meta.url(r)); });
+                $btn.on('click', function () { pgUI.dialog.hide($modal); leave(meta.url(r)); });
                 $results.append($btn);
             });
         }
@@ -2137,13 +2133,13 @@ $(document).ready(function () {
                                         event.preventDefault();
                                         event.stopPropagation();
 
-                                        $modal.one('hidden.bs.modal', function () {
+                                        pgUI.dialog.on($modal, 'hidden', function () {
                                             if (typeof window.pgShowShortcuts === 'function') {
                                                 window.pgShowShortcuts();
                                             }
-                                        });
+                                        }, { once: true });
 
-                                        $modal.modal('hide');
+                                        pgUI.dialog.hide($modal);
 
                                         return;
                                     }
@@ -2155,11 +2151,11 @@ $(document).ready(function () {
                                         event.preventDefault();
                                         event.stopPropagation();
 
-                                        $modal.one('hidden.bs.modal', function () {
+                                        pgUI.dialog.on($modal, 'hidden', function () {
                                             window.pgSettingsModal.open(want.pane, want.section);
-                                        });
+                                        }, { once: true });
 
-                                        $modal.modal('hide');
+                                        pgUI.dialog.hide($modal);
 
                                         return;
                                     }
@@ -2174,13 +2170,13 @@ $(document).ready(function () {
                                         event.preventDefault();
                                         event.stopPropagation();
 
-                                        $modal.modal('hide');
+                                        pgUI.dialog.hide($modal);
                                         leave(elsewhere);
 
                                         return;
                                     }
 
-                                    $modal.modal('hide');
+                                    pgUI.dialog.hide($modal);
                                 });
                                 $actRow.append($a);
                             });
@@ -2510,7 +2506,7 @@ function pg_push_watch() {
         }
     });
 
-    $('#notifications').on('shown.bs.dropdown', function () {
+    pgUI.menu.on('#notifications', 'shown', function () {
         pg_push_refresh();
     });
 }
@@ -2549,7 +2545,7 @@ function pg_account_menu_init() {
 
     var toggle = document.getElementById('user_menu_toggle');
 
-    if (!toggle || !window.bootstrap || !window.bootstrap.Dropdown) {
+    if (!toggle || !window.pgUI) {
         return;
     }
 
@@ -2559,7 +2555,7 @@ function pg_account_menu_init() {
             return;
         }
 
-        window.bootstrap.Dropdown.getOrCreateInstance(toggle).hide();
+        pgUI.menu.hide(toggle);
         toggle.focus();
     });
 }
@@ -2572,7 +2568,7 @@ function pg_shortcuts_init() {
 
     var dialog = document.getElementById('pg_shortcuts');
 
-    if (!dialog || !window.bootstrap || !window.bootstrap.Modal) {
+    if (!dialog || !window.pgUI) {
         return;
     }
 
@@ -2586,7 +2582,7 @@ function pg_shortcuts_init() {
     }
 
     window.pgShowShortcuts = function () {
-        window.bootstrap.Modal.getOrCreateInstance(dialog).show();
+        pgUI.dialog.show(dialog);
     };
 
     document.addEventListener('keydown', function (event) {
@@ -2602,12 +2598,12 @@ function pg_shortcuts_init() {
         }
 
         // Not over another dialog: it would open under that one's backdrop.
-        if (document.querySelector('.modal.show') && !dialog.classList.contains('show')) {
+        if (pgUI.anyOpen('dialog') && !pgUI.dialog.isOpen(dialog)) {
             return;
         }
 
         event.preventDefault();
-        window.bootstrap.Modal.getOrCreateInstance(dialog).toggle();
+        pgUI.dialog.toggle(dialog);
     });
 }
 
@@ -2757,7 +2753,7 @@ function pg_quick_note_init() {
 
     // Bootstrap fires its dropdown events at the toggle.
     if (toggle) {
-        toggle.addEventListener('shown.bs.dropdown', function () {
+        pgUI.menu.on(toggle, 'shown', function () {
             text.focus();
         });
     }
@@ -3104,7 +3100,7 @@ function check_unread_notifications(refresh_type) {
 
 
                     //if notifications active, edit callback and there is no notifications, get it. fix a issue when last notification removed.
-                    if ($('#notifications').hasClass("show")) {
+                    if (pgUI.menu.isOpen('#notifications')) {
                         if (refresh_type == 'editcallback_check') {
                             if ($('#notifications .menu-scroll-area .list-group li.software_notification').length <= 1) {
                                 get_notifications();
@@ -3118,7 +3114,7 @@ function check_unread_notifications(refresh_type) {
                     // this check system dont get notifications we dont wanna more traffic.
                     if ($unreads > 0) {
                         // if notification view menu is active than we also get notifications and update all but we dont set notifications readed, because maybe sceen is forgetten and user close and go we be sure to readed.
-                        if ($('#notifications').hasClass("show")) {
+                        if (pgUI.menu.isOpen('#notifications')) {
                             if ($unreads > $unreadsCallback && refresh_type != 'editcallback_check') {
                                 get_notifications();
                             }
@@ -3657,21 +3653,26 @@ function init_product_groups(properties) {
         $('.group_list').append(
             '<div class="col-12">\
                 <div class="input-group my-2 group group_' + id + '" >\
-                    <select name="product_group" class="form-select product_group"><option value=""></option>' + group_options + '</select>\
+                    <select name="product_group" class="form-select product_group" data-pg-combobox data-allow-clear="true"><option value=""></option>' + group_options + '</select>\
                     <a href="javascript:void(0)" title="' + label['Remove'] + '" class="remove btn btn-danger no-popover">x</a>\
                 </div>\
             </div>');
 
-        $('.group_' + id + ' .product_group').select2({
-            theme: 'bootstrap-5',
-            placeholder: '-' + label['Select Group'] + '-',
-            allowClear: true
-        });
+        // select2 reads its placeholder from the data attribute.
+        var select = $('.group_' + id + ' .product_group').attr('data-placeholder', '-' + label['Select Group'] + '-')[0];
+
+        if (window.pgCombobox) {
+            pgCombobox.init(select);
+        }
 
         // If this group is an existing group for the product,
         // then set value and trigger change event so that option pick list appears.
         if (typeof group.product_group !== 'undefined') {
-            $('.group_' + id + ' .product_group').val(group.product_group).trigger('change');
+            if (window.pgCombobox) {
+                pgCombobox.set(select, group.product_group);
+            } else {
+                $(select).val(group.product_group).trigger('change');
+            }
         }
 
         $('.group_' + id + ' .remove').click(function () {
@@ -4089,8 +4090,7 @@ function open_dialog(properties) {
     </div>');
     $('body #message_modal_id_' + id + ' .modal-body').append(iframe);
 
-    var messageModal = new bootstrap.Modal(document.getElementById("message_modal_id_" + id), {});
-    messageModal.show();
+    pgUI.dialog.show(document.getElementById("message_modal_id_" + id));
 
 }
 
@@ -4686,13 +4686,12 @@ function show_or_hide_view_expiration_date(folder_id) {
 
         container.style.display = '';
 
-        // Bind once: datepicker() on an already-bound field is a no-op that
-        // still costs a full re-init, and a second call would drop the value
-        // the operator has just typed.
+        // pgDatePicker.init() draws a field once and leaves a drawn one
+        // alone, so a date the operator has just typed stays.
         var field = container.querySelector('input');
 
-        if (field && window.jQuery && !$(field).hasClass('hasDatepicker') && (typeof datetimepicker_options !== 'undefined')) {
-            $(field).datepicker(datetimepicker_options);
+        if (field && window.pgDatePicker) {
+            pgDatePicker.init(field);
         }
 
     } else {
@@ -4737,8 +4736,9 @@ function pgOpenAclExpiry(container, focus) {
         return;
     }
 
-    if (window.jQuery && !$(field).hasClass('hasDatepicker') && (typeof datetimepicker_options !== 'undefined')) {
-        $(field).datepicker(datetimepicker_options);
+    // The folder tree prints pg_fields.js with it (get_acl_folder_tree()).
+    if (window.pgDatePicker) {
+        pgDatePicker.init(field);
     }
 
     if (focus) {
@@ -5690,12 +5690,12 @@ function change_page_type(page_type) {
     ) {
 
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the submit button should contain the normal "Save"
     } else {
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5713,13 +5713,13 @@ function show_or_hide_billing_information_custom_billing_form() {
     if ((document.getElementById('billing_information_form').checked == true) && (original_billing_information_form != 1)) {
         document.getElementById('billing_information_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
         document.getElementById('billing_information_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5733,13 +5733,13 @@ function toggle_express_order_custom_shipping_form() {
     ) {
         document.getElementById('express_order_shipping_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
         // Otherwise the form is disabled or the form was already enabled, so do not show notice and
         // update the submit button to contain "Save"
     } else {
         document.getElementById('express_order_shipping_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5756,13 +5756,13 @@ function show_or_hide_express_order_custom_billing_form() {
     if ((document.getElementById('express_order_form').checked == true) && (original_express_order_form != 1)) {
         document.getElementById('express_order_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
         document.getElementById('express_order_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
         // we check if its checked before
         toggle_express_order_custom_shipping_form();
     }
@@ -5781,12 +5781,12 @@ function show_or_hide_custom_shipping_form() {
     if ((document.getElementById('shipping_address_and_arrival_form').checked == true) && (original_shipping_address_and_arrival_form != 1)) {
         document.getElementById('shipping_address_and_arrival_form_notice').style.display = '';
         $("#create_button").val("Save & Continue");
-        $("#create_button .btn-text").text(lang("Save & Continue"));
+        $("#create_button .pg-btn-label").text(lang("Save & Continue"));
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
         document.getElementById('shipping_address_and_arrival_form_notice').style.display = 'none';
         $("#create_button").val("Save");
-        $("#create_button .btn-text").text(lang("Save"));
+        $("#create_button .pg-btn-label").text(lang("Save"));
     }
 }
 
@@ -5954,12 +5954,11 @@ function init_edit_comment_publish() {
     var publish_date_and_time = $('#publish_date_and_time');
     var publish_schedule = $('#publish_schedule');
 
+    // The date and time field is a data-pg-datetime hook (pg_fields.js).
     // If the schedule option is selected by default when the page first loaded,
-    // then show fields for it and init date/time picker.
+    // then show fields for it.
     if (publish.val() == 'schedule') {
         publish_schedule.fadeIn();
-
-        publish_date_and_time.datetimepicker(datetimepicker_options);
     }
 
     // When the publish pick list is changed, then update fields.
@@ -5967,8 +5966,6 @@ function init_edit_comment_publish() {
         // If the schedule option is selected, then show fields for it.
         if (publish.val() == 'schedule') {
             publish_schedule.fadeIn();
-
-            publish_date_and_time.datetimepicker(datetimepicker_options);
 
             // Place the focus in the date & time field,
             // so that the date/time picker automatically appears.
@@ -5994,23 +5991,15 @@ function toggle_calendar_event_all_day() {
         document.getElementById('show_start_time_container').style.display = 'none';
         document.getElementById('show_end_time_container').style.display = 'none';
 
-        // Remove time picker by removing its parent date picker.
-        $("#start_time").datepicker('destroy');
-        $("#end_time").datepicker('destroy');
+        // Turn both date and time fields into date fields that keep only
+        // the date of what they held.
+        ['start_time', 'end_time'].forEach(function (id) {
+            var field = document.getElementById(id);
+            var date = pgDateTimeField.get(field).slice(0, 10);
 
-        // Add date picker to both fields.
-
-        $("#start_time").datepicker(datetimepicker_options);
-
-        $("#end_time").datepicker(datetimepicker_options);
-
-        // Get just the date values in order to strip the times from the fields.
-        var start_date = $.datepicker.formatDate(date_picker_format, $('#start_time').datepicker('getDate'));
-        var end_date = $.datepicker.formatDate(date_picker_format, $('#end_time').datepicker('getDate'));
-
-        // Update fields to only contain the date.
-        $("#start_time").datepicker('setDate', start_date);
-        $("#end_time").datepicker('setDate', end_date);
+            pgFields.switchKind(field, 'date');
+            pgDatePicker.set(field, date);
+        });
 
         // Update the size and maxlength of the fields to support just a date.
         $('#start_time').attr('size', 10);
@@ -6025,15 +6014,9 @@ function toggle_calendar_event_all_day() {
         document.getElementById('show_start_time_container').style.display = '';
         document.getElementById('show_end_time_container').style.display = '';
 
-        // Remove date picker in preparation for adding date/time picker.
-        $("#start_time").datepicker('destroy');
-        $("#end_time").datepicker('destroy');
-
-        // Add date/time picker to both fields.
-
-        $("#start_time").datetimepicker(datetimepicker_options);
-
-        $("#end_time").datetimepicker(datetimepicker_options);
+        // Date and time pickers on both fields; the dates they hold stay.
+        pgFields.switchKind(document.getElementById('start_time'), 'datetime');
+        pgFields.switchKind(document.getElementById('end_time'), 'datetime');
 
         // Update the size and maxlength of the fields to support both a date and time.
         $('#start_time').attr('size', 19);
@@ -6152,7 +6135,7 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for date and time cell
     var td_2 = document.createElement('td');
-    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + properties['date_and_time'] + '" size="20" maxlength="22" />';
+    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + properties['date_and_time'] + '" size="20" maxlength="22" data-pg-datetime />';
 
     // prepare content for delete cell
     var td_3 = document.createElement('td');
@@ -6164,7 +6147,9 @@ function create_shipping_cutoff(properties) {
 
     tbody.appendChild(tr);
 
-    $('#shipping_cutoff_' + shipping_cutoff_number + '_date_and_time').datetimepicker(datetimepicker_options);
+    if (window.pgDateTimeField) {
+        pgDateTimeField.init(document.getElementById('shipping_cutoff_' + shipping_cutoff_number + '_date_and_time'));
+    }
 
     // show the shipping cut-off table in case it was hidden
     document.getElementById('shipping_cutoff_table').style.display = '';
@@ -6997,9 +6982,9 @@ function editBarcodeTemplate(opts) {
     });
 
     // ── Show modal, init editor after it's visible ─────────────────────
-    var bsModal = new bootstrap.Modal(document.getElementById(MODAL_ID));
+    var bsModal = pgUI.dialog.get(document.getElementById(MODAL_ID));
 
-    $modal.one('shown.bs.modal', function () {
+    pgUI.dialog.on($modal, 'shown', function () {
         var wrap = document.getElementById('pg-bc-editor-wrap');
         wrap.innerHTML = '';
 
@@ -7055,12 +7040,12 @@ function editBarcodeTemplate(opts) {
                     $btn.prop('disabled', false);
                 });
         });
-    });
+    }, { once: true });
 
     // Re-enable the save button each time the modal opens
-    $modal.one('show.bs.modal', function () {
+    pgUI.dialog.on($modal, 'show', function () {
         $('#pg-bc-save-btn').prop('disabled', false);
-    });
+    }, { once: true });
 
     bsModal.show();
 }
@@ -8913,8 +8898,7 @@ window.onload = function() {
                 );
                 $modal = $('#' + BLIST_ID);
             }
-            const bsModal = new bootstrap.Modal(document.getElementById(BLIST_ID));
-            bsModal.show();
+            pgUI.dialog.show(document.getElementById(BLIST_ID));
             loadBarcodeList();
         }
 
@@ -9212,9 +9196,10 @@ function pg_background_calls_allowed() {
             '</div>';
         container.appendChild(el);
 
-        if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
-            var t = new bootstrap.Toast(el, { delay: delay });
-            el.addEventListener('hidden.bs.toast', function () { el.remove(); });
+        var t = window.pgUI ? pgUI.toast.get(el, { delay: delay }) : null;
+
+        if (t) {
+            pgUI.toast.on(el, 'hidden', function () { el.remove(); });
             t.show();
             return t;
         } else {
@@ -9268,25 +9253,26 @@ function pg_background_calls_allowed() {
                 resolve(value);
             }
 
-            if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+            var modal = window.pgUI ? pgUI.dialog.get(modalEl, { backdrop: 'static', keyboard: true }) : null;
+
+            if (!modal) {
                 // Fallback: native confirm if Bootstrap not loaded
                 modalEl.remove();
                 done(window.confirm(message));
                 return;
             }
 
-            var modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: true });
             modalEl.querySelector('[data-pg-action="confirm"]').addEventListener('click', function () {
                 done(true);
                 modal.hide();
             });
-            modalEl.addEventListener('hidden.bs.modal', function () {
+            pgUI.dialog.on(modalEl, 'hidden', function () {
                 done(false); // dismiss/cancel/escape -> false
                 modalEl.remove();
             });
             modal.show();
             // Move focus to confirm button after show, for keyboard users
-            modalEl.addEventListener('shown.bs.modal', function () {
+            pgUI.dialog.on(modalEl, 'shown', function () {
                 var btn = modalEl.querySelector('[data-pg-action="confirm"]');
                 if (btn) btn.focus();
             });
@@ -9601,8 +9587,8 @@ function initUserPermissionRows() {
                 } else if (countChecked(targets) === 0) {
 
                     var panel = panelOf(id);
-                    if (panel && window.bootstrap && bootstrap.Offcanvas) {
-                        bootstrap.Offcanvas.getOrCreateInstance(panel).show();
+                    if (panel && window.pgUI) {
+                        pgUI.drawer.show(panel);
                     }
                 }
             }
@@ -9617,10 +9603,10 @@ function initUserPermissionRows() {
     // while a panel is open lets the stylesheet take it out of the way; raising
     // the panel instead would leave the launcher floating over the backdrop.
     document.querySelectorAll('.pg-perm-panel').forEach(function (panel) {
-        panel.addEventListener('show.bs.offcanvas', function () {
+        pgUI.drawer.on(panel, 'show', function () {
             document.body.classList.add('pg-side-panel-open');
         });
-        panel.addEventListener('hidden.bs.offcanvas', function () {
+        pgUI.drawer.on(panel, 'hidden', function () {
             document.body.classList.remove('pg-side-panel-open');
         });
     });
@@ -10008,18 +9994,22 @@ function pgBindTitlePopovers(scope) {
 
     var $scope = $(scope || document);
 
-    $scope.find('[title]:not(.popover-click):not(.no-popover)' + _pgNoTitlePopover).popover({
-        trigger: 'hover',
-        placement: 'auto',
-        html: true,
-        container: 'body'
+    $scope.find('[title]:not(.popover-click):not(.no-popover)' + _pgNoTitlePopover).each(function () {
+        pgUI.popover.get(this, {
+            trigger: 'hover',
+            placement: 'auto',
+            html: true,
+            container: 'body'
+        });
     });
 
-    $scope.find('.popover-click[title]:not(.no-popover)' + _pgNoTitlePopover).popover({
-        trigger: 'click',
-        placement: 'auto',
-        html: true,
-        container: 'body'
+    $scope.find('.popover-click[title]:not(.no-popover)' + _pgNoTitlePopover).each(function () {
+        pgUI.popover.get(this, {
+            trigger: 'click',
+            placement: 'auto',
+            html: true,
+            container: 'body'
+        });
     });
 }
 
@@ -10084,10 +10074,11 @@ function pgInitInjected(scope) {
         });
     }
 
-    // The timepicker addon and its wording arrive with the card that uses it,
-    // as a <script src> inside the markup, so neither can be assumed.
-    if ($.fn.timepicker && (typeof timepicker_options !== 'undefined')) {
-        $scope.find('input.timepicker').timepicker(timepicker_options);
+    // Chips, combobox, date and time fields marked with a data-pg-* hook.
+    // Chips, combobox, date and time fields marked with a data-pg-* hook; a
+    // card whose library arrives with its markup prints pg_fields_script().
+    if (window.pgFields) {
+        pgFields.init($scope[0]);
     }
 }
 
@@ -10189,7 +10180,7 @@ var pgSettingsModal = (function () {
             helps = {};
         }
 
-        modal = new bootstrap.Modal(el);
+        modal = pgUI.dialog.get(el);
 
         wire();
 
@@ -10244,7 +10235,7 @@ var pgSettingsModal = (function () {
         // The chat launcher is fixed at a higher z-index than any modal, so it
         // would sit on top of the save bar. Same class the designer's side
         // panel uses -- one rule for it, not two.
-        el.addEventListener('show.bs.modal', function () {
+        pgUI.dialog.on(el, 'show', function () {
 
             document.body.classList.add('pg-side-panel-open');
 
@@ -10258,7 +10249,7 @@ var pgSettingsModal = (function () {
             patrolling = window.setInterval(patrol, 600);
         });
 
-        el.addEventListener('hidden.bs.modal', function () {
+        pgUI.dialog.on(el, 'hidden', function () {
 
             document.body.classList.remove('pg-side-panel-open');
             document.body.classList.remove('pg-settings-open');
@@ -10300,7 +10291,7 @@ var pgSettingsModal = (function () {
         });
 
         // Closing with unsaved changes is the one thing worth interrupting for.
-        el.addEventListener('hide.bs.modal', function (event) {
+        pgUI.dialog.on(el, 'hide', function (event) {
 
             if (!dirty || leaving) {
                 return;
@@ -10335,10 +10326,13 @@ var pgSettingsModal = (function () {
         // sits on the dialog element and was registered first.
         document.addEventListener('keydown', function (event) {
 
-            if ((event.key !== 'Escape') || !el.classList.contains('show') || !drawerOpen()) {
+            if ((event.key !== 'Escape') || !pgUI.dialog.isOpen(el) || !drawerOpen()) {
                 return;
             }
 
+            // A native <dialog> closes on Escape as the key's default
+            // action, which stopping the event alone does not cancel.
+            event.preventDefault();
             event.stopPropagation();
             drawer(false);
 
@@ -10371,14 +10365,14 @@ var pgSettingsModal = (function () {
                 // Closing the inner dialog takes the body's modal-open class
                 // with it; the settings are still open and still need it, or
                 // the screen behind starts scrolling again.
-                target.addEventListener('hidden.bs.modal', function () {
-                    if (el.classList.contains('show')) {
+                pgUI.dialog.on(target, 'hidden', function () {
+                    if (pgUI.dialog.isOpen(el)) {
                         document.body.classList.add('modal-open');
                     }
                 });
             }
 
-            bootstrap.Modal.getOrCreateInstance(target).show();
+            pgUI.dialog.show(target);
         });
 
         // When a person last did something. Bound to the document and in the
@@ -10837,11 +10831,7 @@ var pgSettingsModal = (function () {
 
         $('#pg_settings_modal_extras .modal').each(function () {
 
-            var instance = bootstrap.Modal.getInstance(this);
-
-            if (instance) {
-                instance.dispose();
-            }
+            pgUI.dialog.dispose(this);
         });
 
         $('#pg_settings_modal_extras').empty();

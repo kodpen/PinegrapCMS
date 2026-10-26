@@ -2133,6 +2133,19 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('history' => $history));
 
+        // "Remind me about this customer" on that card: a follow-up task for
+        // the person asking (includes/workspace/followups.php).
+        case 'ws_channel_customer_followup':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $made = ws_customer_followup_open($viewer, $channel, $request);
+
+            return $made['ok'] ? ws_action_ok(array('task' => $made['task'])) : ws_action_error($made['error'], $made['field']);
+
         case 'ws_channel_members_add':
             $channel = ws_action_channel($viewer, $request, 'post');
 

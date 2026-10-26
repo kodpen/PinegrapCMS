@@ -343,6 +343,7 @@ if (!$_POST) {
     $wysiwyg_fields = array();
 
     $output_fields = '';
+    $picker_kinds = array();
 
     // Prepare to keep track if whether there are file upload fields or not,
     // in order to know later if we need to output enctype for form.
@@ -631,28 +632,22 @@ if (!$_POST) {
                     break;
                     
                 case 'date':
+                    $picker_kinds['date'] = true;
                     $output_fields .=
                         '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
-                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'10')) . '
+                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'10', 'data-pg-date' => '')) . '
                             ' . $field_required . '
-                            ' . get_date_picker_format() . '
-                                <script>
-                                    $("#' . $field['id'] . '").datepicker(datetimepicker_options);
-                                </script>
                         </div>';
                     break;
                     
                 case 'date and time':
+                    $picker_kinds['date and time'] = true;
                     $output_fields .=
                         '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
-                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'22')) . '
+                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'22', 'data-pg-datetime' => '')) . '
                             ' . $field_required . '
-                            ' . get_date_time_picker_format() . '
-                                <script>
-                                    $("#' . $field['id'] . '").datetimepicker(datetimepicker_options);
-                                </script>
                         </div>';
                     break;
                     
@@ -662,16 +657,13 @@ if (!$_POST) {
                     break;
                     
                 case 'time':
+                    $picker_kinds['time'] = true;
                     $output_fields .=
                         '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
-                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11')) . '
+                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11', 'data-pg-time' => '')) . '
                             ' . $field_required . '
                             <div class="form-text text-end">' . lang('Format: h:mm AM/PM') . '</div>
-                            ' . get_time_picker_format() . '
-                                <script>
-                                    $("#' . $field['id'] . '").timepicker(timepicker_options);
-                                </script>
                         </div>';
                     break;
                     
@@ -693,6 +685,23 @@ if (!$_POST) {
     }
     
 
+    // The picker options once, after the fields: they are drawn when the
+    // page has loaded and all read the one datetimepicker_options, so a form
+    // with a date and time field gets the variant with the time wording.
+    if (isset($picker_kinds['date and time'])) {
+        $output_fields .= get_date_time_picker_format();
+    } elseif (isset($picker_kinds['date'])) {
+        $output_fields .= get_date_picker_format();
+    }
+
+    if (isset($picker_kinds['time'])) {
+        $output_fields .= get_time_picker_format();
+    }
+
+    if ($picker_kinds) {
+        $output_fields .= pg_fields_script();
+    }
+
     $output_wysiwyg_javascript = '';
     
     // if there is at least one wysiwyg field, prepare wysiwyg fields
@@ -711,14 +720,14 @@ if (!$_POST) {
     // If the form is incomplete then show certain buttons.
     if (!$complete) {
         $output_buttons =
-            '<button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-success "><span class="material-icons me-2">save_as</span><span class="btn-text" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
-            <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-secondary"><span class="material-icons me-2">radio_button_unchecked</span><span class="btn-text">' . lang(array('string'=>'Convert Complete') ) . '</span></button>';
+            '<button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-success "><span class="material-icons me-2">save_as</span><span class="pg-btn-label" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
+            <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-secondary"><span class="material-icons me-2">radio_button_unchecked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Complete') ) . '</span></button>';
 
     // Otherwise the form is complete, so show different buttons.
     } else {
         $output_buttons =
-            '<button type="submit" name="save_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-            <button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-warning "><span class="material-icons me-2">radio_button_checked</span><span class="btn-text">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>';
+            '<button type="submit" name="save_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+            <button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-warning "><span class="material-icons me-2">radio_button_checked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>';
     }
     
     // Where it was talked about in the workspace, and the tasks about it.
@@ -849,7 +858,7 @@ if (!$_POST) {
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
                                     ' . $output_buttons . '
-                                    <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                    <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>

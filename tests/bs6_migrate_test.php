@@ -222,6 +222,8 @@ function test_bs6_scope_kind()
 		'liveform.class.php' => 'shared',
 		'assets/js/style_designer.js' => 'editor',
 		'includes/designer_screen.php' => 'editor',
+		'assets/js/pg_style_predict.js' => 'editor',
+		'includes/fn/designer_vocab.php' => 'editor',
 		'assets/lib/bootstrap-6/js/bootstrap.js' => 'vendor',
 		'includes/dompdf/src/Dompdf.php' => 'vendor',
 		'assets/js/workspace.min.js' => 'vendor',

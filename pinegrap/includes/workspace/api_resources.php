@@ -284,6 +284,91 @@ function ws_api_channel_refused($result)
     api_fail_validation($error, (($result['field'] ?? '') !== '') ? $result['field'] : null);
 }
 
+/**
+ * The customer of a channel write, checked before anything is written so a
+ * dry run meets the same refusals: the fields ws_customer_input() reads, or
+ * none when the body names no customer. The user role may only name a
+ * contact filed in its contact groups, as its contact search offers them
+ * (ws_viewer_contacts_open()); one outside is refused like a missing one.
+ *
+ * @param array      $viewer
+ * @param array      $params
+ * @param array|null $channel the channel as it is, for an update
+ * @return array customer_type, customer_id, or empty
+ */
+function ws_api_channel_customer_write($viewer, $params, $channel = null)
+{
+    $missing = ws_api_channel_customer_missing($params);
+
+    if ($missing !== '') {
+        api_fail_validation(lang(array('string' => '{var:1} is required.', 'vars' => $missing)), $missing);
+    }
+
+    $data = ws_api_channel_customer_fields($params);
+
+    if (empty($data)) {
+        return array();
+    }
+
+    $customer = ws_customer_input($viewer, $data, $channel);
+
+    if (is_array($customer) && !$customer['ok']) {
+        api_fail_validation($customer['error'], 'customer_id');
+    }
+
+    $unchanged = is_array($channel) && (ws_channel_customer_of($channel) === array($customer['type'], $customer['id']));
+
+    if (($customer['type'] === 'contact') && !$unchanged && empty(ws_viewer_contacts_open($viewer, array($customer['id'])))) {
+        api_fail_validation(lang('That contact could not be found.'), 'customer_id');
+    }
+
+    return $data;
+}
+
+/**
+ * The half of a customer a write left out while naming the other: a kind
+ * with no id, or an id with no kind. Empty when both or neither are sent, or
+ * the one sent clears the customer (empty, or id 0).
+ *
+ * @param array $params
+ * @return string the missing field, or ''
+ */
+function ws_api_channel_customer_missing($params)
+{
+    $type = array_key_exists('customer_type', $params);
+    $id = array_key_exists('customer_id', $params);
+
+    if ($type && !$id && ((string) $params['customer_type'] !== '')) {
+        return 'customer_id';
+    }
+
+    if ($id && !$type && ((int) $params['customer_id'] > 0)) {
+        return 'customer_type';
+    }
+
+    return '';
+}
+
+/**
+ * The customer fields of a channel write as ws_customer_input() reads them:
+ * both, once either is sent; an empty value (the router's null) or 0 for
+ * none.
+ *
+ * @param array $params
+ * @return array
+ */
+function ws_api_channel_customer_fields($params)
+{
+    if (!array_key_exists('customer_type', $params) && !array_key_exists('customer_id', $params)) {
+        return array();
+    }
+
+    return array(
+        'customer_type' => (string) ($params['customer_type'] ?? ''),
+        'customer_id'   => (int) ($params['customer_id'] ?? 0),
+    );
+}
+
 function ws_api_channels_create($params)
 {
     $viewer = ws_api_viewer();
@@ -314,17 +399,20 @@ function ws_api_channels_create($params)
     // The router has held both to their lists; empty is none.
     $color = ws_palette_place_of($params['color'] ?? '');
     $icon = ws_channel_icon_clean($params['icon'] ?? '');
+    $customer = ws_api_channel_customer_write($viewer, $params);
 
     api_dry_run_stop('created', 'workspace_channel', array(
-        'name'    => $name,
-        'kind'    => $kind,
-        'members' => count($members),
-        'color'   => ($color > 0) ? ws_palette_hex($color) : null,
-        'icon'    => ($icon !== '') ? $icon : null,
+        'name'          => $name,
+        'kind'          => $kind,
+        'members'       => count($members),
+        'color'         => ($color > 0) ? ws_palette_hex($color) : null,
+        'icon'          => ($icon !== '') ? $icon : null,
+        'customer_type' => (($customer['customer_type'] ?? '') !== '') ? $customer['customer_type'] : null,
+        'customer_id'   => ((int) ($customer['customer_id'] ?? 0) > 0) ? (int) $customer['customer_id'] : null,
     ));
 
-    $result = ws_api_as_owner(function () use ($viewer, $params, $kind, $department_id, $members, $color, $icon) {
-        return ws_channel_create($viewer, array(
+    $result = ws_api_as_owner(function () use ($viewer, $params, $kind, $department_id, $members, $color, $icon, $customer) {
+        return ws_channel_create($viewer, array_merge(array(
             'name'          => (string) $params['name'],
             'kind'          => $kind,
             'topic'         => (string) ($params['topic'] ?? ''),
@@ -332,7 +420,7 @@ function ws_api_channels_create($params)
             'members'       => $members,
             'color'         => $color,
             'icon'          => $icon,
-        ));
+        ), $customer));
     });
 
     if (!$result['ok']) {
@@ -368,6 +456,8 @@ function ws_api_channels_update($params)
     if (array_key_exists('icon', $params)) {
         $data['icon'] = ws_channel_icon_clean($params['icon']);
     }
+
+    $data = array_merge($data, ws_api_channel_customer_write($viewer, $params, $channel));
 
     $archive = array_key_exists('archived', $params) ? !empty($params['archived']) : null;
     $archived = ((int) $channel['archived_at'] > 0);
@@ -3270,6 +3360,10 @@ function ws_api_task_present($viewer, $task, $warnings = array(), $known = null)
         'priority'          => (string) $task['priority'],
         'start_date'        => $task['start_date'] ?: null,
         'due_date'          => $task['due_date'] ?: null,
+        // The time on the due date and the e-mail reminder (reminders.php);
+        // null on a site whose tables do not have them yet.
+        'due_time'          => ((string) ($task['due_time'] ?? '') !== '') ? substr((string) $task['due_time'], 0, 5) : null,
+        'remind_minutes'    => (($task['remind_minutes'] ?? null) !== null) ? (int) $task['remind_minutes'] : null,
         'estimate_minutes'  => (int) $task['estimate_minutes'],
         'department_id'     => ((int) $task['department_id'] > 0) ? (int) $task['department_id'] : null,
         'channel_id'        => ((int) $task['channel_id'] > 0) ? (int) $task['channel_id'] : null,
@@ -3311,6 +3405,8 @@ function ws_api_task_schema()
         'priority'          => 'string',
         'start_date'        => 'string?',
         'due_date'          => 'string?',
+        'due_time'          => 'string?',
+        'remind_minutes'    => 'integer?',
         'estimate_minutes'  => 'integer',
         'department_id'     => 'integer?',
         'channel_id'        => 'integer?',
@@ -3435,7 +3531,7 @@ function ws_api_task_input($params)
 {
     $data = array();
 
-    foreach (array('title', 'description', 'status', 'priority', 'start_date', 'due_date', 'estimate_minutes', 'department_id', 'channel_id') as $field) {
+    foreach (array('title', 'description', 'status', 'priority', 'start_date', 'due_date', 'due_time', 'remind_minutes', 'estimate_minutes', 'department_id', 'channel_id') as $field) {
         if (array_key_exists($field, $params)) {
             $data[$field] = $params[$field];
         }

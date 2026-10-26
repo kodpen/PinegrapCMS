@@ -159,7 +159,7 @@ function _parasut_request($method, $url, $body = null, $token = null, $retry_429
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curl_error = curl_error($ch);
     $curl_errno = curl_errno($ch);
-    curl_close($ch);
+    unset($ch);
 
     if ($curl_error) {
         if (function_exists('pg_curl_tls_hint')) {
@@ -766,7 +766,7 @@ function _parasut_token_exchange($body, $credentials)
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curl_error = curl_error($ch);
-    curl_close($ch);
+    unset($ch);
 
     if ($curl_error) {
         return ['error_description' => 'cURL error: ' . $curl_error];

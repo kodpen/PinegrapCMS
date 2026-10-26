@@ -66,7 +66,7 @@ function _widget_lists_editor_run_js($script, $stubs = '')
 	pg_assert_true(strpos($js, "\n    var SW_LIST_MAX_DEPTH = 4;\n") !== false, 'the depth is four, as the site draws');
 	pg_assert_true(strpos($cut, 'SW_LIST_SOURCES') !== false && strpos($cut, 'SW_LIST_ORDERS') !== false, 'the list tables are found');
 	foreach (array('_sdT', '_sdListIsSourced', '_sdListSpec', '_sdKindLists', '_sdListsAbove', '_sdListRowOptions', '_sdListRowLabel',
-		'_sdListName', '_sdListStarter', '_sdListWidgetKind', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
+		'_sdListName', '_sdListStarter', '_sdProductListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdOrderListStarter', '_sdOrderListKeyless', '_sdListWidgetKind', '_sdListNeedsMainLoop', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
 		'_sdListWrite', '_sdListFieldOf', '_sdListFieldFits', '_sdListBand', 'isDescendantOf', '_subtreeContainsLoopArea', '_sdFirstLoopArea') as $name) {
 		$fn = _widget_lists_editor_js_function($js, $name);
 		pg_assert_true($fn !== '', $name . ' is found');
@@ -101,7 +101,7 @@ function test_widget_lists_editor_tables_are_not_palettes()
 // offer them.
 function test_widget_lists_editor_sources_match_the_server()
 {
-	$kinds = array('form_list_view', 'form_item_view', 'catalog_listing', 'comments', 'custom_form', 'calendar_view', '');
+	$kinds = array('form_list_view', 'form_item_view', 'catalog_item_view', 'catalog_listing', 'comments', 'custom_form', 'calendar_view', '');
 	$a = _widget_lists_editor_run_js(
 		'var kinds = ' . json_encode($kinds) . ";\n"
 		. "var out = { sources: {}, kinds: {} };\n"
@@ -312,6 +312,9 @@ console.log(JSON.stringify({
     detailBox:     _sdListPlaceOk(palette('form_record.files'), box6),
     detailRoot:    _sdListPlaceOk(palette('form_record.files'), root6),
     catalog:       _sdListPlaceOk(palette('form_record.files'), card7),
+    catalogImages: _sdListPlaceOk(palette('product.images'), card7),
+    catalogRoot:   _sdListPlaceOk(palette('product.images'), root7),
+    catalogRelated: _sdListPlaceOk(palette('product.related'), card7),
     unknown:       _sdListPlaceOk(palette('form_record.nope'), card5),
     intoItself:    _sdListPlaceOk(move(list5), span5),
     toOtherWidget: _sdListPlaceOk(move(list5), box6),
@@ -342,7 +345,10 @@ JS;
 	pg_assert_true(!$a['onListRoot'], 'on a form list\'s root');
 	pg_assert_true($a['detailBox'], 'anywhere in a form detail view');
 	pg_assert_true($a['detailRoot'], 'on a form detail view\'s root');
-	pg_assert_true(!$a['catalog'], 'a kind without lists');
+	pg_assert_true(!$a['catalog'], 'a form source in a catalog listing');
+	pg_assert_true($a['catalogImages'], 'a product list in a listing\'s card');
+	pg_assert_true(!$a['catalogRoot'], 'a product list outside the listing\'s cards');
+	pg_assert_true(!$a['catalogRelated'], 'no products bought together in a listing');
 	pg_assert_true(!$a['unknown'], 'an unknown source from the palette');
 	pg_assert_true(!$a['intoItself'], 'into itself');
 	pg_assert_true($a['toOtherWidget'], 'into another form widget');
@@ -520,4 +526,245 @@ JS;
 	pg_assert_same(array(true, 'Values of a field: the field gone gives this list no rows'), $a['goneField']);
 	pg_assert_same(array(false, 'Attachments — one row shown (repeated for every row at runtime)'), $a['deep'], 'the fourth level draws');
 	pg_assert_same(array(false, 'Attachments — one row shown (repeated for every row at runtime)'), $a['files']);
+}
+
+// A calendar view (8): an event loop, a month grid of weeks > days >
+// events beside it, and an events list outside any day.
+function _widget_lists_editor_calendar_js()
+{
+	return _widget_lists_editor_trees_js() . <<<'JS'
+var chip8  = N('semantic', { tag: 'li' });
+var ev8    = N('loop_area', { source: 'calendar.events' }, [chip8]);
+var cell8  = N('semantic', { tag: 'td' }, [ev8]);
+var days8  = N('loop_area', { source: 'calendar.days' }, [cell8]);
+var weeks8 = N('loop_area', { source: 'calendar.weeks' }, [days8]);
+var stray8 = N('loop_area', { source: 'calendar.events' }, []);
+var box8   = N('semantic', { tag: 'div' }, [weeks8, stray8]);
+var row8   = N('semantic', { tag: 'article' });
+var inLoop8 = N('loop_area', { source: 'calendar.days' }, []);
+var main8  = N('loop_area', {}, [row8, inLoop8]);
+var root8  = N('root', {}, [box8, main8]);
+_sharedCache[8] = { tree: root8, system_region_config: JSON.stringify({ regionType: 'calendar_view' }) };
+JS;
+}
+
+// The calendar grid lists land beside the event loop, never in it nor in
+// another kind; a month grid counts three lists deep; an events list draws
+// only inside a list of days; the month grid starter draws on the site.
+function test_widget_lists_editor_calendar()
+{
+	$stubs = _widget_lists_editor_calendar_js() . <<<'JS'
+function createNode(type, props, children) { return N(type, props, children); }
+function _sdUsesBootstrap() { return true; }
+JS;
+	$script = <<<'JS'
+var band = function (n) { var b = _sdListBand(n); return [b.off, b.text]; };
+var grid = _sdCalendarListStarter('calendar.weeks', true);
+var sources = [];
+(function walk(n) { if (n.type === 'loop_area') sources.push(n.props.source); (n.children || []).forEach(walk); })(grid);
+console.log(JSON.stringify({
+    beside:   _sdListPlaceOk(palette('calendar.weeks'), box8),
+    onRoot:   _sdListPlaceOk(palette('calendar.weeks'), root8),
+    inLoop:   _sdListPlaceOk(palette('calendar.days'), row8),
+    formView: _sdListPlaceOk(palette('calendar.weeks'), box6),
+    gridInDay: _sdListPlaceOk(palette('calendar.weeks'), cell8),
+    eventsInDay: _sdListPlaceOk(palette('calendar.events'), cell8),
+    depth: [_sdListStarterDepth('calendar.weeks'), _sdListNesting(grid), _sdListStarterDepth('calendar.days'),
+        _sdListNesting(_sdCalendarListStarter('calendar.days', true)), _sdListStarterDepth('form_record.values')],
+    sources: sources,
+    bands: [band(weeks8), band(days8), band(ev8), band(stray8), band(inLoop8)],
+    starter: _sdListStarter('calendar.weeks'),
+    tree: N('root', {}, [grid])
+}));
+JS;
+	$a = _widget_lists_editor_run_js($script, $stubs);
+	if ($a === null) {
+		return;
+	}
+	pg_assert_true($a['beside'], 'beside the event loop');
+	pg_assert_true($a['onRoot'], 'on the widget root');
+	pg_assert_true(!$a['inLoop'], 'never in the event loop');
+	pg_assert_true(!$a['formView'], 'never in a form view');
+	pg_assert_true(!$a['gridInDay'], 'a month grid two lists deep goes past four');
+	pg_assert_true($a['eventsInDay'], 'a day\'s events in a day');
+	pg_assert_same(array(3, 3, 2, 2, 1), $a['depth']);
+	pg_assert_same(array('calendar.weekdays', 'calendar.weeks', 'calendar.days', 'calendar.events'), $a['sources']);
+	pg_assert_same(array(false, 'Weeks of the calendar — one row shown (repeated for every row at runtime)'), $a['bands'][0]);
+	pg_assert_same(false, $a['bands'][1][0]);
+	pg_assert_same(false, $a['bands'][2][0]);
+	pg_assert_same(array(true, 'Events of the day: outside a list of days, nothing is drawn'), $a['bands'][3]);
+	pg_assert_same(array(true, 'Days of the calendar: inside the event loop, nothing is drawn'), $a['bands'][4]);
+	pg_assert_same('div', $a['starter']['props']['tag'], 'the palette lands the whole grid');
+
+	// The starter as the site draws it: a cell per day, a head per weekday,
+	// the number dimmed outside the month, the badge on today.
+	$scope = pg_sw_finish_open(array('sid' => 48, 'kind' => 'calendar_view', 'email' => false));
+	try {
+		$html = trim(_render_tree_node($a['tree'], 0, 0));
+		pg_sw_list_publish('calendar', pg_sw_list_calendar_rows(mktime(0, 0, 0, 9, 28, 2026), mktime(0, 0, 0, 11, 1, 2026), 10,
+			array('2026-10-05' => array(array('__event_title' => 'Concert', '__event_url' => '/e?id=3', '__event_time' => '20:00'))), 'monday', 'd.m.Y', '2026-10-26'));
+		$html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, array('__week_key' => '0')));
+	} finally {
+		pg_sw_finish_close();
+	}
+	$out = pg_sw_finish_widget_html($html, $scope);
+	pg_assert_same(7, substr_count($out, '<th '));
+	pg_assert_same(5, substr_count($out, '<tr') - 1, 'five weeks and the head row');
+	pg_assert_same(35, substr_count($out, '<td '));
+	pg_assert_same(4, substr_count($out, 'class="text-body-tertiary"'), 'three September days and 1 November');
+	pg_assert_same(1, substr_count($out, 'badge text-bg-primary'), 'one today');
+	pg_assert_true(strpos($out, '>Concert</a>') !== false && strpos($out, '>20:00</span>') !== false, 'the event');
+	pg_assert_same(false, strpos($out, '^^'));
+}
+
+// The order lists land beside the item loop, never in it nor in another
+// kind; recipients count two lists deep; a list of the recipients or the
+// steps inside a recipient draws nothing; the member's orders land in the
+// my account widget; the recipients starter draws on the site.
+function test_widget_lists_editor_order()
+{
+	$stubs = _widget_lists_editor_trees_js() . <<<'JS'
+var item9  = N('semantic', { tag: 'li' });
+var its9   = N('loop_area', { source: 'order.items' }, [item9]);
+var steps9 = N('loop_area', { source: 'order.steps' }, []);
+var card9  = N('semantic', { tag: 'div' }, [its9, steps9]);
+var ship9  = N('loop_area', { source: 'order.shipments' }, [card9]);
+var box9   = N('semantic', { tag: 'div' }, [ship9]);
+var row9   = N('semantic', { tag: 'article' });
+var inLoop9 = N('loop_area', { source: 'order.parcels' }, []);
+var main9  = N('loop_area', {}, [row9, inLoop9]);
+var root9  = N('root', {}, [box9, main9]);
+_sharedCache[9] = { tree: root9, system_region_config: JSON.stringify({ regionType: 'order_view' }) };
+var acc10  = N('semantic', { tag: 'div' });
+var root10 = N('root', {}, [acc10]);
+_sharedCache[10] = { tree: root10, system_region_config: JSON.stringify({ regionType: 'my_account' }) };
+function createNode(type, props, children) { return N(type, props, children); }
+function _sdUsesBootstrap() { return true; }
+JS;
+	$script = <<<'JS'
+var band = function (n) { var b = _sdListBand(n); return [b.off, b.text]; };
+var ships = _sdOrderListStarter('order.shipments', true);
+var sources = [];
+(function walk(n) { if (n.type === 'loop_area') sources.push(n.props.source); (n.children || []).forEach(walk); })(ships);
+console.log(JSON.stringify({
+    beside:   _sdListPlaceOk(palette('order.shipments'), box9),
+    inLoop:   _sdListPlaceOk(palette('order.items'), row9),
+    inCard:   _sdListPlaceOk(palette('order.parcels'), card9),
+    calendar: _sdListPlaceOk(palette('order.items'), box8),
+    account:  _sdListPlaceOk(palette('account.orders'), acc10),
+    accountNoItems: _sdListPlaceOk(palette('order.items'), acc10),
+    depth: [_sdListStarterDepth('order.shipments'), _sdListNesting(ships), _sdListStarterDepth('order.items')],
+    sources: sources,
+    bands: [band(ship9), band(its9), band(steps9), band(inLoop9)],
+    tree: N('root', {}, [ships, _sdOrderListStarter('order.steps', true)]),
+    account_tree: N('root', {}, [_sdListStarter('account.orders')])
+}));
+JS;
+	$a = _widget_lists_editor_run_js($script, _widget_lists_editor_calendar_js() . $stubs);
+	if ($a === null) {
+		return;
+	}
+	pg_assert_true($a['beside'], 'beside the item loop');
+	pg_assert_true(!$a['inLoop'], 'never in the item loop');
+	pg_assert_true($a['inCard'], 'parcels in a recipient');
+	pg_assert_true(!$a['calendar'], 'never in a calendar');
+	pg_assert_true($a['account'], 'the member\'s orders in my account');
+	pg_assert_true(!$a['accountNoItems'], 'no order items in my account');
+	pg_assert_same(array(2, 2, 1), $a['depth']);
+	pg_assert_same(array('order.shipments', 'order.items', 'order.parcels'), $a['sources']);
+	pg_assert_same(false, $a['bands'][0][0]);
+	pg_assert_same(false, $a['bands'][1][0]);
+	pg_assert_same(array(true, 'Steps of the order: inside a list of the recipients, nothing is drawn'), $a['bands'][2]);
+	pg_assert_same(array(true, 'Parcels of the order: inside the item loop, nothing is drawn'), $a['bands'][3]);
+
+	// The starters as the site draws them.
+	$scope = pg_sw_finish_open(array('sid' => 49, 'kind' => 'order_view', 'email' => true));
+	try {
+		$html = trim(_render_tree_node($a['tree'], 0, 0));
+		$arrival = function ($ymd) { return $ymd; };
+		pg_sw_list_publish('order', pg_sw_list_order_rows(
+			array(pg_sw_list_order_shipment_row(array('id' => 5, 'first_name' => 'Ayşe', 'shipping_method' => 'Kargo'), $arrival)),
+			array(array('id' => 1, 'short_description' => 'Mug', 'qty' => 2, 'unit_price' => '₺5,00', 'line_total' => '₺10,00', 'ship_to_id' => 5)),
+			array(array('number' => 'P1', 'url' => '', 'carrier' => '', 'ship_to' => 5), array('number' => 'P2', 'url' => 'https://t.example/P2', 'carrier' => 'Aras', 'ship_to' => 5)),
+			array(array('label' => 'Shipped', 'ts' => '28.10.2026', 'kind' => 'shipped', 'estimate' => true))
+		));
+		$html = pg_sw_sweep_tokens(pg_sw_fill_longest($html, array('__ship_to_key' => '0')));
+	} finally {
+		pg_sw_finish_close();
+	}
+	$out = pg_sw_finish_widget_html($html, $scope);
+	pg_assert_same(false, strpos($out, '^^'));
+	pg_assert_true(strpos($out, '>Ayşe</h3>') !== false, 'the recipient');
+	pg_assert_true(strpos($out, '>Mug</div>') !== false && strpos($out, '>₺10,00</div>') !== false, 'the recipient\'s item');
+	pg_assert_true(strpos($out, '>P1</span>') !== false && strpos($out, '>P1</a>') === false, 'a parcel without a link as text');
+	pg_assert_true(strpos($out, 'href="https://t.example/P2"') !== false && strpos($out, '>Aras</span>') !== false, 'a parcel with its link and carrier');
+	pg_assert_same(1, substr_count($out, '>Estimated</span>'), 'the estimate badge');
+
+	$scope = pg_sw_finish_open(array('sid' => 50, 'kind' => 'my_account', 'email' => false));
+	try {
+		$html = trim(_render_tree_node($a['account_tree'], 0, 0));
+		pg_sw_list_publish('account', pg_sw_list_account_rows(7, array(
+			array('id' => 9, 'order_number' => '1009', 'order_date' => mktime(12, 0, 0, 10, 20, 2026), 'total' => '5', 'status' => 'cancelled'),
+			array('id' => 8, 'order_number' => '1008', 'order_date' => mktime(12, 0, 0, 10, 19, 2026), 'total' => '5', 'status' => 'complete'),
+		), '/view-order', 'd.m.Y'));
+		$html = pg_sw_sweep_tokens(pg_sw_fill_longest($html, array('account_id' => '7')));
+	} finally {
+		pg_sw_finish_close();
+	}
+	$out = pg_sw_finish_widget_html($html, $scope);
+	pg_assert_same(2, substr_count($out, 'list-group-item-action'));
+	pg_assert_true(strpos($out, 'href="/view-order?id=8"') !== false, 'the order link');
+	pg_assert_same(1, substr_count($out, 'badge text-bg-secondary'), 'the cancelled badge on the cancelled order only');
+}
+
+// The cart list lands in the cart link and beside the cart's rows, never
+// in them; its starter is a mini cart the site draws.
+function test_widget_lists_editor_cart()
+{
+	$stubs = _widget_lists_editor_trees_js() . <<<'JS'
+var bar11  = N('semantic', { tag: 'div' });
+var root11 = N('root', {}, [bar11]);
+_sharedCache[11] = { tree: root11, system_region_config: JSON.stringify({ regionType: 'cart_link' }) };
+var side12 = N('semantic', { tag: 'aside' });
+var row12  = N('semantic', { tag: 'tr' });
+var inRow12 = N('loop_area', { source: 'cart.items' }, []);
+var main12 = N('loop_area', {}, [row12, inRow12]);
+var root12 = N('root', {}, [side12, main12]);
+_sharedCache[12] = { tree: root12, system_region_config: JSON.stringify({ regionType: 'shopping_cart' }) };
+function createNode(type, props, children) { return N(type, props, children); }
+function _sdUsesBootstrap() { return true; }
+JS;
+	$script = <<<'JS'
+console.log(JSON.stringify({
+    link:   _sdListPlaceOk(palette('cart.items'), bar11),
+    beside: _sdListPlaceOk(palette('cart.items'), side12),
+    inRow:  _sdListPlaceOk(palette('cart.items'), row12),
+    order:  _sdListPlaceOk(palette('order.items'), bar11),
+    band:   _sdListBand(inRow12).text,
+    tree:   N('root', {}, [_sdListStarter('cart.items')])
+}));
+JS;
+	$a = _widget_lists_editor_run_js($script, _widget_lists_editor_calendar_js() . $stubs);
+	if ($a === null) {
+		return;
+	}
+	pg_assert_true($a['link'], 'in the cart link');
+	pg_assert_true($a['beside'], 'beside the cart rows');
+	pg_assert_true(!$a['inRow'], 'never in a cart row');
+	pg_assert_true(!$a['order'], 'no order list in the cart link');
+	pg_assert_same('Products in the cart: inside the item loop, nothing is drawn', $a['band']);
+
+	$scope = pg_sw_finish_open(array('sid' => 52, 'kind' => 'cart_link', 'email' => false));
+	try {
+		$html = trim(_render_tree_node($a['tree'], 0, 0));
+		pg_sw_list_publish('cart', pg_sw_list_cart_rows(_widget_cart_items()));
+		$html = _pg_member_apply_tokens($html, array('__ship_to_key' => '0'));
+	} finally {
+		pg_sw_finish_close();
+	}
+	$out = pg_sw_finish_widget_html($html, $scope);
+	pg_assert_same(false, strpos($out, '^^'));
+	pg_assert_same(3, substr_count($out, 'list-group-item d-flex'), 'a line per product');
+	pg_assert_true(strpos($out, '>Mug &amp; cup</a>') !== false, 'the display name');
+	pg_assert_same(3, substr_count($out, 'remove_item_from_cart.php'), 'a remove link per line');
 }

@@ -23,7 +23,7 @@ description: Trendyol V2 listing create (connectors/trendyol.php): barcode as th
 - Finished when `status` is `COMPLETED`; a batch without `status` (stock/price) when every line has one. Per line: barcode from `requestItem.barcode` or `requestItem.product.barcode`, ok only for `SUCCESS`, reason from `failureReasons` (strings, or objects read by message/reason/description/key).
 - SUCCESS means "sent to Trendyol's approval", not on sale. Approval and rejection are read afterwards onto the mapping row (`trendyol-listing-status.md`).
 
-## What is not done yet?
-- Updating an existing listing (V2 update needs `contentId`, kept in the mapping's `remote_id` once approved), commission display. Plan step 2b-ii.
+## How is an approved listing changed?
+- By content id, title/description/pictures only: `trendyol-listing-update.md`.
 
 Related: docs/memory/commerce/trendyol-api-facts.md

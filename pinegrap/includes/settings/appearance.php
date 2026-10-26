@@ -150,7 +150,7 @@ if ($dashboard_card_shown) {
 
         window.pgDashboardReloadArmed = true;
 
-        dialog.addEventListener("hidden.bs.modal", function () {
+        pgUI.dialog.on(dialog, "hidden", function () {
             window.location.href = window.location.pathname;
         }, { once: true });
     })();

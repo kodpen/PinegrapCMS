@@ -542,6 +542,16 @@ function ws_customer_js_strings()
         'cust_history'       => lang('History'),
         'cust_older'         => lang('Show older'),
         'cust_history_empty' => lang('Nothing in the history yet.'),
+        // "Remind me about this customer" (includes/workspace/followups.php).
+        'cust_remind'         => lang('Remind me'),
+        'cust_remind_help'    => lang('Remind me about this customer'),
+        'cust_remind_what'    => lang('What to follow up on (optional)'),
+        'cust_remind_default' => ws_js_template('Follow up: {var:1}', 1),
+        'cust_remind_day'     => lang('Day'),
+        'cust_remind_time'    => lang('Time (optional)'),
+        'cust_remind_save'    => lang('Set reminder'),
+        'cust_remind_note'    => lang(array('string' => 'A task for you on this channel, tagged with the customer. You are reminded on the day, in your inbox and by e-mail, at the time you pick or at {var:1}.', 'vars' => WS_TASK_REMIND_DAY_TIME)),
+        'cust_remind_done'    => ws_js_template('Reminder set: {var:1}, {var:2}', 2),
     );
 }
 

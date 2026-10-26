@@ -198,7 +198,7 @@ function erp_import_step_upload($liveform, $kind_options)
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-success"><i class="bi bi-upload me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Continue')) . '</span></button>
+                            <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-success"><i class="bi bi-upload me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Continue')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -392,8 +392,8 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline-secondary"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Re-check')) . '</span></button>
-                            <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Start import')) . '</span></button>
+                            <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline-secondary"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Re-check')) . '</span></button>
+                            <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Start import')) . '</span></button>
                         </div>
                     </div>
                 </nav>

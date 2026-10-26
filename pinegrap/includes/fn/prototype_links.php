@@ -903,9 +903,16 @@ function pg_proto_link_password_html($view)
 <link rel="stylesheet" href="' . h($software) . '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css') . '">
 <link rel="stylesheet" href="' . h($software) . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . $version('/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
 <style>
+/* Token layer of this page, which does not load backend.src.css: the
+   --pg-* names its rules read, mapped to the Bootstrap variables. */
+:root, [data-bs-theme] {
+  --pg-bg-1: var(--bs-tertiary-bg);
+  --pg-bg-body: var(--bs-body-bg);
+  --pg-border-color: var(--bs-border-color);
+}
 html, body { height: 100%; }
-body.pg-proto { display: flex; flex-direction: column; margin: 0; background: var(--bs-tertiary-bg); }
-.pg-proto-bar { display: flex; align-items: center; gap: .5rem; padding: .375rem 1rem; min-height: 2.75rem; background: var(--bs-body-bg); border-bottom: 1px solid var(--bs-border-color); }
+body.pg-proto { display: flex; flex-direction: column; margin: 0; background: var(--pg-bg-1); }
+.pg-proto-bar { display: flex; align-items: center; gap: .5rem; padding: .375rem 1rem; min-height: 2.75rem; background: var(--pg-bg-body); border-bottom: 1px solid var(--pg-border-color); }
 .pg-proto-main { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
 .pg-proto-pass { width: 100%; max-width: 22rem; }
 </style>

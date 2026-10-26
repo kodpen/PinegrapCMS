@@ -1978,7 +1978,7 @@ function output_header($properties = false)
 
         $output_software_sidebar = '
         <div class="software-sidebar position-fixed d-print-none bg-software-navbar backdrop">
-            <nav id="menu" class="menu z-1  ' . $menu_expanded_class . '" style="position:sticky;left:0;top:0;bottom:0;">
+            <nav id="menu" class="z-1  ' . $menu_expanded_class . '" style="position:sticky;left:0;top:0;bottom:0;">
 
                 <div class="menu-body">
                     ' . output_menu(array('toolbar' => $toolbar)) . '
@@ -2172,7 +2172,7 @@ function output_header($properties = false)
                 ' . $output_settings_button . '
                 <ul class="navbar-nav">
                     <li class="nav-item dropdown no-arrow  no-popover" title="' . lang('Notifications') . ' (Ctrl+Q | ⌘+Q)">
-                        <button type="button" id="notification_toggle" class="nav-link nav-link-sm no-popover dropdown-toggle" data-bs-toggle="dropdown" data-bs-target="#notifications" data-bs-auto-close="outside" aria-expanded="false">
+                        <button type="button" id="notification_toggle" class="nav-link nav-link-sm no-popover dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" data-bs-target="#notifications" data-bs-auto-close="outside" aria-expanded="false">
                             <span class="has-notification-icon bi bi-bell"></span>
                         </button>
                         <div id="notifications" class="dropdown-menu shadow p-0 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" tabindex="-1" aria-labelledby="notification_toggle" aria-hidden="true">
@@ -2525,7 +2525,7 @@ function pg_account_menu($user, $options = array())
 
     return '
                     <li class="nav-item dropdown no-arrow pg-account">
-                        <button type="button" id="user_menu_toggle" class="btn btn-secondary pg-acctbtn dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="user_menu" title="' . h(lang('My Menu')) . '">
+                        <button type="button" id="user_menu_toggle" class="btn btn-secondary pg-acctbtn dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="user_menu" title="' . h(lang('My Menu')) . '">
                             <span class="pg-avwrap">
                                 <span class="pg-avatar"><img src="' . h($picture) . '" alt="" width="28" height="28"></span>' . $badge . '
                             </span>
@@ -3203,10 +3203,12 @@ function output_menu($properties = false)
             $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_contact_group.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Contact Group'))) . '</a>';
         }
 
-        // CONTACTS > Personal data export (staff only: it reads users and orders too)
+        // CONTACTS > Personal data export and erasure (staff only: they read
+        // users and orders too)
         if ($user['role'] < 3) {
             $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_export.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-down bi-me-2\'>' . lang('Personal data export') . '</a>';
+            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_erase.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-x bi-me-2\'>' . lang('Personal data erasure') . '</a>';
         }
     }
 
@@ -3764,6 +3766,7 @@ function output_menu($properties = false)
         case 'edit_contact_group.php':
         case 'organize_contacts.php':
         case 'privacy_export.php':
+        case 'privacy_erase.php':
             $active_menu = 7;
             break;
         case 'view_users.php':

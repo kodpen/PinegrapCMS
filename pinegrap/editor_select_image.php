@@ -538,9 +538,9 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     align-items: center;
     gap: .1rem;
     padding: .15rem .35rem;
-    border: 1px solid var(--bs-border-color);
+    border: 1px solid var(--pg-border-color);
     border-radius: 2rem;
-    background-color: var(--bs-tertiary-bg);
+    background-color: var(--pg-bg-1);
 }
 
 .esi-filters:focus-within { border-color: var(--pg-logo-color-1); }
@@ -555,7 +555,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
        option list from the background-color of the select itself, and a transparent one
        leaves that list white in the middle of a dark panel. Matching the pill keeps
        the closed control looking seamless and the open list looking like the site. */
-    background-color: var(--bs-tertiary-bg);
+    background-color: var(--pg-bg-1);
     box-shadow: none;
     color: inherit;
     font-size: .8125rem;
@@ -571,17 +571,17 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 /* Said out loud as well, because the rows of the list inherit "transparent" from the
    select on their own and land on the white default of the browser. */
 .esi-filters .form-select option {
-    background-color: var(--bs-body-bg);
-    color: var(--bs-body-color);
+    background-color: var(--pg-bg-body);
+    color: var(--pg-fg-body);
 }
 
-.esi-filters .form-control::placeholder { color: var(--bs-secondary-color); }
+.esi-filters .form-control::placeholder { color: var(--pg-fg-2); }
 
 .esi-divider {
     width: 1px;
     align-self: stretch;
     margin: .2rem .25rem;
-    background-color: var(--bs-border-color);
+    background-color: var(--pg-border-color);
 }
 
 .esi-seg-icon {
@@ -602,9 +602,9 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 }
 
 .esi-seg-btn:hover,
-.esi-clear-btn:hover { background-color: var(--bs-secondary-bg); }
+.esi-clear-btn:hover { background-color: var(--pg-bg-2); }
 .esi-seg-btn::after   { display: none; }
-.esi-clear-btn        { color: var(--bs-secondary-color); }
+.esi-clear-btn        { color: var(--pg-fg-2); }
 
 .esi-field  { width: 7.5rem; }
 .esi-search { width: 10rem; }
@@ -619,10 +619,10 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     align-items: center;
     max-width: 16rem;
     padding: .15rem .55rem;
-    border: 1px solid var(--bs-border-color);
+    border: 1px solid var(--pg-border-color);
     border-radius: 2rem;
-    background-color: var(--bs-tertiary-bg);
-    color: var(--bs-body-color);
+    background-color: var(--pg-bg-1);
+    color: var(--pg-fg-body);
     font-size: .75rem;
     line-height: 1.6;
     text-decoration: none;
@@ -632,8 +632,8 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 }
 
 .esi-chip:hover {
-    border-color: var(--bs-danger-border-subtle);
-    color: var(--bs-danger-text-emphasis);
+    border-color: var(--pg-danger-border-subtle);
+    color: var(--pg-danger-fg-emphasis);
 }
 
 .esi-tile {
@@ -641,7 +641,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     width: 100%;
     padding: 0 0 .35rem;
     border: 1px solid transparent;
-    border-radius: var(--bs-border-radius-lg);
+    border-radius: var(--pg-radius-lg);
     background-color: transparent;
     color: inherit;
     text-align: left;
@@ -653,7 +653,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     outline: 0;
     transform: translateY(-2px);
     border-color: var(--pg-logo-color-1);
-    background-color: var(--bs-tertiary-bg);
+    background-color: var(--pg-bg-1);
 }
 
 .esi-thumb {
@@ -661,8 +661,8 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     display: block;
     overflow: hidden;
     aspect-ratio: 4 / 3;
-    border-radius: calc(var(--bs-border-radius-lg) - 1px);
-    background-color: var(--bs-tertiary-bg);
+    border-radius: calc(var(--pg-radius-lg) - 1px);
+    background-color: var(--pg-bg-1);
     background-image: radial-gradient(transparent, rgba(0, 0, 0, .14));
 }
 

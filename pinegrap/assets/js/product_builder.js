@@ -2488,7 +2488,7 @@
        assumed: the same screen is used to create and to edit, and hard-coding
        "Create" here overwrote "Save" on the edit screen the moment the page
        finished loading. */
-    var createLabel = $.trim($('#pg_pb_create .btn-text').text()) || label('Create');
+    var createLabel = $.trim($('#pg_pb_create .pg-btn-label').text()) || label('Create');
 
     /* Only the switch being turned on changes where the save goes. A product
        that already has a form is not about to be sent to the field designer —
@@ -2500,7 +2500,7 @@
     var continueText = (cfg.mode === 'edit') ? label('Save & Continue') : label('Create & Continue');
 
     $('#product_form').on('change', function () {
-        $('#pg_pb_create .btn-text').text(
+        $('#pg_pb_create .pg-btn-label').text(
             (this.checked && !formWasOn) ? continueText : createLabel);
     }).trigger('change');
 
@@ -2712,9 +2712,9 @@
             /* Without the Bootstrap 5 theme select2 renders its own default
                skin: a thinner control with a white background that does not
                match the form-select fields beside it, and ignores dark mode.
-               Every other select2 on this screen gets the theme from the
-               shared initialiser in backend.src.js; this one is set up here,
-               so it has to ask for it itself. */
+               Every other select2 on this screen gets the theme from
+               pgCombobox (pg_fields.js); this one is set up here, so it has
+               to ask for it itself. */
             theme: 'bootstrap-5',
             width: '100%',
             allowClear: true,

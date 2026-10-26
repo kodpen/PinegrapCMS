@@ -733,7 +733,7 @@ function ws_claude_fire($test = false, $queue = 'workspace')
     $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     $header_size = (int) curl_getinfo($curl, CURLINFO_HEADER_SIZE);
     $network = curl_error($curl);
-    curl_close($curl);
+    unset($curl);
 
     $headers = is_string($raw) ? substr($raw, 0, $header_size) : '';
     $body = is_string($raw) ? substr($raw, $header_size) : '';
@@ -1293,10 +1293,10 @@ Work through the queue:
       "due_date": "YYYY-MM-DD", "priority": "low|normal|high|urgent"}], at most 10.
       Somebody in the channel opens them with one click.
       When the request asks to change, add or delete a record - a product, its stock,
-      an order, a customer, an ERP account, a product group and the products in it,
-      the channel's summary, a person's role, a page's details, a submitted form,
-      a file, an offer, a calendar event, a task, a note on a task, a note of the
-      Workspace - do not write it and do not look for an endpoint that
+      an order, a customer, an ERP account, a sales quote, a product group and the
+      products in it, the channel's summary, a person's role, a page's details, a
+      submitted form, a file, an offer, a calendar event, a task, a note on a task,
+      a note of the Workspace - do not write it and do not look for an endpoint that
       writes it. Read the record first with
       GET /workspace/claude/requests/{id}/records/{type}/{record_id}: it gives
       every field a change may set, with what the record holds now, read with the
@@ -1342,6 +1342,16 @@ Work through the queue:
           invoice_email, invoice_mail, overdue_notify_days, overdue_notify_customer,
           status (active|passive), notes. A new one also takes kind
           (customer|supplier|both) and is_person, and needs title.
+        erp_quote (create): a sales quote, never a cart quote. account_id (a list
+          of one active current account, not a supplier alone), issue_date and
+          valid_until (YYYY-MM-DD; today and 30 days later when left out),
+          currency (three letters; the store's when left out), notes, lines (a
+          list of objects as POST /erp/quotes takes them: product_id,
+          description, quantity, unit, unit_price in minor units, discount_rate,
+          tax_rate, tax2_rate, withholding_code, withholding_rate; a line with a
+          product_id takes the product's name and VAT rate where they are left
+          out, any other line needs description and tax_rate). Needs account_id
+          and lines; numbered when applied.
         product_group (update, create, delete, add, remove): name, title,
           short_description, full_description, meta_description, meta_keywords,
           keywords, enabled. A new one also takes parent_id (a group id; the top of

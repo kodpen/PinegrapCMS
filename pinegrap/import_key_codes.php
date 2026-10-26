@@ -58,7 +58,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import" name="submit_import" value="Import" class="btn my-1  btn-success " ><span class="material-icons me-2">file_upload</span><span class="btn-text" >' . lang(array('string'=>'Import Key Codes') ) . '</span></button>
+                                <button type="submit" id="submit_import" name="submit_import" value="Import" class="btn my-1  btn-success " ><span class="material-icons me-2">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Key Codes') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -79,13 +79,8 @@ if (!$_POST) {
         output_error(lang('Please select a file') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    // Fix classic Mac (CR-only) line endings: fgetcsv() splits only on LF unless this
-    // setting is on. It is deprecated since PHP 8.1 but still functional through 8.5,
-    // so the E_DEPRECATED notice is suppressed instead of dropping CR support.
-    @ini_set('auto_detect_line_endings', true);
-
     // get file handle for uploaded CSV file
-    $handle = fopen($_FILES['file']['tmp_name'], "r");
+    $handle = pg_csv_open($_FILES['file']['tmp_name']);
 
     // The header line says which separator the file uses. A byte order mark
     // (Excel's "CSV UTF-8") is stepped over before the cells are read: left

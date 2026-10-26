@@ -152,32 +152,50 @@ function api_app_secret_can_rotate(array $app) {
 
 }
 
-// Makes an application key for a panel screen that sets one up by itself (the
-// assistants' cards in the Workspace settings). Always kind 'server': a
-// 'device' or 'oauth' application lets people sign in, which nothing made
-// here is for. $owner_id owns the key and is recorded as the one who made it;
-// its scopes are capped by that account's rights on every call
-// (api_effective_scopes()).
+// The kind an application row is made as, from a posted value: a team devices
+// application ('device', includes/api/devices.php) or an OAuth application
+// ('oauth', includes/oauth/), anything else the column's default, 'server'.
+function api_app_kind($kind) {
+
+	return (is_string($kind) && in_array($kind, array('device', 'oauth'), true)) ? $kind : 'server';
+
+}
+
+// Whether a new row of $kind is given a secret. A 'device' or 'oauth'
+// application never is: the app it is typed into cannot keep one, and people
+// sign in through it with their own accounts. A 'server' row only when the
+// caller asks: Pinegrap AI's key is made without one.
+function api_app_issues_secret($kind, $with_secret) {
+
+	return ($kind === 'server') && (bool)$with_secret;
+
+}
+
+// Makes an application key: Application Access's "New application", and the
+// assistants' cards in the Workspace settings, which always make 'server'
+// keys. $kind goes through api_app_kind(). $owner_id owns the key and is
+// recorded as the one who made it; its scopes are capped by that account's
+// rights on every call (api_effective_scopes()).
 //
-// With $with_secret a secret is made and only its hash and its last four
-// characters are stored; without one the key cannot sign in at all, since
-// api_secret_matches() needs a stored hash. The plain secret exists only in
-// the answer: the caller shows it once and keeps it nowhere. The audit line
-// masks api_key and api_secret_* by name (pg_audit_secret_key()), and the Site
-// Log line names the application only. $username is whose name that line
-// carries.
+// With $with_secret a 'server' row gets a secret, and only its hash and its
+// last four characters are stored; without one the key cannot sign in at all,
+// since api_secret_matches() needs a stored hash (api_app_issues_secret()).
+// The plain secret exists only in the answer: the caller shows it once and
+// keeps it nowhere. The audit line masks api_key and api_secret_* by name
+// (pg_audit_secret_key()), and the Site Log line names the application only.
+// $username is whose name that line carries.
 //
 // Answers array('id' => int, 'key' => string, 'secret' => string, empty
-// without a secret), or null when the row could not be written.
-//
-// api_settings.php still writes the same INSERT in its create branch: a change
-// to one belongs in the other too.
-function api_app_create($name, $description, array $scopes, $owner_id, $with_secret, $username) {
+// without a secret, 'kind' => string), or null when the row could not be
+// written.
+function api_app_create($name, $description, array $scopes, $owner_id, $with_secret, $username, $kind = 'server') {
 
 	require_once(dirname(__FILE__) . '/scopes.php');
 
+	$kind = api_app_kind($kind);
+
 	$key    = api_generate_key();
-	$secret = $with_secret ? api_generate_secret() : '';
+	$secret = api_app_issues_secret($kind, $with_secret) ? api_generate_secret() : '';
 
 	$written = db("INSERT INTO api_apps
 		(name, description, api_key, api_secret_hash, api_secret_hint, owner_user_id,
@@ -192,7 +210,7 @@ function api_app_create($name, $description, array $scopes, $owner_id, $with_sec
 			'" . escape(json_encode(api_scopes_normalise($scopes))) . "',
 			'active',
 			'120',
-			'server',
+			'" . $kind . "',
 			'" . (int)$owner_id . "',
 			UNIX_TIMESTAMP(),
 			UNIX_TIMESTAMP()
@@ -213,7 +231,7 @@ function api_app_create($name, $description, array $scopes, $owner_id, $with_sec
 		'vars'   => (string)$name
 	)), (string)$username);
 
-	return array('id' => $id, 'key' => $key, 'secret' => $secret);
+	return array('id' => $id, 'key' => $key, 'secret' => $secret, 'kind' => $kind);
 
 }
 
@@ -223,14 +241,11 @@ function api_app_create($name, $description, array $scopes, $owner_id, $with_sec
 // outgoing secret keeps answering that long, the way Application Access
 // rotates. With 0 it stops at once, and so does a previous secret still inside
 // an earlier rotation's grace: api_secret_matches() then accepts only the new
-// one.
+// one. Application Access gives 24 hours, Claude's "Reset secret" none.
 //
 // The plain secret exists only in the answer, as with api_app_create().
 // Answers array('name', 'key', 'secret'), or null when there is no such
 // application, it may not be given a secret, or the row was not written.
-//
-// api_settings.php still writes its own rotation (24 hours of grace): a
-// change to one belongs in the other too.
 function api_app_rotate_secret($app_id, $grace_seconds, $username) {
 
 	$app_id = (int)$app_id;

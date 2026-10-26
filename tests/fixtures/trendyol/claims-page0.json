@@ -1,0 +1,127 @@
+{
+  "totalElements": 3,
+  "totalPages": 1,
+  "page": 0,
+  "size": 50,
+  "content": [
+    {
+      "id": "f9da2317-876b-4b86-b8f7-0535c3b65731",
+      "claimId": "f9da2317-876b-4b86-b8f7-0535c3b65731",
+      "orderNumber": "65745805",
+      "orderDate": 1761100000000,
+      "customerFirstName": "Ayşe",
+      "customerLastName": "Yılmaz",
+      "claimDate": 1761300000000,
+      "cargoTrackingNumber": 72602420957047276000,
+      "cargoTrackingLink": "https://kargotakip.example.com/?q=7260242095704",
+      "cargoSenderNumber": "7260242095704",
+      "cargoProviderName": "Trendyol Express Marketplace",
+      "orderShipmentPackageId": 3853354,
+      "orderOutboundPackageId": 58835111,
+      "items": [
+        {
+          "orderLine": {
+            "id": 28717254,
+            "productName": "Keten Gömlek Beyaz, M",
+            "barcode": "8680000000017",
+            "merchantSku": "GML-BYZ-M",
+            "productColor": "Beyaz",
+            "productSize": "M",
+            "price": 349.9,
+            "vatBaseAmount": 291.58,
+            "vatRate": 20,
+            "salesCampaignId": 1,
+            "productCategory": "Gömlek"
+          },
+          "claimItems": [
+            {
+              "id": "b71461e3-d1a0-4c1d-9a6d-18ecbcb5158c",
+              "orderLineItemId": 29815493,
+              "customerClaimItemReason": {"name": "Beden büyük geldi", "externalReasonId": 1651, "code": "BIGSIZE"},
+              "trendyolClaimItemReason": {"name": "Beden büyük geldi", "externalReasonId": 1651, "code": "BIGSIZE"},
+              "claimItemStatus": {"name": "WaitingInAction"},
+              "note": "",
+              "customerNote": "Bir beden küçüğünü alacağım",
+              "resolved": false,
+              "autoAccepted": false,
+              "acceptedBySeller": false
+            },
+            {
+              "id": "c82572f4-e2b1-4d2e-8b7e-29fdcd6269d0",
+              "orderLineItemId": 29815494,
+              "customerClaimItemReason": {"name": "Beden büyük geldi", "externalReasonId": 1651, "code": "BIGSIZE"},
+              "trendyolClaimItemReason": {"name": "Beden büyük geldi", "externalReasonId": 1651, "code": "BIGSIZE"},
+              "claimItemStatus": {"name": "WaitingInAction"},
+              "note": "",
+              "customerNote": "",
+              "resolved": false,
+              "autoAccepted": false,
+              "acceptedBySeller": false
+            }
+          ]
+        },
+        {
+          "orderLine": {
+            "id": 28717255,
+            "productName": "Kemer Kahve",
+            "barcode": "8680000000024",
+            "merchantSku": "KMR-KHV",
+            "price": 129.95,
+            "vatBaseAmount": 108.29,
+            "vatRate": 20
+          },
+          "claimItems": [
+            {
+              "id": "d93683a5-f3c2-4e3f-9c8f-3a0edf737ae1",
+              "orderLineItemId": 29815495,
+              "customerClaimItemReason": {"name": "Vazgeçtim", "externalReasonId": 1652, "code": "GIVEUP"},
+              "trendyolClaimItemReason": {"name": "Vazgeçtim", "externalReasonId": 1652, "code": "GIVEUP"},
+              "claimItemStatus": {"name": "Created"},
+              "note": "",
+              "customerNote": "",
+              "resolved": false,
+              "autoAccepted": false,
+              "acceptedBySeller": false
+            }
+          ]
+        }
+      ],
+      "lastModifiedDate": 1761310000000
+    },
+    {
+      "id": "0a1b2c3d-4e5f-4061-8728-394a5b6c7d8e",
+      "claimId": "0a1b2c3d-4e5f-4061-8728-394a5b6c7d8e",
+      "orderNumber": "65745999",
+      "orderDate": 1760900000000,
+      "customerFirstName": "Mehmet",
+      "customerLastName": "Kaya",
+      "claimDate": 1761000000000,
+      "cargoProviderName": "Aras Kargo Marketplace",
+      "orderShipmentPackageId": 3853999,
+      "orderOutboundPackageId": 58835999,
+      "items": [
+        {
+          "orderLine": {
+            "id": 28717999,
+            "productName": "Keten Gömlek Mavi, L",
+            "barcode": "8680000000031",
+            "merchantSku": "GML-MV-L",
+            "price": 349.9
+          },
+          "claimItems": [
+            {
+              "id": "e04794b6-04d3-4f40-ad90-4b1fe0848bf2",
+              "orderLineItemId": 29815999,
+              "customerClaimItemReason": {"name": "Ürün hasarlı geldi", "externalReasonId": 1653, "code": "DAMAGED"},
+              "claimItemStatus": {"name": "Accepted"},
+              "resolved": true,
+              "autoAccepted": false,
+              "acceptedBySeller": true
+            }
+          ]
+        }
+      ],
+      "lastModifiedDate": 1761200000000
+    }
+  ]
+}

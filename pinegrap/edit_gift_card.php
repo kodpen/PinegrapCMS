@@ -319,10 +319,10 @@ if (!$_POST) {
                                                 'size' => '10',
                                                 'maxlength' => '10',
                                                 'class'=>'form-control',
-                                                'autocomplete'=>'off')) . '
-                                                ' . get_date_picker_format() . '
+                                                'autocomplete'=>'off',
+                                                'data-pg-date' => '')) . '
+                                                ' . get_date_picker_format() . pg_fields_script() . '
                                             <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
-                                            <script>$("#expiration_date").datepicker(datetimepicker_options);</script>
                                         </div>
                                         <div class="col-12 col-xl-8 my-2">
                                             <label for="notes" class="form-label">' . lang('Notes') . '</label>
@@ -344,8 +344,8 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

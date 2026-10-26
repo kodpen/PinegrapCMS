@@ -386,3 +386,151 @@ function test_price_history_trim_delete_sql()
 	pg_assert_same('', pg_price_history_trim_delete_sql(array(), 1726000000, array(41), 5000), 'no product');
 	pg_assert_contains('LIMIT 1', pg_price_history_trim_delete_sql(array(3), 1726000000, array(41), 0), 'at least one row');
 }
+
+// A row as the window query reads it, values as strings like the database
+// gives them.
+function price_history_test_row($id, $changed_at, $price, $source = 'panel')
+{
+	return array('id' => (string) $id, 'changed_at' => (string) $changed_at, 'price' => (string) $price, 'source' => $source);
+}
+
+// The lowest price of a covered window: the price that applied when the
+// window began (the newest row before it) and every row inside it.
+function test_price_history_reference_lowest()
+{
+	$end = 1760000000;
+	$day = 86400;
+	$rows = array(
+		price_history_test_row(1, $end - 40 * $day, 1000, 'initial'),
+		price_history_test_row(2, $end - 20 * $day, 800),
+		price_history_test_row(3, $end - 5 * $day, 1200, 'offer'),
+	);
+
+	pg_assert_same(array('price' => 800, 'kind' => 'lowest', 'days' => 30), pg_price_history_reference($rows, 1200, 'lowest_30d', $end), '30 days');
+	pg_assert_same(array('price' => 800, 'kind' => 'lowest', 'days' => 10), pg_price_history_reference($rows, 1200, 'lowest_10d', $end), 'the price at the window start is the row before it');
+	pg_assert_same(array('price' => 800, 'kind' => 'lowest', 'days' => 30), pg_price_history_reference(array_reverse($rows), 1200, 'lowest_30d', $end), 'rows in any order');
+}
+
+// A row stamped at the window's end is the price the window is the reference
+// for, not part of it; a row at its start is the price it began with.
+function test_price_history_reference_window_edges()
+{
+	$end = 1760000000;
+	$day = 86400;
+	$rows = array(
+		price_history_test_row(1, $end - 40 * $day, 1000, 'initial'),
+		price_history_test_row(2, $end - 30 * $day, 900),
+		price_history_test_row(3, $end, 600, 'offer'),
+		price_history_test_row(4, $end + $day, 500, 'offer'),
+	);
+
+	pg_assert_same(array('price' => 900, 'kind' => 'lowest', 'days' => 30), pg_price_history_reference($rows, 600, 'lowest_30d', $end));
+}
+
+// While the upgrade's initial row is younger than the window, the price before
+// it is unknown: the current price is given with its own label, never a lowest
+// read from part of the window.
+function test_price_history_reference_not_covered()
+{
+	$end = 1760000000;
+	$day = 86400;
+	$rows = array(
+		price_history_test_row(1, $end - 12 * $day, 1000, 'initial'),
+		price_history_test_row(2, $end - 6 * $day, 950),
+		price_history_test_row(3, $end, 700, 'offer'),
+	);
+
+	pg_assert_same(array('price' => 700, 'kind' => 'current', 'days' => 30), pg_price_history_reference($rows, 700, 'lowest_30d', $end), 'younger than 30 days');
+	pg_assert_same(array('price' => 950, 'kind' => 'lowest', 'days' => 10), pg_price_history_reference($rows, 700, 'lowest_10d', $end), 'older than 10 days');
+	pg_assert_same(array('price' => 700, 'kind' => 'current', 'days' => 30), pg_price_history_reference(array(), '700', 'lowest_30d', $end), 'no history');
+	pg_assert_same(array('price' => 700, 'kind' => 'current', 'days' => 30), pg_price_history_reference(array(price_history_test_row(3, $end, 700, 'offer')), 700, 'lowest_30d', $end), 'no row before the window end');
+}
+
+// A product added after the upgrade has its whole life in the history: the
+// lowest is read from the rows it has.
+function test_price_history_reference_new_product()
+{
+	$end = 1760000000;
+	$day = 86400;
+	$rows = array(
+		price_history_test_row(8, $end - 7 * $day, 1500),
+		price_history_test_row(9, $end - 3 * $day, 1300, 'api'),
+	);
+
+	pg_assert_same(array('price' => 1300, 'kind' => 'lowest', 'days' => 30), pg_price_history_reference($rows, 1000, 'lowest_30d', $end));
+}
+
+// Two rows in the same second before the window: the later id is the price
+// that applied, the earlier one never counts.
+function test_price_history_reference_same_second()
+{
+	$end = 1760000000;
+	$day = 86400;
+	$rows = array(
+		price_history_test_row(6, $end - 31 * $day, 900),
+		price_history_test_row(5, $end - 31 * $day, 700),
+	);
+
+	pg_assert_same(array('price' => 900, 'kind' => 'lowest', 'days' => 30), pg_price_history_reference($rows, 900, 'lowest_30d', $end));
+}
+
+// A price is rounded to whole minor units, never cut; a row without a price
+// is passed over.
+function test_price_history_reference_row_values()
+{
+	$end = 1760000000;
+	$day = 86400;
+	$rows = array(
+		price_history_test_row(1, $end - 40 * $day, '799.6', 'initial'),
+		array('id' => '2', 'changed_at' => (string) ($end - 3 * $day), 'price' => 'x', 'source' => 'panel'),
+		array('id' => '3', 'changed_at' => (string) ($end - 2 * $day), 'source' => 'panel'),
+	);
+
+	pg_assert_same(array('price' => 800, 'kind' => 'lowest', 'days' => 30), pg_price_history_reference($rows, 900, 'lowest_30d', $end));
+	pg_assert_same(array('price' => 900, 'kind' => 'current', 'days' => 30), pg_price_history_reference(array(), '899.5', 'lowest_30d', $end), 'current price rounded');
+}
+
+// The manual rule shows the merchant's compare-at price only above the current
+// price; the history is not read.
+function test_price_history_reference_manual()
+{
+	$end = 1760000000;
+	$rows = array(price_history_test_row(1, $end - 40 * 86400, 500, 'initial'));
+
+	pg_assert_same(array('price' => 1500, 'kind' => 'manual', 'days' => 0), pg_price_history_reference($rows, 1000, 'manual', $end, '1500'));
+	pg_assert_same(array('price' => null, 'kind' => 'none', 'days' => 0), pg_price_history_reference($rows, 1000, 'manual', $end, 1000), 'not above the current price');
+	pg_assert_same(array('price' => null, 'kind' => 'none', 'days' => 0), pg_price_history_reference($rows, 1000, 'manual', $end, null), 'none set');
+	pg_assert_same(array('price' => null, 'kind' => 'none', 'days' => 0), pg_price_history_reference($rows, 1000, 'manual', $end, '0'), 'zero is none');
+	pg_assert_same(array('price' => null, 'kind' => 'none', 'days' => 0), pg_price_history_reference($rows, 1000, 'manual', $end, -5), 'not a compare-at price');
+	pg_assert_same(array('price' => null, 'kind' => 'none', 'days' => 0), pg_price_history_reference($rows, 1000, 'lowest_7d', $end), 'not a rule');
+}
+
+// One query for a page of products: the rows inside the window and, per
+// product, the rows of the newest second at or before its start.
+function test_price_history_window_sql()
+{
+	$sql = pg_price_history_window_sql(array(3, '5', 'x', 3), 'web', 1757408000, 1760000000);
+
+	pg_assert_contains('(product_id IN (3,5))', $sql);
+	pg_assert_contains("(channel = 'web')", $sql);
+	pg_assert_contains("(changed_at > '1757408000')", $sql);
+	pg_assert_contains("(changed_at < '1760000000')", $sql);
+	pg_assert_contains("(changed_at <= '1757408000')", $sql);
+	pg_assert_contains('MAX(changed_at)', $sql);
+	pg_assert_contains('UNION ALL', $sql);
+	pg_assert_contains('ORDER BY product_id, changed_at, id', $sql);
+
+	pg_assert_same('', pg_price_history_window_sql(array(), 'web', 1757408000, 1760000000), 'no product');
+	pg_assert_same('', pg_price_history_window_sql(array(3), "web' OR 1", 1757408000, 1760000000), 'not a channel');
+	pg_assert_same('', pg_price_history_window_sql(array(3), 'web', 1760000000, 1760000000), 'an empty window');
+}
+
+// The window's start for a rule, and none for a rule that reads no history.
+function test_price_history_reference_rules()
+{
+	pg_assert_same(array('lowest_30d' => 30, 'lowest_10d' => 10, 'manual' => 0), pg_price_history_reference_rules());
+	pg_assert_same(1760000000 - 30 * 86400, pg_price_history_window_start('lowest_30d', 1760000000));
+	pg_assert_same(1760000000 - 10 * 86400, pg_price_history_window_start('lowest_10d', 1760000000));
+	pg_assert_same(null, pg_price_history_window_start('manual', 1760000000));
+	pg_assert_same(null, pg_price_history_window_start('lowest_7d', 1760000000));
+}

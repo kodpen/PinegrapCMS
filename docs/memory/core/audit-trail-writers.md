@@ -7,7 +7,7 @@ description: Which save paths write audit_log rows, how they read the row before
 - `$before = pg_audit_fetch($table, $id)` before the write, `pg_audit_record($action, $table, $id, $before)` after it (row after read in the same request, none after a delete; nothing on either side writes nothing). `WHERE id IN (…)`: `pg_audit_fetch_many()` + `pg_audit_record_many()`, one line per row. Types and name columns: `pg_audit_tables()`. A failed read stops nothing.
 - After an INSERT, read the new id before recording: the line is itself an INSERT and changes `mysqli_insert_id()`.
 - Left out, masked, JSON text: `core/audit-trail-stored-values.md`.
-- Actions: `create`, `update`, `delete`, `recycle`, `restore`, `rotate`, `revoke`, `cancel`, `refund`, `export`.
+- Actions: `create`, `update`, `delete`, `recycle`, `restore`, `rotate`, `revoke`, `cancel`, `refund`, `export`, `erase`.
 - Only the main row is compared, not linked rows (product zones, images, groups; an order's ship_tos). Offers: `_pg_offer_audit_state()` (conditions and actions included).
 
 ## Where is it written?
@@ -19,7 +19,7 @@ description: Which save paths write audit_log rows, how they read the row before
 - Files: `add_file.php`, `edit_file.php`, `edit_files.php`, API `files.php`, file manager (create, upload, paste, folder copy, zip create and extract, rename, move, bin, restore, delete, WebP, save, rotate, bulk edit, design flag).
 - Users: `add_user.php`, `edit_user.php` (save, contact link, delete), `delete_users.php` (row read before its tokens go).
 - Workspace (proposals, drawer, bulk, scheduled): `ws_change_write()`, `core/audit-trail-workspace.md`.
-- Personal data: `privacy_export.php` (`export`, type `person`; `core/personal-data-export.md`).
+- Personal data, type `person`: `privacy_export.php` (`export`), `privacy_erase.php` (`erase`).
 - Before #1237 bulk page edit, zip, product Copy, variant set on/off wrote nothing (#993).
 
 ## What is not hooked yet?
@@ -30,6 +30,6 @@ description: Which save paths write audit_log rows, how they read the row before
 - MariaDB, panel requests (settings, API apps, file manager, catalog, page editor, order cancel/restore): one line each, changed fields only. Pages with 35 KB and 1.1 MB trees deleted from the bin keep name and title. A first save after an upgrade writes NULL → '' once. The page editor writes `page_home = ''`, not `no`, off the home page (not fixed).
 
 ## Personal data?
-- A deleted order or user keeps its whole row in `before_json` (card fields masked); erasure (plan step 4) decides.
+- A deleted order or user keeps its whole row in `before_json` (card fields masked) until the person is erased.
 
 Related: docs/memory/core/audit-trail-stored-values.md, docs/memory/core/audit-trail-workspace.md, docs/memory/core/consent-log-and-audit-trail.md, docs/memory/plans/privacy-data-pack-audit-log.md

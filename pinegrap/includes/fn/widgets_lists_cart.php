@@ -1,0 +1,130 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+// A module of functions.php: the visitor's cart as a list
+// (widgets_lists.php), so a designer draws a mini cart in the cart link (a
+// header's dropdown or offcanvas) and a read-only summary of the cart beside
+// the cart widget's own editable rows:
+//
+//   cart.items  the products in the visitor's cart, lines saved for later
+//               left out (pg_order_item_active_sql()).
+//
+// The list reads ^^__ship_to_key^^, as the order view's lists do: 0 (the
+// static value) is the whole cart, a recipient's id that recipient's lines.
+// The row tokens carry the cart loop's names (^^__item_name^^,
+// ^^__item_total^^ ...), so a row binds as a cart row does. The renderers
+// publish the rows (_render_system_widget_cart_link(),
+// _render_system_widget_shopping_cart()).
+//
+// Loaded by functions.php through require_once, never on its own.
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+// The cart source, in pg_sw_list_sources()'s shape.
+function pg_sw_list_cart_sources()
+{
+    return array(
+        'cart.items' => array(
+            'family'       => 'cart',
+            'key'          => '__ship_to_key',
+            'label'        => lang('Products in the cart'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__item_id', lang('Row ID (order_items.id)')),
+                array('__item_name', lang('Product name (products.name)')),
+                array('__item_short_description', lang('Short description (display name)')),
+                array('__item_qty', lang('Quantity')),
+                array('__item_price', lang('Unit price')),
+                array('__item_total', lang('Row total')),
+                array('__item_image', lang('Image URL')),
+                array('__item_image_alt', lang('Image alt text')),
+                array('__item_url', lang('Product detail page URL')),
+                array('__item_remove_url', lang('Remove from cart URL')),
+            ),
+        ),
+    );
+}
+
+// The rows of the cart list, as pg_sw_list_publish('cart') files them:
+// array('cart.items' => key => rows). $items: the cart widget's items
+// (item_id, name, short_description, qty, unit_price, line_total, image,
+// url, remove_url, ship_to_id), in cart order. Key 0 holds every line, a
+// recipient's id its lines. Raw values: the pass escapes them once.
+function pg_sw_list_cart_rows($items)
+{
+    $out = array('cart.items' => array());
+    foreach ((array)$items as $item) {
+        if (!is_array($item)) continue;
+        $g = function ($k) use ($item) { return isset($item[$k]) ? (string)$item[$k] : ''; };
+        $row = array(
+            '__item_id'                => (string)(int)$g('item_id'),
+            '__item_name'              => $g('name'),
+            '__item_short_description' => $g('short_description'),
+            '__item_qty'               => (string)(int)$g('qty'),
+            '__item_price'             => $g('unit_price'),
+            '__item_total'             => $g('line_total'),
+            '__item_image'             => $g('image'),
+            '__item_image_alt'         => ($g('short_description') !== '') ? $g('short_description') : $g('name'),
+            '__item_url'               => ($g('url') !== '') ? $g('url') : '#',
+            '__item_remove_url'        => $g('remove_url'),
+        );
+        $out['cart.items'][0][] = $row;
+        $st = (int)$g('ship_to_id');
+        if ($st > 0) $out['cart.items'][$st][] = $row;
+    }
+    return $out;
+}
+
+// The cart link's lines in the cart widget's item shape
+// (pg_sw_list_cart_rows()): one query over the visitor's active lines,
+// ordered as the cart orders them. $fmt_money formats minor units; the
+// detail page is the catalog detail page the site resolves, the removal
+// goes through remove_item_from_cart.php back to this page.
+function pg_sw_list_cart_read($order_id, $fmt_money)
+{
+    $order_id = (int)$order_id;
+    if ($order_id <= 0) return array();
+    $rows = db_items(
+        "SELECT oi.id AS item_id, oi.product_name, oi.quantity, oi.price, oi.ship_to_id,
+                p.address_name, p.image_name, p.short_description
+         FROM order_items oi
+         LEFT JOIN products p ON oi.product_id = p.id
+         WHERE oi.order_id = '" . $order_id . "'" . pg_order_item_active_sql('oi') . "
+         ORDER BY oi.ship_to_id ASC, oi.id ASC"
+    );
+    $base   = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    $detail = pg_sw_catalog_detail_page_name(0);
+    $soft   = defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software';
+    $send   = function_exists('get_request_uri') ? get_request_uri() : (isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '/');
+    $token  = isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '';
+    $items  = array();
+    foreach ((array)$rows as $r) {
+        $qty  = (int)$r['quantity'];
+        $unit = (int)$r['price'];
+        $slug = (string)$r['address_name'];
+        $items[] = array(
+            'item_id'           => (int)$r['item_id'],
+            'name'              => (string)$r['product_name'],
+            'short_description' => (string)$r['short_description'],
+            'qty'               => $qty,
+            'unit_price'        => $fmt_money($unit),
+            'line_total'        => $fmt_money($unit * $qty),
+            'image'             => ((string)$r['image_name'] !== '') ? $base . encode_url_path((string)$r['image_name']) : '',
+            'url'               => ($slug === '') ? '' : $base . (($detail !== '') ? encode_url_path($detail) . '/' : '') . encode_url_path($slug),
+            'remove_url'        => $base . $soft . '/remove_item_from_cart.php?order_item_id=' . (int)$r['item_id']
+                                   . '&screen=shopping_cart&send_to=' . urlencode($send) . '&token=' . $token,
+            'ship_to_id'        => (int)$r['ship_to_id'],
+        );
+    }
+    return $items;
+}

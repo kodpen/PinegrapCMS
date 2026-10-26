@@ -401,17 +401,17 @@ function api_console_css() {
 	padding: 12px 10px 5px; }
 .doc-nav-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 7px;
 	font-size: 12px; text-decoration: none; color: inherit; }
-.doc-nav-item:hover { background: var(--bs-tertiary-bg); color: inherit; }
+.doc-nav-item:hover { background: var(--pg-bg-1); color: inherit; }
 .doc-m { font-size: 9.5px; font-weight: 700; letter-spacing: .03em; padding: 2px 6px; border-radius: 4px;
-	background: var(--bs-tertiary-bg); flex: none; min-width: 42px; text-align: center; }
-.doc-m.post { color: var(--bs-success); }
-.doc-m.get { color: var(--bs-primary); }
-.doc-m.patch, .doc-m.put { color: var(--bs-warning-text-emphasis); }
-.doc-m.delete { color: var(--bs-danger); }
+	background: var(--pg-bg-1); flex: none; min-width: 42px; text-align: center; }
+.doc-m.post { color: var(--pg-success); }
+.doc-m.get { color: var(--pg-primary); }
+.doc-m.patch, .doc-m.put { color: var(--pg-warning-fg-emphasis); }
+.doc-m.delete { color: var(--pg-danger); }
 .doc-group-h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; margin: 22px 0 10px; }
 .doc-group-h:first-child { margin-top: 0; }
-.doc-ep { border: 1px solid var(--bs-border-color); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
-.doc-ep-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--bs-tertiary-bg); }
+.doc-ep { border: 1px solid var(--pg-border-color); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+.doc-ep-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--pg-bg-1); }
 .doc-path { font-size: 13px; font-weight: 600; word-break: break-all; }
 .doc-scope { margin-left: auto; font-size: 10.5px; opacity: .7; }
 .doc-ep-body { padding: 14px; }
@@ -426,17 +426,17 @@ function api_console_css() {
    list does on the screen this page is reached from. */
 .doc-params { overflow-x: auto; }
 .doc-params table { min-width: 520px; }
-.doc-params table td { padding: 5px 8px; font-size: 12px; vertical-align: top; border-color: var(--bs-border-color); }
+.doc-params table td { padding: 5px 8px; font-size: 12px; vertical-align: top; border-color: var(--pg-border-color); }
 .doc-params table td:first-child { width: 170px; }
 .doc-params table td:nth-child(2) { width: 90px; }
-.doc-type { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--bs-border-color); opacity: .8; }
+.doc-type { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--pg-border-color); opacity: .8; }
 .doc-note { font-size: 11.5px; opacity: .75; }
 /* The paste-me line. Quiet enough not to compete with the parameter table,
    wide enough to select in one drag, and it wraps rather than scrolls: a
    command that is cut off at the right edge is copied cut off too. */
-.doc-curl { margin-top: 12px; background: var(--bs-tertiary-bg); border-radius: 6px;
+.doc-curl { margin-top: 12px; background: var(--pg-bg-1); border-radius: 6px;
 	padding: 7px 10px; overflow-wrap: anywhere; }
-.doc-curl code { font-size: 11.5px; color: var(--bs-body-color); opacity: .75; }
+.doc-curl code { font-size: 11.5px; color: var(--pg-fg-body); opacity: .75; }
 .doc-try { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .doc-try-panel { margin-top: 12px; }
 .doc-try-panel pre { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 12px;

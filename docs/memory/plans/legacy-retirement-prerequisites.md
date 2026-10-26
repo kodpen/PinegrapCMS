@@ -8,14 +8,14 @@ description: Plan (2026-10-19, not started): regions editable in the visual desi
   - The designer only prints a `region` node (`_render_region_tag()`); the content stays in `cregion` / `dregion`, is edited outside (`edit_common_region.php`, `edit_designer_region.php`, front-end inline editing) and the canvas shows a "Region: name" placeholder. `SD_LEGACY_REGIONS` says a shared component does their job; nothing converts them.
   - A shared component is never opened to the content level (`designer/designer-content-roles-save-gate.md`), but managers and role-3 users granted a common region (`users_common_regions_xref`) edit it today. Converting as is takes their content away.
   - The converter parses with DOMDocument (`includes/designer_import.php`): PHP inside a designer region (allowed, evaluated after expansion in `get_page_content.php`) would be mangled; nested designer regions expand one level.
-  - `<dregion "x">name</dregion>` hands `$dregion_attribute` to the code; the region node has no attribute.
+  - `<dregion "x">name</dregion>` hands `$dregion_attribute` to the code; the region node carries it since R4.
   - Menus (`menus`, `users_menus_xref`), ad regions and the tag cloud are data-driven; a static shared component nav loses the menu screen and its editors.
 
 ## What has to be built? (one PR each)
 - R1 Content-editable shared component (owner approved the schema steps 2026-10-19): done: schema 11.0.8 and the server side, the designer switch, content-level editing on the canvas, grants on the user screens (`designer/shared-component-content-editing.md`).
 - R2 Common region -> shared component (one per `cregion` with `cregion_designer_type = 'no'`): content through the converter into one `_editable` block, rights carried over. One source of truth while classic styles still print `<cregion>name</cregion>` (see open question).
 - R3 Designer region -> designer-only shared component: PHP blocks lifted to `custom_php` nodes before parsing, nested designer regions as nested shared refs, inner placeholders as region nodes (the placeholder half of L1).
-- R4 Dynamic region stays PHP: region node gains the attribute; its code opens as a code-editor tab in the designer (designer role), like CSS/JS files.
+- R4 Dynamic region stays PHP: done (PR #1788): region node attribute, code-view tab for administrators, the classic screen's right (`designer/dynamic-region-in-designer.md`).
 - R5 Page regions: converting a page moves its `pregion` content into the page tree as `_editable` rich-text blocks; page edit rights unchanged.
 - R6 Widgets for menu / menu sequence (items still edited in the menu screen), ad region (rotation) and tag cloud. Mobile switch and PDF stay region nodes unless asked.
 - Missing system widget types: `system-widget-missing-types.md`. Custom layouts of classic pages (half the pages of the starting site; `edit_page.php` and the design's page queries hide them): `legacy-layouts-in-designer.md`, Y1 first.

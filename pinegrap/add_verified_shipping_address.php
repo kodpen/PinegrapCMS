@@ -82,7 +82,7 @@ if (!$_POST) {
                                             </div>
                                             <div class="col-12 col-lg-4 my-2">
                                                 <label for="state_id" class="form-label">' . lang('State') . '</label>
-                                                <select style="width:100%" class="select2 form-select' . ($liveform->check_field_error('state_id') ? ' is-invalid' : '') . '" data-placeholder="' . lang('Click to select state') . '" id="state_id" name="state_id">' . $output_state_options . '</select>
+                                                <select style="width:100%" data-pg-combobox class="form-select' . ($liveform->check_field_error('state_id') ? ' is-invalid' : '') . '" data-placeholder="' . lang('Click to select state') . '" id="state_id" name="state_id">' . $output_state_options . '</select>' . pg_fields_script() . '
                                             </div>
                                             <div class="col-12 col-lg-2 my-2">
                                                 <label for="zip_code" class="form-label">' . lang('Zip Code') . '</label>
@@ -96,7 +96,7 @@ if (!$_POST) {
                         <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang('Create') . '</span></button>
+                                    <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang('Create') . '</span></button>
                                 </div>
                             </div>
                         </nav>

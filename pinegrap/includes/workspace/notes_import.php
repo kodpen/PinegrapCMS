@@ -6,7 +6,8 @@
  *
  *   1. The upload (one .zip, Markdown and text files, or Evernote exports,
  *      which notes_enex.php lays out as such files, as notes_keep.php does
- *      the notes of a Google Keep Takeout zip) is staged under
+ *      the notes of a Google Keep Takeout zip and notes_html.php one web
+ *      page) is staged under
  *      data/temp and read through: what every file would become is shown to
  *      the person before anything is written (ws_note_import_plan()).
  *   2. The files they keep ticked are written a batch at a time: a new note
@@ -94,7 +95,7 @@ function ws_note_import_upload_max($limits = null)
  */
 function ws_note_import_extensions()
 {
-    return array('md', 'markdown', 'txt', 'zip', 'enex');
+    return array('md', 'markdown', 'txt', 'zip', 'enex', 'html', 'htm');
 }
 
 /**
@@ -436,11 +437,11 @@ function ws_note_import_upload_error($name, $error, $file_max)
 }
 
 /**
- * Stages an upload: one .zip, Markdown and text files, or Evernote exports,
- * moved under data/temp with the list of what they hold. An Evernote export,
- * and a zip of Google Keep notes, is laid out as note and attachment files
- * right away (notes_enex.php, notes_keep.php); nothing is written as a note
- * yet.
+ * Stages an upload: one .zip, Markdown and text files, Evernote exports or
+ * one web page, moved under data/temp with the list of what they hold. An
+ * Evernote export, a zip of Google Keep notes and a web page are laid out as
+ * note and attachment files right away (notes_enex.php, notes_keep.php,
+ * notes_html.php); nothing is written as a note yet.
  *
  * @param array  $viewer
  * @param array  $files the upload, one entry a file: name, tmp_name, size, error
@@ -465,10 +466,11 @@ function ws_note_import_stage($viewer, $files, $token = '')
     $file_max = (int) ($limits['file_max'] ?? 0);
     $max = ws_note_import_upload_max($limits);
     $too_large = lang(array('string' => 'The upload is larger than {var:1} MB.', 'vars' => max(1, (int) floor($max / 1048576))));
-    $choose = lang('Choose Markdown (.md) or text (.txt) files, one .zip of them, or Evernote exports (.enex).');
+    $choose = lang('Choose Markdown (.md) or text (.txt) files, one .zip of them, Evernote exports (.enex) or one web page (.html).');
     $total = 0;
     $zips = 0;
     $exports = 0;
+    $pages = 0;
 
     if (empty($files)) {
         return $fail($choose);
@@ -514,6 +516,7 @@ function ws_note_import_stage($viewer, $files, $token = '')
 
         $zips += ($extension === 'zip') ? 1 : 0;
         $exports += ($extension === 'enex') ? 1 : 0;
+        $pages += in_array($extension, array('html', 'htm'), true) ? 1 : 0;
         $total += (int) $file['size'];
     }
 
@@ -527,6 +530,14 @@ function ws_note_import_stage($viewer, $files, $token = '')
 
     if (($exports > 0) && ($exports < count($files))) {
         return $fail(lang('Upload Evernote exports (.enex) on their own, without other files.'));
+    }
+
+    if (($pages > 0) && (count($files) > 1)) {
+        return $fail(lang('Upload one web page (.html) on its own, without other files.'));
+    }
+
+    if (($pages > 0) && !class_exists('DOMDocument')) {
+        return $fail(lang('This server cannot read web pages (the PHP dom extension is missing).'));
     }
 
     if (($exports > 0) && !function_exists('xml_parser_create')) {
@@ -556,7 +567,23 @@ function ws_note_import_stage($viewer, $files, $token = '')
     // files/ (loose files, and exports laid out as such files).
     $read_zip = ($zips > 0);
 
-    if ($exports > 0) {
+    if ($pages > 0) {
+        $source = $dir . '/source.html';
+
+        if (!@move_uploaded_file($files[0]['tmp_name'], $source)) {
+            ws_note_import_log_failure('moving an uploaded web page into the stage');
+
+            return $fail(lang('The file could not be saved.'), $dir);
+        }
+
+        $read = ws_note_html_stage($dir, $source, (string) $files[0]['name']);
+
+        if (!$read['ok']) {
+            return $fail($read['error'], $dir);
+        }
+
+        $entries = $read['entries'];
+    } elseif ($exports > 0) {
         $sources = array();
 
         foreach ($files as $number => $file) {

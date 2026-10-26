@@ -204,6 +204,10 @@ function pg_panel_actions()
         // made properly there.
         'designer' => array('file' => 'designer.php', 'handler' => 'pg_panel_designer', 'exempt' => true, 'token' => true, 'write' => true),
         'designer_file' => array('file' => 'designer.php', 'handler' => 'pg_panel_designer_file', 'exempt' => true, 'token' => true, 'write' => true),
+        // A dynamic region's PHP code from the visual designer's code tab.
+        // The general gate (role 1 or better) runs first; the handler then
+        // admits administrators only, the right of edit_dynamic_region.php.
+        'dynamic_region_code' => array('file' => 'designer.php', 'handler' => 'pg_panel_dynamic_region_code', 'exempt' => false, 'token' => true, 'write' => true),
         'shared_component' => array('file' => 'shared_component.php', 'handler' => 'pg_panel_shared_component', 'exempt' => true, 'token' => true, 'write' => true),
 
         'file_explorer' => array('file' => 'explorer.php', 'handler' => 'pg_panel_file_explorer', 'exempt' => true, 'token' => true, 'write' => true),
@@ -323,6 +327,7 @@ function pg_panel_actions()
         'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
         'ws_channel_customer', 'ws_channel_customer_history',
+        'ws_channel_customer_followup',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
     }

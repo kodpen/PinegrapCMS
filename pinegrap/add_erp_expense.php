@@ -188,13 +188,13 @@ if (!$_POST) {
                             </div>
                             <div class="col-12 col-sm-6 col-lg-3 my-2">
                                 <label for="paid_date" class="form-label">' . lang('Paid on') . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'paid_date', 'name' => 'paid_date', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off', 'placeholder' => lang('the expense date'))) . '
+                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'paid_date', 'data-pg-date' => '', 'name' => 'paid_date', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off', 'placeholder' => lang('the expense date'))) . '
                             </div>
                         </div>
                         <div class="row" id="erp_expense_pay_later">
                             <div class="col-12 col-sm-6 col-lg-3 my-2">
                                 <label for="due_date" class="form-label">' . lang('Due Date') . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'due_date', 'name' => 'due_date', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off')) . '
+                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'due_date', 'data-pg-date' => '', 'name' => 'due_date', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off')) . '
                                 <div class="form-text">' . lang('Optional. Shown on the expenses list when it has passed.') . '</div>
                             </div>
                         </div>';
@@ -309,7 +309,7 @@ if (!$_POST) {
                             </div>
                             <div class="col-6 col-lg-3 my-2">
                                 <label for="repeat_end" class="form-label">' . lang('Until (optional)') . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'repeat_end', 'name' => 'repeat_end', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off')) . '
+                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'repeat_end', 'data-pg-date' => '', 'name' => 'repeat_end', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off')) . '
                             </div>
                             ' . ($can_cash ? '<div class="col-12 col-lg-4 my-2 d-flex align-items-end">
                                 <div class="form-check form-switch mb-2">
@@ -367,7 +367,7 @@ if (!$_POST) {
                         <div class="row">
                             <div class="col-12 col-sm-6 col-lg-3 my-2">
                                 <label for="expense_date" class="form-label">' . lang('Date') . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'expense_date', 'name' => 'expense_date', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off', 'required' => 'required') + ($paid ? array('readonly' => 'readonly') : array())) . '
+                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'expense_date', 'name' => 'expense_date', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off', 'required' => 'required') + ($paid ? array('readonly' => 'readonly') : array('data-pg-date' => ''))) . '
                             </div>
                             <div class="col-12 col-sm-6 col-lg-4 my-2">
                                 <label for="category_id" class="form-label">' . lang('Category') . '</label>
@@ -409,8 +409,8 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_save" value="save" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Save')) . '</span></button>
-                            ' . (!is_array($existing) ? '<button type="submit" name="submit_save" value="another" class="btn my-1 btn-outline-success"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save and record another') . '</span></button>' : '') . '
+                            <button type="submit" name="submit_save" value="save" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                            ' . (!is_array($existing) ? '<button type="submit" name="submit_save" value="another" class="btn my-1 btn-outline-success"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and record another') . '</span></button>' : '') . '
                         </div>
                     </div>
                 </nav>
@@ -418,9 +418,8 @@ if (!$_POST) {
         </div>
     </div>
 </main>
-' . get_date_picker_format() . '
+' . get_date_picker_format() . pg_fields_script() . '
 <script>
-$("#expense_date' . ($paid ? '-none' : '') . ', #paid_date, #due_date, #repeat_end").datepicker(datetimepicker_options);
 (function () {
     var form = document.getElementById("erp_expense_form");
     if (!form) { return; }

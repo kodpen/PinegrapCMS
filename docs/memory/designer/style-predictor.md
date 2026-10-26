@@ -5,7 +5,7 @@ description: The smart completion predictor assets/js/pg_style_predict.js: its A
 
 ## What is it?
 - `assets/js/pg_style_predict.js` (`window.PgStylePredict`, `module.exports` under Node), plain ES5, served raw, no document access. `PgStylePredict.create(vocab)` takes the parsed `designer_vocab/bootstrap5.json` ([[designer-bootstrap-vocabulary]]) and returns the predictor; `create(null)` gives empty lists.
-- Deterministic and text-free: it returns reason codes; `style_designer.js` maps them to `_sdT()`. Loaded lazily with the vocabulary (step 4).
+- Deterministic and text-free: it returns reason codes; `style_designer.js` maps them to `_sdT()`. Loaded lazily with the vocabulary by `pg_style_suggest.js` ([[style-suggest]]).
 
 ## Which methods does a predictor have?
 - `classes(q, ctx)`, `properties(q, ctx, extra)` (`extra`: more property names, e.g. the engine's list), `values(property, q, ctx)`, `tokens(q, ctx)`, `selectors(q, ctx)`, `attributes(q, ctx)`, `attributeValues(attr, q, ctx)`, `jsClasses(q, ctx)` (`bootstrap.Modal`), `jsMembers(className, q, isStatic)`, `jsEvents(q, ctx)` (`shown.bs.modal`), `components(ctx)` (`{ modal: weight }`), `slot(class)`. `PgStylePredict.match(label, q)` is the match score.

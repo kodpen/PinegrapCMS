@@ -123,7 +123,7 @@ if (!$_POST) {
                             <div class="btn-group flex-wrap justify-content-center">
                                 <button type="submit" class="btn my-1 btn-success">
                                     <span class="bi bi-plus-circle me-2"></span>
-                                    <span class="btn-text">' . lang('Create File') . '</span>
+                                    <span class="pg-btn-label">' . lang('Create File') . '</span>
                                 </button>
                             </div>
                         </div>

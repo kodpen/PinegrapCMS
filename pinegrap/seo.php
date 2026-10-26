@@ -1174,7 +1174,7 @@ function pg_seo_structure_flag_map($type, $ids = null)
             MAX(code = 'link_broken_internal') AS broken_internal_link,
             MAX(code = 'orphan_page') AS orphan
         FROM seo_issue
-        WHERE entity_type = '" . e($type) . "'" . $sql_ids . "
+        WHERE (entity_type = '" . e($type) . "') AND (LEFT(code, 5) <> 'a11y_')" . $sql_ids . "
         GROUP BY entity_id");
 
     foreach ($rows as $row) {
@@ -2601,8 +2601,10 @@ function pg_seo_issue_label($code, $occurrences = 1, $detail = '')
     return $code;
 }
 
-// Stored structure findings for one record, worst first.
-function pg_seo_load_issues($type, $id)
+// Stored structure findings for one record, worst first. $category 'a11y'
+// reads the accessibility pass's findings instead (codes starting a11y_), which
+// share the table but not the SEO score.
+function pg_seo_load_issues($type, $id, $category = 'seo')
 {
     if (!pg_seo_structure_schema_ready()) {
         return array();
@@ -2611,7 +2613,9 @@ function pg_seo_load_issues($type, $id)
     return db_items(
         "SELECT code, severity, occurrences, source, detail
         FROM seo_issue
-        WHERE (entity_type = '" . e($type) . "') AND (entity_id = '" . (int) $id . "')
+        WHERE
+            (entity_type = '" . e($type) . "') AND (entity_id = '" . (int) $id . "')
+            AND (LEFT(code, 5) " . (($category === 'a11y') ? "=" : "<>") . " 'a11y_')
         ORDER BY FIELD(severity, 'error', 'warning', 'notice'), occurrences DESC");
 }
 

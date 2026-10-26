@@ -87,7 +87,7 @@ function pg_currency_rates_http_get($url)
 
     $response = curl_exec($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch);
 
     return (($response !== false) && ($status === 200)) ? (string) $response : false;
 }

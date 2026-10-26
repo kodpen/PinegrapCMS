@@ -440,7 +440,7 @@ if (!$_POST) {
         ]) . '
 <main id="content" class="container-fluid">
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-    ' . get_date_picker_format() . get_date_time_picker_format() . get_time_picker_format() . '
+    ' . get_date_picker_format() . get_date_time_picker_format() . get_time_picker_format() . pg_fields_script() . '
             <div class="row">
             <div class="col-12">
                 
@@ -616,7 +616,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 my-2">
                                             <label for="allowed_zones" class="form-label">' . lang('Allowed Zones') . '</label>
-                                            <select style="width:100%" class="select2 form-select" data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $output_allowed_zones . '</select>
+                                            <select style="width:100%" class="form-select" data-pg-combobox data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $output_allowed_zones . '</select>
                                         </div>
                                         <div class="col-12 col-md-6 col-lg-4 my-1">
                                             <label for="handle_days" class="form-label">' . lang('Handling Time') . '</label>
@@ -627,7 +627,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 col-md-6 col-lg-4 my-1">
                                             <label for="end_of_day" class="form-label">' . lang('End of Day Time') . '</label>
-                                            <input value="' . $end_of_day . '" type="text" name="end_of_day" id="end_of_day" class="form-control" maxlength="8" />
+                                            <input value="' . $end_of_day . '" type="text" name="end_of_day" id="end_of_day" class="form-control" maxlength="8" data-pg-time/>
                                             <div class="form-text text-end" >' . lang('h:mm AM/PM') . '</div>
                                         </div>
                                         <div class="col-12 my-2">
@@ -775,23 +775,18 @@ if (!$_POST) {
 
                                         <div class="col-12 mt-3 mb-2">
                                             <label for="excluded_transit_dates" class="form-label">' . lang('Excluded Dates') . '</label>
-                                            <input value="' . $output_excluded_transit_dates . '" type="text" name="excluded_transit_dates" id="excluded_transit_dates" class="form-control tagin min-height-tagin"  maxlength="255"/>
+                                            <input value="' . $output_excluded_transit_dates . '" type="text" name="excluded_transit_dates" id="excluded_transit_dates" class="form-control tagin min-height-tagin" data-pg-chips maxlength="255"/>
                                             <div class="form-text text-end">' . lang('Excluded Dates for Shipping & Handling (e.g. Holidays). Split dates with enter key or \',\' key') . ' (' . get_date_format_help() . ')</div>
-                                            <script>
-                                                if(document.body.contains(document.querySelector("input#excluded_transit_dates"))){
-                                                    tagin( document.querySelector("#excluded_transit_dates") );
-                                                }
-                                            </script>
                                         </div>
                                         <div class="col-12 col-lg-8 my-3">
                                             <div class="row">
                                                 <div class="col-12 col-md">
                                                     <label for="start_time" class="form-label">' . lang('Start Time') . '</label>
-                                                    <input value="' . prepare_form_data_for_output($start_time, 'date and time') . '" type="text" name="start_time" id="start_time" class="form-control" maxlength="10" autocomplete="off"/>
+                                                    <input value="' . prepare_form_data_for_output($start_time, 'date and time') . '" type="text" name="start_time" id="start_time" class="form-control" maxlength="10" autocomplete="off" data-pg-datetime/>
                                                 </div>
                                                 <div class="col-12 col-md">
                                                     <label for="end_time" class="form-label">' . lang('End Time') . '</label>
-                                                    <input value="' . prepare_form_data_for_output($end_time, 'date and time') . '" type="text" name="end_time" id="end_time" class="form-control " maxlength="10" autocomplete="off"/>
+                                                    <input value="' . prepare_form_data_for_output($end_time, 'date and time') . '" type="text" name="end_time" id="end_time" class="form-control " maxlength="10" autocomplete="off" data-pg-datetime/>
                                                 </div>
                                             </div>
                                         </div>
@@ -809,7 +804,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12">
                                                                     <label for="available_on_monday_cutoff_time" class="form-label">' . lang('Cut-off time') . '</label> 
-                                                                    <input type="text" name="available_on_monday_cutoff_time" id="available_on_monday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_monday_cutoff_time, 'time', true) . '"  class="form-control" /> 
+                                                                    <input type="text" name="available_on_monday_cutoff_time" id="available_on_monday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_monday_cutoff_time, 'time', true) . '"  class="form-control" data-pg-time/> 
                                                                     <div class="form-text text-end">h:mm AM/PM</div>
                                                                 </div>
                                                             </div>
@@ -827,7 +822,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12">
                                                                     <label for="available_on_tuesday_cutoff_time" class="form-label">' . lang('Cut-off time') . '</label> 
-                                                                    <input type="text" name="available_on_tuesday_cutoff_time" id="available_on_tuesday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_tuesday_cutoff_time, 'time', true) . '"  class="form-control" /> 
+                                                                    <input type="text" name="available_on_tuesday_cutoff_time" id="available_on_tuesday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_tuesday_cutoff_time, 'time', true) . '"  class="form-control" data-pg-time/> 
                                                                     <div class="form-text text-end">h:mm AM/PM</div>
                                                                 </div>
                                                             </div>
@@ -845,7 +840,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12">
                                                                     <label for="available_on_wednesday_cutoff_time" class="form-label">' . lang('Cut-off time') . '</label> 
-                                                                    <input type="text" name="available_on_wednesday_cutoff_time" id="available_on_wednesday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_wednesday_cutoff_time, 'time', true) . '" class="form-control" /> 
+                                                                    <input type="text" name="available_on_wednesday_cutoff_time" id="available_on_wednesday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_wednesday_cutoff_time, 'time', true) . '" class="form-control" data-pg-time/> 
                                                                     <div class="form-text text-end">h:mm AM/PM</div>
                                                                 </div>
                                                             </div>
@@ -863,7 +858,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12">
                                                                     <label for="available_on_thursday_cutoff_time" class="form-label">' . lang('Cut-off time') . '</label> 
-                                                                    <input type="text" name="available_on_thursday_cutoff_time" id="available_on_thursday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_thursday_cutoff_time, 'time', true) . '"  class="form-control" /> 
+                                                                    <input type="text" name="available_on_thursday_cutoff_time" id="available_on_thursday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_thursday_cutoff_time, 'time', true) . '"  class="form-control" data-pg-time/> 
                                                                     <div class="form-text text-end">h:mm AM/PM</div>
                                                                 </div>
                                                             </div>
@@ -881,7 +876,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12">
                                                                     <label for="available_on_friday_cutoff_time" class="form-label">' . lang('Cut-off time') . '</label> 
-                                                                    <input type="text" name="available_on_friday_cutoff_time" id="available_on_friday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_friday_cutoff_time, 'time', true) . '" class="form-control" /> 
+                                                                    <input type="text" name="available_on_friday_cutoff_time" id="available_on_friday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_friday_cutoff_time, 'time', true) . '" class="form-control" data-pg-time/> 
                                                                     <div class="form-text text-end">h:mm AM/PM</div>
                                                                 </div>
                                                             </div>
@@ -899,7 +894,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12">
                                                                     <label for="available_on_saturday_cutoff_time" class="form-label">' . lang('Cut-off time') . '</label> 
-                                                                    <input type="text" name="available_on_saturday_cutoff_time" id="available_on_saturday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_saturday_cutoff_time, 'time', true) . '"  class="form-control" /> 
+                                                                    <input type="text" name="available_on_saturday_cutoff_time" id="available_on_saturday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_saturday_cutoff_time, 'time', true) . '"  class="form-control" data-pg-time/> 
                                                                     <div class="form-text text-end">h:mm AM/PM</div>
                                                                 </div>
                                                             </div>
@@ -917,7 +912,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12">
                                                                     <label for="available_on_sunday_cutoff_time" class="form-label">' . lang('Cut-off time') . '</label> 
-                                                                    <input type="text" name="available_on_sunday_cutoff_time" id="available_on_sunday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_sunday_cutoff_time, 'time', true) . '"  class="form-control" /> 
+                                                                    <input type="text" name="available_on_sunday_cutoff_time" id="available_on_sunday_cutoff_time" size="8" maxlength="8" value="' . prepare_form_data_for_output($available_on_sunday_cutoff_time, 'time', true) . '"  class="form-control" data-pg-time/> 
                                                                     <div class="form-text text-end">h:mm AM/PM</div>
                                                                 </div>
                                                             </div>
@@ -928,10 +923,6 @@ if (!$_POST) {
                                             <h6><em>' . lang(array('string'=>'For reference, the current site time is {var:1}.','vars'=>date("g:i A"))) . '</em></h6>
                                         </div>
 
-                                        <script>
-                                        $("#end_time,#start_time").datetimepicker(datetimepicker_options);
-                                            $("#end_of_day,#available_on_monday_cutoff_time,#available_on_tuesday_cutoff_time,#available_on_wednesday_cutoff_time,#available_on_thursday_cutoff_time,#available_on_friday_cutoff_time,#available_on_saturday_cutoff_time,#available_on_sunday_cutoff_time").timepicker(datetimepicker_options);
-                                        </script>
                                     </div>
                                 </div>
                             </div>
@@ -940,8 +931,8 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('shipping method')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('shipping method')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

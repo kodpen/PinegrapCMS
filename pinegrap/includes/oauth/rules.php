@@ -335,6 +335,80 @@ function pg_oauth_scope_requested($scope, $known, $available) {
 
 }
 
+// The consent screen's presets, in the order shown: key => label (English,
+// lang() at the screen) and the scopes it ticks. $groups is api_scope_groups(),
+// $all the scopes "All" ticks (api_assistant_scopes() without the reads it
+// leaves out). Every preset ticks writing in the Workspace and the Tasks, so
+// the application can always propose a record change as a card
+// (workspace.changes.propose); no preset ticks any other write, which the
+// person ticks by hand. A group the site lacks (a module switched off) adds
+// nothing.
+function pg_oauth_consent_presets(array $groups, array $all) {
+
+	$scopes = function (array $keys, array $halves) use ($groups) {
+
+		$list = array();
+
+		foreach ($keys as $key) {
+
+			foreach ($halves as $half) {
+
+				if (isset($groups[$key][$half]) && ((string)$groups[$key][$half] !== '')) {
+
+					$list[] = (string)$groups[$key][$half];
+
+				}
+
+			}
+
+		}
+
+		return $list;
+
+	};
+
+	$base = $scopes(array('workspace', 'tasks'), array('read', 'write'));
+
+	$reads = function (array $keys) use ($scopes) {
+
+		return $scopes($keys, array('read'));
+
+	};
+
+	return array(
+		'workspace'  => array('label' => 'Workspace', 'scopes' => $base),
+		'store'      => array('label' => 'Store', 'scopes' => array_merge($base, $reads(pg_oauth_consent_store_groups()))),
+		'accounting' => array('label' => 'Accounting', 'scopes' => array_merge($base, $reads(array('erp', 'erp_cash')))),
+		'all'        => array('label' => 'All', 'scopes' => array_values(array_unique(array_merge($base, $all))))
+	);
+
+}
+
+// The scope groups the store preset reads.
+function pg_oauth_consent_store_groups() {
+
+	return array('products', 'orders', 'customers', 'offers', 'comments', 'commissions', 'campaigns', 'contact_groups');
+
+}
+
+// The preset the screen opens with, and the one a request names when it is
+// one of $presets (pg_oauth_consent_presets()).
+function pg_oauth_consent_preset_key($requested, array $presets) {
+
+	$requested = is_string($requested) ? $requested : '';
+
+	return isset($presets[$requested]) ? $requested : 'all';
+
+}
+
+// The boxes ticked on the consent screen: what the preset ticks of what the
+// application asked for ($asked), in $asked's order.
+function pg_oauth_consent_ticked(array $asked, array $preset_scopes) {
+
+	return array_values(array_intersect($asked, $preset_scopes));
+
+}
+
 // The redirect address with the answer added to its query string, keeping any
 // query it was registered with.
 function pg_oauth_redirect_with($redirect_uri, $params) {

@@ -1447,6 +1447,11 @@ function pg_page_cache_panel_sub_actions()
             'dirty' => array('create', 'delete', 'save'),
             'clean' => array('list_folders', 'read'),
         ),
+        'dynamic_region_code' => array(
+            'key' => 'sub_action',
+            'dirty' => array('save'),
+            'clean' => array('read'),
+        ),
         'shared_component' => array(
             'key' => 'sub_action',
             'dirty' => array('create', 'update', 'content_update', 'set_content_editable', 'update_config',

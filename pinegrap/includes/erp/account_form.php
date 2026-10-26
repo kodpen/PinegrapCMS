@@ -404,12 +404,10 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                 <div class="col-12 col-sm-4 col-lg-3 my-2">
                     <label for="opening_date" class="form-label">' . lang('Date') . '</label>
                     ' . $liveform->output_field(array(
-                        'type' => 'text', 'id' => 'opening_date', 'name' => 'opening_date',
+                        'type' => 'text', 'id' => 'opening_date', 'data-pg-date' => '', 'name' => 'opening_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
-                    ' . get_date_picker_format() . '
-                    <script>$("#opening_date").datepicker(datetimepicker_options);</script>
-                </div>
+                    ' . get_date_picker_format() . pg_fields_script() . '                </div>
                 <div class="col-12 col-lg-6 my-2">
                     <div class="form-text pt-4">' . lang('Recorded as a movement rather than written straight onto the balance, so it can be traced later like any other entry.') . '</div>
                 </div>

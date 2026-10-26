@@ -4,13 +4,15 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 ---
 
 ## Which steps run before the switch (on 5.3.8, nothing visible changes)?
-- Done: B0a, B0b, B1a, B1b, B2a, B5 (`bootstrap-6-panel-done.md`).
-- B2b and on: move the calls and listeners onto pgUI area by area (cold areas first; `check_bs6.php` counts what is left), fix the 3 parse-time scripts (welcome.php, api_settings.php, erp_lists.js), read open state with `isOpen()`, add `preventDefault()` to the settings drawer's Escape handler. Leave style_designer.js to B7.
-  - Slice 1 (#1692): dashboard, offers, product builder, sale screen, ERP (`erp_lists.js`), translations, Cloudflare, form item view, AI marks, tour. Slice 2 (#1712): `api_settings.php`, code and image editor dialogs (calls only; their v5 markup waits), `image_editor_edit.php`, `designer_home.js`, `view_folders.php`. Slice 3 (#1720): `workspace*.js`, `page_designer.js` (parse-time instances gone), `seo.php`.
-  - Left: `backend.src.js`, `settings/appearance.php`, `fn/designer_vocab.php`, the settings drawer's Escape; workspace's `style.display` reads of the ask dialog. The `.offcanvas(` hits in `workspace_acks/approvals/status.js` are the workspace's own helper, not jQuery.
-- B3 Token layer: panel CSS reads `--pg-*` tokens, mapped to v5 variables in one block (`ui/panel-css-tokens.md`). B3a the block, the v5 `-rgb` uses and the accent role variables: done (#1694). B3b the neutral variables in backend.src.css: done (#1711). B3c the other panel stylesheets and inline style blocks.
+- Done: B0a, B0b, B1a, B1b, B2a, B2b, B3, B5 (`bootstrap-6-panel-done.md`).
 - B4 Collisions: drop `class="menu"` from `#menu`, rename `<span class="btn-text">` and the own `.submenu`; `data-bs-display="static"` on the account and notification toggles.
+  - Slice 1 (#1738): `btn-text` to `pg-btn-label` in 129 panel files (`tools/bs6_rename_collisions.php`), `view_folders.php` `.submenu` to `.pg-submenu`.
+  - Slice 2 (#1751): the same rename on the gift card, shipping method and ERP screens and `erp_export.php`.
+  - Slice 3 (#1762): `add_page.php`, `edit_page.php` and the `#create_button` selectors in `backend.src.js`.
+  - Slice 4 (#1797): `#menu` without `class="menu"`, `data-bs-display="static"` on the account and notification toggles (`includes/fn/output.php`; both sit in `nav#header.navbar`, where 5.3.8 already skips Popper). No CSS selected `.btn-text` or `.menu`, so no transition selectors are left to drop.
+  - Left: `php tools/bs6_rename_collisions.php --write edit_contact.php` (two spans; #1794 holds the file). Then B4 moves to `bootstrap-6-panel-done.md`.
 - B6 Wrappers with a switchable engine (v5 engine now): `pgChips`, `pgCombobox`, `pgDatePicker`, `pgDateTimeField`; call sites move to `data-pg-*` hooks.
+  - Slice 1 (#1733): `pg_fields.js`, liveform `data-pg-*`, `pg_fields_script()`; gift cards, shipping methods, ERP screens (`ui/pg-field-wrappers.md`). Slice 2 (#1741): firewall card, `edit_page.php`, `mass_edit.php`, `view_contacts.php`. Slice 3 (#1750): `pgInitInjected()`, ACL expiry pickers. Slice 4 (#1764): menus, product groups, zones, verified addresses, product builder selects, campaigns, arrival dates, featured items, add contact, key code, commerce end-of-day time; no `select2`/`timepicker` class is left in panel markup. Slice 5 (#1775): generic inits gone, shipping cut-off rows, submitted form pickers, `view_order.php` tracking chips, API settings IP chips. Slice 6 (#1787): `pgFields.destroy()`/`switchKind()`, calendar all-day switch, comment publish date. Left: `fn/content.php` pickers (#1781 holds it), `edit_contact.php` (#1706 holds it), `view_order.php` ship and delivery dates (they use bare `{dateFormat}`, so the hook would bring the translated wording: a visible change), `offer_editor.js`, the Google category select2 in `product_builder.js` (server search), the visual editor's keyword box (`designer_screen.php`).
 - B7 Visual editor stage 0: `/* @pg-site-output */` on the 54 site-output members of style_designer.js with a CI test, the chrome look pinned in style_designer.css, editor calls through `pgUI`.
 
 ## What happens at and after the switch?
