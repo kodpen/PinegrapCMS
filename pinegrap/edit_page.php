@@ -20,6 +20,7 @@ include('init.php');
 require_once(dirname(__FILE__) . '/seo.php');
 require_once(dirname(__FILE__) . '/seo_structure.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_type_pane.php');
 
 $liveform = new liveform('edit_page');
 
@@ -37,6 +38,14 @@ $requested_page_id = $_POST ? ($_POST['id'] ?? '') : ($_GET['id'] ?? '');
 // "not found" screen instead of PHP notices from the unchecked row below or
 // an error page.
 $id = is_scalar($requested_page_id) ? (int) $requested_page_id : 0;
+
+// The visual designer's page type pane reads and saves the page's type
+// fields here (includes/fn/page_type_pane.php): JSON, no redirect, and only
+// the type fields and the layout type are written.
+if ((string) ($_GET['properties'] ?? '') === '1') {
+    pg_page_type_pane_request($user, $id);
+}
+
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM page WHERE page_id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
@@ -311,30 +320,7 @@ if (!$_POST) {
     $output_page_type_properties = '';
 
     // if user is above a user role or page type is accessible by this user, then prepare to output page type area
-    if (
-        ($user['role'] < 3)
-        || ($page_type == 'standard')
-        || (($page_type == 'email a friend') && ($user['set_page_type_email_a_friend'] == TRUE))
-        || (($page_type == 'folder view') && ($user['set_page_type_folder_view'] == TRUE))
-        || (($page_type == 'photo gallery') && ($user['set_page_type_photo_gallery'] == TRUE))
-        || (($page_type == 'catalog') && ($user['set_page_type_catalog'] == TRUE))
-        || (($page_type == 'catalog detail') && ($user['set_page_type_catalog_detail'] == TRUE))
-        || (($page_type == 'express order') && ($user['set_page_type_express_order'] == TRUE))
-        || (($page_type == 'order form') && ($user['set_page_type_order_form'] == TRUE))
-        || (($page_type == 'shopping cart') && ($user['set_page_type_shopping_cart'] == TRUE))
-        || (($page_type == 'shipping address and arrival') && ($user['set_page_type_shipping_address_and_arrival'] == TRUE))
-        || (($page_type == 'shipping method') && ($user['set_page_type_shipping_method'] == TRUE))
-        || (($page_type == 'billing information') && ($user['set_page_type_billing_information'] == TRUE))
-        || (($page_type == 'order preview') && ($user['set_page_type_order_preview'] == TRUE))
-        || (($page_type == 'order receipt') && ($user['set_page_type_order_receipt'] == TRUE))
-        || (($page_type == 'custom form') && ($user['set_page_type_custom_form'] == TRUE))
-        || (($page_type == 'custom form confirmation') && ($user['set_page_type_custom_form_confirmation'] == TRUE))
-        || (($page_type == 'form list view') && ($user['set_page_type_form_list_view'] == TRUE))
-        || (($page_type == 'form item view') && ($user['set_page_type_form_item_view'] == TRUE))
-        || (($page_type == 'form view directory') && ($user['set_page_type_form_view_directory'] == TRUE))
-        || (($page_type == 'calendar view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_view'] == TRUE))
-        || (($page_type == 'calendar event view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_event_view'] == TRUE))
-    ) {
+    if (pg_page_type_user_may_set($user, $page_type)) {
         $page_type_properties = array();
 
         if (check_for_page_type_properties($page_type)) {
@@ -1358,30 +1344,7 @@ if (!$_POST) {
         // basic user may set any type, a basic user needs the matching flag.
         // add_page.php applies the same list to a new page.
         $user_can_set_page_type = function ($page_type) use ($user) {
-            return (
-                ($user['role'] < 3)
-                || ($page_type == 'standard')
-                || (($page_type == 'email a friend') && ($user['set_page_type_email_a_friend'] == TRUE))
-                || (($page_type == 'folder view') && ($user['set_page_type_folder_view'] == TRUE))
-                || (($page_type == 'photo gallery') && ($user['set_page_type_photo_gallery'] == TRUE))
-                || (($page_type == 'catalog') && ($user['set_page_type_catalog'] == TRUE))
-                || (($page_type == 'catalog detail') && ($user['set_page_type_catalog_detail'] == TRUE))
-                || (($page_type == 'express order') && ($user['set_page_type_express_order'] == TRUE))
-                || (($page_type == 'order form') && ($user['set_page_type_order_form'] == TRUE))
-                || (($page_type == 'shopping cart') && ($user['set_page_type_shopping_cart'] == TRUE))
-                || (($page_type == 'shipping address and arrival') && ($user['set_page_type_shipping_address_and_arrival'] == TRUE))
-                || (($page_type == 'shipping method') && ($user['set_page_type_shipping_method'] == TRUE))
-                || (($page_type == 'billing information') && ($user['set_page_type_billing_information'] == TRUE))
-                || (($page_type == 'order preview') && ($user['set_page_type_order_preview'] == TRUE))
-                || (($page_type == 'order receipt') && ($user['set_page_type_order_receipt'] == TRUE))
-                || (($page_type == 'custom form') && ($user['set_page_type_custom_form'] == TRUE))
-                || (($page_type == 'custom form confirmation') && ($user['set_page_type_custom_form_confirmation'] == TRUE))
-                || (($page_type == 'form list view') && ($user['set_page_type_form_list_view'] == TRUE))
-                || (($page_type == 'form item view') && ($user['set_page_type_form_item_view'] == TRUE))
-                || (($page_type == 'form view directory') && ($user['set_page_type_form_view_directory'] == TRUE))
-                || (($page_type == 'calendar view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_view'] == TRUE))
-                || (($page_type == 'calendar event view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_event_view'] == TRUE))
-            );
+            return pg_page_type_user_may_set($user, $page_type);
         };
 
         // A type the software does not know would not fit the page_type

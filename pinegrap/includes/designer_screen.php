@@ -121,6 +121,9 @@ function pg_designer_screen_render($ctx)
             'key'                   => 'p' . (int)$p['page_id'],
             'page_id'               => (int)$p['page_id'],
             'page_name'             => (string)$p['page_name'],
+            // A classic page's type: anything but 'standard' opens the Page
+            // Type pane of the settings modal.
+            'page_type'             => (string)(isset($p['page_type']) ? $p['page_type'] : 'standard'),
             'page_folder'           => (int)$p['page_folder'],
             'page_draft'            => (int)(isset($p['page_draft']) ? $p['page_draft'] : 0),
             'page_title'            => (string)$p['page_title'],
@@ -256,6 +259,9 @@ function pg_designer_screen_render($ctx)
         // the classic Dynamic Region screen admits (administrators); the
         // endpoint (dynamic_region_code) checks the same.
         'dynamicRegionCode' => ((int)$user['role'] === 0),
+        // A classic page's type fields: read and saved by edit_page.php in
+        // JSON (?properties=1), with the rights of that screen.
+        'pageTypeUrl'   => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_page.php',
         // A designer region becomes a designer-only shared component for the
         // roles edit_designer_region.php admits (administrators and
         // designers); shared_component's from_designer_region checks the same.
@@ -2067,8 +2073,8 @@ function pg_designer_settings_modal($ctx)
     $ai_title_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_title', 'field' => 'pg_page_title'));
     $ai_description_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_description', 'field' => 'pg_page_meta_description'));
 
-    $rail = function ($pane, $icon, $label, $scope, $active) use ($design_hidden) {
-        return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . '" id="tab-' . $pane . '-btn"
+    $rail = function ($pane, $icon, $label, $scope, $active, $hidden = false) use ($design_hidden) {
+        return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . ($hidden ? ' d-none' : '') . '" id="tab-' . $pane . '-btn"
                     data-bs-toggle="pill" data-bs-target="#tab-' . $pane . '" type="button" role="tab"
                     aria-controls="tab-' . $pane . '" aria-selected="' . ($active ? 'true' : 'false') . '" data-sd-settings-scope="' . $scope . '">
                     <span class="bi ' . $icon . '" aria-hidden="true"></span><span class="sd-settings-nav-txt">' . $label . '</span>
@@ -2312,6 +2318,23 @@ function pg_designer_settings_modal($ctx)
         </section>';
     }
 
+    // ── Page: page type ────────────────────────────────────────────────
+    // A classic page placed in the design keeps the fields of its type (a
+    // catalog's product group, a gallery's columns) and its Layout Type. The
+    // editor shows the pill for such a page only and fills the pane from
+    // edit_page.php?properties=1 (includes/fn/page_type_pane.php), which also
+    // saves it, with its own button and at once.
+    $page_type =
+        '<section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Page Type') . ': <span id="sd-page-type-name">—</span></h3>
+            <p class="sd-set-help">' . lang('This page draws its system region from its page type. These settings are stored with their own button, at once, not with the next Save or Publish.') . '</p>
+            <div id="sd-page-type-fields" class="sd-page-type-fields"></div>
+            <div class="d-flex align-items-center gap-2 mt-3">
+                <button type="button" class="btn btn-sm btn-primary" id="sd-page-type-save" disabled><span class="bi bi-floppy me-1" aria-hidden="true"></span>' . lang('Save') . '</button>
+                <span class="sd-set-status" id="sd-page-type-status" aria-live="polite"></span>
+            </div>
+        </section>';
+
     // ── Page: meta tags ────────────────────────────────────────────────
     $page_meta = pg_designer_meta_tags_group('page');
     $has_page_meta = ($page_meta !== '');
@@ -2347,6 +2370,7 @@ function pg_designer_settings_modal($ctx)
                                 ' . $rail('page', 'bi-file-earmark', lang('Page'), 'page', !$full) . '
                                 ' . $rail('seo', 'bi-search', lang('Search Engines'), 'page', false) . '
                                 ' . ($has_page_meta ? $rail('page-meta', 'bi-tags', lang('Meta Tags'), 'page', false) : '') . '
+                                ' . $rail('page-type', 'bi-sliders', lang('Page Type'), 'page', false, true) . '
                             </nav>
                         </div>
 
@@ -2357,6 +2381,7 @@ function pg_designer_settings_modal($ctx)
                             ' . $pane_open('page', 'page', !$full) . $page . '</div>
                             ' . $pane_open('seo', 'page', false) . $seo . '</div>
                             ' . ($has_page_meta ? $pane_open('page-meta', 'page', false) . $page_meta . '</div>' : '') . '
+                            ' . $pane_open('page-type', 'page', false) . $page_type . '</div>
                             ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'additional_body_classes')) . '
                             ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'style_empty_cell_width_percentage')) . '
                         </div>
