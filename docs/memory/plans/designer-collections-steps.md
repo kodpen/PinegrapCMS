@@ -34,4 +34,4 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Q4 `forms.publish_at` / `unpublish_at`: recommended no.
 
 ## Where to start?
-- C1 needs no schema: start there once this file lands. C2 waits for Q1/Q2. `designer-interactions-collections.md` should point here once #1922 (which edits it) lands.
+- C1 needs no schema: start there once this file lands. C2 waits for Q1/Q2.
