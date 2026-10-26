@@ -695,6 +695,7 @@
     "From two-person studios to companies with offices in five cities.": "İki kişilik stüdyolardan beş şehirde ofisi olan şirketlere kadar.",
     "From where I am sitting everything looks fine. ☕": "Benim durduğum yerden her şey yolunda görünüyor. ☕",
     "From your location you would be sent to {var:1}.": "Konumunuza göre şuraya gönderilirdiniz: {var:1}.",
+    "From {var:1}": "{var:1} itibarıyla",
     "From {var:1} to {var:2}": "{var:1} – {var:2} arası",
     "From {var:1} · {var:2} · {var:3}": "Kaynak: {var:1} · {var:2} · {var:3}",
     "From {var:1}'s message": "Mesajı yazan: {var:1}",

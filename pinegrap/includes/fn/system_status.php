@@ -1737,6 +1737,7 @@ function get_system_status_checks()
         'Operations Alerts'        => 'Alerts',
         'Maintenance Mode'         => 'Maintenance',
         'Product Feeds'            => 'Feeds',
+        'e-Fatura Threshold'       => 'e-Fatura',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1770,6 +1771,7 @@ function get_system_status_checks()
         'Operations Alerts',
         'Maintenance Mode',
         'Product Feeds',
+        'e-Fatura Threshold',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -3392,6 +3394,71 @@ function get_system_status_checks()
                     $feeds_detail
                 );
 
+            }
+        }
+    }
+
+    // 🧾 e-Fatura threshold (includes/erp/efatura_threshold.php)
+    //
+    // A tile only once this year's sales passed four fifths of a threshold
+    // the store keeps, and only where the Turkish features are in use: a
+    // seller below both has nothing to do, and the rule is Turkish. Yellow
+    // while near, red once reached, with the day the move to e-Fatura falls
+    // due. Reported, not scored: a legal deadline, not a fault of the site.
+    // The sums are read at most once a day.
+    if (defined('ERP_ENABLED') && ERP_ENABLED && is_file(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php')) {
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+        if (function_exists('erp_efatura_threshold_ready') && erp_efatura_threshold_ready() && erp_turkish_features()) {
+
+            $efatura = erp_efatura_threshold_report();
+
+            if (in_array($efatura['worst'], array('near', 'reached'), true)) {
+
+                $efatura_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_settings.php#erp_efatura_threshold';
+                $efatura_detail = array();
+                $efatura_deadline = '';
+
+                foreach ($efatura['rows'] as $efatura_row) {
+                    $efatura_detail[] = array(
+                        'label' => lang(array(
+                            'string' => ($efatura_row['key'] === 'web') ? 'Sales over the internet: {var:1} of {var:2}' : 'All sales: {var:1} of {var:2}',
+                            'vars'   => array(
+                                pg_format_number($efatura_row['sales'] / 100, 0),
+                                pg_format_number($efatura_row['limit'] / 100, 0) . ' ' . BASE_CURRENCY_CODE,
+                            ),
+                        )),
+                        'state' => ($efatura_row['state'] === 'reached') ? 'fail' : (($efatura_row['state'] === 'near') ? 'warn' : 'ok'),
+                        'when'  => $efatura_row['share'] . '%',
+                    );
+
+                    if ($efatura_row['state'] === 'reached') {
+                        $efatura_deadline = $efatura_row['deadline'];
+                    }
+                }
+
+                if ($efatura['worst'] === 'reached') {
+                    $output .= $makeIcon(
+                        'bi-receipt-cutoff',
+                        'text-danger',
+                        'e-Fatura Threshold',
+                        'This year\'s sales reached an e-Fatura threshold: the store must issue e-Fatura from the date shown. Ask your accountant and set up an e-document provider.',
+                        lang(array('string' => 'From {var:1}', 'vars' => array(date('d.m.Y', strtotime($efatura_deadline))))),
+                        $efatura_href,
+                        $efatura_detail
+                    );
+                } else {
+                    $output .= $makeIcon(
+                        'bi-receipt-cutoff',
+                        'text-warning',
+                        'e-Fatura Threshold',
+                        'This year\'s sales are near an e-Fatura threshold. A store that reaches it must issue e-Fatura from the seventh month of the next year.',
+                        lang('Near'),
+                        $efatura_href,
+                        $efatura_detail
+                    );
+                }
             }
         }
     }
