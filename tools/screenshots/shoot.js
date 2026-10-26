@@ -4,7 +4,9 @@
  *
  * Photographs panel screens on a sandbox instance (tools/setup_sandbox.sh):
  * every screen of screens.json in the light and the dark colour scheme, on a
- * wide and a phone viewport, after seed.php has filled in sample records.
+ * wide, a tablet and a phone viewport, after seed.php has filled in sample
+ * records. A screen marked signed_out (the sign-in page) is shot without
+ * signing in.
  * Writes PNGs and an index.html contact sheet to the output folder, which
  * must lie outside the repository: the images are never committed.
  *
@@ -15,7 +17,7 @@
  *   --password=PASS  (default: sandbox-admin)
  *   --only=a,b       only these screen names
  *   --theme=light|dark       one colour scheme only
- *   --viewport=wide|phone    one viewport only
+ *   --viewport=wide|tablet|phone    one viewport only
  *   --label=TEXT     caption on the contact sheet (a branch or commit)
  *   --no-seed        skip seed.php (an instance that is not the sandbox)
  *
@@ -39,6 +41,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 
 const VIEWPORTS = {
     wide: { width: 1440, height: 900, isMobile: false, deviceScaleFactor: 1 },
+    tablet: { width: 834, height: 1112, isMobile: true, hasTouch: true, deviceScaleFactor: 1 },
     phone: { width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }
 };
 const THEMES = ['light', 'dark'];
@@ -75,7 +78,7 @@ function parseArgs(argv) {
         throw new Error('--theme is light or dark');
     }
     if (options.viewport && !(options.viewport in VIEWPORTS)) {
-        throw new Error('--viewport is wide or phone');
+        throw new Error('--viewport is wide, tablet or phone');
     }
     options.out = path.resolve(options.out);
     if ((options.out + path.sep).startsWith(ROOT + path.sep)) {
@@ -226,7 +229,7 @@ function writeSheet(options, shots, problems) {
         + 'h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:24px 0 8px}h2 small{color:var(--muted);font-weight:400;font-size:12px;word-break:break-all}'
         + '.meta{color:var(--muted)}.shots{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}'
         + 'figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px;max-width:100%;box-sizing:border-box}'
-        + 'figure.wide{width:min(560px,100%)}figure.phone{width:min(200px,100%)}figure img{display:block;width:100%;height:auto;max-height:900px;object-fit:cover;object-position:top}'
+        + 'figure.wide{width:min(560px,100%)}figure.tablet{width:min(330px,100%)}figure.phone{width:min(200px,100%)}figure img{display:block;width:100%;height:auto;max-height:900px;object-fit:cover;object-position:top}'
         + 'figcaption{color:var(--muted);font-size:12px;margin-top:4px}.problems{color:#c0392b}'
         + '</style></head><body><h1>Panel screenshots</h1><p class="meta">' + escapeHtml(options.label || '') + ' · '
         + escapeHtml(new Date().toISOString().slice(0, 16).replace('T', ' ')) + ' UTC · ' + shots.length + ' images</p>'
@@ -263,15 +266,21 @@ async function main() {
                 });
                 await context.addInitScript(themeScript(theme));
                 await context.addInitScript(NO_TOUR_SCRIPT);
-                await signIn(context, options);
-                const page = await context.newPage();
                 const errors = [];
+                // Signed-out screens first, before the session exists.
+                const ordered = screens.filter(screen => screen.signed_out).concat(screens.filter(screen => !screen.signed_out));
+                let page = await context.newPage();
+                let signedIn = false;
                 page.on('pageerror', error => errors.push(error.message));
 
-                for (const screen of screens) {
+                for (const screen of ordered) {
                     const file = screen.name + '-' + theme + '-' + viewportName + '.png';
                     if (screen.viewports && !screen.viewports.includes(viewportName)) {
                         continue;
+                    }
+                    if (!screen.signed_out && !signedIn) {
+                        await signIn(context, options);
+                        signedIn = true;
                     }
                     errors.length = 0;
                     try {
@@ -293,7 +302,7 @@ async function main() {
                         if (response && response.status() >= 400) {
                             problems.push(file + ': HTTP ' + response.status());
                         }
-                        if (/\/pinegrap\/(index\.php)?(\?|$)/.test(page.url()) && !/\/pinegrap\/(index\.php)?(\?|$)/.test(url)) {
+                        if (!screen.signed_out && /\/pinegrap\/(index\.php)?(\?|$)/.test(page.url()) && !/\/pinegrap\/(index\.php)?(\?|$)/.test(url)) {
                             problems.push(file + ': redirected to ' + page.url());
                         }
                         if (screen.crop) {
