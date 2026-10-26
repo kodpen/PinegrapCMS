@@ -167,3 +167,12 @@ function test_bs6_shell_breakpoints()
 		. "x = \"@media (max-width:991px)\";\n/* @pg-site-output */\nfunction site() {\n    return '@media (min-width: 1200px) {';\n}\n", $result['source']);
 	pg_assert_same('done', bs6_switch_breakpoints($result['source'])['status'], 'second run');
 }
+
+function test_bs6_shell_links()
+{
+	$in = "<a class=\"link-secondary small\">x</a> .link-body-emphasis:hover {} ws-link-secondary link-light\n/* @pg-site-output */\nfunction site() {\n    return '<a class=\"link-danger\">';\n}\n";
+	$result = bs6_switch_links($in);
+
+	pg_assert_same("<a class=\"pg-link-secondary small\">x</a> .pg-link-body-emphasis:hover {} ws-link-secondary link-light\n/* @pg-site-output */\nfunction site() {\n    return '<a class=\"link-danger\">';\n}\n", $result['source']);
+	pg_assert_same('done', bs6_switch_links($result['source'])['status'], 'second run');
+}
