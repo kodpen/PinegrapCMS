@@ -1464,7 +1464,7 @@ function pg_login_set_device_cookie($user_id, $remember)
 // for a second factor cannot be opened by a password alone).
 function pg_post_password_signin($user_id, $username)
 {
-    if (function_exists('pg_mfa_enabled') && pg_mfa_enabled($user_id)) {
+    if (function_exists('pg_mfa_has_factor') && pg_mfa_has_factor($user_id)) {
         return false;
     }
     pg_session_sign_in($user_id, $username);
@@ -3765,7 +3765,7 @@ function initialize_user()
             if (is_array($user) && isset($user['id'])
                 && function_exists('pg_mfa_required_for_user')
                 && pg_mfa_required_for_user($user['id'])
-                && !pg_mfa_enabled($user['id'])) {
+                && !pg_mfa_has_factor($user['id'])) {
 
                 pg_auth_token_revoke((string) strtok((string) $_COOKIE['software']['auth'], ':'));
                 setcookie('software[auth]', '', time() - 1000, '/');
