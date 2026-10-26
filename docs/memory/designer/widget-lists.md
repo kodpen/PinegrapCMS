@@ -22,7 +22,7 @@ description: Lists inside a widget record (#1680): loop_area + props.source, sou
 - The renderer already chose the records (viewer filter, access, URL filters) and the translation; the lists add no query.
 
 ## What do position tokens mean in a list?
-- The list's own rows, after order and limit ([[widget-loop-position]]). A list's tokens never mark the main rows. A row token's format suffix is dropped.
+- The list's own rows, after order and limit ([[widget-loop-position]]). A list's tokens never mark the main rows. A row token's format is read (`pg_sw_lists_fill_row()`: strtr without a format, else one pass that never rescans); a position token's is dropped.
 
 ## What happens to an empty list?
 - A cut point; in the two form kinds the pg-hide-if-empty rerun drops the box the list alone filled. `pg_sw_has_content()` counts a span as content until then.
@@ -40,4 +40,4 @@ description: Lists inside a widget record (#1680): loop_area + props.source, sou
 - `pg_record_file_tree_binds()`: a files list naming the field, or none for an upload not office use only (`$listed`, carried in the facts to `pg_record_file_view_grants()`). As with a condition, the list's limit is not read. Tests: `tests/record_files_test.php`.
 
 ## What is not covered yet?
-- Editor: [[widget-lists-editor]]. Formats on list tokens (W14 part 2). Page links with list values (W15). Other kinds (W9-W13). A condition on the loop_area itself. `eo_visible_if` flags inside a list are not resolved.
+- Editor: [[widget-lists-editor]]. Page links with list values (W15). Other kinds (W9-W13). A condition on the loop_area itself. `eo_visible_if` flags inside a list are not resolved.
