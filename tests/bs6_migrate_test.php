@@ -101,9 +101,20 @@ function test_bs6_map_renames()
 	pg_assert_same('md:text-start', bs6_test_tokens('text-md-start'));
 }
 
+function test_bs6_map_light_and_dark()
+{
+	pg_assert_same('fg-black', bs6_test_tokens('text-dark'));
+	pg_assert_same('bg-1', bs6_test_tokens('bg-light'));
+	pg_assert_same('bg-1 fg-body', bs6_test_tokens('text-bg-light'));
+	pg_assert_same('btn-subtle theme-secondary', bs6_test_tokens('btn-light'));
+	pg_assert_same('badge rounded-pill badge-subtle theme-secondary', bs6_convert_class_list('badge rounded-pill text-bg-light')['value'], 'a light badge');
+	pg_assert_same('badge theme-inverse', bs6_convert_class_list('badge bg-dark')['value'], 'a dark badge');
+	pg_assert_same('REVIEW', bs6_test_tokens('table-light'), 'a table row tint has no neutral twin');
+}
+
 function test_bs6_map_reviews_and_untouched()
 {
-	foreach (array('btn-light', 'text-dark', 'bg-light', 'alert-dark', 'text-reset', 'bg-body-tertiary',
+	foreach (array('alert-dark', 'text-reset', 'bg-body-tertiary',
 		'display-4', 'lead', 'btn-close-white', 'alert-dismissible', 'needs-validation', 'd-print-none',
 		'modal', 'modal-dialog', 'offcanvas-end', 'dropdown-menu', 'dropdown-toggle', 'form-check-input',
 		'form-switch', 'btn-check', 'accordion-button', 'form-range', 'opacity-50-hover', 'link-primary',
@@ -269,6 +280,7 @@ function test_bs6_targets_exist_in_dist()
 		'order-lg-1', 'row-cols-md-3', 'd-md-none', 'd-lg-flex', 'flex-md-row', 'justify-content-md-between',
 		'align-items-lg-center', 'text-md-end', 'float-lg-end', 'p-md-3', 'mb-lg-0', 'g-md-4', 'gap-lg-2', 'container-sm',
 		'navbar-expand-lg', 'table-responsive-md', 'list-group-horizontal-md', 'sticky-md-top',
+		'text-dark', 'text-light', 'bg-light', 'bg-dark', 'text-bg-light', 'text-bg-dark', 'alert-light', 'btn-light', 'btn-dark', 'border-dark',
 	);
 
 	foreach ($inputs as $input) {
