@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23, 1 #1554, 2 #1725 #1897, 4a #1972, 4b #1999 done, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+description: Plan (2026-10-23, 1 #1554, 2 #1725 #1897, 4 #1972 #1999 done but autoformat, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -21,7 +21,7 @@ description: Plan (2026-10-23, 1 #1554, 2 #1725 #1897, 4a #1972, 4b #1999 done, 
 1. Shared toolbar, no schema: factory, `format()`; the composer gains undo/redo and B/I/S; notes drop `execCommand`. PR #1554.
 2. Lists and quotes, no schema, done: #1725, #1897 (workspace/workspace-text-lists.md, -editor-lists.md); autoformat in 4.
 3. Headings `#`-`###` and `---` after question 1, no schema; the import keeps headings.
-4. Highlight `==x==`, autoformat (one Ctrl+Z undo, IME guard, off switch), no schema. 4a server done #1972, 4b editor (twin, tool, cells starting `==`) done #1999 (workspace-text-highlight.md); autoformat left.
+4. Highlight `==x==`, autoformat (one Ctrl+Z undo, IME guard, off switch), no schema. Highlight done: server #1972, editor #1999 (workspace-text-highlight.md); autoformat left.
 5. Link Text field, Ctrl+/ shortcut sheet, "Aa" expanded composer after question 2, no schema.
 6. Slash inserts, no schema: in notes `/` lists inserts; channel commands unchanged.
 7. Smart paste, no schema: HTML mapped to the subset (DOMParser, never inserted), a sheet range to `openTable()`, a URL over words links them; a note's pasted image to `attach()`.
