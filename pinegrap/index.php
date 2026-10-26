@@ -52,6 +52,12 @@ if (
     $_REQUEST['password'] = $_POST['p'];
 }
 
+// A sign-in with a passkey alone: the answer the sign-in screens' passkey
+// button posts (pg_passkey.js). It completes or goes back on its own.
+if ($pg_login_posted && isset($_POST['pg_passkey_signin']) && !isset($_POST['email'])) {
+    pg_passkey_passwordless_signin();
+}
+
 // if the user has not submitted the form yet, then output form
 if (!$pg_login_posted || !isset($_POST['email'])) {
     // If there is not an error and

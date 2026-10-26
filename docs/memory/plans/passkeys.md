@@ -1,6 +1,6 @@
 ---
 name: passkeys
-description: Plan (approved 2026-10-19; steps 1-3b and 4a done, 4b-4c left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
+description: Plan (approved 2026-10-19; steps 1-4b done, 4c-4d left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
 ---
 
 ## Why?
@@ -21,10 +21,11 @@ description: Plan (approved 2026-10-19; steps 1-3b and 4a done, 4b-4c left): Web
 - Step 3b (PR #1843): the designed `account_security` widget, the `security.passkeys` list, the add form and its script; docs/memory/designer/passkey-widget-list.md. Design templates needed nothing: they take the starter tree.
 
 - Step 4a (PR #1862): the gate counts a passkey; a passkey-only account gets `verify` mode, a passkey satisfies `mfa_required_role`: docs/memory/core/passkey-second-factor.md.
+- Step 4b (PR #1882): passwordless button, `config.passkey_signin` (11.0.41, default off: owner, 2026-10-26, upgraded sites keep their sign-in screen): core/passkey-passwordless.md.
 
 ## What remains?
-4b. Sign-in form conditional UI (passwordless: `pg_passkey_signin_begin(0)`, answer posted to the sign-in screens: `index.php`, `membership_entrance.php`, `registration_entrance.php`); the account found by the passkey must still exist and be enabled; it then completes as after the second step. Settings switch. (M)
 4c. Recovery codes for passkey-only accounts and adding a passkey without TOTP (waits on the open question below). (S)
+4d. Conditional UI: passkeys in the username field's autofill (`mediation: 'conditional'`), same `index.php` answer. (S)
 5. Memory: update `core/passkey-ceremonies.md` and `two-step-sign-in.md` with each step.
 
 ## Open questions?
@@ -32,4 +33,4 @@ description: Plan (approved 2026-10-19; steps 1-3b and 4a done, 4b-4c left): Web
 - Step 4: what an account without TOTP proves to add a passkey (adding needs TOTP on until then), and whether removing one then needs more than its password.
 
 ## Where to start?
-- Step 4b: `pg_mfa_gate()` / `mfa.php`'s `pg_mfa_screen_complete()` for the completion order, `core/passkey-ceremonies.md` (what exists, refusal words), `two-step-sign-in.md` and `social-sign-in.md` for the session and remember-me rules.
+- Step 4c: `core/passkey-account-section.md` (what adding asks for), `core/passkey-ceremonies.md` (what exists, refusal words), `two-step-sign-in.md` and `social-sign-in.md` for the session and remember-me rules.
