@@ -1,6 +1,6 @@
 ---
 name: widget-condition-canvas
-description: The canvas state preview of value conditions (W19, #1904): band chips, states, which value a token reads, picking a hidden node, the _sdCondEval twin of pg_sw_cond_eval
+description: The canvas state preview of value conditions (W19, #1904): band chips, states, which value a token reads, picking a hidden node, the _sdCondEval twin, a list's sample rows (#1910)
 ---
 
 ## What does the canvas draw for a value condition?
@@ -20,5 +20,9 @@ description: The canvas state preview of value conditions (W19, #1904): band chi
 - One separator with three digits after it follows `decimal`: the site's (`software_money_format.decimal`), else `.`.
 - `tests/widget_condition_eval_test.php` runs under Node: the shared vectors with both decimal points, a grid of about 8,000 cases against `pg_sw_cond_eval()`, the three-digit case, and the canvas states. A change to either side changes both.
 
+## What do a list's sample rows show? (#1910)
+- After a list's card (a `loop_area` with `props.source`) the canvas draws sample rows from the same nodes (`_sdListGhostEls()`, both the div and the table loop): ghost DOM as the sample comments, off with the sample switch, none when the band is amber, none inside a sample row, at most `props.limit` less one.
+- `SD_LIST_SAMPLE_ROWS` gives each source's rows the values that differ from the card (`order.steps`: paid, shipped, delivered as an estimate, so each timeline icon shows in its row); another source gets two rows of the card's values. `_sdListSample` is read first in `_displayValueForBinding()` after a comment sample; a test that cuts it declares it.
+
 ## What is left of W19?
-- Ghosts for every loop: sample rows for lists the server does not draw ghosts of (`order.steps`, so each timeline icon shows in its row). Plan: [[widget-designability]].
+- Sample rows for the main loop of kinds without server ghosts (cart and order items). Plan: [[widget-designability]].
