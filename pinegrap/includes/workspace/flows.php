@@ -1437,6 +1437,31 @@ function ws_flow_js_strings()
         'fl_kind_task_open'   => lang('Open a task without waiting'),
         'fl_kind_webhook'     => lang('Call a webhook'),
         'fl_kind_web_check'   => lang('Check a web address'),
+        'fl_kind_task_digest' => lang('E-mail people their tasks'),
+        'fl_kind_report'      => lang('Send a summary of counts'),
+        'fl_kind_checkin'     => lang('Ask for a check-in'),
+        'fl_kind_start_action' => lang('Start a scheduled action'),
+        'fl_digest_mode'      => lang('Which tasks'),
+        'fl_digest_mine'      => lang('Each person their own open tasks'),
+        'fl_digest_channel'   => lang('The open tasks of one channel'),
+        'fl_digest_channel_pick' => lang('Channel whose tasks are sent'),
+        'fl_digest_who'       => lang('Who gets the e-mail'),
+        'fl_digest_who_help'  => lang('Nobody ticked: everybody with such tasks, or the members of the channel.'),
+        'fl_digest_only'      => lang('Which of them'),
+        'fl_digest_intro'     => lang('Opening lines'),
+        'fl_digest_missed'    => lang('Also what each person has not read yet'),
+        'fl_digest_ai'        => lang('Pinegrap AI puts what they missed into a few sentences'),
+        'fl_report_title'     => lang('Title of the summary'),
+        'fl_report_counts'    => lang('Counts listed'),
+        'fl_report_where_help' => lang('A channel, e-mail addresses separated by commas, or both.'),
+        'fl_report_nowhere'   => lang('Nowhere to send yet'),
+        'fl_checkin_question' => lang('Question'),
+        'fl_checkin_help'     => lang('Asked of the channel\'s people; empty for the usual weekly question.'),
+        'fl_start_pick'       => lang('Choose a scheduled action'),
+        'fl_start_none'       => lang('No action chosen'),
+        'fl_start_target'     => lang('Scheduled action to start'),
+        'fl_start_delay'      => lang('Minutes later'),
+        'fl_start_delay_help' => lang('0 starts it at once; at most a week (10,080 minutes).'),
         'fl_notify_nobody'    => lang('Nobody chosen yet'),
         'fl_notify_who'       => lang('Who is told'),
         'fl_notify_text'      => lang('What they are told'),
@@ -1637,9 +1662,27 @@ function ws_flow_js_config($viewer, $mode)
         $subjects[] = array('key' => (string) $type, 'label' => (string) $info['label']);
     }
 
+    // What the step boxes offer to choose from, to whoever builds flows: the
+    // counts the person may read, the task e-mail's filters, and the
+    // scheduled actions a box may start.
+    $build = ws_flows_ready() && ws_can_schedule($viewer);
+    $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array());
+
+    if ($build && function_exists('ws_scheduled_metrics')) {
+        foreach (ws_scheduled_metrics() as $key => $metric) {
+            if (($metric['right'] === '') || !empty($viewer[$metric['right']])) {
+                $steps['metrics'][] = array('key' => (string) $key, 'label' => (string) $metric['label'], 'scope' => (string) $metric['scope']);
+            }
+        }
+
+        $steps['digest_only'] = ws_scheduled_digest_filters();
+        $steps['targets'] = ws_scheduled_targets($viewer);
+    }
+
     return $config + array(
         'ready'    => ws_flows_ready(),
-        'build'    => ws_flows_ready() && ws_can_schedule($viewer),
+        'build'    => $build,
+        'steps'    => $steps,
         'subjects' => $subjects,
         'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX),
     );

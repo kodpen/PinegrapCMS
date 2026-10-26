@@ -174,6 +174,7 @@
     "Each option must be an object of {label, no_value}.": "Her seçenek {label, no_value} biçiminde bir nesne olmalı.",
     "Each part has one owner and a due date, and a saved search shows everything due this week. We go through that one list in a short meeting every Monday.": "Her parçanın tek bir sorumlusu ve bir teslim tarihi var; kayıtlı bir arama da bu hafta teslim edilecek her şeyi gösteriyor. Her pazartesi kısa bir toplantıda o tek listenin üzerinden geçiyoruz.",
     "Each person may tick more than one option.": "Herkes birden fazla seçeneği işaretleyebilir.",
+    "Each person their own open tasks": "Herkese kendi açık görevleri",
     "Each person their own tasks": "Herkese kendi görevleri",
     "Each product is processed at its tax-deducted price and tax rates are processed in a separate column.": "Her ürün, vergisi düşülmüş fiyatı üzerinden işlenir ve vergi oranları ayrı bir sütuna işlenir.",
     "Each proposed task is an object with a title.": "Önerilen her görev, başlığı olan bir nesnedir.",

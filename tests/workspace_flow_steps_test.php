@@ -61,7 +61,7 @@ function test_workspace_flow_steps_are_kinds()
 {
 	$kinds = ws_flow_kinds();
 
-	foreach (array('post', 'email', 'notify', 'task_open', 'webhook', 'web_check') as $kind) {
+	foreach (array('post', 'email', 'notify', 'task_open', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'start_action') as $kind) {
 		pg_assert_true($kinds[$kind]['step'], $kind);
 		pg_assert_false($kinds[$kind]['trigger'], $kind);
 		pg_assert_same(array('done', 'failed'), $kinds[$kind]['outcomes'], $kind);
@@ -199,7 +199,7 @@ function test_workspace_flow_steps_types()
 	$steps = array_keys(ws_scheduled_outcomes()) ? ws_step_kinds() : array();
 
 	foreach ($steps as $kind => $info) {
-		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check'), true), $kind);
+		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger'), true), $kind);
 		pg_assert_same(array(), array_diff($info['lines'], $info['texts']), $kind . ': one-line texts are texts');
 	}
 
@@ -311,4 +311,43 @@ function test_workspace_flow_steps_hook_address_is_kept_back()
 	pg_assert_contains("ws_api_flow_graph_present(\$graph, (string) \$run['access'] === 'edit')", ws_flow_steps_test_source('ws_api_flow_run_present'));
 
 	pg_assert_contains("\$url = ws_scheduled_host((string) \$action['url']);", ws_flow_steps_test_source('ws_scheduled_web_check'));
+}
+
+// The task e-mail, the summary of counts, the check-in and the start of a
+// scheduled action, kept in their shape; a box that starts an action is the
+// trigger step.
+function test_workspace_flow_steps_digest_report_checkin_start()
+{
+	$digest = ws_step_config_normalize('task_digest', array('mode' => 'channel', 'channel_id' => '9', 'only' => 'soon', 'ai' => true, 'subject' => "A\nB"));
+
+	pg_assert_same('channel', $digest['mode']);
+	pg_assert_same(9, $digest['channel_id']);
+	pg_assert_same('open', $digest['only']);
+	pg_assert_false($digest['ai'], 'no recap without what they missed');
+	pg_assert_same('A B', $digest['subject']);
+	pg_assert_same('mine', ws_step_config_normalize('task_digest', array())['mode']);
+
+	$report = ws_step_config_normalize('report', array('metrics' => array('tasks_open', array('key' => 'Stock_Low!', 'param' => '5'), array('key' => '')), 'to' => array('a@example.com')));
+
+	pg_assert_same(array(array('key' => 'tasks_open', 'param' => 0), array('key' => 'stock_low', 'param' => 5)), $report['metrics']);
+	pg_assert_same('a@example.com', $report['to']);
+	pg_assert_same(20, count(ws_step_config_normalize('report', array('metrics' => array_fill(0, 30, 'tasks_open')))['metrics']));
+
+	pg_assert_same(array('target_id' => 3, 'delay' => 10080), ws_step_config_normalize('start_action', array('target_id' => '3', 'delay' => 99999)));
+	pg_assert_same(array('type' => 'trigger', 'target_id' => 3, 'delay' => 0), ws_step_action('start_action', array('target_id' => 3, 'delay' => 0)));
+
+	$problems = function ($kind, $config) {
+		return count(ws_step_config_problems($kind, ws_step_config_normalize($kind, $config), 'X'));
+	};
+
+	pg_assert_same(1, $problems('task_digest', array('mode' => 'channel')));
+	pg_assert_same(0, $problems('task_digest', array()));
+	pg_assert_same(2, $problems('report', array()));
+	pg_assert_same(0, $problems('report', array('metrics' => array('tasks_open'), 'to' => 'a@example.com')));
+	pg_assert_same(1, $problems('checkin', array()));
+	pg_assert_same(1, $problems('start_action', array()));
+	pg_assert_same(0, $problems('start_action', array('target_id' => 2)));
+
+	// The action a box starts names no source action.
+	pg_assert_contains("'run_id'          => 0", ws_flow_steps_test_source('ws_step_run'));
 }

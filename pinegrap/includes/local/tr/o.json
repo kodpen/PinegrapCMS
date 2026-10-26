@@ -727,6 +727,7 @@
     "Opening balances are not imported; enter them on the account.": "Açılış bakiyeleri içe aktarılmaz; cari kart üzerinden girin.",
     "Opening checklists and stock counts done before ten.": "Açılış kontrol listeleri ve stok sayımları saat ondan önce biter.",
     "Opening hours": "Çalışma saatleri",
+    "Opening lines": "Giriş satırları",
     "Opening one for inspection leaves a line in the channel and in the activity log; its decisions then join this list for as long as you are signed in.": "Birini denetim için açmak kanala ve etkinlik günlüğüne bir satır yazar; o kanalın kararları oturumunuz sürdükçe bu listeye katılır.",
     "Opening stock": "Açılış stoku",
     "Opening stock entry (Pinegrap sync)": "Açılış stok girişi (Pinegrap senkronizasyonu)",
