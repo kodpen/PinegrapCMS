@@ -142,6 +142,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/short_link_redirects.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/not_found_log.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_view.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_export.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/form_subscription.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/passkeys.php');

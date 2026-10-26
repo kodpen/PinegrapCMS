@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; steps 1-4b done, last #1706 and #1792; next 5): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+description: Plan (approved 2026-10-19; steps 1-5a done, last #1792 and #1821; next 5b): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -19,11 +19,13 @@ description: Plan (approved 2026-10-19; steps 1-4b done, last #1706 and #1792; n
 3. Done (#938): `privacy_export.php`, JSON pack, PDF summary; `core/personal-data-export.md`.
 4. Done (#1706): `privacy_erase.php`, `core/personal-data-erasure.md`; the owner's answers in `workflow/decisions-made-product.md`.
 4b. Done (#1792): feed tokens in clear in early SEO settings lines masked in place, step 11.0.38 (`core/audit-trail-stored-values.md`).
-5. Audit screen (JSON text is stored as object, list or compacted text: `core/audit-trail-stored-values.md`), export, API; retention jobs (S–M).
+5a. Done (#1821): `view_audit_log.php`, filters, CSV export; `core/audit-trail-screen.md`.
+5b. API `GET /audit-log`, scope `system:read`, the same filters as the screen (`pg_audit_view_filters()`, `pg_audit_view_where()`); before and after decoded, as stored.
+5c. Retention: a setting (default 2 years) and the general job trimming `audit_log` past it; the consent log's 3 years from the same job. A new config column is a schema step: ask the owner first.
 
 ## Open questions?
 - The export leaves out the site log, `audit_log` rows about the person and `visitors` (`core/personal-data-export.md`): add them later?
 - Which step writes cookie and `contract` consent rows? `sms-and-iys.md` step 4 (PR #1581) added the e-mail marketing writers (`core/consent-log-writers.md`); the cookie notice's server endpoint and a `contract` row next to `order_documents` are not assigned.
 
 ## Where to start?
-- Step 5. Read `core/audit-trail-stored-values.md` and `core/audit-trail-writers.md` first. The plan's `[NEW]` line is in (export); steps 4 and 5 widen it, no second line.
+- Step 5b. Read `core/audit-trail-screen.md` and `api/README.md` first. The plan's `[NEW]` line is in (export); steps 4 and 5 widen it, no second line.
