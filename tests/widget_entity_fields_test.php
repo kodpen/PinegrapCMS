@@ -292,6 +292,63 @@ function test_widget_entity_fields_account_no_secrets()
 	pg_assert_false(isset(pg_sw_entity_fields('account')['__member_id']), 'the order view fills __member_id');
 }
 
+function _wef_line($extra = array())
+{
+	return $extra + array(
+		'show_shipped_quantity' => '1',
+		'shipped_quantity' => '0',
+		'tax_total' => '360',
+		'recurring_payment_period' => 'Monthly',
+		'recurring_number_of_payments' => '6',
+		'recurring_start_date' => '2026-11-01',
+		'event_name' => 'Pottery class',
+		'event_date' => 'Monday, November 2, 2026 10:00 AM',
+		'added_by_offer' => '0',
+		'discounted_by_offer' => '1',
+	);
+}
+
+function test_widget_entity_fields_order_line_values()
+{
+	$v = pg_sw_entity_values('order_line', _wef_line(), array('date_format' => 'd.m.Y', 'currency_symbol' => '$'));
+
+	pg_assert_same('0', $v['__item_shipped_qty'], 'nothing shipped yet reads 0 where the shop shows it');
+	pg_assert_contains('3.60', $v['__item_vat']);
+	pg_assert_same(lang('Monthly'), $v['__item_payment_period']);
+	pg_assert_same('6', $v['__item_payment_count']);
+	pg_assert_same('01.11.2026', $v['__item_first_payment_date']);
+	pg_assert_same('Pottery class', $v['__item_event_name']);
+	pg_assert_same('', $v['__item_added_by_offer']);
+	pg_assert_same('1', $v['__item_discounted_by_offer']);
+
+	$v = pg_sw_entity_values('order_line', _wef_line(array('show_shipped_quantity' => '0', 'recurring_payment_period' => '', 'tax_total' => null)));
+	pg_assert_same('', $v['__item_shipped_qty'], 'the shop does not show it');
+	pg_assert_same('', $v['__item_payment_period'], 'not a subscription');
+	pg_assert_same('', $v['__item_payment_count']);
+	pg_assert_same('', $v['__item_first_payment_date']);
+	pg_assert_same('', $v['__item_vat'], 'a database without tax_total');
+}
+
+function test_widget_entity_fields_order_line_event_and_select()
+{
+	$row = pg_sw_entity_order_line_event(array('calendar_event_id' => 0));
+	pg_assert_same('', $row['event_name'], 'no event reserved');
+	pg_assert_same('', $row['event_date']);
+
+	// The event columns are read by their own function, never selected.
+	pg_assert_same(array('event_name', 'event_date'), array_values(array_filter(array_map(function ($spec) {
+		return isset($spec[2]['from']) ? $spec[0] : null;
+	}, pg_sw_entity_fields('order_line')))));
+
+	// No line token begins with another order view item token, so a fill
+	// can never cut one short.
+	foreach (array_keys(pg_sw_entity_fields('order_line')) as $token) {
+		foreach (array('__item_number', '__item_name', '__item_id', '__item_qty', '__item_price', '__item_total', '__item_image', '__item_url', '__item_ship_to') as $old) {
+			pg_assert_false(strpos($token, $old) === 0, $token . ' / ' . $old);
+		}
+	}
+}
+
 // The list view never offers the record's allow-listed values.
 function test_widget_entity_fields_quiz_not_in_list_view()
 {
@@ -306,7 +363,7 @@ function test_widget_entity_fields_editor_twin()
 {
 	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 
-	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS', 'form_record' => 'SW_FORM_RECORD_ENTITY_TOKENS', 'order' => 'SW_ORDER_ENTITY_TOKENS', 'account' => 'SW_MEMBER_ENTITY_TOKENS') as $entity => $name) {
+	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS', 'form_record' => 'SW_FORM_RECORD_ENTITY_TOKENS', 'order' => 'SW_ORDER_ENTITY_TOKENS', 'account' => 'SW_MEMBER_ENTITY_TOKENS', 'order_line' => 'SW_ORDER_LINE_ENTITY_TOKENS') as $entity => $name) {
 		pg_assert_true((bool)preg_match('/var ' . $name . ' = \[(.*?)\n    \];/s', $js, $m), $name . ' found');
 
 		preg_match_all("/\['(__[a-z0-9_]+)',[^\n]*?(, 'cond')?\]/", $m[1], $rows, PREG_SET_ORDER);

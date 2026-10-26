@@ -1385,6 +1385,7 @@
     "Added Quantity": "Eklenen Miktar",
     "Added after the SKU above. Use attribute names in curly braces.": "Yukarıdaki SKU'nun sonuna eklenir. Özellik adlarını süslü parantez içinde yazın.",
     "Added by": "Tarafından eklendi",
+    "Added by an offer": "Bir teklifle eklendi",
     "Added by the site": "Site tarafından eklendi",
     "Added servers": "Eklenen sunucular",
     "Added since {var:1}": "{var:1} sürümünden beri eklenenler",

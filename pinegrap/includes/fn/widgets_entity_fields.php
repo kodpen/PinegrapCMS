@@ -106,6 +106,23 @@ function pg_sw_entity_fields($entity)
         );
     }
 
+    // An order_items row with pg_sw_entity_order_line_event()'s columns, in
+    // the order view's item loop (the owner's own order). The line's product
+    // values come from the 'product' list beside these.
+    if ($entity === 'order_line') {
+        return array(
+            '__item_shipped_qty'         => array('shipped_quantity', 'number', array('when' => array('show_shipped_quantity'))),
+            '__item_vat'                 => array('tax_total', 'money'),
+            '__item_payment_period'      => array('recurring_payment_period', 'period', array('when' => array('recurring_payment_period'))),
+            '__item_payment_count'       => array('recurring_number_of_payments', 'count', array('when' => array('recurring_payment_period'))),
+            '__item_first_payment_date'  => array('recurring_start_date', 'day', array('when' => array('recurring_payment_period'))),
+            '__item_event_name'          => array('event_name', 'text', array('from' => 'calendar_events')),
+            '__item_event_date'          => array('event_date', 'text', array('from' => 'calendar_events')),
+            '__item_added_by_offer'      => array('added_by_offer', 'yesno'),
+            '__item_discounted_by_offer' => array('discounted_by_offer', 'yesno'),
+        );
+    }
+
     // A pg_sw_entity_account_read() row: the signed-in member's own account
     // (my account, profile, login region) or the addressee of an account
     // e-mail. Password and hint, session and secret keys, device PIN, roles
@@ -140,11 +157,14 @@ function pg_sw_entity_fields($entity)
 // own name, so the value reads as empty.
 function pg_sw_entity_select($entity, $alias)
 {
-    $table = ($entity === 'product') ? 'products' : '';
+    $tables = array('product' => 'products', 'order_line' => 'order_items');
+    $table = isset($tables[$entity]) ? $tables[$entity] : '';
     if ($table === '') return '';
 
-    $columns = array();
+    // The event of an order line is read by pg_sw_entity_order_line_event().
+    $columns = ($entity === 'order_line') ? array('calendar_event_id' => true, 'recurrence_number' => true) : array();
     foreach (pg_sw_entity_fields($entity) as $spec) {
+        if (isset($spec[2]['from'])) continue;
         $columns[$spec[0]] = true;
         if (isset($spec[2]['when'])) {
             foreach ($spec[2]['when'] as $gate) $columns[$gate] = true;
@@ -153,8 +173,9 @@ function pg_sw_entity_select($entity, $alias)
 
     $sql = '';
     foreach (array_keys($columns) as $column) {
-        $sql .= ($column === 'tax_rate' && !pg_schema_has($table, 'tax_rate'))
-            ? ', NULL AS tax_rate'
+        $added = ($column === 'tax_rate' || $column === 'tax_total');
+        $sql .= ($added && !pg_schema_has($table, $column))
+            ? ', NULL AS ' . $column
             : ', ' . $alias . '.' . $column;
     }
 
@@ -356,6 +377,24 @@ function pg_sw_entity_order_read($id)
             $row['custom_field_1_label'] = (string)$labels['custom_field_1_label'];
             $row['custom_field_2_label'] = (string)$labels['custom_field_2_label'];
         }
+    }
+
+    return $row;
+}
+
+// $row (an order_items row) with the name and the date range of the event
+// the line reserved, as the classic receipt prints them; '' each when it
+// reserved none or calendars are off.
+function pg_sw_entity_order_line_event($row)
+{
+    $row['event_name'] = '';
+    $row['event_date'] = '';
+    if (empty($row['calendar_event_id']) || !(defined('CALENDARS') && CALENDARS) || !function_exists('get_calendar_event')) return $row;
+
+    $event = get_calendar_event((int)$row['calendar_event_id'], (int)(isset($row['recurrence_number']) ? $row['recurrence_number'] : 0));
+    if (is_array($event)) {
+        $row['event_name'] = isset($event['name']) ? (string)$event['name'] : '';
+        $row['event_date'] = isset($event['date_and_time_range']) ? trim(strip_tags((string)$event['date_and_time_range'])) : '';
     }
 
     return $row;
