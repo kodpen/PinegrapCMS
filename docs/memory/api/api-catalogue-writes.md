@@ -7,6 +7,7 @@ description: External API writes to products, groups, pages and key codes: the s
 - Through the screen's own `pg_pb_create_product()`: there is no second INSERT. `pg_pb_save_submit_form_fields()` takes its source as a parameter (`$_POST` by default) and `$product['user']` can be given by the caller.
 - A taken name answers 409 `name_taken`; `get_unique_name()` would silently have made it `NAME[1]`.
 - POST /product-groups writes through `pg_catalog_group_create()`, shared with the Workspace, which announces `product_group.created` itself (`commerce/catalog-group-writer.md`).
+- POST /product-groups/variant-sets writes a whole set through the screen's `pg_catalog_variant_set_create()` and announces nothing (`commerce/catalog-variant-set-writer.md`).
 
 ## What does a product update replace?
 - `group_ids`, `attributes` and `images` REPLACE what the product has; an empty list removes all of them. Stock is not written here: the inventory endpoint adjusts atomically.

@@ -801,7 +801,6 @@ function pg_sw_raw_token_keys()
         '__clear_filters_button',
         // Comments widget.
         '__comment_message_html',
-        '__comment_stars_html',
         '__comment_seller_reply_html',
         // Order view: product form answers, information text and a gift
         // card's message with its line breaks (widgets_lists_order.php).

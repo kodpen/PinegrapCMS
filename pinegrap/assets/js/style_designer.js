@@ -10874,6 +10874,7 @@ const StyleDesigner = (function () {
                 _tagLoopRow(childEl);
                 if (childEl) frag.appendChild(childEl);
             });
+            _sdListGhostEls(node).forEach(function (g) { _tagLoopRow(g); frag.appendChild(g); });
         } else {
             // Empty loop_area inside a table — real <tr>/<td> drop target so
             // designers can still drag a template row in (mirrors the
@@ -12199,6 +12200,75 @@ const StyleDesigner = (function () {
         }
     }
 
+    // ── Sample rows of a list ─────────────────────────────────────────────
+    // A list inside a record (a loop_area with props.source) is designed on
+    // one row; the canvas follows it with sample rows built from the same
+    // nodes, so the row reads as repeated and a condition on a row value
+    // (the timeline's icon per kind) shows each of its cases. Ghost DOM as
+    // the sample comments: no node id, no toolbar, inert, never in the tree.
+    // A row's values come first in _displayValueForBinding(); a token the
+    // row leaves out reads the card's sample. Off with the sample switch.
+    var _sdListSample = null;
+
+    // The sample rows after the card, by list source: each the values that
+    // differ from the card's. A source not named here gets two rows of the
+    // card's values.
+    var SD_LIST_SAMPLE_ROWS = {
+        'order.steps': [
+            { __step_kind: 'paid', __step_label: _sdT('Payment Received'), __step_date: '20.10.2026 10:05' },
+            { __step_kind: 'shipped', __step_label: _sdT('Shipped'), __step_date: '21.10.2026 09:30' },
+            { __step_kind: 'delivered', __step_label: _sdT('Delivered'), __step_date: '23.10.2026', __step_is_estimate: '1' }
+        ],
+        'calendar.weekdays': [
+            { __weekday_name: _sdT('Tuesday'), __weekday_short: _sdT('Tue') },
+            { __weekday_name: _sdT('Wednesday'), __weekday_short: _sdT('Wed') }
+        ],
+        'product.attributes': [
+            { __attr_name: _sdT('Size'), __attr_value: 'M' }
+        ],
+        'security.passkeys': [
+            { __passkey_id: '2', __passkey_name: _sdT('My laptop'), __passkey_last_used: _sdT('Never'), __passkey_is_synced: '' }
+        ]
+    };
+
+    // The rows drawn after a list's card: none when the site draws nothing
+    // for it, inside a sample row, or with the sample switch off; at most
+    // the rows the list shows (props.limit) less the card.
+    function _sdListSampleRows(node) {
+        if (!_sdGhostsOn || _sdListSample || !_sdListIsSourced(node)) return [];
+        var src = SW_LIST_SOURCES[node.props.source];
+        if (!src || _sdListBand(node).off) return [];
+        var rows = SD_LIST_SAMPLE_ROWS[node.props.source] || [{}, {}];
+        var limit = parseInt(node.props.limit, 10);
+        return (limit > 0) ? rows.slice(0, limit - 1) : rows;
+    }
+
+    // The ghost elements of a list's sample rows, in order.
+    function _sdListGhostEls(node) {
+        var out = [];
+        _sdListSampleRows(node).forEach(function (row) {
+            _sdListSample = row;
+            try {
+                (node.children || []).forEach(function (child) {
+                    var el = buildNodeEl(child);
+                    if (!el || el.nodeType !== 1) return;
+                    el.querySelectorAll('.sd-tb').forEach(function (tb) { tb.remove(); });
+                    [el].concat(Array.prototype.slice.call(el.querySelectorAll('*'))).forEach(function (x) {
+                        ['data-sd-id', 'id', 'draggable', 'contenteditable'].forEach(function (a) { x.removeAttribute(a); });
+                        x.classList.remove('sd-selected');
+                    });
+                    el.classList.add('sd-ghost', 'sd-list-sample');
+                    el.setAttribute('aria-hidden', 'true');
+                    el.setAttribute('inert', '');
+                    out.push(el);
+                });
+            } finally {
+                _sdListSample = null;
+            }
+        });
+        return out;
+    }
+
     // In the e-mail state, a widget an e-mail draws no comment from
     // (_sdCommentsEmailDrawsComment()) is left out, as the e-mail leaves it
     // out; this note takes its place and says what the card needs. Editor
@@ -12878,6 +12948,8 @@ const StyleDesigner = (function () {
                 node.children.forEach(function (child) {
                     innerEl.appendChild(buildNodeEl(child));
                 });
+                // A list's sample rows after its card (_sdListGhostEls()).
+                if (node.type === 'loop_area') _sdListGhostEls(node).forEach(function (g) { innerEl.appendChild(g); });
             }
             if (_isBtnLike && _vtxt && _textPos !== 'start') innerEl.appendChild(_vtxt);
             // Non-button-like semantic: legacy behavior — text as plain text node AFTER children.
@@ -13805,15 +13877,6 @@ const StyleDesigner = (function () {
     // Preview only: never saved to the tree, never sent to the server.
     /* @pg-site-output */
     var _SD_HTML_PREVIEW_TOKENS = {
-        // Mirrors pg_comments_stars_html(): five stars, four of them filled.
-        '__comment_stars_html': function () {
-            var star = function (d, cls) {
-                return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi ' + cls + '" viewBox="0 0 16 16" aria-hidden="true"><path d="' + d + '"/></svg>';
-            };
-            var fill = star('M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z', 'bi-star-fill');
-            return '<span class="pg-comment-stars" role="img" aria-label="' + esc(_sdT('Rated {var:1} out of 5', 4)) + '">' +
-                   fill + fill + fill + fill + star('M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z', 'bi-star') + '</span>';
-        },
         // The comment's text and the store's reply, as the page draws them
         // (convert_text_to_html()).
         '__comment_message_html': function () {
@@ -14172,6 +14235,10 @@ const StyleDesigner = (function () {
             Object.prototype.hasOwnProperty.call(_sdCommentSample.values, fieldName)) {
             var _sample = _sdCommentSample.values[fieldName];
             return (typeof _sample === 'function') ? _sample() : _sample;
+        }
+        // A list's sample row (_sdListGhostEls()).
+        if (_sdListSample && fieldName && Object.prototype.hasOwnProperty.call(_sdListSample, fieldName)) {
+            return _sdListSample[fieldName];
         }
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
@@ -37488,7 +37555,7 @@ const StyleDesigner = (function () {
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
-        '__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html',
+        '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
         '__ad_content_html', '__ad_caption_html'
     ];
@@ -38399,7 +38466,8 @@ const StyleDesigner = (function () {
             ['__comment_date',              _sdT('Date ("2 days ago"; empty when the page hides dates)')],
             ['__comment_datetime',          _sdT('Date and time (takes a format)')],
             ['__comment_rating',            _sdT('Rating (1-5)')],
-            ['__comment_stars_html',        _sdT('Stars (HTML)')],
+            ['__comment_rating_label',      _sdT('Rating (words)')],
+            ['__comment_stars_text',        _sdT('Stars (characters)')],
             ['__comment_badge',             _sdT('Badge label')],
             ['__comment_status',            _sdT('Status ("Awaiting approval", "Not Published")')],
             ['__comment_file_name',         _sdT('Attachment name')],
@@ -38438,7 +38506,8 @@ const StyleDesigner = (function () {
             ['__comment_date',         _sdT('Date ("2 days ago"; empty when its page hides dates)')],
             ['__comment_datetime',     _sdT('Date and time (takes a format)')],
             ['__comment_rating',       _sdT('Rating (1-5)')],
-            ['__comment_stars_html',   _sdT('Stars (HTML)')],
+            ['__comment_rating_label', _sdT('Rating (words)')],
+            ['__comment_stars_text',   _sdT('Stars (characters)')],
             ['__comment_badge',        _sdT('Badge label')],
             ['__comment_status',       _sdT('Status ("Awaiting approval", "Not Published")')],
             ['__comment_label',        _sdT('Comment label of its page ("Reply", "Feedback")')],
@@ -39340,6 +39409,13 @@ const StyleDesigner = (function () {
             '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); },
             '__item_form_data_html': function (cfg) { return _sdPartOrderItemForm(); },
             '__item_gift_card_html': function (cfg) { return _sdPartOrderItemGiftCard(); }
+        },
+        comments: {
+            '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
+        },
+        // A list of recent comments is a comments widget on the server.
+        comments_recent: {
+            '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
         }
     };
 
@@ -39481,6 +39557,31 @@ const StyleDesigner = (function () {
     // The blocks the server added after a widget whose layout placed none
     // of their tokens, now parts added to the end of the tree once
     // (pg_sw_default_tail_parts()): kind => [tokens that place it, part].
+    // A comment's stars (pg_sw_part_comment_stars()): five drawings said
+    // once as "Rated N out of 5", the first N filled by the rating.
+    /* @pg-site-output */
+    function _sdPartCommentStars() {
+        var stars = [];
+        for (var i = 1; i <= 5; i++) stars.push(_sdPartCommentStar(true, i), _sdPartCommentStar(false, i));
+        var p = _sdPartWhen('__comment_rating', 'not_empty');
+        p._attrs = [{ name: 'role', value: 'img' }, { name: 'aria-label', value: '{{__comment_rating_label}}' }];
+        return [_sdPartEl('span', 'pg-comment-stars', _sdT('Stars'), p, stars)];
+    }
+
+    // The star at `place`, filled or empty (pg_sw_part_comment_star()): the
+    // drawing _pg_comments_star_svg() draws, shown by the rating.
+    /* @pg-site-output */
+    function _sdPartCommentStar(filled, place) {
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi '
+            + (filled ? 'bi-star-fill' : 'bi-star') + '" viewBox="0 0 16 16" aria-hidden="true"><path d="'
+            + (filled ? 'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z' : 'M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z') + '"/></svg>';
+        var p = _sdPartWhen('__comment_rating', filled ? 'gte' : 'lt', String(place));
+        p.contentType = 'svg';
+        p.html = svg;
+        p.customName = filled ? _sdT('Filled star') : _sdT('Empty star');
+        return createNode('content', p, []);
+    }
+
     var SW_DEFAULT_TAILS = {
         order_view: [
             [['__return_form', '__returns'], function (cfg, tree) { return _sdPartOrderReturns(); }],
@@ -59331,7 +59432,7 @@ const StyleDesigner = (function () {
                                             createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
                                                 customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
                                             createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
-                                                _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                                _bindings: { eo_visible_if: 'comment_has_rating' } }, _sdPartCommentStars()),
                                             createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
                                                 createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
                                                     _bindings: { text: '__comment_name' } }),
@@ -59509,7 +59610,7 @@ const StyleDesigner = (function () {
                                             _bindings: { text: '__comment_date' } })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'text-warning small mt-1', customName: _sdT('Stars'),
-                                        _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                        _bindings: { eo_visible_if: 'comment_has_rating' } }, _sdPartCommentStars()),
                                     createNode('semantic', { tag: 'p', cssClass: 'small mb-0 mt-1', text: _sdT('Comment text'), customName: _sdT('Excerpt'),
                                         _bindings: { text: '__comment_excerpt' } })
                                 ])
@@ -59631,6 +59732,7 @@ const StyleDesigner = (function () {
     // linked, and the widget's settings stay as they are.
     var _sdLgState = null;   // { sid, original: json, label, key } while a layout is tried
     var _sdLgSite  = {};     // sid → { kind, loading, items: [{ id, name, tree }] }
+    var _sdLgTpl   = {};     // sid → { kind, loading, items: [{ key, label, tree }] }
     var _sdLgDrawing = false; // the gallery's own redraw is not an edit
 
     function _sdLgApi(body, cb) {
@@ -59744,7 +59846,10 @@ const StyleDesigner = (function () {
     // one equal to the widget's own, and each distinct layout once.
     function _sdLgSiteItems(sid, kind) {
         var entry = _sdLgSite[sid];
-        if (!entry || entry.kind !== kind) return [];
+        return (entry && entry.kind === kind) ? _sdLgFit(sid, kind, entry.items) : [];
+    }
+
+    function _sdLgFit(sid, kind, items) {
         var cur = _sharedCache[sid] && _sharedCache[sid].tree;
         if (_sdLgState && _sdLgState.sid === sid) {
             try { cur = JSON.parse(_sdLgState.original); } catch (e) {}
@@ -59752,12 +59857,54 @@ const StyleDesigner = (function () {
         var seen = {};
         if (cur) seen[_sdSharedTreeJSON(_sdLgStrip(cur))] = true;
         var mineNames = (kind === 'custom_form' && cur) ? _sdLgNames(_cfControls(cur)) : null;
-        return entry.items.filter(function (it) {
+        return items.filter(function (it) {
             if (mineNames !== null && _sdLgNames(_cfControls(it.tree)) !== mineNames) return false;
             var key = _sdSharedTreeJSON(_sdLgStrip(it.tree));
             if (seen[key]) return false;
             seen[key] = true;
             return true;
+        });
+    }
+
+    // The design's template, when it was made from one: the saved row's,
+    // else the one being opened.
+    function _sdLgTemplateId() {
+        var el = document.querySelector('[name="style_template"]');
+        var v = el ? String(el.value || '') : '';
+        if (!v && _design && _design.template && typeof _design.template.id === 'string') v = _design.template.id;
+        return v;
+    }
+
+    // The layouts the design's template ships for this kind
+    // (pg_sw_template_layouts()), once per widget. A form view keeps only
+    // those made for a form with the same field names as this one's.
+    function _sdLgLoadTemplate(sid, kind, tplId) {
+        var have = _sdLgTpl[sid];
+        if (have && have.kind === kind) return;
+        var entry = _sdLgTpl[sid] = { kind: kind, loading: true, items: [] };
+        var done = function () {
+            entry.loading = false;
+            if (_sdLgTpl[sid] !== entry || typeof renderProperties !== 'function') return;
+            _sdLgDrawing = true;
+            try { renderProperties(); } finally { _sdLgDrawing = false; }
+        };
+        var styleId = (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0;
+        _sdLgApi({ action: 'shared_component', sub_action: 'template_layouts', kind: kind,
+                   style_id: styleId, template: tplId }, function (resp) {
+            var cfg = _sdLgCfg(sid);
+            ((resp && resp.layouts) || []).forEach(function (l) {
+                var t = l && l.tree ? _sdLgPrepare(JSON.stringify(l.tree), kind, cfg) : null;
+                if (!t || _isDefaultEmptyTree(t)) return;
+                entry.items.push({ key: String(l.key), label: String(l.label || l.key), tree: t,
+                                   fields: Array.isArray(l.fields) ? _sdLgNames(l.fields.map(function (n) { return { name: n }; })) : null });
+            });
+            if (kind !== 'form_list_view' && kind !== 'form_item_view') { done(); return; }
+            var fid = _sdLgFormId(cfg);
+            _fetchFormFields(fid, function () {
+                var mine = fid ? _sdLgNames(_formFieldsCache[fid]) : null;
+                entry.items = entry.items.filter(function (it) { return mine !== null && it.fields === mine; });
+                done();
+            });
         });
     }
 
@@ -59783,7 +59930,25 @@ const StyleDesigner = (function () {
         var head = function (text) {
             return '<div class="text-uppercase text-muted mt-2 mb-1" style="font-size:.62rem;letter-spacing:.04em">' + esc(text) + '</div>';
         };
+        var muted = function (text) {
+            return '<div class="text-muted py-1" style="font-size:.72rem">' + esc(text) + '</div>';
+        };
         var h = head(_sdT('Default')) + rowHtml('default', _sdT('Default layout'), 'bi-stars');
+        // Only the template this design was made from: its layouts carry
+        // that template's styles.
+        var tplId = _sdLgTemplateId();
+        if (tplId) {
+            _sdLgLoadTemplate(sid, kind, tplId);
+            h += head(_sdT('From the template'));
+            var tEntry = _sdLgTpl[sid];
+            if (!tEntry || tEntry.loading) {
+                h += muted(_sdT('Loading…'));
+            } else {
+                var tItems = _sdLgFit(sid, kind, tEntry.items);
+                if (!tItems.length) h += muted(_sdT('The design\'s template has no layout for this widget that fits here.'));
+                tItems.forEach(function (it) { h += rowHtml('tpl:' + it.key, it.label, 'bi-grid-1x2'); });
+            }
+        }
         h += head(_sdT('On this site'));
         var entry = _sdLgSite[sid];
         if (!entry || entry.loading) {
@@ -59860,6 +60025,13 @@ const StyleDesigner = (function () {
             var t = _buildStarterTree(cfg.regionType || kind);
             if (!t) { sdToast(_sdT('There is no default layout for this widget type.'), 'warning'); return; }
             _sdLgShow(sid, key, label, t);
+            return;
+        }
+        if (String(key).indexOf('tpl:') === 0) {
+            var tk = String(key).slice(4);
+            var te = _sdLgTpl[sid];
+            var ti = te ? _sdLgFit(sid, kind, te.items).filter(function (x) { return x.key === tk; })[0] : null;
+            if (ti) _sdLgShow(sid, key, ti.label, JSON.parse(JSON.stringify(ti.tree)));
             return;
         }
         var id = parseInt(String(key).replace('site:', ''), 10);

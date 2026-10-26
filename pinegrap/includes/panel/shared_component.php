@@ -755,6 +755,28 @@ function pg_panel_shared_component($request, $action)
             respond(array('status' => 'success', 'fields' => $sc_ff_rows));
             break;
 
+        // ── TEMPLATE LAYOUTS ────────────────────────────────────────────
+        // The layout gallery's "From templates": the layouts the design's
+        // template ships for a widget kind (pg_sw_template_layouts()). The
+        // template is read from the design's own row; a design not saved
+        // yet names the one it is being made from.
+        case 'template_layouts':
+            $sc_tl_kind  = isset($request['kind']) && is_string($request['kind']) ? $request['kind'] : '';
+            $sc_tl_style = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+            $sc_tl_id    = '';
+            if ($sc_tl_style > 0 && pg_schema_has('style', 'style_template')) {
+                $sc_tl_id = (string)db_value("SELECT style_template FROM style WHERE style_id = '$sc_tl_style'");
+            } elseif ($sc_tl_style <= 0 && isset($request['template']) && is_string($request['template'])) {
+                $sc_tl_id = $request['template'];
+            }
+            $sc_tl_tpl = ($sc_tl_id !== '' && $sc_tl_kind !== '') ? pg_design_template($sc_tl_id) : null;
+            if (!$sc_tl_tpl) {
+                respond(array('status' => 'success', 'layouts' => array()));
+            }
+            respond(array('status' => 'success', 'layouts' => pg_sw_template_layouts(
+                $sc_tl_tpl, $sc_tl_kind, pg_sw_template_page_map($sc_tl_tpl, $sc_tl_style))));
+            break;
+
         default:
             respond(array('status' => 'error', 'message' => lang('Invalid action.')));
     }

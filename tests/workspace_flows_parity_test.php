@@ -2489,6 +2489,7 @@ function workspace_flows_parity_table()
 		'webhook_body' => array(
 			array(workspace_flows_parity_prefixed('generic', 'event site action.name action.run text result status source at'), 3, 'webhook box: the same body (an outside contract: n8n, Zapier)'),
 			array(array('generic.action.id'), 5, 'converted anchor keeps its id, so action.id does not change'),
+			array(array('generic.flow'), 3, 'webhook box: which flow, run and box called (flows only)'),
 			array(array('text.text', 'discord.content'), 3, 'webhook box: the chat message'),
 		),
 		'outcomes' => array(
