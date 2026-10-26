@@ -437,9 +437,15 @@ function test_catalog_group_writer_scores_seo_and_announces_once()
 	pg_assert_true(strpos($writer, 'pg_catalog_group_clouds(') < strpos($writer, 'pg_catalog_seo_rescore('), 'scored after the clouds are built');
 	pg_assert_true(strpos($writer, 'pg_catalog_seo_rescore(') < strpos($writer, 'pg_announce('), 'announced once the row is complete');
 
-	// Nobody around the writer announces the create a second time.
+	// Nobody around the writer announces the create a second time. A
+	// variant set is another writer (pg_catalog_variant_set_create(), which
+	// announces nothing), so the Workspace's set announces its own group.
+	$variant_set = catalog_group_writer_test_body(catalog_group_writer_test_source('includes/workspace/changes.php'), 'ws_change_write_variant_set');
+
+	pg_assert_same(1, substr_count($variant_set, "pg_announce('product_group.created'"), 'a Workspace variant set is announced once');
+
 	foreach (array('includes/api/resources/product_groups.php', 'includes/workspace/changes.php') as $relative) {
-		pg_assert_false(strpos(catalog_group_writer_test_source($relative), "'product_group.created'") !== false, $relative . ' leaves the announcement to the writer');
+		pg_assert_false(strpos(str_replace($variant_set, '', catalog_group_writer_test_source($relative)), "'product_group.created'") !== false, $relative . ' leaves the announcement to the writer');
 	}
 
 	$rescore = catalog_group_writer_test_body(catalog_group_writer_test_source('includes/fn/ecommerce.php'), 'pg_catalog_seo_rescore');

@@ -127,6 +127,7 @@ function workspace_record_kinds_registry_test_lists()
 			'registry' => workspace_record_kinds_registry_test_column('change', true),
 			'except'   => array(
 				'stock'     => 'a product\'s stock: a second kind of change on the product\'s row (tag product); the drawer shows it as a field of the product',
+				'variant_set' => 'a second way to add a product group (tag product_group): a select group with a product per row, added whole; once made it is changed as a group and its products',
 				'channel'   => 'a channel\'s summary: the Workspace\'s own thing, not a site record',
 				'task'      => 'a Workspace task, not a site record',
 				'task_note' => 'a note on a Workspace task, not a site record',
