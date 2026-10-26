@@ -13516,6 +13516,13 @@ a.ws-chip:hover {
   overflow: hidden;
 }
 /* One row of kinds that scrolls sideways: there are too many to wrap. */
+/* The "/" list of a note's inserts, under the caret. */
+.ws-picker.ws-slash {
+  position: fixed;
+  bottom: auto;
+  width: 15rem;
+  z-index: 1080;
+}
 .ws-picker-types {
   display: flex;
   flex-wrap: nowrap;

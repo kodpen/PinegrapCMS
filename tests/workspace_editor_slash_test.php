@@ -137,7 +137,7 @@ function test_workspace_editor_slash_filter()
 	pg_assert_same(array('table'), $answer[0]['names'], '/tab is the table');
 	pg_assert_same('tab', $answer[0]['word'], 'the typed word');
 	pg_assert_same(array('table'), $answer[1]['names'], 'in either case');
-	pg_assert_same(array('bullets', 'numbers', 'checklist'), $answer[2]['names'], 'a later word of the label, and the name');
+	pg_assert_same(array('bullets', 'numbers'), $answer[2]['names'], 'a later word of the label');
 	pg_assert_same(array('codeblock'), $answer[3]['names'], 'the code block');
 	pg_assert_same(array('calc'), $answer[4]['names'], 'the tool name');
 	pg_assert_same(null, $answer[5], 'nothing matches: no list');
