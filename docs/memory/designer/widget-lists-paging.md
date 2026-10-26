@@ -1,6 +1,6 @@
 ---
 name: widget-lists-paging
-description: The form list's page links as a designable list (W12b): source paging.pages, key __page_number, rows and tokens, the built-in pagination left out, editor starter, placement
+description: The form list's page links as a designable list (W12b, #1947): source paging.pages, key __page_number, rows and tokens, the built-in pagination left out, editor starter, placement
 ---
 
 ## What does a designer build the page links from?
