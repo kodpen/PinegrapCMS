@@ -1011,3 +1011,28 @@ function bs6_switch_breakpoints($source)
 
 	return array('source' => $source, 'status' => $count > 0 ? 'applied' : 'done', 'left' => 0);
 }
+
+/**
+ * Bootstrap 5's link colour helpers (`link-secondary`, `link-body-emphasis`,
+ * …) have no Bootstrap 6 class. The panel already draws the colour ones in
+ * its own ink tones (backend.src.css), so they become the panel's own
+ * `pg-link-*` classes, in markup, scripts and selectors alike; the shell
+ * rules draw `pg-link-body-emphasis` as v5 did. Site-output code stays.
+ */
+function bs6_switch_links($source)
+{
+	$site_output = bs6_site_output_ranges($source);
+	$count = 0;
+	$pieces = bs6_shell_split_ranges($source, $site_output);
+	$out = '';
+
+	foreach ($pieces as $piece) {
+		if (!$piece[1]) {
+			$piece[0] = preg_replace('/(?<![\w-])link-(primary|secondary|success|danger|warning|info|body-emphasis)(?![\w-])/', 'pg-link-$1', $piece[0], -1, $n);
+			$count += $n;
+		}
+		$out .= $piece[0];
+	}
+
+	return array('source' => $out, 'status' => $count > 0 ? 'applied' : 'done', 'left' => 0);
+}
