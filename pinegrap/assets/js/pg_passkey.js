@@ -23,6 +23,11 @@
  *                                    the server answers only when both are
  *                                    right; resolves with the kept passkey
  *
+ * On load it also binds the "Sign in with a passkey" buttons of the sign-in
+ * screens (pg_passkey_signin_button()) and, where a button carries
+ * data-autofill, has the browser offer passkeys in the autofill of its
+ * form's email field (conditional mediation).
+ *
  * A refusal rejects with an Error whose code is the server's (or the
  * browser's name: NotAllowedError when the person cancelled or the time ran
  * out) and whose message is the sentence to show, when the server gave one.
@@ -221,10 +226,101 @@
         });
     }
 
+    // Posts a passkey sign-in answer to index.php in a form built here: the
+    // button usually sits inside the password form, which must not be sent.
+    function submitSignIn(button, credential) {
+        var outer = button.form;
+        var remember = outer && outer.elements.remember_me;
+        var form = window.document.createElement('form');
+        var fields = {
+            token: button.getAttribute('data-token'),
+            pg_passkey_signin: '1',
+            credential: JSON.stringify(credential),
+            send_to: button.getAttribute('data-send-to') || '',
+            return_to: button.getAttribute('data-return-to') || '',
+            remember_me: (remember && remember.checked) ? '1' : ''
+        };
+
+        form.method = 'post';
+        form.action = button.getAttribute('data-action');
+        form.style.display = 'none';
+
+        Object.keys(fields).forEach(function (key) {
+            var input = window.document.createElement('input');
+
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key];
+            form.appendChild(input);
+        });
+
+        window.document.body.appendChild(form);
+        form.submit();
+    }
+
+    // The pending autofill request (conditional mediation), if any; a click
+    // on a button aborts it, since a browser runs one request at a time.
+    // optionsSent settles once its options were answered: the server keeps
+    // one sign-in ceremony per session, so a button asks for its own only
+    // after that, or the later answer would replace the button's.
+    var autofill = null;
+    var optionsSent = null;
+
+    // Has the browser offer the site's passkeys in the autofill of the email
+    // field of the button's form (data-autofill: a screen that only signs
+    // in). Silent on any failure: the field and the button still work.
+    function startAutofill(button) {
+        var field = button.form && button.form.elements.email;
+
+        if (autofill || !field || !field.getAttribute || !window.AbortController
+            || !window.PublicKeyCredential.isConditionalMediationAvailable) {
+            return;
+        }
+
+        window.PublicKeyCredential.isConditionalMediationAvailable().then(function (available) {
+            if (!available || autofill || button.disabled) {
+                return;
+            }
+
+            // The webauthn token must come last in autocomplete.
+            var tokens = (field.getAttribute('autocomplete') || 'username').split(/\s+/).filter(function (token) {
+                return token !== '' && token !== 'webauthn';
+            });
+
+            field.setAttribute('autocomplete', tokens.concat('webauthn').join(' '));
+
+            var controller = new window.AbortController();
+
+            autofill = controller;
+
+            var options = post(button.getAttribute('data-options-url'), {
+                action: 'signin_options',
+                token: button.getAttribute('data-token'),
+                passwordless: '1'
+            });
+
+            optionsSent = options.catch(function () {
+                return null;
+            });
+
+            return options.then(function (answer) {
+                return window.navigator.credentials.get({
+                    publicKey: requestOptions(answer.options),
+                    mediation: 'conditional',
+                    signal: controller.signal
+                });
+            }).then(function (credential) {
+                if (credential && autofill === controller) {
+                    submitSignIn(button, credentialJSON(credential));
+                }
+            });
+        }).catch(function () {
+            autofill = null;
+        });
+    }
+
     // The "Sign in with a passkey" buttons (pg_passkey_signin_button()): shown
-    // when the browser can use a passkey; the answer is posted to index.php
-    // in a form built here, because the button usually sits inside the
-    // password form.
+    // when the browser can use a passkey; the answer is posted to index.php.
     function bindSignInButtons() {
         if (!supported()) {
             return;
@@ -251,42 +347,27 @@
 
             box.hidden = false;
 
+            if (button.getAttribute('data-autofill')) {
+                startAutofill(button);
+            }
+
             button.addEventListener('click', function () {
                 button.disabled = true;
                 notice.hidden = true;
 
-                signIn({
-                    url: button.getAttribute('data-options-url'),
-                    token: button.getAttribute('data-token'),
-                    passwordless: true
-                }).then(function (credential) {
-                    var outer = button.form;
-                    var remember = outer && outer.elements.remember_me;
-                    var form = window.document.createElement('form');
-                    var fields = {
+                if (autofill) {
+                    autofill.abort();
+                    autofill = null;
+                }
+
+                (optionsSent || window.Promise.resolve()).then(function () {
+                    return signIn({
+                        url: button.getAttribute('data-options-url'),
                         token: button.getAttribute('data-token'),
-                        pg_passkey_signin: '1',
-                        credential: JSON.stringify(credential),
-                        send_to: button.getAttribute('data-send-to') || '',
-                        return_to: button.getAttribute('data-return-to') || '',
-                        remember_me: (remember && remember.checked) ? '1' : ''
-                    };
-
-                    form.method = 'post';
-                    form.action = button.getAttribute('data-action');
-                    form.style.display = 'none';
-
-                    Object.keys(fields).forEach(function (key) {
-                        var input = window.document.createElement('input');
-
-                        input.type = 'hidden';
-                        input.name = key;
-                        input.value = fields[key];
-                        form.appendChild(input);
+                        passwordless: true
                     });
-
-                    window.document.body.appendChild(form);
-                    form.submit();
+                }).then(function (credential) {
+                    submitSignIn(button, credential);
                 }).catch(function (error) {
                     button.disabled = false;
                     notice.textContent = error.message || ((error.code === 'NotAllowedError' || error.code === 'AbortError') ? texts.cancelled : texts.failed) || '';

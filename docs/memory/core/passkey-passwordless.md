@@ -21,5 +21,6 @@ description: Sign-in with a passkey alone (PR #1882): the switch config.passkey_
 ## Does a password reset remove the passkeys?
 - No (owner, 2026-10-26): a password reset or change leaves them working, also for sign-in with a passkey alone, since a passkey is a proof on its own; turning two-step off keeps them too. The member takes them back under My Account › Security, the reset channel (owner, same day; plans/passkeys.md 4e ties them to sessions), the administrator with the two-step reset (`pg_mfa_reset()`); account deletion removes them.
 
-## What is not built yet?
-- Conditional UI (autofill of passkeys in the username field, `mediation: 'conditional'`).
+## Where does autofill offer passkeys? (PR #1960)
+- On screens that only sign in (`pg_passkey_autofill_for()`: `pg_signin_buttons()` with `$signup` false or `'none'`: login screen, login widget), the button carries `data-autofill`; the script then adds `webauthn` to the end of the form's `email` field `autocomplete` and runs `credentials.get()` with `mediation: 'conditional'`. A pick posts the same answer to `index.php`. Screens that also register are left alone.
+- The server keeps one sign-in ceremony per session: a button click aborts the autofill request and waits for its options request to settle before asking for its own, or the autofill's later answer would replace the button's ceremony.
