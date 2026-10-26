@@ -2160,7 +2160,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     if (!empty($cfg['translate_records'])) {
         $by_form = array_map('pg_tr_record_fields', $by_form);
     }
-    pg_coll_ref_fill($refs, $by_form, $by_form_source, !empty($cfg['translate_records']));
+    pg_coll_ref_fill($refs, $by_form, $by_form_source);
 
     // 3. Render each submission by cloning the LOOP template and replacing tokens.
     //    An identifier this form does not answer is swept after the pass, so a
@@ -3428,7 +3428,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             $custom = pg_tr_record_fields($custom);
         }
         $by_record = array((int)$form_row['id'] => $custom);
-        pg_coll_ref_fill($refs, $by_record, array((int)$form_row['id'] => $custom_source), !empty($cfg['translate_records']));
+        pg_coll_ref_fill($refs, $by_record, array((int)$form_row['id'] => $custom_source));
         $custom = $by_record[(int)$form_row['id']];
 
         // An account the form's auto-registration just opened for this

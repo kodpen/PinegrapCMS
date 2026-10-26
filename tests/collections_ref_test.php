@@ -124,7 +124,7 @@ function test_collections_ref_value_escaped_once()
 function test_collections_ref_fill_without_refs()
 {
 	$by_form = array(1 => array('title' => array('data' => 'x')));
-	pg_coll_ref_fill(array(), $by_form, $by_form, false);
+	pg_coll_ref_fill(array(), $by_form, $by_form);
 	pg_assert_same(array(1 => array('title' => array('data' => 'x'))), $by_form);
 }
 
@@ -171,4 +171,15 @@ function test_collections_ref_editor_spec()
 		array('field' => 'a', 'page_id' => 'tab:k1', 'show' => 'b'),
 		array('field' => '', 'page_id' => 0, 'show' => ''),
 	), json_decode(implode('', $out), true));
+}
+
+// The Bind Data panel offers the binding where the renderer expands it and
+// keeps the spec beside it.
+function test_collections_ref_panel_wiring()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_contains("var SW_REF_TOKEN = '__ref';", $js);
+	pg_assert_contains('var withRef = _pageLinkOffered && _SW_REF_PROPS[prop] === 1;', $js, 'offered in the widget kinds that expand it');
+	pg_assert_contains("bp._bindParams[propName] = { field: '', page_id: 0, show: '' };", $js, 'picking it starts an empty spec');
+	pg_assert_contains("p._bindParams[prop] = _swRefSpec(spec);", $js, 'an edit is stored normalised');
 }

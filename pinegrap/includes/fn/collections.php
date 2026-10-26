@@ -22,6 +22,9 @@
  * _swRefSpec() in style_designer.js.
  *
  * Only complete records are read, and never a field kept for staff only.
+ * The values print as stored: the translation extracts a widget's own
+ * records only, so a lookup of another form's text would find nothing and
+ * count against the page under the "reviewed" policy.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -269,24 +272,19 @@ function pg_coll_ref_load($page_id, $codes)
 /**
  * Put each '__ref' element's value beside the fields of every record it is
  * drawn for: $by_form[record id]['__ref_<n>']. The references are read from
- * the values as stored ($by_form_source); with $translate the other records'
- * texts are given in the page's language, as the widget's own are.
+ * the values as stored ($by_form_source).
  *
  * @param array $refs           token => spec (pg_coll_ref_bindings())
  * @param array $by_form        record id => fields, changed in place
  * @param array $by_form_source record id => fields as stored
- * @param bool  $translate
  */
-function pg_coll_ref_fill($refs, &$by_form, $by_form_source, $translate)
+function pg_coll_ref_fill($refs, &$by_form, $by_form_source)
 {
     if (!$refs || !is_array($by_form_source)) return;
 
     $loaded = array();
     foreach (pg_coll_ref_wanted($refs, $by_form_source) as $page_id => $codes) {
         $loaded[$page_id] = pg_coll_ref_load($page_id, $codes);
-        if ($translate && function_exists('pg_tr_record_fields')) {
-            $loaded[$page_id]['records'] = array_map('pg_tr_record_fields', $loaded[$page_id]['records']);
-        }
     }
 
     foreach ($by_form_source as $id => $fields) {
