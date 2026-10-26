@@ -239,3 +239,88 @@ apart: the <dialog> is the box.
 
 ===
 >>>
+
+The visual editor's settings dialog: its panes open <div>s in code, so the
+box's closing tag cannot be counted.
+
+@@ includes/designer_screen.php
+<<<
+        <div class="modal fade" id="styleSettingsModal" tabindex="-1" aria-labelledby="styleSettingsModalLabel" aria-hidden="true"
+             data-bs-backdrop="static" data-bs-keyboard="false" data-bs-theme="dark">
+            <!-- The largest dialog from 992px up, the whole screen below it.
+                 Its height and the scroll chain inside are in
+                 style_designer.css (.sd-settings-*): an inline size beats
+                 every media query. -->
+            <div class="modal-dialog modal-xl modal-fullscreen-lg-down modal-dialog-centered sd-settings-dialog">
+                <div class="modal-content sd-settings-content">
+===
+        <dialog class="dialog dialog-xl lg-down:dialog-fullscreen sd-settings-dialog sd-settings-content" id="styleSettingsModal" aria-labelledby="styleSettingsModalLabel"
+             data-bs-backdrop="static" data-bs-keyboard="false" data-bs-theme="dark">
+            <!-- The largest dialog from 1024px up, the whole screen below it.
+                 Its height and the scroll chain inside are in
+                 style_designer.css (.sd-settings-*): an inline size beats
+                 every media query. -->
+>>>
+
+@@ includes/designer_screen.php
+<<<
+                    </div>
+
+                </div>
+            </div>
+        </div>';
+===
+                    </div>
+
+        </dialog>';
+>>>
+
+@@ assets/css/style_designer.css
+<<<
+.sd-settings-dialog .sd-settings-content
+===
+.sd-settings-dialog.sd-settings-content
+>>>
+
+@@ assets/css/style_designer.css
+<<<
+/* The largest dialog from 992px up (modal-xl), the whole screen below it
+   (modal-fullscreen-lg-down).
+===
+/* The largest dialog from 1024px up (dialog-xl), the whole screen below it
+   (lg-down:dialog-fullscreen).
+>>>
+
+@@ assets/css/style_designer.css
+<<<
+.sd-settings-modal-dark .modal-dialog { max-width: 560px; }
+===
+.sd-settings-modal-dark.dialog { --bs-dialog-width: 560px; }
+>>>
+
+Menus a script builds and aligns to the toggle's end: the placement goes on
+the toggle.
+
+@@ assets/js/workspace.js
+<<<
+            toggle.setAttribute('data-bs-toggle', 'menu');
+            wrap.appendChild(toggle);
+
+            var menu = el('ul', 'menu pg-menu-end');
+===
+            toggle.setAttribute('data-bs-toggle', 'menu');
+            toggle.setAttribute('data-bs-placement', 'bottom-end');
+            wrap.appendChild(toggle);
+
+            var menu = el('ul', 'menu pg-menu-end');
+>>>
+
+@@ assets/js/workspace_flow.js
+<<<
+        moreButton.setAttribute('data-bs-toggle', 'menu');
+        moreButton.setAttribute('aria-expanded', 'false');
+===
+        moreButton.setAttribute('data-bs-toggle', 'menu');
+        moreButton.setAttribute('data-bs-placement', 'bottom-end');
+        moreButton.setAttribute('aria-expanded', 'false');
+>>>
