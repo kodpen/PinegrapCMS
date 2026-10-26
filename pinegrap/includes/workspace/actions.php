@@ -875,7 +875,7 @@ function ws_handle_action($action, $request)
         case 'ws_note_save':
             $data = array('note_id' => (int) ($request['note_id'] ?? 0));
 
-            foreach (array('title', 'body', 'pinned', 'base') as $field) {
+            foreach (array('title', 'body', 'pinned', 'base', 'revision') as $field) {
                 if (array_key_exists($field, $request)) {
                     $data[$field] = $request[$field];
                 }
