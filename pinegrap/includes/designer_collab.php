@@ -67,8 +67,9 @@ function pg_collab_ready($recheck = false)
     if (!class_exists('db') || !isset(db::$con) || !db::$con) return $ready;
 
     foreach (array('designer_presence', 'designer_page_lock') as $table) {
-        $row = @mysqli_query(db::$con, "SHOW TABLES LIKE '" . e($table) . "'");
-        if (!$row || mysqli_num_rows($row) === 0) return $ready;
+        // pg_schema_has() remembers a "no" for the request too.
+        if ($recheck) pg_schema_forget($table);
+        if (!pg_schema_has($table)) return $ready;
     }
     $ready = true;
     return $ready;

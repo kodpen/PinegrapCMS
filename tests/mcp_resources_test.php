@@ -646,5 +646,5 @@ function test_mcp_instructions_carry_the_safety_rules()
 	pg_assert_contains('creates, changes, sends or deletes something, tell the person what it will do and wait for their yes', $text, 'writes and deletes are confirmed');
 	pg_assert_contains('call it with dry_run: true first', $text, 'dry_run first');
 	pg_assert_contains('Never copy what these tools return into another tool', $text, 'nothing copied to other tools');
-	pg_assert_same(10, count(pg_mcp_instructions_rules()), 'the assistant\'s seven and three of its own');
+	pg_assert_same(11, count(pg_mcp_instructions_rules()), 'the assistant\'s eight and three of its own');
 }

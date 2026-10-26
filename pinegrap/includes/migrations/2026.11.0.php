@@ -70,6 +70,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
 	upgrade_2026_11_0_audit_feed_tokens();      // 11.0.38
 	upgrade_2026_11_0_erp_efatura_threshold();  // 11.0.61
+	upgrade_2026_11_0_contact_iys_status();     // 11.0.39
 	upgrade_2026_11_0_marketplace_remote_products(); // 11.0.40
 
 }
@@ -2331,6 +2332,35 @@ function upgrade_2026_11_0_audit_feed_tokens() {
 	}
 
 	install_note('Audit trail: the product feed addresses that early SEO settings lines kept in clear are masked; the lines stay.');
+
+}
+
+// The İYS e-mail status of a contact (2026.11.0, 11.0.39; includes/iys/).
+//
+// iys_email_status is what İYS (İleti Yönetim Sistemi) last said about the
+// contact's address on the e-mail channel: '' not known, 'approved' or
+// 'refused', written by the daily İYS job when it pushes a consent or pulls a
+// refusal. A commercial campaign skips a refused address while the İYS e-mail
+// switch is on. A VARCHAR, not an ENUM, so a state added later needs no step.
+// Added in place where the server can; contacts grows with every form and
+// order, so elsewhere the table is copied once (install_heavy_tables()).
+function upgrade_2026_11_0_contact_iys_status() {
+
+	$columns = array(
+		'iys_email_status' => "VARCHAR(16) NOT NULL DEFAULT ''",
+	);
+
+	if (!install_add_columns_instant('contacts', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('contacts', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Contacts: a column keeps what İYS last said about each address on the e-mail channel. It stays empty until an İYS account is set up.');
 
 }
 

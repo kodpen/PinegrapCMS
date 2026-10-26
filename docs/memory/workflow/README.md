@@ -19,6 +19,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 ## Files
 
+- branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt edit; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - coordinator.md: Coordinator session (pilot, 2026-10-26): one per account, keeps its cloud workers on free plan steps, looks at them every 10 minutes, carries owner questions, writes no code, merges nothing
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().

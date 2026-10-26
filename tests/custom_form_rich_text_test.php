@@ -254,6 +254,6 @@ function test_custom_form_rich_text_raw_prints_defused()
 {
 	$widgets = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
 	pg_assert_contains('$data = pg_defuse_php_tags(pg_sanitize_rich_text($data));', $widgets, 'pg_sw_apply_tokens()');
-	$catalog = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
-	pg_assert_contains('prepare_form_data_for_output(pg_defuse_php_tags(pg_sanitize_rich_text($data)), $type, false)', $catalog, 'order form values');
+	$order = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_lists_order.php');
+	pg_assert_contains('prepare_form_data_for_output(pg_defuse_php_tags(pg_sanitize_rich_text($value)), $type, false)', $order, 'order form values');
 }

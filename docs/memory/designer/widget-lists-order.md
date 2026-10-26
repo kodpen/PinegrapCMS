@@ -12,7 +12,7 @@ description: Order view (receipt e-mail too) and my account lists (W10): recipie
 - `account.orders` reads `account_id`; a list in a submission row lists the same orders.
 
 ## Which tokens does a row carry?
-- The names the widgets already fill, so a row binds as the static part or the item loop does: recipients the `__shipping_*` tokens (no `__shipping_address_html`: list rows are escaped), `__arrival_date`, `__ship_to_key`, `__ship_to_item_count`; items the item loop's tokens without the HTML ones (`__item_description`, `__item_form_data_html`, `__item_gift_card_html`); parcels `__tracking_code`, `__tracking_link`, `__tracking_company_name`.
+- The names the widgets already fill, so a row binds as the static part or the item loop does: recipients the `__shipping_*` tokens (no `__shipping_address_html`: list rows are escaped), `__arrival_date`, `__ship_to_key`, `__ship_to_item_count`; items the item loop's tokens without `__item_description` (HTML); parcels `__tracking_code`, `__tracking_link`, `__tracking_company_name`.
 - Steps: `__step_label` (translated; a cancellation's without its reason), `__step_date`, `__step_kind` (created, paid, shipped, delivered, cancelled), `__step_note` (the reason), `__step_is_estimate` (a date still to come). Icons and colours are conditions on `__step_kind`, never a class.
 - Orders: `__order_id`, `__order_no`, `__order_date` (site date format), `__order_total` (as the history prints it, plain text), `__order_status` (raw), `__order_is_cancelled`, `__order_url` (view order page `?id=`, `#` without one).
 - Dates in rows are display strings: a format suffix on them is not reliable (as in the calendar lists).
@@ -23,7 +23,7 @@ description: Order view (receipt e-mail too) and my account lists (W10): recipie
 
 ## What does the editor give?
 - Palette "Lists in a record": five items; `_sdOrderListStarter()` lands Bootstrap elements: recipients as cards with the recipient's items and parcels inside (two lists deep), items as a list group, parcels as a link shown with `show_if __tracking_link not_empty` and a plain number with `empty`, steps with an "Estimated" badge and the note, orders as list-group links with a "Cancelled" badge.
-- Never in the order view's item loop (`_sdListPlaceOk()`); the band turns amber there and for recipients or steps inside a recipient (`_sdOrderListKeyless()`). Tests: `tests/widget_lists_order_test.php`, `test_widget_lists_editor_order`.
+- Never in the order view's item loop (`_sdListPlaceOk()`) but for an item's lists ([[widget-default-parts-order-items]]); the band turns amber there and for recipients or steps inside a recipient (`_sdOrderListKeyless()`). Tests: `tests/widget_lists_order_test.php`, `test_widget_lists_editor_order`.
 
 ## What is not done yet?
 - Payments (gift cards applied to the order) and the legacy account page's incomplete orders, reorder links and recipients: the widgets show no such data today, so they wait for W8's allow-list.

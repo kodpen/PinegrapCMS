@@ -187,14 +187,14 @@ function test_workspace_command_registry_holds_every_name_once()
 		return $entry['key'];
 	}, ws_commands(null));
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
 }
 
 // Every argument is typed with a known kind, says whether it may be left
 // out, and names a suggestion source the composer knows (or none).
 function test_workspace_command_registry_arguments_are_typed()
 {
-	$sources = array('', 'people', 'people_departments', 'tasks', 'records', 'products', 'dates', 'estimates', 'priorities');
+	$sources = array('', 'people', 'people_departments', 'tasks', 'records', 'products', 'dates', 'estimates', 'priorities', 'statuses');
 
 	foreach (ws_commands(null) as $entry) {
 		pg_assert_true(is_string($entry['description']) && ($entry['description'] !== ''), '/' . $entry['key'] . ' has a description');
@@ -293,6 +293,14 @@ function test_workspace_command_suggestions_are_read_by_the_parser()
 		foreach ($values['priorities'] as $item) {
 			pg_assert_true(ws_parse_priority($item['value']) !== '', $language . ' priority ' . $item['value']);
 		}
+
+		$statuses = array();
+
+		foreach ($values['statuses'] as $item) {
+			$statuses[] = ws_parse_status_word($item['value']);
+		}
+
+		pg_assert_same(array('todo', 'doing', 'waiting', 'done', 'cancelled'), $statuses, $language . ' statuses, every one read');
 	}
 
 	pg_assert_same('bugün', ws_command_suggestions('tr')['dates'][0]['value'], 'Turkish first day');
@@ -508,4 +516,30 @@ function test_workspace_command_typed_people_assign_on_one_exact_username()
 
 	pg_assert_same(array(7), $task['assignees'], 'written twice, assigned once');
 	pg_assert_same('Ara', $task['title'], 'both leave the title');
+}
+
+// /status (/durum) answers to its names, reads the task and the status word
+// after it in either language, and is the only command besides /task with
+// a live line.
+function test_workspace_command_status_reads_task_and_word()
+{
+	pg_assert_same(array('command' => 'status', 'rest' => 'G-42 bekliyor'), ws_command_split('/durum G-42 bekliyor'), '/durum');
+	pg_assert_same(array('command' => 'status', 'rest' => 'T-42 done'), ws_command_split('/STATUS T-42 done'), '/STATUS in capitals');
+
+	pg_assert_same(array('task_id' => 42, 'word' => 'Sürüyor', 'status' => 'doing'), ws_command_parse_status('G-42 Sürüyor'), 'a Turkish word in capitals');
+	pg_assert_same(array('task_id' => 42, 'word' => 'suruyor', 'status' => 'doing'), ws_command_parse_status('<#task:42> suruyor'), 'a task tag, no Turkish letters');
+	pg_assert_same(array('task_id' => 7, 'word' => 'cancelled', 'status' => 'cancelled'), ws_command_parse_status('#7 cancelled now'), 'only the first word');
+	pg_assert_same(array('task_id' => 42, 'word' => '', 'status' => ''), ws_command_parse_status('T-42'), 'no word');
+	pg_assert_same(array('task_id' => 42, 'word' => 'later', 'status' => ''), ws_command_parse_status('T-42 later'), 'a word that is no status');
+	pg_assert_same('', ws_parse_status_word(''), 'nothing');
+
+	$live = array();
+
+	foreach (ws_commands(null) as $entry) {
+		if ($entry['live']) {
+			$live[] = $entry['key'];
+		}
+	}
+
+	pg_assert_same(array('task', 'status'), $live, 'the commands with a live line');
 }

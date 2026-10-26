@@ -17,6 +17,7 @@
  */
 
 require('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
 
 // if the e-mail campaign job is not activated, then output error
 if (email_campaign_job_enabled() == false) {
@@ -92,7 +93,17 @@ function email_campaign_job_prepare($email_recipient)
     ) {
         return null;
     }
-    
+
+    // With İYS on for e-mail, an address İYS holds a refusal for gets no
+    // commercial mail, whatever the local opt-in says: the refusal may have
+    // been given through İYS after the last pull wrote opt_in.
+    if (
+        ($email_recipient['purpose'] == 'commercial')
+        and pg_iys_email_refused($email_recipient['email_address'])
+    ) {
+        return null;
+    }
+
     // Create an array that will store the fields for variables that need to be replaced.
     $fields = array();
 

@@ -189,8 +189,7 @@ function pg_cf_page_form_ready()
     if (!db::$con) return $ready;
     $need = array('custom_form_pages', 'form_fields', 'form_field_options');
     foreach ($need as $t) {
-        $r = @mysqli_query(db::$con, "SHOW TABLES LIKE '" . e($t) . "'");
-        if (!$r || mysqli_num_rows($r) === 0) return $ready;
+        if (!pg_schema_has($t)) return $ready;
     }
     $ready = true;
     return $ready;

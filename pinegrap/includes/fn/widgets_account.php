@@ -715,7 +715,7 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
         '__username'       => h(defined('USER_USERNAME') ? (string)USER_USERNAME : ''),
         '__email_address'  => h(defined('USER_EMAIL_ADDRESS') ? (string)USER_EMAIL_ADDRESS : ''),
         '__my_account_url' => h($account_url),
-    ));
+    ) + pg_sw_entity_account_tokens((int)USER_ID, $tree_json));
 }
 
 // ============================================================================
@@ -1843,6 +1843,9 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
 
     $tokens = $values;
     foreach ($links as $k => $v) $tokens[$k] = h($v);
+    // The member's own allow-listed account values: read only when the
+    // tree binds one, as the region sits on every page.
+    if ($signed_in) $tokens += pg_sw_entity_account_tokens((int)USER_ID, $tree_json);
     return _pg_member_apply_tokens($rendered, $tokens);
 }
 
@@ -2173,6 +2176,7 @@ function _render_system_widget_account_email($tree_json, $widget_id, $cfg = arra
     $member = array();
     $links  = array();
     $reset  = '';
+    $user_id = 0;
     if ($acct !== null) {
         $kind = isset($acct['kind']) ? (string)$acct['kind'] : '';
         $user_id = isset($acct['user_id']) ? (int)$acct['user_id'] : 0;
@@ -2218,5 +2222,8 @@ function _render_system_widget_account_email($tree_json, $widget_id, $cfg = arra
 
     $split    = _split_widget_tree($tree);
     $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
-    return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values($values['tokens']));
+    // The addressee's allow-listed account values; none in the unknown-
+    // address answer of a reset or the preview.
+    $account = ($kind !== '' && $kind !== 'preview') ? pg_sw_entity_account_tokens($user_id, $tree_json) : array();
+    return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values($values['tokens']) + $account);
 }
