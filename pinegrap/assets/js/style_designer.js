@@ -24397,7 +24397,10 @@ const StyleDesigner = (function () {
         // Suggestions first: Enter on a highlighted row picks before the
         // add rows' own Enter handlers run.
         _sdAttachStylesSuggest(panel);
-        if (selectedNode) _sdBindCustomStyleCard(panel.querySelector('.sd-styles-this-element'), selectedNode);
+        if (selectedNode) {
+            _sdBindCustomStyle(panel.querySelector('.sd-styles-this-element'), selectedNode,
+                               _sdPanelLockReason([selectedNode]) || designLock);
+        }
 
         // ── Bind element.style declaration events ──
         panel.querySelectorAll('.sd-styles-decl-toggle').forEach(function (cb) {
@@ -24883,40 +24886,64 @@ const StyleDesigner = (function () {
         return html;
     }
 
+    // The field itself, shared by the Styles panel card and the Attributes
+    // row: the growing textarea with its notes, or why it is off.
+    function _sdCustomStyleFieldHtml(node, why) {
+        if (why) return '<div class="sd-styles-empty-decl">' + esc(_sdCustomStyleOffText(why)) + '</div>';
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        var value = cls ? PgCustomStyle.body(_userStylesGet(), cls) : '';
+        var users = cls ? PgCustomStyle.users(_sdCustomStyleClassLists(), cls) : 0;
+        return '<textarea class="sd-custom-style-input" rows="' + Math.max(2, value.split('\n').length) + '" spellcheck="false" placeholder="color: …;">' + esc(value) + '</textarea>' +
+               '<div class="sd-custom-style-notes">' + _sdCustomStyleNotes(value, users) + '</div>';
+    }
+
     // The Styles panel's "This element" card.
     function _sdCustomStyleCardHtml(node) {
         if (!node || typeof PgCustomStyle === 'undefined' || !window.PgUserStyles) return '';
         var why = _sdCustomStyleOff(node);
         if (why === 'none') return '';
         var cls = PgCustomStyle.classOf(node.props.cssClass);
-        var value = cls ? PgCustomStyle.body(_userStylesGet(), cls) : '';
-        var users = cls ? PgCustomStyle.users(_sdCustomStyleClassLists(), cls) : 0;
-        var html = '<div class="sd-styles-section sd-styles-this-element">' +
-                       '<div class="sd-styles-section-hdr">' +
-                           '<span class="bi bi-brush" style="color:#79c0ff"></span>' +
-                           '<span class="sd-styles-selector">' + esc(_sdT('This element')) + '</span>' +
-                           (cls ? '<span class="sd-styles-source" style="margin-left:auto">.' + esc(cls) + '</span>' : '') +
-                       '</div>';
-        if (why) {
-            return html + '<div class="sd-styles-empty-decl">' + esc(_sdCustomStyleOffText(why)) + '</div></div>';
-        }
-        return html +
-                   '<textarea class="sd-custom-style-input" rows="' + Math.max(2, value.split('\n').length) + '" spellcheck="false" placeholder="color: …;">' + esc(value) + '</textarea>' +
-                   '<div class="sd-custom-style-notes">' + _sdCustomStyleNotes(value, users) + '</div>' +
+        return '<div class="sd-styles-section sd-styles-this-element">' +
+                   '<div class="sd-styles-section-hdr">' +
+                       '<span class="bi bi-brush" style="color:#79c0ff"></span>' +
+                       '<span class="sd-styles-selector">' + esc(_sdT('This element')) + '</span>' +
+                       (cls ? '<span class="sd-styles-source" style="margin-left:auto">.' + esc(cls) + '</span>' : '') +
+                   '</div>' +
+                   _sdCustomStyleFieldHtml(node, why) +
                '</div>';
     }
 
-    function _sdBindCustomStyleCard(card, node) {
-        if (!card) return;
+    // The Attributes panel's custom style row, below the class row.
+    function _sdCustomStyleRowHtml(node) {
+        if (!node || typeof PgCustomStyle === 'undefined' || !window.PgUserStyles) return '';
+        var why = _sdCustomStyleOff(node);
+        if (why === 'none') return '';
+        return '<div class="sd-attr-row sd-attr-row-fixed sd-attr-row-custom-style">' +
+                   '<span class="sd-attr-name-lbl" title="' + esc(_sdT('Custom style')) + '">css</span>' +
+                   '<span class="sd-attr-sep">:</span>' +
+                   '<div class="sd-attr-custom-style-wrap">' + _sdCustomStyleFieldHtml(node, why) + '</div>' +
+                   '<span class="sd-attr-del-ph"></span>' +
+               '</div>';
+    }
+
+    // Binds the field in container. drawWhy: the lock reason to draw on
+    // container ('' when a wider lock is drawn around it already); the
+    // field takes no input while the element or User Styles are locked.
+    function _sdBindCustomStyle(container, node, drawWhy) {
+        if (!container) return;
         var lock = _sdPanelLockReason([node]) || _sdPanelLockReason(null, 'design');
-        _sdPanelLock(card, lock);
-        var ta = card.querySelector('.sd-custom-style-input');
+        _sdPanelLock(container, drawWhy);
+        var ta = container.querySelector('.sd-custom-style-input');
         var users = function () {
             var cls = PgCustomStyle.classOf(node.props.cssClass);
             return cls ? PgCustomStyle.users(_sdCustomStyleClassLists(), cls) : 0;
         };
+        var bindSplit = function () {
+            var b = container.querySelector('.sd-custom-style-split');
+            if (b && !lock) b.addEventListener('click', function () { _sdSplitCustomStyle(node); });
+        };
         if (ta && !lock) {
-            var notes = card.querySelector('.sd-custom-style-notes');
+            var notes = container.querySelector('.sd-custom-style-notes');
             var grow = function () { ta.rows = Math.max(2, ta.value.split('\n').length); };
             ta.addEventListener('input', function () {
                 grow();
@@ -24926,10 +24953,6 @@ const StyleDesigner = (function () {
             ta.addEventListener('change', function () { _sdWriteCustomStyle(node, ta.value); });
             if (typeof _sdAttachFieldSuggest === 'function') _sdAttachFieldSuggest(ta, { kind: 'style' }, { node: node, change: true });
         }
-        var bindSplit = function () {
-            var b = card.querySelector('.sd-custom-style-split');
-            if (b && !lock) b.addEventListener('click', function () { _sdSplitCustomStyle(node); });
-        };
         bindSplit();
     }
 
@@ -25199,6 +25222,8 @@ const StyleDesigner = (function () {
                 '<div class="sd-attr-class-wrap">' + classTagsHtml + '</div>' +
                 '<span class="sd-attr-del-ph"></span>' +
             '</div>' +
+            // Fixed: the element's custom style rule (User Styles)
+            _sdCustomStyleRowHtml(n) +
             // Built-in attrs from props (locked)
             (builtinAttrsHtml ? '<div id="sd-attr-builtin">' + builtinAttrsHtml + '</div>' : '') +
             // Dynamic attrs
@@ -25213,6 +25238,10 @@ const StyleDesigner = (function () {
         // Suggestions first: Enter on a highlighted row picks before the
         // row's own handlers see it.
         _sdAttachAttrsSuggest(panel, n);
+        // The panel's own lock is drawn already; User Styles can be locked
+        // on their own (content level).
+        _sdBindCustomStyle(panel.querySelector('.sd-attr-row-custom-style'), n,
+                           _sdPanelLockReason([n]) ? '' : _sdPanelLockReason(null, 'design'));
 
         // ── id change ──
         var idInp = panel.querySelector('.sd-attr-val[data-prop="id"]');

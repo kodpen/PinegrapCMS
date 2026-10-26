@@ -1,6 +1,6 @@
 ---
 name: custom-style
-description: The designer's per-element custom style: one User Styles rule keyed by a generated pgs- class, pg_custom_style.js, the Styles panel "This element" card, sharing and Split, where it is off
+description: Per-element custom style: a User Styles rule keyed by a pgs- class, pg_custom_style.js, the Styles "This element" card and Attributes css row, Split, where it is off
 ---
 
 ## What is a custom style?
@@ -12,8 +12,9 @@ description: The designer's per-element custom style: one User Styles rule keyed
 - `write` ends each declaration with `;` when the next line starts a new one (before a closing comment), keeps a list that goes on over lines, removes the rule for an empty value and refuses a brace outside strings and comments (`brace`), which would end the rule early.
 - `warnings`: `important` (allowed, with a note that it beats Bootstrap classes and the theme), `brace`.
 
-## How does the Styles panel show it?
-- A "This element" card above element.style (`_sdCustomStyleCardHtml`, `_sdBindCustomStyleCard`): a growing textarea with the light dropdown (`style` kind, [[style-fields]]), written on `change` (blur) by `_sdWriteCustomStyle()`: `_sdMayEdit`, the design lock, one `saveState()`, the class added the first time, the rule written, `render()`. Emptied, the rule goes and the element drops the class. A rule-only change does not touch the tree.
+## Where is it edited?
+- A "This element" card above element.style (`_sdCustomStyleCardHtml`): a growing textarea with the light dropdown (`style` kind, [[style-fields]]), written on `change` (blur) by `_sdWriteCustomStyle()`: `_sdMayEdit`, the design lock, one `saveState()`, the class added the first time, the rule written, `render()`. Emptied, the rule goes and the element drops the class. A rule-only change does not touch the tree.
+- The same field (`_sdCustomStyleFieldHtml`, `_sdBindCustomStyle`) is the Attributes panel's `css` row below `class` (`_sdCustomStyleRowHtml`); there only the User Styles lock is drawn on the row, the panel draws its own.
 - Locked with `_sdPanelLock` at content level (User Styles are never editable there, [[designer-content-roles-panels]]). Hidden while Find filters the panel.
 
 ## When is it shared or off?
@@ -21,4 +22,4 @@ description: The designer's per-element custom style: one User Styles rule keyed
 - Off, with the reason shown, for a component placement and inside a system widget or a shared component (`_sdCustomStyleOff()`): their trees are not the page's.
 
 ## How is it tested?
-- `tests/designer_custom_style_test.php` (Node with pg_user_styles.js). The card is DOM work, not unit tested.
+- `tests/designer_custom_style_test.php` (Node with pg_user_styles.js), `_sdCustomStyleOff()` on stand-ins. The card and row are DOM work, not unit tested.

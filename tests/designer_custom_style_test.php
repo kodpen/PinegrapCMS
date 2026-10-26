@@ -132,3 +132,31 @@ function test_designer_custom_style_warnings()
 		pg_assert_same(array(array('important'), array('important', 'brace'), array(), array()), $r);
 	}
 }
+
+// Where the field is off (_sdCustomStyleOff() in style_designer.js), with
+// stand-ins for the widget and shared component lookups.
+function test_designer_custom_style_off()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$from = strpos($source, 'function _sdCustomStyleOff(');
+	pg_assert_true($from !== false, '_sdCustomStyleOff is in the designer');
+
+	if ($from === false) {
+		return;
+	}
+
+	$end = strpos($source, "\n    }\n", $from);
+	$fn = substr($source, $from, $end - $from + 6);
+
+	$r = designer_custom_style_run(
+		'function _isInsideSystemWidget(n) { return n.w ? 7 : 0; }'
+		. 'function _sdSharedOwnerOf(n) { return (n.w || n.s) ? 7 : 0; }'
+		. $fn
+		. 'console.log(JSON.stringify([_sdCustomStyleOff({ props: {} }), _sdCustomStyleOff({ type: "shared_ref", props: {} }),'
+		. ' _sdCustomStyleOff({ props: {}, w: 1 }), _sdCustomStyleOff({ props: {}, s: 1 }), _sdCustomStyleOff(null)]));'
+	);
+
+	if ($r !== null) {
+		pg_assert_same(array('', 'shared', 'widget', 'shared', 'none'), $r, 'a page element only; a widget is named before the shared component it is');
+	}
+}

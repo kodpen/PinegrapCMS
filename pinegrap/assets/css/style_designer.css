@@ -2148,6 +2148,11 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     padding-top: .3rem;
     padding-bottom: .3rem;
 }
+.sd-attr-row-custom-style { align-items: flex-start; padding-top: .3rem; padding-bottom: .3rem; }
+.sd-attr-custom-style-wrap { flex: 1; min-width: 0; }
+.sd-attr-custom-style-wrap .sd-custom-style-input {
+    font-size: .67rem; background: var(--sd-input-bg); border-color: var(--sd-input-border); color: var(--sd-text);
+}
 /* Sabit attr isim etiketi (id, class) */
 .sd-attr-name-lbl {
     width: 38px;
