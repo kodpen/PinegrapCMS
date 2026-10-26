@@ -84,6 +84,7 @@ function pg_sw_type_labels()
         'menu_region'         => lang('Menu'),
         'menu_sequence_region' => lang('Menu Sequence'),
         'ad_region'           => lang('Ad Region'),
+        'tag_cloud_region'    => lang('Tag Cloud'),
     );
 }
 

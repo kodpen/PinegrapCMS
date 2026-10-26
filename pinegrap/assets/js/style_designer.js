@@ -11123,6 +11123,7 @@ const StyleDesigner = (function () {
                     menu_region:          _sdT('Menu'),
                     menu_sequence_region: _sdT('Menu Sequence'),
                     ad_region:            _sdT('Ad Region'),
+                    tag_cloud_region:     _sdT('Tag Cloud'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -32423,6 +32424,7 @@ const StyleDesigner = (function () {
             var _isMenuRegion      = (_regionType === 'menu_region');
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
             var _isAdRegion        = (_regionType === 'ad_region');
+            var _isTagCloud        = (_regionType === 'tag_cloud_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -32473,6 +32475,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isOrderPreview) {
                 _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
+            } else if (_isTagCloud) {
+                _sourceInfoHtml = _sdT('The 25 keywords used most by what a search results page searches (its catalog items, or the site\'s pages), in alphabetical order, each a link to that page searching for it. The keywords are written on the products and pages; the more often a keyword is used, the higher its weight (1 to 5), which the design shows by its size.');
             } else if (_isAdRegion) {
                 _sourceInfoHtml = _sdT('The ads of an ad region, read on every visit: they are written, ordered and given captions under Ads, by the users who may edit that region. A static region shows one ad picked at random; a dynamic one every ad, in its order, turning by the region\'s slideshow settings. Nothing is drawn while ads are switched off.');
             } else if (_isMenuSequence) {
@@ -33611,6 +33615,25 @@ const StyleDesigner = (function () {
                     row(_sdT('Menu'),
                         '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The items are added, ordered and linked under Menus; without a menu the widget draws no items.')) + '</div>'
+                    )
+                );
+            }
+
+            // ── tag_cloud_region settings ────────────────────────────────────
+            if (_isTagCloud) {
+                var _tcNames = (regionData && regionData.tag_cloud_regions) || [];
+                var _tcName = typeof _cfg.search_page_name === 'string' ? _cfg.search_page_name : '';
+                var _tcOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
+                _tcNames.forEach(function (nm) {
+                    _tcOpts += '<option value="' + esc(nm) + '"' + (nm === _tcName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                });
+                if (_tcName !== '' && _tcNames.indexOf(_tcName) === -1) {
+                    _tcOpts += '<option value="' + esc(_tcName) + '" selected>' + esc(_sdT('{var} (not found)', _tcName)) + '</option>';
+                }
+                systemSection += sect('bi-tags', _sdT('Tag Cloud Settings'),
+                    row(_sdT('Search Results Page'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="search_page_name">' + _tcOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Each keyword links to this page searching for it; without a page the widget draws no keyword.')) + '</div>'
                     )
                 );
             }
@@ -37043,7 +37066,8 @@ const StyleDesigner = (function () {
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
-        order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1
+        order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
+        tag_cloud_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -38168,6 +38192,23 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // tag_cloud_region token palette — has loop_area (one row per keyword).
+    // Mirrors _render_system_widget_tag_cloud_region() in widgets_tag_cloud.php.
+    var SW_TAG_CLOUD_TOKEN_GROUPS = [
+        { label: _sdT('Tag Cloud'), tokens: [
+            ['__search_page_name', _sdT('Search results page name')],
+            ['__tag_total',        _sdT('Number of keywords shown')]
+        ]},
+        { label: _sdT('Keyword (loop_area)'), tokens: [
+            ['__tag_name',         _sdT('Keyword')],
+            ['__tag_keyword',      _sdT('Keyword as stored (untranslated)')],
+            ['__tag_url',          _sdT('Search link of the keyword')],
+            ['__tag_count',        _sdT('Number of items with the keyword')],
+            ['__tag_size',         _sdT('Font size in percent (100 to 200)')],
+            ['__tag_weight',       _sdT('Weight from 1 (used least) to 5 (used most)')]
+        ]}
+    ];
+
     // ad_region token palette — has loop_area (one row per ad shown).
     // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
     var SW_AD_REGION_TOKEN_GROUPS = [
@@ -38222,7 +38263,8 @@ const StyleDesigner = (function () {
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
         menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
-        ad_region:         SW_AD_REGION_TOKEN_GROUPS
+        ad_region:         SW_AD_REGION_TOKEN_GROUPS,
+        tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -39393,6 +39435,10 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        tag_cloud_region: [
+            ['has_tags',        _sdT('The search results page has a keyword to show')],
+            ['no_tags',         _sdT('No page is chosen, or it has no keyword')]
         ],
         ad_region: [
             ['has_ads',         _sdT('The region has an ad to show')],
@@ -51927,7 +51973,8 @@ const StyleDesigner = (function () {
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
         { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
-        { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' }
+        { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
+        { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -52106,6 +52153,9 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
+        } else if (newType === 'tag_cloud_region') {
+            // The site's first search results page, so a new widget shows keywords at once.
+            if (cfg.search_page_name === undefined) cfg.search_page_name = ((regionData && regionData.tag_cloud_regions) || [])[0] || '';
         } else if (newType === 'ad_region') {
             // The site's first ad region, so a new widget shows ads at once.
             if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
@@ -58077,6 +58127,29 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'tag_cloud_region': {
+                // The keywords of a search results page as a row of links:
+                // the loop repeats the keywords in alphabetical order, each
+                // drawn by the link of its weight (1 used least, 5 used
+                // most), larger as the weight grows, as the classic cloud
+                // sizes them. Mirrors _render_system_widget_tag_cloud_region().
+                var tcSizes = ['fs-6', 'fs-5', 'fs-4', 'fs-3', 'fs-2'];
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'nav', cssClass: 'd-flex flex-wrap align-items-baseline column-gap-3 row-gap-1', customName: _sdT('Tag Cloud'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Tag Cloud') }],
+                        _bindings: { eo_visible_if: 'has_tags' } }, [
+                        createNode('loop_area', {}, [
+                            createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Keyword') }, tcSizes.map(function (cls, i) {
+                                return createNode('semantic', { tag: 'a', cssClass: cls + ' text-decoration-none', text: _sdT('Keyword'), href: '#',
+                                    customName: _sdT('Weight {var}', String(i + 1)),
+                                    _bindings: { href: '__tag_url', text: '__tag_name', show_if: '__tag_weight' },
+                                    _bindParams: { show_if: { op: 'eq', value: String(i + 1) } } });
+                            }))
+                        ])
+                    ])
+                ]);
+            }
+
             case 'ad_region': {
                 // The ads of a region as a Bootstrap carousel: the loop
                 // repeats the ads (the server marks the first one active),
@@ -58784,7 +58857,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
