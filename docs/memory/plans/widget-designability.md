@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W14 #1602 #1701): legacy-layout power in system widgets by one finish pass
+description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets by one finish pass
 ---
 
 ## What is built, and why?
@@ -33,7 +33,7 @@ OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical ol
 - W6 done (#1680): lists engine, field values, attachments ([[widget-lists]]). W7 done (#1688): lists in the editor ([[widget-lists-editor]]). W8 Entity fields (allow-list).
 - W9 Product lists. W10 Order and account lists (receipt e-mail too). W11 Cart lists, mini cart. W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 Calendar grid.
 - W14 done (#1602, #1701, #1719): typed fill, formats, list rows too ([[widget-fill-filters]], [[widget-fill-shop]]).
-- W15 Attribute bindings. W16 Placed beats pushed; old HTML tokens drawn by default parts.
+- W15 done (#1734). W16 Placed beats pushed; old HTML tokens drawn by default parts.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
 - W19 Canvas: ghosts for every loop, state preview, `_sdCondEval` twin.
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
@@ -42,4 +42,4 @@ OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical ol
 - Claim with a draft PR `[plan:widget-designability] Wn`. A new kind reads its saved-tree checks through `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W15; W8 waits for the owner's column list.
+- W16; W8 waits for the owner's column list.

@@ -27,7 +27,7 @@ description: The finish pass every system widget render goes through: scope, mar
 - First the rows published for the lists are taken (`pg_sw_list_take()`): none outlive the pass.
 1. Row positions ([[widget-loop-position]]): row spans numbered, marks and position tokens left removed.
 2. Lists ([[widget-lists]]): every list span drawn from the published rows; an empty one leaves a cut point.
-3. Conditions (`pg_sw_finish_resolve()`), list rows included.
+3. Conditions (`pg_sw_finish_resolve()`), list rows included; then attribute values ([[widget-attr-bindings]]).
 4. After a cut, in form_list_view, form_item_view and comments: `pg_sw_hide_empty_fields($html, $cut_mark)` judges only pg-hide-if-empty elements holding a cut point; one that goes leaves the point, so the box around it is judged in turn.
 5. Every carrier, cut point, empty value element and marker of this request still standing removed.
 6. Each record's edit pencil put in (below), then pencil markers left removed.

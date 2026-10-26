@@ -34,10 +34,10 @@ description: Lists inside a widget record (#1680): loop_area + props.source, sou
 - Four levels; deeper spans, unregistered ones and stray markers go with their carriers. A nested list reads its parent row's tokens through carriers.
 
 ## Where does the edit pencil go?
-- The renderer puts it in: a record starting with a list gets it in the first element after the span (the leading-comment pattern reads the span), rows drawn before it. A record with a condition defers as W1.
+- The renderer puts it in: a record starting with a list gets it in the first element after the span (the leading-comment pattern reads the span). A record with a condition defers as W1.
 
 ## How does get_file open a listed attachment?
-- `pg_record_file_tree_binds()`: a files list naming the field, or none for an upload not office use only (`$listed`, carried in the facts to `pg_record_file_view_grants()`). As with a condition, the list's limit is not read. Tests: `tests/record_files_test.php`.
+- `pg_record_file_tree_binds()`: a files list naming the field, or none for an upload not office use only (`$listed`, carried in the facts to `pg_record_file_view_grants()`). As with a condition, the list's limit is not read. Tests: `record_files_test.php`.
 
 ## What is not covered yet?
-- Editor: [[widget-lists-editor]]. Page links with list values (W15). Other kinds (W9-W13). A condition on the loop_area itself. `eo_visible_if` flags inside a list are not resolved.
+- Editor: [[widget-lists-editor]]. Row values in links and attributes: [[page-link-list-rows]], [[widget-attr-bindings]]. Other kinds (W9-W13). A condition on the loop_area itself. `eo_visible_if` flags inside a list are not resolved.

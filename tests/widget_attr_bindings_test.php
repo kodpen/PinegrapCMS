@@ -283,3 +283,92 @@ function test_widget_attr_bindings_page_link_placeholder()
 	pg_assert_same('', pg_sw_page_link_row_value('/board?x=1', $n, array()), 'a finished address');
 	pg_assert_same('<a href="/böard?who=x%20%22y%22">', pg_sw_page_link_settle('<a href="' . $ph . '">', $n), 'settled without the row');
 }
+
+function _attr_bind_js()
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+}
+
+// A `var NAME = [ ... ];` block or a function of style_designer.js, cut out
+// at its four-space indent; '' when missing.
+function _attr_bind_js_cut($source, $name, $var = false)
+{
+	$from = strpos($source, $var ? "\n    var " . $name . ' = [' : "\n    function " . $name . '(');
+	if ($from === false) return '';
+	$to = strpos($source, $var ? "\n    ];\n" : "\n    }\n", $from);
+	return ($to === false) ? '' : substr($source, $from, $to + 7 - $from);
+}
+
+// Runs $script after the editor's attribute rules and the page link's row
+// tokens; the JSON it prints, or null without Node.
+function _attr_bind_run_js($script)
+{
+	if (!function_exists('exec')) return null;
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) return null;
+
+	$js  = _attr_bind_js();
+	$cut = '';
+	foreach (array('SW_COND_DENY', 'SW_ATTR_DENY_NAMES', 'SW_ATTR_MARKUP') as $name) {
+		$block = _attr_bind_js_cut($js, $name, true);
+		pg_assert_true($block !== '', $name . ' is found');
+		$cut .= $block;
+	}
+	foreach (array('_sdCondTokenAllowed', '_sdAttrBindNameOk', '_sdAttrTokenOk', '_sdListIsSourced', '_sdListsAbove', '_sdPageLinkRowTokens') as $name) {
+		$fn = _attr_bind_js_cut($js, $name);
+		pg_assert_true($fn !== '', $name . ' is found');
+		$cut .= $fn;
+	}
+	$stubs = "function _sdT(s) { return s; }\n"
+		. "var SW_LIST_SOURCES = { 'form_record.values': { rows: [['__value_text', 'Value'], ['__value_param', 'Value for an address']] },"
+		. " 'form_record.files': { rows: [['__file_name', 'File Name'], ['__file_url', 'File address']] } };\n"
+		. "var PARENTS = new Map();\n"
+		. "function _sdAnyParent(n) { var p = PARENTS.get(n); return p ? { parent: p } : null; }\n";
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgattr');
+	if ($file === false) return null;
+	file_put_contents($file, $stubs . $cut . "\n" . $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	$answer = json_decode($printed, true);
+	pg_assert_true(is_array($answer), 'Node printed JSON: ' . (($printed === '') ? '(nothing)' : $printed));
+	return $answer;
+}
+
+// The editor's lists are the server's.
+function test_widget_attr_bindings_editor_lists_match_the_server()
+{
+	$js = _attr_bind_js();
+	preg_match_all("/'([a-z:-]+)'/", _attr_bind_js_cut($js, 'SW_ATTR_DENY_NAMES', true), $m);
+	pg_assert_same(pg_sw_attr_denied_names(), $m[1], 'refused attributes');
+	preg_match_all("/'(__[a-z0-9_]+)'/", _attr_bind_js_cut($js, 'SW_ATTR_MARKUP', true), $m);
+	pg_assert_same(array_keys(pg_sw_raw_token_keys()), $m[1], 'markup tokens');
+	pg_assert_true(!preg_match('/var SW_ATTR[A-Z_]*TOKEN/', $js), 'no SW_ATTR*TOKEN* name (check_bindings reads those as palettes)');
+}
+
+// The editor's rules answer as the server's on the same names and tokens,
+// and a page link offers the nearest list's row values.
+function test_widget_attr_bindings_editor_rules()
+{
+	$names  = array('data-id', 'aria-label', 'title', 'value', 'xml:lang', 'onclick', 'OnLoad', 'style', 'HREF', 'srcdoc', 'content', '', '1x', 'a b');
+	$tokens = array('title', '__value_param', '__description', '__PRICE_FORMATTED', '__comment_stars_html', '__page_link_3', '__edit_url', '');
+	$answer = _attr_bind_run_js(
+		'var list = { type: "loop_area", props: { source: "form_record.files" } };'
+		. 'var inner = { type: "loop_area", props: { source: "form_record.values" } };'
+		. 'var a = { type: "semantic", props: {} }, b = { type: "semantic", props: {} };'
+		. 'var main = { type: "loop_area", props: {} };'
+		. 'PARENTS.set(a, inner); PARENTS.set(inner, list); PARENTS.set(list, main); PARENTS.set(b, main);'
+		. 'console.log(JSON.stringify({ names: ' . json_encode($names) . '.map(_sdAttrBindNameOk), tokens: ' . json_encode($tokens) . '.map(_sdAttrTokenOk),'
+		. ' nearest: _sdPageLinkRowTokens(a).map(function (r) { return r[0]; }), none: _sdPageLinkRowTokens(b) }));'
+	);
+	if ($answer === null) return;
+	pg_assert_same(array_map('pg_sw_attr_name_ok', $names), $answer['names'], 'attribute names');
+	pg_assert_same(array_map('pg_sw_attr_token_ok', $tokens), $answer['tokens'], 'tokens');
+	pg_assert_same(array('__value_text', '__value_param'), $answer['nearest'], 'the nearest list');
+	pg_assert_same(array(), $answer['none'], 'outside a list');
+}
