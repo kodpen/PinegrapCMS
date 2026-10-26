@@ -1741,6 +1741,7 @@
     "The headings start at H{var}": "Başlıklar H{var} ile başlıyor",
     "The health letter": "Sağlık bülteni",
     "The health score and the checks behind it, for your own monitoring": "Sağlık skoru ve arkasındaki kontroller — kendi izlemeniz için",
+    "The health score and the checks behind it, for your own monitoring, and the audit trail": "Kendi izlemeniz için sağlık puanı ve arkasındaki denetimler, ayrıca denetim izi",
     "The holiday was added: {var:1}.": "Tatil eklendi: {var:1}.",
     "The holiday was removed.": "Tatil kaldırıldı.",
     "The home page cannot be deleted through the API.": "Ana sayfa API üzerinden silinemez.",

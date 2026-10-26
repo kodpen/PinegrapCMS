@@ -705,6 +705,7 @@
     "{var:1} is longer than the {var:2} characters accepted.": "{var:1}, kabul edilen {var:2} karakterden uzun.",
     "{var:1} is not a command.": "{var:1} bir komut değil.",
     "{var:1} is not a date and time. Send ISO 8601 with an offset or Z, or a unix time.": "{var:1} bir tarih ve saat değil. Farkı ya da Z ile ISO 8601 veya unix zamanı gönderin.",
+    "{var:1} is not a value the audit trail holds.": "{var:1}, denetim izinin tuttuğu bir değer değil.",
     "{var:1} is not a version this installation knows. The schema version was not changed.": "{var:1} bu kurulumun tanıdığı bir sürüm değil. Şema sürümü değiştirilmedi.",
     "{var:1} is not an e-mail address.": "{var:1} geçerli bir e-posta adresi değil.",
     "{var:1} is not approved on {var:2} yet, so there is no listing to update.": "{var:1} henüz {var:2} pazaryerinde onaylanmadı, bu yüzden güncellenecek bir ilan yok.",
