@@ -98,6 +98,12 @@ function ws_flow_kinds()
         'end'    => array('label' => lang('End'), 'trigger' => false, 'outcomes' => array(), 'step' => false),
     );
 
+    // The boxes that start a flow on their own, through its anchor
+    // (flow_anchors.php).
+    foreach ((function_exists('ws_flow_anchor_kinds') ? ws_flow_anchor_kinds() : array()) as $kind => $info) {
+        $kinds[$kind] = array('label' => $info['label'], 'trigger' => true, 'outcomes' => array('next'), 'step' => false);
+    }
+
     // One condition of a scheduled action (flow_conditions.php).
     if (function_exists('ws_flow_condition_outcomes')) {
         $kinds['condition'] = array('label' => lang('Condition'), 'trigger' => false, 'outcomes' => ws_flow_condition_outcomes(), 'step' => false);
@@ -220,6 +226,7 @@ function ws_flow_lines($value, $length)
  *         rule of ws_template_assign_valid(), 'creator' being whoever starts
  *         the run), due_in ('' or 0-3650 days), priority
  * condition: ws_flow_condition_normalize()
+ * schedule, event, join: ws_flow_anchor_normalize()
  * a step: ws_step_config_normalize()
  *
  * @param string $kind
@@ -259,6 +266,11 @@ function ws_flow_config_normalize($kind, $config)
 
         case 'condition':
             return function_exists('ws_flow_condition_normalize') ? ws_flow_condition_normalize($config) : array();
+
+        case 'schedule':
+        case 'event':
+        case 'join':
+            return function_exists('ws_flow_anchor_normalize') ? ws_flow_anchor_normalize($kind, $config) : array();
     }
 
     return function_exists('ws_step_config_normalize') ? ws_step_config_normalize($kind, $config) : array();
@@ -441,6 +453,12 @@ function ws_flow_graph_check($graph)
 
         if ($kinds[$node['kind']]['step']) {
             foreach (ws_step_config_problems($node['kind'], $node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
+        if (in_array($node['kind'], array('schedule', 'event', 'join'), true)) {
+            foreach (ws_flow_anchor_problems($node['kind'], $node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -985,6 +1003,16 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
             }
         }
 
+        // A box that starts the flow on its own: a time still to come, an
+        // event whose records the owner sees, a channel they read.
+        if (isset(ws_flow_anchor_kinds()[$node['kind']])) {
+            $anchor = ws_flow_anchor_check($viewer, $node['kind'], $node['config']);
+
+            if (!$anchor['ok']) {
+                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $anchor['error']))));
+            }
+        }
+
         // A condition: a count or a record the owner may read.
         if ($node['kind'] === 'condition') {
             $condition = ws_flow_condition_check($viewer, $node['config']);
@@ -1062,6 +1090,10 @@ function ws_flow_publish($viewer, $flow, $data = array())
     db("UPDATE ws_flows SET status = 'live', version_id = '" . $version_id . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . $now . "'
         WHERE id = '" . $flow_id . "' AND status <> 'binned'");
 
+    // The hidden scheduled action that starts it on its own, written from
+    // the version now live (checked a moment ago by the publish check).
+    ws_flow_anchor_sync($viewer, $flow, ws_flow_graph_normalize($check['json']));
+
     log_activity(lang(array('string' => 'workspace flow ({var:1}) was published as version {var:2}', 'vars' => array($flow['name'], $n))), (string) ($_SESSION['sessionusername'] ?? ''));
 
     return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'version_id' => $version_id, 'n' => $n);
@@ -1116,6 +1148,8 @@ function ws_flow_pause($viewer, $flow)
         return ws_flow_refusal(lang('Only a live flow can be paused.'), 409);
     }
 
+    ws_flow_anchor_set_status($flow['id'], 'paused');
+
     log_activity(lang(array('string' => 'workspace flow ({var:1}) was paused', 'vars' => $flow['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
     return $check;
@@ -1167,6 +1201,7 @@ function ws_flow_bin($viewer, $flow)
         WHERE id = '" . (int) $flow['id'] . "' AND status <> 'binned'");
 
     ws_flow_runs_cancel_for_flow($flow);
+    ws_flow_anchor_set_status($flow['id'], 'cancelled');
 
     log_activity(lang(array('string' => 'workspace flow ({var:1}) was deleted', 'vars' => $flow['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
