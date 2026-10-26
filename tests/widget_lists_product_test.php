@@ -92,7 +92,7 @@ function test_widget_lists_product_descriptors()
 	foreach (array('form_list_view', 'form_item_view') as $kind) {
 		foreach (pg_sw_kind_lists($kind) as $d) pg_assert_true(in_array($d['family'], array('form_record', 'paging'), true), $kind . ': no product list');
 	}
-	pg_assert_same(array('product.images', 'product.attributes', 'catalog.crumbs'), array_keys(pg_sw_kind_lists('catalog_listing')), 'the listing: no products bought together');
+	pg_assert_same(array('product.images', 'product.attributes', 'catalog.crumbs', 'paging.pages'), array_keys(pg_sw_kind_lists('catalog_listing')), 'the listing: no products bought together');
 }
 
 function test_widget_lists_product_rows()
