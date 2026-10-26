@@ -40,7 +40,7 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 - 4 Loader and class field, `class_suggestions.js` removed. Done #1754 ([[style-suggest]]).
 - 5 done #1778: panel inputs ([[style-fields]]).
 - 6 done #1785: custom style model ([[custom-style]]).
-- 7 done #NNNN: Attributes css row ([[custom-style]]).
+- 7 done #1793: Attributes css row ([[custom-style]]).
 - 8 done #1770; 9 done #1779.
 - Optional: User Styles CSS tab (after F1), inline hint.
 
