@@ -1916,6 +1916,22 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 /* element.style — selected node's inline style attribute */
 .sd-styles-element-style { background: rgba(13,110,253,.04); }
 .sd-styles-element-body { padding: .15rem 0; }
+/* This element — the element's custom style rule (a growing textarea) */
+.sd-styles-this-element { background: rgba(121,192,255,.05); }
+.sd-custom-style-input {
+    display: block; width: 100%; resize: none; overflow: hidden;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .72rem; line-height: 1.45;
+    background: transparent; color: inherit;
+    border: 1px solid var(--sd-panel-border); border-radius: 3px; padding: .2rem .35rem;
+}
+.sd-custom-style-input:focus { outline: none; border-color: #79c0ff; }
+.sd-custom-style-note { font-size: .66rem; color: #d29922; padding: .15rem .1rem 0; }
+.sd-custom-style-error { color: #f85149; }
+.sd-custom-style-shared { display: flex; align-items: center; gap: .4rem; color: #8b949e; }
+.sd-custom-style-split {
+    margin-left: auto; font-size: .66rem; padding: 0 .4rem;
+    background: transparent; color: #79c0ff; border: 1px solid var(--sd-panel-border); border-radius: 3px;
+}
 .sd-styles-empty-decl {
     color: #6e7681; font-size: .68rem; padding: .15rem .4rem .25rem;
     font-style: italic;

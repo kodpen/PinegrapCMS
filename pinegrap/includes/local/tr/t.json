@@ -3768,6 +3768,7 @@
     "This driver has no connection test.": "Bu sürücünün bağlantı testi yok.",
     "This e-invoice cannot be taken in as it stands": "Bu e-fatura bu hâliyle ERP'ye alınamaz",
     "This e-mail was sent to you by {var:1} via the website for {var:2} ({var:3}). For your privacy, your e-mail address has not been stored.": "Bu e-posta size {var:1} tarafından {var:2} web sitesi ({var:3}) aracılığıyla gönderildi. Gizliliğiniz için e-posta adresiniz saklanmadı.",
+    "This element": "Bu öğe",
     "This element cannot be deleted (it contains a loop area)": "Bu öğe silinemez (loop alanı içeriyor)",
     "This element is inside a <strong>{var}</strong> system widget.": "Bu element bir <strong>{var}</strong> sistem widget içinde.",
     "This element is inside a system widget. To bind data, first pick a <strong>form</strong> for the widget (the System Widget section).": "Bu element bir sistem widget içinde. Veri bağlama için önce widget'a bir <strong>form</strong> seçin (Sistem Widget bölümü).",

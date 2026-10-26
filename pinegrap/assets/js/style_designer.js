@@ -24253,6 +24253,9 @@ const StyleDesigner = (function () {
 
         var html = '';
 
+        // ── This element: the element's custom style rule ──
+        if (selectedNode && !q) html += _sdCustomStyleCardHtml(selectedNode);
+
         // ── element.style block (always first, always editable) ──────────────
         // Renders the element's inline style attribute + a "+ Add" row to
         // append a new declaration. Toggling a checkbox rewrites the inline
@@ -24388,6 +24391,7 @@ const StyleDesigner = (function () {
         // Suggestions first: Enter on a highlighted row picks before the
         // add rows' own Enter handlers run.
         _sdAttachStylesSuggest(panel);
+        if (selectedNode) _sdBindCustomStyleCard(panel.querySelector('.sd-styles-this-element'), selectedNode);
 
         // ── Bind element.style declaration events ──
         panel.querySelectorAll('.sd-styles-decl-toggle').forEach(function (cb) {
@@ -24767,6 +24771,160 @@ const StyleDesigner = (function () {
         var decls = _parseInlineStyle(_currentInlineStyleValue(selectedNode));
         decls.push({ name: name.trim(), value: (value || '').trim() });
         _writeInlineStyleValue(selectedNode, _serializeInlineDecls(decls));
+    }
+
+    // ── Custom style: one User Styles rule per element ────────────────────
+    // PgCustomStyle (assets/js/pg_custom_style.js) keeps the rule, keyed by
+    // the element's generated pgs- class; extra CSS stays in User Styles,
+    // never in the style attribute. A copied element carries the class and
+    // so shares the rule until it is split.
+    function _sdCustomStyleClassLists() {
+        var lists = [];
+        _pgAllPageTrees().forEach(function (pt) {
+            _frWalk(pt.tree, function (n) { if (n.props && n.props.cssClass) lists.push(n.props.cssClass); });
+        });
+        return lists;
+    }
+
+    // Why the element cannot have a custom style ('' when it can): a
+    // component's placement, or an element inside a system widget or a
+    // shared component, whose tree is not the page's.
+    function _sdCustomStyleOff(node) {
+        if (!node || !node.props) return 'none';
+        if (node.type === 'shared_ref') return 'shared';
+        if (_isInsideSystemWidget(node)) return 'widget';
+        if (_sdSharedOwnerOf(node)) return 'shared';
+        return '';
+    }
+
+    function _sdCustomStyleOffText(why) {
+        if (why === 'widget') return _sdT('A custom style is not available inside a system widget.');
+        if (why === 'shared') return _sdT('A custom style is not available inside a shared component.');
+        return '';
+    }
+
+    // A class nobody uses yet, on any page or in the stylesheet.
+    function _sdNewCustomStyleClass() {
+        var taken = {};
+        _sdCustomStyleClassLists().forEach(function (l) {
+            l.split(/\s+/).forEach(function (c) { if (c) taken[c] = true; });
+        });
+        (_userStylesGet().match(/pgs-[a-z0-9]{6}/g) || []).forEach(function (c) { taken[c] = true; });
+        return PgCustomStyle.newClass(taken);
+    }
+
+    function _sdSetNodeClass(node, remove, add) {
+        var list = String(node.props.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== remove && c !== add; });
+        if (add) list.push(add);
+        node.props.cssClass = list.join(' ');
+    }
+
+    // Writes the element's custom style as one undo step: the rule in User
+    // Styles and, the first time, the class on the element. Emptied, the
+    // rule goes and the element drops the class.
+    function _sdWriteCustomStyle(node, value) {
+        if (!node || typeof PgCustomStyle === 'undefined' || !window.PgUserStyles) return;
+        if (!_sdMayEdit(node)) return;
+        if (_sdPanelLockReason(null, 'design')) { _sdContentNudge('design'); return; }
+        if (_sdCustomStyleOff(node)) return;
+        value = String(value || '');
+        var empty = !value.trim();
+        if (PgCustomStyle.warnings(value).indexOf('brace') !== -1) return;
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        if (!cls && empty) return;
+        if (!cls) cls = _sdNewCustomStyleClass();
+        if (!cls) return;
+        var text = _userStylesGet();
+        var next = PgCustomStyle.write(text, cls, value);
+        var has = String(node.props.cssClass || '').split(/\s+/).indexOf(cls) !== -1;
+        if (next === text && has !== empty) return;
+        saveState();
+        if (empty) _sdSetNodeClass(node, cls, '');
+        else if (!has) _sdSetNodeClass(node, '', cls);
+        if (next !== text) _userStylesSet(next);
+        render();
+    }
+
+    // Gives the element its own copy of a rule other elements share.
+    function _sdSplitCustomStyle(node) {
+        if (!node || typeof PgCustomStyle === 'undefined' || !_sdMayEdit(node)) return;
+        if (_sdPanelLockReason(null, 'design')) { _sdContentNudge('design'); return; }
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        var next = cls ? _sdNewCustomStyleClass() : '';
+        if (!next) return;
+        saveState();
+        _userStylesSet(PgCustomStyle.split(_userStylesGet(), cls, next));
+        _sdSetNodeClass(node, cls, next);
+        render();
+    }
+
+    // The note under the field: what a shared rule or a value means.
+    function _sdCustomStyleNotes(value, users) {
+        var html = '';
+        var warn = PgCustomStyle.warnings(value);
+        if (warn.indexOf('brace') !== -1) {
+            html += '<div class="sd-custom-style-note sd-custom-style-error">' + esc(_sdT('A brace would end the rule early; the style is not saved while it is there.')) + '</div>';
+        }
+        if (warn.indexOf('important') !== -1) {
+            html += '<div class="sd-custom-style-note">' + esc(_sdT('!important also wins over Bootstrap classes and the theme on this element.')) + '</div>';
+        }
+        if (users > 1) {
+            html += '<div class="sd-custom-style-note sd-custom-style-shared">' +
+                        '<span>' + esc(_sdT('{var} elements use this style', users)) + '</span>' +
+                        '<button type="button" class="sd-custom-style-split">' + esc(_sdT('Split')) + '</button>' +
+                    '</div>';
+        }
+        return html;
+    }
+
+    // The Styles panel's "This element" card.
+    function _sdCustomStyleCardHtml(node) {
+        if (!node || typeof PgCustomStyle === 'undefined' || !window.PgUserStyles) return '';
+        var why = _sdCustomStyleOff(node);
+        if (why === 'none') return '';
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        var value = cls ? PgCustomStyle.body(_userStylesGet(), cls) : '';
+        var users = cls ? PgCustomStyle.users(_sdCustomStyleClassLists(), cls) : 0;
+        var html = '<div class="sd-styles-section sd-styles-this-element">' +
+                       '<div class="sd-styles-section-hdr">' +
+                           '<span class="bi bi-brush" style="color:#79c0ff"></span>' +
+                           '<span class="sd-styles-selector">' + esc(_sdT('This element')) + '</span>' +
+                           (cls ? '<span class="sd-styles-source" style="margin-left:auto">.' + esc(cls) + '</span>' : '') +
+                       '</div>';
+        if (why) {
+            return html + '<div class="sd-styles-empty-decl">' + esc(_sdCustomStyleOffText(why)) + '</div></div>';
+        }
+        return html +
+                   '<textarea class="sd-custom-style-input" rows="' + Math.max(2, value.split('\n').length) + '" spellcheck="false" placeholder="color: …;">' + esc(value) + '</textarea>' +
+                   '<div class="sd-custom-style-notes">' + _sdCustomStyleNotes(value, users) + '</div>' +
+               '</div>';
+    }
+
+    function _sdBindCustomStyleCard(card, node) {
+        if (!card) return;
+        var lock = _sdPanelLockReason([node]) || _sdPanelLockReason(null, 'design');
+        _sdPanelLock(card, lock);
+        var ta = card.querySelector('.sd-custom-style-input');
+        var users = function () {
+            var cls = PgCustomStyle.classOf(node.props.cssClass);
+            return cls ? PgCustomStyle.users(_sdCustomStyleClassLists(), cls) : 0;
+        };
+        if (ta && !lock) {
+            var notes = card.querySelector('.sd-custom-style-notes');
+            var grow = function () { ta.rows = Math.max(2, ta.value.split('\n').length); };
+            ta.addEventListener('input', function () {
+                grow();
+                if (notes) notes.innerHTML = _sdCustomStyleNotes(ta.value, users());
+                bindSplit();
+            });
+            ta.addEventListener('change', function () { _sdWriteCustomStyle(node, ta.value); });
+            if (typeof _sdAttachFieldSuggest === 'function') _sdAttachFieldSuggest(ta, { kind: 'style' }, { node: node, change: true });
+        }
+        var bindSplit = function () {
+            var b = card.querySelector('.sd-custom-style-split');
+            if (b && !lock) b.addEventListener('click', function () { _sdSplitCustomStyle(node); });
+        };
+        bindSplit();
     }
 
     // ── Create button: build smart selector + append rule to user-styles ──
@@ -25558,7 +25716,10 @@ const StyleDesigner = (function () {
                 picked = false;
                 input.dispatchEvent(new Event('change'));
             };
-            input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.defaultPrevented) fire(); });
+            // In a textarea Enter is a new line, not the end of the edit.
+            if (input.tagName !== 'TEXTAREA') {
+                input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.defaultPrevented) fire(); });
+            }
             input.addEventListener('blur', fire);
         }
     }

@@ -71,7 +71,8 @@ function test_style_fields_decl_at()
 		. '  name: F.declAt(t, t.indexOf("wei") + 3),'
 		. '  value: F.declAt(t, t.length),'
 		. '  open: F.declAt("border: var(--bs-bor ;x: y", 20),'
-		. '  fresh: F.declAt("color: red; ", 12)'
+		. '  fresh: F.declAt("color: red; ", 12),'
+		. '  line: F.declAt("color: red\\nmar", 14)'
 		. '}));'
 	);
 
@@ -88,6 +89,7 @@ function test_style_fields_decl_at()
 	pg_assert_same('var(--bs-bor', $r['open']['query']);
 	pg_assert_same(array('part' => 'name', 'from' => 12, 'to' => 12, 'query' => '', 'colon' => false,
 		'styles' => array('color' => 'red')), $r['fresh'], 'after the last semicolon, a new name');
+	pg_assert_same(array('name', 'mar', array('color' => 'red')), array($r['line']['part'], $r['line']['query'], $r['line']['styles']), 'a new line starts a new declaration');
 }
 
 function test_style_fields_word_and_tokens()

@@ -578,6 +578,8 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_user_styles.js?v=' . pg_designer_asset_stamp('assets/js/pg_user_styles.js') . '"></script>
         <!-- Panel input suggestions: the part of a field under the caret (window.PgStyleFields). -->
         <script src="assets/js/pg_style_fields.js?v=' . pg_designer_asset_stamp('assets/js/pg_style_fields.js') . '"></script>
+        <!-- Per-element custom style rule in User Styles (window.PgCustomStyle). -->
+        <script src="assets/js/pg_custom_style.js?v=' . pg_designer_asset_stamp('assets/js/pg_custom_style.js') . '"></script>
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
         ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
