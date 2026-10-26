@@ -9175,6 +9175,8 @@ const StyleDesigner = (function () {
         if (!cached || !cached.tree || !cached.system_region_config) return false;
         var cfg = cached.system_region_config;
         if (typeof cfg === 'string') { try { cfg = JSON.parse(cfg); } catch (e) { cfg = null; } }
+        // A node that the value conditions' state leaves out.
+        if (_sdCondStateFor(cached.tree, selectedNode) !== _sdCondStateOf(cached.tree)) return true;
         // A comments widget's node that the state on the canvas leaves out.
         var _cmtKind = _swKindOf(cfg);
         if (_cmtKind === 'comments' || _cmtKind === 'comments_recent') {
@@ -11157,6 +11159,15 @@ const StyleDesigner = (function () {
                     band.appendChild(_sdStateChips(doc, node, _sdCommentsCanvasStates(_sysCfg), _sdCommentsStateOf(_sysCfg),
                         _sdSetCommentsCanvasState, 'sd-chips-wrap'));
                 }
+                // A tree with value conditions draws one state of its values;
+                // an element picked from the layer tree, in a state that
+                // draws it.
+                var _condStates = _sdCondCanvasStates(cached.tree);
+                if (_condStates.length) {
+                    if (selectedNode) _sdCondCanvasState = _sdCondStateFor(cached.tree, selectedNode);
+                    band.appendChild(_sdStateChips(doc, node, _condStates, _sdCondStateOf(cached.tree),
+                        _sdSetCondCanvasState, 'sd-chips-wrap'));
+                }
                 inner.appendChild(band);
             }
             var _hasKids = cached.tree.children && cached.tree.children.length > 0;
@@ -12442,10 +12453,12 @@ const StyleDesigner = (function () {
         }
 
         // A value condition (Bind Data, "Show only when a value…") is named
-        // on the element; the page and Preview decide it.
+        // on the element; the state the band chose decides whether it is
+        // drawn (_sdCondCanvasShows()).
         if (_sysWidgetRenderCfg && node.props && node.props._bindings && node.props._bindings.show_if) {
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
+            if (!_sdCondCanvasShows(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) wrapper.classList.add('sd-state-off');
         }
 
         // Login region: the canvas draws one session state at a time; an
@@ -37522,8 +37535,8 @@ const StyleDesigner = (function () {
 
     // The canvas chip of a node with a condition: "Only when: <value's
     // name> <operator> <compared text>", the three as numbered parts so a
-    // language can order them. The canvas does not evaluate it; the page
-    // and Preview do.
+    // language can order them. Whether the canvas draws the node is the
+    // state's (_sdCondCanvasShows()).
     function _sdCondSentence(node) {
         var b = (node && node.props && node.props._bindings) || {};
         if (!b.show_if) return '';
@@ -37535,6 +37548,130 @@ const StyleDesigner = (function () {
             entry ? entry[1] : String(params.op),
             value
         ]).replace(/\s+/g, ' ').trim();
+    }
+
+    // ── Canvas states of value conditions ────────────────────────────────
+    // A widget whose tree holds a value condition draws one state at a time,
+    // chosen on its band: its sample values, every value empty, or every
+    // element (as before W19). A code token's values are states of their own:
+    // the order view's status stages, so one status badge shows. The canvas
+    // tests each condition with _sdCondEval(), as the page does. Editor only.
+    var _sdCondCanvasState = 'sample';
+
+    // Tokens whose value is a code the canvas offers one state per value of
+    // (pg_sw_cond_code_tokens() that are a widget's, not a list row's).
+    function _sdCondCodeStates(token) {
+        if (token !== '__order_status_stage') return null;
+        var labels = { complete: _sdT('Completed'), pending: _sdT('Pending'), shipped: _sdT('Shipped'),
+                       cancelled: _sdT('Cancelled'), refunded: _sdT('Refunded'), 'default': _sdT('Other') };
+        return SD_OV_STATUS_STAGES.map(function (stage) { return [stage, labels[stage]]; });
+    }
+
+    // The tokens the value conditions of `tree` read.
+    function _sdCondTreeTokens(tree) {
+        var out = [];
+        (function walk(n) {
+            if (!n || typeof n !== 'object') return;
+            var t = n.props && n.props._bindings ? n.props._bindings.show_if : '';
+            if (t && typeof t === 'string' && out.indexOf(t) === -1) out.push(t);
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        })(tree);
+        return out;
+    }
+
+    // The states the band offers for `tree`, [[key, label]]: none without a
+    // condition; a code token's values (code:<token>:<value>) in place of
+    // the sample values; then every value empty and every element.
+    function _sdCondCanvasStates(tree) {
+        var tokens = _sdCondTreeTokens(tree);
+        if (!tokens.length) return [];
+        var states = [];
+        tokens.forEach(function (t) {
+            (_sdCondCodeStates(t) || []).forEach(function (s) { states.push(['code:' + t + ':' + s[0], s[1]]); });
+        });
+        if (!states.length) states.push(['sample', _sdT('Sample values')]);
+        states.push(['empty', _sdT('Empty values')]);
+        states.push(['all', _sdT('All elements')]);
+        return states;
+    }
+
+    // The state drawn for `tree`: the one chosen when the tree offers it,
+    // else its first.
+    function _sdCondStateOf(tree) {
+        var states = _sdCondCanvasStates(tree);
+        for (var i = 0; i < states.length; i++) {
+            if (states[i][0] === _sdCondCanvasState) return _sdCondCanvasState;
+        }
+        return states.length ? states[0][0] : 'all';
+    }
+
+    // The value `token` reads in `state` for `node`: empty in the empty
+    // state; a code token its state's value (the first one otherwise); a
+    // flag set; else the text the canvas previews for it.
+    function _sdCondCanvasValue(token, node, state) {
+        if (state === 'empty') return '';
+        var codes = _sdCondCodeStates(token);
+        if (codes) {
+            var prefix = 'code:' + token + ':';
+            return state.indexOf(prefix) === 0 ? state.slice(prefix.length) : codes[0][0];
+        }
+        if (_SD_FLAG_TOKENS[token]) return '1';
+        var v = _displayValueForBinding('text', token, node);
+        return _sdCondText(typeof v === 'function' ? v() : v);
+    }
+
+    // Whether the canvas draws `node` in `state` by its own condition. An
+    // invalid condition draws nothing, as on the page (pg_sw_cond_spec());
+    // one on a required control is ignored there, and here.
+    function _sdCondCanvasShows(node, state) {
+        var b = node && node.props && node.props._bindings;
+        if (!b || !b.show_if || state === 'all') return true;
+        if (_sdCondHoldsRequired(node)) return true;
+        var token = String(b.show_if).replace(/[^a-z0-9_\-]/gi, '');
+        if (!token || !_sdCondTokenAllowed(token)) return false;
+        var params = (node.props._bindParams && node.props._bindParams.show_if) || {};
+        var entry = _sdCondOp(params.op || 'not_empty');
+        if (!entry) return false;
+        var operand = entry[2] ? String(params.value == null ? '' : params.value).trim() : '';
+        if (entry[2] && operand === '') return false;
+        return _sdCondEval(entry[0], _sdCondCanvasValue(token, node, state), operand);
+    }
+
+    // The state that draws `target` of `root`'s tree: the one drawn when it
+    // does, else the first that does, else every element. A node outside
+    // the tree keeps the state.
+    function _sdCondStateFor(root, target) {
+        var current = _sdCondStateOf(root);
+        var path = null;
+        (function walk(n, trail) {
+            if (path || !n) return;
+            var here = trail.concat([n]);
+            if (n === target) { path = here; return; }
+            if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, here); });
+        })(root, []);
+        if (!path) return current;
+        var shows = function (state) { return path.every(function (n) { return _sdCondCanvasShows(n, state); }); };
+        if (shows(current)) return current;
+        var states = _sdCondCanvasStates(root);
+        for (var i = 0; i < states.length; i++) {
+            if (shows(states[i][0])) return states[i][0];
+        }
+        return 'all';
+    }
+
+    // Switch the state the canvas draws. A selection the new state hides
+    // moves up to the widget (refNode), or the next render would switch back.
+    function _sdSetCondCanvasState(state, refNode) {
+        _sdCondCanvasState = state;
+        if (refNode && selectedNode && selectedNode !== refNode) {
+            var sid = parseInt(refNode.props && refNode.props.sharedId, 10) || 0;
+            var cached = sid ? _sharedCache[sid] : null;
+            if (cached && cached.tree && _sdCondStateFor(cached.tree, selectedNode) !== _sdCondStateOf(cached.tree)) {
+                selectedNode = refNode;
+                selectedNodes = [];
+            }
+        }
+        render();
     }
 
     // The "Show only when a value…" row of Bind Data, on any element of a

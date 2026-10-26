@@ -152,3 +152,86 @@ function test_widget_condition_eval_text()
 	pg_assert_same(0, $code, implode("\n", $out));
 	pg_assert_same(array(pg_sw_cond_text("<b>12</b> <!-- x -->\xC2\xA0TL "), '', 'a b'), json_decode(implode("\n", $out), true));
 }
+
+// The canvas states: an order view's status badges draw one stage at a
+// time, an empty sibling only with the values empty, every element in the
+// last state; a node picked from the layer tree is drawn in a state that
+// draws it.
+function test_widget_condition_eval_canvas_states()
+{
+	if (!_cond_eval_node_ok()) return;
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$cut = function ($from, $to) use ($js) {
+		$a = strpos($js, $from);
+		pg_assert_true($a !== false, 'found: ' . trim($from));
+		$b = strpos($js, $to, $a);
+		return substr($js, $a, $b + strlen($to) - $a);
+	};
+	$src = _cond_eval_js_source()
+		. $cut("\n    var SW_COND_OPS = [", "\n    ];\n")
+		. $cut("\n    var SW_COND_DENY = [", "\n    ];\n")
+		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
+		. $cut("\n    var _SD_FLAG_TOKENS = {", "\n    };\n")
+		. $cut("\n    var _sdCondCanvasState = ", ";\n");
+	foreach (array('_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondCodeStates', '_sdCondTreeTokens',
+		'_sdCondCanvasStates', '_sdCondStateOf', '_sdCondCanvasValue', '_sdCondCanvasShows', '_sdCondStateFor') as $fn) {
+		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
+	}
+	$when = function ($token, $op, $value = null) {
+		$param = array('op' => $op);
+		if ($value !== null) $param['value'] = $value;
+		return array('_bindings' => array('show_if' => $token), '_bindParams' => array('show_if' => $param));
+	};
+	$badges = array();
+	foreach (array('complete', 'pending', 'shipped', 'cancelled', 'refunded', 'default') as $stage) {
+		$badges[] = array('type' => 'semantic', 'props' => $when('__order_status_stage', 'eq', $stage), 'children' => array());
+	}
+	$order = array('type' => 'root', 'props' => array(), 'children' => array_merge($badges, array(
+		array('type' => 'semantic', 'props' => $when('__order_note', 'not_empty'), 'children' => array()),
+		array('type' => 'semantic', 'props' => $when('__order_note', 'empty'), 'children' => array()),
+		array('type' => 'semantic', 'props' => $when('__has_discount', 'not_empty'), 'children' => array()),
+		array('type' => 'semantic', 'props' => $when('__total', 'gt', '0'), 'children' => array()),
+		array('type' => 'semantic', 'props' => $when('__edit_url', 'not_empty'), 'children' => array()),
+		array('type' => 'semantic', 'props' => $when('__order_note', 'eq'), 'children' => array()),
+	)));
+	$plain = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'semantic', 'props' => array(), 'children' => array()),
+	));
+	$stubs = "function _sdT(s) { return s; }\n"
+		. "function _displayValueForBinding(prop, token) { return { __order_note: '<b>Ring twice</b>', __total: '\$1,234.56' }[token] || ''; }\n";
+	$script = 'var order = ' . json_encode($order) . ', plain = ' . json_encode($plain) . ";\n"
+		. "var shows = function (state) { return order.children.map(function (n) { return _sdCondCanvasShows(n, state) ? 1 : 0; }).join(''); };\n"
+		. "var out = { states: _sdCondCanvasStates(order).map(function (s) { return s[0]; }), none: _sdCondCanvasStates(plain),\n"
+		. "  first: _sdCondStateOf(order), plainOf: _sdCondStateOf(plain),\n"
+		. "  pending: shows('code:__order_status_stage:pending'), empty: shows('empty'), all: shows('all'),\n"
+		. "  forShipped: _sdCondStateFor(order, order.children[2]), forEmpty: _sdCondStateFor(order, order.children[7]),\n"
+		. "  forDenied: _sdCondStateFor(order, order.children[10]), forOutside: _sdCondStateFor(order, plain.children[0]) };\n"
+		. "_sdCondCanvasState = 'empty'; out.kept = _sdCondStateFor(order, order.children[7]);\n"
+		. "console.log(JSON.stringify(out));\n";
+	$file = @tempnam(sys_get_temp_dir(), 'pgcond');
+	if ($file === false) return;
+	file_put_contents($file, $stubs . $src . $script);
+	$out = array();
+	$code = 1;
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	$a = json_decode($printed, true);
+	pg_assert_true(is_array($a), 'Node printed JSON: ' . $printed);
+	pg_assert_same(array('code:__order_status_stage:complete', 'code:__order_status_stage:pending', 'code:__order_status_stage:shipped',
+		'code:__order_status_stage:cancelled', 'code:__order_status_stage:refunded', 'code:__order_status_stage:default', 'empty', 'all'), $a['states']);
+	pg_assert_same(array(), $a['none'], 'no condition, no states');
+	pg_assert_same('code:__order_status_stage:complete', $a['first']);
+	pg_assert_same('all', $a['plainOf']);
+	// Six badges, note, its empty sibling, a flag, an amount, a refused
+	// token, an operator without its value.
+	pg_assert_same('010000101100', $a['pending']);
+	pg_assert_same('000000010000', $a['empty']);
+	pg_assert_same('111111111111', $a['all']);
+	pg_assert_same('code:__order_status_stage:shipped', $a['forShipped']);
+	pg_assert_same('empty', $a['forEmpty']);
+	pg_assert_same('all', $a['forDenied']);
+	pg_assert_same('code:__order_status_stage:complete', $a['forOutside']);
+	pg_assert_same('empty', $a['kept'], 'a state that draws the node is kept');
+}
