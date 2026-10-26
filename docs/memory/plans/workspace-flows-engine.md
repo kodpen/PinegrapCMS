@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-engine
-description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
+description: Plan (2026-10-24, F1 #1503, F3a #1551, F4 node data, rest open): Flows engine: tables, runs, steps, wake-ups, drivers, shared steps, idempotency, versions, limits, API
 ---
 
 ## What does it reuse?
@@ -33,12 +33,12 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 - `WS_FLOW_*`: 100 boxes, 200 box runs a run, 60 starts a flow an hour, 500 open runs, result 16 KB, finished runs kept 30 days.
 
 ## Shared steps and idempotency?
-- steps.php: `ws_step_kinds()` (check, run, rehearsal, effect, flow-only); `ws_scheduled_do()` delegates, unchanged; steps also return `task_id`, `approval_id`, `data` for `{{node.<id>.<field>}}` (`ws_scheduled_fill()`).
+- steps.php: `ws_step_kinds()` (check, run, rehearsal, effect, flow-only); `ws_scheduled_do()` delegates, unchanged; steps also return `task_id`, `approval_id`, `data`, read by `{{node.*}}` (built).
 - Task, change, row save `effect` at once; a stale step with one resumes, else (as post, email, notify) turns interrupted: a person retries or skips. Webhook: `Idempotency-Key` from run, node, pass.
 
 ## API and MCP?
 - /workspace/flows, /{id}, /publish, /resume (`ws_api_own_words_only()`, `'mcp' => false`), /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip; `dry_run`; `workspace:read`, `:write`.
 
 ## Where to start?
-- Built: F1 #1503, F3a #1551 (manual, task, end; workspace/workspace-flows-runner.md)
-- Next: F4 (`{{node.*}}` reads `result.data`), F5 retry and skip.
+- Built: F1 #1503, F3a #1551 (manual, task, end; workspace/workspace-flows-runner.md), F4 node data (workspace-flows-node-data.md)
+- Next: F5 retry and skip.

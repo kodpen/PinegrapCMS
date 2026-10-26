@@ -568,6 +568,80 @@ function ws_flow_result_text($stored)
 }
 
 /**
+ * The values a box's result keeps for the boxes after it (its data), none
+ * for a result kept as plain text or without them.
+ *
+ * @param mixed $stored
+ * @return array
+ */
+function ws_flow_result_data($stored)
+{
+    if (!is_string($stored) || ($stored === '')) {
+        return array();
+    }
+
+    $decoded = json_decode($stored, true);
+
+    return (is_array($decoded) && isset($decoded['data']) && is_array($decoded['data'])) ? $decoded['data'] : array();
+}
+
+/**
+ * The values each settled box of a run keeps (ws_flow_result_data()), by
+ * the box's id: what {{node.<id>.<field>}} reads. A box still at work is
+ * left out, as its values may change; a settled box never changes again.
+ *
+ * @param array $steps ws_flow_run_steps() rows
+ * @return array node id => data
+ */
+function ws_flow_node_values($steps)
+{
+    $values = array();
+
+    foreach ((array) $steps as $step) {
+        if (ws_flow_step_settled($step['status'] ?? '')) {
+            $values[(string) $step['node_id']] = ws_flow_result_data($step['result'] ?? '');
+        }
+    }
+
+    return $values;
+}
+
+/**
+ * A text with {{node.<id>.<field>}} filled from the values of the boxes
+ * before it (ws_flow_node_values()); a field inside a field is named with
+ * another dot ({{node.form.customer.name}}). A box not settled, a field it
+ * does not keep or a value that is not one word, number or sentence becomes
+ * empty. Values go in as they are, after the other placeholders were
+ * filled: a value is never read as a placeholder.
+ *
+ * @param string $text
+ * @param array  $values node id => data
+ * @return string
+ */
+function ws_flow_fill_nodes($text, $values)
+{
+    $text = (string) $text;
+
+    if (strpos($text, '{{node.') === false) {
+        return $text;
+    }
+
+    return (string) preg_replace_callback('/\{\{node\.([a-z][a-z0-9_]{0,31})((?:\.[A-Za-z0-9_]{1,64}){1,4})\}\}/', function ($match) use ($values) {
+        $value = $values[$match[1]] ?? null;
+
+        foreach (explode('.', substr($match[2], 1)) as $key) {
+            if (!is_array($value) || !array_key_exists($key, $value)) {
+                return '';
+            }
+
+            $value = $value[$key];
+        }
+
+        return ws_flow_text($value);
+    }, $text);
+}
+
+/**
  * The day a task box's task is due: so many days after the day the box
  * became ready, null for a box that gives no due date.
  *
@@ -1146,7 +1220,7 @@ function ws_flow_run_start($viewer, $flow, $data = array())
     // ws_flow_runs_heal() gives its start box.
     db("INSERT IGNORE INTO ws_flow_run_steps (run_id, node_id, pass, status, outcome, attempt, ready_at, claimed_at, finished_at, result)
         VALUES ('" . $run_id . "', '" . e((string) $check['trigger']['id']) . "', 0, 'done', 'next', 1, '" . $now . "', '" . $now . "', '" . $now . "',
-            '" . e(ws_flow_result_pack(lang(array('string' => 'Started by {var:1}.', 'vars' => ws_person_name($viewer['id']))))) . "')");
+            '" . e(ws_flow_result_pack(lang(array('string' => 'Started by {var:1}.', 'vars' => ws_person_name($viewer['id']))), array('started_by' => (int) $viewer['id']))) . "')");
 
     log_activity(lang(array('string' => 'workspace flow ({var:1}) was started, run {var:2}', 'vars' => array($flow['name'], $run_id))), (string) ($_SESSION['sessionusername'] ?? ''));
 
@@ -1388,7 +1462,7 @@ function ws_flow_runs_heal($run_id = 0)
 
             db("INSERT IGNORE INTO ws_flow_run_steps (run_id, node_id, pass, status, outcome, attempt, ready_at, claimed_at, finished_at, result)
                 VALUES ('" . (int) $run['id'] . "', '" . e((string) $trigger['id']) . "', 0, 'done', 'next', 1, '" . $now . "', '" . $now . "', '" . $now . "',
-                    '" . e(ws_flow_result_pack(lang(array('string' => 'Started by {var:1}.', 'vars' => ws_person_name($run['started_by']))))) . "')");
+                    '" . e(ws_flow_result_pack(lang(array('string' => 'Started by {var:1}.', 'vars' => ws_person_name($run['started_by']))), array('started_by' => (int) $run['started_by']))) . "')");
         }
 
         ws_flow_run_refresh((int) $run['id']);
@@ -1752,7 +1826,16 @@ function ws_flow_step_task_find($owner, $run_id, $title, $marker, $since)
 function ws_flow_step_task($run, $flow, $step, $node, $owner)
 {
     $config = $node['config'];
-    $title = (string) $config['title'];
+
+    // {{node.<id>.<field>}} from the boxes before this one, settled and so
+    // the same on a retry: the title a retry looks for is the one opened.
+    $values = ws_flow_node_values(ws_flow_run_steps((int) $run['id']));
+    $title = ws_flow_line(ws_flow_fill_nodes($config['title'], $values), 200);
+
+    if ($title === '') {
+        $title = ws_flow_box_name($node);
+    }
+
     $context = ws_flow_run_context($run);
     $marker = ws_flow_task_marker((string) ($context['flow_name'] ?? $flow['name']), (int) $run['id'], ws_flow_box_unique_name(ws_flow_run_graph($run), $node));
     $channel_id = ws_flow_run_channel_id($run);
@@ -1776,7 +1859,7 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
 
         $made = ws_task_create($owner, array(
             'title'         => $title,
-            'description'   => ws_flow_task_description($config['description'], $marker),
+            'description'   => ws_flow_task_description(ws_flow_fill_nodes($config['description'], $values), $marker),
             'priority'      => (string) $config['priority'],
             'due_date'      => (string) ws_flow_due_date($step['ready_at'], $config['due_in']),
             'department_id' => $people['department_id'],
@@ -1799,7 +1882,7 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
 
     db("UPDATE ws_flow_run_steps SET effect = 'task:" . $task_id . "', status = 'waiting',
             wait_event = '" . e(WS_FLOW_TASK_WAIT) . "', wait_key = 'task:" . $task_id . "', wake_at = '" . ($adopted ? $now : $now + WS_FLOW_RECHECK) . "',
-            result = '" . e(ws_flow_result_pack($text, array('task_id' => $task_id))) . "'
+            result = '" . e(ws_flow_result_pack($text, array('task_id' => $task_id, 'title' => $title))) . "'
         WHERE id = '" . (int) $step['id'] . "' AND status = 'running'");
 
     if ((int) mysqli_affected_rows(db::$con) === 1) {

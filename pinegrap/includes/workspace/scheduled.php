@@ -637,7 +637,8 @@ function ws_scheduled_placeholders()
  * Fills the placeholders of a text.
  *
  * @param string $text
- * @param array  $context viewer, row, result, status, source, source_result
+ * @param array  $context viewer, row, result, status, source, source_result;
+ *                        nodes for a step of a flow run (ws_flow_node_values())
  * @return string
  */
 function ws_scheduled_fill($text, $context)
@@ -677,7 +678,7 @@ function ws_scheduled_fill($text, $context)
     $text = strtr($text, $values);
 
     // A count by its key: {{count:orders_new}}, {{count:stock_low:5}}.
-    return preg_replace_callback('/\{\{count:([a-z_]+)(?::(\d+))?\}\}/', function ($match) use ($context, $row) {
+    $text = preg_replace_callback('/\{\{count:([a-z_]+)(?::(\d+))?\}\}/', function ($match) use ($context, $row) {
         $viewer = $context['viewer'] ?? null;
 
         if (!is_array($viewer)) {
@@ -688,6 +689,11 @@ function ws_scheduled_fill($text, $context)
 
         return $count['ok'] ? $count['text'] : '?';
     }, $text);
+
+    // A step of a flow run: what the boxes before it keep
+    // (ws_flow_node_values()), filled last so no value is read as a
+    // placeholder.
+    return isset($context['nodes']) ? ws_flow_fill_nodes($text, (array) $context['nodes']) : $text;
 }
 
 /**
