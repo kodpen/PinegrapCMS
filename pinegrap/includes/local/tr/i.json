@@ -721,6 +721,7 @@
     "Item restored to cart.": "Ürün sepete geri eklendi.",
     "Item saved for later.": "Ürün sonraya kaydedildi.",
     "Item {var}": "Öğe {var}",
+    "Item's product details (loop)": "Satırdaki ürünün bilgileri (döngü)",
     "Items": "Ürün Adedi",
     "Items are shipped": "Ürünler kargoyla gönderiliyor",
     "Items here are deleted permanently after {var:1} days.": "Buradaki öğeler {var:1} gün sonra kalıcı olarak silinir.",

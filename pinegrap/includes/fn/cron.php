@@ -432,6 +432,19 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'light',
         ),
+        // İYS consent sync (includes/iys/client.php): the e-mail marketing
+        // answers of the consent log go to İYS, the refusals recipients gave
+        // through İYS come back. Daily, well inside the three business days
+        // İYS allows; without an İYS account a run records itself and reads
+        // nothing.
+        'iys_job' => array(
+            'label'       => lang('İYS consent sync'),
+            'script'      => 'iys_job.php',
+            'interval'    => 86400,
+            'stale_after' => 259200,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
     );
 }
 
