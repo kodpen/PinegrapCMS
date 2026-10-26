@@ -1077,9 +1077,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                             ? $cfg['out_of_stock_behavior'] : 'disable';
 
     // ── URL params (shared) ───────────────────────────────────────────────
-    $page_param   = 'page_number';
-    $query_param  = 'query';
-    $current_page = isset($_GET[$page_param]) ? max(1, (int)$_GET[$page_param]) : 1;
+    // The page number reads the listing's own `page_param` when it has one,
+    // else page_number, which running sites' addresses carry
+    // (pg_sw_list_page_param()); `offset` skips the first products.
+    $page_param     = pg_sw_list_page_param($cfg);
+    $offset_records = pg_sw_list_offset($cfg);
+    $query_param    = 'query';
+    $current_page   = isset($_GET[$page_param]) ? max(1, (int)$_GET[$page_param]) : 1;
     $search_query = ($search_enabled && isset($_GET[$query_param])) ? trim((string)$_GET[$query_param]) : '';
     if (strlen($search_query) > 100) $search_query = substr($search_query, 0, 100);
 
@@ -1295,6 +1299,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $static_html   = '';
     } else {
         $_pg_cards     = _pg_catalog_card_templates($split['loop_children']);
+        // The paging flags are known after the count: their parts of the
+        // surround are marked here and kept or cut at the end.
+        _pg_sw_mark_visibility($split['static_tree'], array('has_prev_page', 'has_next_page', 'has_more_pages'));
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
     $loop_template       = $_pg_cards['unrated'];
@@ -1553,6 +1560,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
              WHERE products.enabled = 1
                $search_where"
         );
+        // The pages run through the products after the offset.
+        $total_records = max(0, $total_records - $offset_records);
         if ($total_records === 0) {
             $no_products = true;
         }
@@ -1573,6 +1582,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $remaining = $max_results - $offset;
         if ($remaining < $page_limit) $page_limit = max(0, $remaining);
     }
+    // ^^__page_number^^, ^^__page_count^^, the previous / next page links and
+    // the flags has_prev_page, has_next_page, has_more_pages, as a form list
+    // gives them (pg_sw_list_paging()).
+    $paging = pg_sw_list_paging($page_param, $current_page, $total_pages);
 
     // ── Pull product rows (page slice) ────────────────────────────────────
     // SELECT pulls only the columns we expose as tokens — keeps the row size
@@ -1609,7 +1622,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                $search_where
              GROUP BY products.id
              ORDER BY $order_by_sql
-             LIMIT $page_limit OFFSET $offset"
+             LIMIT $page_limit OFFSET " . ($offset_records + $offset)
         );
         if (!$products) {
             $no_products = true;
@@ -2917,13 +2930,15 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         '__active_filters_inner_html'    => $active_attr_chips_html,
         '__attribute_filters_inner_html' => $attribute_filters_html,
     );
-    $page_tokens = pg_sw_escape_token_values($page_tokens);
+    // The paging values are escaped already.
+    $page_tokens = pg_sw_escape_token_values($page_tokens) + $paging['tokens'];
     // In the map's order, as always; a format after a token is read.
     $body = _pg_catalog_fill_page_tokens($body, $page_tokens);
     // Everything the loops and this pass could answer has been answered; what
     // is left is unanswered. This is the loop halves' only sweep.
     $body = pg_sw_sweep_tokens($body);
     if ($static_html !== '') {
+        $static_html = _pg_sw_resolve_visibility($static_html, $paging['flags']);
         $static_html = _pg_catalog_fill_page_tokens($static_html, $page_tokens);
         // The loop halves are swept where they are built; the static surround
         // was not, so an identifier misspelled in a header printed itself.
