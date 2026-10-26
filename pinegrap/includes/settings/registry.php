@@ -202,6 +202,7 @@ function pg_settings_categories()
                 'pgset-mailchimp' => lang('MailChimp'),
                 'pgset-sms'       => lang('SMS'),
                 'pgset-sms-messages' => lang('SMS Messages'),
+                'pgset-iys'       => lang('İYS'),
             ),
             'keywords' => array(
                 'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, organization, address')),
@@ -209,6 +210,7 @@ function pg_settings_categories()
                 'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
                 'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
+                'pgset-iys'       => pg_settings_keywords(lang('iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal')),
             ),
         ),
 

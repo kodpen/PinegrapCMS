@@ -165,3 +165,129 @@ function test_iys_changes_parse()
 	$pull = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
 	pg_assert_contains("if (\$read['read'] === 0) {", $pull, 'the pull stops on an empty page, not on a page without e-mail changes');
 }
+
+// ── Settings card (includes/iys/settings.php) ──
+
+require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
+
+function iys_test_before($changes = array())
+{
+	return array_merge(pg_iys_settings_empty(), array(
+		'user'            => 'api-user',
+		'password'        => 'p:ss',
+		'password_stored' => true,
+		'iys_code'        => '123456',
+		'brand_code'      => '654321',
+		'env'             => 'test',
+		'live'            => false,
+		'email'           => true,
+		'enabled'         => true,
+		'brands'          => array('654321' => 'Mağaza'),
+	), $changes);
+}
+
+function iys_test_post($changes = array())
+{
+	return array_merge(array(
+		'iys_enabled'  => '1',
+		'iys_user'     => 'api-user',
+		'iys_password' => '',
+		'iys_code'     => '123456',
+		'iys_brand'    => '654321',
+		'iys_env'      => 'test',
+		'iys_live'     => '0',
+		'iys_email'    => '1',
+	), $changes);
+}
+
+// A pane without the card says nothing about the account; an untouched empty
+// card writes nothing.
+function test_iys_settings_decide_no_card_or_empty()
+{
+	pg_assert_same(null, pg_iys_settings_decide(array('organization_name' => 'Kodpen'), pg_iys_settings_empty(), ''));
+
+	$decision = pg_iys_settings_decide(array('iys_user' => '', 'iys_env' => 'live', 'iys_live' => '0'), pg_iys_settings_empty(), '');
+	pg_assert_same('none', $decision['action']);
+	pg_assert_false($decision['ask']);
+}
+
+// An account left as it was is neither written nor asked about.
+function test_iys_settings_decide_unchanged()
+{
+	$decision = pg_iys_settings_decide(iys_test_post(), iys_test_before(), '');
+
+	pg_assert_same('none', $decision['action']);
+	pg_assert_false($decision['ask']);
+}
+
+// Mode or e-mail switch alone is saved without asking İYS.
+function test_iys_settings_decide_mode_change_does_not_ask()
+{
+	$decision = pg_iys_settings_decide(iys_test_post(array('iys_live' => '1')), iys_test_before(), '');
+
+	pg_assert_same('save', $decision['action']);
+	pg_assert_true($decision['live']);
+	pg_assert_false($decision['ask']);
+}
+
+// A new account switched on asks İYS; the typed password is used.
+function test_iys_settings_decide_new_account_asks()
+{
+	$decision = pg_iys_settings_decide(iys_test_post(array('iys_password' => 'new', 'iys_brand' => '')), pg_iys_settings_empty(), '');
+
+	pg_assert_same('save', $decision['action']);
+	pg_assert_true($decision['ask']);
+	pg_assert_same('new', $decision['password_effective']);
+	pg_assert_same('test', $decision['env']);
+}
+
+// Missing or malformed fields are marked and nothing is asked.
+function test_iys_settings_decide_marks()
+{
+	$decision = pg_iys_settings_decide(iys_test_post(array('iys_user' => '', 'iys_code' => '12a', 'iys_brand' => 'x')), pg_iys_settings_empty(), '');
+
+	pg_assert_same(array('iys_user', 'iys_password', 'iys_code', 'iys_brand'), array_keys($decision['marks']));
+	pg_assert_false($decision['ask']);
+}
+
+// Off writes the switch alone; off with the user emptied forgets the account.
+function test_iys_settings_decide_off_and_forget()
+{
+	pg_assert_same('disable', pg_iys_settings_decide(iys_test_post(array('iys_enabled' => '')), iys_test_before(), '')['action']);
+	pg_assert_same('forget', pg_iys_settings_decide(iys_test_post(array('iys_enabled' => '', 'iys_user' => '')), iys_test_before(), '')['action']);
+}
+
+// A site that cannot keep an account marks the switch when it is turned on.
+function test_iys_settings_decide_refusal()
+{
+	$decision = pg_iys_settings_decide(iys_test_post(array('iys_password' => 'x')), pg_iys_settings_empty(), 'no key');
+
+	pg_assert_same('none', $decision['action']);
+	pg_assert_same(array('iys_enabled' => 'no key'), $decision['marks']);
+}
+
+function test_iys_settings_brand_pick()
+{
+	pg_assert_same('2', pg_iys_settings_brand_pick('', array('2' => 'A')));
+	pg_assert_same('', pg_iys_settings_brand_pick('', array('2' => 'A', '3' => 'B')));
+	pg_assert_same('3', pg_iys_settings_brand_pick('3', array('2' => 'A', '3' => 'B')));
+	pg_assert_same('', pg_iys_settings_brand_pick('4', array('2' => 'A')));
+}
+
+// A save keeps the job's cursors and replaces only the card's own options.
+function test_iys_settings_options_keep_cursors()
+{
+	$decision = pg_iys_settings_decide(iys_test_post(array('iys_live' => '1', 'iys_env' => 'live')), iys_test_before(), '');
+	$decision['brands'] = null;
+
+	$options = pg_iys_settings_options(array('push_id' => 42, 'pull_after' => 'abc', 'brands' => array('654321' => 'Mağaza'), 'live' => false), $decision);
+
+	pg_assert_same(42, $options['push_id']);
+	pg_assert_same('abc', $options['pull_after']);
+	pg_assert_same(array('654321' => 'Mağaza'), $options['brands']);
+	pg_assert_true($options['live']);
+	pg_assert_same('live', $options['env']);
+
+	$decision['brands'] = array('7' => 'Yeni');
+	pg_assert_same(array('7' => 'Yeni'), pg_iys_settings_options(array(), $decision)['brands']);
+}
