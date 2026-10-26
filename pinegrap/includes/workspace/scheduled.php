@@ -453,7 +453,8 @@ function ws_scheduled_metrics()
 /**
  * One count now.
  *
- * @param array  $viewer the creator: a count they may not see is refused
+ * @param array  $viewer the creator: a count they may not see, or one of a
+ *                       channel they do not read, is refused
  * @param string $key
  * @param int    $param  a channel (scope channel) or a threshold
  * @param int    $since  the action's previous run, 0 for the last day
@@ -470,6 +471,16 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
 
     if (($metric['right'] !== '') && empty($viewer[$metric['right']])) {
         return array('ok' => false, 'value' => 0, 'text' => '', 'error' => lang('You may not see this count.'));
+    }
+
+    // A channel's count needs the creator to read that channel, asked at
+    // every count: they may have left it after the action was saved.
+    if (($metric['scope'] === 'channel') && ((int) $param > 0)) {
+        $channel_row = ws_channel((int) $param);
+
+        if (!$channel_row || !ws_can_read_channel($viewer, $channel_row)) {
+            return array('ok' => false, 'value' => 0, 'text' => '', 'error' => lang('You may not see this count.'));
+        }
     }
 
     $since = ((int) $since > 0) ? (int) $since : time() - 86400;
@@ -1554,6 +1565,15 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 $param = is_array($item) ? max(0, (int) ($item['param'] ?? 0)) : 0;
 
                 if (isset($metrics[$key]) && (($metrics[$key]['right'] === '') || !empty($viewer[$metrics[$key]['right']]))) {
+                    // A channel's count, as a count condition checks it.
+                    if (($metrics[$key]['scope'] === 'channel') && ($param > 0)) {
+                        $channel = ws_channel($param);
+
+                        if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+                            return $fail(lang('That channel could not be found.'));
+                        }
+                    }
+
                     $list[] = array('key' => $key, 'param' => $param);
                 }
             }
@@ -4497,8 +4517,16 @@ function ws_scheduled_summary($viewer, $row, $action, $context)
     $plain = array();
 
     foreach ((array) $action['metrics'] as $item) {
-        $count = ws_scheduled_metric_value($viewer, $item['key'], (int) ($item['param'] ?? 0), (int) ($row['last_run_at'] ?? 0));
-        $label = ws_scheduled_metric_label($item['key'], (int) ($item['param'] ?? 0));
+        $param = (int) ($item['param'] ?? 0);
+        $count = ws_scheduled_metric_value($viewer, $item['key'], $param, (int) ($row['last_run_at'] ?? 0));
+
+        // A refused count of a channel is named without the channel; a
+        // threshold is still given.
+        if (!$count['ok'] && ((ws_scheduled_metrics()[$item['key']]['scope'] ?? '') === 'channel')) {
+            $param = 0;
+        }
+
+        $label = ws_scheduled_metric_label($item['key'], $param);
         $value = $count['ok'] ? $count['text'] : '—';
 
         $lines[] = '• ' . $label . ': **' . $value . '**';
