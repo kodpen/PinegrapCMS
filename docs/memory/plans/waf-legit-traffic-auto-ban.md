@@ -12,7 +12,7 @@ description: Plan (2026-10-26, issue #1989): legitimate traffic must not end in 
 - A sub-resource fetch of a file the visitor may not open is refused with 403, never sent to a sign-in screen; a sub-resource fetch of a sign-in screen is not counted on the sensitive allowance or the in-flight cap (`waf/waf-subresource-sign-in-fetches.md`).
 
 ## What are the steps (one PR each)?
-1. `get_file.php` sends a visitor to a sign-in screen only through `get_file_sign_in_redirect()`, which answers a sub-resource fetch with 403; `waf_fetch_is_subresource()`, `waf_sign_in_screens()` and `waf_sensitive_request_counts()` in `waf.php` keep such a fetch of a sign-in screen off the sensitive allowance and the in-flight cap; `tests/waf_subresource_test.php`. Claimed (this plan's first PR).
+1. `get_file.php` sends a visitor to a sign-in screen only through `get_file_sign_in_redirect()`, which answers a sub-resource fetch with 403; `waf_fetch_is_subresource()`, `waf_sign_in_screens()` and `waf_sensitive_request_counts()` in `waf.php` keep such a fetch of a sign-in screen off the sensitive allowance and the in-flight cap; `tests/waf_subresource_test.php`. Claimed by #2011.
 
 2. Refusals and the ban: a rate-limit refusal (`rate-sensitive`, `rate-api`, `concurrent`) registers at most one offence per subject per minute window, so a burst is one event and a ban needs refusals in five separate minutes; the signature scan, the sign-in lock and the prototype password keep one per refusal. An address whose session is staff, or that a staff member signed in from within the last day (`auth_tokens`, `log` or `user`: chosen in the PR), is never auto-banned: a `would-ban` row is logged instead. Tests for the counting rule; the thresholds are put to the owner in that PR (Q2).
 
