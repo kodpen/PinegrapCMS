@@ -875,6 +875,8 @@ function test_ws_api_mcp_servers_routes()
 	$admin = ws_api_test_handler_source('ws_api_mcp_admin');
 	pg_assert_true(strpos($admin, "(int) \$viewer['role'] !== 0") !== false, 'role 0 only');
 	pg_assert_true(strpos($admin, 'api_fail(403') !== false, 'the others get 403');
+	pg_assert_true(strpos($admin, 'if (ws_api_is_assistant())') !== false, 'an assistant key is refused');
+	pg_assert_true(strpos($admin, 'if (ws_api_is_assistant())') < strpos($admin, 'api_fail(503'), 'before anything else is told');
 
 	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
 	pg_assert_true(strpos($panel, 'ws_mcp_tools_check($server, $wanted') !== false, 'the tools form meets the shared check');

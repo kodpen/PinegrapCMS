@@ -4,7 +4,7 @@ description: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800)
 ---
 
 ## Which routes are there?
-- Administrators only (`ws_api_mcp_admin()`: 403 below role 0, 503 before the schema), all `'mcp' => false`.
+- Administrators only (`ws_api_mcp_admin()`: 403 for an assistant's key, which an administrator makes, and below role 0; 503 before the schema), all `'mcp' => false`: a request written in a channel cannot have Claude add a server or turn its tools on.
 - GET /workspace/mcp-servers: each server with `state`, `reason`, `checklist` (`ws_mcp_server_state()`, the card's badge too), its tools with `hint` (reads_only, not_said, writes, destroys) and `rule`. No credential is ever given back.
 - POST /workspace/mcp-servers: add (alias from the host when left out, `ws_mcp_alias_free()`); the typed token, header value, password or client secret is sealed with `ws_mcp_secret_encode()`. No OAuth: the tools are read at once (`read` in the answer). OAuth: `ws_mcp_oauth_setup()` only; the sign-in stays the settings card's, since a person signs in in a browser. 409 for an address already added or a full site.
 - POST /workspace/mcp-servers/probe, /{id}/refresh (200 with `read.ok` false when the server cannot be reached; 409 when it cannot be asked), /{id}/tools (rule off, on or approve for each named tool, the others kept; `declare_all` is the card's warned button).

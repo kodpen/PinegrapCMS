@@ -87,14 +87,20 @@ function ws_api_mcp_catalogue($params)
 }
 
 /**
- * The application's owner, when an administrator; 403 for anybody else, 503
- * before the database is upgraded.
+ * The application's owner, when an administrator and not an assistant's key;
+ * 403 for anybody else, 503 before the database is upgraded. An assistant's
+ * key is made by an administrator, so the role alone would let a request
+ * written in a channel add a server or turn its tools on without approval.
  *
  * @return array the viewer
  */
 function ws_api_mcp_admin()
 {
     $viewer = ws_api_viewer();
+
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not manage the MCP servers of the site; an administrator does.'));
+    }
 
     if ((int) $viewer['role'] !== 0) {
         api_fail(403, 'forbidden', lang('Only an administrator can add MCP servers.'));
