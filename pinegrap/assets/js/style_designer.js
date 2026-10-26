@@ -37319,6 +37319,13 @@ const StyleDesigner = (function () {
     // The widget kinds whose renderer expands the link: the form list under
     // its four names and the form detail.
     var _SW_PAGE_LINK_TYPES = { form_list_view: 1, submitted_forms_list: 1, form_list: 1, blog_list: 1, form_item_view: 1 };
+    // A field of a record the record points at: the binding of a text, an
+    // image or a link in the same widget kinds (pg_coll_ref_bindings() in
+    // includes/fn/collections.php). Which own field holds the reference, the
+    // form it points into and the field to print are kept beside it in
+    // props._bindParams.<prop> (_swRefSpec()). In no token palette, like
+    // the link above.
+    var SW_REF_TOKEN = '__ref';
 
     // Standard names a form's own field overrides on the server
     // (pg_sw_form_field_wins() in includes/fn/widgets.php keeps the same
@@ -54043,6 +54050,18 @@ const StyleDesigner = (function () {
         if (n.indexOf('utm_') === 0 || n.indexOf('pg_') === 0) return '';
         if (_SW_URL_PARAM_RESERVED.indexOf(n) !== -1) return '';
         return n;
+    }
+    // A field of a record the record points at (props._bindParams.<prop>
+    // beside the binding SW_REF_TOKEN), as the panel edits it: twin of
+    // pg_coll_ref_spec(), except that a tab of this design not published
+    // yet ('tab:<key>') stays the form until Publish resolves it.
+    function _swRefSpec(spec) {
+        spec = (spec && typeof spec === 'object') ? spec : {};
+        var tok = function (v) { return (typeof v === 'string') ? v.replace(/[^a-z0-9_-]/gi, '').toLowerCase() : ''; };
+        var pid = spec.page_id, page = 0;
+        if (typeof pid === 'string' && /^tab:/.test(pid)) page = pid;
+        else if (parseInt(pid, 10) > 0 && /^\d+$/.test(String(pid))) page = parseInt(pid, 10);
+        return { field: tok(spec.field), page_id: page, show: tok(spec.show) };
     }
     // A link's page and values (props._bindParams.href) as the panel edits
     // them. Not the server's normaliser (pg_sw_page_link_spec()): the page

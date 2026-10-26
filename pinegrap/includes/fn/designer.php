@@ -5399,7 +5399,8 @@ function _render_component_html($props, $pad, $kids = '')
 // was drawn by a path that does not expand it (another widget kind, a shared
 // component nested inside the widget), so it prints '#' like the canvas and
 // is no token: an unanswered token would be swept to href="", which opens
-// the current address.
+// the current address. An href bound to '__ref' (a field of a record the
+// record points at, pg_coll_ref_bindings()) is the same kind of sentinel.
 function _apply_bindings($props, $rich_text = false)
 {
     if (empty($props['_bindings']) || !is_array($props['_bindings'])) return $props;
@@ -5417,7 +5418,7 @@ function _apply_bindings($props, $rich_text = false)
         // no field and printed nothing.
         $safe = preg_replace('/[^a-z0-9_\-]/i', '', (string)$field_name);
         if ($safe === '') continue;
-        if ($prop_name === 'href' && $safe === '__page_link') {
+        if ($prop_name === 'href' && ($safe === '__page_link' || $safe === '__ref')) {
             $props['href'] = '#';
             continue;
         }
