@@ -126,8 +126,11 @@ the merging session, `coordinator.md` for coordinators.
 9. **Coordinators.** One coordinator per account starts its cloud workers
    and carries the owner's questions; it writes no code and merges nothing.
    A worker writes a question for the owner under `## Questions for the
-   owner` in its PR body and waits; the answer comes as a PR comment. It
-   tells the owner when the merging session seems stopped (`coordinator.md`).
+   owner` in its PR body, asks it in its own reply too (the owner reads the
+   session windows, not PR bodies) and waits; the answer comes in that
+   window or as a PR comment, and the session's next PR records it as
+   answered. The coordinator tells the owner when the merging session seems
+   stopped (`coordinator.md`).
 
 ## Fixed rules
 
@@ -156,7 +159,7 @@ the merging session, `coordinator.md` for coordinators.
    with its reason; it is recorded in `docs/memory/workflow/decisions-made.md`.
    Places listed there as reviewed ("dead code", "unused field", "missing
    check") stay; if you think one is wrong, ask the owner first (in your
-   reply, or under `## Questions for the owner` in your PR).
+   reply, and under `## Questions for the owner` in your PR).
    Working rules are the sessions' arrangement, never written as an owner
    decision.
 7. **Four silent traps:** table names are singular (`page`, `style`,

@@ -38,7 +38,7 @@ none
 
 ## Questions for the owner
 
-<!-- A decision only the owner can make, one per line; leave "none". Turn the PR back to draft until the answer comes; the coordinator asks the owner and answers with a comment on this PR. -->
+<!-- A decision only the owner can make, one per line; leave "none". Ask it in your reply too and turn the PR back to draft until the answer comes; the coordinator asks the owner and answers with a comment on this PR. -->
 
 none
 

@@ -14,7 +14,7 @@ description: Coordinator session (pilot, 2026-10-26): one per account, keeps its
 - Writes no product code, opens no PR, merges nothing, does not review: the merging session does (`merge-train.md`, `merge-review.md`).
 
 ## How do questions reach the owner?
-- A worker that needs the owner's decision writes it under `## Questions for the owner` in its PR body (draft or ready) and waits, subscribed. The coordinator reads that section of every open PR and asks the owner in one list.
+- A worker that needs the owner's decision writes it under `## Questions for the owner` in its PR body, asks it in its own reply too, and waits. The coordinator reads that section of every open PR and asks the owner in one list.
 - It brings the answer back as one PR comment quoting the owner's words; the comment wakes the worker, which records the decision with its reason (`decisions-made.md`; `CLAUDE.md`, Fixed rules 6). Cloud sessions cannot message other sessions, so the PRs carry both ways, across accounts too.
 
 ## What can it not do?
@@ -27,7 +27,7 @@ description: Coordinator session (pilot, 2026-10-26): one per account, keeps its
 - Every 10 minutes (a session cron on off-minutes, such as `3,13,23,33,43,53 * * * *`): one listing of the open PRs, drafts included, against the previous one. Nothing new: no message and no further reading, so a quiet check-in stays cheap.
 - Its workers' PRs: merged with no next draft 10 minutes later (the worker ended: its slot is free); sent back by the merging session and not pushed to within 30 minutes (a card for that branch); a new `## Questions for the owner`; a draft with no push for an hour (named to the owner once: a permission prompt, a usage limit or an error stops a session); a card with no draft yet (the owner is reminded once).
 - The merging session: a PR with the `ready` label and no update for 45 minutes while no `merge-train/*` PR is open, or a train PR with no update for 45 minutes, means the merger stopped (2026-10-26: a restart erased its cron; every worker waited 3 hours). Tell the owner once, with the PR numbers, so they restart it.
-- Why 10 minutes: at 30, a stuck or sent-back worker waited half an hour.
+- Why 10 minutes: at 30, a stuck worker waited half an hour.
 
 ## How is one started?
 - A new desktop session on the account, told: "You are the coordinator: read `CLAUDE.md` and `docs/memory/workflow/coordinator.md`, then start the workers and keep the 10-minute check-in."
