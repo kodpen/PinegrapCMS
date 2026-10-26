@@ -2672,7 +2672,8 @@
                 return editor.markup() !== baseline;
             },
             // Buttons under the box (PGWsEditor.toolbar()): people, records,
-            // emoji and, where the text may hold one, a checklist. Callers
+            // emoji and, where the text may hold them, lists, a quote and a
+            // checklist. Callers
             // add their own (save, cancel) to the row it answers.
             tools: function (withList) {
                 var mention = button('btn btn-sm btn-ghost', '', 'bi-at', t('mention'));
@@ -2689,7 +2690,7 @@
                     emojiPicker(box.left, box.bottom + 4, function (picked) { editor.insertText(picked); });
                 });
 
-                return window.PGWsEditor.toolbar(editor, [mention, tag, emoji].concat(withList ? ['checklist'] : []), { className: 'ws-note-actions' });
+                return window.PGWsEditor.toolbar(editor, [mention, tag, emoji].concat(withList ? ['bullets', 'numbers', 'quote', 'checklist'] : []), { className: 'ws-note-actions' });
             }
         };
 
@@ -11162,11 +11163,11 @@
             });
             parts.push(command);
 
-            // Bold, italic, strikethrough, undo and redo of the box itself
-            // (PGWsEditor.toolbar()); the stylesheet leaves them out where
-            // the row has no room for them, the bar over a selection still
-            // formats there.
-            parts.push(['bold', 'italic', 'strike'], ['undo', 'redo']);
+            // Bold, italic, strikethrough, lists, undo and redo of the box
+            // itself (PGWsEditor.toolbar()); the stylesheet leaves them out
+            // where the row has no room for them, the bar over a selection
+            // still formats there.
+            parts.push(['bold', 'italic', 'strike'], ['bullets', 'numbers', 'quote'], ['undo', 'redo']);
 
             parts.push(el('span', 'ws-grow ws-composer-hint d-none d-lg-inline', t('composer_hint')));
 
@@ -12485,7 +12486,8 @@
             var before = self.beforeCaret();
             var match;
 
-            if (!self.noCommands && (match = /^\/([^\s]*)$/.exec(before))) {
+            // A list's first item starting with "/" is words, no command.
+            if (!self.noCommands && !(self.rich && self.rich.inListItem()) && (match = /^\/([^\s]*)$/.exec(before))) {
                 self.argDismissed = null;
                 self.drawCommandStrip(null);
                 self.openPicker('command', match[1], before.length - match[0].length);
@@ -12495,7 +12497,7 @@
             // After "/name ": the argument the command expects next
             // (commandArgument()), shown in the strip above the box. Only the
             // channel's composer reads commands.
-            var argument = self.noCommands ? null : self.commandArgument(before);
+            var argument = (self.noCommands || (self.rich && self.rich.inListItem())) ? null : self.commandArgument(before);
 
             if (!self.noCommands) {
                 if (!argument) {
@@ -21884,6 +21886,7 @@
             return window.PGWsEditor.toolbar(rich, [
                 ['undo', 'redo'],
                 ['bold', 'italic', 'strike'],
+                ['bullets', 'numbers', 'quote'],
                 blocks,
                 tags,
                 [picker, tool('bi-paperclip', t('notes_attach'), function () { picker.click(); }), emoji]
