@@ -707,6 +707,26 @@ function api_page_move_target($page, $folder_id) {
 
 	}
 
+	// Who reads a private folder is its own aclfolder list, so a move between
+	// two private folders keeps or narrows access only when every reader of
+	// the target already reads the source.
+	if (($before === 'private') && ($after === 'private')) {
+
+		$tree = api_folder_tree();
+
+		$acl = api_folder_acl();
+
+		if (api_folder_readers_widen(
+			api_folder_readers_walk($tree, $acl, $page['page_folder'], date('Y-m-d')),
+			api_folder_readers_walk($tree, $acl, $folder_id, date('Y-m-d'))
+		)) {
+
+			api_fail(409, 'access_widening_refused', lang('This change would let people open the page who cannot open it now. Move it on the page screen.'), 'folder_id');
+
+		}
+
+	}
+
 	return $folder_id;
 
 }

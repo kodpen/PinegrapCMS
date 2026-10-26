@@ -2,14 +2,17 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the returns (claims) read from Trendyol and their approval
- * (mp_trendyol_claims(), mp_trendyol_approve_claim() and their readers,
+ * Tests for the returns (claims) read from Trendyol and their approval, and
+ * the buyers' questions and their answers (mp_trendyol_claims(),
+ * mp_trendyol_approve_claim(), mp_trendyol_questions(),
+ * mp_trendyol_answer_question() and their readers,
  * includes/api/outbound/connectors/trendyol.php).
  *
  * Trendyol is never called: the connector takes a transport with the signature
  * of api_http_request(), and the one here answers from tests/fixtures/trendyol/
- * (built in the shape of their getClaims and approveClaimLineItems pages, read
- * October 2026), not recorded from a live account.
+ * (built in the shape of their getClaims, approveClaimLineItems,
+ * getQuestionFilter and answerQuestion pages, read October 2026), not recorded
+ * from a live account.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -315,4 +318,179 @@ function test_marketplace_trendyol_approve_claim_passes_their_refusal_on()
 
 	pg_assert_false($result['ok']);
 	pg_assert_true($result['error'] !== '');
+}
+
+/* ------------------------------------------------------------ questions */
+
+function test_marketplace_trendyol_questions_connector_names_the_calls()
+{
+	pg_assert_true(mp_can('trendyol', 'questions'));
+	pg_assert_true(mp_can('trendyol', 'answer_question'));
+	pg_assert_false(mp_can('n11', 'questions'));
+	pg_assert_false(mp_can('n11', 'answer_question'));
+}
+
+function test_marketplace_trendyol_question_rows_read_the_documented_shape()
+{
+	$rows = mp_trendyol_question_rows(json_decode(trendyol_remaining_test_fixture('questions-page0.json'), true));
+
+	pg_assert_same(3, count($rows));
+
+	pg_assert_same(array(
+		'id'          => '3045671234',
+		'text'        => 'Bu gömleğin kumaşı yüzde yüz keten mi?',
+		'status'      => 'WAITING_FOR_ANSWER',
+		'waiting'     => true,
+		'asked'       => 1761300000,
+		'user'        => 'A** Y**',
+		'product'     => 'Keten Gömlek Beyaz',
+		'product_url' => 'https://www.trendyol.com/marka/keten-gomlek-beyaz-p-123456',
+		'answer'      => '',
+		'reason'      => '',
+	), $rows[0]);
+
+	pg_assert_false($rows[1]['waiting']);
+	pg_assert_same('Siparişiniz aynı gün kargoya verilir.', $rows[1]['answer']);
+	pg_assert_same('', $rows[1]['user'], 'the name is hidden');
+	pg_assert_same('', $rows[1]['product_url'], 'only an https link is kept');
+
+	pg_assert_same('REJECTED', $rows[2]['status']);
+	pg_assert_same('0555 000 00 00 numarasından ulaşabilirsiniz.', $rows[2]['answer'], 'the rejected answer, when there is no active one');
+	pg_assert_same('Kişisel bilgi içeriyor', $rows[2]['reason']);
+}
+
+function test_marketplace_trendyol_question_rows_skip_what_cannot_be_named()
+{
+	$rows = mp_trendyol_question_rows(array('content' => array(
+		'x',
+		array('text' => 'no id'),
+		array('id' => '0123', 'text' => 'leading zero'),
+		array('id' => 'abc', 'text' => 'not a number'),
+		array('id' => 77, 'text' => '', 'status' => 'WAITING_FOR_ANSWER'),
+		array('id' => 78, 'text' => 'Ok?', 'userName' => 'B** K**', 'showUserName' => false),
+	)));
+
+	pg_assert_same(array('78'), array_column($rows, 'id'), 'a question without text is left out too');
+	pg_assert_same('', $rows[0]['user']);
+	pg_assert_same(array(), mp_trendyol_question_rows(null));
+}
+
+function test_marketplace_trendyol_answer_problem()
+{
+	pg_assert_same('', mp_trendyol_answer_problem('Evet, yüzde yüz keten.'));
+	pg_assert_same('', mp_trendyol_answer_problem('  0123456789  '), 'ten characters after trimming');
+	pg_assert_same('', mp_trendyol_answer_problem(str_repeat('ğ', 2000)), 'characters, not bytes');
+
+	foreach (array('', '   ', 'Evet.', '012345678', str_repeat('a', 2001), null, array('x')) as $text) {
+		pg_assert_true(mp_trendyol_answer_problem($text) !== '', var_export($text, true));
+	}
+}
+
+function test_marketplace_trendyol_questions_read_the_last_two_weeks()
+{
+	$calls = array();
+
+	$now = 1761400000;
+
+	$result = mp_trendyol_questions(trendyol_remaining_test_account(),
+		trendyol_remaining_test_transport(array(array(200, trendyol_remaining_test_fixture('questions-page0.json'))), $calls),
+		$now);
+
+	pg_assert_true($result['ok'], $result['error'] ?? '');
+	pg_assert_same(3, count($result['data']['questions']));
+	pg_assert_false($result['data']['more']);
+
+	pg_assert_same(1, count($calls));
+	pg_assert_same('GET', $calls[0]['method']);
+
+	$parts = parse_url($calls[0]['url']);
+
+	pg_assert_same('/integration/qna/sellers/123456/questions/filter', $parts['path']);
+
+	parse_str($parts['query'], $query);
+
+	pg_assert_same((string)(($now - 1209600 + 3600) * 1000), $query['startDate']);
+	pg_assert_same((string)($now * 1000), $query['endDate']);
+	pg_assert_same('CreatedDate', $query['orderByField']);
+	pg_assert_same('DESC', $query['orderByDirection']);
+	pg_assert_same('0', $query['page']);
+	pg_assert_same('50', $query['size']);
+	pg_assert_false(isset($query['status']), 'every status is read');
+}
+
+function test_marketplace_trendyol_questions_stop_at_four_pages()
+{
+	$calls = array();
+
+	$answers = array();
+
+	for ($page = 0; $page < 6; $page++) {
+		$content = array();
+		for ($i = 0; $i < 50; $i++) {
+			$content[] = array('id' => 1000 + $page * 50 + $i, 'text' => 'Q' . $i, 'status' => 'WAITING_FOR_ANSWER');
+		}
+		$answers[] = array(200, json_encode(array('content' => $content, 'totalPages' => 6, 'page' => $page)));
+	}
+
+	$result = mp_trendyol_questions(trendyol_remaining_test_account(),
+		trendyol_remaining_test_transport($answers, $calls), 1761400000);
+
+	pg_assert_true($result['ok']);
+	pg_assert_same(4, count($calls));
+	pg_assert_same(200, count($result['data']['questions']));
+	pg_assert_true($result['data']['more']);
+}
+
+function test_marketplace_trendyol_questions_failure_is_an_error()
+{
+	$calls = array();
+
+	$result = mp_trendyol_questions(trendyol_remaining_test_account(),
+		trendyol_remaining_test_transport(array(array(400, trendyol_remaining_test_fixture('error-400.json'))), $calls),
+		1761400000);
+
+	pg_assert_false($result['ok']);
+	pg_assert_true($result['error'] !== '');
+}
+
+function test_marketplace_trendyol_answer_question_sends_the_text()
+{
+	$calls = array();
+
+	$result = mp_trendyol_answer_question(trendyol_remaining_test_account(), '3045671234', '  Evet, yüzde yüz keten.  ',
+		trendyol_remaining_test_transport(array(array(200, '"Your answer has been successfully saved."')), $calls));
+
+	pg_assert_true($result['ok'], $result['error'] ?? '');
+
+	pg_assert_same(1, count($calls));
+	pg_assert_same('POST', $calls[0]['method']);
+	pg_assert_same('https://apigw.trendyol.com/integration/qna/sellers/123456/questions/3045671234/answers', $calls[0]['url']);
+	pg_assert_same('{"text":"Evet, yüzde yüz keten."}', $calls[0]['options']['body']);
+}
+
+function test_marketplace_trendyol_answer_question_refuses_before_the_call()
+{
+	$calls = array();
+
+	$transport = trendyol_remaining_test_transport(array(array(200, '')), $calls);
+
+	foreach (array(array('0123', 'Evet, yüzde yüz keten.'), array('12/../3', 'Evet, yüzde yüz keten.'),
+		array('3045671234', 'Evet.')) as $case) {
+
+		pg_assert_false(mp_trendyol_answer_question(trendyol_remaining_test_account(), $case[0], $case[1], $transport)['ok'],
+			var_export($case, true));
+	}
+
+	pg_assert_same(0, count($calls));
+}
+
+function test_marketplace_trendyol_answer_question_passes_their_refusal_on()
+{
+	$calls = array();
+
+	$result = mp_trendyol_answer_question(trendyol_remaining_test_account(), '3045671234', 'Evet, yüzde yüz keten.',
+		trendyol_remaining_test_transport(array(array(400, trendyol_remaining_test_fixture('error-400.json'))), $calls));
+
+	pg_assert_false($result['ok']);
+	pg_assert_same('Kategori bulunamadı', $result['error']);
 }

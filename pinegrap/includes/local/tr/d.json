@@ -282,6 +282,7 @@
     "Delete: remove the selected box or arrow": "Delete: seçili kutuyu ya da oku kaldırır",
     "Deleted": "Silindi",
     "Deleted barcode #{var:1} for product #{var:2}.": "Ürün #{var:2} için #{var:1} numaralı barkod silindi.",
+    "Deleted customer": "Silinmiş müşteri",
     "Deleted folders, pages and files wait here instead of disappearing, and restoring one puts it back where it came from. Anything still here after 30 days is removed for good.": "Silinen klasör, sayfa ve dosyalar kaybolmak yerine burada bekler; geri yüklediğinizde geldiği yere döner. 30 gün sonra burada kalanlar kalıcı olarak silinir.",
     "Deleted groups and products wait here until the bin is emptied.": "Silinen gruplar ve ürünler, kutu boşaltılana kadar burada bekler.",
     "Deleted record": "Silinmiş kayıt",

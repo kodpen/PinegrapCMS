@@ -512,7 +512,7 @@ if (!$_POST) {
                                         <div class="col-12 col-md-6 my-2">
                                             <div class="border-1 border p-2 my-2 rounded">
                                                 <label for="start_time" class="form-label">' . lang('Start Date') . '<span id="start_time_label"> ' . lang('& Time') . '</span></label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'start_time', 'name'=>'start_time', 'class'=>'form-control', 'maxlength'=>'19')) . '
+                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'start_time', 'name'=>'start_time', 'class'=>'form-control', 'maxlength'=>'19', 'data-pg-datetime' => '')) . '
                                                 <span id="show_start_time_container">
                                                     <div class="form-check form-switch ms-1 mt-2">
                                                         ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'show_start_time', 'name' => 'show_start_time', 'value' => '1', 'class' => 'form-check-input')) . '
@@ -524,7 +524,7 @@ if (!$_POST) {
                                         <div class="col-12 col-md-6 my-2">
                                             <div class="border-1 border p-2 my-2 rounded">
                                                 <label for="end_time" class="form-label">' . lang('End Date') . '<span id="end_time_label"> ' . lang('& Time') . '</span></label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'end_time', 'name'=>'end_time', 'class'=>'form-control', 'maxlength'=>'19')) . '
+                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'end_time', 'name'=>'end_time', 'class'=>'form-control', 'maxlength'=>'19', 'data-pg-datetime' => '')) . '
                                                 <span id="show_end_time_container">
                                                     <div class="form-check form-switch ms-1 mt-2">
                                                         ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'show_end_time', 'name' => 'show_end_time', 'value' => '1', 'class' => 'form-check-input')) . '
@@ -533,6 +533,7 @@ if (!$_POST) {
                                                 </span>
                                             </div>
                                         </div>
+                                        ' . pg_fields_script() . '
                                         <script>toggle_calendar_event_all_day()</script>
                                         <div class="col-12 my-2">
                                             <div class="form-check form-switch">

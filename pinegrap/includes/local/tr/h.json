@@ -41,6 +41,7 @@
     "Handed over by {var:1}": "Veren: {var:1}",
     "Handed over by {var:1}, {var:2}": "Devreden: {var:1}, {var:2}",
     "Handed to the bank for collection": "Tahsile bankaya verildi",
+    "Handed to the region's code as $dregion_attribute. Quotes and angle brackets are left out.": "Bölgenin koduna $dregion_attribute olarak verilir. Tırnak ve açılı ayraçlar atılır.",
     "Handed to {var:1} colleague(s).": "{var:1} çalışma arkadaşına verildi.",
     "Handling": "Ambalajlama",
     "Handling Time": "İşleme Alma Süresi",

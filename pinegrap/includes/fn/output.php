@@ -3203,10 +3203,12 @@ function output_menu($properties = false)
             $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_contact_group.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Contact Group'))) . '</a>';
         }
 
-        // CONTACTS > Personal data export (staff only: it reads users and orders too)
+        // CONTACTS > Personal data export and erasure (staff only: they read
+        // users and orders too)
         if ($user['role'] < 3) {
             $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_export.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-down bi-me-2\'>' . lang('Personal data export') . '</a>';
+            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_erase.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-x bi-me-2\'>' . lang('Personal data erasure') . '</a>';
         }
     }
 
@@ -3764,6 +3766,7 @@ function output_menu($properties = false)
         case 'edit_contact_group.php':
         case 'organize_contacts.php':
         case 'privacy_export.php':
+        case 'privacy_erase.php':
             $active_menu = 7;
             break;
         case 'view_users.php':

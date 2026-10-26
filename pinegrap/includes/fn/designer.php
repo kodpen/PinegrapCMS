@@ -1120,6 +1120,16 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_billing_information($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'order_preview' — the last step of the classic checkout,
+            // posting to order_preview.php (widgets_order_preview.php). The
+            // visitor's last submit is read before rendering, as for the
+            // express order: the widget drops the form from the session.
+            if ($region_type === 'order_preview') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                $legal_values = pg_legal_documents_form_values('order_preview');
+                return pg_legal_documents_inject(_render_system_widget_order_preview($tree_json, $sid, $cfg, $mode), $legal_values);
+            }
+
             // Future region types handled here.
             // For now return empty — renders nothing rather than a broken page.
             return '';
@@ -4897,6 +4907,19 @@ function _build_col_classes($props)
     return implode(' ', $classes);
 }
 
+// The attribute a dynamic region node hands to its code: get_page_content.php
+// reads `<dregion "x">name</dregion>` up to the next double quote and the tag
+// up to the first `>`, and the page is run as PHP before the tag is expanded,
+// so quotes, angle brackets and line breaks are dropped; the rest stays as
+// typed, as it would in a style's own tag. Twin: _sdDregionAttr() in
+// style_designer.js.
+function pg_dregion_attribute_clean($value)
+{
+    if (!is_string($value)) return '';
+    $value = trim(preg_replace('/["<>\x00-\x1f\x7f]/', '', $value));
+    return (mb_strlen($value, 'UTF-8') > 255) ? mb_substr($value, 0, 255, 'UTF-8') : $value;
+}
+
 // Render a region node as its custom tag (pregion, cregion, system, etc.)
 function _render_region_tag($props)
 {
@@ -4907,7 +4930,9 @@ function _render_region_tag($props)
         case 'page': return '<pregion></pregion>';
         case 'system': return $name ? '<system>' . $name . '</system>' : '<system></system>';
         case 'common': case 'designer': return '<cregion>' . $name . '</cregion>';
-        case 'dynamic': return '<dregion>' . $name . '</dregion>';
+        case 'dynamic':
+            $attr = pg_dregion_attribute_clean(isset($props['regionAttr']) ? $props['regionAttr'] : '');
+            return '<dregion' . ($attr !== '' ? ' "' . $attr . '"' : '') . '>' . $name . '</dregion>';
         case 'menu': return '<menu>' . $name . '</menu><div style="clear: both"></div>';
         case 'menu_sequence': return '<menu_sequence>' . $name . '</menu_sequence>';
         case 'login': return '<login>' . $name . '</login>';

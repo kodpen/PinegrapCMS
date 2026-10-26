@@ -372,7 +372,8 @@ if (!$_POST) {
                                                     'id' => 'publish_date_and_time',
                                                     'name' => 'publish_date_and_time',
                                                     'maxlength' => '19',
-                                                    'class' => 'form-control')) . '
+                                                    'class' => 'form-control',
+                                                    'data-pg-datetime' => '')) . '
 
                                                 <div class="form-check form-switch ms-1 mt-2">
                                                     ' . $liveform->output_field(array(
@@ -386,7 +387,7 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-                                        ' . get_date_time_picker_format() . '
+                                        ' . get_date_time_picker_format() . pg_fields_script() . '
                                         <script>init_edit_comment_publish()</script>
                                         <div class="col-12 my-3">
                                             <div class="form-check form-switch">

@@ -28,6 +28,8 @@
  *   pgDatePicker.get(el) / set(el, iso)
  *   pgDateTimeField.get(el) / set(el, iso), the same for a time-only field
  *   pgFields.onChange(el, fn)             every change, typed or picked; returns off()
+ *   pgFields.destroy(el)                  back to a plain field, value kept
+ *   pgFields.switchKind(el, kind)         the same field as another kind ('date' <-> 'datetime')
  *
  * set() fires a native change event that bubbles; listen with onChange() or
  * jQuery .on('change'): select2 announces a pick only through jQuery.
@@ -175,8 +177,9 @@
     // ------------------------------------------------------------ engines
 
     // One engine per Bootstrap generation; each kind has init(el), which
-    // draws the widget over the posted field, and redraw(el), which shows a
-    // value written into that field. The Bootstrap 6 engine (Chips, Combobox,
+    // draws the widget over the posted field, redraw(el), which shows a
+    // value written into that field, and destroy(el), which removes the
+    // widget and leaves the field. The Bootstrap 6 engine (Chips, Combobox,
     // Datepicker) comes with the component swaps.
     var ENGINES = {
         v5: {
@@ -186,12 +189,10 @@
                 // tagin reads the input only when it is drawn and never hears
                 // a change, so its chips are dropped and drawn again.
                 redraw: function (el) {
-                    var next = el.nextElementSibling;
-                    if (next && next.classList && next.classList.contains('tagin-wrapper')) {
-                        next.parentNode.removeChild(next);
-                    }
+                    removeTaginWrapper(el);
                     window.tagin(el, { separator: separator(el) });
-                }
+                },
+                destroy: function (el) { removeTaginWrapper(el); }
             },
             combobox: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.select2); },
@@ -206,25 +207,42 @@
                     $(el).select2(opts);
                 },
                 // Only select2's own listener: the native change already ran.
-                redraw: function (el) { jq()(el).trigger('change.select2'); }
+                redraw: function (el) { jq()(el).trigger('change.select2'); },
+                destroy: function (el) { jq()(el).select2('destroy'); }
             },
             date: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.datepicker); },
                 init: function (el) { jq()(el).datepicker(window.datetimepicker_options || {}); },
-                redraw: function () {}
+                redraw: function () {},
+                destroy: destroyPicker
             },
             datetime: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.datetimepicker); },
                 init: function (el) { jq()(el).datetimepicker(window.datetimepicker_options || {}); },
-                redraw: function () {}
+                redraw: function () {},
+                destroy: destroyPicker
             },
             time: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.timepicker); },
                 init: function (el) { jq()(el).timepicker(window.timepicker_options || window.datetimepicker_options || {}); },
-                redraw: function () {}
+                redraw: function () {},
+                destroy: destroyPicker
             }
         }
     };
+
+    function removeTaginWrapper(el) {
+        var next = el.nextElementSibling;
+        if (next && next.classList && next.classList.contains('tagin-wrapper')) {
+            next.parentNode.removeChild(next);
+        }
+    }
+
+    // The datetimepicker and timepicker addon build on the datepicker, whose
+    // destroy removes any of the three.
+    function destroyPicker(el) {
+        jq()(el).datepicker('destroy');
+    }
 
     var engineName = 'v5';
 
@@ -270,6 +288,34 @@
         if (root !== document && root.matches && root.matches(selector)) {
             initField(root);
         }
+    }
+
+    // Removes the widget; the field keeps its value and hook and posts as
+    // before. init() draws it again.
+    function destroy(el) {
+        el = element(el);
+        if (el && el.pgFieldKind) {
+            engine(el.pgFieldKind).destroy(el);
+            el.pgFieldKind = '';
+        }
+        return el;
+    }
+
+    // The same field as another kind, as the calendar's all-day switch
+    // turns a date and time into a date: one hook, drawn once.
+    function switchKind(el, kind) {
+        el = element(el);
+        if (!el || !HOOKS[kind] || el.pgFieldKind === kind) {
+            return el;
+        }
+        destroy(el);
+        for (var k in HOOKS) {
+            if (k !== kind && el.hasAttribute(HOOKS[k])) {
+                el.removeAttribute(HOOKS[k]);
+            }
+        }
+        el.setAttribute(HOOKS[kind], '');
+        return initField(el, kind);
     }
 
     function fireChange(el) {
@@ -419,6 +465,8 @@
     window.pgFields = {
         init: init,
         onChange: onChange,
+        destroy: destroy,
+        switchKind: switchKind,
         engine: function () { return engineName; },
         hooks: HOOKS
     };

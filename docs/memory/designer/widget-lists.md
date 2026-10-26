@@ -5,10 +5,10 @@ description: Lists inside a widget record (#1680): loop_area + props.source, sou
 
 ## What is a list?
 - A `loop_area` with `props.source` (+ `sourceArg`, `limit` 0-100, `order` '' / reverse / az / za): rows a record holds, drawn inside it. Never a class. The main loop is the first loop_area WITHOUT a source (`pg_sw_list_is_sourced()`); `_split_widget_tree()`, the ghost marks, `pg_sw_prune_record_layout()` and get_file's copy skip lists. Code: `includes/fn/widgets_lists.php`.
-- Invalid settings or a source the kind does not offer: nothing drawn (fail closed).
+- Invalid settings or a source the kind lacks: nothing drawn.
 
 ## Which sources and tokens exist?
-- `pg_sw_list_sources()`; `pg_sw_kind_lists()`; products: [[widget-lists-product]].
+- `pg_sw_list_sources()`; `pg_sw_kind_lists()`; products: [[widget-lists-product]]; [[widget-lists-order]].
 - `form_record.values` (arg: field): one row per stored value (a check box group stores one per tick). `form_record.split`: the text cut at commas, trimmed (U+00A0 too), empty parts dropped. Tokens `__value_text` (as the field token prints it, translated, dates in display shape) and `__value_param` (rawurlencode of the STORED part). Rich text areas and uploads give none. A translation cut into another count of parts shows the stored parts.
 - `form_record.files` (optional arg): uploads holding a file; no arg: those not office use only. `__file_name`, `__file_url` (as the field token), `__file_field` (label), `__file_ext` (from the name).
 - The arg names a field by name, name without hyphens or label, as get_file reads it.
@@ -40,4 +40,4 @@ description: Lists inside a widget record (#1680): loop_area + props.source, sou
 - `pg_record_file_tree_binds()`: a files list naming the field, or none for an upload not office use only (`$listed`, carried in the facts to `pg_record_file_view_grants()`). As with a condition, the list's limit is not read. Tests: `record_files_test.php`.
 
 ## What is not covered yet?
-- Editor: [[widget-lists-editor]]. Row values in links and attributes: [[page-link-list-rows]], [[widget-attr-bindings]]. W10-W12; [[widget-lists-calendar]]. No condition on a loop_area. `eo_visible_if` flags inside a list are not resolved.
+- Editor: [[widget-lists-editor]]. Row values in links, attributes: [[page-link-list-rows]], [[widget-attr-bindings]]. W11-W12; [[widget-lists-calendar]]. No condition on a loop_area. `eo_visible_if` flags inside a list are not resolved.

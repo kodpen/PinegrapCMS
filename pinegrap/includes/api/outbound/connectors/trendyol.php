@@ -23,7 +23,8 @@
 // packages (pulled, or delivered by their webhook), accept one (Picking),
 // report one shipped with the seller's own carrier, send the link of a
 // package's invoice, read the buyers' returns and approve the ones that came
-// back, and register or remove that webhook. What it does not
+// back, read the buyers' questions and answer them, and register or remove
+// that webhook. What it does not
 // name in the table below mp_can() answers no for, so nothing queues work this
 // connector cannot do.
 //
@@ -82,6 +83,8 @@ function mp_trendyol_connector() {
 		'send_invoice_link'   => 'mp_trendyol_send_invoice_link',
 		'claims'              => 'mp_trendyol_claims',
 		'approve_claim'       => 'mp_trendyol_approve_claim',
+		'questions'           => 'mp_trendyol_questions',
+		'answer_question'     => 'mp_trendyol_answer_question',
 		'webhook_packages'    => 'mp_trendyol_webhook_packages',
 		'register_webhook'    => 'mp_trendyol_register_webhook',
 		'remove_webhook'      => 'mp_trendyol_remove_webhook'
@@ -3006,6 +3009,215 @@ function mp_trendyol_approve_claim($account, $claim_id, $unit_ids, $transport = 
 	}
 
 	return mp_ok(array('approved' => count($ids)));
+
+}
+
+/* --------------------------------------------------------------- questions */
+
+// How many questions one page asks for, and how many pages one read takes.
+// Their reference allows 200 a page, their guide 50; the smaller is asked.
+function mp_trendyol_question_page_size() {
+
+	return 50;
+
+}
+
+function mp_trendyol_question_pages() {
+
+	return 4;
+
+}
+
+// The buyers' questions asked in the last two weeks, every status, newest
+// first.
+//
+// GET /integration/qna/sellers/{sellerId}/questions/filter. Their window is
+// at most two weeks (a longer one is cut to two weeks from its start), so the
+// window is the order feed's: two weeks, an hour inside it. The read stops as
+// the returns read does (mp_trendyol_claims()), and a page that fails makes
+// the whole read an error.
+//
+// Answers data['questions'] in the shape of mp_trendyol_question_rows().
+function mp_trendyol_questions($account, $transport = null, $now = null) {
+
+	$now = ($now === null) ? time() : (int)$now;
+
+	$start = ($now - 1209600 + 3600) * 1000;
+
+	$end = $now * 1000;
+
+	$size = mp_trendyol_question_page_size();
+
+	$questions = array();
+
+	$more = false;
+
+	for ($page = 0; $page < mp_trendyol_question_pages(); $page++) {
+
+		$result = mp_trendyol_call($account,
+			'/integration/qna/sellers/' . mp_trendyol_seller_id($account) . '/questions/filter'
+				. '?startDate=' . $start
+				. '&endDate=' . $end
+				. '&orderByField=CreatedDate'
+				. '&orderByDirection=DESC'
+				. '&page=' . $page
+				. '&size=' . $size,
+			4194304, $transport);
+
+		if (!$result['ok']) {
+
+			return $result;
+
+		}
+
+		$content = (isset($result['data']['content']) && is_array($result['data']['content']))
+			? $result['data']['content'] : array();
+
+		$questions = array_merge($questions, mp_trendyol_question_rows($result['data']));
+
+		$total_pages = (isset($result['data']['totalPages']) && is_numeric($result['data']['totalPages']))
+			? (int)$result['data']['totalPages'] : -1;
+
+		$more = (count($content) >= $size) && (($total_pages < 0) || ($page + 1 < $total_pages));
+
+		if (!$more) {
+
+			break;
+
+		}
+
+	}
+
+	return mp_ok(array('questions' => $questions, 'more' => $more));
+
+}
+
+// Their page of questions as a list of
+// {id, text, status, waiting, asked, user, product, product_url, answer,
+// reason}.
+//
+// Only a question WAITING_FOR_ANSWER can be answered. The answer shown is the
+// active one, else the last rejected one, whose rejection reason is in
+// reason. The buyer's name is kept only where they chose to show it (it is
+// masked by Trendyol either way). The product link is kept only when it is an
+// https address, because the screen draws it as a link. A question without a
+// usable id or without text is left out.
+function mp_trendyol_question_rows($decoded) {
+
+	$content = (is_array($decoded) && isset($decoded['content']) && is_array($decoded['content']))
+		? $decoded['content'] : array();
+
+	$rows = array();
+
+	foreach ($content as $entry) {
+
+		if (!is_array($entry)) {
+
+			continue;
+
+		}
+
+		$id = mp_trendyol_text($entry, array('id'));
+
+		$text = mp_trendyol_text($entry, array('text'));
+
+		if (!mp_trendyol_id_fits($id) || ($text === '')) {
+
+			continue;
+
+		}
+
+		$status = mp_trendyol_text($entry, array('status'));
+
+		$answer = '';
+
+		foreach (array('answer', 'rejectedAnswer') as $key) {
+
+			if (($answer === '') && isset($entry[$key]) && is_array($entry[$key])) {
+
+				$answer = mp_trendyol_text($entry[$key], array('text'));
+
+			}
+
+		}
+
+		$url = mp_trendyol_text($entry, array('webUrl'));
+
+		$rows[] = array(
+			'id'          => $id,
+			'text'        => mb_substr($text, 0, 2000),
+			'status'      => $status,
+			'waiting'     => ($status === 'WAITING_FOR_ANSWER'),
+			'asked'       => isset($entry['creationDate']) ? mp_trendyol_seconds($entry['creationDate']) : 0,
+			'user'        => (isset($entry['showUserName']) && ($entry['showUserName'] === false))
+				? '' : mb_substr(mp_trendyol_text($entry, array('userName')), 0, 100),
+			'product'     => mb_substr(mp_trendyol_text($entry, array('productName')), 0, 200),
+			'product_url' => ((strlen($url) <= 1000) && (preg_match('#^https://[^\s/?\#@]+(?:[/?\#]\S*)?$#i', $url) === 1))
+				? $url : '',
+			'answer'      => mb_substr($answer, 0, 2000),
+			'reason'      => mb_substr(mp_trendyol_text($entry, array('reason')), 0, 500)
+		);
+
+	}
+
+	return $rows;
+
+}
+
+// What is wrong with an answer before it is sent, or ''. Their limits are
+// 10 to 2000 characters.
+function mp_trendyol_answer_problem($text) {
+
+	$length = is_string($text) ? mb_strlen(trim($text)) : 0;
+
+	if ($length < 10) {
+
+		return lang('Write an answer of at least 10 characters.');
+
+	}
+
+	if ($length > 2000) {
+
+		return lang('An answer can be at most 2000 characters long.');
+
+	}
+
+	return '';
+
+}
+
+// Answer a buyer's question. POST .../questions/{id}/answers with {"text"};
+// Trendyol reviews the answer before it is published. A successful answer is
+// a bare JSON string, which the reader takes as success with no data.
+function mp_trendyol_answer_question($account, $question_id, $text, $transport = null) {
+
+	$question_id = is_scalar($question_id) ? trim((string)$question_id) : '';
+
+	if (!mp_trendyol_id_fits($question_id)) {
+
+		return mp_error(lang('That question has no number to answer.'));
+
+	}
+
+	$problem = mp_trendyol_answer_problem($text);
+
+	if ($problem !== '') {
+
+		return mp_error($problem);
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/qna/sellers/' . mp_trendyol_seller_id($account) . '/questions/' . $question_id . '/answers',
+		65536, $transport, array('text' => trim($text)), 'POST', true);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(array('answered' => true));
 
 }
 

@@ -52,6 +52,7 @@ function pg_sw_page_type_widgets()
         'shipping address and arrival' => 'shipping_address_and_arrival',
         'shipping method'       => 'shipping_method',
         'billing information'   => 'billing_information',
+        'order preview'         => 'order_preview',
         'view order'            => 'order_view',
         'calendar view'         => 'calendar_view',
         'calendar event view'   => 'calendar_event_view',
@@ -1471,8 +1472,11 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         '__logout_url'              => '',
         '__staff_url'               => '',
     );
+    // 'orders' and 'order_view_url': the history's rows and the view order
+    // page, for a list of the member's orders (pg_sw_list_account_rows()).
     $out = array('links' => $links, 'sections' => array('order_history' => ''),
-                 'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false));
+                 'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false),
+                 'orders' => array(), 'order_view_url' => '');
     if (!$logged_in) return $out;
 
     $links['__profile_url']           = _pg_acct_page_url(0, 'my account profile');
@@ -1510,6 +1514,8 @@ function _pg_my_account_extras($logged_in, $cfg = array())
                     : '<div class="' . $cls . '">' . $inner . '</div>';
             }
             $out['sections']['order_history'] = $html . '</div>';
+            $out['orders']         = $orders;
+            $out['order_view_url'] = $view;
             $out['flags']['has_orders'] = true;
             $out['flags']['no_orders']  = false;
         }

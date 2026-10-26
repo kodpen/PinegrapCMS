@@ -252,6 +252,10 @@ function pg_designer_screen_render($ctx)
         // made, listed and revoked by administrators and designers, once
         // the schema has them. False hides the "Share prototype" item.
         'prototypeShare' => ((int)$user['role'] <= 1) && $sd_proto_share,
+        // A dynamic region's PHP code opens as a code-view tab for the role
+        // the classic Dynamic Region screen admits (administrators); the
+        // endpoint (dynamic_region_code) checks the same.
+        'dynamicRegionCode' => ((int)$user['role'] === 0),
         'exitUrl'       => pg_safe_back_url($ctx['send_to'], ($ctx['from_pages'] ? 'view_pages.php' : 'view_system_styles.php')),
         'access'        => $access,
         // The schema can open shared components to content editors
@@ -578,6 +582,8 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_user_styles.js?v=' . pg_designer_asset_stamp('assets/js/pg_user_styles.js') . '"></script>
         <!-- Panel input suggestions: the part of a field under the caret (window.PgStyleFields). -->
         <script src="assets/js/pg_style_fields.js?v=' . pg_designer_asset_stamp('assets/js/pg_style_fields.js') . '"></script>
+        <!-- Per-element custom style rule in User Styles (window.PgCustomStyle). -->
+        <script src="assets/js/pg_custom_style.js?v=' . pg_designer_asset_stamp('assets/js/pg_custom_style.js') . '"></script>
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
         ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
