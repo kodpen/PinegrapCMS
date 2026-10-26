@@ -60,7 +60,49 @@ function pg_sw_default_part_tokens()
         'comments' => array(
             array('__comment_stars_html', 'pg_sw_part_comment_stars'),
         ),
+        // A section binding and a content type are read as the tokens
+        // 'section:<name>' and 'content:<type>' (pg_sw_part_token_of()).
+        'catalog_listing' => array(
+            array('__breadcrumb_html', 'pg_sw_part_catalog_breadcrumb_listing'),
+            array('__breadcrumb_inner_html', 'pg_sw_part_catalog_crumbs'),
+            array('section:breadcrumb', 'pg_sw_part_catalog_crumbs'),
+            array('content:breadcrumb', 'pg_sw_part_catalog_breadcrumb_listing'),
+        ),
+        'catalog_item_view' => array(
+            array('__breadcrumb_html', 'pg_sw_part_catalog_breadcrumb_item'),
+            array('__breadcrumb_inner_html', 'pg_sw_part_catalog_crumbs'),
+            array('section:breadcrumb', 'pg_sw_part_catalog_crumbs'),
+            array('content:breadcrumb', 'pg_sw_part_catalog_breadcrumb_item'),
+        ),
     );
+}
+
+// The blocks a renderer put before a widget's main loop whose layout
+// placed none of their tokens, now default parts added just before the
+// main loop once, by widget kind: pairs of the tokens that place the block
+// and the function that builds it from the widget's settings.
+function pg_sw_default_lead_parts()
+{
+    return array(
+        'catalog_listing' => array(
+            array(array('__breadcrumb_html', '__breadcrumb_inner_html', 'catalog.crumbs'), 'pg_sw_part_catalog_breadcrumb_listing'),
+        ),
+    );
+}
+
+// Puts $nodes just before the main loop under $node (pg_sw_main_loop_ref()).
+// Returns whether there was a main loop to put them before.
+function pg_sw_insert_before_main_loop(&$node, $nodes)
+{
+    if (!is_array($node) || pg_sw_list_is_sourced($node) || !isset($node['children']) || !is_array($node['children'])) return false;
+    foreach ($node['children'] as $i => $child) {
+        if (is_array($child) && isset($child['type']) && $child['type'] === 'loop_area' && !pg_sw_list_is_sourced($child)) {
+            array_splice($node['children'], $i, 0, $nodes);
+            return true;
+        }
+        if (pg_sw_insert_before_main_loop($node['children'][$i], $nodes)) return true;
+    }
+    return false;
 }
 
 // The blocks a renderer added after a widget whose layout placed none of
@@ -141,7 +183,8 @@ function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = f
     foreach (isset($all[$kind]) ? $all[$kind] : array() as $pair) $parts[$pair[0]] = $pair[1];
     $found = false;
     foreach ($parts as $token => $builder) {
-        if (strpos($tree_json, $token) !== false) { $found = true; break; }
+        $colon = strpos($token, ':');
+        if (strpos($tree_json, ($colon === false) ? $token : '"' . substr($token, $colon + 1) . '"') !== false) { $found = true; break; }
     }
     $tails = pg_sw_default_tail_parts();
     $due = array();
@@ -155,8 +198,15 @@ function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = f
     foreach (isset($loop_tails[$kind]) ? $loop_tails[$kind] : array() as $pair) {
         if (!pg_sw_placed($tree_json, $pair[0])) { $loop_due = true; break; }
     }
+    // A lead block is read again once the parts are given: a section
+    // binding or a content type places it only as its part.
+    $leads = pg_sw_default_lead_parts();
+    $lead_due = false;
+    foreach (isset($leads[$kind]) ? $leads[$kind] : array() as $pair) {
+        if (!pg_sw_placed($tree_json, $pair[0])) { $lead_due = true; break; }
+    }
     $mail = $email && (strpos($tree_json, 'pg-ov-timeline') !== false || strpos($tree_json, 'pg-comment-stars') !== false);
-    if (!$found && !$due && !$loop_due && !$mail) return $tree_json;
+    if (!$found && !$due && !$loop_due && !$lead_due && !$mail) return $tree_json;
 
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return $tree_json;
@@ -164,6 +214,12 @@ function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = f
     $changed = $found ? pg_sw_default_parts_tree($tree, $parts, $cfg) : false;
     if (!pg_sw_tree_is_placeholder($tree)) {
         $changed = pg_sw_default_loop_tails($tree, $kind, $cfg) || $changed;
+    }
+    if ($lead_due && !pg_sw_tree_is_placeholder($tree)) {
+        foreach ($leads[$kind] as $pair) {
+            if (pg_sw_placed($tree, $pair[0])) continue;
+            $changed = pg_sw_insert_before_main_loop($tree, call_user_func($pair[1], $cfg)) || $changed;
+        }
     }
     if ($due && !pg_sw_tree_is_placeholder($tree)) {
         $placed = $tree;
@@ -199,6 +255,21 @@ function pg_sw_default_parts_tree(&$node, $parts, $cfg)
 {
     if (!is_array($node)) return false;
     $token = pg_sw_part_token_of($node, array_keys($parts));
+    if (strncmp($token, 'content:', 8) === 0) {
+        // The content node stood for the whole block: the part takes its
+        // place.
+        $built = call_user_func($parts[$token], $cfg);
+        $node = $built[0];
+        return true;
+    }
+    if (strncmp($token, 'section:', 8) === 0) {
+        // The bound element keeps its tag, classes and attributes; the
+        // part replaces what it held, as the section's markup did.
+        unset($node['props']['_bindings']['section']);
+        if (!$node['props']['_bindings']) unset($node['props']['_bindings']);
+        $node['children'] = call_user_func($parts[$token], $cfg);
+        return true;
+    }
     if ($token !== '') {
         $host = pg_sw_part_host($node);
         $host['children'] = array_merge(
@@ -221,15 +292,28 @@ function pg_sw_default_parts_tree(&$node, $parts, $cfg)
 }
 
 // The token of $tokens that $node draws: its text binding, or a text that is
-// the token alone (^^token^^, as older layouts wrote it). '' for none.
+// the token alone (^^token^^, as older layouts wrote it); its section
+// binding as 'section:<name>', a content node as 'content:<type>'. '' for
+// none.
 function pg_sw_part_token_of($node, $tokens)
 {
     $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+    if (isset($props['_bindings']['section']) && is_string($props['_bindings']['section'])
+        && in_array('section:' . $props['_bindings']['section'], $tokens, true)) {
+        return 'section:' . $props['_bindings']['section'];
+    }
+    if (isset($node['type'], $props['contentType']) && $node['type'] === 'content' && is_string($props['contentType'])
+        && in_array('content:' . $props['contentType'], $tokens, true)) {
+        return 'content:' . $props['contentType'];
+    }
     if (isset($props['_bindings']['text']) && in_array($props['_bindings']['text'], $tokens, true)) {
         return $props['_bindings']['text'];
     }
-    if (isset($props['text']) && is_string($props['text'])
-        && preg_match('/^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/', $props['text'], $m)
+    // A custom HTML node holding the token alone counts as its text.
+    $text = (isset($props['contentType']) && $props['contentType'] === 'custom_html' && isset($props['html'])) ? $props['html']
+          : (isset($props['text']) ? $props['text'] : null);
+    if (is_string($text)
+        && preg_match('/^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/', $text, $m)
         && in_array($m[1], $tokens, true)) {
         return $m[1];
     }
@@ -260,7 +344,7 @@ function pg_sw_part_host($node)
         if (!empty($props['lead']) && $ct === 'paragraph') $cls[] = 'lead';
         if (!empty($props['align'])) $cls[] = 'text-' . $props['align'];
         if (isset($props['cssClass']) && (string)$props['cssClass'] !== '') $cls[] = (string)$props['cssClass'];
-        unset($props['contentType'], $props['lead'], $props['align']);
+        unset($props['contentType'], $props['lead'], $props['align'], $props['html']);
         $props['tag'] = $tag;
         $props['cssClass'] = implode(' ', $cls);
         $type = 'semantic';
@@ -536,6 +620,54 @@ function pg_sw_part_comment_star($filled, $place)
         ),
         'children' => array(),
     );
+}
+
+// The crumbs of the catalog path as the catalog widgets drew them: an
+// ol.breadcrumb of one item per crumb (catalog.crumbs), a link, words, or
+// where the visitor is (span.active), by the crumb's kind. Drawn only when
+// the widget draws a path (__has_breadcrumb), unless $when is false (the
+// nav around it asks).
+function pg_sw_part_catalog_crumbs($cfg = array(), $when = true)
+{
+    $crumb = function ($tag, $class, $name, $kind, $props = array()) {
+        return pg_sw_part_el($tag, $class, $name, array_merge($props, array(
+            'text'        => '',
+            '_bindings'   => array_merge(isset($props['_bindings']) ? $props['_bindings'] : array(), array('text' => '__crumb_label', 'show_if' => '__crumb_kind')),
+            '_bindParams' => array('show_if' => array('op' => 'eq', 'value' => $kind)),
+        )));
+    };
+    return array(pg_sw_part_el('ol', 'breadcrumb mb-0', 'Breadcrumb List', $when ? pg_sw_part_when('__has_breadcrumb', 'not_empty') : array(), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'catalog.crumbs'), 'children' => array(
+            pg_sw_part_el('li', 'breadcrumb-item', 'Crumb', array(), array(
+                $crumb('a', '', 'Link', 'link', array('href' => '#', '_bindings' => array('href' => '__crumb_url'))),
+                $crumb('span', 'active', 'Where the visitor is', 'active'),
+                $crumb('span', '', 'Words', 'text'),
+            )),
+        )),
+    )));
+}
+
+// The breadcrumb a catalog widget drew: a nav of $class said as
+// "breadcrumb" around the crumbs, drawn only when the widget draws a path.
+function pg_sw_part_catalog_breadcrumb($class)
+{
+    return array(pg_sw_part_el('nav', $class, 'Breadcrumb', array_merge(
+        array('_attrs' => array(array('name' => 'aria-label', 'value' => 'breadcrumb'))),
+        pg_sw_part_when('__has_breadcrumb', 'not_empty')
+    ), pg_sw_part_catalog_crumbs(array(), false)));
+}
+
+// The listing's breadcrumb (pg-sw-breadcrumb), as it stood before the
+// toolbar.
+function pg_sw_part_catalog_breadcrumb_listing($cfg = array())
+{
+    return pg_sw_part_catalog_breadcrumb('pg-sw-breadcrumb mb-3');
+}
+
+// The detail view's breadcrumb (pg-civ-breadcrumb).
+function pg_sw_part_catalog_breadcrumb_item($cfg = array())
+{
+    return pg_sw_part_catalog_breadcrumb('pg-civ-breadcrumb mb-3');
 }
 
 // The stylesheet a page needs for the parts in a widget's output $html
