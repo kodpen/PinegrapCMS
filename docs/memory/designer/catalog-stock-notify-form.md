@@ -5,6 +5,7 @@ description: The back-in-stock form of the catalog item view: stock_notify_email
 
 ## What does a designer place?
 - An `<input>` bound to `stock_notify_email` (Field binding) and a button (btn component or `<button>`) bound to `stock_notify` (Action, offered on a real button only), usually in a block with "Show only when" `can_notify`. The item view starter carries such a block under the add-to-cart row (PR #1664); the store, boutique and bookshop product pages open with the starter (`'tree' => 'starter'`).
+- An optional `<input>` bound to `stock_notify_phone`: dropped unless the notice can go out by SMS (`stock_notify_sms` in the context); the starter has it and a one-message line ([[back-in-stock-sms]]).
 - `can_notify` (`SW_VISIBILITY_FLAGS.catalog_item_view`): the product tracks stock, none is left, no back order (`pg_stock_notify_product_out()`, the rule of `__out_of_stock`), and `stock_notify` has its table. The requests and the mail: [[back-in-stock-notices]].
 
 ## What does the server do with them?

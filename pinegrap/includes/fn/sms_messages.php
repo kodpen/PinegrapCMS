@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The text messages an order sends on its own: received, shipped, delivered.
+ * The text messages the shop sends on its own: an order received, shipped,
+ * delivered, and the back-in-stock notice a customer asked for.
  *
  * Each event has a switch and a template on the Communication settings' SMS
  * Messages card. They are kept in connect_apps under 'sms_templates', beside
@@ -53,6 +54,15 @@ function pg_sms_message_events()
             'label'  => lang('Order delivered'),
             'text'   => lang('^^store^^: Your order ^^order_number^^ has been delivered.'),
             'fields' => array('store', 'name', 'order_number'),
+        ),
+        // Sent once, to the number the customer gave when asking for this
+        // product: an informational message, so it names the product and
+        // nothing else.
+        'stock_back' => array(
+            'kind'   => 'stock',
+            'label'  => lang('Product back in stock'),
+            'text'   => lang('^^store^^: ^^product^^, which you asked us about, is back in stock. ^^url^^'),
+            'fields' => array('store', 'product', 'url'),
         ),
     );
 }
@@ -280,7 +290,7 @@ function pg_sms_message_settings_fields()
 
     $html = '
                                         <input type="hidden" name="sms_msg_card" value="1"/>
-                                        <div class="col-12 form-text">' . lang('Sent to the billing phone number when the event happens, if it is a mobile number and SMS is set up. These are informational messages: put no promotion, discount or campaign in them, or they need the recipient\'s consent recorded in İYS. Leave a text empty to send the built-in one.') . '</div>';
+                                        <div class="col-12 form-text">' . lang('Sent to the order\'s billing phone number, or for a product back in stock to the number the customer gave, if it is a mobile number and SMS is set up. These are informational messages: put no promotion, discount or campaign in them, or they need the recipient\'s consent recorded in İYS. Leave a text empty to send the built-in one.') . '</div>';
 
     if (!pg_sms_ready()) {
         $html .= '
@@ -333,8 +343,8 @@ function pg_sms_message_queue($event, $to, $fields, $reference)
 
     $fields += array('store' => defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '');
 
-    // News of an order is no use days late: a queue held up that long (the
-    // general job stopped) drops it instead.
+    // News of an order or of stock is no use days late: a queue held up that
+    // long (the general job stopped) drops it instead.
     $queued = pg_sms_enqueue($to, pg_sms_message_render($template, $fields), $definitions[$event]['kind'], array(
         'reference'  => $reference,
         'expires_at' => time() + 2 * 86400,
