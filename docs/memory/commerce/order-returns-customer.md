@@ -12,7 +12,7 @@ description: Customer side of returns in My Account's order view: the switch, __
 - `__returns`: every request of the order with its status badge, lines, reason, both notes, the carrier and return code once approved, the tracking number, the refund due date and the customer's moves. `__return_form`: one form per delivery, a quantity box per line up to what is left, the reason, a note. Pre-built HTML from `pg_returns_list_html()` / `pg_return_form_html()` (pure, `tests/returns_test.php`).
 - Flags `show_returns` (list or form), `can_request_return`, `has_returns`. The starter tree has a "Returns Card" in the left column after the notes.
 - The list shows whatever the setting says; the form and the moves need it. Guests who just ordered and the receipt e-mail see nothing.
-- A layout that places neither token (every design made before) gets `pg_return_block_html()` after the widget while the setting is on.
+- A layout that places neither token (every design made before) is given the returns card at its end, shown while the setting is on (flag `show_returns_card`, [[widget-default-parts-order]]).
 
 ## What does order_return.php do?
 - POST with the CSRF token: `action=request` (ship_to_id, `qty[<order item>]`, reason, note), `withdraw` and `shipped` (return_id, tracking_number). Owner check on `orders.user_id`; anybody else gets one answer whether or not the order exists; a return of another order is "not found"; a move the customer may no longer make is refused in plain words.

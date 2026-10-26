@@ -58,9 +58,25 @@ function pg_sw_default_part_tokens()
     );
 }
 
+// The blocks a renderer added after a widget whose layout placed none of
+// their tokens, now default parts added to the end of the tree once, by
+// widget kind: pairs of the tokens that place the block and the function
+// that builds it from the widget's settings and tree. In the order the
+// renderer added them.
+function pg_sw_default_tail_parts()
+{
+    return array(
+        'order_view' => array(
+            array(array('__return_form', '__returns'), 'pg_sw_part_order_returns'),
+            array(array('__legal_preinfo_url', '__legal_contract_url'), 'pg_sw_part_order_legal_documents'),
+        ),
+    );
+}
+
 // $tree_json with every node that draws an old token of $kind given its
-// default part, and in an e-mail the parts' look written inline. JSON that
-// names none of the tokens comes back as it is.
+// default part, each block the layout does not place added at its end
+// (pg_sw_default_tail_parts()), and in an e-mail the parts' look written
+// inline. JSON that needs none of it comes back as it is.
 function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = false)
 {
     $tree_json = (string)$tree_json;
@@ -71,16 +87,41 @@ function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = f
     foreach ($parts as $token => $builder) {
         if (strpos($tree_json, $token) !== false) { $found = true; break; }
     }
+    $tails = pg_sw_default_tail_parts();
+    $due = array();
+    foreach (isset($tails[$kind]) ? $tails[$kind] : array() as $pair) {
+        if (!pg_sw_placed($tree_json, $pair[0])) $due[] = $pair[1];
+    }
     $mail = $email && strpos($tree_json, 'pg-ov-timeline') !== false;
-    if (!$found && !$mail) return $tree_json;
+    if (!$found && !$due && !$mail) return $tree_json;
 
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return $tree_json;
-    $changed = $found ? pg_sw_default_parts_tree($tree, $parts, is_array($cfg) ? $cfg : array()) : false;
+    $cfg = is_array($cfg) ? $cfg : array();
+    $changed = $found ? pg_sw_default_parts_tree($tree, $parts, $cfg) : false;
+    if ($due && !pg_sw_tree_is_placeholder($tree)) {
+        $placed = $tree;
+        if (!isset($tree['children']) || !is_array($tree['children'])) $tree['children'] = array();
+        foreach ($due as $builder) {
+            $tree['children'] = array_merge($tree['children'], call_user_func($builder, $cfg, $placed));
+        }
+        $changed = true;
+    }
     if ($email) $changed = pg_sw_parts_mail_styles($tree) || $changed;
     if (!$changed) return $tree_json;
     $out = json_encode($tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return ($out === false) ? $tree_json : $out;
+}
+
+// Whether $tree is the placeholder a design template leaves for the editor
+// to fill with the kind's starter layout (_swIsTemplatePlaceholder()): a
+// root holding one empty loop area. It draws nothing, and gets no part.
+function pg_sw_tree_is_placeholder($tree)
+{
+    if (!is_array($tree) || !isset($tree['type']) || $tree['type'] !== 'root' || !empty($tree['props'])) return false;
+    if (!isset($tree['children']) || !is_array($tree['children']) || count($tree['children']) !== 1) return false;
+    $la = $tree['children'][0];
+    return is_array($la) && isset($la['type']) && $la['type'] === 'loop_area' && empty($la['children']) && empty($la['props']);
 }
 
 // Gives every node under $node that draws a token of $parts its part.
@@ -249,6 +290,60 @@ function pg_sw_part_order_status_badge($cfg = array())
         ));
     }
     return $out;
+}
+
+// A card added after the order view: the shell the returns and legal
+// documents cards had, a card with a small heading, shown by $flag.
+function pg_sw_part_order_card($class, $name, $flag, $heading, $body)
+{
+    return pg_sw_part_el('div', 'container pb-4 ' . $class, $name, array('_bindings' => array('eo_visible_if' => $flag)), array(
+        pg_sw_part_el('div', 'card', 'Card', array(), array(
+            pg_sw_part_el('div', 'card-header', 'Card header', array(), array(
+                pg_sw_part_el('h6', 'mb-0 fw-semibold', 'Heading', array('text' => $heading)),
+            )),
+            pg_sw_part_el('div', 'card-body', 'Card body', array(), $body),
+        )),
+    ));
+}
+
+// The returns card: the order's return requests and the request form,
+// both still built by returns.php (__returns, __return_form), shown while
+// either has something and the setting is on (show_returns_card).
+function pg_sw_part_order_returns($cfg = array(), $tree = array())
+{
+    $block = function ($token, $name) {
+        return pg_sw_part_el('div', '', $name, array('_bindings' => array('text' => $token)));
+    };
+    return array(pg_sw_part_order_card('pg-ov-returns-block', 'Returns', 'show_returns_card', lang('Returns'), array(
+        $block('__returns', 'Return requests'),
+        $block('__return_form', 'Return request form'),
+    )));
+}
+
+// The legal documents card: a link to each copy kept with the order, in a
+// new window, and the last day of the right of withdrawal under them unless
+// the layout shows that day itself.
+function pg_sw_part_order_legal_documents($cfg = array(), $tree = array())
+{
+    $types = pg_legal_document_types();
+    $link = function ($type, $token, $flag) use ($types) {
+        return pg_sw_part_el('li', '', $types[$type], array('_bindings' => array('eo_visible_if' => $flag)), array(
+            pg_sw_part_el('a', '', $types[$type], array(
+                'text' => $types[$type], 'href' => '#', 'target' => '_blank', 'rel' => 'noopener',
+                '_bindings' => array('href' => $token),
+            )),
+        ));
+    };
+    $body = array(pg_sw_part_el('ul', 'list-unstyled mb-0', 'Links', array(), array(
+        $link('preinfo', '__legal_preinfo_url', 'has_legal_preinfo'),
+        $link('contract', '__legal_contract_url', 'has_legal_contract'),
+    )));
+    if (!pg_sw_placed($tree, array('__withdrawal_deadline', '__withdrawal_text'))) {
+        $body[] = pg_sw_part_el('p', 'small text-muted mt-2 mb-0', 'Right of Withdrawal', array(
+            'text' => '', '_bindings' => array('text' => '__withdrawal_text', 'eo_visible_if' => 'has_withdrawal_deadline'),
+        ));
+    }
+    return array(pg_sw_part_order_card('pg-ov-legal-documents', 'Legal Documents', 'has_legal_documents', lang('Legal Documents'), $body));
 }
 
 // The look of the parts in an e-mail, where the stylesheet may be dropped:

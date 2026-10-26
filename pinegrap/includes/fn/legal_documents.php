@@ -1496,41 +1496,6 @@ function pg_legal_withdrawal_text($withdrawal, $date_text)
 }
 
 /**
- * The card an order view gets after it when its layout links neither
- * document: the kept copies, one link each, opening in a new window. A
- * layout from before the links existed shows them this way; a layout that
- * binds a link places them itself.
- *
- * @param array  $urls        pg_legal_document_copy_urls()
- * @param string $withdrawal  pg_legal_withdrawal_text(), printed under the links
- * @return string  '' when the order has no kept copy
- */
-function pg_legal_documents_order_view_block(array $urls, $withdrawal = '')
-{
-    $types = pg_legal_document_types();
-    $items = '';
-
-    foreach ($urls as $type => $url) {
-        if (!isset($types[$type]) || ((string) $url === '')) {
-            continue;
-        }
-
-        $items .= '<li><a href="' . h((string) $url) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a></li>';
-    }
-
-    if ($items === '') {
-        return '';
-    }
-
-    return '<div class="container pb-4 pg-ov-legal-documents"><div class="card">'
-        . '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Legal Documents')) . '</h6></div>'
-        . '<div class="card-body"><ul class="list-unstyled mb-0">' . $items . '</ul>'
-        . (((string) $withdrawal !== '') ? '<p class="small text-muted mt-2 mb-0">' . h((string) $withdrawal) . '</p>' : '')
-        . '</div>'
-        . '</div></div>';
-}
-
-/**
  * The order screen's card listing the documents kept with the order: each
  * one's name, whether and when it was accepted, from which address, and a
  * link to the copy.

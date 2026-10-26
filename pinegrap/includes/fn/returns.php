@@ -1981,27 +1981,6 @@ function pg_returns_list_html($returns, $form)
 }
 
 /**
- * The returns block of an order view whose layout places neither the list
- * nor the form: a design made before returns existed still shows them once
- * the setting is on.
- *
- * @param string $list_html pg_returns_list_html()
- * @param string $form_html pg_return_form_html()
- * @return string
- */
-function pg_return_block_html($list_html, $form_html)
-{
-    if (((string) $list_html === '') && ((string) $form_html === '')) {
-        return '';
-    }
-
-    return '<div class="container pb-4 pg-ov-returns-block"><div class="card">'
-        . '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Returns')) . '</h6></div>'
-        . '<div class="card-body">' . $list_html . $form_html . '</div>'
-        . '</div></div>';
-}
-
-/**
  * A date as the classic order view prints it: the site's long date, as plain
  * text. get_absolute_time() wraps its answer in a <time> element unless it is
  * asked for plain text, and the builders escape the dates they are given, so

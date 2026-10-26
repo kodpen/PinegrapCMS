@@ -84,16 +84,6 @@ function test_legal_withdrawal_text()
 	pg_assert_same('', pg_legal_withdrawal_text($open, ' '), 'no date text');
 }
 
-// The fallback card prints the line under the links, escaped, and only with a kept copy.
-function test_legal_withdrawal_in_order_view_block()
-{
-	$urls = array('preinfo' => '', 'contract' => '/p/legal_document.php?order_id=7&type=contract');
-
-	pg_assert_contains('<p class="small text-muted mt-2 mb-0">a &lt;b&gt;</p>', pg_legal_documents_order_view_block($urls, 'a <b>'));
-	pg_assert_false(strpos(pg_legal_documents_order_view_block($urls), '<p class="small') !== false, 'no line without a deadline');
-	pg_assert_same('', pg_legal_documents_order_view_block(array('preinfo' => '', 'contract' => ''), 'a'), 'no card without a kept copy');
-}
-
 // Every parcel arrived after the expected date: the known arrival sets the date, not the estimate.
 function test_legal_withdrawal_known_delivery_after_estimate()
 {
@@ -146,5 +136,6 @@ function test_legal_withdrawal_order_view_wiring()
 	pg_assert_contains("empty(\$sw_ctx['email']) ? pg_legal_withdrawal_of_order((int)\$order['id']) : null", $source, 'none in the e-mail');
 	pg_assert_contains("'__withdrawal_deadline'     => h(\$withdrawal_date)", $source, 'the token is escaped');
 	pg_assert_contains("'has_withdrawal_deadline'       => \$withdrawal_date !== ''", $source, 'the flag');
-	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__withdrawal_deadline'))", $source, 'a bound token keeps the line out of the card');
+	pg_assert_contains("'__withdrawal_text'         => h(pg_legal_withdrawal_text(\$withdrawal, \$withdrawal_date))", $source, 'the line, escaped');
+	pg_assert_contains("!pg_sw_placed(\$tree, array('__withdrawal_deadline', '__withdrawal_text'))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php'), 'a bound token keeps the line out of the card');
 }

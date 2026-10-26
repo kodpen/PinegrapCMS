@@ -7057,16 +7057,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // The receipt e-mail goes out before anything is shipped, so it gets none.
     $withdrawal = empty($sw_ctx['email']) ? pg_legal_withdrawal_of_order((int)$order['id']) : null;
     $withdrawal_date = is_array($withdrawal) ? $fmt_gc_date($withdrawal['deadline']) : '';
-    // A layout made before the links existed binds neither of them: the
-    // kept copies are listed in a card after the widget instead, so every
-    // design shows them, with the withdrawal line under them unless the
-    // layout places that itself (pg_sw_placed()).
-    $legal_block = !pg_sw_placed($tree_decoded, array('__legal_preinfo_url', '__legal_contract_url'))
-        ? pg_legal_documents_order_view_block(
-            $legal_urls,
-            !pg_sw_placed($tree_decoded, array('__withdrawal_deadline')) ? pg_legal_withdrawal_text($withdrawal, $withdrawal_date) : ''
-        )
-        : '';
+    // A layout made before the links existed binds neither of them: it is
+    // given the legal documents card, with the withdrawal line under the
+    // links unless the layout places that itself (widgets_parts.php).
 
     // ── Apply visibility bindings BEFORE tree split + render ──────────
     // Reuses _eo_apply_visibility_bindings (defined in this same file for
@@ -7120,12 +7113,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         $_ov_return_form  = $_ov_returns['can_request'] ? pg_return_form_html($_ov_returns['deliveries'], $_ov_return_cfg) : '';
         $_ov_returns_list = pg_returns_list_html($_ov_returns['returns'], $_ov_return_cfg);
     }
-    // A layout made before returns existed places neither token: once the
-    // setting is on, the block goes after the widget so every design has it.
-    $_ov_returns_tail = (is_array($_ov_returns) && $_ov_returns['enabled']
-                         && !pg_sw_placed($tree_decoded, array('__return_form', '__returns')))
-        ? pg_return_block_html($_ov_returns_list, $_ov_return_form)
-        : '';
+    // A layout made before returns existed places neither token: it is
+    // given the returns card, shown while the setting is on
+    // (show_returns_card, widgets_parts.php).
 
     $_ov_vis_ctx = array(
         'has_shipping'             => (bool)$has_shipping,
@@ -7160,6 +7150,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // Returns: the card shows when there is a request to follow or one
         // may be made; the form part only in the second case.
         'show_returns'             => ($_ov_returns_list !== '' || $_ov_return_form !== ''),
+        'show_returns_card'        => is_array($_ov_returns) && $_ov_returns['enabled']
+                                      && ($_ov_returns_list !== '' || $_ov_return_form !== ''),
         'can_request_return'       => $_ov_return_form !== '',
         'has_returns'              => $_ov_returns_list !== '',
         // The carrier link surfaces only when a parcel number is recorded AND
@@ -7436,6 +7428,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__legal_preinfo_url'       => h($legal_urls['preinfo']),
         '__legal_contract_url'      => h($legal_urls['contract']),
         '__withdrawal_deadline'     => h($withdrawal_date),
+        // The whole line, its words in the site's language: "Last day of
+        // the right of withdrawal: …", an estimate's note, or that it ended.
+        '__withdrawal_text'         => h(pg_legal_withdrawal_text($withdrawal, $withdrawal_date)),
         // The key the order lists read outside a list of recipients: the
         // whole order.
         '__ship_to_key'             => '0',
@@ -7454,13 +7449,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     if ($static_html === '') {
         // No loop_area — replace tokens in the single rendered template
         $rendered = pg_sw_fill_longest($loop_template, $static_values, $_ov_typed);
-        return $_ov_css . pg_sw_sweep_tokens($rendered) . $_ov_returns_tail . $legal_block;
+        return $_ov_css . pg_sw_sweep_tokens($rendered);
     }
 
     $static_html = pg_sw_fill_longest($static_html, $static_values, $_ov_typed);
     $static_html = pg_sw_sweep_tokens($static_html);
 
-    return $_ov_css . str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $_ov_returns_tail . $legal_block;
+    return $_ov_css . str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
 }
 
 // Render a 'membership' system widget: the membership activation form.
