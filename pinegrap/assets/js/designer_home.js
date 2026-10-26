@@ -151,8 +151,8 @@
     }
 
     function hideTooltip(element) {
-        if (window.bootstrap && window.bootstrap.Tooltip && element) {
-            var tip = window.bootstrap.Tooltip.getInstance(element);
+        if (window.pgUI && element) {
+            var tip = window.pgUI.tooltip.find(element);
             if (tip) {
                 tip.hide();
             }
@@ -794,17 +794,17 @@
     var templateFor = null;
 
     function makeTemplate(card) {
-        if (!templateDialog || !window.bootstrap || !window.bootstrap.Modal) {
+        if (!templateDialog || !window.pgUI) {
             return;
         }
         templateFor = card;
         document.getElementById('sdh-tpl-name').value = card.dataset.name || '';
         document.getElementById('sdh-tpl-description').value = '';
-        window.bootstrap.Modal.getOrCreateInstance(templateDialog).show();
+        pgUI.dialog.show(templateDialog);
     }
 
     if (templateDialog) {
-        templateDialog.addEventListener('shown.bs.modal', function () {
+        pgUI.dialog.on(templateDialog, 'shown', function () {
             var field = document.getElementById('sdh-tpl-name');
             field.focus();
             field.select();
@@ -830,7 +830,7 @@
                     toast((res && res.message) || say('fail'), 'danger');
                     return;
                 }
-                window.bootstrap.Modal.getOrCreateInstance(templateDialog).hide();
+                pgUI.dialog.hide(templateDialog);
                 C.templatesStale = true;
                 toast(res.message, 'success');
             }).catch(function () {
@@ -977,10 +977,9 @@
             if (opener) {
                 opener.remove();
             }
-            var offcanvas = (window.bootstrap && window.bootstrap.Offcanvas) ? window.bootstrap.Offcanvas.getInstance(panel) : null;
-            if (offcanvas && panel.classList.contains('show')) {
-                panel.addEventListener('hidden.bs.offcanvas', function () { offcanvas.dispose(); panel.remove(); }, { once: true });
-                offcanvas.hide();
+            if (window.pgUI && pgUI.drawer.find(panel) && pgUI.drawer.isOpen(panel)) {
+                pgUI.drawer.on(panel, 'hidden', function () { pgUI.drawer.dispose(panel); panel.remove(); }, { once: true });
+                pgUI.drawer.hide(panel);
             } else {
                 panel.remove();
             }

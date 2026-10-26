@@ -1,8 +1,8 @@
 /**
  * Generic image editor modal.
  *
- * Pintura in a Bootstrap 5 modal, saved through image_editor_save.php. One
- * modal instance is created on first use and reused, the same shape as
+ * Pintura in a Bootstrap dialog (through pgUI), saved through
+ * image_editor_save.php. One modal instance is created on first use and reused, the same shape as
  * codemirror_modal.js — any screen that can show an image can offer editing
  * without knowing anything about Pintura or about how files are stored.
  *
@@ -36,7 +36,6 @@
     'use strict';
 
     var _modalEl  = null;
-    var _modal    = null;
     var _editor   = null;
     var _opts     = null;
     var _blobData = '';     // the processed image as a data: URL
@@ -187,7 +186,7 @@
         // never sitting there with no tooltip waiting for its first click.
         _setFullscreen(false);
 
-        _modalEl.addEventListener('hidden.bs.modal', function () {
+        pgUI.dialog.on(_modalEl, 'hidden', function () {
             if (!_didSave && _opts && typeof _opts.onCancel === 'function') {
                 try { _opts.onCancel(); } catch (e) {}
             }
@@ -461,7 +460,7 @@
             _didSave = true;
             var cb = _opts && _opts.onSaved;
             var out = res.data;
-            if (_modal) _modal.hide();
+            if (pgUI.dialog.find(_modalEl)) pgUI.dialog.hide(_modalEl);
             if (typeof cb === 'function') { try { cb(out); } catch (e) {} }
         })
         .catch(function () {
@@ -495,14 +494,12 @@
         // end of the window an operator is actually looking at when they
         // decide between replacing the picture and keeping a copy.
 
-        if (!_modal) _modal = new bootstrap.Modal(_modalEl, { backdrop: 'static', keyboard: true });
         _renderFoot();
-        _modal.show();
+        pgUI.dialog.show(_modalEl, { backdrop: 'static', keyboard: true });
 
         // Pintura measures its container, so it can only be built once the
         // modal is actually on screen — same reason the code editor waits.
         var onShown = function () {
-            _modalEl.removeEventListener('shown.bs.modal', onShown);
             var $ = window.jQuery;
             var d = $.fn.doka;
 
@@ -584,6 +581,6 @@
                 _footError(t('The image could not be opened.'));
             });
         };
-        _modalEl.addEventListener('shown.bs.modal', onShown);
+        pgUI.dialog.on(_modalEl, 'shown', onShown, { once: true });
     };
 })();

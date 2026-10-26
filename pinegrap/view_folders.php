@@ -2194,23 +2194,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // as "it did nothing", once for the upload window and once for the delete
     // confirmation, which is why this is here rather than at either call.
     //
-    // The class is the tell: hide() removes it at once when it is heard, so a
-    // window still wearing it did not hear us, and is asked again the moment
-    // it has finished arriving.
-    function hideModal(modal, elementId) {
+    // The open state is the tell: hide() drops it at once when it is heard,
+    // so a window still open did not hear us, and is asked again the moment
+    // it has finished arriving. kind is the pgUI kind, 'dialog' by default.
+    function hideModal(modal, elementId, kind) {
 
         if (!modal) { return; }
 
         var element = document.getElementById(elementId);
 
+        kind = kind || 'dialog';
         modal.hide();
 
-        if ((!element) || (!element.classList.contains('show'))) { return; }
+        if ((!element) || (!pgUI.isOpen(kind, element))) { return; }
 
-        element.addEventListener('shown.bs.modal', function once() {
-            element.removeEventListener('shown.bs.modal', once);
-            modal.hide();
-        });
+        pgUI.on(element, kind, 'shown', function () { modal.hide(); }, { once: true });
     }
 
     function fmt(template, values) {
@@ -2313,7 +2311,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
         element.querySelector('.toast-body').textContent = message;
         container.appendChild(element);
-        var instance = new bootstrap.Toast(element, { delay: action ? 9000 : 3500 });
+        var instance = pgUI.toast.get(element, { delay: action ? 9000 : 3500 });
 
         if (action) {
             var actionButton = element.querySelector('[data-role="toast-action"]');
@@ -2324,7 +2322,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
         }
 
-        element.addEventListener('hidden.bs.toast', function () { element.remove(); });
+        pgUI.toast.on(element, 'hidden', function () { element.remove(); });
         instance.show();
     }
 
@@ -3497,7 +3495,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         });
 
         if (!permOffcanvas) {
-            permOffcanvas = new bootstrap.Offcanvas(document.getElementById('perm_offcanvas'));
+            permOffcanvas = pgUI.drawer.get(document.getElementById('perm_offcanvas'));
         }
 
         permOffcanvas.show();
@@ -8507,7 +8505,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // would quietly turn into one anyway.
         transferState.confirmCopy = catalog ? (!offerMove) : !!copy;
 
-        if (!transferModal) { transferModal = new bootstrap.Modal(document.getElementById('transfer_modal')); }
+        if (!transferModal) { transferModal = pgUI.dialog.get(document.getElementById('transfer_modal')); }
 
         transferModal.show();
 
@@ -8614,7 +8612,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var modalElement = document.getElementById('ws_send_modal');
 
         if (!wsSendModal) {
-            wsSendModal = new bootstrap.Modal(modalElement);
+            wsSendModal = pgUI.dialog.get(modalElement);
 
             document.getElementById('ws_send_filter').addEventListener('input', renderWsSendChannels);
 
@@ -8629,7 +8627,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             document.getElementById('ws_send_confirm_button').addEventListener('click', runWsSend);
 
-            modalElement.addEventListener('shown.bs.modal', function () {
+            pgUI.dialog.on(modalElement, 'shown', function () {
                 document.getElementById('ws_send_filter').focus();
             });
         }
@@ -9006,12 +9004,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         });
 
         // Back on the list once the window closes, with the new link in it.
-        document.getElementById('short_link_modal').addEventListener('hidden.bs.modal', function once() {
-            this.removeEventListener('hidden.bs.modal', once);
+        pgUI.dialog.on('#short_link_modal', 'hidden', function () {
             shortLinkResult = false;
 
             if (insideShortLinks()) { reload(); } else { enterShortLinks(); }
-        });
+        }, { once: true });
     }
 
     function shortLinkIds(items) {
@@ -9423,7 +9420,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             if (!shortLinkModal) {
-                shortLinkModal = new bootstrap.Modal(document.getElementById('short_link_modal'));
+                shortLinkModal = pgUI.dialog.get(document.getElementById('short_link_modal'));
             }
 
             shortLinkModal.show();
@@ -9829,7 +9826,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var errors = [];
         var done = 0;
 
-        hideModal(bulkRenameOffcanvas, 'bulk_rename_offcanvas');
+        hideModal(bulkRenameOffcanvas, 'bulk_rename_offcanvas', 'drawer');
         setProgress(L.renaming, 0, total);
 
         // One at a time: the rename endpoint takes one item, and a name that is
@@ -9941,7 +9938,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         bulkRenameRefresh();
 
-        if (!bulkRenameOffcanvas) { bulkRenameOffcanvas = new bootstrap.Offcanvas(document.getElementById('bulk_rename_offcanvas')); }
+        if (!bulkRenameOffcanvas) { bulkRenameOffcanvas = pgUI.drawer.get(document.getElementById('bulk_rename_offcanvas')); }
 
         bulkRenameOffcanvas.show();
     }
@@ -10573,7 +10570,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             if (!deleteModal) {
-                deleteModal = new bootstrap.Modal(document.getElementById('folder_delete_modal'));
+                deleteModal = pgUI.dialog.get(document.getElementById('folder_delete_modal'));
             }
 
             deleteModal.show();
@@ -10665,7 +10662,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (!deleteModal) {
-            deleteModal = new bootstrap.Modal(document.getElementById('folder_delete_modal'));
+            deleteModal = pgUI.dialog.get(document.getElementById('folder_delete_modal'));
         }
 
         deleteModal.show();
@@ -11707,7 +11704,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // is nearly always a miss, and it was throwing away a selection that
         // had just been dragged in.
         if (!uploadModal) {
-            uploadModal = new bootstrap.Modal(document.getElementById('upload_modal'), {
+            uploadModal = pgUI.dialog.get(document.getElementById('upload_modal'), {
                 backdrop: 'static',
                 keyboard: false
             });
@@ -12270,7 +12267,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     document.getElementById('import_zip_button').addEventListener('click', function () {
 
-        if (!importZipModal) { importZipModal = new bootstrap.Modal(document.getElementById('import_zip_modal')); }
+        if (!importZipModal) { importZipModal = pgUI.dialog.get(document.getElementById('import_zip_modal')); }
 
         importZipModal.show();
     });
@@ -12278,7 +12275,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     var importDesignZipModal = null;
     document.getElementById('import_design_zip_button').addEventListener('click', function () {
 
-        if (!importDesignZipModal) { importDesignZipModal = new bootstrap.Modal(document.getElementById('import_design_zip_modal')); }
+        if (!importDesignZipModal) { importDesignZipModal = pgUI.dialog.get(document.getElementById('import_design_zip_modal')); }
 
         importDesignZipModal.show();
     });
@@ -12492,7 +12489,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             if (!accessOffcanvas) {
-                accessOffcanvas = new bootstrap.Offcanvas(document.getElementById('access_offcanvas'));
+                accessOffcanvas = pgUI.drawer.get(document.getElementById('access_offcanvas'));
             }
 
             accessOffcanvas.show();
@@ -12611,7 +12608,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
 
             if (!accessOffcanvas) {
-                accessOffcanvas = new bootstrap.Offcanvas(document.getElementById('access_offcanvas'));
+                accessOffcanvas = pgUI.drawer.get(document.getElementById('access_offcanvas'));
             }
 
             accessOffcanvas.show();
@@ -12684,7 +12681,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
 
             if (!settingsOffcanvas) {
-                settingsOffcanvas = new bootstrap.Offcanvas(document.getElementById('settings_offcanvas'));
+                settingsOffcanvas = pgUI.drawer.get(document.getElementById('settings_offcanvas'));
             }
 
             settingsOffcanvas.show();
@@ -12805,7 +12802,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
 
             if (!bulkPagesOffcanvas) {
-                bulkPagesOffcanvas = new bootstrap.Offcanvas(document.getElementById('bulk_pages_offcanvas'));
+                bulkPagesOffcanvas = pgUI.drawer.get(document.getElementById('bulk_pages_offcanvas'));
             }
 
             bulkPagesOffcanvas.show();
@@ -12999,7 +12996,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
 
             if (!bulkFilesOffcanvas) {
-                bulkFilesOffcanvas = new bootstrap.Offcanvas(document.getElementById('bulk_files_offcanvas'));
+                bulkFilesOffcanvas = pgUI.drawer.get(document.getElementById('bulk_files_offcanvas'));
             }
 
             bulkFilesOffcanvas.show();
@@ -13183,7 +13180,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
 
             if (!bulkProductsOffcanvas) {
-                bulkProductsOffcanvas = new bootstrap.Offcanvas(document.getElementById('bulk_products_offcanvas'));
+                bulkProductsOffcanvas = pgUI.drawer.get(document.getElementById('bulk_products_offcanvas'));
             }
 
             bulkProductsOffcanvas.show();
@@ -13750,15 +13747,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // Only the buttons close it: a click beside the window while
             // halfway through an edit must not throw the edit away.
-            fileEditModal = new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false });
+            fileEditModal = pgUI.dialog.get(modalElement, { backdrop: 'static', keyboard: false });
 
-            modalElement.addEventListener('shown.bs.modal', function () {
+            pgUI.dialog.on(modalElement, 'shown', function () {
                 if (fileEdit && fileEdit.editor && fileEdit.file.editable) { fileEdit.editor.focus(); }
             });
 
-            modalElement.addEventListener('hide.bs.modal', function () { fileEditHiding = true; });
+            pgUI.dialog.on(modalElement, 'hide', function () { fileEditHiding = true; });
 
-            modalElement.addEventListener('hidden.bs.modal', function () {
+            pgUI.dialog.on(modalElement, 'hidden', function () {
 
                 fileEditHiding = false;
 
@@ -13775,7 +13772,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
         }
 
-        if (modalElement.classList.contains('show')) { return; }
+        if (pgUI.dialog.isOpen(modalElement)) { return; }
 
         if (fileEditHiding) { fileEditPending = true; return; }
 
@@ -14595,7 +14592,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // On shown rather than on show: until Bootstrap has added its class the
     // menu is display:none, and a hidden element has no width to measure.
-    document.getElementById('explorer_toolbar').addEventListener('shown.bs.dropdown', function (event) {
+    pgUI.menu.on('#explorer_toolbar', 'shown', function (event) {
 
         var wrap = event.target.closest('.dropdown');
         var menu = wrap ? wrap.querySelector('.dropdown-menu') : null;
