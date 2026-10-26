@@ -217,20 +217,16 @@ function mp_remote_products_suggest($account) {
 
 		$taken[] = (int) $map['product_id'];
 
-		$mapped_codes[mb_strtolower(trim((string) $map['remote_code']))] = true;
+		$mapped_codes[] = $map['remote_code'];
 
 	}
 
 	$remote = array();
 
-	foreach (db_items("SELECT id, remote_code, barcode, title, price FROM marketplace_remote_products
-		WHERE (account_id = '" . e($account_id) . "') AND (dismissed = '0')") as $row) {
+	$rows = db_items("SELECT id, remote_code, barcode, title, price FROM marketplace_remote_products
+		WHERE (account_id = '" . e($account_id) . "') AND (dismissed = '0')");
 
-		if (isset($mapped_codes[mb_strtolower(trim((string) $row['remote_code']))])) {
-
-			continue;
-
-		}
+	foreach (mp_remote_products_unmatched_rows($rows, $mapped_codes) as $row) {
 
 		$remote[] = array(
 			'key'     => (string) $row['id'],
@@ -317,14 +313,76 @@ function mp_remote_products_similar($account, $row, $limit = 12) {
 
 }
 
+/* ------------------------------------------------------- comparing codes */
+
+// A marketplace code is the seller's own text and is compared byte for byte:
+// "ABC-1" and "abc-1" are two products there. marketplace_remote_products
+// keeps the code in utf8mb4_bin; marketplace_product_map (2026.4.4) keeps it
+// in the case- and accent-blind utf8mb4_unicode_ci, so every comparison with
+// the map is made twice: once in the map column's own collation, which lets
+// its index (idx_code) find the rows, and once on the bytes, which drops a
+// twin. A plain = between the two columns would be decided in utf8mb4_bin
+// and could not use the map's index.
+
+// Whether two codes are the same code.
+function mp_remote_products_same_code($a, $b) {
+
+	return (string) $a === (string) $b;
+
+}
+
+// The remote rows whose code no map row of the account carries, exactly.
+function mp_remote_products_unmatched_rows($rows, $mapped_codes) {
+
+	$mapped = array();
+
+	foreach ((array) $mapped_codes as $code) {
+
+		$mapped[(string) $code] = true;
+
+	}
+
+	$left = array();
+
+	foreach ((array) $rows as $row) {
+
+		if (!isset($mapped[(string) $row['remote_code']])) {
+
+			$left[] = $row;
+
+		}
+
+	}
+
+	return $left;
+
+}
+
+// The WHERE fragment that finds the map rows carrying exactly $code.
+function mp_remote_products_map_code_sql($code) {
+
+	$code = e((string) $code);
+
+	return "(marketplace_product_map.remote_code = '" . $code . "')"
+		. " AND (CAST(marketplace_product_map.remote_code AS BINARY) = CAST('" . $code . "' AS BINARY))";
+
+}
+
+// The join condition between a map row and a remote row of the same code.
+function mp_remote_products_code_join_sql() {
+
+	return "(marketplace_product_map.account_id = marketplace_remote_products.account_id)
+		  AND (marketplace_product_map.remote_code = marketplace_remote_products.remote_code COLLATE utf8mb4_unicode_ci)
+		  AND (CAST(marketplace_product_map.remote_code AS BINARY) = CAST(marketplace_remote_products.remote_code AS BINARY))";
+
+}
+
 /* -------------------------------------------------------------- the rows */
 
 // The SQL that says a remote row is matched on its account.
 function mp_remote_products_matched_sql() {
 
-	return "EXISTS (SELECT 1 FROM marketplace_product_map
-		WHERE (marketplace_product_map.account_id = marketplace_remote_products.account_id)
-		  AND (marketplace_product_map.remote_code = marketplace_remote_products.remote_code))";
+	return "EXISTS (SELECT 1 FROM marketplace_product_map WHERE " . mp_remote_products_code_join_sql() . ")";
 
 }
 
@@ -399,8 +457,7 @@ function mp_remote_products_page($account_id, $filter, $search, $page, $per_page
 
 	$rows = db_items("SELECT marketplace_remote_products.*,
 			(SELECT MIN(product_id) FROM marketplace_product_map
-				WHERE (marketplace_product_map.account_id = marketplace_remote_products.account_id)
-				  AND (marketplace_product_map.remote_code = marketplace_remote_products.remote_code)) AS matched_product_id
+				WHERE " . mp_remote_products_code_join_sql() . ") AS matched_product_id
 		FROM marketplace_remote_products " . $where . "
 		ORDER BY " . $order . "
 		LIMIT " . (max(0, (int) $page - 1) * (int) $per_page) . ", " . (int) $per_page);
@@ -545,7 +602,7 @@ function mp_remote_products_accept($account, $id, $product_id) {
 
 	if ($mapped) {
 
-		if (mb_strtolower($mapped['remote_code']) === mb_strtolower($row['remote_code'])) {
+		if (mp_remote_products_same_code($mapped['remote_code'], $row['remote_code'])) {
 
 			return mp_ok(array('product_id' => (int) $product['id']));
 
@@ -564,7 +621,7 @@ function mp_remote_products_accept($account, $id, $product_id) {
 		FROM marketplace_product_map
 		LEFT JOIN products ON products.id = marketplace_product_map.product_id
 		WHERE (marketplace_product_map.account_id = '" . e($account_id) . "')
-		  AND (marketplace_product_map.remote_code = '" . e($row['remote_code']) . "')
+		  AND " . mp_remote_products_map_code_sql($row['remote_code']) . "
 		LIMIT 1");
 
 	if ($other) {
@@ -658,7 +715,7 @@ function mp_remote_products_unmatch($account, $id) {
 	}
 
 	db("DELETE FROM marketplace_product_map
-		WHERE (account_id = '" . e((int) $account['id']) . "') AND (remote_code = '" . e($row['remote_code']) . "')");
+		WHERE (account_id = '" . e((int) $account['id']) . "') AND " . mp_remote_products_map_code_sql($row['remote_code']));
 
 	return mp_ok();
 

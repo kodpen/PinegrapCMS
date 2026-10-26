@@ -240,8 +240,7 @@ function mp_products_row($account_id, $id) {
 
 	$row = db_item("SELECT marketplace_remote_products.*,
 			(SELECT MIN(product_id) FROM marketplace_product_map
-				WHERE (marketplace_product_map.account_id = marketplace_remote_products.account_id)
-				  AND (marketplace_product_map.remote_code = marketplace_remote_products.remote_code)) AS matched_product_id
+				WHERE " . mp_remote_products_code_join_sql() . ") AS matched_product_id
 		FROM marketplace_remote_products
 		WHERE (id = '" . e((int) $id) . "') AND (account_id = '" . e((int) $account_id) . "')");
 

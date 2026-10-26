@@ -2346,6 +2346,12 @@ function upgrade_2026_11_0_audit_feed_tokens() {
 // it. fetched_timestamp is the read that last saw the row: a read that ends
 // removes the rows it did not see, the products the store took off there.
 //
+// remote_code compares byte for byte. The seller types these codes, and under
+// the table's case- and accent-blind collation "ABC-1" and "abc-1", or
+// "ŞAPKA-01" and "SAPKA-01", were one row: the second product's title,
+// barcode and price overwrote the first's under the first's code, and a match
+// accepted on that row sent a shop product's stock to the wrong listing.
+//
 // The unique key covers the first 191 characters of the code, for the same
 // reason marketplace_product_map.idx_code does: the whole column is past the
 // index limit of the older row formats.
@@ -2354,7 +2360,7 @@ function upgrade_2026_11_0_marketplace_remote_products() {
 	install_create_table('marketplace_remote_products', "CREATE TABLE marketplace_remote_products (
 		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
 		account_id           INT UNSIGNED NOT NULL DEFAULT 0,
-		remote_code          VARCHAR(255) NOT NULL DEFAULT '',
+		remote_code          VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
 		remote_id            VARCHAR(64) NOT NULL DEFAULT '',
 		group_code           VARCHAR(255) NOT NULL DEFAULT '',
 		barcode              VARCHAR(64) NOT NULL DEFAULT '',
