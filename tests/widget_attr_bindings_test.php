@@ -189,3 +189,97 @@ function test_widget_attr_bindings_pairs_nested_copies()
 		'each copy reads its own carrier; a placeholder without one reads as empty');
 	pg_assert_same('pgav-other-1-', pg_sw_attr_resolve('pgav-other-1-', $n), 'another nonce is text');
 }
+
+// A form list whose record holds a list of the 'tags' values, each a link
+// to /board with $params (name => token); the links' page set by hand (no
+// database). Returns the finished markup for $records (id => title) and
+// the tags $tags (id => list of values).
+function _attr_bind_page_links($params, $records, $tags, $wrap_list = null)
+{
+	$spec = array('page_id' => 12, 'params' => array());
+	foreach ($params as $name => $token) $spec['params'][] = array('name' => $name, 'token' => $token);
+	$link = array('type' => 'semantic', 'props' => array('tag' => 'a', 'cssClass' => 'tag', 'text' => 't', 'href' => '#',
+		'_bindings' => array('href' => '__page_link', 'text' => '__value_text'), '_bindParams' => array('href' => $spec)), 'children' => array());
+	$list = array('type' => 'loop_area', 'props' => array('source' => 'form_record.values', 'sourceArg' => 'tags'), 'children' => array($link));
+	if ($wrap_list !== null) $list = $wrap_list($list);
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'card'), 'children' => array($list)),
+	));
+
+	$links = pg_sw_page_link_bindings($tree);
+	foreach ($links as $token => $l) $links[$token]['base'] = '/board';
+
+	$rows = array();
+	$id   = 100;
+	foreach ($tags as $form_id => $values) {
+		foreach ($values as $v) {
+			$rows[] = array('form_id' => (string)$form_id, 'data' => $v, 'data_name' => 'tags', 'data_file_id' => '0', 'field_name' => 'tags',
+				'field_label' => 'Tags', 'field_type' => 'check box', 'field_wysiwyg' => '0', 'file_name' => null, 'data_id' => (string)(++$id), 'field_office_use' => '0');
+		}
+	}
+	return array($links, $tree, _attr_bind_in_scope('form_list_view', function ($scope) use ($tree, $links, $records, $rows) {
+		$tpl = trim(_render_tree_node($tree, 0, 0));
+		pg_sw_list_publish('form_record', $rows);
+		$html = '';
+		foreach ($records as $fid => $title) {
+			$custom = array('title' => array('data' => $title, 'type' => 'text box', 'wysiwyg' => 0));
+			$extra  = array('submitted_form_id' => (string)$fid) + pg_sw_page_link_values($links, array(), $custom, array());
+			$html  .= pg_sw_sweep_tokens(pg_sw_apply_tokens($tpl, array(), $custom, $extra));
+		}
+		return pg_sw_finish_widget_html($html, $scope);
+	}));
+}
+
+function test_widget_attr_bindings_page_link_row_values()
+{
+	list($links, $tree, $html) = _attr_bind_page_links(array('tag' => '__value_param', 'author' => 'title', 'label' => '__value_text'),
+		array(1 => 'First & co', 2 => 'Second'), array(1 => array('a b', 'C&D'), 2 => array('x=1')));
+	pg_assert_same(array(array('name' => 'tag', 'token' => '__value_param', 'row' => true), array('name' => 'author', 'token' => 'title'),
+		array('name' => 'label', 'token' => '__value_text', 'row' => true)), $links['__page_link_0']['params'], 'row params marked');
+	pg_assert_same(array('__page_link_0'), $tree['children'][0]['children'][0]['props']['_pgRowLinks'], 'the list names its link');
+	_attr_bind_clean($html, 'page links');
+	pg_assert_same(false, strpos($html, 'pgpl-'), 'no link placeholder left');
+	pg_assert_contains('href="/board?tag=a%20b&amp;author=First%20%26%20co&amp;label=a%20b"', $html, 'row 1 of record 1');
+	pg_assert_contains('href="/board?tag=C%26D&amp;author=First%20%26%20co&amp;label=C%26D"', $html, 'row 2 of record 1');
+	pg_assert_contains('href="/board?tag=x%3D1&amp;author=Second&amp;label=x%3D1"', $html, 'row of record 2');
+	pg_assert_same(3, substr_count($html, 'class="tag"'), 'three links');
+}
+
+function test_widget_attr_bindings_page_link_without_row()
+{
+	// A record value only: no placeholder, the address as before.
+	list($links, $tree, $html) = _attr_bind_page_links(array('author' => 'title'), array(1 => 'T'), array(1 => array('a')));
+	pg_assert_false(pg_sw_page_link_has_row($links['__page_link_0']), 'no row param');
+	pg_assert_false(isset($tree['children'][0]['children'][0]['props']['_pgRowLinks']), 'the list names no link');
+	pg_assert_contains('href="/board?author=T"', $html, 'record value');
+
+	// A row token outside a list is no row param: it names nothing.
+	$tree = array('type' => 'semantic', 'props' => array('tag' => 'a', '_bindings' => array('href' => '__page_link'),
+		'_bindParams' => array('href' => array('page_id' => 3, 'params' => array(array('name' => 'tag', 'token' => '__value_param'))))), 'children' => array());
+	$links = pg_sw_page_link_bindings($tree);
+	pg_assert_false(pg_sw_page_link_has_row($links['__page_link_0']), 'outside a list');
+
+	// Outside a widget render the link is finished at once, row values left out.
+	$links = array('__page_link_0' => array('page_id' => 3, 'base' => '/b', 'params' => array(
+		array('name' => 'tag', 'token' => '__value_param', 'row' => true), array('name' => 'rec', 'token' => 'submitted_form_id'))));
+	pg_assert_same(array('__page_link_0' => '/b?rec=5'), pg_sw_page_link_values($links, array(), array(), array('submitted_form_id' => '5')), 'no scope');
+	$links['__page_link_0']['base'] = '';
+	pg_assert_same(array('__page_link_0' => '#'), _attr_bind_in_scope('form_list_view', function () use ($links) {
+		return pg_sw_page_link_values($links, array(), array(), array());
+	}), 'no page: #');
+}
+
+function test_widget_attr_bindings_page_link_placeholder()
+{
+	$n = pg_sw_marker_nonce();
+	$ph = _attr_bind_in_scope('form_list_view', function () {
+		return pg_sw_page_link_defer('/böard', array(array('tag', '__value_param', ''), array('who', '', 'x "y"')));
+	});
+	pg_assert_same(1, preg_match('/^pgpl-' . $n . '-[A-Za-z0-9._~]+-$/', $ph), 'plain characters');
+	pg_assert_same($ph, h($ph), 'h() leaves it');
+	pg_assert_same('/böard?tag=a%2Fb&amp;who=x%20%22y%22', pg_sw_page_link_row_value($ph, $n, array('__value_param' => 'a%2Fb')), 'row value decoded once, encoded once');
+	pg_assert_same('/böard?who=x%20%22y%22', pg_sw_page_link_row_value($ph, $n, null), 'no row');
+	pg_assert_same('', pg_sw_page_link_row_value($ph, 'other', array()), 'another nonce');
+	pg_assert_same('', pg_sw_page_link_row_value('/board?x=1', $n, array()), 'a finished address');
+	pg_assert_same('<a href="/böard?who=x%20%22y%22">', pg_sw_page_link_settle('<a href="' . $ph . '">', $n), 'settled without the row');
+}

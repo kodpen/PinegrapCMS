@@ -438,7 +438,8 @@ function pg_sw_finish_positions($html, $nonce)
 //      drawn from the published rows, each row with its own positions, so
 //      a condition in a list's row reads that row;
 //   3. conditions (pg_sw_finish_resolve()), then the values in attributes
-//      (pg_sw_attr_resolve(), widgets_attrs.php) of the elements kept;
+//      (pg_sw_attr_resolve(), widgets_attrs.php) of the elements kept, and
+//      a link waiting for a list row no row filled (pg_sw_page_link_settle());
 //   4. when a span was cut or a list came out empty, pg-hide-if-empty again
 //      in the kinds whose renderer honours it, on the elements around a cut
 //      point only, so a row whose value left and a box whose last row left
@@ -464,6 +465,7 @@ function pg_sw_finish_widget_html($html, $scope)
     $html = pg_sw_lists_expand($html, $nonce, $scope, $published, $cut);
     $html = pg_sw_finish_resolve($html, $nonce, $cut);
     $html = pg_sw_attr_resolve($html, $nonce);
+    $html = pg_sw_page_link_settle($html, $nonce);
 
     $kind = (is_array($scope) && isset($scope['kind'])) ? pg_sw_finish_kind($scope['kind']) : '';
     if ($cut && in_array($kind, array('form_list_view', 'form_item_view', 'comments'), true)) {
