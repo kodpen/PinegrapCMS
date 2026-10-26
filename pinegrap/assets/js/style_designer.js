@@ -10794,21 +10794,7 @@ const StyleDesigner = (function () {
         // of which builder handled it.
         var hideLoop = false;
         var isList = _sdListIsSourced(node);
-        if (_sysWidgetRenderCfg && !isList) {
-            var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
-                ? _sysWidgetRenderCfg.regionType : 'form_list_view';
-            hideLoop = (_lwRt === 'form_item_view') ||
-                       (_lwRt === 'my_account' && _sysWidgetRenderCfg.show_submissions !== true) ||
-                       (_lwRt === 'login_form') ||
-                       (_lwRt === 'forgot_password') ||
-                       (_lwRt === 'registration') ||
-                       (_lwRt === 'membership') ||
-                       (_lwRt === 'custom_form') ||
-                       (_lwRt === 'catalog_item_view') ||
-                       (_lwRt === 'calendar_event_view') ||
-                       (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
-                       (_SW_ONE_SCREEN[_lwRt] === 1);
-        }
+        if (_sysWidgetRenderCfg && !isList) hideLoop = _sdLoopIsSingle(_sysWidgetRenderCfg);
 
         var isRecipient = (node.type === 'recipient_loop_area');
         var listBand = isList ? _sdListBand(node) : null;
@@ -12231,11 +12217,37 @@ const StyleDesigner = (function () {
         ]
     };
 
-    // The rows drawn after a list's card: none when the site draws nothing
-    // for it, inside a sample row, or with the sample switch off; at most
-    // the rows the list shows (props.limit) less the card.
+    // Whether a widget of `cfg` draws its main loop once: a single-record
+    // kind, whose loop holds the layout but repeats nothing.
+    function _sdLoopIsSingle(cfg) {
+        var rt = (cfg && typeof cfg.regionType === 'string' && cfg.regionType !== '') ? cfg.regionType : 'form_list_view';
+        return (rt === 'form_item_view') ||
+               (rt === 'my_account' && cfg.show_submissions !== true) ||
+               (rt === 'login_form') ||
+               (rt === 'forgot_password') ||
+               (rt === 'registration') ||
+               (rt === 'membership') ||
+               (rt === 'custom_form') ||
+               (rt === 'catalog_item_view') ||
+               (rt === 'calendar_event_view') ||
+               (_SW_ACCOUNT_SINGLE[rt] === 1) ||
+               (_SW_ONE_SCREEN[rt] === 1);
+    }
+
+    // The rows drawn after a loop's card. A list: none when the site draws
+    // nothing for it, at most the rows it shows (props.limit) less the card.
+    // The main loop: two rows of the card's values, in a kind that repeats
+    // it and gets no real records (server ghosts) or sample comments. None
+    // inside a sample row or a sample comment, or with the sample switch off.
     function _sdListSampleRows(node) {
-        if (!_sdGhostsOn || _sdListSample || !_sdListIsSourced(node)) return [];
+        if (!_sdGhostsOn || _sdListSample || _sdCommentSample || !node || node.type !== 'loop_area') return [];
+        if (!_sdListIsSourced(node)) {
+            var cfg = _sysWidgetRenderCfg;
+            if (!cfg || !_sysWidgetRenderTreeRoot || _sdFirstLoopArea(_sysWidgetRenderTreeRoot) !== node) return [];
+            var kind = _swKindOf(cfg);
+            if (_SD_GHOST_TYPES[kind] || _SD_GHOST_TYPES[cfg.regionType] || kind === 'comments' || kind === 'comments_recent' || _sdLoopIsSingle(cfg)) return [];
+            return [{}, {}];
+        }
         var src = SW_LIST_SOURCES[node.props.source];
         if (!src || _sdListBand(node).off) return [];
         var rows = SD_LIST_SAMPLE_ROWS[node.props.source] || [{}, {}];
@@ -12554,20 +12566,7 @@ const StyleDesigner = (function () {
         // _sysWidgetRenderCfg is set by buildSharedRefEl before rendering the tree.
         // A list inside a record repeats its rows in every kind that draws it.
         if (node.type === 'loop_area' && _sysWidgetRenderCfg && !_sdListIsSourced(node)) {
-            var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
-                ? _sysWidgetRenderCfg.regionType : 'form_list_view';
-            var _loopHide = (_lwRt === 'form_item_view') ||
-                            (_lwRt === 'my_account' && _sysWidgetRenderCfg.show_submissions !== true) ||
-                            (_lwRt === 'login_form') ||
-                            (_lwRt === 'forgot_password') ||
-                            (_lwRt === 'registration') ||
-                            (_lwRt === 'membership') ||
-                            (_lwRt === 'custom_form') ||
-                            (_lwRt === 'catalog_item_view') ||
-                            (_lwRt === 'calendar_event_view') ||
-                            (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
-                            (_SW_ONE_SCREEN[_lwRt] === 1);
-            if (_loopHide) {
+            if (_sdLoopIsSingle(_sysWidgetRenderCfg)) {
                 // A single-record widget renders its loop_area once, so the
                 // "repeated for every record" band would mislead. An empty
                 // one goes altogether; one holding the layout (a form item
