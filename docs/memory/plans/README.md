@@ -68,7 +68,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - security-findings-2026-10-waf.md: Security findings of the 2026-10-20 firewall and helper scan: IP matching, proxy headers, path exclusions, bot rate exemption, country rule, db error text, back URLs; one PR each
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713 (installer lockout); open: eval order, form renderers, CVV, gateway secrets, designed-form rich text; owner questions
 - shipping-carrier-labels.md: Plan (approved 2026-10-19, not started, after shipping-management): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
-- shipping-management.md: Shipping plan (2026-10-08; phases 1-4, 5a and 6 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
+- shipping-management.md: Shipping plan (2026-10-08; phases 1-4, 5a, 6 and 7a done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - sms-and-iys.md: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API done; left: first İYS live run, COD code and member OTP
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
 - storefront-bundles-design.md: Bundles design note (storefront-conversion-pack step 6, for the owner's review): model, stock, price, schema; hooks and steps in storefront-bundles-hooks.md

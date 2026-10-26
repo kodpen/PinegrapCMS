@@ -25,7 +25,7 @@ Four meanings live side by side:
 
 ## Which gaps are known?
 - No number format check (panel and ShipWorks only trim; API only checks length). An 11-digit number with no carrier in the method code is taken as UPS, 12/15 digits as FedEx, unless the site names a default carrier (`ECOMMERCE_DEFAULT_TRACKING_PROVIDER`, every order screen since #601).
-- n11 import maps city = `city`, state = district; checkout (and `includes/erp/accounts.php`) treat a Turkish city as district and state as province, so n11 records come in swapped (not checked on a live order).
+- n11 import: city = district, state = province since #2004, as checkout keeps a Turkish address; older imports stay swapped (unchecked on a live order). Trendyol still has city = `city`.
 - `mp_n11_request_collection()` is registered in the n11 connector but nothing calls `request_collection`.
 - `verify_address()` (`shipping.php`) works only for US addresses (USPS Web Tools, whose retirement is unverified); `verified_shipping_addresses` is a manual list and sets no `address_verified`.
 - No guest tracking page, no bulk tracking upload, no carrier status job; profile screens do not offer `order_delivered` yet.
