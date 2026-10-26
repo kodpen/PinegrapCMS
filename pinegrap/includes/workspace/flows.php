@@ -98,6 +98,11 @@ function ws_flow_kinds()
         'end'    => array('label' => lang('End'), 'trigger' => false, 'outcomes' => array(), 'step' => false),
     );
 
+    // One condition of a scheduled action (flow_conditions.php).
+    if (function_exists('ws_flow_condition_outcomes')) {
+        $kinds['condition'] = array('label' => lang('Condition'), 'trigger' => false, 'outcomes' => ws_flow_condition_outcomes(), 'step' => false);
+    }
+
     // The steps of a scheduled action, each a box of its own (steps.php).
     foreach ((function_exists('ws_step_kinds') ? ws_step_kinds() : array()) as $kind => $info) {
         $kinds[$kind] = array('label' => $info['label'], 'trigger' => false, 'outcomes' => ws_step_outcomes(), 'step' => true);
@@ -214,6 +219,7 @@ function ws_flow_lines($value, $length)
  * task:   title, description, assignees (up to 20 user ids) or assign (a
  *         rule of ws_template_assign_valid(), 'creator' being whoever starts
  *         the run), due_in ('' or 0-3650 days), priority
+ * condition: ws_flow_condition_normalize()
  * a step: ws_step_config_normalize()
  *
  * @param string $kind
@@ -250,6 +256,9 @@ function ws_flow_config_normalize($kind, $config)
                 'due_in'      => (is_bool($due_in) || !is_numeric($due_in)) ? '' : max(0, min(3650, (int) $due_in)),
                 'priority'    => in_array($priority, array('low', 'normal', 'high', 'urgent'), true) ? $priority : 'normal',
             );
+
+        case 'condition':
+            return function_exists('ws_flow_condition_normalize') ? ws_flow_condition_normalize($config) : array();
     }
 
     return function_exists('ws_step_config_normalize') ? ws_step_config_normalize($kind, $config) : array();
@@ -432,6 +441,12 @@ function ws_flow_graph_check($graph)
 
         if ($kinds[$node['kind']]['step']) {
             foreach (ws_step_config_problems($node['kind'], $node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
+        if ($node['kind'] === 'condition') {
+            foreach (ws_flow_condition_problems($node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -969,6 +984,15 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
                 return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $step['error']))));
             }
         }
+
+        // A condition: a count or a record the owner may read.
+        if ($node['kind'] === 'condition') {
+            $condition = ws_flow_condition_check($viewer, $node['config']);
+
+            if (!$condition['ok']) {
+                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $condition['error']))));
+            }
+        }
     }
 
     foreach ($graph['nodes'] as $node) {
@@ -1176,7 +1200,9 @@ function ws_flow_url_masked($url)
  * the whole address of a webhook or web check box (ws_flow_url_masked()),
  * and which record a change box changes and to what: the record may be one
  * the reader may not open, and its values a customer's data. They read the
- * kind of record, the action and the names of the fields.
+ * kind of record, the action and the names of the fields. A condition box's
+ * record and the value it compares with are kept back the same way
+ * (ws_flow_condition_masked()).
  *
  * @param array $graph ws_flow_graph_normalize()
  * @param bool  $edit  the reader may change the flow
@@ -1194,6 +1220,10 @@ function ws_flow_graph_present($graph, $edit = false)
             if (!$edit && ((string) $node['kind'] === 'change')) {
                 $node['config']['id'] = 0;
                 $node['config']['fields'] = array_fill_keys(array_keys((array) ($node['config']['fields'] ?? array())), '');
+            }
+
+            if (!$edit && ((string) $node['kind'] === 'condition')) {
+                $node['config'] = ws_flow_condition_masked($node['config']);
             }
 
             $node['config'] = (object) $node['config'];
@@ -1471,6 +1501,35 @@ function ws_flow_js_strings()
         'fl_start_delay'      => lang('Minutes later'),
         'fl_start_delay_help' => lang('0 starts it at once; at most a week (10,080 minutes).'),
         'fl_kind_change'      => lang('Change a record'),
+        'fl_kind_condition'   => lang('Condition'),
+        'fl_day_mon'         => lang('Monday'),
+        'fl_day_tue'         => lang('Tuesday'),
+        'fl_day_wed'         => lang('Wednesday'),
+        'fl_day_thu'         => lang('Thursday'),
+        'fl_day_fri'         => lang('Friday'),
+        'fl_day_sat'         => lang('Saturday'),
+        'fl_day_sun'         => lang('Sunday'),
+        'fl_cond_pick'        => lang('Choose a condition'),
+        'fl_cond_none'        => lang('No condition chosen'),
+        'fl_cond_kind'        => lang('Condition'),
+        'fl_cond_help'        => lang('An arrow on Yes is taken when it holds, one on No when it does not. Without an arrow on No the flow stops there, and the run keeps the reason.'),
+        'fl_cond_workday'     => lang('A working day'),
+        'fl_cond_weekdays'    => lang('Days of the week'),
+        'fl_cond_hours'       => lang('Hours of the day'),
+        'fl_cond_from'        => lang('Starts at'),
+        'fl_cond_to'          => lang('Ends at'),
+        'fl_cond_metric'      => lang('A count'),
+        'fl_cond_metric_pick' => lang('Choose a count'),
+        'fl_cond_any_channel' => lang('Every channel'),
+        'fl_cond_record'      => lang('A field of a record'),
+        'fl_cond_field'       => lang('Field'),
+        'fl_cond_field_pick'  => lang('Choose a field'),
+        'fl_cond_op'          => lang('Comparison'),
+        'fl_cond_value'       => lang('Value'),
+        'fl_cond_value_pick'  => lang('Choose a value'),
+        'fl_cond_within_help' => lang('A number of days.'),
+        'fl_cond_id_help'     => lang('The number of the record, as its page or the record drawer shows it. It is checked with your rights as you publish and again each time the box runs.'),
+        'fl_cond_hidden'      => lang('Which record, and the value it is compared with, are shown only to whoever may change the flow.'),
         'fl_change_pick'      => lang('Choose a kind of record'),
         'fl_change_none'      => lang('No record chosen'),
         'fl_change_kind'      => lang('Kind of record'),
@@ -1567,6 +1626,8 @@ function ws_flow_js_strings()
         'fl_on_done'          => lang('Done'),
         'fl_on_cancelled'     => lang('Cancelled'),
         'fl_on_failed'        => lang('Failed'),
+        'fl_on_yes'           => lang('Yes'),
+        'fl_on_no'            => lang('No'),
         'fl_on_box'           => lang('Followed when the box ends'),
         'fl_one_start'        => lang('A flow has one box that starts it.'),
         'fl_too_many_boxes'   => ws_js_template('A flow can hold at most {var:1} boxes.', 1),
@@ -1691,7 +1752,8 @@ function ws_flow_js_config($viewer, $mode)
     // counts the person may read, the task e-mail's filters, and the
     // scheduled actions a box may start.
     $build = ws_flows_ready() && ws_can_schedule($viewer);
-    $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array());
+    $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array(),
+        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array());
 
     if ($build && function_exists('ws_scheduled_metrics')) {
         foreach (ws_scheduled_metrics() as $key => $metric) {
@@ -1707,6 +1769,12 @@ function ws_flow_js_config($viewer, $mode)
         // fields, as the scheduled form offers them.
         $scheduled = function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer) : null;
         $steps['changes'] = (object) (is_array($scheduled) ? $scheduled['changes'] : array());
+
+        // What a condition box looks at: the kinds of record with their
+        // fields, and how a value or a count is compared.
+        $steps['records'] = (object) (is_array($scheduled) ? $scheduled['records'] : array());
+        $steps['operators'] = (object) (is_array($scheduled) ? $scheduled['operators'] : array());
+        $steps['counts'] = is_array($scheduled) ? $scheduled['counts'] : array();
     }
 
     return $config + array(

@@ -498,8 +498,9 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
 
 /**
  * What a box of a run says it did, as a reader of the run sees it. A change
- * box's sentence names the record and the values it wrote, which only
- * whoever may change the flow reads (ws_flow_graph_present() keeps them
+ * box's sentence names the record and the values it wrote, a condition box's
+ * the record, the value and the count it looked at, which only whoever may
+ * change the flow reads (ws_flow_graph_present() keeps them
  * back the same way); everybody else reads that a change was made, or not.
  * Pure.
  *
@@ -511,8 +512,17 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  */
 function ws_step_result_shown($kind, $outcome, $text, $edit)
 {
-    if ($edit || ((string) $kind !== 'change') || ((string) $text === '')) {
+    if ($edit || !in_array((string) $kind, array('change', 'condition'), true) || ((string) $text === '')) {
         return (string) $text;
+    }
+
+    // A condition's sentence names the record, the value and the count now.
+    if ((string) $kind === 'condition') {
+        if ((string) $outcome === '') {
+            return lang('The condition could not be checked.');
+        }
+
+        return ((string) $outcome === 'yes') ? lang('The condition held.') : lang('The condition did not hold.');
     }
 
     return ((string) $outcome === 'done') ? lang('The change was made.') : lang('The change could not be made.');
