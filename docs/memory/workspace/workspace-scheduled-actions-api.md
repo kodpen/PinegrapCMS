@@ -6,7 +6,7 @@ description: Scheduled actions in the external API (api_scheduled.php): list, ge
 ## Which routes are there?
 - `GET /workspace/scheduled-actions` (filters `status`, `channel_id`; at most 300, the panel's order), `GET /workspace/scheduled-actions/{id}` (with `history`, the latest 20 runs), `POST …/{id}/pause`, `POST …/{id}/cancel`. All four are MCP tools; key, OAuth and team devices sessions alike.
 - Declared in `ws_scheduled_api_routes()` (includes/workspace/api_scheduled.php), merged at the end of `ws_api_routes()`; object `WorkspaceScheduledAction`.
-- `POST …/{id}/resume`, `POST /workspace/scheduled-actions` (201) and `POST`/`PATCH …/{id}`: staff from their own team devices session only (`ws_api_own_words_only()`), `'mcp' => false`: an action runs in the name of whoever saves it (owner, #1708, `workflow/decisions-made-product.md`). Connected apps: a change card later (plan S2b).
+- `POST …/{id}/resume`, `POST /workspace/scheduled-actions` (201) and `POST`/`PATCH …/{id}`: staff from their own team devices session only (`ws_api_own_words_only()`), `'mcp' => false`: an action runs in the name of whoever saves it (owner, #1708, `workflow/decisions-made-product.md`). Connected apps: a change card later (plan S2b). Added in #1858.
 
 ## Who may call them?
 - Staff in the team only (`ws_can_schedule()` in `ws_api_scheduled_viewer()`), 403 for anybody else; 503 before the tables exist. Every staff member sees every action, as on the panel's screen.

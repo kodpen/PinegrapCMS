@@ -1,6 +1,6 @@
 ---
 name: workspace-canvas-workflow-tables
-description: Plan (2026-10-23, S1 #1708, S2 done, question 2 open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+description: Plan (2026-10-23, S1 #1708, S2 #1858, question 2 open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 ---
 
 ## What is asked?
@@ -16,7 +16,7 @@ description: Plan (2026-10-23, S1 #1708, S2 done, question 2 open): workflow tab
 
 ## Slices
 1. S1 Scheduled actions API: list, get, pause, cancel — done, #1708 (workspace/workspace-scheduled-actions-api.md).
-2. S2 Create, edit, resume — done (workspace/workspace-scheduled-actions-api.md). S2b: change card for connected apps, after the MCP plan's slice 3 propose route.
+2. S2 Create, edit, resume — done, #1858 (workspace/workspace-scheduled-actions-api.md). S2b: change card for connected apps, after the MCP plan's slice 3 propose route.
 3. T1 Tables: new `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`, includes/workspace/wtables.php (`ws_wtable_*`, not `ws_table_*`), workspace_wtables.php, API.
 4. T2 Board view (the channel Board tab component) by a status column.
 5. T6 CSV, note-table import; JSON starters: contact pipeline, checklist.
