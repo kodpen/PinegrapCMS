@@ -121,11 +121,13 @@ function test_marketplace_trendyol_claim_rows_read_the_documented_shape()
 		'product' => 'Keten Gömlek Beyaz, M',
 		'price'   => 34990,
 		'status'  => 'WaitingInAction',
+		'waiting' => true,
 		'reason'  => 'Beden büyük geldi',
 		'note'    => 'Bir beden küçüğünü alacağım',
 	), $claim['units'][0]);
 
 	pg_assert_same('Created', $claim['units'][2]['status']);
+	pg_assert_false($claim['units'][2]['waiting'], 'still on its way back');
 	pg_assert_same(12995, $claim['units'][2]['price']);
 
 	pg_assert_same('Accepted', $rows[1]['units'][0]['status']);
@@ -174,10 +176,10 @@ function test_marketplace_trendyol_claim_waiting_takes_only_waiting_units()
 	$rows = mp_trendyol_claim_rows(json_decode(trendyol_remaining_test_fixture('claims-page0.json'), true));
 
 	pg_assert_same(array('b71461e3-d1a0-4c1d-9a6d-18ecbcb5158c', 'c82572f4-e2b1-4d2e-8b7e-29fdcd6269d0'),
-		mp_trendyol_claim_waiting($rows[0]));
+		mp_claim_waiting($rows[0]));
 
-	pg_assert_same(array(), mp_trendyol_claim_waiting($rows[1]));
-	pg_assert_same(array(), mp_trendyol_claim_waiting(array()));
+	pg_assert_same(array(), mp_claim_waiting($rows[1]));
+	pg_assert_same(array(), mp_claim_waiting(array()));
 }
 
 /* ----------------------------------------------------------------- read */
