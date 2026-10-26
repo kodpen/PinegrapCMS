@@ -21,10 +21,10 @@ description: Trendyol returns (claims): read on a button for the last 14 days, k
 ## How is a return approved? (`mp_trendyol_approve_claim()`)
 - `PUT /integration/order/sellers/{sellerId}/claims/{claimId}/items/approve`, body `{"claimLineItemIdList":[...]}`, optional `params` left out. 200 with no body: any 2xx is success. Docs: reference/approveclaimlineitems, modified 2026-01-27.
 - The units sent are the waiting units of the return in the session read, never ids posted by the form. A JS confirm names the order and unit count (the buyer is refunded).
-- Success: `approved` timestamp on that return in the session ("Approval sent" pill, no button), an activity-log line. Statuses are not changed locally: the next read shows what Trendyol made of it. A refusal is a screen warning.
+- Success: `approved` timestamp on that return in the session (refused once `rejected` is set) ("Approval sent" pill, no button), an activity-log line. Statuses are not changed locally: the next read shows what Trendyol made of it. A refusal is a screen warning.
 
 ## What is not built?
-- Rejecting (claim issue with reason codes from `/integration/order/claim-issue-reasons`, often with a document); done in the seller panel. Linking a return to the imported order.
+- Linking a return to the imported order. Rejecting is built (`trendyol-return-rejection.md`).
 
 ## What is unverified?
 - No live call. Every claims field beyond the docs' example; whether `orderShipmentPackageId` / `orderOutboundPackageId` is the imported package id; whether only `WaitingInAction` units can be approved (the docs do not say; assumed); the approval's answer body; whether the 14-day window is their limit for this call (none stated).

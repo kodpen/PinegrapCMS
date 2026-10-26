@@ -431,6 +431,7 @@
     "Rejected by {var:1}: {var:2}": "{var:1} reddetti: {var:2}",
     "Rejected: **{var:1}** — {var:2}": "Reddedildi: **{var:1}** — {var:2}",
     "Rejected: {var:1}": "Reddedildi: {var:1}",
+    "Rejection sent": "Ret talebi gönderildi",
     "Rejects sqlmap, Nikto, Acunetix, nuclei and similar scanners by their user agent, whatever else they claim to be.": "sqlmap, Nikto, Acunetix, nuclei ve benzeri tarayıcıları, kendilerini başka ne olarak tanıtırlarsa tanıtsınlar tarayıcı kimliğinden reddeder.",
     "Related screens": "İlgili ekranlar",
     "Relationship": "İlişki",

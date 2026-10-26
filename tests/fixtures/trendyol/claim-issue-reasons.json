@@ -1,0 +1,33 @@
+[
+    {
+        "id": 51,
+        "name": "Ürün olağan dışı kullanılmış ve/veya müşteri kaynaklı hasar görmüş"
+    },
+    {
+        "id": 401,
+        "name": "İade edilen ürün veya adedi eksik"
+    },
+    {
+        "id": 451,
+        "name": "Ürünü analize alacağım"
+    },
+    {
+        "id": 1651,
+        "name": "İade paketi tarafıma teslim edilmedi"
+    },
+    {
+        "id": 2101,
+        "name": "Sipariş sorusundan gelen değişim talebi (müşterinin talebi yoksa kullanılmamalı)"
+    },
+    {
+        "id": 0,
+        "name": "Not a usable id"
+    },
+    {
+        "id": 2051
+    },
+    {
+        "id": 51,
+        "name": "A second row with the same id"
+    }
+]

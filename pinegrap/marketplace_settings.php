@@ -27,6 +27,12 @@
 include('init.php');
 include_once('liveform.class.php');
 
+// A rejected return's documents can pass post_max_size, and then PHP hands
+// over an empty post that would only draw the screen again.
+if (pg_post_body_discarded()) {
+	output_error(lang('The request was too large for this server and arrived empty.'), 413);
+}
+
 $user = validate_user();
 validate_area_access($user, 'manager');
 validate_ecommerce_access($user);
@@ -48,11 +54,14 @@ if ($_POST) {
 	validate_token_field();
 
 	// Every field here holds one value, except the category attributes
-	// (attribute[id]) and the matched products ticked for a listing update
-	// (map_ids[]). One posted as a list (provider[]=x) stopped the request
-	// in trim(), and account_id[]=x or group_id[]=x was read as record 1.
+	// (attribute[id]), the matched products ticked for a listing update
+	// (map_ids[]) and the return units ticked for a rejection (unit_ids[]);
+	// a rejection's documents (claim_files[]) arrive in $_FILES, and are
+	// named only because the form draws them as a list. One posted as a list
+	// (provider[]=x) stopped the request in trim(), and account_id[]=x or
+	// group_id[]=x was read as record 1.
 	// Nothing is written, so every account and match stays as it was.
-	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1, 'map_ids' => 1));
+	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1, 'map_ids' => 1, 'unit_ids' => 1, 'claim_files' => 1));
 
 	if ($mp_settings_lists) {
 
@@ -1022,6 +1031,31 @@ if ($_POST) {
 
 			}
 
+			// The reasons a return can be rejected with, for the reject
+			// form, read with the returns so the form never asks for them.
+			if ($read['ok'] && mp_can($account['provider'], 'reject_claim') && mp_can($account['provider'], 'claim_issue_reasons')) {
+
+				$reasons = mp_call($account['provider'], 'claim_issue_reasons', array($account));
+
+				if ($reasons['ok']) {
+
+					$_SESSION['software']['marketplace_read'][$account_id]['claim_reasons'] = array(
+						'read'          => time(),
+						'claim_reasons' => $reasons['data']['reasons'],
+						'more'          => false
+					);
+
+				} else {
+
+					$liveform->add_warning(lang(array(
+						'string' => 'The reasons for rejecting a return could not be read: {var:1}',
+						'vars'   => array(h($reasons['error']))
+					)));
+
+				}
+
+			}
+
 		}
 
 		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-claims');
@@ -1070,7 +1104,7 @@ if ($_POST) {
 
 			$liveform->add_warning(lang('That return is no longer in the list. Read the returns again.'));
 
-		} elseif (!empty($claim['approved']) || !$waiting) {
+		} elseif (!empty($claim['approved']) || !empty($claim['rejected']) || !$waiting) {
 
 			$liveform->add_notice(lang(array(
 				'string' => 'The return of order {var:1} has no units waiting for approval.',
@@ -1099,6 +1133,123 @@ if ($_POST) {
 
 				$liveform->add_warning(lang(array(
 					'string' => 'The return of order {var:1} was not approved: {var:2}',
+					'vars'   => array(h((string)$claim['order_number']), h($sent['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-claims');
+
+		exit();
+
+	}
+
+	// Reject units of one return from the last read, with one of the
+	// marketplace's reasons, an explanation and the documents that show it.
+	// The units are those ticked in the form that the read names as waiting
+	// for this return, and the reason one the read of reasons named, so
+	// nothing the marketplace never named is sent.
+	if ($action === 'claim_reject' && $account) {
+
+		$claim_id = isset($_POST['claim_id']) ? trim((string)$_POST['claim_id']) : '';
+
+		$claim = null;
+
+		$claim_index = null;
+
+		foreach (mp_settings_marketplace_read($account_id, 'claims')['claims'] as $index => $row) {
+
+			if (isset($row['claim_id']) && ($row['claim_id'] === $claim_id)) {
+
+				$claim = $row;
+
+				$claim_index = $index;
+
+				break;
+
+			}
+
+		}
+
+		$waiting = $claim ? mp_claim_waiting($claim) : array();
+
+		$ticked = (isset($_POST['unit_ids']) && is_array($_POST['unit_ids'])) ? array_map('strval', $_POST['unit_ids']) : array();
+
+		$units = array_values(array_intersect($waiting, $ticked));
+
+		$reason_id = isset($_POST['reason_id']) ? trim((string)$_POST['reason_id']) : '';
+
+		$reason = null;
+
+		foreach (mp_settings_marketplace_read($account_id, 'claim_reasons')['claim_reasons'] as $row) {
+
+			if (isset($row['id']) && ((string)$row['id'] === $reason_id)) {
+
+				$reason = $row;
+
+				break;
+
+			}
+
+		}
+
+		$files = mp_settings_claim_files('claim_files');
+
+		if (!mp_can($account['provider'], 'reject_claim')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} elseif (!$claim) {
+
+			$liveform->add_warning(lang('That return is no longer in the list. Read the returns again.'));
+
+		} elseif (!empty($claim['approved']) || !empty($claim['rejected']) || !$waiting) {
+
+			$liveform->add_notice(lang(array(
+				'string' => 'The return of order {var:1} has no units waiting for you.',
+				'vars'   => array(h((string)$claim['order_number']))
+			)));
+
+		} elseif (!$units) {
+
+			$liveform->add_warning(lang('Choose the units to reject.'));
+
+		} elseif (!$reason) {
+
+			$liveform->add_warning(lang('Choose why the return is rejected.'));
+
+		} elseif ($files['error'] !== '') {
+
+			$liveform->add_warning(h($files['error']));
+
+		} else {
+
+			$sent = mp_call($account['provider'], 'reject_claim', array($account, $claim_id, $units,
+				$reason_id, isset($_POST['description']) ? (string)$_POST['description'] : '', $files['files']));
+
+			if ($sent['ok']) {
+
+				$_SESSION['software']['marketplace_read'][$account_id]['claims']['claims'][$claim_index]['rejected'] = time();
+
+				log_activity(lang(array(
+					'string' => 'A rejection of the return of order {var:1} was sent to {var:2} ({var:3} units, reason: {var:4}).',
+					'vars'   => array((string)$claim['order_number'], mp_provider_name($account['provider']), count($units), (string)$reason['name'])
+				)), 'system');
+
+				$liveform->add_notice(lang(array(
+					'string' => 'The rejection of the return of order {var:1} was sent to {var:2}. The marketplace decides on it; the next read of the returns shows its answer.',
+					'vars'   => array(h((string)$claim['order_number']), h(mp_provider_name($account['provider'])))
+				)));
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'The rejection of the return of order {var:1} was not sent: {var:2}',
 					'vars'   => array(h((string)$claim['order_number']), h($sent['error']))
 				)));
 
@@ -1268,6 +1419,55 @@ function mp_settings_marketplace_read($account_id, $kind) {
 
 }
 
+// The files posted in one multi-file input as {files: [{name, data}], error}.
+// No file chosen is no files; a file the server did not take in whole is an
+// error naming it, so a rejection never goes without a document the operator
+// attached.
+function mp_settings_claim_files($field) {
+
+	$posted = isset($_FILES[$field]['name']) && is_array($_FILES[$field]['name']) ? $_FILES[$field] : null;
+
+	$files = array();
+
+	if (!$posted) {
+
+		return array('files' => $files, 'error' => '');
+
+	}
+
+	foreach ($posted['name'] as $index => $name) {
+
+		$error = isset($posted['error'][$index]) ? (int)$posted['error'][$index] : UPLOAD_ERR_NO_FILE;
+
+		if ($error === UPLOAD_ERR_NO_FILE) {
+
+			continue;
+
+		}
+
+		$name = pg_basename((string)$name);
+
+		$tmp = isset($posted['tmp_name'][$index]) ? (string)$posted['tmp_name'][$index] : '';
+
+		$data = (($error === UPLOAD_ERR_OK) && ($tmp !== '') && is_uploaded_file($tmp)) ? file_get_contents($tmp) : false;
+
+		if (!is_string($data)) {
+
+			return array('files' => array(), 'error' => lang(array(
+				'string' => '{var:1} could not be uploaded. It may be larger than this server takes.',
+				'vars'   => array($name)
+			)));
+
+		}
+
+		$files[] = array('name' => $name, 'data' => $data);
+
+	}
+
+	return array('files' => $files, 'error' => '');
+
+}
+
 // A return unit's status as a pill. Their status names are shown in words
 // the operator knows; one this screen does not know is shown as it came.
 function mp_settings_claim_status($status) {
@@ -1326,6 +1526,82 @@ function mp_settings_question_status($question) {
 	$label = isset($labels[$status]) ? $labels[$status] : array(h($status), 'off');
 
 	return '<span class="mp-pill ' . $label[1] . '">' . $label[0] . '</span>';
+
+}
+
+// The "Reject" form under one return with units waiting for the seller,
+// folded until opened: the waiting units to tick, the marketplace's reason,
+// an explanation and the documents. Without a read of the reasons there is
+// nothing to choose, and the form says to read the returns again.
+function mp_settings_claim_reject_form($account_id, $claim, $reasons) {
+
+	$key = substr(md5((string)$claim['claim_id']), 0, 12);
+
+	$out = '
+				<details class="small" style="grid-column:1/-1">
+					<summary class="link-secondary">' . lang('Reject') . '</summary>';
+
+	if (!$reasons) {
+
+		return $out . '
+					<p class="mt-2 mb-0 opacity-75">' . lang('The reasons for rejecting a return were not read. Read the returns again.') . '</p>
+				</details>';
+
+	}
+
+	$units = '';
+
+	foreach ($claim['units'] as $unit) {
+
+		if (empty($unit['waiting'])) {
+
+			continue;
+
+		}
+
+		$units .= '
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" name="unit_ids[]" value="' . h((string)$unit['id']) . '"
+								id="claim_unit_' . h((string)$unit['id']) . '" checked>
+							<label class="form-check-label" for="claim_unit_' . h((string)$unit['id']) . '">'
+								. h((string)$unit['product'])
+								. (((string)$unit['barcode'] !== '') ? ' <code>' . h((string)$unit['barcode']) . '</code>' : '') . '</label>
+						</div>';
+
+	}
+
+	$options = '<option value="">' . lang('Choose a reason') . '</option>';
+
+	foreach ($reasons as $reason) {
+
+		$options .= '<option value="' . h((string)$reason['id']) . '">' . h((string)$reason['name'])
+			. (empty($reason['file']) ? '' : ' ' . h(lang('(document needed)'))) . '</option>';
+
+	}
+
+	return $out . '
+					<form method="post" action="marketplace_settings.php" enctype="multipart/form-data" class="mt-2" style="max-width:640px"
+						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
+						' . get_token_field() . '
+						<input type="hidden" name="mp_action" value="claim_reject">
+						<input type="hidden" name="account_id" value="' . (int)$account_id . '">
+						<input type="hidden" name="claim_id" value="' . h((string)$claim['claim_id']) . '">
+						<div class="mb-2">' . $units . '
+						</div>
+						<label class="form-label" for="claim_reason_' . $key . '">' . lang('Reason') . '</label>
+						<select class="form-select form-select-sm mb-2" id="claim_reason_' . $key . '" name="reason_id" required>'
+							. $options . '</select>
+						<label class="form-label" for="claim_description_' . $key . '">' . lang('Explanation') . '</label>
+						<textarea class="form-control form-control-sm mb-2" id="claim_description_' . $key . '" name="description"
+							maxlength="500" rows="3" required></textarea>
+						<label class="form-label" for="claim_files_' . $key . '">' . lang('Documents') . '</label>
+						<input type="file" class="form-control form-control-sm" id="claim_files_' . $key . '" name="claim_files[]" multiple
+							accept="image/*,video/*,.pdf,.doc,.docx">
+						<div class="form-text mb-2">'
+							. lang('Photos, videos, PDF or Word files of what came back: at most five, 5 MB each.') . '</div>
+						<button type="submit" class="btn btn-sm btn-outline-danger">' . lang('Send rejection') . '</button>
+					</form>
+				</details>';
 
 }
 
@@ -1863,6 +2139,8 @@ if ($selected) {
 
 	$can_approve_claims = $can_claims && mp_can($selected['provider'], 'approve_claim');
 
+	$can_reject_claims = $can_claims && mp_can($selected['provider'], 'reject_claim');
+
 	// The questions card, for a connector that reads questions; its answer
 	// forms only where the connector can answer them.
 	$can_questions = mp_can($selected['provider'], 'questions');
@@ -2364,11 +2642,13 @@ if ($selected) {
 
 	// The buyers' returns, read on a button and kept in the session (see the
 	// claims_read action). A return with units waiting for the seller can be
-	// approved after a confirm; rejecting one, which needs their reason codes
-	// and a document, is done in the marketplace's seller panel.
+	// approved after a confirm, or rejected with one of the marketplace's
+	// reasons and the documents that show it (claim_reject).
 	if ($can_claims) {
 
 		$claims_read = mp_settings_marketplace_read($selected_id, 'claims');
+
+		$claim_reasons = mp_settings_marketplace_read($selected_id, 'claim_reasons')['claim_reasons'];
 
 		echo '
 	<div class="card mb-3" id="mp-claims">
@@ -2452,6 +2732,11 @@ if ($selected) {
 					echo '<span class="mp-pill on" title="' . h(mp_settings_ago((int)$claim['approved'])) . '">'
 						. lang('Approval sent') . '</span>';
 
+				} elseif (!empty($claim['rejected'])) {
+
+					echo '<span class="mp-pill off" title="' . h(mp_settings_ago((int)$claim['rejected'])) . '">'
+						. lang('Rejection sent') . '</span>';
+
 				} elseif ($waiting && $can_approve_claims) {
 
 					echo '
@@ -2469,7 +2754,15 @@ if ($selected) {
 
 				}
 
-				echo '</span>
+				echo '</span>';
+
+				if ($waiting && $can_reject_claims && empty($claim['approved']) && empty($claim['rejected'])) {
+
+					echo mp_settings_claim_reject_form($selected_id, $claim, $claim_reasons);
+
+				}
+
+				echo '
 			</div>';
 
 			}
