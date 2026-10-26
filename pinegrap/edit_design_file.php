@@ -167,7 +167,7 @@ if (empty($_POST['name'])) {
             $edit_file_button_location = 'edit_javascript.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri());
         }
     
-        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="btn-text">' . $edit_file_button_label . '</span></button>';
+        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="pg-btn-label">' . $edit_file_button_label . '</span></button>';
     
     }
     
@@ -177,7 +177,7 @@ if (empty($_POST['name'])) {
         $edit_file_button_label = lang( array('string'=>'Edit {var:1}','vars'=>strtoupper($file_extension)) );
         $edit_file_button_location = 'editor_edit_file.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
     
-        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="btn-text">' . $edit_file_button_label . '</span></button>';
+        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="pg-btn-label">' . $edit_file_button_label . '</span></button>';
     }
 
     $output_theme_rows = '';
@@ -303,9 +303,9 @@ if (empty($_POST['name'])) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_edit_file_button . '
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('design file')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('design file')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

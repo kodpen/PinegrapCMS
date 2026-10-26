@@ -1382,9 +1382,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 }
 #explorer_content .empty-note { opacity: .7; }
 #explorer_menu li.has-submenu { position: relative; }
-#explorer_menu .submenu { display: none; position: absolute; top: -0.35rem; left: 100%; min-width: 200px; border-radius: .75rem; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: .35rem; margin: 0; }
-#explorer_menu li.has-submenu.open > .submenu { display: block; }
-#explorer_menu li.has-submenu.submenu-left > .submenu { left: auto; right: 100%; }
+#explorer_menu .pg-submenu { display: none; position: absolute; top: -0.35rem; left: 100%; min-width: 200px; border-radius: .75rem; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: .35rem; margin: 0; }
+#explorer_menu li.has-submenu.open > .pg-submenu { display: block; }
+#explorer_menu li.has-submenu.submenu-left > .pg-submenu { left: auto; right: 100%; }
 #explorer_menu .dropdown-item .menu-check { width: 1.1rem; display: inline-block; }
 #explorer_menu .dropdown-item .submenu-arrow { float: right; margin-top: .2rem; opacity: .6; }
 .bin-badge { font-size: .66rem; }
@@ -6912,7 +6912,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return '<li class="has-submenu"><button type="button" class="dropdown-item' + (disabled ? ' disabled' : '') + '" data-submenu="1">' +
             '<span class="bi ' + icon + ' me-2"></span>' + esc(label) +
             '<span class="submenu-arrow bi bi-chevron-right"></span></button>' +
-            '<ul class="submenu dropdown-menu">' + innerHtml + '</ul></li>';
+            '<ul class="pg-submenu dropdown-menu">' + innerHtml + '</ul></li>';
     }
 
     function positionMenu(event) {
@@ -14408,7 +14408,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             li.classList.toggle('open');
 
             // Flip left when the flyout would leave the viewport.
-            var flyout = li.querySelector('.submenu');
+            var flyout = li.querySelector('.pg-submenu');
             if (flyout && li.classList.contains('open')) {
                 li.classList.remove('submenu-left');
                 var rect = flyout.getBoundingClientRect();
@@ -14430,7 +14430,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (li && !li.classList.contains('open')) {
             li.classList.add('open');
-            var flyout = li.querySelector('.submenu');
+            var flyout = li.querySelector('.pg-submenu');
             if (flyout) {
                 li.classList.remove('submenu-left');
                 var rect = flyout.getBoundingClientRect();
