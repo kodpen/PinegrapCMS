@@ -1312,6 +1312,7 @@
     "The design was not made with the Visual Page Editor.": "Bu tasarım Görsel Sayfa Düzenleyici ile yapılmamış.",
     "The design was renamed.": "Tasarımın adı değiştirildi.",
     "The design's styles are managed by designers.": "Tasarımın stilleri tasarımcılar tarafından yönetilir.",
+    "The design's template has no layout for this widget that fits here.": "Tasarımın şablonunda bu bileşene burada uyan bir düzen yok.",
     "The design-wide body classes were moved onto each page. Edit them on the page body from now on.": "Tasarım geneli gövde sınıfları her sayfaya taşındı. Bundan sonra sayfanın gövdesinden düzenleyin.",
     "The designer region \"{var}\" is now a shared component on this page. Other pages keep the region until they are converted.": "\"{var}\" tasarımcı bölgesi bu sayfada artık bir paylaşılan bileşen. Diğer sayfalar dönüştürülene kadar bölgeyi kullanmaya devam eder.",
     "The desk decided not to publish it.": "Masa yayımlamamaya karar verdi.",

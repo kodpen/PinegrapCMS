@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W10, W11, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets
+description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W5 #1879 #1905, W6 #1680, W7 #1688, W10, W11, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets
 ---
 
 ## What is built, and why?
@@ -30,7 +30,7 @@ OR in conditions; pg-hide-if-empty everywhere; words beside a value; code areas;
 - W2 done (#1582): palette double-click lands beside it.
 - W3 done (#1597): row position ([[widget-loop-position]]).
 - W4 done (#1665, [[widget-condition-panel]]).
-- W5 Layout gallery: Default, On this site, Try/Keep/Cancel #1879 ([[widget-layout-gallery]]); templates left.
+- W5 done (#1879, #1905, [[widget-layout-gallery]]).
 - W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 Entity fields: products #1809, events #1828, quiz #1847, order #1873, account #1890; next order line, addresses ([[widget-entity-fields-list]]).
 - W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
@@ -43,4 +43,4 @@ OR in conditions; pg-hide-if-empty everywhere; words beside a value; code areas;
 - Claim with a draft PR `[plan:widget-designability] Wn`. A new kind reads its saved-tree checks through `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W16, W5, or W8's order line family (the order view's item loop).
+- W16 or W8's order line family (the order view's item loop).
