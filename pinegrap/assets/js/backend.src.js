@@ -261,6 +261,10 @@ $(document).ready(function () {
                 document.form.action.value = 'cancel';
                 result = true;
                 break;
+            case 'Mark Shipped Selected':
+                document.form.action.value = 'mark_shipped';
+                result = true;
+                break;
             case 'Merge Selected':
                 document.form.action.value = 'merge';
                 result = true;

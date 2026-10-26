@@ -297,17 +297,19 @@ function ws_change_types()
                 'is_person' => array('bool', 0, lang('A person, not a company'), ''),
             ),
         ),
-        // A sales quote (includes/erp/quotes.php), only ever added from here:
-        // typed whole, its lines included, and saved by the quote editor's
-        // own save (erp_quote_save()), which numbers it. Changing, sending,
-        // signing or invoicing a quote stays on the quote's screen. A cart
-        // quote is another kind of record and never one of these.
+        // A sales quote (includes/erp/quotes.php), added from here typed
+        // whole, its lines included, and saved by the quote editor's own save
+        // (erp_quote_save()), which numbers it; or an existing one turned
+        // into an invoice draft (action invoice, no fields) by the quote
+        // screen's erp_quote_to_invoice(). Changing, sending or signing a
+        // quote stays on the quote's screen. A cart quote is another kind of
+        // record and never one of these.
         'erp_quote' => array(
             'label'   => lang('Sales quote'),
             'right'   => 'erp',
             'tag'     => 'erp_quote',
             'table'   => 'erp_quotes',
-            'actions' => array('create'),
+            'actions' => array('create', 'invoice'),
             'names'   => array('full_number'),
             'fields'  => array(
                 'account_id'  => array('ids', 'erp_account', lang('Current account'), 'account_id'),
@@ -607,6 +609,11 @@ function ws_change_fields_for($type, $action)
 
     if (($action === 'add') || ($action === 'remove')) {
         return $type['members'] ?? array();
+    }
+
+    // A sales quote turned into an invoice draft takes no field.
+    if ($action === 'invoice') {
+        return array();
     }
 
     return $type['fields'];
@@ -1918,7 +1925,7 @@ function ws_change_check($viewer, $type, $action, $record, $values)
             return $check['ok'] ? '' : $check['error'];
 
         case 'erp_quote':
-            return ws_change_erp_quote_refusal($values);
+            return ($action === 'invoice') ? ws_change_erp_quote_invoice_refusal($record) : ws_change_erp_quote_refusal($values);
 
         case 'task_note':
             foreach ((array) ($values['task_id'] ?? array()) as $task_id) {
@@ -2196,6 +2203,9 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $f
 
             $snapshot = $record;
             unset($snapshot['content']);
+        } elseif ($action === 'invoice') {
+            // A sales quote turned into an invoice draft: the quote is the
+            // whole change, so no field is taken.
         } else {
             if (empty($fields)) {
                 return $refuse(lang('fields names at least one field and its new value.'));
@@ -2853,6 +2863,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
             'delete' => ws_change_binned($type) ? lang('To the Recycle Bin') : lang('To be deleted'),
             'add'    => lang('Into the group'),
             'remove' => lang('Out of the group'),
+            'invoice' => lang('Into an invoice draft'),
         );
 
         $out[(int) $row[$by]][] = array(
@@ -3228,6 +3239,12 @@ function ws_change_apply($viewer, $change_id)
             $sentence = 'Taken out of {var:1} on Claude\'s proposal. {var:2}';
             break;
 
+        // A sales quote turned into an invoice draft: the draft is tagged.
+        case 'invoice':
+            $lines = array('<#invoice:' . (int) ($done['invoice_id'] ?? 0) . '>');
+            $sentence = '{var:1} became the invoice draft {var:2} on Claude\'s proposal.';
+            break;
+
         default:
             $sentence = '{var:1} was changed on Claude\'s proposal. {var:2}';
     }
@@ -3278,7 +3295,7 @@ function ws_change_apply($viewer, $change_id)
  * move is never written, so it leaves no line).
  *
  * @param string     $type   a kind of ws_change_types()
- * @param string     $action create, update, delete, add, remove
+ * @param string     $action create, update, delete, add, remove, invoice
  * @param array      $done   the writer's answer: ok, id, binned
  * @param array      $values field => new value, as given to the writer
  * @param array|null $record the record as the writer was given it
@@ -4467,20 +4484,63 @@ function ws_change_erp_quote_refusal($values)
 }
 
 /**
+ * Why a sales quote cannot be turned into an invoice draft now, or '': the
+ * quote screen's rule (erp_quote_invoice_refusal()), on the quote as
+ * erp_quote() reads it, its invoice's status included (an invoiced quote
+ * whose draft was deleted or whose invoice was cancelled may be invoiced
+ * again). Asked when the change is proposed and again when it is applied.
+ *
+ * @param array|null $record as ws_change_record() read it
+ * @return string
+ */
+function ws_change_erp_quote_invoice_refusal($record)
+{
+    if (!ws_change_erp_quote_load()) {
+        return lang('Quotes come with the software update; run the update to use them.');
+    }
+
+    $quote = erp_quote((int) ($record['id'] ?? 0));
+
+    if ($quote === null) {
+        return lang('The quote could not be found.');
+    }
+
+    return erp_quote_invoice_refusal($quote);
+}
+
+/**
  * A sales quote, added with the quote editor's own save (erp_quote_save()):
  * numbered in its series, announced as erp.quote.created (the ERP's audit
- * trail and webhooks), written in the name of the person who applies it.
+ * trail and webhooks), written in the name of the person who applies it. The
+ * invoice action turns the quote into an invoice draft with the quote
+ * screen's erp_quote_to_invoice() (erp.quote.invoiced), the person who
+ * applies it as the draft's creator.
  *
  * @param array      $viewer
- * @param string     $action create
+ * @param string     $action create, invoice
  * @param array|null $record
  * @param array      $values
- * @return array ok, error, id
+ * @return array ok, error, id; invoice_id for the invoice action
  */
 function ws_change_write_erp_quote($viewer, $action, $record, $values)
 {
     if (!ws_change_erp_quote_load()) {
         return array('ok' => false, 'error' => lang('Quotes come with the software update; run the update to use them.'), 'id' => 0);
+    }
+
+    if ($action === 'invoice') {
+        $made = erp_quote_to_invoice((int) $record['id'], (int) $viewer['id']);
+
+        if (empty($made['success'])) {
+            return array('ok' => false, 'error' => (string) $made['error'], 'id' => 0);
+        }
+
+        ws_change_log(lang(array(
+            'string' => 'Sales quote {var:1} was turned into an invoice draft in the Workspace, on Claude\'s proposal.',
+            'vars'   => (string) ($record['full_number'] ?? ''),
+        )));
+
+        return array('ok' => true, 'error' => '', 'id' => (int) $record['id'], 'invoice_id' => (int) $made['invoice_id']);
     }
 
     $saved = erp_quote_save(ws_change_erp_quote_data($values, (int) $viewer['id']), 0, (int) $viewer['id']);

@@ -6,7 +6,9 @@
  * includes/workspace/changes.php): the lines of an ERP document as a change
  * carries them (ws_change_erp_lines(), pure), how the card writes a line,
  * the shape a stored quote's lines are read back in, and, from source, that
- * the quote is checked and written by the ERP's own functions.
+ * the quote is checked and written by the ERP's own functions; the invoice
+ * action turns an existing quote into an invoice draft through
+ * erp_quote_to_invoice() under its own state rules.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,6 +21,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/quotes.php');
 require_once(__DIR__ . '/helpers/source_reader.php');
 
 // The limit the catalogue gives the field: at most 100 lines, a description
@@ -184,7 +187,8 @@ function test_workspace_erp_quote_kind_in_the_catalogue()
 	$types = pg_test_ws_change_types();
 
 	pg_assert_true(isset($types['erp_quote']), 'erp_quote is a kind of change');
-	pg_assert_same(array('create'), $types['erp_quote']['actions'], 'only ever added');
+	pg_assert_same(array('create', 'invoice'), $types['erp_quote']['actions'], 'added, or turned into an invoice draft');
+	pg_assert_same(array(), ws_change_fields_for($types['erp_quote'], 'invoice'), 'the invoice action takes no field');
 	pg_assert_same('erp', $types['erp_quote']['right'], 'with the ERP right');
 	pg_assert_same('erp_quote', $types['erp_quote']['tag'], 'tagged as a sales quote');
 	pg_assert_same('erp_quotes', $types['erp_quote']['table'], 'in its own table, never erp_invoices');
@@ -226,6 +230,70 @@ function test_workspace_erp_quote_is_checked_and_written_by_the_erp()
 	pg_assert_false(stripos($writer, 'INSERT') !== false, 'no row written by hand');
 	pg_assert_false(strpos($writer, 'erp_invoice') !== false, 'never an invoice');
 
-	pg_assert_contains("case 'erp_quote':\n            return ws_change_erp_quote_refusal(\$values);", workspace_erp_quote_change_test_source('ws_change_check'), 'asked at proposal and at apply');
+	pg_assert_contains("case 'erp_quote':\n            return (\$action === 'invoice') ? ws_change_erp_quote_invoice_refusal(\$record) : ws_change_erp_quote_refusal(\$values);",
+		workspace_erp_quote_change_test_source('ws_change_check'), 'asked at proposal and at apply');
 	pg_assert_contains('ws_change_erp_quote_fill(', workspace_erp_quote_change_test_source('ws_changes_input'), 'laid out when proposed');
+}
+
+// The invoice action's state rule is erp_quote_to_invoice()'s own: an open,
+// expired or accepted quote becomes an invoice draft; an invoiced, rejected
+// or cancelled one is refused with the sentence the quote screen gives.
+function test_workspace_erp_quote_invoice_refusal_follows_the_state()
+{
+	$past = date('Y-m-d', strtotime('-3 days'));
+
+	pg_assert_same('', erp_quote_invoice_refusal(array('status' => 'open', 'valid_until' => date('Y-m-d'), 'invoice_status' => '')), 'an open quote');
+	pg_assert_same('', erp_quote_invoice_refusal(array('status' => 'open', 'valid_until' => $past, 'invoice_status' => '')), 'an expired quote');
+	pg_assert_same('', erp_quote_invoice_refusal(array('status' => 'accepted', 'valid_until' => $past, 'invoice_status' => '')), 'an accepted quote');
+	pg_assert_same('', erp_quote_invoice_refusal(array('status' => 'invoiced', 'valid_until' => $past, 'invoice_status' => 'cancelled')), 'one whose invoice was cancelled reads as accepted');
+	pg_assert_same('', erp_quote_invoice_refusal(array('status' => 'invoiced', 'valid_until' => $past, 'invoice_status' => '')), 'one whose draft was deleted reads as accepted');
+
+	pg_assert_same(lang('The quote has already become an invoice.'),
+		erp_quote_invoice_refusal(array('status' => 'invoiced', 'valid_until' => $past, 'invoice_status' => 'draft')), 'an invoiced quote');
+
+	foreach (array('rejected', 'cancelled') as $status) {
+		pg_assert_same(lang('A rejected or cancelled quote is not invoiced. Open it again first.'),
+			erp_quote_invoice_refusal(array('status' => $status, 'valid_until' => $past, 'invoice_status' => '')), 'a ' . $status . ' quote');
+	}
+}
+
+// The quote screen and the change card ask the same rule, the card on the
+// quote as erp_quote() reads it (with its invoice's status), and the writer
+// is erp_quote_to_invoice() in the name of the person who applies it. The
+// decision tags the new invoice draft.
+function test_workspace_erp_quote_invoice_is_checked_and_written_by_the_erp()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/quotes.php');
+	$start = strpos($source, 'function erp_quote_to_invoice(');
+	$to_invoice = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+	pg_assert_contains('erp_quote_invoice_refusal($quote)', $to_invoice, 'the quote screen asks the shared rule');
+
+	$refusal = workspace_erp_quote_change_test_source('ws_change_erp_quote_invoice_refusal');
+
+	pg_assert_contains('erp_quote(', $refusal, 'the quote as erp_quote() reads it');
+	pg_assert_contains('erp_quote_invoice_refusal(', $refusal, 'the shared rule');
+
+	$writer = workspace_erp_quote_change_test_source('ws_change_write_erp_quote');
+
+	pg_assert_contains("erp_quote_to_invoice((int) \$record['id'], (int) \$viewer['id'])", $writer, 'turned into a draft by the quote\'s own function');
+	pg_assert_contains("'invoice_id'", $writer, 'the draft is handed back');
+
+	$inputs = workspace_erp_quote_change_test_source('ws_changes_input');
+
+	pg_assert_contains("\$action === 'invoice'", $inputs, 'the invoice action is proposed with no field');
+	pg_assert_contains('<#invoice:', workspace_erp_quote_change_test_source('ws_change_apply'), 'the decision tags the invoice draft');
+}
+
+// Every way to propose it names the action: the API's changes parameter,
+// Claude's guide and Pinegrap AI's propose_change tool.
+function test_workspace_erp_quote_invoice_is_offered_to_every_proposer()
+{
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_proposals.php');
+	$claude = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/claude.php');
+	$ai = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
+
+	pg_assert_contains('invoice (erp_quote only', $api, 'the API\'s changes parameter');
+	pg_assert_contains('erp_quote (create, invoice)', $claude, 'Claude\'s guide');
+	pg_assert_contains("array('update', 'create', 'delete', 'add', 'remove', 'invoice')", $ai, 'Pinegrap AI\'s propose_change');
 }

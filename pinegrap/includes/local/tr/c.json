@@ -28,6 +28,7 @@
     "CSS Code": "CSS Kodu",
     "CSS File": "CSS Dosyası",
     "CSS centering": "CSS ile ortalama",
+    "CSV File": "CSV Dosyası",
     "CSV file": "CSV dosyası",
     "CSV import": "CSV içe aktarma",
     "CSV import: {var:1} translation(s) written, {var:2} empty row(s) skipped, {var:3} row(s) whose text has since changed, {var:4} row(s) rejected.": "CSV içe aktarma: {var:1} çeviri yazıldı, {var:2} boş satır atlandı, {var:3} satırın metni değişmişti, {var:4} satır reddedildi.",
