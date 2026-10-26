@@ -12,7 +12,7 @@ description: The hand-written key-rules block of each memory folder README, what
 - A folder whose README does not exist yet gets an empty marker pair; the `## Key rules` heading appears only once the block has text.
 
 ## What does the optional `module:` field do?
-- `module: comments, widgets_comments` in a memory file's frontmatter names the `includes/fn/` modules it describes; the tool writes `core/fn-modules.md` (module, then the files naming it) from those fields and lists it in the core README. The line does not count toward the 4 KB limit, so a full file can still carry it. It replaced two hand-written append-only lists (PR #NNNN).
+- `module: comments, widgets_comments` in a memory file's frontmatter names the `includes/fn/` modules it describes; the tool writes `core/fn-modules.md` (module, then the files naming it) from those fields and lists it in the core README. The line does not count toward the 4 KB limit, so a full file can still carry it. It replaced two hand-written append-only lists (PR #2029).
 
 ## When does it stop with exit 1?
 - "no single key rules block": a README without exactly one start line followed by one end line, usually an older copy taken during a merge. Take the file from `development` (`git checkout origin/development -- <file>`) and run again, or delete it if the folder has no key rules yet.

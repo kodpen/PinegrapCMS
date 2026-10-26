@@ -58,9 +58,9 @@
  *                                              written (CI)
  * Exit:   0 when the indexes were written or are current; 1 when a file has
  *         missing or invalid frontmatter, a memory file is too large or sits
- *         outside a known folder, a module field names no module file, a folder index has no key rules block or a
- *         merge conflict inside it, or, with --check, an index differs from
- *         what the files produce.
+ *         outside a known folder, a module field names no module file, a
+ *         folder index has no key rules block or a merge conflict inside it,
+ *         or, with --check, an index differs from what the files produce.
  *
  * Line endings do not count: files are read with CR removed and the indexes
  * are written with LF endings, so a checkout that turned them into CRLF passes.
@@ -180,7 +180,7 @@ foreach (memory_index_files($docs) as $relative) {
 		$names[$name] = $relative;
 	}
 
-	if ($relative !== MODULE_LIST && $name === basename(MODULE_LIST, '.md')) {
+	if ($name === basename(MODULE_LIST, '.md')) {
 		$errors[] = "docs/$relative: name \"$name\" is kept for the generated " . MODULE_LIST;
 	}
 
