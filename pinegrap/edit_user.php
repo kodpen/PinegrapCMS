@@ -401,9 +401,9 @@ if (!$_POST) {
     }
 
     if ($allow_delete == true) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('user')))) . '"><i class="bi bi-trash me-2"></i><span class="btn-text">' . lang(array('string'=>'Delete')) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('user')))) . '"><i class="bi bi-trash me-2"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete')) . '</span></button>';
     } else {
-        $output_delete_button = '<button type="submit" name="submit_delete" class="btn my-1 btn-danger disabled"><i class="bi bi-trash me-2"></i><span class="btn-text">' . lang(array('string'=>'Delete')) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" class="btn my-1 btn-danger disabled"><i class="bi bi-trash me-2"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete')) . '</span></button>';
     }
 
     $output_password_hint_field = "";
@@ -891,7 +891,7 @@ if (!$_POST) {
 
         $output_contact_body =
             '<p class="small text-body-secondary mb-2">' . h(lang('This User does not currently have a Contact connected to it. Connecting a Contact to this User is required to use the Membership features. A Contact will be created and connected to this User automatically when the User performs certain actions (e.g. updates his/her profile, submits a Custom Form, submits an Order, and etc.). However, if for any reason, you would like to do this now, you can.')) . '</p>'
-            . '<button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-person-plus me-1"></i><span class="btn-text">' . h(lang('Create Contact')) . '</span></button>';
+            . '<button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-person-plus me-1"></i><span class="pg-btn-label">' . h(lang('Create Contact')) . '</span></button>';
 
         $output_contact_header = '';
     }
@@ -1287,7 +1287,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="bi bi-floppy me-2"></span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="bi bi-floppy me-2"></span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>

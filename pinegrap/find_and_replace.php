@@ -361,12 +361,12 @@ if (!$_POST) {
                                 <button type="submit" name="submit_button" value="Find"
                                     class="btn my-1 btn-outline-primary">
                                     <span class="material-icons me-2">search</span>
-                                    <span class="btn-text">' . lang('Find') . '</span>
+                                    <span class="pg-btn-label">' . lang('Find') . '</span>
                                 </button>
                                 <button type="submit" name="submit_button" value="Find &amp; Replace"
                                     class="btn my-1 btn-success">
                                     <span class="material-icons me-2">find_replace</span>
-                                    <span class="btn-text">' . lang(array('string'=>'Find & Replace')) . '</span>
+                                    <span class="pg-btn-label">' . lang(array('string'=>'Find & Replace')) . '</span>
                                 </button>
                             </div>
                         </div>

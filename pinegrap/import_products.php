@@ -89,7 +89,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Warning') . '\', message:\'' . lang('WARNING: If an existing product has the same name as a product in the import file, then the existing product data will be replaced.') . '\', confirmText:\'' . lang('Import Products') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-2">file_upload</span><span class="btn-text" >' . lang(array('string'=>'Import Products') ) . '</span></button>
+                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Warning') . '\', message:\'' . lang('WARNING: If an existing product has the same name as a product in the import file, then the existing product data will be replaced.') . '\', confirmText:\'' . lang('Import Products') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-2">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -113,11 +113,6 @@ if (!$_POST) {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
         exit();
     }
-
-    // Fix classic Mac (CR-only) line endings: fgetcsv() splits only on LF unless this
-    // setting is on. It is deprecated since PHP 8.1 but still functional through 8.5,
-    // so the E_DEPRECATED notice is suppressed instead of dropping CR support.
-    @ini_set('auto_detect_line_endings', true);
 
     // A spreadsheet is turned into the CSV this importer already reads, and
     // everything below carries on unaware. See import_products_f.php for why
@@ -151,7 +146,7 @@ if (!$_POST) {
     }
 
     // get file handle for uploaded CSV file
-    $handle = fopen($import_path, "r");
+    $handle = pg_csv_open($import_path);
     // get column names from first row of CSV file
     $columns = fgetcsv($handle, 100000, ",", '"', '\\');
     

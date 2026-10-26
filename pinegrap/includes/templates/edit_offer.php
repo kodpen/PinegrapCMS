@@ -304,8 +304,8 @@ if (!defined('PG_INIT_LOADED')) {
         <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="<?=lang('Save')?>">
             <div class="container">
                 <div class="btn-group flex-wrap justify-content-center">
-                    <button type="button" id="pg-if-save" data-on="save" class="btn my-1 btn-success"><span class="material-icons me-2"><?php if ($is_new): ?>add<?php else: ?>save<?php endif ?></span><span class="btn-text"><?php if ($is_new): ?><?=lang('Create')?><?php else: ?><?=lang('Save')?><?php endif ?></span></button>
-                    <button type="button" data-on="delete" data-saved-only<?php if ($is_new): ?> class="btn my-1 btn-danger d-none"<?php else: ?> class="btn my-1 btn-danger"<?php endif ?>><span class="material-icons me-2">delete</span><span class="btn-text"><?=lang('Delete')?></span></button>
+                    <button type="button" id="pg-if-save" data-on="save" class="btn my-1 btn-success"><span class="material-icons me-2"><?php if ($is_new): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label"><?php if ($is_new): ?><?=lang('Create')?><?php else: ?><?=lang('Save')?><?php endif ?></span></button>
+                    <button type="button" data-on="delete" data-saved-only<?php if ($is_new): ?> class="btn my-1 btn-danger d-none"<?php else: ?> class="btn my-1 btn-danger"<?php endif ?>><span class="material-icons me-2">delete</span><span class="pg-btn-label"><?=lang('Delete')?></span></button>
                 </div>
             </div>
         </nav>

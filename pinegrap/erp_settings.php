@@ -467,7 +467,7 @@ echo pg_page_shell(array(
                     </div>
                     <div class="card-body">
                         <nav id="button_bar" class="navigation mb-3" aria-label="' . lang('Button Bar') . '">
-                            <button type="submit" name="submit" value="Save" class="btn btn-sm btn-primary"><i class="bi bi-check2 me-2"></i><span class="btn-text">' . lang('Save') . '</span></button>
+                            <button type="submit" name="submit" value="Save" class="btn btn-sm btn-primary"><i class="bi bi-check2 me-2"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
                             <button type="submit" class="btn btn-sm btn-outline-secondary" formaction="' . h($document['preview']) . '" formmethod="post" formtarget="_blank"><i class="bi bi-eye me-2"></i>' . lang('Preview') . '</button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#placeholder_reference" aria-expanded="false" aria-controls="placeholder_reference"><i class="bi bi-braces me-2"></i>' . lang('Placeholder Reference') . '</button>
                             <button type="submit" name="reset" value="1" class="btn btn-sm btn-outline-warning" onclick="return confirm(' . h(json_encode(lang('The saved template will be replaced by the built-in one. Continue?'))) . ');"><i class="bi bi-arrow-counterclockwise me-2"></i>' . lang('Reset to Default') . '</button>

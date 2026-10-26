@@ -912,6 +912,32 @@ function mp_listing_split_live($rows) {
 
 }
 
+// One approved listing's content as the update sends it (update_listings),
+// from a product row read with its article's title and description
+// (mp_sync_send_listing_updates()). The same choices as opening it
+// (mp_listing_items()): the product's own title, else the article's; the
+// product's full description, else the article's, else the product's short
+// one. $images is mp_listing_images() of the product.
+function mp_listing_update_item($row, $images) {
+
+	$full = isset($row['full_description']) ? (string)$row['full_description'] : '';
+
+	$group_full = isset($row['group_description']) ? (string)$row['group_description'] : '';
+
+	$title = isset($row['title']) ? (string)$row['title'] : '';
+
+	return array(
+		'content_id'  => isset($row['remote_id']) ? (string)$row['remote_id'] : '',
+		'product_id'  => isset($row['product_id']) ? (int)$row['product_id'] : 0,
+		'name'        => isset($row['name']) ? (string)$row['name'] : '',
+		'title'       => ($title !== '') ? $title : (isset($row['group_title']) ? (string)$row['group_title'] : ''),
+		'description' => ($full !== '') ? $full
+			: (($group_full !== '') ? $group_full : (isset($row['short_description']) ? (string)$row['short_description'] : '')),
+		'images'      => (array)$images
+	);
+
+}
+
 // The text a rejected listing's mapping carries in last_error (written by the
 // job, mp_sync_listing_row_update()).
 function mp_listing_rejected_text($provider_name, $reasons) {

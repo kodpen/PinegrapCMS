@@ -347,12 +347,9 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 my-2">
                                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
-                                            <input type="text" name="expiration_date" id="expiration_date" class="form-control" />
+                                            <input type="text" name="expiration_date" id="expiration_date" class="form-control" data-pg-date />
                                             <div class="form-text text-end">' . lang('leave blank for lifetime membership') . '</div>
-                                            ' . get_date_picker_format() . '
-                                            <script>
-                                                $("#expiration_date").datepicker(datetimepicker_options);
-                                            </script>
+                                            ' . get_date_picker_format() . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
@@ -395,7 +392,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

@@ -403,14 +403,11 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 col-md-6 col-lg-4 my-2">
                                             <label class="form-label" for="schedule_time">' . lang('Send at a specific time') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8', 'data-pg-time' => '')) . '
                                             
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             <div class="text-end form-text">' . lang('h:mm AM/PM, leave blank to send at any time.') . '</div>
-                                            ' . get_time_picker_format() . '
-                                            <script>
-                                                $("#schedule_time").timepicker(timepicker_options);
-                                            </script>
+                                            ' . get_time_picker_format() . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
@@ -453,8 +450,8 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('campaign profile')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('campaign profile')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

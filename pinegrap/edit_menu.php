@@ -168,14 +168,9 @@ if (!$_POST) {
                                                     'id' => 'class',
                                                     'class' => 'form-control tagin border-0 min-width-tagin',
                                                     'data-placeholder' => lang('Add classes'),
-                                                    'maxlength' => '255')) . '
-                                                <script>
-                                                    if(document.body.contains(document.querySelector("input#class"))){
-                                                        tagin( document.querySelector("#class"),{
-                                                            separator : " "
-                                                        });
-                                                    }
-                                                </script>
+                                                    'data-pg-chips' => '',
+                                                    'data-pg-separator' => ' ',
+                                                    'maxlength' => '255')) . pg_fields_script() . '
                                                 <div class="input-group-text bg-reset border-0">"&gt;</div>
                                             </div>
                                             <div class="form-text text-end">' . lang('One or More Custom Classes for the Menu. Separate classes with a space') . '</div>
@@ -190,14 +185,9 @@ if (!$_POST) {
                                                     'id' => 'active_item_class',
                                                     'class' => 'form-control tagin border-0 min-width-tagin',
                                                     'data-placeholder' => lang('Add classes'),
-                                                    'maxlength' => '255')) . '
-                                                <script>
-                                                    if(document.body.contains(document.querySelector("input#active_item_class"))){
-                                                        tagin( document.querySelector("#active_item_class"),{
-                                                            separator : " "
-                                                        });
-                                                    }
-                                                </script>
+                                                    'data-pg-chips' => '',
+                                                    'data-pg-separator' => ' ',
+                                                    'maxlength' => '255')) . pg_fields_script() . '
                                                 <div class="input-group-text bg-reset border-0">"&gt;</div>
                                             </div>
                                             <div class="form-text text-end">' . lang('One or More Classes for the Active Menu Item. Separate classes with a space') . '</div>
@@ -210,8 +200,8 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

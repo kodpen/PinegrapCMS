@@ -1060,12 +1060,7 @@ if (!$_POST) {
                 // recipient's field is not a duplicate id that tagin never reaches.
                 $shipment_numbers_field = 'ship_to_id_tracking_numbers_' . $ship_to_id;
 
-                $output_shipping_tracking_numbers_field = $liveform->output_field(array('type'=>'text', 'id'=>$shipment_numbers_field, 'name'=>'ship_to_id_' . $ship_to_id . '_tracking_numbers','class'=>'form-control tagin min-height-tagin' )) . '
-                <script>
-                    if (document.getElementById("' . $shipment_numbers_field . '")) {
-                        tagin(document.getElementById("' . $shipment_numbers_field . '"));
-                    }
-                </script>';
+                $output_shipping_tracking_numbers_field = $liveform->output_field(array('type'=>'text', 'id'=>$shipment_numbers_field, 'name'=>'ship_to_id_' . $ship_to_id . '_tracking_numbers','class'=>'form-control tagin min-height-tagin', 'data-pg-chips' => '' )) . pg_fields_script();
                     
                 }
 
@@ -1675,12 +1670,12 @@ if (!$_POST) {
         
         // if the order is complete, then output save
         if ($status != 'incomplete') {
-            $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>';
+            $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>';
         }
 
         // if the order is cancelled, output a restore button to revert it to complete
         if ($status == 'cancelled') {
-            $output_restore_button = '<button type="submit" name="submit_restore_order" value="restore" class="btn my-1 btn-warning" data-confirm-content="' . lang('Are you sure you want to restore this order to complete?') . '"><i class="bi bi-arrow-counterclockwise me-2"></i><span class="btn-text">' . lang('Restore Order') . '</span></button>';
+            $output_restore_button = '<button type="submit" name="submit_restore_order" value="restore" class="btn my-1 btn-warning" data-confirm-content="' . lang('Are you sure you want to restore this order to complete?') . '"><i class="bi bi-arrow-counterclockwise me-2"></i><span class="pg-btn-label">' . lang('Restore Order') . '</span></button>';
         }
 
     // else a real ship to does not exist
@@ -2936,7 +2931,7 @@ if (!$_POST) {
                             <div class=" btn-group flex-wrap justify-content-center d-print-none">
                                 ' . $output_save_button . '
                                 ' . $output_restore_button . '
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

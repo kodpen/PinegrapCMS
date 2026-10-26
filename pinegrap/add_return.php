@@ -434,7 +434,7 @@ if ($order_id <= 0) {
                 <nav class="buttons navigation text-center mb-4" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_create" value="1" class="btn my-1 btn-primary"' . $output_confirm . '><i class="bi bi-arrow-return-left me-2" aria-hidden="true"></i><span class="btn-text">' . h(lang('Record the Return Request')) . '</span></button>
+                            <button type="submit" name="submit_create" value="1" class="btn my-1 btn-primary"' . $output_confirm . '><i class="bi bi-arrow-return-left me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Record the Return Request')) . '</span></button>
                         </div>
                     </div>
                 </nav>

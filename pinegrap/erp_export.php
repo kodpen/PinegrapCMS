@@ -328,7 +328,7 @@ pg_page_shell([
                 <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_export" value="Export" class="btn my-1 btn-success"><i class="bi bi-box-arrow-up me-2" aria-hidden="true"></i><span class="btn-text">' . lang(array('string' => 'Create the file')) . '</span></button>
+                            <button type="submit" name="submit_export" value="Export" class="btn my-1 btn-success"><i class="bi bi-box-arrow-up me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create the file')) . '</span></button>
                         </div>
                     </div>
                 </nav>

@@ -3630,6 +3630,25 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-rev-diff .sd-rev-fold { display: block; color: #6e7681; font-style: italic; padding: 2px 0; }
 .sd-rev-summary { margin-right: auto; font-size: .78rem; color: #9ca3af; align-self: center; }
 
+/* ===================== PANELS READ-ONLY AT CONTENT LEVEL ===================== */
+/* _sdPanelLock(): the fields are disabled; the marks that remove or add go. */
+.sd-panel-readonly-note {
+    display: flex; gap: 6px; align-items: baseline;
+    padding: 4px 8px; margin-bottom: 4px;
+    font-size: .7rem; color: #9ca3af;
+}
+.sd-panel-readonly .sd-class-tag-remove,
+.sd-panel-readonly .sd-class-input,
+.sd-panel-readonly .sd-attrs-add-row,
+.sd-panel-readonly .sd-attr-del,
+.sd-panel-readonly .sd-styles-decl-add,
+.sd-panel-readonly .sd-styles-decl-del,
+.sd-panel-readonly .sd-styles-decl-toggle,
+.sd-panel-readonly .sd-styles-ur-toggle,
+.sd-panel-readonly .sd-styles-ur-del-decl,
+.sd-panel-readonly .sd-styles-user-rule-del { display: none; }
+.sd-panel-readonly input:disabled { opacity: .75; cursor: default; }
+
 /* ========================= CLASS AUTOCOMPLETE ========================= */
 .sd-class-ac-dropdown {
     position: fixed; z-index: 10060;
@@ -3648,6 +3667,14 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 .sd-class-ac-item:hover,
 .sd-class-ac-item.active { background: #2563eb; color: #fff; }
+.sd-class-ac-item { display: flex; gap: 12px; align-items: baseline; }
+.sd-class-ac-hint {
+    margin-left: auto; font-family: system-ui, sans-serif; font-size: .7rem;
+    color: #9ca3af;
+}
+.sd-class-ac-item:hover .sd-class-ac-hint,
+.sd-class-ac-item.active .sd-class-ac-hint { color: #dbeafe; }
+.sd-class-ac-muted .sd-class-ac-label { opacity: .6; }
 
 /* ========================= SHARED USAGE BADGE ========================= */
 .sd-shared-usage-badge {

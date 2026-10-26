@@ -41,7 +41,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_delete" name="submit_delete" value="Delete" class="btn my-1  btn-danger" data-confirm-content="' . lang(array('string'=>'WARNING: All {var:1} will be permanently deleted.','vars'=>array(lang('key codes')))) . '" ><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_delete" name="submit_delete" value="Delete" class="btn my-1  btn-danger" data-confirm-content="' . lang(array('string'=>'WARNING: All {var:1} will be permanently deleted.','vars'=>array(lang('key codes')))) . '" ><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

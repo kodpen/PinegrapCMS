@@ -134,7 +134,8 @@ function api_seo_issues_list($params) {
 
 	}
 
-	$where = array();
+	// The accessibility report shares the table; its codes start with a11y_.
+	$where = array("LEFT(code, 5) " . ((isset($params['category']) && ($params['category'] === 'a11y')) ? "=" : "<>") . " 'a11y_'");
 
 	if (isset($params['entity_type']) && $params['entity_type'] !== '') {
 
@@ -174,7 +175,7 @@ function api_seo_issues_list($params) {
 
 	}
 
-	$where_sql = empty($where) ? '' : ' WHERE ' . implode(' AND ', $where);
+	$where_sql = ' WHERE ' . implode(' AND ', $where);
 
 	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
 

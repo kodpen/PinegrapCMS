@@ -88,7 +88,7 @@ if (!$_POST) {
         $output_parent_group_select_block =
             '<div class="col-12 col-md-4 my-2">' .
             '<label for="parent_id" class="form-label">*' . lang('Parent Product Group') . '</label>' .
-            '<select required style="width:100%" class="select2 form-select" id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '">' .
+            '<select required style="width:100%" class="form-select" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '">' .
             get_product_group_options($default_parent_id, 0, 0, 0, array(), FALSE, 'text', false, true, false) .
             '</select></div>';
     } else {
@@ -181,12 +181,7 @@ if (!$_POST) {
                                                         </div>
                                                         <div class="col-12 mt-3 mb-2">
                                                             <label for="keywords" class="form-label">' . lang('Search Keywords') . '</label>
-                                                            <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>
-                                                            <script>
-                                                                if(document.body.contains(document.querySelector("input#keywords"))){
-                                                                    tagin( document.querySelector("#keywords") );
-                                                                }
-                                                            </script>
+                                                            <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>' . pg_fields_script() . '
                                                         </div>
                                                     </div>
                                                 </div>
@@ -259,12 +254,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 mt-1 mb-2">
                                             <label for="meta_keywords" class="form-label">' . lang('Web Browser Keywords') . '</label>
-                                            <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>
-                                            <script>
-                                                if(document.body.contains(document.querySelector("input#keywords"))){
-                                                    tagin(document.querySelector("#meta_keywords"));
-                                                }
-                                            </script>
+                                            <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>' . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
@@ -363,7 +353,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_button" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_button" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

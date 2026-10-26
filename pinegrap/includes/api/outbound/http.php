@@ -303,7 +303,7 @@ function api_http_request($method, $url, $options = array()) {
 
 	}
 
-	curl_close($handle);
+	unset($handle);
 
 	if (!empty($options['response_headers'])) {
 

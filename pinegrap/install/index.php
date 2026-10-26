@@ -3708,7 +3708,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					</div>
     	  	  	  	<div class="buttons navigation text-center" id="install_submit_nav" aria-label="data edit buttons ">
     	  	  	        	<div class=" btn-group flex-wrap justify-content-center">
-    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success "><i class="bi ' . $output_submit_button_icon . ' me-2"></i><span class="btn-text" >' . $output_submit_button_label . '</span></button>
+    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success "><i class="bi ' . $output_submit_button_icon . ' me-2"></i><span class="pg-btn-label" >' . $output_submit_button_label . '</span></button>
     	  	  	        	</div>
     	  	  	  	</div>
     	  	  	</form>
@@ -3721,11 +3721,11 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	  		if ($("input[name=\'install_type\']").length > 0) {
 				if(	$("#upgrade").is(":checked")) {
 					$("#submit").val("Upgrade");
-					$("#submit").html("<i class=\'bi bi-arrow-up-circle me-2\'></i><span class=\'btn-text\'>' . escape_javascript($output_upgrade_button_label) . '</span>");
+					$("#submit").html("<i class=\'bi bi-arrow-up-circle me-2\'></i><span class=\'pg-btn-label\'>' . escape_javascript($output_upgrade_button_label) . '</span>");
 				}
 				if(	$("#install").is(":checked")) {
 					$("#submit").val("Install");
-					$("#submit").html("<i class=\'bi bi-play-fill me-2\'></i><span class=\'btn-text\'>' . lang('Start the installation') . '</span>");
+					$("#submit").html("<i class=\'bi bi-play-fill me-2\'></i><span class=\'pg-btn-label\'>' . lang('Start the installation') . '</span>");
 				}
     		}
 		}
@@ -6272,7 +6272,7 @@ else {
 			));
 			curl_exec($ca_probe);
 			$ca_probe_errno = (int) curl_errno($ca_probe);
-			curl_close($ca_probe);
+			unset($ca_probe);
 
 			if (in_array($ca_probe_errno, array(35, 51, 60, 77), true)) {
 				$config_data = pg_config_insert_line($config_data, "define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem');");

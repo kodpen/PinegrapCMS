@@ -77,6 +77,9 @@ function pg_sw_type_labels()
         'language_switcher'   => lang('Language Switcher'),
         'comments'            => lang('Comments'),
         'comments_recent'     => lang('Recent Comments'),
+        'shipping_address_and_arrival' => lang('Shipping Address and Arrival'),
+        'shipping_method'     => lang('Shipping Method'),
+        'billing_information' => lang('Billing Information'),
     );
 }
 
@@ -8151,11 +8154,12 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
 
     // Row values; the details (end time, location, the full range) cost a
     // query per event, so they are read only when the layout asks for them —
-    // or when the month grid needs an event's end to show it on every day
-    // it spans.
+    // or when the month grid (the section or the grid lists) needs an
+    // event's end to show it on every day it spans.
     $probe = json_encode($tree);
     $has_grid = ($view !== 'upcoming') && (strpos($probe, '"section":"month_grid"') !== false);
-    $needs_detail = $has_grid || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
+    $has_grid_lists = ($view !== 'upcoming') && (strpos($probe, '"source":"calendar.') !== false);
+    $needs_detail = $has_grid || $has_grid_lists || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
     $rows = array();
     $row_events = array();
     $by_day = array();
@@ -8199,18 +8203,19 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
                 . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Update')) . '</button>'
                 . '</form>';
     }
+    // The days the grid draws: a week, or a month padded to whole weeks.
+    $grid_start  = $range_start;
+    $grid_end    = $range_end;
+    $focus_month = null;
+    if ($view === 'monthly') {
+        $focus_month = (int)date('n', $range_start);
+        $lead  = ($week_start === 'sunday') ? (int)date('w', $range_start) : ((int)date('N', $range_start) - 1);
+        $trail = ($week_start === 'sunday') ? (6 - (int)date('w', $range_end)) : (7 - (int)date('N', $range_end));
+        $grid_start = strtotime('-' . $lead . ' days', $range_start);
+        $grid_end   = strtotime('+' . $trail . ' days', $range_end);
+    }
     $grid = '';
     if ($view !== 'upcoming') {
-        $grid_start = $range_start;
-        $grid_end   = $range_end;
-        $focus_month = null;
-        if ($view === 'monthly') {
-            $focus_month = (int)date('n', $range_start);
-            $lead  = ($week_start === 'sunday') ? (int)date('w', $range_start) : ((int)date('N', $range_start) - 1);
-            $trail = ($week_start === 'sunday') ? (6 - (int)date('w', $range_end)) : (7 - (int)date('N', $range_end));
-            $grid_start = strtotime('-' . $lead . ' days', $range_start);
-            $grid_end   = strtotime('+' . $trail . ' days', $range_end);
-        }
         $grid = _pg_sw_calendar_grid_html($grid_start, $grid_end, $focus_month, $by_day, $week_start, $link_base);
     }
     pg_cf_apply_section_bindings($tree, array('calendar_picker' => $picker, 'month_grid' => $grid));
@@ -8231,6 +8236,11 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         foreach ($split['loop_children'] as $child) $loop_template .= _render_tree_node($child, 0, 0);
         $loop_template = trim($loop_template);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
+    }
+    // The grid lists' rows (widgets_lists_calendar.php), filed once the
+    // tree is drawn: only a widget that drew such a list keeps them.
+    if ($has_grid_lists) {
+        pg_sw_list_publish('calendar', pg_sw_list_calendar_rows($grid_start, $grid_end, $focus_month, $by_day, $week_start, $date_format, date('Y-m-d')));
     }
 
     $loop_rendered = '';
@@ -8268,6 +8278,8 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         '__event_count'   => (string)count($rows),
         '__view'          => $view,
         '__empty_message' => $rows ? '' : $empty_message,
+        // The key the grid lists read outside a weeks list: the whole grid.
+        '__week_key'      => '0',
     ));
     if ($static_html === '') {
         return pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $static_values));

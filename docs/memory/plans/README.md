@@ -9,7 +9,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 ## Files
 
-- accessibility-and-consent-tools.md: Plan (approved 2026-10-19; designer checks #628 #642, statement block #688 and consent notice #619 done): nightly WCAG 2.2 Level A report with its PDF export left
+- accessibility-and-consent-tools.md: Plan (approved 2026-10-19; designer checks #628 #642, statement block #688, consent notice #619, report #1748 and its screen done): menu entry and the designer's email_verify exemption left
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - ai-agent-prompts.md: Plan (2026-10-21, step 1 done #1124, other answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
@@ -40,14 +40,14 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - legacy-layouts-in-designer.md: Plan (2026-10-19, not started): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
 - legacy-retirement-prerequisites.md: Plan (2026-10-19, not started): regions editable in the visual designer before classic pages move: common/designer regions as shared components with content rights, dynamic, page, menu
-- marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 3, 4a-4c, 6, A, B done; 2b-ii, 5a-5c open to any session
-- marketplace-trendyol-remaining-design.md: Design of the open Trendyol steps (2b-ii, 5a-5c) from a full build finished 2026-10-24 that never reached GitHub; what to build, deviations, unverified doc facts
+- marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b, 6, A, B done; 5c open to any session
+- marketplace-trendyol-remaining-design.md: Design of the open Trendyol step (5c) from a full build finished 2026-10-24 that never reached GitHub; what to build, deviations, unverified doc facts
 - merge-flow-tools.md: Plan (2026-10-25, not started): merge_train.php (lock, build, fast-forward landing), CI guards (changelog, trailers, size), filtered install matrix, generated fn-module map, lang cache, merge queue
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
-- notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex and Keep import, note revision and delete done; N3c sources, HTML reader, later Notion/OneNote; slices, open questions
+- notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex, Keep and HTML import, note revision and delete done; N3c sources, later Notion/OneNote; slices, open questions
 - passkeys.md: Plan (approved 2026-10-19; steps 1-3 done, 3b and 4 left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
 - payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 5 done; 3b, 4a-4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
-- php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, 8.1-8.5 deprecations, dead remnants; done: items 3 (#972), 4 (#1039), CSV $escape (#1450), imagedestroy (#1669)
+- php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1450, #1669, #1744, #1757
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows, retention done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), retention
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1-4 done: #738, #813, #905, #1383, #938, #1706; next 4b): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
@@ -63,10 +63,10 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
 - storefront-conversion-pack.md: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, wishlist, back-in-stock e-mail and form, API done): back-in-stock SMS, bundles
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
-- system-widget-missing-types.md: Plan (2026-10-19, not started): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
+- system-widget-missing-types.md: Plan (2026-10-19, steps 1-3 done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
-- widget-designability.md: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets by one finish pass
+- widget-designability.md: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, not started, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1 (#1462), 2 (#1523), 3 (#1726) done; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset

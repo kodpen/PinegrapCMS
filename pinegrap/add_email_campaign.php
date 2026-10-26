@@ -176,12 +176,9 @@ if (!$_POST) {
                         <div class="row">
                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                 <label class="form-label" for="start_time">' . lang('Send at this Date & Time') . '</label>
-                                <input value="" type="text" maxlength="19" class="form-control" id="start_time" name="start_time" />
+                                <input value="" type="text" maxlength="19" class="form-control" id="start_time" name="start_time" data-pg-datetime />
                                 <div class="text-end form-text">' . lang('Leave blank to send as soon as possible.') . '</div>
-                                ' . get_date_time_picker_format() . '
-                                <script>
-                                    $("#start_time").datetimepicker(datetimepicker_options);
-                                </script>
+                                ' . get_date_time_picker_format() . pg_fields_script() . '
                             </div>
                         </div>
                     </div>
@@ -352,7 +349,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

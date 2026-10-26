@@ -29,6 +29,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - account-email-pages.md: Designable welcome and password reset e-mails: Account E-mail widget, *_email_page_id settings, resolver, stored recipient, 'secret' mail (#1192).
 - account-widget-forms.md: Designed account widgets: the login region's two states and per-placement ids, account_security's one form per block, links dropped in a grid, comments on a form detail page, one-screen widget kinds.
 - attrs-panel-undo.md: Undo steps of the designer's Attributes panel text fields (id, prop-bound attributes, custom attribute name and value) and when its style row is written
+- billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-listing-system-widget.md: catalog_listing system widget defaults (PHP and designer JS), group card behaviour (browse/select), group scope rules, the subtree helper (no recursive SQL) and group price range rules.
@@ -122,10 +123,12 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-code-view-bindings.md: Data bindings in the designer's code view: a bound text, href, src or alt prints as {{token}}, typing a token binds, a literal unbinds, {{ offers the widget's tokens; where the rules live
 - designer-code-view-editing.md: How a change typed in the designer's code view reaches the tree: dirty span, scope, owner rule, in-place rules per node kind, new elements as holders through the converter, undo, flush, file tabs
 - designer-code-view-model.md: The designer's code view: range map from one emitter, the document and its lock levels, head/foot rows shared with the HTML tree, what lives in the facade and what in the designer
+- designer-code-view-style.md: A style typed in the designer's code view: which declarations go back to the font, image and Display & Sizing props, which stay the Attributes panel's style, and why (sizing printed twice before)
 - designer-collab-locking.md: Two people in the visual designer: designer_presence / designer_page_lock tables, atomic lock claim, staleness, same-user takeover, and why the lock is enforced on the save path.
 - designer-collab-notes-sync.md: How a note left in the designer reaches the other editor without a reload: presence notes map, page_notes_at counter, notes_fetch, merge rules.
 - designer-collab-view-mode.md: Designer view mode when another person holds the lock: _sdMayEdit, _sdGuardItem, hidden panels, one-item context menu, chat bubble, avatars and the narrow note_save exception.
 - designer-collapse-open-state.md: Open state an accordion item (.collapse) saves and publishes: the one its toggle is written with, not the item last clicked on the canvas; modal, offcanvas, dropdown-menu always close.
+- designer-content-roles-panels.md: The Attributes and Styles panels at content level: read-only outside a marked area, User Styles always, _sdPanelLockReason / _sdPanelLock, the refused commit points
 - designer-content-roles-save-gate.md: Designer content roles (manager/user): what they may edit, how pg_designer_merge_restricted_tree() merges a save, note stamping, body classes, locked vs hidden.
 - designer-content-roles-text-nodes.md: Which designer nodes a manager or user may edit as text outside a marked area (_sdIsTextNode()): content, semantic, the btn and badge components; why not an old card.
 - designer-content-roles-translations.md: What a content-level editor (manager, user) may do with translations and drafts in the designer: the Translate section, translations_action.php limits for role 3, a text's page scope, draft state.
@@ -216,11 +219,16 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - shared-component-editor-cache.md: The editor's shared component cache: prefetch keeps a changed entry, the snapshot every drawn tree gets, what marks a component dirty, the flush at Save, a template placeholder.
 - shared-component-model.md: How a shared_ref places a shared component: id link and name snapshot, empty children, unique names, nesting without loops, request-time markers, depth cap, deleted rows, editor colours.
 - shared-components-panel.md: Deleting shared components and system widgets without opening a design (designs home panel), how usage is counted, and why deleting a design leaves those rows alone (pg_designer_delete_design()).
+- shipping-address-widget.md: The Shipping Address and Arrival widget (first step of the classic multi-step checkout): handler, page row, recipient gate, controls by name, state switch, arrival date rows, what is left out.
+- shipping-method-widget.md: The Shipping Method widget (second step of the classic multi-step checkout): handler, next page, methods from get_shipping_methods(), the chosen method, items section, what is left out.
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.
 - signature-receipt-and-output.md: Signature evidence receipt, the ^^field^^ token output, the h() ampersand pitfall, and why 'signature' was added to the form_fields.type enum.
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
+- style-complete.md: pg_style_complete.js: smart completion in the designer code editors (attributes, CSS values, var(--…) tokens, Bootstrap JS API), no duplicate options, tests
+- style-fields.md: Smart completion in the designer's panel inputs: pg_style_fields.js (caret part, pick splice), the Attributes rows and Styles panel fields wired to it, when a list opens, how a pick is written
 - style-predictor.md: The smart completion predictor assets/js/pg_style_predict.js: its API, the context object, suggestion fields, reason codes, how classes are ranked, the hand-kept hint tables, tests
+- style-suggest.md: assets/js/pg_style_suggest.js: the lazy loader of the predictor and vocabulary, the element context, the light dropdown, the Attributes class field and the code view's class list on it
 - submitted-form-system-fields.md: Single record of submitted-form system fields (get_standard_fields_for_view), pg_sw_* helper functions, date format suffix and order_by_field for system widgets.
 - submitted-form-token-pitfalls.md: Pitfalls of submitted-form tokens in system widgets: single escape, single-pass replace, truncate before escape, submitted_form_info counters per page and who refreshes them on designed pages.
 - system-widget-bindings.md: System widget data flow via _bindings.* (text, src, href, action, eo_field, value, section, eo_visible_if, show_if) and _bindFormats, action bindings, href-bound UI rule, HTML token previews.
@@ -242,7 +250,9 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-fill-filters.md: A bound widget value's format (_bindFormats): text filters or a date format, how the suffix is read, which fills read it, escaping, Turkish case, what a condition compares, typed dates (#1602).
 - widget-fill-shop.md: A bound value's format in the shop widgets (catalog, catalog detail, cart, express order, order view): fills, no change without a format, order view dates, fallback words (#1701).
 - widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, the pg-hide-if-empty rerun, the edit pencil, the strip (#1592).
+- widget-lists-calendar.md: The calendar view's month and week grid as lists (W13): the four sources, their keys, nesting, day and event tokens, what the classic month_grid section keeps, the editor's grid starter.
 - widget-lists-editor.md: Lists inside a record in the designer (#1688): palette items, where one may land, the list panel, Bind Data row values, canvas band and fade, the JS twins and their test.
+- widget-lists-product.md: Product lists in the catalog detail and listing widgets (W9): images, attributes, products bought together; where rows are read, group cards, the cross-sell block they replace, what is left
 - widget-lists.md: Lists inside a widget record (#1680): loop_area + props.source, sources and tokens, span and published rows, pass stage 2, empty lists, escaping, nesting, edit pencil, get_file
 - widget-loop-position.md: Row position tokens of widget lists (#1597; __loop_index, __loop_count, first/last/odd/even): row marks only when used, filled by the finish pass per printed page, what counts as a row.
 - wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates

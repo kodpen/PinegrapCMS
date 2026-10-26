@@ -298,7 +298,7 @@ function pg_ca_bundle_config_state()
     curl_exec($probe);
     $errno = (int) curl_errno($probe);
     $error = (string) curl_error($probe);
-    curl_close($probe);
+    unset($probe);
 
     // 60 peer certificate cannot be verified, 77 no CA file to read, 35 and
     // 51 a handshake the store could not complete. Anything else - no DNS, no
@@ -468,7 +468,7 @@ function pg_ca_bundle_update()
     $curl_errno = curl_errno($ch);
     $curl_error = curl_error($ch);
     $http_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch);
 
     if ($body === false) {
         return array(
@@ -547,11 +547,9 @@ function pg_ca_bundle_update()
                 )),
             );
         }
-        // PHP 8 hands back an object that is collected on its own; the
-        // function still exists there and is a no-op.
-        if (function_exists('openssl_x509_free') && is_resource($certificate)) {
-            openssl_x509_free($certificate);
-        }
+        // Freed with the variable; openssl_x509_free() is a no-op since
+        // PHP 8.0 and deprecated in 8.4.
+        unset($certificate);
     }
 
     // The header dates are compared, not the files' own modification times:
@@ -1051,7 +1049,7 @@ function pg_update_server_version()
     $response = curl_exec($ch);
     $result['curl_errno'] = (int) curl_errno($ch);
     $result['curl_error'] = (string) curl_error($ch);
-    curl_close($ch);
+    unset($ch);
 
     if ($response === false) {
         $result['error'] = 'curl_error';

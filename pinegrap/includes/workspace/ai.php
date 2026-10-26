@@ -376,7 +376,7 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
     $out['errno'] = (int) curl_errno($curl);
     $out['error'] = (string) curl_error($curl);
 
-    curl_close($curl);
+    unset($curl);
 
     if (is_string($raw)) {
         $out['headers'] = substr($raw, 0, $header_size);

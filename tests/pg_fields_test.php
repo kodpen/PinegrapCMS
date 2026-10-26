@@ -130,7 +130,7 @@ function load(opts) {
     if (opts.jquery) { win.jQuery = makeJQuery(calls); }
     if (opts.format) { win.date_picker_format = opts.format; win.datetimepicker_options = { dateFormat: opts.format }; }
     if (opts.time) { win.timepicker_options = { timeFormat: 'h:mm TT' }; }
-    win.tagin = function (el) { calls.push(['tagin', el.attributes.id]); };
+    win.tagin = function (el, o) { calls.push(['tagin', el.attributes.id, o]); };
     (opts.fields || []).forEach(function (f) { doc.create(f[0], f[1]); });
     new Function('window', 'document', PG_FIELDS_SOURCE)(win, doc);
     return { win: win, doc: doc, calls: calls };
@@ -154,6 +154,7 @@ function main() {
     // Hooks drawn once by the v5 engine, with the screen's options.
     var fields = [
         ['input', { id: 'tags', 'data-pg-chips': '', value: 'a,b,,c' }],
+        ['input', { id: 'classes', 'data-pg-chips': '', 'data-pg-separator': ' ', value: 'one two' }],
         ['select', { id: 'zones', 'data-pg-combobox': '', 'data-allow-clear': 'true', multiple: '' }],
         ['input', { id: 'day', 'data-pg-date': '', value: '26/10/2026' }],
         ['input', { id: 'start', 'data-pg-datetime': '', value: '26/10/2026 5:00 PM' }],
@@ -166,10 +167,12 @@ function main() {
     out.init_calls = a.calls.map(function (c) { return c[0] + ':' + c[1]; });
     out.select2_options = a.calls.filter(function (c) { return c[0] === 'select2'; })[0][2];
     out.time_options = a.calls.filter(function (c) { return c[0] === 'timepicker'; })[0][2];
+    out.chips_options = a.calls.filter(function (c) { return c[0] === 'tagin'; }).map(function (c) { return c[2]; });
 
     var get = function (id) { return a.doc.querySelector('#' + id); };
     out.get = {
         chips: a.win.pgChips.get('#tags'),
+        classes: a.win.pgChips.get('#classes'),
         date: a.win.pgDatePicker.get('#day'),
         datetime: a.win.pgDateTimeField.get('#start'),
         time: a.win.pgDateTimeField.get('#cutoff')
@@ -186,8 +189,13 @@ function main() {
     out.date_set = { value: get('day').value, heard: heard };
     a.win.pgDateTimeField.set('#start', '2026-02-01 00:30');
     a.win.pgDateTimeField.set('#cutoff', '13:45');
+    var tags = get('tags'), removed = [];
+    tags.nextElementSibling = { classList: { contains: function (c) { return c === 'tagin-wrapper'; } }, parentNode: { removeChild: function (n) { removed.push(n === tags.nextElementSibling); } } };
+    a.calls.length = 0;
     a.win.pgChips.set('#tags', ['x', 'y']);
-    out.texts = [get('start').value, get('cutoff').value, get('tags').value];
+    out.chips_redraw = { removed: removed, calls: a.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
+    a.win.pgChips.set('#classes', ['x', 'y']);
+    out.texts = [get('start').value, get('cutoff').value, get('tags').value, get('classes').value];
 
     var zones = get('zones');
     ['1', '2', '3'].forEach(function (v) { zones.options.push({ value: v, selected: false }); });
@@ -269,13 +277,14 @@ function test_pg_fields_hooks_drawn_by_v5_engine()
 
 	pg_assert_same('v5', $r['engine']);
 	pg_assert_same(
-		array('tagin:tags', 'select2:zones', 'datepicker:day', 'datetimepicker:start', 'timepicker:cutoff'),
+		array('tagin:tags', 'tagin:classes', 'select2:zones', 'datepicker:day', 'datetimepicker:start', 'timepicker:cutoff'),
 		$r['init_calls'],
 		'each hook once, the plain field untouched, a second init() draws nothing'
 	);
 	pg_assert_same(array('theme' => 'bootstrap-5', 'allowClear' => true), $r['select2_options'], 'select2 as backend.src.js drew it');
 	pg_assert_same(array('timeFormat' => 'h:mm TT'), $r['time_options'], 'time fields read timepicker_options');
-	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
+	pg_assert_same(array(array('separator' => ','), array('separator' => ' ')), $r['chips_options'], 'tagin gets the data-pg-separator, a comma without one');
+	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'classes' => array('one', 'two'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
 	pg_assert_same(array('kind' => null, 'calls' => 0), $r['no_library'], 'no library: a plain field');
 	pg_assert_same(array('same' => true, 'calls' => array('tagin:late')), $r['reload'], 'a second load draws only the new field');
 }
@@ -292,7 +301,8 @@ function test_pg_fields_set_writes_the_posted_field()
 		$r['date_set'],
 		'one bubbling change per set(), none to a listener after off()'
 	);
-	pg_assert_same(array('1/2/2026 12:30 AM', '1:45 PM', 'x,y'), $r['texts'], 'site text in the posted field');
+	pg_assert_same(array('removed' => array(true), 'calls' => array('tagin:tags')), $r['chips_redraw'], 'tagin does not hear change: the old chips go and tagin draws the new value');
+	pg_assert_same(array('1/2/2026 12:30 AM', '1:45 PM', 'x,y', 'x y'), $r['texts'], 'site text in the posted field');
 	pg_assert_same(
 		array('get' => array('1', '3'), 'redraw' => array(array('trigger', 'zones', 'change.select2'))),
 		$r['combobox'],

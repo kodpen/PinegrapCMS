@@ -124,7 +124,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 my-1">
                                             <label for="allowed_countries" class="form-label">' . lang('Allowed Countries') . '</label>
-                                            <select style="width:100%" class="select2 form-select" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $output_disallowed_countries . '</select>
+                                            <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $output_disallowed_countries . '</select>' . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
@@ -139,7 +139,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 my-1">
                                             <label for="allowed_states" class="form-label">' . lang('Allowed States') . '</label>
-                                            <select style="width:100%" class="select2 form-select" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $output_disallowed_states . '</select>
+                                            <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $output_disallowed_states . '</select>' . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
@@ -149,7 +149,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="btn-text">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
