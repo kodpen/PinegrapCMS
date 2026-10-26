@@ -6033,7 +6033,8 @@ function pg_sw_search_index_save_item($item, $timestamp)
 //   submit_search, section pagination; visibility (eo_visible_if) has_query,
 //   has_results, no_results, has_prev_page, has_next_page, has_more_pages.
 // Paging tokens, as a form list gives them (pg_sw_list_paging()):
-//   ^^__page_number^^, ^^__prev_page_url^^, ^^__next_page_url^^.
+//   ^^__page_number^^, ^^__prev_page_url^^, ^^__next_page_url^^; a list of
+//   the page links (paging.pages) replaces the pagination section.
 // URL: query (the search text, as the legacy search box sends it), the
 //   widget's own `page_param`, else page_number (as the catalog and form
 //   lists page). cfg `offset` skips the first results.
@@ -6078,8 +6079,11 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
         'param'       => $param,
         'query'       => $query,
     ));
+    // The pagination section is filled after the render: a list of the page
+    // links, known only once the tree is drawn, replaces it. A single page
+    // has no pagination, so its section is left out as before.
     pg_cf_apply_section_bindings($tree, array(
-        'pagination' => pg_sw_pagination_html($page_param, $current_page, $total_pages),
+        'pagination' => ($total_pages > 1) ? '<!--pg-sr-pagination-->' : '',
     ));
     // Visibility bindings (eo_visible_if) — e.g. a heading shown only once
     // something was searched.
@@ -6099,6 +6103,14 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
         $loop_template = trim($loop_template);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
+    if (pg_sw_list_wanted('paging')) {
+        pg_sw_list_publish('paging', pg_sw_list_paging_rows($page_param, $current_page, $total_pages));
+        $pagination_html = '';
+    } else {
+        $pagination_html = pg_sw_pagination_html($page_param, $current_page, $total_pages);
+    }
+    $loop_template = str_replace('<!--pg-sr-pagination-->', $pagination_html, $loop_template);
+    $static_html   = str_replace('<!--pg-sr-pagination-->', $pagination_html, $static_html);
 
     $type_labels = array('page' => lang('Page'), 'product' => lang('Product'), 'product group' => lang('Product Group'));
     $loop_rendered = '';

@@ -101,14 +101,15 @@ function pg_sw_list_sources()
 // the cart widget (widgets_lists_cart.php), the sub-items of a menu item in
 // the menu widget (widgets_lists_menu.php), the member's passkeys in the
 // account security widget (widgets_account.php), and in the form list the
-// page links too (widgets_lists_paging.php), each kind publishing its
+// page links too, as in the catalog listing and the search results
+// (widgets_lists_paging.php), each kind publishing its
 // data; none in any other kind.
 function pg_sw_kind_lists($kind)
 {
     $families = array('form_list_view' => array('form_record', 'paging'), 'form_item_view' => 'form_record',
-                      'catalog_item_view' => array('product', 'crumbs'), 'catalog_listing' => array('product', 'crumbs'), 'calendar_view' => 'calendar',
+                      'catalog_item_view' => array('product', 'crumbs'), 'catalog_listing' => array('product', 'crumbs', 'paging'), 'calendar_view' => 'calendar',
                       'order_view' => 'order', 'my_account' => 'account', 'cart_link' => 'cart', 'shopping_cart' => 'cart',
-                      'menu_region' => 'menu', 'account_security' => 'security');
+                      'menu_region' => 'menu', 'account_security' => 'security', 'search_results' => 'paging');
     $except   = array('catalog_listing' => array('product.related' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();

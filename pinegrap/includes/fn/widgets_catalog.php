@@ -2016,8 +2016,12 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     }
 
     // ── Pagination HTML (Bootstrap 5, ±2 windowing — same as form_list_view) ──
+    // A design holding a list of the page links draws them itself: its rows
+    // are published and the built-in pagination is left out.
     $pagination_html = '';
-    if ($total_pages > 1) {
+    if (pg_sw_list_wanted('paging')) {
+        pg_sw_list_publish('paging', pg_sw_list_paging_rows($page_param, $current_page, $total_pages));
+    } elseif ($total_pages > 1) {
         $pagination_html .= '<nav class="pg-sw-pagination" aria-label="' . h(lang('Page navigation')) . '"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
         if ($current_page > 1) {
             $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .

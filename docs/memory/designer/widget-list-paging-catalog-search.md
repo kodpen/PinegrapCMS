@@ -22,7 +22,7 @@ description: Catalog listing and search results paging (W12c, #1968): own page p
 - Unchanged for both: neither has URL filters, so their later pages keep the bare canonical, as before. The W12a canonical rule (`page_param` in the URL-filter state) applies only to a form list that applied an address value.
 
 ## What is left?
-- The page links as a designable list (W12b's `paging.pages`) is still offered only in the form list (`pg_sw_kind_lists()`).
+- The page links as a designable list: done in W12d ([[widget-lists-paging]]).
 - Search groups (digit grouping of search's `__result_count`) waits for the owner ([[form-list-result-count]]).
 
 ## How is it tested?

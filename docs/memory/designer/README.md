@@ -287,7 +287,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-lists-cart.md: The cart as a list (W11): cart.items in the cart link (mini cart) and the cart widget, its key, tokens, where rows are read, the editor's mini cart starter, what is left
 - widget-lists-editor.md: Lists inside a record in the designer (#1688): palette items, where one may land, the list panel, Bind Data row values, canvas band and fade, the JS twins and their test.
 - widget-lists-order.md: Order view (receipt e-mail too) and my account lists (W10): recipients, items, parcels, steps, the member's orders; keys, tokens, where rows are read, the editor's starters, what is left
-- widget-lists-paging.md: The form list's page links as a designable list (W12b, #1947): source paging.pages, key __page_number, rows and tokens, the built-in pagination left out, editor starter, placement
+- widget-lists-paging.md: Page links as a designable list (W12b #1947, W12d catalog and search): source paging.pages, key __page_number, rows, tokens, built-in pagination left out, starter, placement
 - widget-lists-product.md: Product lists in the catalog detail and listing widgets (W9): images, attributes, products bought together; where rows are read, group cards, the cross-sell block they replace, what is left
 - widget-lists.md: Lists inside a widget record (#1680): loop_area + props.source, sources and tokens, span and published rows, pass stage 2, empty lists, escaping, nesting, edit pencil, get_file
 - widget-loop-position.md: Row position tokens of widget lists (#1597; __loop_index, __loop_count, first/last/odd/even): row marks only when used, filled by the finish pass per printed page, what counts as a row.

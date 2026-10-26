@@ -54583,12 +54583,12 @@ const StyleDesigner = (function () {
                 ['__passkey_is_synced', _sdT('Synced to the member\'s other devices (1 or empty)')]
             ]
         },
-        // The page links of the form list (pg_sw_list_paging_sources()),
+        // The page links of a paged widget (pg_sw_list_paging_sources()),
         // keyed by the page shown: anywhere in the widget.
         'paging.pages': {
             label: _sdT('Page links'),
             arg: '', argRequired: false,
-            kinds: ['form_list_view'],
+            kinds: ['form_list_view', 'catalog_listing', 'search_results'],
             rows: [
                 ['__pager_number',     _sdT('Page number (empty for a gap)')],
                 ['__pager_url',        _sdT('Page address (empty for a gap and the page shown)')],
