@@ -5954,12 +5954,11 @@ function init_edit_comment_publish() {
     var publish_date_and_time = $('#publish_date_and_time');
     var publish_schedule = $('#publish_schedule');
 
+    // The date and time field is a data-pg-datetime hook (pg_fields.js).
     // If the schedule option is selected by default when the page first loaded,
-    // then show fields for it and init date/time picker.
+    // then show fields for it.
     if (publish.val() == 'schedule') {
         publish_schedule.fadeIn();
-
-        publish_date_and_time.datetimepicker(datetimepicker_options);
     }
 
     // When the publish pick list is changed, then update fields.
@@ -5967,8 +5966,6 @@ function init_edit_comment_publish() {
         // If the schedule option is selected, then show fields for it.
         if (publish.val() == 'schedule') {
             publish_schedule.fadeIn();
-
-            publish_date_and_time.datetimepicker(datetimepicker_options);
 
             // Place the focus in the date & time field,
             // so that the date/time picker automatically appears.
@@ -5994,23 +5991,15 @@ function toggle_calendar_event_all_day() {
         document.getElementById('show_start_time_container').style.display = 'none';
         document.getElementById('show_end_time_container').style.display = 'none';
 
-        // Remove time picker by removing its parent date picker.
-        $("#start_time").datepicker('destroy');
-        $("#end_time").datepicker('destroy');
+        // Turn both date and time fields into date fields that keep only
+        // the date of what they held.
+        ['start_time', 'end_time'].forEach(function (id) {
+            var field = document.getElementById(id);
+            var date = pgDateTimeField.get(field).slice(0, 10);
 
-        // Add date picker to both fields.
-
-        $("#start_time").datepicker(datetimepicker_options);
-
-        $("#end_time").datepicker(datetimepicker_options);
-
-        // Get just the date values in order to strip the times from the fields.
-        var start_date = $.datepicker.formatDate(date_picker_format, $('#start_time').datepicker('getDate'));
-        var end_date = $.datepicker.formatDate(date_picker_format, $('#end_time').datepicker('getDate'));
-
-        // Update fields to only contain the date.
-        $("#start_time").datepicker('setDate', start_date);
-        $("#end_time").datepicker('setDate', end_date);
+            pgFields.switchKind(field, 'date');
+            pgDatePicker.set(field, date);
+        });
 
         // Update the size and maxlength of the fields to support just a date.
         $('#start_time').attr('size', 10);
@@ -6025,15 +6014,9 @@ function toggle_calendar_event_all_day() {
         document.getElementById('show_start_time_container').style.display = '';
         document.getElementById('show_end_time_container').style.display = '';
 
-        // Remove date picker in preparation for adding date/time picker.
-        $("#start_time").datepicker('destroy');
-        $("#end_time").datepicker('destroy');
-
-        // Add date/time picker to both fields.
-
-        $("#start_time").datetimepicker(datetimepicker_options);
-
-        $("#end_time").datetimepicker(datetimepicker_options);
+        // Date and time pickers on both fields; the dates they hold stay.
+        pgFields.switchKind(document.getElementById('start_time'), 'datetime');
+        pgFields.switchKind(document.getElementById('end_time'), 'datetime');
 
         // Update the size and maxlength of the fields to support both a date and time.
         $('#start_time').attr('size', 19);

@@ -86,6 +86,8 @@ function FakeElement(doc, tag, attrs) {
 }
 FakeElement.prototype.hasAttribute = function (k) { return Object.prototype.hasOwnProperty.call(this.attributes, k); };
 FakeElement.prototype.getAttribute = function (k) { return this.hasAttribute(k) ? this.attributes[k] : null; };
+FakeElement.prototype.setAttribute = function (k, v) { this.attributes[k] = String(v); };
+FakeElement.prototype.removeAttribute = function (k) { delete this.attributes[k]; };
 FakeElement.prototype.addEventListener = function (t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); };
 FakeElement.prototype.removeEventListener = function (t, f) { this.listeners[t] = (this.listeners[t] || []).filter(function (x) { return x !== f; }); };
 FakeElement.prototype.dispatchEvent = function (e) { var self = this; (this.listeners[e.type] || []).slice().forEach(function (f) { f.call(self, e); }); return true; };
@@ -211,6 +213,21 @@ function main() {
     new Function('window', 'document', PG_FIELDS_SOURCE)(a.win, a.doc);
     out.reload = { same: a.win.pgFields === firstApi, calls: a.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
 
+    // A drawn field switched to another kind: the old widget goes, the new
+    // hook replaces the old one and is drawn once; a plain field is only
+    // marked and drawn.
+    a.calls.length = 0;
+    a.win.pgFields.switchKind('#start', 'date');
+    a.win.pgFields.switchKind('#start', 'date');
+    a.win.pgFields.switchKind('#start', 'datetime');
+    a.win.pgFields.switchKind('#plain', 'date');
+    a.win.pgFields.destroy('#zones');
+    out.switch_kind = {
+        calls: a.calls.map(function (c) { return c[0] + ':' + c[1] + (typeof c[2] === 'string' ? ':' + c[2] : ''); }),
+        start: [get('start').hasAttribute('data-pg-date'), get('start').hasAttribute('data-pg-datetime'), get('start').pgFieldKind],
+        zones: get('zones').pgFieldKind || null
+    };
+
     // Without the library the field stays a plain one; no error.
     var b = load({ fields: [['select', { id: 's', 'data-pg-combobox': '' }]] });
     out.no_library = { kind: b.doc.querySelector('#s').pgFieldKind || null, calls: b.calls.length };
@@ -287,6 +304,22 @@ function test_pg_fields_hooks_drawn_by_v5_engine()
 	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'classes' => array('one', 'two'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
 	pg_assert_same(array('kind' => null, 'calls' => 0), $r['no_library'], 'no library: a plain field');
 	pg_assert_same(array('same' => true, 'calls' => array('tagin:late')), $r['reload'], 'a second load draws only the new field');
+}
+
+function test_pg_fields_switch_kind_and_destroy()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	pg_assert_same(
+		array('datepicker:start:destroy', 'datepicker:start', 'datepicker:start:destroy', 'datetimepicker:start', 'datepicker:plain', 'select2:zones:destroy'),
+		$r['switch_kind']['calls'],
+		'the old widget destroyed, the new one drawn, the same kind again a no-op'
+	);
+	pg_assert_same(array(false, true, 'datetime'), $r['switch_kind']['start'], 'one hook on the field, its kind recorded');
+	pg_assert_same(null, $r['switch_kind']['zones'], 'a destroyed field is plain and can be drawn again');
 }
 
 function test_pg_fields_set_writes_the_posted_field()
