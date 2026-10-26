@@ -870,6 +870,7 @@
     "{var:1} of them are of a type that cannot be uploaded and will not be sent": "{var:1} tanesi yüklenemeyen türde ve gönderilmeyecek",
     "{var:1} of them are older than {var:2} days. The general job removes them a little at a time; the button below starts on them now.": "Bunların {var:1} tanesi {var:2} günden eski. Genel görev onları azar azar siler; aşağıdaki düğme hemen başlatır.",
     "{var:1} of them are over the limit and will not be sent": "{var:1} tanesi sınırın üzerinde, gönderilmeyecek",
+    "{var:1} of them cannot be read and will not be sent": "{var:1} tanesi okunamıyor, gönderilmeyecek",
     "{var:1} of them cannot go in a backup folder and will not be sent": "{var:1} tanesi yedek klasörüne konulamaz ve gönderilmeyecek",
     "{var:1} of your colleagues are signed in right now.": "Şu anda {var:1} çalışma arkadaşın oturum açmış durumda.",
     "{var:1} of your requests to MCP agents are still waiting, some of them for your approval. Approve those or set them aside first.": "MCP ajanlarına gönderdiğiniz {var:1} istek hâlâ bekliyor, bazıları sizin onayınızı. Önce onları onaylayın ya da bir kenara bırakın.",

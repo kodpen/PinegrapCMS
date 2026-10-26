@@ -4,8 +4,8 @@ description: The notes import's upload: picked list, checks, unreadable files, X
 ---
 
 ## What does the person see from picking to the preview?
-- Picking or dropping only lists the files (PR #1570) (`drawPick()` in `openImport()`, workspace.js), file manager style: name, size, a count heading, rows that will not go dimmed with "not allowed here", "unreadable" or their size in red. "Upload" sends, "Clear" empties; a refused upload comes back to the list with its message (`role="alert"`).
-- Each file is a note: two different todo.md are two rows, the same file (name, size, time) one. A file changed on disk since fails every request (ERR_UPLOAD_FILE_CHANGED); `probe()` tells by its first byte. Only that row gives way to a new pick of its name; a failed request probes the files sent, names the unreadable, leaves them out.
+- Picking or dropping only lists the files (PR #1570) (`drawPick()` in `openImport()`, workspace.js), file manager style: name, size, a count heading naming how many are over the limit, of another kind or unreadable (PR #1840), rows that will not go dimmed with "not allowed here", "unreadable" or their size in red. "Upload" sends, "Clear" empties; a refused upload comes back to the list with its message (`role="alert"`).
+- Each file is a note: two different todo.md are two rows, the same file (name, size, time and bytes) one. Two copies of one name, size and time are compared a megabyte at a time (`sameBytes()`); different text makes two rows; a file that cannot be read counts as the same. A file changed on disk since fails every request (ERR_UPLOAD_FILE_CHANGED); `probe()` tells by its first byte. Only that row gives way to a new pick of its name; a failed request probes the files sent, names the unreadable, leaves them out.
 - Sending: "Uploading… 42%", the shared `progressBar()`, "1.4 MB of 6.0 MB", "Cancel upload". Last byte sent: "Reading the files…" with a striped, moving bar, then the preview. `.ws-progress` sets only `background-color`: the shorthand hid the stripes.
 
 ## Why XMLHttpRequest for the upload step only?
