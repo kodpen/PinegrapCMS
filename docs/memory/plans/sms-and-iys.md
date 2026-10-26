@@ -1,6 +1,6 @@
 ---
 name: sms-and-iys
-description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers and İYS client done; left: İYS settings card, COD code and member OTP, consent API
+description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card done; left: first İYS live run, COD code and member OTP, consent API
 ---
 
 ## Why?
@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 - Done: provider interface + Netgsm (PR #600), `sms_outbox` queue (PR #610), order and shipping messages (PR #1839, `platform/sms-order-messages.md`), e-mail consent writers (PR #1581, `core/consent-log-writers.md`). Commercial SMS kinds stay refused by `pg_sms_send()` until SMS consent exists.
 3b. COD code check at checkout (M), and member OTP: Netgsm's OTP route (`/sms/rest/v2/otp`: OTP package, 160 characters, no Turkish letters) for `otp` or not: owner question in PR #1839. Codes use `expires_at` (`platform/sms-outbox-queue.md`).
 5. ~~İYS client, daily push/pull job, contact status column, campaign filter~~ (done, PR #1895; `platform/iys-client.md`; dry run by default, inert until 5b).
-5b. İYS settings card (Settings › Communication): API user, password, İYS code, brand picked from `pg_iys_brands()`, test/live environment, dry run / live, e-mail switch; switch `iys_job` on in the dispatch list on save; keep the `push_id`/`pull_after` option keys when saving. Then the first live run against the sandbox once credentials exist.
+5b. ~~İYS settings card~~ (done, PR #1940; `platform/iys-settings-card.md`). Left: the first live run against the sandbox once the owner gives İYS test credentials.
 6. API: `/contacts/{id}/consents` read, webhook `customer.consent_changed`.
 
 ## Open questions?
@@ -31,5 +31,5 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 - Contacts opted in by DEFAULT 1 (forms, imports, API, profile) have no consent row and are never pushed (step 5 pushes consent_log rows only).
 
 ## Where to start?
-- Step 5b: read `platform/iys-client.md` and `platform/sms-provider-layer.md` (the SMS card in `includes/settings/contact.*` is the pattern).
+- First İYS live run: once credentials exist, fill the card in test environment and live mode (`platform/iys-settings-card.md`), run `iys_job.php`.
 - Step 3b once the owner has answered the OTP question; read `platform/sms-order-messages.md` and `sms-outbox-queue.md` (`expires_at` for codes).
