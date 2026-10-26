@@ -33,7 +33,7 @@ OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical ol
 - W6 done (#1680): lists engine, field values, attachments ([[widget-lists]]). W7 done (#1688): lists in the editor ([[widget-lists-editor]]). W8 Entity fields (allow-list).
 - W9 done #1752 #1768 ([[widget-lists-product]]). W10 done #1783 ([[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 done (#1758).
 - W14 done (#1602, #1701, #1719): typed fill, formats, list rows too ([[widget-fill-filters]], [[widget-fill-shop]]).
-- W15 done (#1734). W16 Placed beats pushed; old HTML tokens drawn by default parts.
+- W15 done #1734. W16 Placed beats pushed, default parts: [[widget-default-parts]].
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
 - W19 Canvas: ghosts for every loop, state preview, `_sdCondEval` twin.
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
