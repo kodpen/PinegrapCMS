@@ -142,3 +142,17 @@ function test_bs6_shell_open_sheet()
 		. "\t<dialog class=\"dialog dialog-lg\" open>\n\t\t\t<div class=\"modal-body\">x</div>\n\t</dialog>\n</div>", $result['source']);
 	pg_assert_same('done', bs6_switch_dialogs($result['source'])['status'], 'second run');
 }
+
+// In the editor's script only the statement that builds a chrome dialog is
+// renamed; canvas code naming Bootstrap 5 classes stays.
+function test_bs6_shell_editor_dialogs()
+{
+	$in = "        el = document.createElement('div');\n        el.className = 'modal fade';\n"
+		. "        el.innerHTML =\n            '<div class=\"modal-dialog\"><div class=\"modal-content\">' +\n                '<div class=\"modal-body\"><button data-bs-dismiss=\"modal\"></button></div>' +\n            '</div></div>';\n"
+		. "        canvasDoc.querySelectorAll('.dropdown-menu.show, .modal-body');\n";
+	$out = bs6_switch_editor_dialogs($in)['source'];
+
+	pg_assert_same("        el = document.createElement('dialog');\n        el.className = 'dialog';\n"
+		. "        el.innerHTML =\n            '<div class=\"dialog-body\"><button data-bs-dismiss=\"dialog\"></button></div>';\n"
+		. "        canvasDoc.querySelectorAll('.dropdown-menu.show, .modal-body');\n", $out);
+}
