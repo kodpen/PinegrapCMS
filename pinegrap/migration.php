@@ -829,37 +829,10 @@ function send_api_request($properties)
     $url = $properties['url'];
     $request = $properties['request'];
 
-    $data = encode_json($request);
+    // The body is decoded whatever the status, as before; a request that
+    // failed in cURL leaves it empty, which decodes to null and reads as a
+    // communication error to the callers.
+    $response = pg_curl_run('POST', $url, pg_migration_request_options(encode_json($request)));
 
-    $ch = curl_init();
-
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    // Identify this installation. Sent with no User-Agent, a licence or
-    // update request looks like an anonymous client to the receiving
-    // server's own firewall and gets rejected.
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    // Verify the certificate. See pg_curl_tls() for why this matters most
-    // on the update and licence channel.
-    pg_curl_tls($ch);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST,  2);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        'Content-Type: application/json',
-        'Content-Length: ' . strlen($data)));
-
-    // if there is a proxy address, then send cURL request through proxy
-    if (PROXY_ADDRESS != '') {
-        curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-        curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-        curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-    }
-
-    $response = curl_exec($ch);
-
-    return decode_json($response);
+    return decode_json($response['body']);
 }

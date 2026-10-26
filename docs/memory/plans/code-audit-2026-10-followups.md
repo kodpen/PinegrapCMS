@@ -12,10 +12,11 @@ description: Architecture items from the 2026-10-19 audit that no other plan hol
    - 1b done (PR #1921): StopForumSpam, the currency-rate fallback, the AI bot ranges, `pg_sms_http()` (Netgsm, İYS), both Paraşüt calls and `erp_edoc_http()` run through `pg_curl_run()` (new `userpwd` option; the answer carries `connect` and `request_size`). Left direct, with the reason in `platform/curl-run-wrapper.md`: the location database and S3 backups (stream to or from a file), time-stamp authorities (often plain http).
    - 1c done (PR #1965): both licence checks (`output.php`, widget 14) and CAPTCHA verification run through `pg_curl_run()`; widget 14's extra `VERIFYHOST 2` is gone (`platform/curl-run-wrapper.md`).
    - 1d done (PR #2003): each hop of the design importer's redirect walk is one `api_http_request()` with new opt-in options (`platform/curl-run-wrapper.md`).
-   - Next: `migration.php`'s fetch. The payment files (`submit_order.php`, `includes/payments/`, `includes/fn/payments.php`) wait on `payment-driver-layer.md`.
+   - 1e done (PR #2022): `migration.php`'s `send_api_request()` runs through `pg_curl_run()` with the new opt-in `allow_http` (`platform/curl-run-wrapper.md`).
+   - Next: the payment files (`submit_order.php`, `includes/payments/`, `includes/fn/payments.php`) wait on `payment-driver-layer.md`.
 2. Done (PR #972): the named functions declared inside functions are closures (`render_sub_row` in `widget_14.php`, the five `convert_html_to_text()` callbacks in `includes/fn/mail.php`, the explorer's breadcrumb, folder table and icon helpers in `includes/panel/explorer.php`); `router_output_error()` computes its header and footer as values. Output unchanged (`tests/mail_html_to_text_test.php`). The PHPStan baseline went from 39 to 12 errors and holds no inner function, so a new one fails CI (`docs/memory/workflow/static-analysis.md`).
 3. **"Who may write PHP" is implicit in four evals** (`get_page_content.php` page eval, `dregion`, `custom_php` markers, hooks). One `pg_php_regions_allowed_sources()` and a settings default of "designer code only" would make it explicit. Waits on the eval re-ordering parked in `legacy-page-designer-retirement.md`. M.
 4. Done (PR #673): PHPStan level 0 and PHPCompatibility (PHP 7.1+) run in CI against baselines of today's findings (`docs/memory/workflow/static-analysis.md`). A PR that fixes an item here or in `php-compatibility-and-bugs.md` shrinks the baselines in the same PR.
 
 ## Where to start?
-- Item 1: `migration.php`'s fetch next; the gateway calls after `payment-driver-layer.md` settles which of them move. Item 3 waits on the eval re-ordering.
+- Item 1: the gateway calls after `payment-driver-layer.md` settles which of them move. Item 3 waits on the eval re-ordering.
