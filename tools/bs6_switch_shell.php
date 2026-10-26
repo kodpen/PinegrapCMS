@@ -1012,24 +1012,37 @@ function bs6_switch_breakpoints($source)
 	return array('source' => $source, 'status' => $count > 0 ? 'applied' : 'done', 'left' => 0);
 }
 
+// Bootstrap 5 classes with no Bootstrap 6 counterpart that the panel keeps
+// as its own: pattern => replacement.
+function bs6_shell_own_class_renames()
+{
+	return array(
+		'/(?<![\w-])link-(primary|secondary|success|danger|warning|info|body-emphasis)(?![\w-])/' => 'pg-link-$1',
+		'/(?<![\w-])d-print-(none|inline|inline-block|block|grid|inline-grid|table|table-row|table-cell|flex|inline-flex)(?![\w-])/' => 'pg-print-$1',
+	);
+}
+
 /**
  * Bootstrap 5's link colour helpers (`link-secondary`, `link-body-emphasis`,
- * …) have no Bootstrap 6 class. The panel already draws the colour ones in
- * its own ink tones (backend.src.css), so they become the panel's own
- * `pg-link-*` classes, in markup, scripts and selectors alike; the shell
- * rules draw `pg-link-body-emphasis` as v5 did. Site-output code stays.
+ * …) and print display utilities (`d-print-none`, …) have no class in
+ * 6.0.0-alpha.1. The panel already draws the link colours in its own ink
+ * tones (backend.src.css), so both become the panel's own classes
+ * (`pg-link-*`, `pg-print-*`) in markup, scripts and selectors alike; the
+ * shell rules draw `pg-link-body-emphasis` and the print ones as v5 did.
+ * Site-output code stays.
  */
-function bs6_switch_links($source)
+function bs6_switch_own_classes($source)
 {
 	$site_output = bs6_site_output_ranges($source);
 	$count = 0;
-	$pieces = bs6_shell_split_ranges($source, $site_output);
 	$out = '';
 
-	foreach ($pieces as $piece) {
+	foreach (bs6_shell_split_ranges($source, $site_output) as $piece) {
 		if (!$piece[1]) {
-			$piece[0] = preg_replace('/(?<![\w-])link-(primary|secondary|success|danger|warning|info|body-emphasis)(?![\w-])/', 'pg-link-$1', $piece[0], -1, $n);
-			$count += $n;
+			foreach (bs6_shell_own_class_renames() as $pattern => $replacement) {
+				$piece[0] = preg_replace($pattern, $replacement, $piece[0], -1, $n);
+				$count += $n;
+			}
 		}
 		$out .= $piece[0];
 	}
