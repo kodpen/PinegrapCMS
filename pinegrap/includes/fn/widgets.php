@@ -3918,6 +3918,12 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         'not_logged_in' => '',
     ) + $link_values;
 
+    // A list of the member's orders (widgets_lists_order.php): the order
+    // history's rows, filed only when the tree drew one.
+    if (pg_sw_list_wanted('account')) {
+        pg_sw_list_publish('account', pg_sw_list_account_rows($values['account_id'], $extras['orders'], $extras['order_view_url'], pg_sw_default_date_format('date')));
+    }
+
     // ── No loop_area — render entire tree once with account tokens ─────────
     if ($split['loop_children'] === null) {
         return pg_sw_sweep_tokens(
@@ -6789,6 +6795,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 'image'             => $image_url,
                 'url'               => $item_url,
                 'ship_to'           => $item_ship_to,
+                'ship_to_id'        => (int)$r['ship_to_id'],
             );
         }
     }
@@ -6855,6 +6862,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // own shape (pg_shipping_carrier). The helpers read the site's default
     // themselves, as they do on every other order screen.
     $tracking_rows = db_items("SELECT shipping_tracking_numbers.number,
+            shipping_tracking_numbers.ship_to_id,
             ship_tos.shipping_method_code
         FROM shipping_tracking_numbers
         LEFT JOIN ship_tos ON ship_tos.id = shipping_tracking_numbers.ship_to_id
@@ -6875,6 +6883,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'number'  => $parcel_number,
             'url'     => get_shipping_tracking_url($parcel_number, $parcel_method),
             'carrier' => get_shipping_carrier_name($parcel_number, $parcel_method),
+            'ship_to' => (int)($tracking_row['ship_to_id'] ?? 0),
         );
     }
 
@@ -6961,6 +6970,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => 'primary',
             'label' => lang('Order Created'),
             'ts'    => $_fmt_ts($order_date_ts, true),
+            'kind'  => 'created',
         );
     }
     // Paid — paid_at is stamped when the money is confirmed: by the gateway
@@ -6976,6 +6986,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => 'success',
             'label' => lang('Payment Received'),
             'ts'    => $_fmt_ts($paid_at_ts, true),
+            'kind'  => 'paid',
         );
     } elseif (trim((string)$order['transaction_id']) !== '' && $order_date_ts > 0) {
         $timeline_events[] = array(
@@ -6983,6 +6994,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => 'success',
             'label' => lang('Payment Received'),
             'ts'    => $_fmt_ts($order_date_ts, true),
+            'kind'  => 'paid',
         );
     }
     // ship_date / delivery_date are worked out at checkout from the
@@ -6995,6 +7007,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => ($shipping_ts > $_today_ts) ? 'secondary' : 'info',
             'label' => ($shipping_ts > $_today_ts) ? lang('Estimated shipping') : lang('Shipped'),
             'ts'    => $_fmt_ts($shipping_ts, false),
+            'kind'     => 'shipped',
+            'estimate' => ($shipping_ts > $_today_ts),
         );
     }
     if ($delivery_ts > 0) {
@@ -7003,6 +7017,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => ($delivery_ts > $_today_ts) ? 'secondary' : 'success',
             'label' => ($delivery_ts > $_today_ts) ? lang('Estimated delivery') : lang('Delivered'),
             'ts'    => $_fmt_ts($delivery_ts, false),
+            'kind'     => 'delivered',
+            'estimate' => ($delivery_ts > $_today_ts),
         );
     }
     if ($cancelled_at_ts > 0) {
@@ -7013,6 +7029,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'color' => 'danger',
             'label' => lang('Cancelled') . ($cancellation_reason !== '' ? ' — ' . $cancellation_reason : ''),
             'ts'    => $_fmt_ts($cancelled_at_ts, true),
+            // A list of the steps shows the reason in an element of its own.
+            'kind'       => 'cancelled',
+            'step_label' => lang('Cancelled'),
+            'note'       => $cancellation_reason,
         );
     }
     $timeline_html = _eo_render_order_timeline($timeline_events);
@@ -7191,6 +7211,30 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         }
         $loop_template = trim($loop_template);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
+    }
+
+    // The order lists' rows (widgets_lists_order.php), filed once the tree
+    // is drawn: only a widget that drew such a list keeps them, and only a
+    // list of the recipients reads them.
+    $_ov_listed = pg_sw_list_wanted('order');
+    if ($_ov_listed) {
+        $_ov_shipments = array();
+        if (isset($_ov_listed['order.shipments'])) {
+            $_ov_st_rows = db_items(
+                "SELECT ship_tos.id, ship_tos.first_name, ship_tos.last_name, ship_tos.company,
+                        ship_tos.phone_number, ship_tos.address_1, ship_tos.address_2,
+                        ship_tos.city, ship_tos.state, ship_tos.zip_code, ship_tos.country,
+                        ship_tos.arrival_date, shipping_methods.name AS shipping_method
+                 FROM ship_tos
+                 LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
+                 WHERE ship_tos.order_id = '$oid_esc' AND ship_tos.complete = 1
+                 ORDER BY ship_tos.id ASC"
+            );
+            foreach ((array)$_ov_st_rows as $_ov_st) {
+                $_ov_shipments[] = pg_sw_list_order_shipment_row($_ov_st, $fmt_gc_date);
+            }
+        }
+        pg_sw_list_publish('order', pg_sw_list_order_rows($_ov_shipments, $items, $tracking_parcels, $timeline_events));
     }
 
     // Build loop output
@@ -7406,6 +7450,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__legal_preinfo_url'       => h($legal_urls['preinfo']),
         '__legal_contract_url'      => h($legal_urls['contract']),
         '__withdrawal_deadline'     => h($withdrawal_date),
+        // The key the order lists read outside a list of recipients: the
+        // whole order.
+        '__ship_to_key'             => '0',
     );
     // The dates a format can read (^^__order_date^^%%d.m.Y H:i%%).
     $_ov_typed = _pg_sw_order_view_dates(

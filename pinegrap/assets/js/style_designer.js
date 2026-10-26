@@ -51853,6 +51853,84 @@ const StyleDesigner = (function () {
                 ['__event_is_all_day',     _sdT('All-day event (1 or empty)')],
                 ['__event_ical_url',       _sdT('Add to my calendar — .ics file (href)')]
             ]
+        },
+        'order.shipments': {
+            label: _sdT('Recipients of the order'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__ship_to_key',           _sdT('Recipient in the order')],
+                ['__shipping_name',         _sdT('Recipient Full Name')],
+                ['__shipping_first_name',   _sdT('Recipient First Name')],
+                ['__shipping_last_name',    _sdT('Recipient Last Name')],
+                ['__shipping_company',      _sdT('Company')],
+                ['__shipping_phone',        _sdT('Phone')],
+                ['__shipping_address_1',    _sdT('Address line 1')],
+                ['__shipping_address_2',    _sdT('Address line 2')],
+                ['__shipping_city',         _sdT('City')],
+                ['__shipping_state',        _sdT('State / Province')],
+                ['__shipping_zip',          _sdT('Zip Code')],
+                ['__shipping_country',      _sdT('Country')],
+                ['__shipping_full_address', _sdT('Full address (single line)')],
+                ['__shipping_method',       _sdT('Shipping method / carrier')],
+                ['__arrival_date',          _sdT('Estimated delivery date')],
+                ['__ship_to_item_count',    _sdT('Number of items')]
+            ]
+        },
+        'order.items': {
+            label: _sdT('Items of the order'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__item_id',                _sdT('Row ID (order_items.id)')],
+                ['__item_name',              _sdT('Product name (products.name)')],
+                ['__item_number',            _sdT('Stock code (SKU)')],
+                ['__item_short_description', _sdT('Short description (display name)')],
+                ['__item_summary',           _sdT('Description summary (one line, plain text)')],
+                ['__item_qty',               _sdT('Quantity')],
+                ['__item_price',             _sdT('Unit price')],
+                ['__item_total',             _sdT('Row total')],
+                ['__item_image',             _sdT('Image URL')],
+                ['__item_image_alt',         _sdT('Image alt text')],
+                ['__item_url',               _sdT('Product detail page URL')],
+                ['__item_ship_to',           _sdT('This item\'s shipping address')]
+            ]
+        },
+        'order.parcels': {
+            label: _sdT('Parcels of the order'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__tracking_code',         _sdT('Shipment tracking number')],
+                ['__tracking_link',         _sdT('Shipment tracking link (carrier deep link)')],
+                ['__tracking_company_name', _sdT('Carrier name')]
+            ]
+        },
+        'order.steps': {
+            label: _sdT('Steps of the order'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__step_label',       _sdT('Step')],
+                ['__step_date',        _sdT('Date')],
+                ['__step_kind',        _sdT('Kind of step (created, paid, shipped, delivered, cancelled)')],
+                ['__step_note',        _sdT('Note (the reason of a cancellation)')],
+                ['__step_is_estimate', _sdT('Estimated (1 or empty)')]
+            ]
+        },
+        'account.orders': {
+            label: _sdT('Orders of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__order_id',           _sdT('Order ID (numeric)')],
+                ['__order_no',           _sdT('Order number')],
+                ['__order_date',         _sdT('Order date')],
+                ['__order_total',        _sdT('Grand total')],
+                ['__order_status',       _sdT('Status (raw text)')],
+                ['__order_is_cancelled', _sdT('Cancelled (1 or empty)')],
+                ['__order_url',          _sdT('Order detail URL')]
+            ]
         }
     };
 
