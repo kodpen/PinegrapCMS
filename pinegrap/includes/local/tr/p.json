@@ -986,6 +986,7 @@
     "Posting and replying": "Konu açma ve yanıtlama",
     "Posting as": "Gönderen adınız",
     "Posts": "Yazılar",
+    "Posts a message later: a day, a time such as 14:00 or +30m, then the message. Only you see it until then.": "Bir mesajı sonra gönderir: bir gün, 14:00 gibi bir saat ya da +30dk, ardından mesaj. Gönderilene kadar yalnızca siz görürsünüz.",
     "Posts must follow the community guidelines. The moderators may edit, hide or remove a post that breaks them, and close an account that keeps breaking them.": "Gönderiler topluluk yönergelerine uymalıdır. Moderatörler yönergelere uymayan bir gönderiyi düzenleyebilir, gizleyebilir ya da kaldırabilir; bunları ihlal etmeyi sürdüren bir hesabı kapatabilir.",
     "Posts {var:1}": "Gönderim: {var:1}",
     "Pounds": "Pound",

@@ -46,6 +46,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
 - workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
 - workspace-command-registry.md: One registry (ws_commands()) for the / picker, /help, palette and the Tab argument popup after "/name "; an unknown /word refused with the closest names; "//" posts it
+- workspace-command-schedule.md: /schedule (/zamanla) in a Workspace channel: when it reads (+30dk, a day, 14:00), the 09:00 and tomorrow defaults, ws_scheduled_message_save(), its writer-only answer and live line
 - workspace-command-status.md: /status (/durum) in a Workspace channel (PR #1896): the status words it reads, ws_task_set_status(), the lines it posts, its live line and the statuses popup
 - workspace-customer-card.md: The customer card on a Workspace channel's Summary tab (CRM seams slice 3, #1666): the API's customer summary through the ws_channel_customer panel action, addresses per row, ids kept back
 - workspace-customer-history.md: A channel's customer history (CRM seams slice 4, #1681): union read of orders, invoices, quotes, forms and Workspace tags, rights per source, paging, API route, card part

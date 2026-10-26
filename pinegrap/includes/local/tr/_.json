@@ -215,6 +215,7 @@
     "/postpone T-42 +2d": "/ertele G-42 +2g",
     "/price #mug 149,90": "/fiyat #kupa 149,90",
     "/product Blue mug 149,90": "/ürün Mavi kupa 149,90",
+    "/schedule tomorrow 09:00 Stand-up in ten minutes": "/zamanla yarın 09:00 Toplantı on dakika sonra başlıyor",
     "/status T-42 waiting": "/durum G-42 bekliyor",
     "/stock #mug 12": "/stok #kupa 12",
     "/task Logo revision @ayse friday ~2h !urgent": "/gorev Logo revizyonu @ayse cuma ~2sa !acil",

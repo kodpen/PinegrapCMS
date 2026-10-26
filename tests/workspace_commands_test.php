@@ -187,7 +187,7 @@ function test_workspace_command_registry_holds_every_name_once()
 		return $entry['key'];
 	}, ws_commands(null));
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'schedule', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
 }
 
 // Every argument is typed with a known kind, says whether it may be left
@@ -541,5 +541,45 @@ function test_workspace_command_status_reads_task_and_word()
 		}
 	}
 
-	pg_assert_same(array('task', 'status'), $live, 'the commands with a live line');
+	pg_assert_same(array('task', 'status', 'schedule'), $live, 'the commands with a live line');
 }
+
+// /schedule (/zamanla) answers to its names and reads when at the start of
+// the line: a time from now, a day, a time of day or both; the rest is the
+// message. 2026-10-21 is a Wednesday; the line is read at 10:15.
+function test_workspace_command_schedule_reads_when_and_message()
+{
+	$now = strtotime('2026-10-21 10:15:20');
+
+	pg_assert_same(array('command' => 'schedule', 'rest' => 'yarın 09:00 Toplantı'), ws_command_split('/zamanla yarın 09:00 Toplantı'), '/zamanla');
+	pg_assert_same(array('command' => 'schedule', 'rest' => 'friday x'), ws_command_split('/SCHEDULE friday x'), '/SCHEDULE in capitals');
+
+	$at = function ($date, $time, $body) {
+		return array('date' => $date, 'time' => $time, 'at' => strtotime($date . ' ' . $time . ':00'), 'body' => $body);
+	};
+
+	pg_assert_same($at('2026-10-22', '09:00', 'Toplantı on dakika sonra'), ws_command_parse_schedule('yarın 09:00 Toplantı on dakika sonra', $now), 'a day and a time');
+	pg_assert_same($at('2026-10-23', '14:30', 'Ship it'), ws_command_parse_schedule('friday at 14:30 Ship it', $now), '"at" before the time');
+	pg_assert_same($at('2026-10-23', '14:30', 'Gönder'), ws_command_parse_schedule("cuma saat 14:30'da Gönder", $now), '"saat" and a suffix');
+	pg_assert_same($at('2026-10-23', '09:00', 'Rapor'), ws_command_parse_schedule('cuma Rapor', $now), 'a day alone is at 09:00');
+	pg_assert_same($at('2026-10-21', '16:00', 'Çay'), ws_command_parse_schedule('16:00 Çay', $now), 'a time alone, still ahead today');
+	pg_assert_same($at('2026-10-22', '08:00', 'Günaydın cuma'), ws_command_parse_schedule('08:00 Günaydın cuma', $now), 'a time gone by is tomorrow; a day after it is the message');
+	pg_assert_same($at('2026-10-21', '10:45', 'Ara bitti'), ws_command_parse_schedule('+30dk Ara bitti', $now), '+30dk');
+	pg_assert_same($at('2026-10-21', '12:15', 'Lunch'), ws_command_parse_schedule('+2h Lunch', $now), '+2h is two hours, not a week');
+	pg_assert_same($at('2026-10-23', '09:00', '<@user:5> rapor'), ws_command_parse_schedule('+2g <@user:5> rapor', $now), '+2g is a day');
+	pg_assert_same(array('date' => '', 'time' => '', 'at' => 0, 'body' => 'Merhaba dünya'), ws_command_parse_schedule('Merhaba dünya', $now), 'no time read');
+	pg_assert_same($at('2026-10-22', '09:00', ''), ws_command_parse_schedule('yarın', $now), 'no message');
+}
+
+// A time from now is read only with a minute or hour unit after +.
+function test_workspace_command_schedule_offset()
+{
+	pg_assert_same(30, ws_parse_schedule_offset('+30dk'), '+30dk');
+	pg_assert_same(45, ws_parse_schedule_offset('+45m'), '+45m');
+	pg_assert_same(120, ws_parse_schedule_offset('+2SA'), '+2SA');
+	pg_assert_same(60, ws_parse_schedule_offset('+1hour'), '+1hour');
+	pg_assert_same(0, ws_parse_schedule_offset('+2g'), 'a day is no offset');
+	pg_assert_same(0, ws_parse_schedule_offset('30dk'), 'no plus');
+	pg_assert_same(0, ws_parse_schedule_offset('+0dk'), 'nothing');
+}
+

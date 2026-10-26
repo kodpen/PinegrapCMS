@@ -8,6 +8,7 @@
  *   /assign T-42 @mehmet                                     (also /ata)
  *   /done T-42                                               (also /bitti, /tamam)
  *   /postpone T-42 +2d                                       (also /ertele)
+ *   /schedule tomorrow 09:00 Stand-up in ten minutes         (also /zamanla)
  *   /decision The packaging will be kraft                    (also /karar)
  *   /note Accounts contact: Selin, ext. 204                  (also /not)
  *   /plan @ayse                                              the next working week
@@ -59,6 +60,7 @@ function ws_command_names()
         'bitti' => 'done', 'tamam' => 'done', 'done' => 'done',
         'ertele' => 'postpone', 'postpone' => 'postpone',
         'durum' => 'status', 'status' => 'status',
+        'zamanla' => 'schedule', 'schedule' => 'schedule',
         'karar' => 'decision', 'decision' => 'decision',
         'not' => 'note', 'note' => 'note',
         'plan' => 'plan',
@@ -145,7 +147,8 @@ function ws_command_assistant_ready($command)
 /**
  * May this person use a command? /price, /stock and /product write a
  * product, so they are offered only to whoever may change products (the
- * e-commerce right, as add_product.php asks it); /claude and /ai only once
+ * e-commerce right, as add_product.php asks it); /schedule only to whoever
+ * may schedule messages (scheduled_messages.php); /claude and /ai only once
  * their assistant is set up on the site; the others are anybody's. Without a
  * person every command the parser answers to is listed, and the assistants
  * are left out: that list is read without asking the database anything.
@@ -159,6 +162,10 @@ function ws_command_offered($viewer, $command)
 {
     if (in_array($command, ws_command_assistant_words(), true)) {
         return is_array($viewer) && ws_command_assistant_ready($command);
+    }
+
+    if (($command === 'schedule') && is_array($viewer)) {
+        return function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer);
     }
 
     if (!in_array($command, array('price', 'stock', 'product'), true) || !is_array($viewer)) {
@@ -176,7 +183,7 @@ function ws_command_offered($viewer, $command)
  */
 function ws_command_argument_kinds()
 {
-    return array('person', 'people', 'department', 'task', 'record', 'date', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options');
+    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options');
 }
 
 /**
@@ -279,6 +286,17 @@ function ws_commands($viewer = null)
             'example'     => lang('/status T-42 waiting'),
             'live'        => true,
             'args'        => array($task, $arg('status', 'status', lang('status'), false, 'statuses')),
+        ),
+        array(
+            'key' => 'schedule', 'tr' => 'zamanla', 'en' => 'schedule', 'label' => '/schedule · /zamanla',
+            'description' => lang('Posts a message later: a day, a time such as 14:00 or +30m, then the message. Only you see it until then.'),
+            'example'     => lang('/schedule tomorrow 09:00 Stand-up in ten minutes'),
+            'live'        => true,
+            'args'        => array(
+                $arg('day', 'date', lang('day'), true, 'dates'),
+                $arg('time', 'time', lang('time'), true),
+                $arg('message', 'text', lang('message'), false),
+            ),
         ),
         array(
             'key' => 'decision', 'tr' => 'karar', 'en' => 'decision', 'label' => '/decision · /karar',
@@ -1118,6 +1136,7 @@ function ws_command_task_ref($text)
  * @param string $body
  * @param array  $options confirm (bool), force (bool), assignees (ids, replacing
  *                        the parsed ones - the "give it to somebody lighter" button),
+ *                        parent_id (the message a /schedule answers),
  *                        from (the value a /price or /stock preview showed),
  *                        decision (bool, keep that change in the channel),
  *                        on_sale (bool, a /product card's tick)
@@ -1254,6 +1273,9 @@ function ws_command_run($viewer, $channel, $body, $options = array())
 
         case 'status':
             return ws_command_status($viewer, $channel, $rest);
+
+        case 'schedule':
+            return ws_command_schedule($viewer, $channel, $rest, $options);
 
         case 'decision':
         case 'note':
@@ -1405,9 +1427,10 @@ function ws_command_task($viewer, $channel, $text, $options)
 
 /**
  * The live line under a command being written: what sending it now would
- * do, read by the same parser that runs it, and what it cannot read: /task
- * and /status (ws_command_status_suggest()) have one; any other command
- * answers with an empty line.
+ * do, read by the same parser that runs it, and what it cannot read: /task,
+ * /status (ws_command_status_suggest()) and /schedule
+ * (ws_command_schedule_suggest()) have one; any other command answers with
+ * an empty line.
  *
  * @param array  $viewer
  * @param array  $channel
@@ -1421,6 +1444,10 @@ function ws_command_suggest($viewer, $channel, $body)
 
     if ($split && ($split['command'] === 'status')) {
         return ws_command_status_suggest($viewer, $split['rest']);
+    }
+
+    if ($split && ($split['command'] === 'schedule')) {
+        return ws_command_schedule_suggest($viewer, $channel, $split['rest']);
     }
 
     if (!$split || ($split['command'] !== 'task') || ($split['rest'] === '')) {
@@ -1609,6 +1636,197 @@ function ws_command_status_suggest($viewer, $text)
 
     if (!$check['ok']) {
         $out['warnings'][] = $check['error'];
+    }
+
+    return $out;
+}
+
+/**
+ * A time from now written after + for /schedule ("+30dk", "+2sa", "+45m",
+ * "+1h"), in minutes, or 0. Here "h" is an hour: a day word reads "+1h" as a
+ * week (ws_parse_date_word()), which a message posted later never means.
+ *
+ * @param string $word
+ * @return int
+ */
+function ws_parse_schedule_offset($word)
+{
+    if (!preg_match('/^\+([0-9]{1,4})(dk|dakika|m|min|mins|sa|saat|h|hr|hrs|hour|hours)$/u', ws_lower(rtrim((string) $word, '.,;')), $match)) {
+        return 0;
+    }
+
+    $minutes = in_array($match[2], array('dk', 'dakika', 'm', 'min', 'mins'), true) ? (int) $match[1] : (int) $match[1] * 60;
+
+    return ($minutes > 0) ? $minutes : 0;
+}
+
+/**
+ * What /schedule is given: when, then the message. When is a time from now
+ * ("+30dk"), or a day word, a time of day ("14:00", "saat 14:00", "at
+ * 14:00") or both, in that order, at the start of the line. A day alone is
+ * at 09:00; a time alone is today's, or tomorrow's once it has gone by.
+ *
+ * @param string   $text the line after the command's name
+ * @param int|null $now  the moment it is read at, for tests
+ * @return array date (Y-m-d, '' when no time was read), time (H:i), at
+ *               (timestamp, 0 when no time was read), body (the message)
+ */
+function ws_command_parse_schedule($text, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+    $today = date('Y-m-d', $now);
+    $words = preg_split('/\s+/u', trim((string) $text));
+    $date = '';
+    $clock = '';
+    $minutes = 0;
+    $taken = 0;
+
+    foreach ($words as $index => $word) {
+        if ($index > 2) {
+            break;
+        }
+
+        $offset = ws_parse_schedule_offset($word);
+
+        if (($offset > 0) && ($taken === 0)) {
+            $minutes = $offset;
+            $taken = $index + 1;
+            break;
+        }
+
+        if (($date === '') && ($clock === '') && (ws_parse_date_word($word, $today) !== '')) {
+            $date = ws_parse_date_word($word, $today);
+            $taken = $index + 1;
+            continue;
+        }
+
+        // "saat 14:00" / "at 14:00": the word before the time is no message.
+        if (($clock === '') && in_array(ws_lower($word), array('saat', 'at'), true) && (ws_parse_time_word($words[$index + 1] ?? '') !== '')) {
+            continue;
+        }
+
+        if (($clock === '') && (ws_parse_time_word($word) !== '')) {
+            $clock = ws_parse_time_word($word);
+            $taken = $index + 1;
+            continue;
+        }
+
+        break;
+    }
+
+    $body = trim(implode(' ', array_slice($words, $taken)));
+
+    if ($minutes > 0) {
+        $at = $now + $minutes * 60;
+
+        return array('date' => date('Y-m-d', $at), 'time' => date('H:i', $at), 'at' => strtotime(date('Y-m-d H:i', $at) . ':00'), 'body' => $body);
+    }
+
+    if (($date === '') && ($clock === '')) {
+        return array('date' => '', 'time' => '', 'at' => 0, 'body' => trim((string) $text));
+    }
+
+    if ($date === '') {
+        $date = $today;
+
+        if (strtotime($date . ' ' . $clock . ':00') <= $now) {
+            $date = date('Y-m-d', strtotime('+1 day', strtotime($today . ' 12:00:00')));
+        }
+    }
+
+    if ($clock === '') {
+        $clock = '09:00';
+    }
+
+    return array('date' => $date, 'time' => $clock, 'at' => (int) strtotime($date . ' ' . $clock . ':00'), 'body' => $body);
+}
+
+/**
+ * /schedule: the message is saved as the writer's scheduled message
+ * (ws_scheduled_message_save()), shown to the writer alone until it is
+ * posted, the same as the clock beside the send button.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text the line after the command's name
+ * @param array  $options parent_id
+ * @return array
+ */
+function ws_command_schedule($viewer, $channel, $text, $options)
+{
+    $parsed = ws_command_parse_schedule($text);
+
+    if ($parsed['at'] <= 0) {
+        return array('type' => 'error', 'error' => lang('Say when first: a day, a time such as 14:00 or +30m, then the message.'));
+    }
+
+    if ($parsed['body'] === '') {
+        return array('type' => 'error', 'error' => lang('The message is empty.'));
+    }
+
+    $result = ws_scheduled_message_save($viewer, array(
+        'id'         => 0,
+        'channel_id' => (int) $channel['id'],
+        'body'       => $parsed['body'],
+        'parent_id'  => (int) ($options['parent_id'] ?? 0),
+        'date'       => $parsed['date'],
+        'time'       => $parsed['time'],
+    ));
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    return array('type' => 'ephemeral', 'html' => h(lang(array(
+        'string' => 'Scheduled for {var:1}: “{var:2}”. Only you see it until it is posted.',
+        'vars'   => array(ws_scheduled_moment($parsed['at']), ws_plain_excerpt($viewer, $parsed['body'], 120)),
+    ))));
+}
+
+/**
+ * The live line under /schedule: when the message would be posted and its
+ * start; a warning when no time is read, the message is empty or the time
+ * is one ws_scheduled_message_save() refuses.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text the line after the command's name
+ * @return array line, warnings
+ */
+function ws_command_schedule_suggest($viewer, $channel, $text)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if (trim((string) $text) === '') {
+        return $out;
+    }
+
+    $parsed = ws_command_parse_schedule($text);
+
+    if ($parsed['at'] <= 0) {
+        $out['warnings'][] = lang('Say when first: a day, a time such as 14:00 or +30m, then the message.');
+
+        return $out;
+    }
+
+    $parts = array(ws_scheduled_moment($parsed['at']));
+
+    if ($parsed['body'] !== '') {
+        $parts[] = '“' . ws_plain_excerpt($viewer, $parsed['body'], 80) . '”';
+    }
+
+    $out['line'] = lang(array('string' => 'Will post: {var:1}', 'vars' => implode(' · ', $parts)));
+
+    if ($parsed['body'] === '') {
+        $out['warnings'][] = lang('The message is empty.');
+    } elseif (preg_match('#^/[a-z]#i', $parsed['body'])) {
+        $out['warnings'][] = lang('A command cannot be scheduled. Write it as a message, or send it now.');
+    }
+
+    if ($parsed['at'] <= time()) {
+        $out['warnings'][] = lang('That time has already gone by.');
+    } elseif ($parsed['at'] > strtotime('+' . WS_SCHEDULED_MESSAGES_AHEAD . ' days')) {
+        $out['warnings'][] = lang('A message can be scheduled at most a year ahead.');
     }
 
     return $out;
