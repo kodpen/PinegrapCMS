@@ -390,15 +390,17 @@ function pg_iys_brands_parse($answer)
 
 /**
  * The e-mail changes of a changes answer and the cursor after them. Other
- * channels are left out: no SMS or call consent is kept here yet.
+ * channels are left out: no SMS or call consent is kept here yet. read counts
+ * every item of the page, the left-out ones too: a page of SMS changes alone
+ * is no end of the list.
  *
  * @param array $answer pg_iys_answer()
- * @return array changes (email, status approved|refused, at), after
+ * @return array changes (email, status approved|refused, at), after, read
  */
 function pg_iys_changes_parse($answer)
 {
     $data = $answer['data'];
-    $result = array('changes' => array(), 'after' => '');
+    $result = array('changes' => array(), 'after' => '', 'read' => 0);
 
     if (($answer['outcome'] !== 'ok') || !is_array($data)) {
         return $result;
@@ -409,6 +411,8 @@ function pg_iys_changes_parse($answer)
     }
 
     foreach ((isset($data['list']) && is_array($data['list'])) ? $data['list'] : array() as $item) {
+        $result['read']++;
+
         if (!is_array($item) || !isset($item['type'], $item['status'], $item['recipient']) || ($item['type'] !== 'EPOSTA')) {
             continue;
         }
@@ -646,7 +650,9 @@ function pg_iys_pull($app, $pages = 10)
         $after = $read['after'];
         pg_iys_state_save(array('pull_after' => $after));
 
-        if (count($read['changes']) === 0) {
+        // An empty page ends the list. A page of other channels' changes
+        // alone does not: an e-mail refusal behind it is applied this run.
+        if ($read['read'] === 0) {
             break;
         }
     }

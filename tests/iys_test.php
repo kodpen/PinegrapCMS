@@ -150,5 +150,18 @@ function test_iys_changes_parse()
 		array('email' => 'can@example.com', 'status' => 'approved', 'at' => 0),
 	), $read['changes']);
 
-	pg_assert_same(array('changes' => array(), 'after' => ''), pg_iys_changes_parse(pg_iys_answer(iys_test_response(500, ''))));
+	pg_assert_same(6, $read['read'], 'every item of the page counts, the left-out channels too');
+	pg_assert_same(array('changes' => array(), 'after' => '', 'read' => 0), pg_iys_changes_parse(pg_iys_answer(iys_test_response(500, ''))));
+
+	// A page of SMS changes alone still moves the pull on to the next page:
+	// an e-mail refusal behind it is applied in the same run.
+	$sms = pg_iys_changes_parse(pg_iys_answer(iys_test_response(200, array(
+		'after' => 'cursor-3',
+		'list'  => array(array('type' => 'MESAJ', 'status' => 'RET', 'recipient' => '+905321234567')),
+	))));
+	pg_assert_same(array(), $sms['changes']);
+	pg_assert_same(1, $sms['read']);
+
+	$pull = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
+	pg_assert_contains("if (\$read['read'] === 0) {", $pull, 'the pull stops on an empty page, not on a page without e-mail changes');
 }
