@@ -1060,12 +1060,7 @@ if (!$_POST) {
                 // recipient's field is not a duplicate id that tagin never reaches.
                 $shipment_numbers_field = 'ship_to_id_tracking_numbers_' . $ship_to_id;
 
-                $output_shipping_tracking_numbers_field = $liveform->output_field(array('type'=>'text', 'id'=>$shipment_numbers_field, 'name'=>'ship_to_id_' . $ship_to_id . '_tracking_numbers','class'=>'form-control tagin min-height-tagin' )) . '
-                <script>
-                    if (document.getElementById("' . $shipment_numbers_field . '")) {
-                        tagin(document.getElementById("' . $shipment_numbers_field . '"));
-                    }
-                </script>';
+                $output_shipping_tracking_numbers_field = $liveform->output_field(array('type'=>'text', 'id'=>$shipment_numbers_field, 'name'=>'ship_to_id_' . $ship_to_id . '_tracking_numbers','class'=>'form-control tagin min-height-tagin', 'data-pg-chips' => '' )) . pg_fields_script();
                     
                 }
 

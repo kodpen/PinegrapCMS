@@ -189,7 +189,11 @@ function main() {
     out.date_set = { value: get('day').value, heard: heard };
     a.win.pgDateTimeField.set('#start', '2026-02-01 00:30');
     a.win.pgDateTimeField.set('#cutoff', '13:45');
+    var tags = get('tags'), removed = [];
+    tags.nextElementSibling = { classList: { contains: function (c) { return c === 'tagin-wrapper'; } }, parentNode: { removeChild: function (n) { removed.push(n === tags.nextElementSibling); } } };
+    a.calls.length = 0;
     a.win.pgChips.set('#tags', ['x', 'y']);
+    out.chips_redraw = { removed: removed, calls: a.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
     a.win.pgChips.set('#classes', ['x', 'y']);
     out.texts = [get('start').value, get('cutoff').value, get('tags').value, get('classes').value];
 
@@ -297,6 +301,7 @@ function test_pg_fields_set_writes_the_posted_field()
 		$r['date_set'],
 		'one bubbling change per set(), none to a listener after off()'
 	);
+	pg_assert_same(array('removed' => array(true), 'calls' => array('tagin:tags')), $r['chips_redraw'], 'tagin does not hear change: the old chips go and tagin draws the new value');
 	pg_assert_same(array('1/2/2026 12:30 AM', '1:45 PM', 'x,y', 'x y'), $r['texts'], 'site text in the posted field');
 	pg_assert_same(
 		array('get' => array('1', '3'), 'redraw' => array(array('trigger', 'zones', 'change.select2'))),
