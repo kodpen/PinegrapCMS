@@ -4,7 +4,9 @@
  * Marketplace products (marketplace_products.php): reading the store's
  * catalogue from the marketplace a stretch at a time, the steps on each row
  * (accept, pick another product, not sold here, remove a match, undo), the
- * picture grid that picks a shop product, and accepting many at once.
+ * picture grid that picks a shop product, and accepting many at once. In the
+ * shop view: matching a product under its own code or a typed one, sending
+ * it now, removing its match, and the same for the ticked ones.
  *
  * Every step is a POST to the screen, answered in JSON. A row step answers the
  * row drawn again in its new state; it stays where it is, so the operator sees
@@ -253,7 +255,17 @@
             var row = button.closest('[data-mp-row]');
             var act = button.getAttribute('data-mp-act');
 
-            if (act === 'accept') {
+            if (row.hasAttribute('data-mp-shop')) {
+                if (act === 'code') {
+                    editCode(row);
+                } else if (act === 'shop_remove') {
+                    if (window.confirm(label('confirm_remove', ['1']))) {
+                        shopStep(act, [row.getAttribute('data-mp-row')], button);
+                    }
+                } else {
+                    shopStep(act, [row.getAttribute('data-mp-row')], button);
+                }
+            } else if (act === 'accept') {
                 rowStep(row, 'accept', { product_id: button.getAttribute('data-mp-product') });
             } else if (act === 'pick') {
                 openPicker(row);
@@ -329,12 +341,152 @@
             updateBulk();
         });
 
-        document.getElementById('mpp-bulk-accept').addEventListener('click', function () {
-            var ids = selected();
+        var bulkAccept = document.getElementById('mpp-bulk-accept');
 
-            if (ids.length) {
-                acceptMany('accept_many', { ids: ids }, this);
+        if (bulkAccept) {
+            bulkAccept.addEventListener('click', function () {
+                var ids = selected();
+
+                if (ids.length) {
+                    acceptMany('accept_many', { ids: ids }, this);
+                }
+            });
+        }
+    }
+
+    /* -------------------------------------------------------- the shop view */
+
+    // One step on some products of the shop view (none for "send all"). The
+    // rows it changed come back drawn again and take their old places.
+    function shopStep(action, ids, button) {
+        if (button) {
+            button.disabled = true;
+        }
+
+        ids.forEach(function (id) {
+            var row = list && list.querySelector('[data-mp-row="' + id + '"]');
+
+            if (row) {
+                row.classList.add('is-busy');
             }
+        });
+
+        return post(action, { ids: ids }).then(function (answer) {
+            if (button) {
+                button.disabled = false;
+            }
+
+            // A redrawn row keeps its tick, so the next step can take the same
+            // products (match them, then send them).
+            Object.keys(answer.rows || {}).forEach(function (id) {
+                var row = list && list.querySelector('[data-mp-row="' + id + '"]');
+
+                if (row) {
+                    var box = row.querySelector('[data-mp-select]');
+                    var ticked = box ? box.checked : false;
+                    var fresh = replaceRow(row, answer.rows[id]);
+                    var freshBox = fresh ? fresh.querySelector('[data-mp-select]') : null;
+
+                    if (freshBox) {
+                        freshBox.checked = ticked;
+                    }
+                }
+            });
+
+            if (list) {
+                list.querySelectorAll('.is-busy').forEach(function (row) { row.classList.remove('is-busy'); });
+            }
+
+            setCounts(answer.counts);
+            updateBulk();
+
+            if (answer.error) {
+                flash(answer.error, 'warning');
+            } else if (answer.message) {
+                flash(answer.message, 'success');
+            }
+
+            return answer;
+        });
+    }
+
+    document.querySelectorAll('[data-mp-bulk]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var action = button.getAttribute('data-mp-bulk');
+            var ids = (action === 'shop_send_all') ? [] : selected();
+
+            if ((action !== 'shop_send_all') && !ids.length) {
+                return;
+            }
+
+            if ((action === 'shop_remove') && !window.confirm(label('confirm_remove', [number(ids.length)]))) {
+                return;
+            }
+
+            shopStep(action, ids, button);
+        });
+    });
+
+    // The code a product is sent to, typed in its own row: empty means its
+    // own code (data-mp-own), which the hint under the box names.
+    function editCode(row) {
+        var cell = row.querySelector('.mpp-side.shop');
+
+        if (!cell || cell.querySelector('.mpp-code-edit')) {
+            return;
+        }
+
+        var before = cell.innerHTML;
+        var form = element('form', 'mpp-code-edit');
+        var input = element('input', 'form-control form-control-sm');
+        var save = element('button', 'btn btn-sm btn-primary', label('save'));
+        var cancel = element('button', 'btn btn-sm btn-ghost', label('cancel'));
+
+        input.type = 'text';
+        input.maxLength = 255;
+        input.value = row.getAttribute('data-mp-code') || '';
+        input.setAttribute('aria-label', label('code'));
+        input.placeholder = label('code');
+        save.type = 'submit';
+        cancel.type = 'button';
+
+        form.appendChild(input);
+        form.appendChild(save);
+        form.appendChild(cancel);
+
+        if (row.getAttribute('data-mp-own')) {
+            form.appendChild(element('small', '', label('code_hint', [row.getAttribute('data-mp-own')])));
+        }
+
+        cell.innerHTML = '';
+        cell.appendChild(form);
+        input.focus();
+
+        cancel.addEventListener('click', function () {
+            cell.innerHTML = before;
+        });
+
+        form.addEventListener('submit', function (event) {
+            var id = row.getAttribute('data-mp-row');
+
+            event.preventDefault();
+            save.disabled = true;
+
+            post('shop_code', { id: id, code: input.value.trim() }).then(function (answer) {
+                save.disabled = false;
+
+                if (!answer.ok) {
+                    flash(answer.error || label('failed'), 'warning');
+                    input.focus();
+                    return;
+                }
+
+                if (answer.rows && answer.rows[id]) {
+                    replaceRow(row, answer.rows[id]);
+                }
+
+                setCounts(answer.counts);
+            });
         });
     }
 

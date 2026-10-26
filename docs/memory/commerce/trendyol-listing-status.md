@@ -22,7 +22,7 @@ description: Trendyol listing approval read onto the mapping row: the two filter
 - Matching a product again clears `remote_id` (the old code's content id); its new code is read.
 
 ## What does the screen show?
-- Matched products, for a connector with `listing_status`: "On Trendyol" once `remote_id` is set, "Rejected" with the reason, "Awaiting approval" for an active row without it; a note on a non-error row is shown under the code.
+- Shop view of `marketplace_products.php` (`mp_matches_listing_state()`), for a connector with `listing_status`: "On Trendyol" once `remote_id` is set, "Rejected" with the reason, "Awaiting approval" for an active row without it; the row's `last_error` is shown under the code.
 
 ## What is not stored?
 - `productUrl`, `onSale`: no column. `commission`: `trendyol-listing-update.md`.
