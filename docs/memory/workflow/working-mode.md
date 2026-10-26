@@ -12,7 +12,7 @@ description: Working rules (2026-10-25) for every session: why they exist, one o
 - From green CI to the next step: `session-lifecycle.md`.
 
 ## Are issues used?
-- No: no claim, hand-off, decision request or follow-up issue. A claim is a draft PR, a hand-off is the PR itself, and a question for the owner is asked in the session's reply or under `## Questions for the owner` in the PR body (`coordinator.md`), then kept in the plan file's open questions.
+- No: no claim, hand-off, decision request or follow-up issue. A claim is a draft PR, a hand-off is the PR itself, and a question for the owner is asked in the session's reply and under `## Questions for the owner` in the PR body (`session-lifecycle.md`), kept in the plan file's open questions until the session's next PR records the answer.
 
 ## How much checking, how many agents?
 - The tests of your area and what the change touches, no sandbox without a reason, no sub-agents or review chains: `session-checks.md`.
