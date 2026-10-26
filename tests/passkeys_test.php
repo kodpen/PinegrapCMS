@@ -553,3 +553,14 @@ function test_passkeys_passwordless_refusal_words()
 	pg_assert_same($plain, pg_passkey_refusal('blocked', 'signin'));
 	pg_assert_true(pg_passkey_refusal('passwordless_off', 'signin') !== $plain, 'switched off has its own sentence');
 }
+
+// Passkeys are offered in the username field's autofill only on screens that
+// only sign in (the login screen, the login widget); a screen that also
+// registers keeps its address field for the new account.
+function test_passkeys_autofill_only_on_sign_in_screens()
+{
+	pg_assert_true(pg_passkey_autofill_for(false));
+	pg_assert_true(pg_passkey_autofill_for('none'));
+	pg_assert_false(pg_passkey_autofill_for('create'));
+	pg_assert_false(pg_passkey_autofill_for('membership'));
+}

@@ -929,7 +929,7 @@ function pg_signin_button($key, $send_to = '', $signup = 'create')
 function pg_signin_buttons($send_to = '', $signup = 'create')
 {
     // A passkey alone, when the site offers it, leads the buttons.
-    $html = function_exists('pg_passkey_signin_button') ? pg_passkey_signin_button($send_to) : '';
+    $html = function_exists('pg_passkey_signin_button') ? pg_passkey_signin_button($send_to, pg_passkey_autofill_for($signup)) : '';
 
     foreach (array_keys(pg_signin_providers()) as $key) {
         $html .= pg_signin_button($key, $send_to, $signup);

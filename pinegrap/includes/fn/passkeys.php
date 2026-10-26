@@ -898,6 +898,20 @@ function pg_passkey_passwordless_refusal($account, $email_blocked)
 }
 
 /**
+ * Whether a screen offers passkeys in its email/username field's autofill
+ * (conditional UI): only a screen that only signs in, the login screen and
+ * the login widget (pg_signin_buttons() with no sign-up, false or 'none').
+ * A screen that also registers keeps its address field for the new account.
+ *
+ * @param mixed $signup pg_signin_buttons()'s $signup
+ * @return bool
+ */
+function pg_passkey_autofill_for($signup)
+{
+    return ($signup === false) || ($signup === 'none');
+}
+
+/**
  * The "Sign in with a passkey" button printed among the social sign-in
  * buttons (pg_signin_buttons()), or '' when the site does not offer it.
  *
@@ -908,10 +922,14 @@ function pg_passkey_passwordless_refusal($account, $email_blocked)
  * surrounding form's remember-me box and the page to come back to when it
  * is refused. The script is linked once per page.
  *
- * @param string $send_to where a completed sign-in lands
+ * With $autofill the script also has the browser offer the site's passkeys
+ * in the autofill of the form's email field (pg_passkey_autofill_for()).
+ *
+ * @param string $send_to  where a completed sign-in lands
+ * @param bool   $autofill
  * @return string
  */
-function pg_passkey_signin_button($send_to = '')
+function pg_passkey_signin_button($send_to = '', $autofill = false)
 {
     static $script_linked = false;
 
@@ -934,6 +952,7 @@ function pg_passkey_signin_button($send_to = '')
 
     return '<div class="pg-signin-button pg-signin-passkey" style="margin-top:1em;text-align:center" hidden="hidden">'
         . '<button type="button" data-pg-passkey-signin="1"'
+        . ($autofill ? ' data-autofill="1"' : '')
         . ' data-options-url="' . h(PATH . SOFTWARE_DIRECTORY . '/passkey.php') . '"'
         . ' data-action="' . h(PATH . SOFTWARE_DIRECTORY . '/index.php') . '"'
         . ' data-token="' . h((string) ($_SESSION['software']['token'] ?? '')) . '"'

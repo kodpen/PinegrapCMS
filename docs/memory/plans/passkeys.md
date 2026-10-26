@@ -30,7 +30,7 @@ description: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor an
 
 - 4c Recovery codes for passkey-only accounts and adding a passkey without TOTP (waits on the open question below). (S)
 
-- 4d Conditional UI: passkeys in the username field's autofill (`mediation: 'conditional'`), same `index.php` answer. (S)
+- 4d done (#1960, core/passkey-passwordless.md): passkeys in the email field's autofill on screens that only sign in.
 
 - 4e Sessions and passkeys: a sign-in with a passkey records it on its session (`auth_tokens`); My Account › Security names the passkey beside the session and offers "Sign out and remove the passkey", and removing a passkey ends the sessions it opened. A synced passkey (iCloud, Google) is one credential on many devices: removing it stops them all. Needs a column (open question). (S)
 
