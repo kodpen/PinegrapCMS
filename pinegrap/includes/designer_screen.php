@@ -256,6 +256,10 @@ function pg_designer_screen_render($ctx)
         // the classic Dynamic Region screen admits (administrators); the
         // endpoint (dynamic_region_code) checks the same.
         'dynamicRegionCode' => ((int)$user['role'] === 0),
+        // A designer region becomes a designer-only shared component for the
+        // roles edit_designer_region.php admits (administrators and
+        // designers); shared_component's from_designer_region checks the same.
+        'designerRegionConvert' => ((int)$user['role'] <= 1),
         'exitUrl'       => pg_safe_back_url($ctx['send_to'], ($ctx['from_pages'] ? 'view_pages.php' : 'view_system_styles.php')),
         'access'        => $access,
         // The schema can open shared components to content editors
@@ -1520,6 +1524,9 @@ function pg_designer_components_card($user)
             $source_cell = h(lang('Template')) . '<div class="small text-muted">' . h($tpl_name) . '</div>';
         } elseif (strpos($category, 'import:') === 0) {
             $source_cell = h(lang('Import')) . '<div class="small text-muted">' . h(substr($category, 7)) . '</div>';
+        } elseif (strpos($category, 'cregion:') === 0) {
+            // Made from a classic designer region (pg_designer_region_component()).
+            $source_cell = h(lang('Designer Region'));
         } else {
             $source_cell = '<span class="text-muted">—</span>';
         }

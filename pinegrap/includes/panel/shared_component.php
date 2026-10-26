@@ -241,6 +241,23 @@ function pg_panel_shared_component($request, $action)
             respond(array('status' => 'success', 'tree_json' => $sc_merged));
             break;
 
+        // ── FROM DESIGNER REGION (designer) ──────────────────────────────
+        // A classic designer region as a designer-only shared component, to
+        // put in place of its region node on the page being edited. The
+        // region row stays for the pages not converted; a region already
+        // made into a component gives that component back.
+        case 'from_designer_region':
+            require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
+            $sc_region = isset($request['name']) && is_string($request['name']) ? $request['name'] : '';
+            $sc_warn = array();
+            $sc_made = ($sc_region !== '') ? pg_designer_region_component($sc_region, $user, $sc_warn) : null;
+            if (!is_array($sc_made)) {
+                respond(array('status' => 'error', 'message' => lang('Record not found.')));
+            }
+            respond(array('status' => 'success', 'id' => $sc_made['id'], 'name' => $sc_made['name'],
+                          'created' => $sc_made['created'], 'warnings' => $sc_warn));
+            break;
+
         // ── SET CONTENT EDITABLE (designer) ──────────────────────────────
         // Opens a component to content editors or closes it again. Closing
         // keeps the users granted it, so opening it later needs no new grants.
