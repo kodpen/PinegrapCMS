@@ -21,6 +21,7 @@ description: Plan (approved 2026-10-26): match a shop's products to its marketpl
 
 ## Open questions?
 - Whether n11 products sent from the n11 warehouse (`sender=N11`) should be read too; step 1 reads the default (the seller's own).
+- Owner: whether `marketplace_product_map.remote_code` (2026.4.4, `utf8mb4_unicode_ci`) becomes `utf8mb4_bin` in a schema step. Step 1 compares it byte for byte in its own queries; the order import's lookup by stock code (`orders.php`) still treats "ABC-1" and "abc-1" as one code.
 
 ## Where to start?
 - Step 2, after `docs/memory/commerce/README.md`, `marketplace-bulk-matching.md` and `marketplace-outbound-layer.md`. One step per PR, in order.
