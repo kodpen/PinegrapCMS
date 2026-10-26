@@ -20,7 +20,7 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 - ERP writes no `products.price` (account prices are `erp_account_prices`). A new writer adds the call, or the reference price misses its change.
 
 ## How is it read back?
-- `GET /products/{id}/price-history`: product-price-history-api.md. No panel screen reads the rows yet.
+- API: product-price-history-api.md; reference price of a window: product-reference-price.md. No panel screen reads the rows yet.
 - Kept 13 months, trimmed daily: product-price-history-retention.md.
 
 ## What does the upgrade write?
@@ -33,6 +33,6 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 - A base currency change does not rewrite `products.price`; rows in the new currency appear as products are saved.
 
 ## How was it verified?
-- `tests/price_history_test.php`; on MariaDB 10.11: the step twice (second skipped all), the MyISAM fallback, a fresh install, each writer above (dry runs wrote nothing).
+- `tests/price_history_test.php`; MariaDB 10.11: step twice, MyISAM fallback, fresh install, each writer (dry runs wrote nothing).
 
 Related: docs/memory/plans/price-history-reference-price.md, docs/memory/commerce/variant-price-rules.md, docs/memory/commerce/product-compare-at-price.md

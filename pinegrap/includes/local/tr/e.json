@@ -176,6 +176,7 @@
     "Each proposed task is an object with a title.": "Önerilen her görev, başlığı olan bir nesnedir.",
     "Each result is an object with a hash and a text.": "Her sonuç hash ve text alanları olan bir nesnedir.",
     "Each rule contributes a score. Sensitivity sets how much evidence is needed before a request counts as an attack.": "Her kural bir puan ekler. Hassasiyet, bir isteğin saldırı sayılması için ne kadar kanıt gerektiğini belirler.",
+    "Each tool is an object of {name, rule}; rule is off, on or approve.": "Her araç bir {name, rule} nesnesidir; rule off, on ya da approve olur.",
     "Each value goes into the address as the record stores it (?name=value). A value that is empty, longer than 100 characters or on several lines is left out.": "Her değer adrese kayıtta saklandığı gibi eklenir (?ad=değer). Boş, 100 karakterden uzun ya da birden çok satıra yayılan bir değer eklenmez.",
     "Each value must be an object of {name, value}.": "Her değer {name, value} biçiminde bir nesne olmalı.",
     "Each version runs in its own request, so a request limit of the web server (FastCGI, proxy) bounds one version rather than the whole upgrade.": "Her sürüm kendi isteğinde çalışır; bu yüzden web sunucusunun istek sınırı (FastCGI, proxy) yükseltmenin tamamını değil yalnızca tek bir sürümü sınırlar.",

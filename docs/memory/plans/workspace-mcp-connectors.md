@@ -1,6 +1,6 @@
 ---
 name: workspace-mcp-connectors
-description: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521; answers 1, 3, 4): Workspace MCP client like Claude's connectors: protocol, card fixes, catalogue, URL-only add, API
+description: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521, 13 #1800; answers 1, 3, 4): Workspace MCP client like Claude's connectors: protocol, card fixes, catalogue, URL-only add, API
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -26,7 +26,7 @@ No schema; one PR each.
 7. Unseen: random first id in `pg_mcp_client_next_id()`. 8. Unseen: http.php joins repeated WWW-Authenticate.
 9. Card: tools open after save while none is on; the add form keeps its input (not the secret) after an error; Pinegrap AI's last error; GET list, refresh.
 10. Verify first (waf/): connect_client.php (CIMD) may meet `block_unknown_bots` or the country restriction; exempt by script as `waf_is_health_request()`; waf.php: PRs #1386, #1401.
-11. Catalogue, its GET (Q1, Q5). 12. URL-only add, probe. 13. Three-state rules, bulk declare (Q3).
+11. Catalogue, its GET (Q1, Q5). 12. URL-only add, probe. 13. Three-state rules, bulk declare (Q3): panel #1471, API #1800.
 
 ## Which questions are answered? (owner, 2026-10-24: 1 a, 3 b, 4 b; 2, 5 open)
 1. Catalogue: (a) bundled list, (b) MCP Registry fetch, (c) a plus a registry search → a.
@@ -37,5 +37,5 @@ No schema; one PR each.
 
 ## Where to start?
 - Owner: ai.pinegrap.com gives 502; meanwhile turn a tool on, use workspace_mcp.php.
-- 1-6, 9, 11, 12, 13a are in; next: 13 (bulk declare), other API routes, 10 (WAF), 7-8.
+- 1-6, 9, 11-13 are in; next: 10 (WAF), 7-8.
 - Overlap: plans/workspace-agent-handles.md slice 5 (avatars), plans/workspace-mcp-capabilities.md (our server), plans/workspace-assistant-key-setup.md (Pinegrap AI card); GitHub OAuth: model B, plans/reverse-oauth-leftovers.md.

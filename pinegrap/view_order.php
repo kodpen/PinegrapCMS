@@ -949,12 +949,7 @@ if (!$_POST) {
                     }
 
                     $output_ship_date_field =
-                        $liveform->output_field(array('class'=>'form-control', 'type' => 'text', 'id' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_ship_date', 'name' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_ship_date', 'size' => '10', 'maxlength' => '10')) . '
-                        <script>
-                            $("#ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_ship_date").datepicker({
-                                dateFormat: date_picker_format
-                            });
-                        </script>';
+                        $liveform->output_field(array('class'=>'form-control', 'type' => 'text', 'id' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_ship_date', 'name' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_ship_date', 'size' => '10', 'maxlength' => '10', 'data-pg-date' => 'plain')) . pg_fields_script();
 
                     // If the form has not been submitted yet, and the delivery date is not blank,
                     // then prefill delivery date field.
@@ -966,12 +961,7 @@ if (!$_POST) {
                     }
 
                     $output_delivery_date_field =
-                        $liveform->output_field(array('class'=>'form-control', 'type' => 'text', 'id' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_delivery_date', 'name' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_delivery_date', 'size' => '10', 'maxlength' => '10')) . '
-                        <script>
-                            $("#ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_delivery_date").datepicker({
-                                dateFormat: date_picker_format
-                            });
-                        </script>';
+                        $liveform->output_field(array('class'=>'form-control', 'type' => 'text', 'id' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_delivery_date', 'name' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_delivery_date', 'size' => '10', 'maxlength' => '10', 'data-pg-date' => 'plain')) . pg_fields_script();
  
                     // The parcels of this address, each with its carrier, its
                     // status and the format warning the write path set
@@ -3187,7 +3177,7 @@ if (!$_POST) {
         // panel can know, and it is what lets the pending-refund queue drain.
         $order_id = (int) $liveform->get('id');
 
-        if (!db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'")) {
+        if (!pg_schema_has('orders', 'refund_status')) {
             output_error(lang('The refund columns do not exist yet. Please run the software upgrade to create them.'));
         }
 

@@ -35,9 +35,12 @@ $liveform = new liveform('view_performance_log');
 // CSRF-token + POST pattern so a stray GET URL can't wipe diagnostics.
 // We TRUNCATE rather than DELETE because the table has no foreign-key
 // dependencies and TRUNCATE resets AUTO_INCREMENT in one step.
+// perf_stats arrives with an upgrade; the reset and the screen both ask here.
+$table_exists = pg_schema_has('perf_stats');
+
 if (isset($_POST['submit_clear'])) {
     validate_token_field();
-    if (mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'perf_stats'")) > 0) {
+    if ($table_exists) {
         mysqli_query(db::$con, "TRUNCATE perf_stats") or output_error('Query failed.');
         mysqli_query(db::$con, "TRUNCATE perf_log") or output_error('Query failed.');
         log_activity(lang('cleared all performance log data'), $_SESSION['sessionusername']);
@@ -144,8 +147,6 @@ if (defined('PERF_MONITOR_ENABLED') && !PERF_MONITOR_ENABLED) {
     echo output_footer();
     exit;
 }
-
-$table_exists = mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'perf_stats'")) > 0;
 
 if (!$table_exists) {
     echo pg_page_shell(array(

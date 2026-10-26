@@ -716,3 +716,55 @@ JS;
 	pg_assert_true(strpos($out, 'href="/view-order?id=8"') !== false, 'the order link');
 	pg_assert_same(1, substr_count($out, 'badge text-bg-secondary'), 'the cancelled badge on the cancelled order only');
 }
+
+// The cart list lands in the cart link and beside the cart's rows, never
+// in them; its starter is a mini cart the site draws.
+function test_widget_lists_editor_cart()
+{
+	$stubs = _widget_lists_editor_trees_js() . <<<'JS'
+var bar11  = N('semantic', { tag: 'div' });
+var root11 = N('root', {}, [bar11]);
+_sharedCache[11] = { tree: root11, system_region_config: JSON.stringify({ regionType: 'cart_link' }) };
+var side12 = N('semantic', { tag: 'aside' });
+var row12  = N('semantic', { tag: 'tr' });
+var inRow12 = N('loop_area', { source: 'cart.items' }, []);
+var main12 = N('loop_area', {}, [row12, inRow12]);
+var root12 = N('root', {}, [side12, main12]);
+_sharedCache[12] = { tree: root12, system_region_config: JSON.stringify({ regionType: 'shopping_cart' }) };
+function createNode(type, props, children) { return N(type, props, children); }
+function _sdUsesBootstrap() { return true; }
+JS;
+	$script = <<<'JS'
+console.log(JSON.stringify({
+    link:   _sdListPlaceOk(palette('cart.items'), bar11),
+    beside: _sdListPlaceOk(palette('cart.items'), side12),
+    inRow:  _sdListPlaceOk(palette('cart.items'), row12),
+    order:  _sdListPlaceOk(palette('order.items'), bar11),
+    band:   _sdListBand(inRow12).text,
+    tree:   N('root', {}, [_sdListStarter('cart.items')])
+}));
+JS;
+	$a = _widget_lists_editor_run_js($script, _widget_lists_editor_calendar_js() . $stubs);
+	if ($a === null) {
+		return;
+	}
+	pg_assert_true($a['link'], 'in the cart link');
+	pg_assert_true($a['beside'], 'beside the cart rows');
+	pg_assert_true(!$a['inRow'], 'never in a cart row');
+	pg_assert_true(!$a['order'], 'no order list in the cart link');
+	pg_assert_same('Products in the cart: inside the item loop, nothing is drawn', $a['band']);
+
+	$scope = pg_sw_finish_open(array('sid' => 52, 'kind' => 'cart_link', 'email' => false));
+	try {
+		$html = trim(_render_tree_node($a['tree'], 0, 0));
+		pg_sw_list_publish('cart', pg_sw_list_cart_rows(_widget_cart_items()));
+		$html = _pg_member_apply_tokens($html, array('__ship_to_key' => '0'));
+	} finally {
+		pg_sw_finish_close();
+	}
+	$out = pg_sw_finish_widget_html($html, $scope);
+	pg_assert_same(false, strpos($out, '^^'));
+	pg_assert_same(3, substr_count($out, 'list-group-item d-flex'), 'a line per product');
+	pg_assert_true(strpos($out, '>Mug &amp; cup</a>') !== false, 'the display name');
+	pg_assert_same(3, substr_count($out, 'remove_item_from_cart.php'), 'a remove link per line');
+}

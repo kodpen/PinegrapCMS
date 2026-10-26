@@ -1,6 +1,6 @@
 ---
 name: payment-driver-layer
-description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 5 done; 3b, 4a-4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
+description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 4a, 5 done; 3b, 4b, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 ---
 
 ## What did the owner decide?
@@ -18,9 +18,8 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 5 done; 3b, 4a-4c open): p
 - 2026-10-20: a new gateway or method value is appended to the `config.ecommerce_payment_gateway` / `orders.payment_method` ENUM by its step's migration (4.48 `install_column_info` append); no VARCHAR change, so add-ons cannot add one. Refund and cancel go to the order's own driver, card orders included (`commerce/payment-refunds.md`).
 
 ## What remains?
-- Done: 1 contract and registry (PR #740), 2 iyzico (#812), 2b its 3-D Secure return (#1710), 3a Stripe PaymentIntents (#937), 5 refund and cancel through the driver (#873).
+- Done: 1 contract and registry (PR #740), 2 iyzico (#812), 2b its 3-D Secure return (#1710), 3a Stripe PaymentIntents (#937), 4a one list of checkout methods (#1743, `commerce/payment-method-lists.md`), 5 refund and cancel through the driver (#873).
 3b. Stripe webhook (`payment_callback.php?driver=stripe`, `notify()` with signature check, a `webhook_secret` field): a payment that succeeds after the visitor left, a dispute or refund made on Stripe's screen (M).
-4a. One list of checkout methods (S/M): a helper giving the methods offered for an order (config switches plus enabled redirect drivers), read by every list in `commerce/payment-method-lists.md`, so a redirect driver needs no per-screen edits. Fixing its Pay With Iyzico gaps: ask in 4a's PR.
 4b. PayPal Checkout v2 driver (M), after 4a: a redirect method appended to `orders.payment_method` by a 2026.11.0 step; Orders v2 create, approve redirect, capture in `complete()`; refund by capture id; no webhook needed.
 4c. PayTR driver (M), after 3b's callback: it confirms payments only server to server, so orders complete from the callback (3b's owner question); its iframe needs frame-src CSP.
 6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
@@ -32,4 +31,4 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 5 done; 3b, 4a-4c open): p
 - Stripe's fields are drawn only by the designer's express order widget; classic checkout pages and order preview too? Owner.
 
 ## Where to start?
-- 4a (no owner question): `commerce/payment-method-lists.md`, then `commerce/payment-drivers.md`. 3b: a generic `payment_callback.php?driver=<key>` calling `notify()`, Stripe's events signed with the webhook secret (`commerce/payment-driver-stripe.md`).
+- 4b: `commerce/payment-method-lists.md` (what a new redirect method still needs: the ENUM step), then `commerce/payment-drivers.md`. 3b: a generic `payment_callback.php?driver=<key>` calling `notify()`, Stripe's events signed with the webhook secret (`commerce/payment-driver-stripe.md`).

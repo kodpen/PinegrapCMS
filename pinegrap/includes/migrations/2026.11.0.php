@@ -67,6 +67,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_note_revision(); // 11.0.84
 	upgrade_2026_11_0_workspace_note_deletions(); // 11.0.85
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
+	upgrade_2026_11_0_audit_feed_tokens();      // 11.0.38
 
 }
 
@@ -2236,5 +2237,50 @@ function upgrade_2026_11_0_marketplace_columns() {
 	install_add_column('marketplace_order_map', 'invoice_sent', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Marketplaces: a listing can keep the commission rate the marketplace reports for it, and an imported order can record when its invoice link was sent to the marketplace.');
+
+}
+
+// Feed tokens in clear in the audit trail (2026.11.0, 11.0.38;
+// pg_audit_remask() in includes/fn/audit.php).
+//
+// Until JSON text was decoded before masking (#905), a save of the SEO
+// settings stored config.product_feeds in its audit_log line as the text it
+// was, whole or cut to its start, with the feed tokens inside it in clear.
+// Those lines are masked again in place by today's rule; they are kept, so
+// the record of who changed the SEO settings stays. A line already masked
+// comes back unchanged and is not written, so the step can run again.
+function upgrade_2026_11_0_audit_feed_tokens() {
+
+	if (!install_table_exists('audit_log')) {
+		install_skipped('audit_log: no table, no feed token to mask');
+
+		return;
+	}
+
+	$masked = 0;
+
+	foreach (db_items("SELECT id, before_json, after_json FROM audit_log WHERE (entity_type = 'settings') AND (label = 'seo')") as $row) {
+		$before = pg_audit_remask($row['before_json']);
+		$after = pg_audit_remask($row['after_json']);
+
+		if (($before === $row['before_json']) && ($after === $row['after_json'])) {
+			continue;
+		}
+
+		db("UPDATE audit_log SET
+			before_json = " . (($before === null) ? 'NULL' : "'" . e($before) . "'") . ",
+			after_json = " . (($after === null) ? 'NULL' : "'" . e($after) . "'") . "
+			WHERE id = '" . (int) $row['id'] . "'");
+
+		$masked++;
+	}
+
+	if ($masked > 0) {
+		install_ran('audit_log: the feed tokens of ' . $masked . ' SEO settings line(s) masked');
+	} else {
+		install_skipped('audit_log: no SEO settings line keeps a feed token in clear');
+	}
+
+	install_note('Audit trail: the product feed addresses that early SEO settings lines kept in clear are masked; the lines stay.');
 
 }

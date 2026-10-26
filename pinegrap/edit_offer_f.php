@@ -74,7 +74,7 @@ function _pg_offer_group_discount_column()
 {
     static $exists = null;
     if ($exists === null) {
-        $exists = (bool) db_item("SHOW COLUMNS FROM offer_actions LIKE 'discount_product_group_id'");
+        $exists = pg_schema_has('offer_actions', 'discount_product_group_id');
     }
     return $exists;
 }
@@ -128,7 +128,7 @@ function _pg_offer_target_column()
 {
     static $exists = null;
     if ($exists === null) {
-        $exists = (bool) db_item("SHOW COLUMNS FROM offer_actions LIKE 'discount_product_target'");
+        $exists = pg_schema_has('offer_actions', 'discount_product_target');
     }
     return $exists;
 }
@@ -139,7 +139,7 @@ function _pg_offer_conditions_table()
 {
     static $exists = null;
     if ($exists === null) {
-        $exists = (bool) db_item("SHOW TABLES LIKE 'offer_conditions'");
+        $exists = pg_schema_has('offer_conditions');
     }
     return $exists;
 }

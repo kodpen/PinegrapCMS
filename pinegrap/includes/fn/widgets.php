@@ -81,6 +81,7 @@ function pg_sw_type_labels()
         'shipping_method'     => lang('Shipping Method'),
         'billing_information' => lang('Billing Information'),
         'order_preview'       => lang('Order Preview'),
+        'menu_region'         => lang('Menu'),
     );
 }
 

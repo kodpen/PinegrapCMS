@@ -20,14 +20,15 @@
 
 include('init.php');
 
-// if this is not the request that PayPal Express Checkout returns,
-// then validate token field.  PayPal Express Checkout uses "token" for a query string parameter,
-// like we do, so that is why we can't validate the token.  This should not expose any major problem.
-if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return') {
-    // Pay With Iyzico callback is a cross-site POST from iyzico and does not include the CSRF token field
-    if (($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
-        validate_token_field();
-    }
+// The gateway callbacks (PayPal Express Checkout and the payment drivers'
+// returns: iyzipay 3-D Secure, Pay With Iyzico, any driver's <key>_return)
+// arrive from the payment service, cross-site, and carry no form token: the
+// token check and the cookie re-stamp skip them all (pg_payment_is_return_mode()),
+// as express_order.php does.
+$is_gateway_return = pg_payment_is_return_mode($_GET['mode'] ?? '');
+
+if (!$is_gateway_return) {
+    validate_token_field();
 
     // The 3-D Secure and PayPal returns are cross-site POSTs; re-issue the
     // session cookie with SameSite=None (HttpOnly, Secure on https) so they
@@ -43,10 +44,7 @@ if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode']
 // array) stops here, as on the shipping address and arrival step, instead of
 // placing the order without them. A gateway callback brings back the id its
 // submit was checked with.
-if (
-    !in_array(($_GET['mode'] ?? ''), array('paypal_express_checkout_return', 'iyzipay_threedsecure_return', 'pay_with_iyzico_return'), true)
-    && !pg_order_page_known($_POST['page_id'] ?? '', 'order preview')
-) {
+if (!$is_gateway_return && !pg_order_page_known($_POST['page_id'] ?? '', 'order preview')) {
     output_error(lang('An order preview page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 

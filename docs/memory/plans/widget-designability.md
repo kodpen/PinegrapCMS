@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W10 #1783, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets
+description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W10, W11, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets
 ---
 
 ## What is built, and why?
@@ -32,7 +32,7 @@ OR in conditions; pg-hide-if-empty everywhere; words beside a value; code areas;
 - W4 done (#1665, [[widget-condition-panel]]).
 - W5 Layout gallery: Default, From templates, On this site; Try/Keep/Cancel. Not waiting.
 - W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 Entity fields: product family #1809; the rest by family ([[widget-entity-fields]]).
-- W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 Cart lists, mini cart. W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 done (#1758).
+- W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
 - W15 done (#1734). W16 Placed beats pushed; old HTML tokens drawn by default parts. Not waiting.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.

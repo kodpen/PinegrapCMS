@@ -744,6 +744,14 @@ function pg_di_node($node, $ctx)
     // Never part of the layout.
     if (in_array($tag, array('script', 'style', 'link', 'meta', 'title', 'noscript', 'base'), true)) return null;
 
+    // A designer region's PHP block, raw block or region tag, lifted out
+    // before parsing (pg_di_designer_region_tree()).
+    if (($tag === 'pg-php' || $tag === 'pg-raw' || $tag === 'pg-region') && !empty($ctx->lifted)) {
+        $key = substr($tag, 3) . ':' . (int)$node->getAttribute('data-i');
+        if (!isset($ctx->lifted[$key])) return null;
+        $ctx->consumed[$key] = isset($ctx->consumed[$key]) ? $ctx->consumed[$key] + 1 : 1;
+        return $ctx->lifted[$key];
+    }
     // Inline SVG placeholder (see pg_designer_import_html).
     if ($tag === 'pg-svg') {
         $i = (int)$node->getAttribute('data-i');
@@ -767,15 +775,19 @@ function pg_di_node($node, $ctx)
     $id    = trim((string)$node->getAttribute('id'));
     $attrs = pg_di_attrs($node, $ctx, array('class', 'id'));
 
+    // An element holding a lifted block is built from nodes: as rich text
+    // the placeholder would stay a bare tag inside the text.
+    $holds = !empty($ctx->lifted) && pg_di_holds_lifted($node);
+
     // Headings and paragraphs keep rich inline markup — their `text` is
     // rendered as innerHTML by the designer.
-    if (preg_match('/^h[1-6]$/', $tag)) {
+    if (!$holds && preg_match('/^h[1-6]$/', $tag)) {
         return pg_di_mk('content', array_merge(array(
             'contentType' => 'heading', 'tag' => $tag,
             'text' => pg_di_inner_html($node, $ctx), 'align' => '', 'cssClass' => $cls,
         ), $id !== '' ? array('id' => $id) : array(), $attrs ? array('_attrs' => $attrs) : array()));
     }
-    if ($tag === 'p') {
+    if ($tag === 'p' && !$holds) {
         // A paragraph of links and nothing else (a row of buttons) is built
         // from elements: as one text its links could not be selected, edited
         // or moved apart.
@@ -827,7 +839,7 @@ function pg_di_node($node, $ctx)
     // A link holding an icon of its own (<a class="btn"><i class="bi …"></i>
     // Devam</a>) is built from nodes, so the icon is one the picker changes;
     // as link text it was markup a text edit dropped.
-    if ($tag === 'a' && pg_di_only_inline_children($node) && !pg_di_has_icon_child($node)) {
+    if ($tag === 'a' && !$holds && pg_di_only_inline_children($node) && !pg_di_has_icon_child($node)) {
         $attrs = pg_di_attrs($node, $ctx, array('class', 'id', 'href', 'target', 'rel'));
         return pg_di_mk('content', array_merge(array(
             'contentType' => 'link', 'text' => pg_di_inner_html($node, $ctx),

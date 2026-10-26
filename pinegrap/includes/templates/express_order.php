@@ -1571,6 +1571,21 @@ if (!defined('PG_INIT_LOADED')) {
 	</div>
 	<?php endif ?>
 	<?php endif ?>
+	<?php
+		// The redirect drivers' methods (pg_payment_checkout_methods()), method => label.
+		foreach ($payment_driver_methods as $payment_driver_method => $payment_driver_label):
+		?>
+	<?php if ($number_of_payment_methods == 1): ?>
+	<h3><?=h($payment_driver_label)?></h3>
+	<?php else: ?>
+	<div class="radio">
+		<label>
+		<input type="radio" name="payment_method" value="<?=h($payment_driver_method)?>">
+		<?=h($payment_driver_label)?>
+		</label>
+	</div>
+	<?php endif ?>
+	<?php endforeach ?>
 	<?php if ($offline_payment): ?>
 	<?php
 		// If this is the only payment method, then show a heading.

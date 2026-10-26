@@ -100,51 +100,40 @@ function test_workspace_scheduled_next_run_29_february()
 	});
 }
 
-// A day that does not exist (29 February 2027) is not refused by the form's
-// check: strtotime() moves it to 1 March, so a single run happens on 1 March
-// and a yearly rule runs on 1 March every year. The last day (until) is
-// checked the same way: 31 February lets a daily rule run into March.
-// Pinned as it behaves.
-function test_workspace_scheduled_next_run_day_that_does_not_exist()
+// A day that does not exist (29 February 2027, 31 February) is refused by the
+// form's check with the message it gives any other bad date, for the first
+// day and for the last day (until) alike; strtotime() alone would move it
+// into March. A row stored before the check keeps the old reading: its run
+// falls on 1 March.
+function test_workspace_scheduled_rule_input_day_that_does_not_exist()
+{
+	foreach (array('2027-02-29', '2026-02-31', '2026-04-31', '2026-13-01', '2026-00-10', '2026-1-01') as $date) {
+		$checked = ws_scheduled_rule_input(array(), array('type' => 'at', 'date' => $date, 'time' => '09:00', 'repeat' => 'yearly'));
+		pg_assert_false($checked['ok'], $date . ' is refused');
+		pg_assert_same('The date is not valid.', $checked['error'], $date . ' gets the bad date message');
+	}
+
+	foreach (array('2028-02-29', '2026-02-28', '2026-12-31') as $date) {
+		$checked = ws_scheduled_rule_input(array(), array('type' => 'at', 'date' => $date, 'time' => '09:00', 'repeat' => 'none'));
+		pg_assert_true($checked['ok'], $date . ' is taken');
+		pg_assert_same($date, $checked['rule']['date'] ?? null, $date . ' is kept as written');
+	}
+
+	$until = ws_scheduled_rule_input(array(), array('type' => 'at', 'date' => '2026-02-20', 'time' => '09:00', 'repeat' => 'daily', 'until' => '2026-02-31'));
+	pg_assert_false($until['ok'], 'a last day of 2026-02-31 is refused');
+	pg_assert_same('The last day is not valid.', $until['error'], 'with the bad last day message');
+
+	$until = ws_scheduled_rule_input(array(), array('type' => 'at', 'date' => '2028-02-20', 'time' => '09:00', 'repeat' => 'daily', 'until' => '2028-02-29'));
+	pg_assert_true($until['ok'], 'a last day of 29 February in a leap year is taken');
+	pg_assert_same('2028-02-29', $until['rule']['until'] ?? null, 'and kept as written');
+}
+
+function test_workspace_scheduled_next_run_stored_day_that_does_not_exist()
 {
 	workspace_scheduled_test_in_zone('Europe/Istanbul', function () {
 		pg_assert_same('2027-03-01 09:00', workspace_scheduled_test_next(workspace_scheduled_test_rule('2027-02-29', '09:00', 'none'), '2026-10-24 10:00:00'), 'once');
 		pg_assert_same('2027-03-01 09:00', workspace_scheduled_test_next(workspace_scheduled_test_rule('2027-02-29', '09:00', 'yearly'), '2026-10-24 10:00:00'), 'yearly, first run');
 		pg_assert_same('2028-03-01 09:00', workspace_scheduled_test_next(workspace_scheduled_test_rule('2027-02-29', '09:00', 'yearly'), '2027-03-01 10:00:00'), 'yearly, then 1 March, not 29 February 2028');
-
-		// Wrong result: ws_scheduled_rule_input() takes 2027-02-29 (and
-		// 2026-02-31) as a valid date, because strtotime() does not return
-		// false for it; it should refuse it with "The date is not valid.".
-		foreach (array('2027-02-29', '2026-02-31') as $date) {
-			$checked = ws_scheduled_rule_input(array(), array('type' => 'at', 'date' => $date, 'time' => '09:00', 'repeat' => 'yearly'));
-			pg_assert_true($checked['ok'], $date . ' is taken (it should not be)');
-		}
-
-		$refused = ws_scheduled_rule_input(array(), array('type' => 'at', 'date' => '2026-13-01', 'time' => '09:00', 'repeat' => 'none'));
-		pg_assert_false($refused['ok'], 'a thirteenth month is refused');
-
-		// Wrong result too: a last day of 2026-02-31 is taken and kept as
-		// written, and the rule runs on 1, 2 and 3 March; it should be refused
-		// with "The last day is not valid.".
-		$until = ws_scheduled_rule_input(array(), array('type' => 'at', 'date' => '2026-02-20', 'time' => '09:00', 'repeat' => 'daily', 'until' => '2026-02-31'));
-		pg_assert_true($until['ok'], 'a last day of 2026-02-31 is taken (it should not be)');
-		pg_assert_same('2026-02-31', $until['rule']['until'] ?? null, 'and kept as written');
-
-		$runs = array();
-		$after = '2026-02-28 10:00:00';
-
-		for ($run = 0; $run < 5; $run++) {
-			$next = workspace_scheduled_test_next($until['rule'], $after);
-
-			if ($next === 0) {
-				break;
-			}
-
-			$runs[] = $next;
-			$after = $next . ':00';
-		}
-
-		pg_assert_same(array('2026-03-01 09:00', '2026-03-02 09:00', '2026-03-03 09:00'), $runs, 'a daily rule until 2026-02-31 runs three days into March');
 	});
 }
 
