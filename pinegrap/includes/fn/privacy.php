@@ -725,6 +725,12 @@ function pg_privacy_erase_tables()
             'decided_ip'    => '',
             'decided_agent' => '',
         )),
+        // The trail's lines about the person: the field list's columns are
+        // replaced inside before_json and after_json
+        // (_pg_privacy_erase_apply_audit_log()); who did what and when stays.
+        'audit_log' => array('find' => array('id' => 'audit_ids'), 'action' => 'anonymise', 'fields' => array(
+            'label' => '',
+        )),
         'files'                        => array('find' => array('id' => 'file_ids'), 'action' => 'delete', 'fields' => array()),
         'form_data'                    => array('find' => array('form_id' => 'form_ids', 'order_id' => 'order_ids'), 'action' => 'delete', 'fields' => array()),
         'form_signatures'              => array('find' => array('form_id' => 'form_ids', 'user_id' => 'user_ids'), 'action' => 'delete', 'fields' => array()),
@@ -771,6 +777,7 @@ function pg_privacy_erase_labels()
         'comments'                     => lang('Comments and reviews'),
         'consent_log'                  => lang('Consents'),
         'ws_approval_guests'           => lang('Workspace approvals'),
+        'audit_log'                    => lang('Audit trail'),
         'files'                        => lang('Uploaded files'),
         'form_data'                    => lang('Form answers'),
         'form_signatures'              => lang('Signatures'),
@@ -869,7 +876,8 @@ function pg_privacy_erase_set(array $fields, $name, $token)
  *
  * @param array $found  see pg_privacy_export_find()
  * @return array  user_ids, contact_ids, emails, tokens, phones, order_ids,
- *                form_ids, account_ids, conversation_ids, file_ids
+ *                form_ids, account_ids, conversation_ids, file_ids,
+ *                return_ids, audit_ids
  */
 function pg_privacy_erase_scope(array $found)
 {
@@ -886,6 +894,8 @@ function pg_privacy_erase_scope(array $found)
         'account_ids'      => array(),
         'conversation_ids' => array(),
         'file_ids'         => array(),
+        'return_ids'       => array(),
+        'audit_ids'        => array(),
     );
 
     $where = pg_privacy_erase_where(array('user_id' => 'user_ids', 'contact_id' => 'contact_ids', 'billing_email_address' => 'emails'), $scope);
@@ -967,7 +977,115 @@ function pg_privacy_erase_scope(array $found)
 
     $scope['phones'] = pg_privacy_export_phones($rows);
 
+    if ($scope['order_ids'] && pg_schema_has('order_returns', 'order_id')) {
+        $scope['return_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM order_returns WHERE " . _pg_privacy_export_in('order_id', $scope['order_ids'])));
+    }
+
+    // The trail's lines about the person's account, orders and returns, and
+    // the export lines labelled with their address.
+    if (pg_audit_ready()) {
+        $conditions = array();
+
+        foreach (array('user' => 'user_ids', 'order' => 'order_ids', 'order_return' => 'return_ids', 'person' => 'emails') as $type => $key) {
+            if ($scope[$key]) {
+                $conditions[] = "((entity_type = '" . $type . "') AND " . _pg_privacy_export_in(($type === 'person') ? 'label' : 'entity_id', $scope[$key]) . ")";
+            }
+        }
+
+        if ($conditions) {
+            $scope['audit_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM audit_log WHERE " . _pg_privacy_export_any($conditions)));
+        }
+    }
+
     return $scope;
+}
+
+/**
+ * What is replaced in the audit trail's lines about the person, by record
+ * type: the field list's columns inside before_json and after_json. A user
+ * line has the person's account (deleted, so it has no field list of its
+ * own); a person line (an export) holds only ids, the token and counts. The
+ * label is cleared on user and person lines, where it is the user name or
+ * the address; an order keeps its number.
+ *
+ * @return array  entity_type => column => value, as pg_privacy_erase_tables()
+ */
+function pg_privacy_erase_audit_fields()
+{
+    $tables = pg_privacy_erase_tables();
+
+    return array(
+        'user'         => array(
+            'user_username'      => '{name}',
+            'user_email'         => '{token}',
+            'user_password_hint' => '',
+            'user_google_id'     => '',
+        ),
+        'order'        => $tables['orders']['fields'],
+        'order_return' => $tables['order_returns']['fields'],
+        'person'       => array(),
+    );
+}
+
+/**
+ * What changes in one audit_log row about the person. Pure.
+ *
+ * Only the columns that are there and differ are replaced; a value left as
+ * the trail compacted it (a long text) is replaced whole. A token already in
+ * place stays, so an erasure run twice changes nothing.
+ *
+ * @param array       $row   entity_type, label, before_json, after_json
+ * @param string      $name  what '{name}' becomes
+ * @param string|null $key   see pg_privacy_person_token()
+ * @return array  column => new value, empty when nothing changes
+ */
+function pg_privacy_erase_audit_row(array $row, $name, $key = null)
+{
+    $type = isset($row['entity_type']) ? (string) $row['entity_type'] : '';
+    $all = pg_privacy_erase_audit_fields();
+
+    if (!isset($all[$type])) {
+        return array();
+    }
+
+    $changes = array();
+
+    foreach (array('before_json', 'after_json') as $side) {
+        $values = isset($row[$side]) && is_string($row[$side]) ? json_decode($row[$side], true) : null;
+
+        if (!is_array($values)) {
+            continue;
+        }
+
+        $changed = false;
+
+        foreach ($all[$type] as $column => $value) {
+            if (!array_key_exists($column, $values)) {
+                continue;
+            }
+
+            if ($value === '{name}') {
+                $value = (string) $name;
+            } elseif ($value === '{token}') {
+                $value = pg_privacy_erase_token($values[$column], $key);
+            }
+
+            if (is_array($values[$column]) || ((string) $values[$column] !== (string) $value)) {
+                $values[$column] = $value;
+                $changed = true;
+            }
+        }
+
+        if ($changed) {
+            $changes[$side] = json_encode($values, pg_audit_json_flags());
+        }
+    }
+
+    if (in_array($type, array('user', 'person'), true) && isset($row['label']) && ((string) $row['label'] !== '')) {
+        $changes['label'] = '';
+    }
+
+    return $changes;
 }
 
 /**
@@ -1209,6 +1327,25 @@ function _pg_privacy_erase_apply_user($where, array $fields, array $scope, $name
     foreach ($links as $table => $column) {
         if (pg_schema_has($table, $column)) {
             _pg_privacy_erase_write($table, _pg_privacy_export_in($column, $scope['user_ids']), array(), $name);
+        }
+    }
+}
+
+/**
+ * The trail's lines keep who did what and when; what they recorded about the
+ * person is replaced, line by line (pg_privacy_erase_audit_row()).
+ */
+function _pg_privacy_erase_apply_audit_log($where, array $fields, array $scope, $name)
+{
+    foreach (db_items("SELECT id, entity_type, label, before_json, after_json FROM audit_log WHERE " . $where) as $row) {
+        $set = array();
+
+        foreach (pg_privacy_erase_audit_row($row, $name) as $column => $value) {
+            $set[] = '`' . $column . '` = ' . (($value === false) ? 'NULL' : "'" . e($value) . "'");
+        }
+
+        if ($set) {
+            db("UPDATE audit_log SET " . implode(', ', $set) . " WHERE id = '" . (int) $row['id'] . "'");
         }
     }
 }

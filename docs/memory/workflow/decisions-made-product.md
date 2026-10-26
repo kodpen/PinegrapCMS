@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product
-description: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, widget conditions, publish-only editing, robots.txt vs noindex, ERP limits.
+description: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, widget conditions, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 ---
 
 ## Which checkout and storefront behaviour stays?
@@ -21,3 +21,6 @@ description: Decisions list, product part: express order and order preview total
 
 ## What about ERP features that do not exist?
 - What ERP deliberately does not do today (automatic settlement matching, e-waybill, one order over several invoices, a payment link on invoices, payout imports, a bank API, an official income statement) is a phase limit, not a gap: `erp/erp-not-built-on-purpose.md`.
+
+## What does a personal data erasure keep?
+- Owner decision (2026-10-26, #1706), `core/personal-data-erasure.md`: an order keeps no e-mail address, only the person token, because refunds go through the PSP reference (`transaction_id`, `refund_reference`). An accepted contract keeps its text as proof (only IP and user agent go). An invoice of a person's ERP account, issued or not, gets the replaced buyer fields (the GİB copy is unchanged). The person's `audit_log` lines lose their personal fields but keep who did what and when.

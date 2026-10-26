@@ -45,6 +45,8 @@ function privacy_erase_test_scope()
 		'account_ids'      => array(50),
 		'conversation_ids' => array(60),
 		'file_ids'         => array(70),
+		'return_ids'       => array(80),
+		'audit_ids'        => array(90),
 	);
 }
 
@@ -70,7 +72,7 @@ function test_privacy_erase_tables_are_pinned()
 			'order_returns' => 'anonymise', 'gift_cards' => 'anonymise', 'erp_accounts' => 'anonymise',
 			'erp_invoices' => 'anonymise', 'erp_quotes' => 'anonymise', 'erp_waybills' => 'anonymise',
 			'comments' => 'anonymise', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise',
-			'files' => 'delete', 'form_data' => 'delete', 'form_signatures' => 'delete', 'forms' => 'delete',
+			'audit_log' => 'anonymise', 'files' => 'delete', 'form_data' => 'delete', 'form_signatures' => 'delete', 'forms' => 'delete',
 			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete',
 			'email_recipients' => 'delete', 'mail_outbox' => 'delete', 'sms_outbox' => 'delete',
 			'chat_messages' => 'delete', 'chat_conversations' => 'delete', 'address_book' => 'delete',
@@ -121,6 +123,7 @@ function test_privacy_erase_tables_are_pinned()
 			'comments' => array('name' => '', 'created_user_id' => 0),
 			'consent_log' => array('user_id' => 0, 'contact_id' => 0, 'ip' => '', 'user_agent' => ''),
 			'ws_approval_guests' => array('name' => '', 'email' => '{token}', 'decided_ip' => '', 'decided_agent' => ''),
+			'audit_log' => array('label' => ''),
 		),
 		$fields,
 		'replaced columns'
@@ -153,6 +156,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'comments' => array('created_user_id' => 'user_ids'),
 			'consent_log' => array('person_token' => 'tokens', 'user_id' => 'user_ids', 'contact_id' => 'contact_ids'),
 			'ws_approval_guests' => array('email' => 'emails'),
+			'audit_log' => array('id' => 'audit_ids'),
 			'files' => array('id' => 'file_ids'),
 			'form_data' => array('form_id' => 'form_ids', 'order_id' => 'order_ids'),
 			'form_signatures' => array('form_id' => 'form_ids', 'user_id' => 'user_ids'),
@@ -318,4 +322,80 @@ function test_privacy_erase_writes_no_line_per_row()
 	pg_assert_false(strpos($source, 'pg_audit_fetch') !== false, 'no pg_audit_fetch()');
 	pg_assert_false(strpos($source, 'pg_delete_file_record') !== false, 'files without their audit line');
 	pg_assert_same(1, substr_count($source, 'pg_audit('), 'one pg_audit() call');
+}
+
+// What is replaced in the trail's lines about the person: the field list's
+// columns inside the JSON, by record type.
+function test_privacy_erase_audit_fields_are_pinned()
+{
+	$tables = pg_privacy_erase_tables();
+
+	pg_assert_same(
+		array(
+			'user'         => array('user_username' => '{name}', 'user_email' => '{token}', 'user_password_hint' => '', 'user_google_id' => ''),
+			'order'        => $tables['orders']['fields'],
+			'order_return' => $tables['order_returns']['fields'],
+			'person'       => array(),
+		),
+		pg_privacy_erase_audit_fields(),
+		'audit fields'
+	);
+}
+
+// A line keeps who did what and when, and its other columns; the person's
+// columns are replaced, a user's or an export's label is cleared, an order
+// keeps its number, and a second run changes nothing.
+function test_privacy_erase_audit_row()
+{
+	$token = pg_privacy_person_token('ali@example.com', 'k1');
+
+	$user = array(
+		'entity_type' => 'user',
+		'label'       => 'ali',
+		'before_json' => '{"user_username":"ali","user_email":"Ali@example.com","user_role":"3","user_password_hint":"***"}',
+		'after_json'  => null,
+	);
+
+	$changes = pg_privacy_erase_audit_row($user, 'Deleted customer', 'k1');
+
+	pg_assert_same(array('before_json', 'label'), array_keys($changes), 'user: before side and label');
+	pg_assert_same(
+		array('user_username' => 'Deleted customer', 'user_email' => $token, 'user_role' => '3', 'user_password_hint' => ''),
+		json_decode($changes['before_json'], true),
+		'user: replaced columns, the role kept'
+	);
+	pg_assert_same('', $changes['label'], 'user: label cleared');
+
+	$user = array_merge($user, $changes);
+	pg_assert_same(array(), pg_privacy_erase_audit_row($user, 'Deleted customer', 'k1'), 'user: second run');
+
+	$order = array(
+		'entity_type' => 'order',
+		'label'       => '1001',
+		'before_json' => '{"status":"complete","billing_first_name":"Ali","billing_email_address":"ali@example.com","card_number":"***","total":"12345"}',
+		'after_json'  => '{"status":"exported"}',
+	);
+
+	$changes = pg_privacy_erase_audit_row($order, 'Deleted customer', 'k1');
+
+	pg_assert_same(array('before_json'), array_keys($changes), 'order: only the side that names the person, the number kept');
+	pg_assert_same(
+		array('status' => 'complete', 'billing_first_name' => 'Deleted customer', 'billing_email_address' => $token, 'card_number' => '', 'total' => '12345'),
+		json_decode($changes['before_json'], true),
+		'order: replaced columns'
+	);
+
+	$long = array('truncated' => true, 'length' => 3000, 'sha1' => 'x', 'start' => 'Ali ...');
+	$return = array('entity_type' => 'order_return', 'label' => '1001', 'before_json' => null, 'after_json' => json_encode(array('status' => 'requested', 'customer_note' => $long)));
+	pg_assert_same(
+		array('status' => 'requested', 'customer_note' => ''),
+		json_decode(pg_privacy_erase_audit_row($return, 'x', 'k1')['after_json'], true),
+		'return: a compacted note is replaced whole'
+	);
+
+	$export = array('entity_type' => 'person', 'label' => 'ali@example.com', 'before_json' => null, 'after_json' => '{"format":"json","person":"' . $token . '"}');
+	pg_assert_same(array('label' => ''), pg_privacy_erase_audit_row($export, 'x', 'k1'), 'export: label cleared, token kept');
+
+	pg_assert_same(array(), pg_privacy_erase_audit_row(array('entity_type' => 'product', 'label' => 'Shoe', 'before_json' => '{"name":"Shoe"}'), 'x', 'k1'), 'another type');
+	pg_assert_same(array(), pg_privacy_erase_audit_row(array('entity_type' => 'order', 'label' => '1', 'before_json' => 'not json', 'after_json' => '[]'), 'x', 'k1'), 'nothing to read');
 }

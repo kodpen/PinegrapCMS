@@ -30,6 +30,6 @@ description: Which save paths write audit_log rows, how they read the row before
 - MariaDB, panel requests (settings, API apps, file manager, catalog, page editor, order cancel/restore): one line each, changed fields only. Pages with 35 KB and 1.1 MB trees deleted from the bin keep name and title. A first save after an upgrade writes NULL → '' once. The page editor writes `page_home = ''`, not `no`, off the home page (not fixed).
 
 ## Personal data?
-- A deleted order or user keeps its whole row in `before_json` (card fields masked); the erasure leaves it until the owner decides.
+- A deleted order or user keeps its whole row in `before_json` (card fields masked) until the person is erased.
 
 Related: docs/memory/core/audit-trail-stored-values.md, docs/memory/core/audit-trail-workspace.md, docs/memory/core/consent-log-and-audit-trail.md, docs/memory/plans/privacy-data-pack-audit-log.md
