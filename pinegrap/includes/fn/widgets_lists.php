@@ -90,18 +90,30 @@ function pg_sw_list_sources()
 
 // The sources a widget kind offers (source => descriptor): the form record
 // sources in the two form views, the product sources in the catalog detail
-// view (widgets_lists_product.php), each kind publishing its records'
-// data; none in any other kind.
+// view and, but for the products bought together (a cross-sell lookup per
+// card), in the catalog listing (widgets_lists_product.php), each kind
+// publishing its records' data; none in any other kind.
 function pg_sw_kind_lists($kind)
 {
-    $families = array('form_list_view' => 'form_record', 'form_item_view' => 'form_record', 'catalog_item_view' => 'product');
+    $families = array('form_list_view' => 'form_record', 'form_item_view' => 'form_record',
+                      'catalog_item_view' => 'product', 'catalog_listing' => 'product');
+    $except   = array('catalog_listing' => array('product.related' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();
     $out = array();
     foreach (pg_sw_list_sources() as $source => $descriptor) {
-        if ($descriptor['family'] === $families[$kind]) $out[$source] = $descriptor;
+        if ($descriptor['family'] === $families[$kind] && !isset($except[$kind][$source])) $out[$source] = $descriptor;
     }
     return $out;
+}
+
+// The record value that tells a $family span its record is not one of the
+// family's: array(token text, value), or null. A catalog listing draws
+// product and group cards from one template, both with an ^^__id^^; a group
+// card's ^^__row_type^^ is 'group', so a product list there reads no rows.
+function pg_sw_list_key_guard($family)
+{
+    return ($family === 'product') ? array('^^__row_type^^', 'group') : null;
 }
 
 // Whether a tree node is a list: a loop_area whose props.source is a
@@ -168,7 +180,8 @@ function pg_sw_list_spec($props)
 
 // The row templates of the lists drawn in this request: N => array('sid'
 // (the widget), 'n', 'spec', 'html' (the template), 'parents' (the token
-// texts its carriers hold, the key first)). Kept for the request, so a
+// texts its carriers hold, the key first, then the key guard's token),
+// 'guard' (the guard's value, pg_sw_list_key_guard())). Kept for the request, so a
 // widget drawn twice finds its templates.
 function &_pg_sw_list_templates()
 {
@@ -228,6 +241,12 @@ function pg_sw_list_span($node, $indent = 0, $depth = 0)
     $key     = '^^' . $descriptor['key'] . '^^';
     $parents = array($key);
     $seen    = array($key => true);
+    // The guard's value is read through the second carrier.
+    $guard = pg_sw_list_key_guard($descriptor['family']);
+    if ($guard !== null) {
+        $parents[] = $guard[0];
+        $seen[$guard[0]] = true;
+    }
     $out = preg_replace_callback('/\^\^([^\^]+?)\^\^(%%.*?%%)?/', function ($m) use ($own, $row, &$parents, &$seen) {
         $name = strtolower($m[1]);
         if (isset($own[$name])) return '^^' . $name . '^^' . ((isset($row[$name]) && !empty($m[2])) ? $m[2] : '');
@@ -256,6 +275,7 @@ function pg_sw_list_span($node, $indent = 0, $depth = 0)
         'spec'    => $spec,
         'html'    => $out,
         'parents' => $parents,
+        'guard'   => ($guard !== null) ? $guard[1] : null,
         'links'   => $links,
     );
 
@@ -663,6 +683,10 @@ function pg_sw_lists_expand($html, $nonce, $scope, $published, &$cut)
             $values = _pg_sw_lists_carriers(substr($html, $span[1], $span[2] - $span[1]), $nonce, $span[4], count($t['parents']));
             $key    = trim(html_entity_decode(strip_tags($values[0]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
             if (!preg_match('/^\d{1,18}$/', $key)) $key = '';
+            if ($t['guard'] !== null && isset($values[1])
+                && trim(html_entity_decode(strip_tags($values[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8')) === $t['guard']) {
+                $key = '';
+            }
             $spans[$k][5] = $t;
             $spans[$k][6] = $values;
             $spans[$k][7] = $key;
