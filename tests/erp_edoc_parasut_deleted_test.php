@@ -43,6 +43,13 @@ function pg_test_parasut_deleted_not_found($id)
 	return pg_test_parasut_deleted_answer(404, array('errors' => array(array('title' => 'Record was not found', 'detail' => 'SalesInvoice-' . $id))));
 }
 
+// A stand-in for erp_edoc_parasut_request() for the company guard: the
+// buyer's card 7001 is there, so the connected company is the row's own.
+function pg_test_parasut_deleted_card_there($method, $path, $body = null, $context = array())
+{
+	return pg_test_parasut_deleted_answer(200, array('data' => array('id' => '7001', 'type' => 'contacts')));
+}
+
 function pg_test_parasut_deleted_row($overrides = array())
 {
 	return array_merge(array(
@@ -86,8 +93,8 @@ function test_erp_edoc_parasut_deleted_invoice_gone()
 	pg_assert_true(erp_edoc_parasut_invoice_gone($several, '1104221607'), 'the matching error among others');
 }
 
-// A draft or a failed record that was deleted at Paraşüt: the status
-// question frees the row (nothing at the provider, the driver's ids and job
+// A draft or a failed record that was deleted at Paraşüt (the connected
+// company still holds the buyer's card): the status question frees the row (nothing at the provider, the driver's ids and job
 // cleared), so the invoice can be sent again.
 function test_erp_edoc_parasut_deleted_gone_answer_frees_the_row()
 {
@@ -97,7 +104,7 @@ function test_erp_edoc_parasut_deleted_gone_answer_frees_the_row()
 		'a failed e-Invoice' => pg_test_parasut_deleted_row(array('edoc_status' => 'error', 'edoc_kind' => 'einvoice', 'parasut_edoc_id' => '5551')),
 		'a failed hand-over read back as a draft' => pg_test_parasut_deleted_row(array('edoc_kind' => 'earchive', 'parasut_job_id' => '77', 'parasut_job_expires_at' => time() + 600)),
 	) as $label => $row) {
-		$gone = erp_edoc_parasut_gone_answer($row);
+		$gone = erp_edoc_parasut_gone_answer($row, false, array('/contacts/7001'), 'pg_test_parasut_deleted_card_there');
 
 		pg_assert_true(is_array($gone), $label);
 
@@ -128,7 +135,7 @@ function test_erp_edoc_parasut_deleted_gone_answer_frees_the_row()
 function test_erp_edoc_parasut_deleted_gone_answer_keeps_the_mark()
 {
 	foreach (array('?2026-10-19:7001', '?') as $mark) {
-		$gone = erp_edoc_parasut_gone_answer(pg_test_parasut_deleted_row(array('edoc_status' => 'error', 'parasut_invoice_id' => $mark)));
+		$gone = erp_edoc_parasut_gone_answer(pg_test_parasut_deleted_row(array('edoc_status' => 'error', 'parasut_invoice_id' => $mark)), false, array('/contacts/7001'), 'pg_test_parasut_deleted_card_there');
 
 		pg_assert_true(is_array($gone), $mark);
 
@@ -174,7 +181,7 @@ function test_erp_edoc_parasut_deleted_poll_reads_the_gone_record()
 
 	$read = strpos($section, "\$detail = erp_edoc_parasut_request('GET', '/sales_invoices/' . rawurlencode(\$external_id)");
 	$gone = strpos($section, 'erp_edoc_parasut_invoice_gone($detail, $external_id)');
-	$answer = strpos($section, 'erp_edoc_parasut_gone_answer($invoice, $job_failed)');
+	$answer = strpos($section, 'erp_edoc_parasut_gone_answer($invoice, $job_failed, ');
 	$general = strpos($section, "if ((int) \$detail['http_code'] === 404) {");
 
 	pg_assert_true(($read !== false) && ($gone !== false) && ($read < $gone), 'asked of the answer to the read');
