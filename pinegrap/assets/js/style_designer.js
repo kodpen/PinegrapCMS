@@ -32081,6 +32081,7 @@ const StyleDesigner = (function () {
             row(_sdT('Type'), sel('regionType', typeOpts, n.props.regionType)) +
             '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
+            (n.props.regionType === 'designer' ? _sdDesignerRegionPropsHtml(n) : '') +
             designableHtml
         ) + commentsInfo;
     }
@@ -43540,6 +43541,67 @@ const StyleDesigner = (function () {
         return h;
     }
 
+    // A designer region becomes a designer-only shared component on this
+    // page (_sdDesignerRegionConvert()), for the roles that edit designer
+    // regions today.
+    function _sdDesignerRegionPropsHtml(n) {
+        if (!_design || !_design.designerRegionConvert || !n.props.regionName) return '';
+        return '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-designer-region-convert">' +
+                    '<span class="bi bi-puzzle-fill me-1"></span>' + esc(_sdT('Make shared component')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Puts a shared component with the region\'s content in its place on this page, edited here. Other pages keep the region until they are converted.')) +
+            '</div></div>';
+    }
+
+    // The server turns the region into a component (shared_component
+    // sub-action from_designer_region; one made earlier is given back) and
+    // its shared_ref takes the region node's place.
+    function _sdDesignerRegionConvert(regionNode) {
+        if (!regionNode || regionNode.type !== 'region' || !regionNode.props ||
+            regionNode.props.regionType !== 'designer' || !regionNode.props.regionName) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var regionName = regionNode.props.regionName;
+        var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+        fetch(url, { method: 'POST', credentials: 'same-origin',
+                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                     body: JSON.stringify({ action: 'shared_component', sub_action: 'from_designer_region', name: regionName, token: _pgToken() }) })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data || data.status !== 'success') {
+                    sdToast(esc((data && data.message) || _sdT('Network error')), 'error');
+                    return;
+                }
+                // The node may have gone meanwhile (another tab, an undo);
+                // inside a shared component it is that component's.
+                var hit = _sdAnyParent(regionNode);
+                var parent = hit ? hit.parent : null;
+                var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(regionNode) : -1;
+                var sid = parseInt(data.id, 10) || 0;
+                if (idx === -1 || sid <= 0) return;
+                if (hit.sid && _sdSharedReaches(sid, hit.sid)) {
+                    sdToast(esc(_sdT('A shared component cannot be placed inside itself.')), 'error');
+                    return;
+                }
+                saveState();
+                if (hit.sid) _sharedDirty[hit.sid] = true;
+                var ref = { _id: gid(), type: 'shared_ref', props: { sharedId: sid, sharedName: data.name || regionName }, children: [] };
+                parent.children.splice(idx, 1, ref);
+                selectedNode  = ref;
+                selectedNodes = [];
+                if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+                if (!_sharedCache[sid] || !_sharedCache[sid].tree) prefetchShared([sid], render);
+                render();
+                sdToast(esc(data.created
+                    ? _sdT('The designer region "{var}" is now a shared component on this page. Other pages keep the region until they are converted.', regionName)
+                    : _sdT('This page now shows "{var}", the shared component made from this designer region before.', data.name || regionName)), 'success', 7000);
+                (Array.isArray(data.warnings) ? data.warnings : []).forEach(function (w) { sdToast(esc(String(w)), 'warning', 12000); });
+            })
+            .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
+    }
+
     function needsName(t) { return ['ad','common','designer','dynamic','login','menu','menu_sequence','tag_cloud','system'].indexOf(t) !== -1; }
 
     function buildRegionNames(type) {
@@ -46199,6 +46261,9 @@ const StyleDesigner = (function () {
         // The fixed comments block becomes the design's Comments widget.
         var cmtDesignBtn = document.getElementById('sd-cmt-make-designable');
         if (cmtDesignBtn) cmtDesignBtn.addEventListener('click', function () { _sdCommentsMakeDesignable(selectedNode); });
+        // A designer region becomes a shared component on this page.
+        var dsgRegionBtn = document.getElementById('sd-designer-region-convert');
+        if (dsgRegionBtn) dsgRegionBtn.addEventListener('click', function () { _sdDesignerRegionConvert(selectedNode); });
         // A dynamic region's PHP code opens as a code-view tab.
         var dregionCodeBtn = document.getElementById('sd-dregion-code');
         if (dregionCodeBtn) dregionCodeBtn.addEventListener('click', function () {

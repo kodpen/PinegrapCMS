@@ -856,6 +856,7 @@
     "design-and-home": "tasarim-ve-ev",
     "designer": "tasarımcı",
     "designer region": "tasarımcı bölgesi",
+    "designer region ({var:1}) was made the shared component ({var:2})": "tasarımcı bölgesi ({var:1}), paylaşılan bileşen ({var:2}) yapıldı",
     "destination type": "hedef türü",
     "detail view": "detay görünümü",
     "development": "geliştirme",

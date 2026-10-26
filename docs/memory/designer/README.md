@@ -162,6 +162,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-prototype-share-links.md: Share links of a design's prototype (prototype_links, 11.0.35): makers, audiences, what anyone sees, the password lock, the token kept out of logs and the frame, uses, revoked with the design
 - designer-prototype-viewer.md: prototype.php plays a design's saved drafts (roles 0-2, or a share link): a session-less frame signed for one browser, link kinds, inert forms, no tracking, link_resolve.php
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
+- designer-region-to-shared-component.md: A classic designer region made a designer-only shared component from the designer (R3): PHP blocks as custom_php nodes, placeholders as region nodes, nested refs
 - designer-save-shortcut.md: Ctrl+S in the visual editor: it presses the main Save/Publish button, its two listeners, which dialogs keep their own, and why a toolbar hint is changed only through _sdSetButtonTitle().
 - designer-scroller-controls.md: Previous/next buttons of the scroller-cards block: the row marker, pg_scroller.js and where it is added (page, preview, canvas), one-card step, ends, reduced motion, RTL.
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before style_designer.js; English keys, no embedded numbers or variables, price keys, palette labels.
