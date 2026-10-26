@@ -439,9 +439,7 @@ function bs6_shell_dialog_at($source, array $box)
 		$root_text = substr($source, $root[0], $root[1] - $root[0]);
 		$root_class = bs6_shell_class_attr($root_text);
 
-		// A root printed open (`modal fade show`, shown without Bootstrap's
-		// script) needs a hand: a closed <dialog> stays hidden.
-		if ($root_class === null || !in_array('modal', bs6_shell_tokens($root_class[2]), true) || in_array('show', bs6_shell_tokens($root_class[2]), true)) {
+		if ($root_class === null || !in_array('modal', bs6_shell_tokens($root_class[2]), true)) {
 			return null;
 		}
 
@@ -449,6 +447,10 @@ function bs6_shell_dialog_at($source, array $box)
 
 		if ($root_close === null || $root_close[0] < $box_close[1] || !bs6_shell_is_glue(substr($source, $box_close[1], $root_close[0] - $box_close[1]))) {
 			return null;
+		}
+
+		if (in_array('show', bs6_shell_tokens($root_class[2]), true)) {
+			return bs6_shell_open_sheet($source, $root, $root_text, $root_class, $box, $box_close, $classes, $extra);
 		}
 
 		$tokens = array('dialog');
@@ -861,4 +863,61 @@ function bs6_switch_component_variables($source)
 	}
 
 	return array('source' => $source, 'status' => $count > 0 ? 'applied' : 'done', 'left' => 0);
+}
+
+/**
+ * A modal printed open (`modal fade show` with `display:block`, shown with no
+ * script): the root stays a <div>, now `.pg-open-sheet` (a fixed scrim, in
+ * the shell rules), the box becomes `<dialog class="dialog …" open>`, a
+ * non-modal dialog shown where it stands; the .modal-content box goes.
+ */
+function bs6_shell_open_sheet($source, array $root, $root_text, array $root_class, array $box, array $box_close, array $classes, array $extra)
+{
+	$content = bs6_shell_open_tags($source, 'div', $box[1]);
+
+	if (!$content || $extra) {
+		return null;
+	}
+
+	$content = $content[0];
+	$content_class = bs6_shell_class_attr(substr($source, $content[0], $content[1] - $content[0]));
+	$content_close = bs6_shell_close_of($source, $content[1]);
+
+	if ($content_class === null || !in_array('modal-content', bs6_shell_tokens($content_class[2]), true) || $content_close === null
+		|| !bs6_shell_is_glue(substr($source, $box[1], $content[0] - $box[1]))
+		|| !bs6_shell_is_glue(substr($source, $content_close[1], $box_close[0] - $content_close[1]))) {
+		return null;
+	}
+
+	$tokens = array();
+	foreach (bs6_shell_tokens($root_class[2]) as $token) {
+		if (!in_array($token, array('modal', 'fade', 'show'), true)) {
+			$tokens[] = $token;
+		}
+	}
+	array_unshift($tokens, 'pg-open-sheet');
+
+	$root_new = substr($root_text, 0, $root_class[0]) . implode(' ', $tokens) . substr($root_text, $root_class[0] + $root_class[1]);
+	$root_new = preg_replace('/\s(tabindex=(\\\\?)(["\'])-1\2\3|role=(\\\\?)(["\'])dialog\4\5|aria-modal=(\\\\?)(["\'])true\6\7)/', '', $root_new);
+	$root_new = preg_replace('/display:\s*block;?\s*/', '', $root_new);
+
+	$box_text = substr($source, $box[0], $box[1] - $box[0]);
+	$box_class = bs6_shell_class_attr($box_text);
+	$quote = (strpos($box_text, '=\\"') !== false) ? '\\"' : '"';
+
+	foreach (bs6_shell_tokens($content_class[2]) as $token) {
+		if ($token !== 'modal-content') {
+			$classes[] = $token;
+		}
+	}
+
+	$dialog = '<dialog class=' . $quote . implode(' ', array_values(array_unique(array_merge(array('dialog'), $classes)))) . $quote . ' open>';
+
+	return array(
+		array($root[0], $root[1], $root_new),
+		array($box[0], $box[1], $dialog),
+		array_merge(bs6_shell_cut_range($source, $content[0], $content[1]), array('')),
+		array_merge(bs6_shell_cut_range($source, $content_close[0], $content_close[1]), array('')),
+		array($box_close[0], $box_close[1], (strpos(substr($source, $box_close[0], 3), '\\') !== false ? '<\/' : '</') . 'dialog>'),
+	);
 }

@@ -67,6 +67,8 @@ $text_checks = array(
 	'data attribute of a renamed component' => '/data-bs-(toggle|dismiss)\s*=\s*\\\\?["\'](modal|offcanvas|dropdown)\b/',
 	'carousel ride attribute (data-bs-autoplay in v6)' => '/data-bs-ride\b/',
 	'popperConfig (floatingConfig in v6)' => '/\bpopperConfig\b/',
+	'box or state of a v5 modal named in code (the <dialog> is the box)' => '/(?<![\w-])modal-(dialog|content|backdrop|open|static|fullscreen)(?![\w-])/',
+	'v5 component variable (--bs-dropdown-*, --bs-offcanvas-*, --bs-modal-*)' => '/--bs-(dropdown|offcanvas|modal)-[a-z-]+/',
 	'v5 RGB variable (removed in v6: use color-mix())' => '/var\(\s*--bs-[a-z0-9-]+-rgb\s*\)/',
 	'v5 component selector in a style block' => '/\.(modal-dialog|modal-content|modal-backdrop|dropdown-menu|dropdown-item|dropdown-toggle|offcanvas|form-check-input|form-check|form-switch|form-select|accordion-button|btn-close-white|collapsing)\b(?=[^\n{;]*\{)/',
 );

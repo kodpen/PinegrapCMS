@@ -64,14 +64,13 @@ function test_bs6_shell_dialog_in_script()
 	pg_assert_contains("$('body').append('<dialog class=\"dialog\" id=\"' + id + '\">' +\n        '<div class=\"modal-body\"></div>' +\n        '</dialog>');", $out);
 }
 
-// A root shown open without Bootstrap's script, a root out of sight and a
-// box with code among its classes in a script are left for a hand.
+// A root out of sight and a box with code among its classes in a script
+// are left for a hand.
 function test_bs6_shell_dialog_left_for_a_hand()
 {
-	$open = "<div class=\"modal fade show\" style=\"display:block\"><div class=\"modal-dialog\"><div class=\"modal-content\">x</div></div></div>";
 	$code = "n = el('div', 'modal fade');\nn.innerHTML = '<div class=\"modal-dialog ' + size + '\"><div class=\"modal-content\">' + '</div></div>';";
 
-	foreach (array($open, $code, "<section><div class=\"modal-dialog\"><div class=\"modal-content\">x</div></div></section>") as $in) {
+	foreach (array($code, "<section><div class=\"modal-dialog\"><div class=\"modal-content\">x</div></div></section>") as $in) {
 		$result = bs6_switch_dialogs($in);
 		pg_assert_same($in, $result['source']);
 		pg_assert_same(1, $result['left']);
@@ -130,4 +129,16 @@ function test_bs6_shell_rules_and_selectors()
 
 	$css = ".x .dropdown .dropdown-menu.dropdown-menu-end, .y .offcanvas.offcanvas-end .modal-title { color: red; }";
 	pg_assert_same(".x .pg-menu-wrap .menu.pg-menu-end, .y .drawer.drawer-end .dialog-title { color: red; }", bs6_switch_selectors($css)['source']);
+}
+
+// A modal printed open becomes a scrim holding an open, non-modal dialog.
+function test_bs6_shell_open_sheet()
+{
+	$in = "<div class=\"modal fade show\" id=\"s\" tabindex=\"-1\" style=\"display:block; background:rgba(0,0,0,.6)\">\n"
+		. "\t<div class=\"modal-dialog modal-lg modal-dialog-centered\">\n\t\t<div class=\"modal-content\">\n\t\t\t<div class=\"modal-body\">x</div>\n\t\t</div>\n\t</div>\n</div>";
+	$result = bs6_switch_dialogs($in);
+
+	pg_assert_same("<div class=\"pg-open-sheet\" id=\"s\" style=\"background:rgba(0,0,0,.6)\">\n"
+		. "\t<dialog class=\"dialog dialog-lg\" open>\n\t\t\t<div class=\"modal-body\">x</div>\n\t</dialog>\n</div>", $result['source']);
+	pg_assert_same('done', bs6_switch_dialogs($result['source'])['status'], 'second run');
 }
