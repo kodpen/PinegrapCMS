@@ -66,6 +66,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - js-bundles.md: Scripts minified from a list (pg_js_bundles(), tools/build_js.php): the bundles, how a screen prints one, src mode, the CI check, the test, the Workspace drawer's loader on record screens.
 - json-endpoint-rules.md: Endpoints that speak JSON: rejections and CSRF failures in JSON with the right status, api.php reads a JSON body (FormData gets "Invalid action."), no pg_post_body_discarded() on a JSON body.
+- lang-compiled-cache.md: The compiled language cache data/temp/lang_<code>.php that pg_lang_map() reads through opcache: speed, the signature that rebuilds it, atomic write, no writable data/temp, the gate (PR #1933)
 - lang-files.md: Turkish wording as sorted shards in includes/local/tr/: why, layout, pg_lang_map() the one reader, old tr.json on updated sites, tr_add.php, tr_resolve.php, check_lang.php, speed
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)

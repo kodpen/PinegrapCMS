@@ -42,7 +42,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - legacy-retirement-prerequisites.md: Plan (2026-10-19, not started): regions editable in the visual designer before classic pages move: common/designer regions as shared components with content rights, dynamic, page, menu
 - marketplace-product-matching.md: Plan (approved 2026-10-26): match a shop's products to its marketplace catalogue in bulk, with pictures, on a new Marketplace products screen; step 1 done (#1880), step 2 next
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b (with rejection), 5c, 6, A, B done; Hepsiburada open
-- merge-flow-tools.md: Plan (2026-10-25, step 2 done): merge_train.php (lock, build, fast-forward landing), CI guards (changelog, trailers, size), filtered install matrix, generated fn-module map, lang cache, merge queue
+- merge-flow-tools.md: Plan (2026-10-25, steps 2 and 5 done): merge_train.php (lock, build, fast-forward landing), CI guards, filtered install matrix, generated fn-module map, lang cache, merge queue
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex, Keep and HTML import, note revision, delete and sources done; small items, later Notion/OneNote; open questions
 - passkeys.md: Plan (approved 2026-10-19; steps 1-3b and 4a done, 4b-4c left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
