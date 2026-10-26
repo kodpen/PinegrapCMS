@@ -4,7 +4,7 @@ description: The e-Fatura threshold warning (includes/erp/efatura_threshold.php)
 ---
 
 ## What does it warn about?
-- A seller in Turkey outside e-Fatura must join it from 1 July of the year after its gross sales reached a threshold: 500 Bin TL for sales over the internet, 3 Milyon TL for all sales (2026 amounts). The store keeps both as settings so a new year's amounts need no release (PR #1773).
+- A seller in Turkey outside e-Fatura must join it from 1 July of the year after its gross sales reached a threshold: 500 Bin TL for sales over the internet, 3 Milyon TL for all sales (2026 amounts). The store keeps both as settings so a new year's amounts need no release (PR #1773). What counts and the daily cache are owner decisions (`workflow/decisions-made.md`).
 
 ## Where are the thresholds kept?
 - `config.erp_efatura_web_threshold` and `erp_efatura_general_threshold` (11.0.61, BIGINT UNSIGNED, minor units, defaults 50000000 / 300000000); constants `ERP_EFATURA_WEB_THRESHOLD` / `ERP_EFATURA_GENERAL_THRESHOLD` (0 before the step). 0 switches that warning off; a site already on e-Fatura sets both to 0.
