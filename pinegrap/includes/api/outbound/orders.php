@@ -394,7 +394,8 @@ function mp_order_apply_tracking($order_id, $package, $account = null) {
 		'order_number'     => db_value("SELECT order_number FROM orders WHERE id = '" . e((int)$order_id) . "' LIMIT 1"),
 		'ship_to_id'       => (int)$ship_to_id,
 		'tracking_numbers' => array($recorded['number']),
-		'ship_date'        => null
+		'ship_date'        => null,
+		'parcels'          => pg_shipment_api_parcels((int)$ship_to_id, null, $recorded['number'])
 	));
 
 	$ships_itself = false;
