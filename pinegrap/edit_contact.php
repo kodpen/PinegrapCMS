@@ -695,12 +695,9 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 my-2">
                                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
-                                            <input value="' . $expiration_date . '" type="text" name="expiration_date" id="expiration_date" class="form-control" />
+                                            <input value="' . $expiration_date . '" type="text" name="expiration_date" id="expiration_date" class="form-control" data-pg-date />
                                             <div class="form-text text-end">' . lang('leave blank for lifetime membership') . '</div>
-                                            ' . get_date_picker_format() . '
-                                            <script>
-                                                $("#expiration_date").datepicker(datetimepicker_options);
-                                            </script>
+                                            ' . get_date_picker_format() . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>

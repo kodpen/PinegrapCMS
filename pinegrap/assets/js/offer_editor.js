@@ -629,15 +629,15 @@
         $('#pg-if-multiple').checked = !!S.offer.multiple_recipients;
     }
     function enhance() {
-        // Select2 for the product pickers when the backend has it loaded; the
+        // A searchable combobox for a long product picker (pg_fields.js); the
         // grid column it sits in decides the width.
-        if (window.jQuery && jQuery.fn.select2) {
-            $$('.list-group select.form-select').forEach(function (el) {
-                if (el.options.length > 12) {
-                    jQuery(el).select2({ theme: 'bootstrap-5', width: '100%' });
-                }
-            });
-        }
+        $$('.list-group select.form-select').forEach(function (el) {
+            if (el.options.length > 12) {
+                el.setAttribute('data-pg-combobox', '');
+                el.style.width = '100%';
+            }
+        });
+        if (window.pgFields) { window.pgFields.init(root); }
     }
     function render() {
         renderHeader();
@@ -845,14 +845,6 @@
                 S.offer.end_date = displayToIso(el.value); touch(); renderSummary(); break;
         }
     });
-    // The jQuery datepicker writes the field without an input event.
-    if (window.jQuery && jQuery.fn.datepicker && window.datetimepicker_options) {
-        jQuery('#pg-if-start, #pg-if-end').datepicker(jQuery.extend({}, window.datetimepicker_options, {
-            onSelect: function (text, inst) {
-                jQuery(inst.input).trigger('change');
-            }
-        }));
-    }
     window.addEventListener('beforeunload', function (e) {
         if (dirty) { e.preventDefault(); e.returnValue = ''; }
     });

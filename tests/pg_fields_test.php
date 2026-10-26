@@ -228,6 +228,25 @@ function main() {
         zones: get('zones').pgFieldKind || null
     };
 
+    // A date in the picker's own wording gets only the date format; a
+    // combobox with a source searches the server, the answer read as
+    // {results: [...]}.
+    var c = load({ jquery: true, format: 'm/d/yy', fields: [
+        ['input', { id: 'shipped', 'data-pg-date': 'plain' }],
+        ['select', { id: 'cat', 'data-pg-combobox': '', 'data-pg-source': 'tax.php?action=search', 'data-pg-min-length': '2', 'data-pg-free-text': '', 'data-placeholder': 'Category' }]
+    ] });
+    c.win.pgFields.init();
+    var catOpts = c.calls.filter(function (x) { return x[0] === 'select2'; })[0][2];
+    out.plain_date = c.calls.filter(function (x) { return x[0] === 'datepicker'; })[0][2];
+    out.remote = {
+        url: catOpts.ajax.url,
+        min: catOpts.minimumInputLength,
+        tags: catOpts.tags,
+        placeholder: catOpts.placeholder,
+        data: catOpts.ajax.data({ term: 'shoe' }),
+        results: [catOpts.ajax.processResults({ results: [{ id: 'a', text: 'a' }] }), catOpts.ajax.processResults(null)]
+    };
+
     // Without the library the field stays a plain one; no error.
     var b = load({ fields: [['select', { id: 's', 'data-pg-combobox': '' }]] });
     out.no_library = { kind: b.doc.querySelector('#s').pgFieldKind || null, calls: b.calls.length };
@@ -364,4 +383,26 @@ function test_pg_fields_liveform_prints_hooks()
 	pg_assert_contains(' data-pg-chips="&quot;&gt;&lt;b&gt;"', $valued, 'a value escaped');
 	pg_assert_same(false, strpos($valued, 'data-pg-Bad'), 'only lower-case hook names');
 	pg_assert_same(false, strpos($valued, 'data-other'), 'other data attributes are not forwarded');
+}
+
+function test_pg_fields_plain_date_and_remote_combobox()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	pg_assert_same(array('dateFormat' => 'm/d/yy'), $r['plain_date'], 'a plain date gets the site format and none of the translated names');
+	pg_assert_same(
+		array(
+			'url' => 'tax.php?action=search',
+			'min' => 2,
+			'tags' => true,
+			'placeholder' => 'Category',
+			'data' => array('q' => 'shoe'),
+			'results' => array(array('results' => array(array('id' => 'a', 'text' => 'a'))), array('results' => array())),
+		),
+		$r['remote'],
+		'data-pg-source searched with q, results read from the answer, free text kept'
+	);
 }

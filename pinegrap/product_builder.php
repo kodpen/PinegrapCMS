@@ -4536,7 +4536,6 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         'Create'             => lang('Create'),
         'Create & Continue'  => lang('Create & Continue'),
         'membership_summary' => lang('Buying this extends the customer\'s membership by {days} days.'),
-        'Google Product Category' => lang('Google Product Category'),
         'single_summary'     => lang('A single product will be created. No catalog group is added.'),
         'group_summary'      => lang('{count} products and one product group covering them will be created.'),
 
@@ -5136,7 +5135,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>
                                     <div class="col-12 col-lg-3 my-2">
                                         <label for="google_product_category" class="form-label">' . lang('Google Product Category') . '</label>
-                                        <select name="google_product_category" id="google_product_category" class="form-select" style="width:100%"></select>
+                                        <select name="google_product_category" id="google_product_category" class="form-select" style="width:100%" data-pg-combobox data-pg-source="google_taxonomy_action.php?action=search" data-pg-min-length="2" data-pg-free-text data-allow-clear="true" data-placeholder="' . h(lang('Google Product Category')) . '"><option value=""></option>' . ($v('google_product_category') !== '' ? '<option value="' . h($v('google_product_category')) . '" selected>' . h($v('google_product_category')) . '</option>' : '') . '</select>' . pg_fields_script() . '
                                         <div class="form-text" id="pg_pb_taxonomy_status">' . $output_taxonomy_status . '</div>
                                     </div>
                                     ' . $output_barcode_fields . '

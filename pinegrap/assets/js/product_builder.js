@@ -2694,49 +2694,6 @@
         target.setSelectionRange(start + token.length, start + token.length);
     });
 
-    /* ----------------------------------------- google product category */
-
-    /* The taxonomy is thousands of categories, so none of it is in the page:
-       select2 asks the server as you type. tags:true keeps the field usable as
-       free text — a value already stored, or a category newer than the cached
-       list, must still be typeable. */
-    (function googleCategory() {
-
-        var $field = $('#google_product_category');
-
-        if (!$field.length || !$.fn.select2) {
-            return;
-        }
-
-        $field.select2({
-            /* Without the Bootstrap 5 theme select2 renders its own default
-               skin: a thinner control with a white background that does not
-               match the form-select fields beside it, and ignores dark mode.
-               Every other select2 on this screen gets the theme from
-               pgCombobox (pg_fields.js); this one is set up here, so it has
-               to ask for it itself. */
-            theme: 'bootstrap-5',
-            width: '100%',
-            allowClear: true,
-            tags: true,
-            placeholder: label('Google Product Category'),
-            minimumInputLength: 2,
-            ajax: {
-                url: 'google_taxonomy_action.php',
-                dataType: 'json',
-                delay: 200,
-                data: function (params) {
-                    return { action: 'search', q: params.term };
-                },
-                processResults: function (data) {
-                    return { results: (data && data.results) ? data.results : [] };
-                },
-                cache: true
-            }
-        });
-
-    }());
-
     /* ------------------------------------------- attributes and options */
 
     /* Creating an attribute or an option must not cost the operator the form
