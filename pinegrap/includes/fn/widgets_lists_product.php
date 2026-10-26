@@ -22,6 +22,10 @@
 // pg_sw_list_key_guard()). The rows
 // are built here from what the queries return, so the row shape is tested
 // without a database.
+//
+// The crumbs of the catalog path (catalog.crumbs) are the page's, not a
+// product's: their own family, keyed by ^^__has_breadcrumb^^ (1 when the
+// widget draws a path), so a list of them stands anywhere in the widget.
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
@@ -178,5 +182,85 @@ function pg_sw_list_product_read($products, $sources, $detail_page_id = 0)
             $out['product.related'][$pid] = pg_sw_list_product_related_rows(_civ_get_cross_sell_items($pid, (int)$detail_page_id, 12));
         }
     }
+    return $out;
+}
+
+// The crumbs source, in the shape of pg_sw_list_sources(): the catalog
+// path the detail and listing widgets draw as a breadcrumb.
+function pg_sw_list_crumb_sources()
+{
+    return array(
+        'catalog.crumbs' => array(
+            'family'       => 'crumbs',
+            'key'          => '__has_breadcrumb',
+            'label'        => lang('Crumbs of the catalog path'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__crumb_label', lang('Crumb')),
+                array('__crumb_url', lang('Crumb address')),
+                array('__crumb_kind', lang('Kind of crumb (link, text, active)')),
+            ),
+        ),
+    );
+}
+
+// One crumb: its words, its address ('' for none) and its kind: 'link'
+// (a link), 'text' (words without a link) or 'active' (where the visitor
+// is).
+function pg_sw_list_crumb_row($label, $url, $kind)
+{
+    return array(
+        '__crumb_label' => (string)$label,
+        '__crumb_url'   => (string)$url,
+        '__crumb_kind'  => (string)$kind,
+    );
+}
+
+// The crumbs of a catalog listing: "Main Catalog" linking to the listing's
+// root, each group between the root and the open group ($groups, root
+// side first: id, name, address_name) linking to its own view, the open
+// group last as where the visitor is. At the root, "Main Catalog" alone is
+// where the visitor is.
+function pg_sw_list_crumb_rows_listing($groups, $root_url, $group_link_base)
+{
+    $groups = array_values(is_array($groups) ? $groups : array());
+    if (!$groups) return array(pg_sw_list_crumb_row(lang('Main Catalog'), '', 'active'));
+    $out  = array(pg_sw_list_crumb_row(lang('Main Catalog'), $root_url, 'link'));
+    $last = count($groups) - 1;
+    foreach ($groups as $i => $g) {
+        $name = isset($g['name']) ? $g['name'] : '';
+        if ($i === $last) {
+            $out[] = pg_sw_list_crumb_row($name, '', 'active');
+            continue;
+        }
+        $url = !empty($g['address_name']) ? $group_link_base . encode_url_path((string)$g['address_name']) : $root_url;
+        $out[] = pg_sw_list_crumb_row($name, $url, 'link');
+    }
+    return $out;
+}
+
+// The crumbs of a catalog detail view: "Main Catalog" (a link to the
+// catalog page when there is one), the product's groups root side first
+// ($groups: id, name, address_name; a link to the group's view on the
+// catalog page when both are known, else words), then the product's
+// $product_name (null: none) as where the visitor is. On a group shown as
+// one product ($on_group) that group is where the visitor is and no
+// product follows.
+function pg_sw_list_crumb_rows_item($groups, $catalog_root_url, $on_group, $product_name)
+{
+    $catalog_root_url = (string)$catalog_root_url;
+    $out = array(pg_sw_list_crumb_row(lang('Main Catalog'), $catalog_root_url, $catalog_root_url !== '' ? 'link' : 'text'));
+    $groups = array_values(is_array($groups) ? $groups : array());
+    $last = count($groups) - 1;
+    foreach ($groups as $i => $g) {
+        $name = isset($g['name']) ? $g['name'] : '';
+        $url  = ($catalog_root_url !== '' && !empty($g['address_name']))
+              ? $catalog_root_url . '/' . encode_url_path((string)$g['address_name']) : '';
+        if ($on_group && $i === $last) $out[] = pg_sw_list_crumb_row($name, '', 'active');
+        elseif ($url !== '') $out[] = pg_sw_list_crumb_row($name, $url, 'link');
+        else $out[] = pg_sw_list_crumb_row($name, '', 'text');
+    }
+    if (!$on_group && $product_name !== null) $out[] = pg_sw_list_crumb_row($product_name, '', 'active');
     return $out;
 }

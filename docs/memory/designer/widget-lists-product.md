@@ -8,6 +8,7 @@ description: Product lists in the catalog detail and listing widgets (W9): image
 - `product.images`: the main image first, then `products_images_xref` by file name, each address once. Token `__gallery_url`.
 - `product.attributes`: `products_attributes_xref` → attribute label (its name without one) and option label, by attribute id and option sort order; an option marked `no_value` or empty gives no row. Tokens `__attr_name`, `__attr_value`.
 - `product.related`: `_civ_get_cross_sell_items($pid, $detail_page, 12)` (ordered together, else the product's groups). Tokens `__related_name`, `__related_short_description`, `__related_url`, `__related_image_url`, `__related_price` (price paid, plain text), `__related_original_price` (sticker price, empty without a discount).
+- `catalog.crumbs` (family `crumbs`, key `__has_breadcrumb`) sits beside them in both kinds: [[widget-default-parts-breadcrumb]].
 - Other values in a row (the product's `__name`, `__short_description` …) come through carriers, as in every list.
 
 ## Where are the rows read?
