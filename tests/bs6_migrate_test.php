@@ -400,3 +400,12 @@ function test_bs6_helper_contexts()
 	pg_assert_same("a = el('div', 'mb-3 fg-secondary', label); b = h.el(\"span\", \"md:col-6\"); c = K.button('btn btn-solid theme-primary', t('x'));\n"
 		. "d = icon('bi-x', 'me-3'); e = model('a', 'p-3'); f = el(tag, 'p-3');", $out);
 }
+
+// A class printed between two PHP blocks is rewritten too; a badge's colour
+// becomes its theme there as well.
+function test_bs6_classes_between_php_blocks()
+{
+	pg_assert_same('badge <?php if ($a): ?>theme-success<?php else: ?>theme-secondary<?php endif ?> p-5',
+		bs6_convert_class_list('badge <?php if ($a): ?>text-bg-success<?php else: ?>text-bg-secondary<?php endif ?> p-3')['value']);
+	pg_assert_same('x <?php if ($a): ?>fg-danger<?php endif ?>', bs6_convert_class_list('x <?php if ($a): ?>text-danger<?php endif ?>')['value']);
+}
