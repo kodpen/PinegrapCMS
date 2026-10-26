@@ -153,6 +153,127 @@ function erp_cash_refresh_balance($cash_account_id)
  * @return array ['success' => bool, 'cash_id' => int, 'account_id' => int,
  *                'settled' => int, 'error' => string]
  */
+/**
+ * What erp_post_receipt() refuses before it writes anything, so a rehearsal
+ * meets the same refusals: the amount, account and till, the period lock,
+ * the payment method, the currency and rate, and a named invoice.
+ *
+ * @param array $data  as erp_post_receipt()
+ * @return string  the refusal, '' when the receipt can be written
+ */
+function erp_post_receipt_check($data)
+{
+    $is_collection = (($data['direction'] ?? 'collection') === 'collection');
+    $account_id = (int) ($data['account_id'] ?? 0);
+    $cash_account_id = (int) ($data['cash_account_id'] ?? 0);
+    $amount = (int) ($data['amount'] ?? 0);
+
+    if ($amount <= 0) {
+        return lang('Enter an amount greater than zero.');
+    }
+    if ($account_id <= 0) {
+        return lang('Choose an account.');
+    }
+    if ($cash_account_id <= 0) {
+        return lang('Choose a till or bank account.');
+    }
+
+    if (($refusal = erp_lock_refusal((string) ($data['doc_date'] ?? date('Y-m-d')))) !== '') {
+        return $refusal;
+    }
+
+    // Checked here and not in erp_cash_post(): a cancellation copies the
+    // original row's method onto the reversal, and rows written before the
+    // enum was widened may hold the empty member. Refusing them there would
+    // make those receipts impossible to cancel.
+    $payment_method = (string) ($data['payment_method'] ?? 'cash');
+
+    if (!in_array($payment_method, erp_cash_payment_methods(), true)) {
+        return lang('Choose a payment method.');
+    }
+
+    $base = erp_base_currency();
+    $currency = erp_fx_enabled() ? strtoupper(trim((string) ($data['currency'] ?? $base))) : $base;
+    $exchange_rate = ($currency === $base) ? 1.0 : (float) ($data['exchange_rate'] ?? 0);
+
+    if (!erp_fx_currency_allowed($currency)) {
+        return lang('That currency is not enabled for the ERP.');
+    }
+    if ($exchange_rate <= 0) {
+        return lang('Enter an exchange rate greater than zero.');
+    }
+
+    // A till holds one currency; its balance is a plain sum of its movements.
+    // Only checked while the feature is on: before it, every till was written
+    // with one fixed code whatever the store's base was.
+    $till_currency = erp_fx_enabled()
+        ? strtoupper(trim((string) db_value("SELECT currency FROM erp_cash_accounts WHERE id = '" . $cash_account_id . "' LIMIT 1")))
+        : '';
+    if (($till_currency !== '') && ($till_currency !== $currency)) {
+        return lang(array(
+            'string' => 'That till or bank account is kept in {var:1}, so it cannot take a movement in {var:2}.',
+            'vars' => array($till_currency, $currency),
+        ));
+    }
+
+    $invoice_id = (int) ($data['invoice_id'] ?? 0);
+
+    if ($invoice_id > 0) {
+        $invoice = db_item("SELECT id, account_id, direction, doc_type, currency, full_number, grand_total, grand_total_base, paid_total, status
+            FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
+
+        return erp_receipt_invoice_refusal($invoice, $account_id, $currency, $is_collection);
+    }
+
+    return '';
+}
+
+/**
+ * Why a receipt cannot close an invoice, or '' when it can: the invoice is
+ * the account's, an invoice rather than a return, in the receipt's currency,
+ * on the side the money moves (sales for a collection) and still open.
+ *
+ * @param array|null $invoice  erp_invoices row
+ * @param int        $account_id
+ * @param string     $currency  the receipt's currency
+ * @param bool       $is_collection
+ * @return string
+ */
+function erp_receipt_invoice_refusal($invoice, $account_id, $currency, $is_collection)
+{
+    if (!is_array($invoice) || ((int) $invoice['account_id'] !== (int) $account_id)) {
+        return lang('That invoice does not belong to this account.');
+    }
+
+    // A return closes against the invoice it returns, never with money.
+    // Read without its doc_type it looked like an invoice whose whole
+    // total was open, so the money went to the return (marked paid)
+    // and the invoice stayed open.
+    if ((string) $invoice['doc_type'] !== 'invoice') {
+        return lang('That document is not an invoice; a receipt does not close it.');
+    }
+
+    // The allocation is measured in the invoice's currency, so the money
+    // has to be in it too.
+    if (erp_fx_enabled() && (strtoupper(trim((string) $invoice['currency'])) !== $currency)) {
+        return lang(array(
+            'string' => 'Invoice {var:1} is in {var:2}; record the receipt in that currency.',
+            'vars' => array((string) $invoice['full_number'], strtoupper(trim((string) $invoice['currency']))),
+        ));
+    }
+
+    // Money in closes what was sold; money out closes what was bought.
+    if ((string) $invoice['direction'] !== ($is_collection ? 'sales' : 'purchase')) {
+        return lang('That invoice cannot be closed by this kind of movement.');
+    }
+
+    if (erp_invoice_open_amount($invoice) <= 0) {
+        return lang('That invoice is already closed.');
+    }
+
+    return '';
+}
+
 function erp_post_receipt($data)
 {
     $is_collection = (($data['direction'] ?? 'collection') === 'collection');
@@ -164,53 +285,14 @@ function erp_post_receipt($data)
         return array('success' => false, 'cash_id' => 0, 'account_id' => 0, 'error' => $message);
     };
 
-    if ($amount <= 0) {
-        return $fail(lang('Enter an amount greater than zero.'));
-    }
-    if ($account_id <= 0) {
-        return $fail(lang('Choose an account.'));
-    }
-    if ($cash_account_id <= 0) {
-        return $fail(lang('Choose a till or bank account.'));
-    }
-
-    if (($refusal = erp_lock_refusal((string) ($data['doc_date'] ?? date('Y-m-d')))) !== '') {
+    if (($refusal = erp_post_receipt_check($data)) !== '') {
         return $fail($refusal);
     }
 
-    // Checked here and not in erp_cash_post(): a cancellation copies the
-    // original row's method onto the reversal, and rows written before the
-    // enum was widened may hold the empty member. Refusing them there would
-    // make those receipts impossible to cancel.
     $payment_method = (string) ($data['payment_method'] ?? 'cash');
-
-    if (!in_array($payment_method, erp_cash_payment_methods(), true)) {
-        return $fail(lang('Choose a payment method.'));
-    }
-
     $base = erp_base_currency();
     $currency = erp_fx_enabled() ? strtoupper(trim((string) ($data['currency'] ?? $base))) : $base;
     $exchange_rate = ($currency === $base) ? 1.0 : (float) ($data['exchange_rate'] ?? 0);
-
-    if (!erp_fx_currency_allowed($currency)) {
-        return $fail(lang('That currency is not enabled for the ERP.'));
-    }
-    if ($exchange_rate <= 0) {
-        return $fail(lang('Enter an exchange rate greater than zero.'));
-    }
-
-    // A till holds one currency; its balance is a plain sum of its movements.
-    // Only checked while the feature is on: before it, every till was written
-    // with one fixed code whatever the store's base was.
-    $till_currency = erp_fx_enabled()
-        ? strtoupper(trim((string) db_value("SELECT currency FROM erp_cash_accounts WHERE id = '" . $cash_account_id . "' LIMIT 1")))
-        : '';
-    if (($till_currency !== '') && ($till_currency !== $currency)) {
-        return $fail(lang(array(
-            'string' => 'That till or bank account is kept in {var:1}, so it cannot take a movement in {var:2}.',
-            'vars' => array($till_currency, $currency),
-        )));
-    }
 
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
@@ -281,42 +363,14 @@ function erp_post_receipt($data)
         $invoice = db_item("SELECT id, account_id, direction, doc_type, currency, full_number, grand_total, grand_total_base, paid_total, status
             FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
 
-        if (!is_array($invoice) || ((int) $invoice['account_id'] !== $account_id)) {
+        // Read again inside the transaction: the invoice may have been
+        // closed since erp_post_receipt_check() looked.
+        if (($refusal = erp_receipt_invoice_refusal($invoice, $account_id, $currency, $is_collection)) !== '') {
             erp_tx_rollback();
-            return $fail(lang('That invoice does not belong to this account.'));
-        }
-
-        // A return closes against the invoice it returns, never with money.
-        // Read without its doc_type it looked like an invoice whose whole
-        // total was open, so the money went to the return (marked paid)
-        // and the invoice stayed open.
-        if ((string) $invoice['doc_type'] !== 'invoice') {
-            erp_tx_rollback();
-            return $fail(lang('That document is not an invoice; a receipt does not close it.'));
-        }
-
-        // The allocation is measured in the invoice's currency, so the money
-        // has to be in it too.
-        if (erp_fx_enabled() && (strtoupper(trim((string) $invoice['currency'])) !== $currency)) {
-            erp_tx_rollback();
-            return $fail(lang(array(
-                'string' => 'Invoice {var:1} is in {var:2}; record the receipt in that currency.',
-                'vars' => array((string) $invoice['full_number'], strtoupper(trim((string) $invoice['currency']))),
-            )));
-        }
-
-        // Money in closes what was sold; money out closes what was bought.
-        if ((string) $invoice['direction'] !== ($is_collection ? 'sales' : 'purchase')) {
-            erp_tx_rollback();
-            return $fail(lang('That invoice cannot be closed by this kind of movement.'));
+            return $fail($refusal);
         }
 
         $open = erp_invoice_open_amount($invoice);
-
-        if ($open <= 0) {
-            erp_tx_rollback();
-            return $fail(lang('That invoice is already closed.'));
-        }
 
         // Never allocate more than the invoice is short of, nor more than was
         // actually collected. Anything over stays on the open account, where it
@@ -520,6 +574,62 @@ function erp_receipt_is_cancelled($cash_id)
 }
 
 /**
+ * What erp_receipt_cancel() refuses before it writes anything, so a
+ * rehearsal meets the same refusals: a receipt that exists and is not
+ * cancelled, not a cheque's movement, outside a locked period, a reason,
+ * and its ledger row.
+ *
+ * @param int    $cash_id
+ * @param string $reason
+ * @return array ['error' => string, '' when it can be cancelled; 'receipt', 'ledger']
+ */
+function erp_receipt_cancel_check($cash_id, $reason)
+{
+    $refuse = function ($message) {
+        return array('error' => $message, 'receipt' => null, 'ledger' => null);
+    };
+
+    $receipt = erp_receipt((int) $cash_id);
+
+    if ($receipt === null) {
+        return $refuse(lang('The receipt could not be found.'));
+    }
+
+    if ((int) $receipt['reversal_id'] > 0) {
+        return $refuse(lang('That receipt has already been cancelled.'));
+    }
+
+    // A cheque's or note's movement changes with the cheque
+    // (erp_cheque_receipt_refusal()).
+    $cheque = function_exists('erp_cheque_for_cash') ? erp_cheque_for_cash((int) $receipt['id']) : null;
+
+    if ($cheque !== null) {
+        return $refuse(erp_cheque_receipt_refusal($cheque));
+    }
+
+    // A receipt inside a closed period stays: cancelling it would change
+    // what was filed.
+    if (($refusal = erp_lock_refusal((string) $receipt['doc_date'])) !== '') {
+        return $refuse($refusal);
+    }
+
+    $reason = trim((string) $reason);
+
+    if ($reason === '') {
+        return $refuse(lang('The reason is required.'));
+    }
+
+    $ledger_id = (int) $receipt['ledger_id'];
+    $ledger = ($ledger_id > 0) ? db_item("SELECT * FROM erp_account_transactions WHERE id = '" . $ledger_id . "' LIMIT 1") : null;
+
+    if (!is_array($ledger)) {
+        return $refuse(lang('The receipt could not be found.'));
+    }
+
+    return array('error' => '', 'receipt' => $receipt, 'ledger' => $ledger);
+}
+
+/**
  * Cancel a receipt or a payment that should never have been recorded.
  *
  * Both halves are reversed, never deleted: the till gets the opposite
@@ -542,42 +652,16 @@ function erp_receipt_cancel($cash_id, $reason, $created_by = 0)
         return array('success' => false, 'reversal_id' => 0, 'reopened' => array(), 'error' => $message);
     };
 
-    $receipt = erp_receipt((int) $cash_id);
+    $checked = erp_receipt_cancel_check($cash_id, $reason);
 
-    if ($receipt === null) {
-        return $fail(lang('The receipt could not be found.'));
+    if ($checked['error'] !== '') {
+        return $fail($checked['error']);
     }
 
-    if ((int) $receipt['reversal_id'] > 0) {
-        return $fail(lang('That receipt has already been cancelled.'));
-    }
-
-    // A cheque's or note's movement changes with the cheque
-    // (erp_cheque_receipt_refusal()).
-    $cheque = function_exists('erp_cheque_for_cash') ? erp_cheque_for_cash((int) $receipt['id']) : null;
-
-    if ($cheque !== null) {
-        return $fail(erp_cheque_receipt_refusal($cheque));
-    }
-
-    // A receipt inside a closed period stays: cancelling it would change
-    // what was filed.
-    if (($refusal = erp_lock_refusal((string) $receipt['doc_date'])) !== '') {
-        return $fail($refusal);
-    }
-
-    $reason = trim((string) $reason);
-
-    if ($reason === '') {
-        return $fail(lang('The reason is required.'));
-    }
-
+    $receipt = $checked['receipt'];
+    $ledger = $checked['ledger'];
     $ledger_id = (int) $receipt['ledger_id'];
-    $ledger = ($ledger_id > 0) ? db_item("SELECT * FROM erp_account_transactions WHERE id = '" . $ledger_id . "' LIMIT 1") : null;
-
-    if (!is_array($ledger)) {
-        return $fail(lang('The receipt could not be found.'));
-    }
+    $reason = trim((string) $reason);
 
     $cash_id = (int) $receipt['id'];
     $account_id = (int) $receipt['account_id'];
