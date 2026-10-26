@@ -19,6 +19,7 @@ description: waf_is_excluded() matches the resolved script path only (never quer
 - `.well-known/` carries ACME certificate renewal. Blocking it does not fail loudly: ninety days later the certificate expires and the whole site fails with it.
 - The exemption is from the BOT POLICY ONLY; the IP blacklist and rate limit still apply.
 - `health.php` (uptime monitors) gets the same bot-policy and country exemption through `waf_is_health_request()`, which asks the running script, never the path: `/x/health.php/y` handed to `router.php` must not carry it. See `docs/memory/platform/maintenance-mode-health.md`.
+- `connect_client.php` (the site's OAuth client document a service's sign-in server reads) the same, by `waf_is_client_metadata_request()` (#1829): its fetcher has a library's name and runs wherever the service does.
 
 ## Which endpoints skip the bot policy?
 - The credential-checked ones (`integration.php`, `mcp.php`, `oauth.php`, `workspace_ical.php`, `feed.php`, `marketplace_webhook.php`), not `api.php`: `waf-bot-policy-credential-endpoints.md`.
