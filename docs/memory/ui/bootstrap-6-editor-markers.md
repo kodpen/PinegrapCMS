@@ -1,6 +1,6 @@
 ---
 name: bootstrap-6-editor-markers
-description: The visual editor's /* @pg-site-output */ markers (step B7a, #1822): what they cover, how the codemod and check_bs6.php read them, the test that keeps them, what is still unmarked
+description: The visual editor's /* @pg-site-output */ markers (step B7, #1822, #1841): what they cover, how the codemod and check_bs6.php read them, the test that keeps them, what stays unmarked
 ---
 
 ## Why are parts of style_designer.js marked?
@@ -12,9 +12,8 @@ description: The visual editor's /* @pg-site-output */ markers (step B7a, #1822)
 - `bs6_marked_editor_files()` names the editor files the codemod converts outside their markers: only `style_designer.js`. The other editor files stay by hand; the designer's vocabulary (`designer_vocab.php`, `pg_style_predict.js`, `pg_style_complete.js`) is site API data and never converted.
 
 ## What keeps the markers?
-- `tests/bs6_site_output_test.php`: the 55 marked members by name (`_sdPartEl` and `_sdPartOrderTimeline`, the order view's default parts of #1808, marked when both met in one merge train), and a guard: a member with `createNode(`, a `toHTML:` property or a `cssClass: '…'` literal is marked or listed as chrome in the test (`bindCtxOptsEvents`, `initLeftPanel`, `_wireSystemWidgetProps`, `propsButtonLinkOptions`, `bindPropEvents`, the `createNode` factory).
-- After the markers, `php tools/bs6_migrate.php pinegrap/assets/js/style_designer.js` rewrites about 640 chrome classes and keeps 168 class lists.
+- `tests/bs6_site_output_test.php`: the 57 marked members by name (among them `_sdPartEl` and `_sdPartOrderTimeline`, the order view's default parts of #1808), and a guard: a member with `createNode(`, a `toHTML:` property or a `cssClass: '…'` literal is marked or listed as chrome in the test (`bindCtxOptsEvents`, `initLeftPanel`, `_wireSystemWidgetProps`, `propsButtonLinkOptions`, `bindPropEvents`, the `createNode` factory).
+- After the markers, `php tools/bs6_migrate.php pinegrap/assets/js/style_designer.js` rewrites about 580 chrome classes and keeps 249 class lists.
 
-## What is still unmarked?
-- `_SD_HTML_PREVIEW_TOKENS` (canvas previews of widget output, about 20 class lists the codemod would rewrite) and `SD_OV_STATUS_CLASS_DEFAULTS`: an open PR edited the lines around them when B7a landed; marking them is in B7's remaining work (`plans/bootstrap-6-panel-steps.md`).
+## What is left unmarked on purpose?
 - Canvas code inside chrome members (`.dropdown-menu.show` on `canvasDoc`, `win.bootstrap`) holds no class the codemod rewrites.

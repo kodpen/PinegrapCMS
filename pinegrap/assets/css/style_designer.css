@@ -946,7 +946,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-cp-trigger {
     display: flex; align-items: center; gap: 6px;
     width: 100%; text-align: left;
-    border-radius: var(--bs-border-radius-sm, 0.25rem) !important;
+    border-radius: var(--pg-radius-sm, 0.25rem) !important;
     /* .form-select-sm already provides compact height, chevron, padding via .sd-prop-control rules. */
 }
 .sd-cp-label {
@@ -2519,22 +2519,22 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     align-items: baseline;
     gap: .5rem;
     padding: .65rem .25rem .4rem;
-    background: var(--bs-modal-bg, var(--bs-body-bg, #fff));
+    background: var(--bs-modal-bg, var(--pg-bg-body, #fff));
     font-weight: 600;
     font-size: .9rem;
-    color: var(--bs-body-emphasis-color, var(--bs-body-color, #212529));
-    border-bottom: 1px solid var(--bs-border-color-translucent, var(--bs-border-color, #dee2e6));
+    color: var(--pg-fg-emphasis, var(--pg-fg-body, #212529));
+    border-bottom: 1px solid var(--pg-border-color-translucent, var(--pg-border-color, #dee2e6));
     margin-bottom: .5rem;
 }
 .sd-icon-cat-count {
     font-size: .72rem;
     font-weight: 500;
-    color: var(--bs-secondary-color, #6c757d);
+    color: var(--pg-fg-2, #6c757d);
 }
 .sd-icon-empty {
     padding: 3rem 1rem;
     text-align: center;
-    color: var(--bs-secondary-color, #6c757d);
+    color: var(--pg-fg-2, #6c757d);
     font-size: .85rem;
 }
 
@@ -5780,7 +5780,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 
 /* Head code: a plain monospace box until the code editor takes its place. */
-#styleSettingsModal .sd-code-field { font-family: var(--bs-font-monospace); font-size: .78rem; }
+#styleSettingsModal .sd-code-field { font-family: var(--pg-font-mono); font-size: .78rem; }
 .sd-settings-code { height: 14rem; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
 
 /* Who may open the page: a word for the folder's access, then a sentence. */
@@ -6170,13 +6170,13 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-tr-src { color: var(--sd-text-muted, #8a939e); white-space: pre-wrap; word-break: break-word; max-height: 4.6em; overflow: auto; margin-bottom: .3rem; }
 .sd-tr-lang { margin-top: .4rem; }
 .sd-tr-head { display: flex; align-items: center; gap: .35rem; margin-bottom: .2rem; }
-.sd-tr-code { font-family: var(--bs-font-monospace); font-size: .65rem; padding: 0 .3rem; border-radius: .25rem; background: rgba(var(--sd-accent-rgb), .18); }
+.sd-tr-code { font-family: var(--pg-font-mono); font-size: .65rem; padding: 0 .3rem; border-radius: .25rem; background: rgba(var(--sd-accent-rgb), .18); }
 .sd-tr-label { opacity: .85; }
 .sd-tr-state { margin-left: auto; font-size: .65rem; opacity: .8; }
-.sd-tr-reviewed { color: var(--bs-success); }
-.sd-tr-pending { color: var(--bs-warning); }
+.sd-tr-reviewed { color: var(--pg-success); }
+.sd-tr-pending { color: var(--pg-warning); }
 .sd-tr-input { font-size: .75rem; resize: vertical; }
-.sd-tr-inline { font-family: var(--bs-font-monospace); font-size: .7rem; }
+.sd-tr-inline { font-family: var(--pg-font-mono); font-size: .7rem; }
 .sd-tr-actions { display: flex; align-items: center; gap: .25rem; margin-top: .2rem; }
 .sd-tr-actions .btn { --bs-btn-padding-y: .05rem; --bs-btn-padding-x: .45rem; --bs-btn-font-size: .7rem; }
 .sd-tr-screen { display: inline-block; margin-top: .55rem; font-size: .7rem; }
