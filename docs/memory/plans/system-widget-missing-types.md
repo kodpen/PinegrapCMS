@@ -1,6 +1,6 @@
 ---
 name: system-widget-missing-types
-description: Plan (2026-10-19, steps 1-2 done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
+description: Plan (2026-10-19, steps 1-3 done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
 ---
 
 ## Which classic page types have no widget?
@@ -15,7 +15,7 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 | membership confirmation | `get_membership_confirmation_screen_content.php` | after the membership entrance |
 | affiliate sign up form / confirmation / welcome | `get_affiliate_*` | affiliate programme pages |
 | order form | `get_order_form.php` | a product group with quantity boxes, many products to the cart at once |
-| shipping method, billing information, order preview | `get_<type>.php` | classic multi-step checkout, see below |
+| order preview | `get_order_preview.php` | last checkout step, below |
 - Region-level gaps (menu, ad region, tag cloud…): R6 in `legacy-retirement-prerequisites.md`.
 
 ## Which are covered?
@@ -40,6 +40,5 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - The multi-step checkout first (every existing shop uses it), then the owner's list; one widget per PR.
 
 ## Which steps are there?
-1. Shipping address and arrival: done (#1746), [[shipping-address-widget]]; the verified addresses box is left.
-2. Shipping method: done (#1759), [[shipping-method-widget]].
-3. Billing information: next. 4. Order preview. Then the owner's list.
+1-3. Done: shipping address (#1746; verified box left), method (#1759), billing (#PR); [[shipping-address-widget]] and siblings.
+4. Order preview: next, from `get_order_preview.php` and `order_preview.php`; give `pg_order_page_known()` its row branch as for billing. Then the owner's list.
