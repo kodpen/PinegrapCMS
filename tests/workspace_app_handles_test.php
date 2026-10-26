@@ -128,3 +128,82 @@ function test_app_tag_with_nothing_linked()
 {
 	pg_assert_same('@helper', ws_app_tag(4, array('id' => 4, 'name' => 'Helper'), 0, 0)['label'], 'no link makes no application Claude');
 }
+
+/**
+ * The picker's inputs for one channel: applications 4 (Order Bot), 5
+ * (Pinegrap AI), 9 (Claude), 12 (GitHub) and 20 (Stok Takip), with
+ * subscriptions, the channel's group chain (7 in 3) and what each owner may.
+ */
+function ws_test_app_picker_entries($change = array())
+{
+	$in = array_merge(array(
+		'apps'  => array(
+			4  => array('id' => 4, 'name' => 'Order Bot'),
+			5  => array('id' => 5, 'name' => 'Pinegrap AI key'),
+			9  => array('id' => 9, 'name' => 'My routine'),
+			12 => array('id' => 12, 'name' => 'GitHub'),
+			20 => array('id' => 20, 'name' => 'Stok Takip'),
+		),
+		'hooks' => array(
+			array('app_id' => 4, 'events' => '["workspace.app.mentioned","workspace.message.created"]', 'channel_group_id' => 0),
+			array('app_id' => 4, 'events' => '["workspace.app.mentioned"]', 'channel_group_id' => 3),
+			array('app_id' => 5, 'events' => '["workspace.app.mentioned"]', 'channel_group_id' => 0),
+			array('app_id' => 9, 'events' => '["workspace.app.mentioned"]', 'channel_group_id' => 0),
+			array('app_id' => 12, 'events' => '["workspace.app.mentioned"]'),
+			array('app_id' => 20, 'events' => '["workspace.message.created"]', 'channel_group_id' => 0),
+		),
+		'chain' => array(7, 3),
+		'taken' => array(),
+		'hears' => array(4 => true, 5 => true, 9 => true, 12 => true, 20 => true),
+		'reads' => array(4 => true, 5 => true, 9 => true, 12 => true, 20 => true),
+	), $change);
+
+	return ws_app_picker_entries($in['apps'], $in['hooks'], $in['chain'], 9, 5, $in['taken'], $in['hears'], $in['reads']);
+}
+
+function test_app_picker_lists_the_apps_that_hear_their_mentions()
+{
+	$entries = ws_test_app_picker_entries();
+
+	pg_assert_same(array('@github', '@order-bot'), array_column($entries, 'label'), 'Claude, Pinegrap AI and an app with no mentioned subscription are left out');
+	pg_assert_same(array(
+		'label' => '@order-bot',
+		'meta'  => 'Order Bot',
+		'icon'  => 'bi-plug',
+		'token' => '<@app:4>',
+		'shown' => '@order-bot',
+	), $entries[1]);
+}
+
+function test_app_picker_leaves_out_what_will_not_hear_the_mention()
+{
+	pg_assert_same(array('@order-bot'), array_column(ws_test_app_picker_entries(array('hears' => array(4 => true, 12 => false))), 'label'), 'key expired or no workspace scope');
+	pg_assert_same(array('@github'), array_column(ws_test_app_picker_entries(array('reads' => array(4 => false, 12 => true))), 'label'), 'the owner does not read the channel');
+}
+
+function test_app_picker_honours_subscriptions_narrowed_to_a_group()
+{
+	$hooks = array(
+		array('app_id' => 4, 'events' => '["workspace.app.mentioned"]', 'channel_group_id' => 8),
+		array('app_id' => 12, 'events' => '["workspace.app.mentioned"]', 'channel_group_id' => 3),
+	);
+
+	pg_assert_same(array('@github'), array_column(ws_test_app_picker_entries(array('hooks' => $hooks)), 'label'), 'group 8 is outside the chain, group 3 inside');
+	pg_assert_same(array(), ws_test_app_picker_entries(array('hooks' => $hooks, 'chain' => array())), 'a channel in no group hears no narrowed subscription');
+}
+
+function test_app_picker_handles_avoid_reserved_words_and_mcp_aliases()
+{
+	$entries = ws_test_app_picker_entries(array(
+		'apps'  => array(4 => array('id' => 4, 'name' => 'Claude'), 12 => array('id' => 12, 'name' => 'GitHub')),
+		'taken' => array('github'),
+	));
+
+	pg_assert_same(array('@app-12', '@app-4'), array_column($entries, 'shown'));
+	pg_assert_same(array('<@app:12>', '<@app:4>'), array_column($entries, 'token'));
+}
+
+function test_app_picker_skips_a_deleted_application()
+{
+	pg_assert_same(array('@order-bot'), array_column(ws_test_app_picker_entries(array('apps' => array(4 => array('id' => 4, 'name' => 'Order Bot')))), 'label'));
+}
