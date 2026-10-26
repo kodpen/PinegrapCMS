@@ -6,7 +6,8 @@
  * api_http_request() (includes/api/outbound/http.php): the request settings
  * an options array gives, defaults unchanged for the webhook, MCP and
  * marketplace callers; the importer's opt-in options; the answer read back
- * into the importer's shape; the redirect walk of at most five checked hops.
+ * into the importer's shape; the redirect walk of at most five checked hops;
+ * the addresses every outbound request refuses.
  *
  * import_design.php runs a request when it is loaded, so its fetch functions
  * are read out of the file by name and only they are declared here.
@@ -162,6 +163,37 @@ function test_api_http_request_plain_http_only_when_allowed()
 
 	$inside = api_http_request('GET', 'http://127.0.0.1/', array('allow_http' => true));
 	pg_assert_same('That address is inside this network and is not called.', $inside['error'], 'loopback refused with allow_http');
+}
+
+// Shared address space (with Alibaba Cloud's metadata address), the IETF
+// block, benchmarking and multicast get past FILTER_FLAG_NO_RES_RANGE on
+// every PHP version; the blocks it does cover must stay refused on all of
+// them too. The public addresses just outside each block are still called.
+function test_api_http_address_is_allowed_refuses_blocked_ranges()
+{
+	$refused = array(
+		'100.100.100.200', '100.64.0.1', '100.127.255.255', '192.0.0.170', '198.18.0.1', '198.19.255.255',
+		'224.0.0.1', '239.255.255.250', '240.0.0.1', '255.255.255.255',
+		'0.0.0.0', '127.0.0.1', '169.254.169.254', '10.0.0.1', '172.16.0.1', '192.168.1.1',
+	);
+
+	foreach ($refused as $ip) {
+		pg_assert_false(api_http_address_is_allowed($ip), $ip . ' refused');
+	}
+
+	foreach (array('8.8.8.8', '1.1.1.1', '100.63.255.255', '100.128.0.1', '192.0.1.1', '198.20.0.1', '223.255.255.254') as $ip) {
+		pg_assert_true(api_http_address_is_allowed($ip), $ip . ' allowed');
+	}
+}
+
+// Only IPv4 is judged by the block list; IPv6 stays with PHP's flags.
+function test_api_http_ipv4_in_blocked_range_reads_ipv4_only()
+{
+	pg_assert_true(api_http_ipv4_in_blocked_range('100.100.100.200'), 'an IPv4 address in a block');
+	pg_assert_false(api_http_ipv4_in_blocked_range('8.8.8.8'), 'an IPv4 address outside every block');
+	pg_assert_false(api_http_ipv4_in_blocked_range('::1'), 'IPv6');
+	pg_assert_false(api_http_ipv4_in_blocked_range('not an address'), 'not an address');
+	pg_assert_false(api_http_address_is_allowed('::1'), 'IPv6 loopback still refused');
 }
 
 function test_import_design_http_answer_reads_headers()
