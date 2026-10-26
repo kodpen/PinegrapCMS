@@ -12,7 +12,7 @@ Not found in code on 2026-10-16; check again before starting, then one PR per it
 1. Moved (2026-10-21) to docs/memory/plans/workspace-agent-handles.md: an outside application's own tag name and place in the @ picker (step 1), its channel membership endpoints (step 4).
 2. Command registry over the API: an application registers its own `/command` (for example `/summarize`, `/report`); the channel shows it beside the built-in ones (`includes/workspace/commands.php`, `ws_command_names()`).
 3. Done (#809): `workspace.app.mentioned`, sent to the mentioned application's own subscriptions where it may read the channel, answered with `POST /workspace/channels/{id}/messages`: docs/memory/workspace/workspace-app-mentioned-webhook.md.
-4. Done (#PRNUM): ERP overdue receivable → task, `erp_overdue_followups()` behind `ERP_OVERDUE_FOLLOWUP` in config.php: docs/memory/erp/erp-overdue-reminders.md.
+4. Done (#1860): ERP overdue receivable → task, `erp_overdue_followups()` behind `ERP_OVERDUE_FOLLOWUP` in config.php: docs/memory/erp/erp-overdue-reminders.md.
 5. Visual designer: a "tasks of this page" panel next to the page settings.
 
 ## What rules apply when building them?

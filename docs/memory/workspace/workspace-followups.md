@@ -21,7 +21,7 @@ description: Workspace follow-ups (followups.php, #1790): ws_followup_task_open(
 
 ## Who else calls it?
 - Sales quote expiry (#1826, `erp_quote_expiry_followups()`, off unless `ERP_QUOTE_EXPIRY_FOLLOWUP`): as the quote's `created_by`, on the account's customer channel, `$once` true (erp/erp-alerts.md).
-- Overdue receivables (#PRNUM, `erp_overdue_followups()`, off unless `ERP_OVERDUE_FOLLOWUP`): as `ERP_OVERDUE_FOLLOWUP_USER` or the invoice's `created_by`, on the account's customer channel, `$once` true (erp/erp-overdue-reminders.md).
+- Overdue receivables (#1860, `erp_overdue_followups()`, off unless `ERP_OVERDUE_FOLLOWUP`): as `ERP_OVERDUE_FOLLOWUP_USER` or the invoice's `created_by`, on the account's customer channel, `$once` true (erp/erp-overdue-reminders.md).
 
 ## Is there an API route?
 - No new one: `POST /workspace/tasks` already takes `refs`, `channel_id`, `assignees`, `due_date`, `due_time`, `remind_minutes` (workspace-api-task-reminder.md).
