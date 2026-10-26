@@ -60783,8 +60783,71 @@ const StyleDesigner = (function () {
         return out;
     }
 
-    // The id, the title and tooltip, then the Attributes panel's entries
-    // (`list`, the node's _attrs) of a content, semantic or grid node.
+    // A node's interaction (props._fx) with every field known and in
+    // range, or null without one. Twin of pg_fx_normalize()
+    // (includes/fn/designer_fx.php): the same fields, ranges and defaults.
+    // The lists are first-is-default; a number is [min, max, default].
+    function _sdFxSpec() {
+        return {
+            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax'],
+            triggers: ['view', 'load', 'hover', 'click'],
+            easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
+            numbers: {
+                duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0],
+                distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20]
+            }
+        };
+    }
+    function _sdFxNormalize(fx) {
+        if (!fx || typeof fx !== 'object' || typeof fx.effect !== 'string') return null;
+        var spec = _sdFxSpec(), effect = fx.effect.toLowerCase();
+        if (spec.effects.indexOf(effect) === -1) return null;
+        var num = function (name) {
+            var r = spec.numbers[name], v = fx[name];
+            if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '' || !isFinite(Number(v))) return r[2];
+            // PHP's round() rounds halves away from zero.
+            v = Number(v);
+            v = v < 0 ? -Math.round(-v) : Math.round(v);
+            return Math.max(r[0], Math.min(r[1], v));
+        };
+        var out = { effect: effect };
+        if (effect === 'sticky') { out.offset = num('offset'); return out; }
+        if (effect === 'parallax') { out.speed = num('speed'); return out; }
+        var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
+        var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
+        out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
+        out.duration = num('duration');
+        out.delay = num('delay');
+        out.easing = spec.easings.indexOf(easing) !== -1 ? easing : spec.easings[0];
+        if (effect !== 'fade') out.distance = num('distance');
+        if (out.trigger === 'load' || out.trigger === 'view') out.stagger = num('stagger');
+        if (out.trigger === 'view') out.repeat = !!fx.repeat;
+        return out;
+    }
+
+    // The data-pg-fx-* attributes of a node's interaction, '' without one:
+    // the effect, its trigger, then only the values that differ from
+    // pg_fx.src.js's defaults. Twin of pg_fx_attrs().
+    function _sdFxAttrs(p) {
+        var fx = _sdFxNormalize(p ? p._fx : null), spec = _sdFxSpec();
+        if (!fx) return '';
+        var out = ' data-pg-fx="' + fx.effect + '"';
+        if (fx.trigger) out += ' data-pg-fx-trigger="' + fx.trigger + '"';
+        ['duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed'].forEach(function (name) {
+            if (fx[name] === undefined) return;
+            if (name === 'easing') {
+                if (fx.easing !== spec.easings[0]) out += ' data-pg-fx-easing="' + fx.easing + '"';
+                return;
+            }
+            if (fx[name] !== spec.numbers[name][2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
+        });
+        if (fx.repeat) out += ' data-pg-fx-repeat';
+        return out;
+    }
+
+    // The id, the title and tooltip, the interaction, then the Attributes
+    // panel's entries (`list`, the node's _attrs) of a content, semantic or
+    // grid node.
     // `skip`: lower-case names the caller wrote itself; 'id' in it leaves
     // the id out. class, style and id are never written from the list.
     // Twin of _render_extra_attrs($props, $skip, true), less the search
@@ -60793,11 +60856,13 @@ const StyleDesigner = (function () {
     function _sdNodeExtraAttrs(p, list, skip) {
         var out = '';
         if (skip.indexOf('id') === -1 && p.id) out += ' id="' + esc(p.id) + '"';
-        out += _sdNodeTitleAttrs(p, list);
+        var fx = _sdFxAttrs(p);
+        out += _sdNodeTitleAttrs(p, list) + fx;
         (Array.isArray(list) ? list : []).forEach(function (a) {
             if (!a || !a.name) return;
             var name = String(a.name), lname = name.toLowerCase();
             if (lname === 'class' || lname === 'style' || lname === 'id' || skip.indexOf(lname) !== -1) return;
+            if (fx && (lname === 'data-pg-fx' || lname.indexOf('data-pg-fx-') === 0)) return;
             if (lname === 'data-pg-search-section' && p.id && p.searchSection) return;
             var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
             out += ' ' + esc(name) + '="' + esc(val) + '"';
@@ -61600,12 +61665,14 @@ const StyleDesigner = (function () {
     // Platform scripts a visitor page gets when its markup holds their
     // marker. The server's twins add the same file to the published page:
     // pg_theme_switcher_inject(), pg_bs_tips_inject() (its expression is
-    // pg_bs_tips_pattern()) and pg_scroller_inject() (pg_scroller_pattern()).
+    // pg_bs_tips_pattern()), pg_scroller_inject() (pg_scroller_pattern())
+    // and pg_fx_inject() (pg_fx_pattern()).
     // A new row here needs its server step too.
     var _SD_PAGE_SCRIPTS = [
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover)\b/i, file: 'assets/js/pg_bs_tips.js' },
-        { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' }
+        { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
+        { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the

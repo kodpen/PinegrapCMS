@@ -18,7 +18,7 @@ description: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent down
 - Stripe and iyzico (the card form and the Pay With Iyzico driver `includes/payments/iyzico.php`) run inside their bundled libraries (`includes/stripe/`, `includes/iyzipay-php/`; their HTTP clients are not edited): verification is on with the library's own CA file (iyzipay's `cacert.pem`; Stripe retries with its `ca-certificates.crt` after a certificate error), and the two config settings do not reach them.
 
 ## Which other calls go through pg_curl_tls()?
-- The vendor-host calls through `pg_curl_run()` (`curl-run-wrapper.md`); directly: the site importers (`import_design.php`, `migration.php`), the AI bot ranges, the location database, S3 backups, signature time stamps, currency rates, SMS, Paraşüt and e-document providers, StopForumSpam (`pg_form_spam_ip_listed()`, https). A new outgoing call uses it too.
+- Through `pg_curl_run()` (`curl-run-wrapper.md`): the vendor-host calls, StopForumSpam, currency rates, AI bot ranges, SMS and İYS, Paraşüt, e-documents. Directly: the importers (`import_design.php`, `migration.php`), the location database, S3 backups, signature time stamps, the licence checks (`output.php`, widget 14), CAPTCHA. New calls use one.
 
 ## Which calls do not?
 - The outbound client `api_http_request()` (webhooks, push, marketplace connectors, MCP client, cloud backup uploads) verifies and reads `CURL_CA_BUNDLE` but deliberately has no insecure escape (a delivery to an unidentified receiver goes to whoever answered); the Workspace AI and Claude calls set the same two options.

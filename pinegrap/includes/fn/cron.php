@@ -535,32 +535,18 @@ function pg_waf_refresh_ai_ranges($force = false)
             continue;
         }
 
-        $ch = curl_init($url);
-
-        curl_setopt_array($ch, array(
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => 3,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT        => 12,
+        // This channel decides who gets to impersonate a search-visible bot,
+        // so it verifies TLS like the update channel does (pg_curl_run()).
+        $answer = pg_curl_run('GET', $url, array(
+            'timeout'         => 12,
+            'connect_timeout' => 5,
+            'follow'          => 3,
         ));
 
-        // Sent with no User-Agent a request looks like an anonymous client to
-        // the receiving server's firewall - how Pinegrap once blocked its own
-        // licence checks.
-        curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-
-        // This channel decides who gets to impersonate a search-visible bot,
-        // so it verifies TLS like the update channel does.
-        if (function_exists('pg_curl_tls')) {
-            pg_curl_tls($ch);
-        }
-
-        $body  = curl_exec($ch);
-        $errno = curl_errno($ch);
-        $error = curl_error($ch);
-        $http  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        unset($ch);
+        $body  = ($answer['errno'] === 0 && $answer['error'] === '') ? $answer['body'] : false;
+        $errno = $answer['errno'];
+        $error = $answer['error'];
+        $http  = $answer['status'];
 
         if ($body === false || $http !== 200 || strlen($body) > 1048576) {
 

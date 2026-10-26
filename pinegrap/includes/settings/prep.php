@@ -60,6 +60,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // can offer it at all (tables, ENCRYPTION_KEY, openssl).
     $mfa_required_role = isset($row['mfa_required_role']) ? (int) $row['mfa_required_role'] : 99;
     $mfa_available = pg_mfa_available();
+    // Sign-in with a passkey alone (11.0.41): the switch, whether the upgrade
+    // added it, and whether passkeys work on this site at all.
+    $passkey_signin_ready = array_key_exists('passkey_signin', $row);
+    $passkey_signin = $passkey_signin_ready ? (int) $row['passkey_signin'] : 0;
+    $passkeys_available = function_exists('pg_passkeys_available') && pg_passkeys_available();
     // Commerce warns before the encryption key is reset when somebody's
     // second factor would become unreadable by it.
     $mfa_enabled_accounts = pg_mfa_table_exists()

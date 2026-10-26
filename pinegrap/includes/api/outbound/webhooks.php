@@ -96,6 +96,10 @@ function api_webhook_events() {
 		'customer.created'     => 'A customer record was created (not bulk imports)',
 		'customer.updated'     => 'A customer record was changed through the API',
 		'customer.deleted'     => 'A customer record was deleted through the API',
+		// Every row of the consent log a person gave (sign-up, account and
+		// unsubscribe pages, checkout, custom forms) or İYS sent back; a
+		// cookie answer names no customer, an import is a bulk path.
+		'customer.consent_changed' => 'A customer gave or withdrew a consent: on a sign-up, account or unsubscribe page, at checkout, on a form, or as a refusal pulled back from İYS (not imports or cookie answers); GET /customers/{id}/consents lists them',
 		// Announced where a person or an integration moves contacts on
 		// purpose: the API and the panel's contact screens (add, edit, and
 		// organizing selected contacts). The visitor-facing paths that file a
