@@ -92,11 +92,18 @@ function ws_flows_ready()
  */
 function ws_flow_kinds()
 {
-    return array(
-        'manual' => array('label' => lang('Started by hand'), 'trigger' => true, 'outcomes' => array('next')),
-        'task'   => array('label' => lang('Task'), 'trigger' => false, 'outcomes' => array('done', 'cancelled')),
-        'end'    => array('label' => lang('End'), 'trigger' => false, 'outcomes' => array()),
+    $kinds = array(
+        'manual' => array('label' => lang('Started by hand'), 'trigger' => true, 'outcomes' => array('next'), 'step' => false),
+        'task'   => array('label' => lang('Task'), 'trigger' => false, 'outcomes' => array('done', 'cancelled'), 'step' => false),
+        'end'    => array('label' => lang('End'), 'trigger' => false, 'outcomes' => array(), 'step' => false),
     );
+
+    // The steps of a scheduled action, each a box of its own (steps.php).
+    foreach ((function_exists('ws_step_kinds') ? ws_step_kinds() : array()) as $kind => $info) {
+        $kinds[$kind] = array('label' => $info['label'], 'trigger' => false, 'outcomes' => ws_step_outcomes(), 'step' => true);
+    }
+
+    return $kinds;
 }
 
 /**
@@ -207,6 +214,7 @@ function ws_flow_lines($value, $length)
  * task:   title, description, assignees (up to 20 user ids) or assign (a
  *         rule of ws_template_assign_valid(), 'creator' being whoever starts
  *         the run), due_in ('' or 0-3650 days), priority
+ * a step: ws_step_config_normalize()
  *
  * @param string $kind
  * @param mixed  $config
@@ -244,7 +252,7 @@ function ws_flow_config_normalize($kind, $config)
             );
     }
 
-    return array();
+    return function_exists('ws_step_config_normalize') ? ws_step_config_normalize($kind, $config) : array();
 }
 
 /**
@@ -419,6 +427,12 @@ function ws_flow_graph_check($graph)
                 $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The task box {var:1} names both people and a rule for whom it goes to; keep one of the two.', 'vars' => $name)));
             } elseif (($config['assign'] !== '') && !ws_template_assign_valid($config['assign'])) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The task box {var:1} has a rule for whom it goes to that the flow does not know.', 'vars' => $name)));
+            }
+        }
+
+        if ($kinds[$node['kind']]['step']) {
+            foreach (ws_step_config_problems($node['kind'], $node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
     }
@@ -944,6 +958,19 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
         return ws_flow_refusal(lang(array('string' => 'Fix the flow before it is published: {var:1}', 'vars' => $problems[0]['text']))) + array('problems' => $problems);
     }
 
+    // A step is checked as the scheduled action's step is, with the owner's
+    // rights: a channel they may write in, addresses that are good. It is
+    // checked again each time the box runs.
+    foreach ($graph['nodes'] as $node) {
+        if (!empty(ws_flow_kinds()[$node['kind']]['step'])) {
+            $step = ws_step_check($viewer, $node['kind'], $node['config']);
+
+            if (!$step['ok']) {
+                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $step['error']))));
+            }
+        }
+    }
+
     foreach ($graph['nodes'] as $node) {
         if (($node['kind'] !== 'task') || empty($node['config']['assignees'])) {
             continue;
@@ -1379,6 +1406,22 @@ function ws_flow_js_strings()
         'fl_kind_manual'      => lang('Started by hand'),
         'fl_kind_task'        => lang('Task'),
         'fl_kind_end'         => lang('End'),
+        'fl_kind_post'        => lang('Post a message'),
+        'fl_kind_email'       => lang('Send an e-mail'),
+        'fl_add_post'         => lang('Post a message'),
+        'fl_add_email'        => lang('Send an e-mail'),
+        'fl_post_meta'        => ws_js_template('In #{var:1}', 1),
+        'fl_post_no_channel'  => lang('No channel chosen'),
+        'fl_post_pick'        => lang('Choose a channel'),
+        'fl_post_channel'     => lang('Channel to write in'),
+        'fl_post_body'        => lang('Message'),
+        'fl_email_meta'       => ws_js_template('To {var:1}', 1),
+        'fl_email_no_to'      => lang('No address yet'),
+        'fl_email_to'         => lang('To'),
+        'fl_email_to_help'    => lang('E-mail addresses, separated by commas.'),
+        'fl_email_subject'    => lang('Subject'),
+        'fl_email_body'       => lang('Text of the e-mail'),
+        'fl_values_help'      => lang('Written in your name when the box runs. {{node.ID.text}} puts in what an earlier box of the run did, {{node.ID.message_id}} the message it posted; {{date}} and the other words of scheduled actions work too.'),
         'fl_add_manual'       => lang('Start manually'),
         'fl_add_task'         => lang('Task'),
         'fl_add_end'          => lang('End'),
@@ -1423,6 +1466,8 @@ function ws_flow_js_strings()
         'fl_on'               => lang('Followed when the task is'),
         'fl_on_done'          => lang('Done'),
         'fl_on_cancelled'     => lang('Cancelled'),
+        'fl_on_failed'        => lang('Failed'),
+        'fl_on_box'           => lang('Followed when the box ends'),
         'fl_one_start'        => lang('A flow has one box that starts it.'),
         'fl_too_many_boxes'   => ws_js_template('A flow can hold at most {var:1} boxes.', 1),
         'fl_flow_settings'    => lang('The flow'),

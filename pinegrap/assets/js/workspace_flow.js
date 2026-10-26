@@ -109,7 +109,16 @@
     var KINDS = {
         manual: { icon: 'bi-play-circle', name: 'fl_kind_manual', into: false, out: ['next'] },
         task: { icon: 'bi-check2-square', name: 'fl_kind_task', into: true, out: ['done', 'cancelled'] },
+        post: { icon: 'bi-chat-left-text', name: 'fl_kind_post', into: true, out: ['done', 'failed'] },
+        email: { icon: 'bi-envelope', name: 'fl_kind_email', into: true, out: ['done', 'failed'] },
         end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] }
+    };
+
+    // What an arrow is taken on, as its box says it.
+    var OUTCOMES = {
+        done: 'fl_on_done',
+        cancelled: 'fl_on_cancelled',
+        failed: 'fl_on_failed'
     };
 
     // What a share lets its holder do (ws_flow_share_levels()), lowest first.
@@ -123,6 +132,8 @@
     var PALETTE = [
         ['manual', 'bi-play-circle', 'fl_add_manual'],
         ['task', 'bi-check2-square', 'fl_add_task'],
+        ['post', 'bi-chat-left-text', 'fl_add_post'],
+        ['email', 'bi-envelope', 'fl_add_email'],
         ['end', 'bi-flag', 'fl_add_end']
     ];
 
@@ -374,6 +385,16 @@
             var who = people.length ? ((people.length > 2) ? t('fl_people_more', people.slice(0, 2).join(', '), people.length - 2) : people.join(', ')) : ruleLabel(config.assign);
 
             return ((config.due_in === '') || (config.due_in === undefined) || (config.due_in === null)) ? who : t('fl_due_meta', who, config.due_in);
+        }
+
+        if (node.kind === 'post') {
+            var channel = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+            return channel ? t('fl_post_meta', channel.name) : t('fl_post_no_channel');
+        }
+
+        if (node.kind === 'email') {
+            return config.to ? t('fl_email_meta', config.to) : t('fl_email_no_to');
         }
 
         return (node.kind === 'end') ? t('fl_end_meta') : '';
@@ -1434,14 +1455,15 @@
             group.appendChild(line);
             group.appendChild(hit);
 
-            // An arrow taken when the task is cancelled says so on itself.
-            if (edge.on === 'cancelled') {
+            // An arrow taken when a task is cancelled, or a step failed, says
+            // so on itself.
+            if ((edge.on === 'cancelled') || (edge.on === 'failed')) {
                 var label = svgEl('text', 'wsf-edge-label');
 
                 label.setAttribute('x', String(path.mx));
                 label.setAttribute('y', String(path.my - 6));
                 label.setAttribute('text-anchor', 'middle');
-                label.textContent = t('fl_on_cancelled');
+                label.textContent = t(OUTCOMES[edge.on]);
                 group.appendChild(label);
             }
 
@@ -1741,6 +1763,14 @@
             taskFields(box, node);
         }
 
+        if (node.kind === 'post') {
+            postFields(box, node);
+        }
+
+        if (node.kind === 'email') {
+            emailFields(box, node);
+        }
+
         if (state.edit) {
             box.appendChild(connections(node));
 
@@ -1829,6 +1859,53 @@
             config.description = value;
             refreshNode(node);
         }, true), t('fl_description_help')));
+    }
+
+    // A post box: the channel the owner writes in and the message. The store
+    // checks the owner may write there.
+    function postFields(box, node) {
+        var config = node.config;
+        var channels = [[0, t('fl_post_pick')]];
+
+        (BOOT.channels || []).forEach(function (channel) {
+            if (((channel.kind === 'public') || (channel.kind === 'private')) && !channel.archived) {
+                channels.push([channel.id, (channel.kind === 'private' ? '🔒 ' : '#') + channel.name]);
+            }
+        });
+
+        if (config.channel_id && !channels.some(function (option) { return option[0] === config.channel_id; })) {
+            channels.push([config.channel_id, t('fl_share_hidden')]);
+        }
+
+        var pick = K.select(channels, config.channel_id || 0);
+
+        pick.addEventListener('change', function () {
+            config.channel_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_post_channel'), pick));
+        box.appendChild(field(t('fl_post_body'), textInput(config.body, 4000, function (value) {
+            config.body = value;
+            refreshNode(node);
+        }, true), t('fl_values_help')));
+    }
+
+    // An e-mail box: addresses, subject and text, sent from the site.
+    function emailFields(box, node) {
+        var config = node.config;
+
+        box.appendChild(field(t('fl_email_to'), textInput(config.to, 2000, function (value) {
+            config.to = value;
+            refreshNode(node);
+        }), t('fl_email_to_help')));
+        box.appendChild(field(t('fl_email_subject'), textInput(config.subject, 250, function (value) {
+            config.subject = value;
+            refreshNode(node);
+        })));
+        box.appendChild(field(t('fl_email_body'), textInput(config.body, 20000, function (value) {
+            config.body = value;
+            refreshNode(node);
+        }, true), t('fl_values_help')));
     }
 
     // The team as ticks, with a filter once it is long, drawn into wrap.
@@ -1991,10 +2068,11 @@
     }
 
     function outcomeSelect(edge) {
-        var pick = K.select([['done', t('fl_on_done')], ['cancelled', t('fl_on_cancelled')]], edge.on);
+        var from = nodeById(edge.from);
+        var pick = K.select((from ? kindOf(from).out : [edge.on]).map(function (on) { return [on, t(OUTCOMES[on] || 'fl_on_done')]; }), edge.on);
 
         pick.className = 'form-select form-select-sm w-auto';
-        pick.setAttribute('aria-label', t('fl_on'));
+        pick.setAttribute('aria-label', onLabel(from));
         pick.setAttribute('data-refocus', 'on-' + edge.from + '-' + edge.to);
         pick.disabled = !state.edit;
         pick.addEventListener('change', function () {
@@ -2006,6 +2084,12 @@
         return pick;
     }
 
+    // How the outcome picker of an arrow is called: a task is done or
+    // cancelled, a step box done or failed.
+    function onLabel(from) {
+        return (from && (from.kind === 'task')) ? t('fl_on') : t('fl_on_box');
+    }
+
     function edgeForm(index) {
         var edge = state.graph.edges[index];
         var box = el('div', 'wsf-form');
@@ -2013,7 +2097,7 @@
         box.appendChild(el('p', 'small mb-2', t('fl_arrow_text', nameOf(nodeById(edge.from)), nameOf(nodeById(edge.to)))));
 
         if (nodeById(edge.from) && (kindOf(nodeById(edge.from)).out.length > 1)) {
-            box.appendChild(field(t('fl_on'), outcomeSelect(edge)));
+            box.appendChild(field(onLabel(nodeById(edge.from)), outcomeSelect(edge)));
         }
 
         if (state.edit) {
@@ -2200,6 +2284,10 @@
             config = { title: '', description: '', assignees: [], assign: 'creator', due_in: '', priority: 'normal' };
         } else if (kind === 'manual') {
             config = { subject: '' };
+        } else if (kind === 'post') {
+            config = { channel_id: 0, body: '' };
+        } else if (kind === 'email') {
+            config = { to: '', subject: '', body: '', page_id: 0 };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };

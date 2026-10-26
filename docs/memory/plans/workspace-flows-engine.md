@@ -39,5 +39,5 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 - /workspace/flows, /{id}, /publish, /resume (`ws_api_own_words_only()`, `'mcp' => false`), /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip; `dry_run`; `workspace:read`, `:write`.
 
 ## Where to start?
-- Built: F1 #1503, F3a #1551 (workspace/workspace-flows-runner.md)
-- F4: a) post, email boxes, owner's rights at publish and run, `{{node.<id>.<field>}}`, effect `began:<kind>`, canvas forms; b) other steps; c) condition; d) anchor triggers; e) box dry-run. Then F5.
+- Built: F1 #1503, F3a #1551 (workspace-flows-runner.md)
+- F4: a) #1835 post, email boxes, owner's rights at publish and run, `{{node.<id>.<field>}}`, effect `began:<kind>`, canvas forms; b) other steps; c) condition; d) anchor triggers; e) box dry-run. Then F5.

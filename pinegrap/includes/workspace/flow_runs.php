@@ -4,8 +4,9 @@
  *
  * Workspace - the runs of a flow: a published flow started by hand, its boxes
  * carried out in the order of the arrows. A task box opens a real task and
- * waits until somebody finishes it; an end box ends its branch; a run can be
- * cancelled.
+ * waits until somebody finishes it; a step box (steps.php) posts or sends
+ * as a scheduled action's step does; an end box ends its branch; a run can
+ * be cancelled.
  *
  * A run (ws_flow_runs) keeps the version it started on, so publishing the
  * flow again changes nothing for the runs already going. Each box the run
@@ -434,10 +435,22 @@ function ws_flow_effect_wait($effect)
 }
 
 /**
+ * Did a step box begin its work (steps.php, WS_STEP_BEGAN)?
+ *
+ * @param string $effect
+ * @return bool
+ */
+function ws_flow_effect_began($effect)
+{
+    return strpos((string) $effect, 'began:') === 0;
+}
+
+/**
  * What becomes of a box that stopped half way (running for longer than
  * WS_FLOW_LOCK). One whose effect is written did its work: it waits for it
- * again. One without is tried once more, then fails; nobody can retry or
- * skip a box by hand yet.
+ * again. A step box that began (ws_flow_effect_began()) fails, since it may
+ * have posted or sent already. One without an effect is tried once more,
+ * then fails; nobody can retry or skip a box by hand yet.
  *
  * @param array $step ws_flow_run_steps row
  * @return string resume | retry | fail
@@ -446,6 +459,11 @@ function ws_flow_stale_action($step)
 {
     if (ws_flow_effect_wait((string) ($step['effect'] ?? '')) !== null) {
         return 'resume';
+    }
+
+    // A step that began may have posted or sent already: never twice.
+    if (ws_flow_effect_began((string) ($step['effect'] ?? ''))) {
+        return 'fail';
     }
 
     return ((int) ($step['attempt'] ?? 0) < 2) ? 'retry' : 'fail';
@@ -1552,7 +1570,9 @@ function ws_flow_steps_stale($only = '')
                 break;
 
             default:
-                ws_flow_step_settle($step, 'running', 'failed', '', lang('The box stopped half way twice and was not tried again.'));
+                ws_flow_step_settle($step, 'running', 'failed', '', ws_flow_effect_began((string) $step['effect'])
+                    ? lang('The box stopped half way and may have done its work, so it was not tried again.')
+                    : lang('The box stopped half way twice and was not tried again.'));
         }
     }
 }
@@ -1646,6 +1666,20 @@ function ws_flow_step_run($step)
 
             ws_flow_step_task($run, $flow, $step, $node, $owner);
             return;
+    }
+
+    // A step (steps.php), with the owner's rights as they are now, like a
+    // task box.
+    if (!empty(ws_flow_kinds()[$node['kind']]['step'])) {
+        $owner = ws_change_viewer_for_id($run['actor_id']);
+
+        if (!is_array($owner) || !ws_can_schedule($owner)) {
+            ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
+            return;
+        }
+
+        ws_step_run($run, $step, $node, ws_flow_run_graph($run), $owner);
+        return;
     }
 
     // A start box is written done as the run starts and never comes here.

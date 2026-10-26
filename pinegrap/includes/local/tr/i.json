@@ -251,6 +251,7 @@
     "Impressions": "Gösterim",
     "Improvements": "İyileştirmeler",
     "In": "Giriş",
+    "In #{var:1}": "#{var:1} kanalında",
     "In ({var:1})": "Giren ({var:1})",
     "In Application Access, create an application named Claude. Give it read and write on Workspace and on Tasks, and read on the records Claude may look at (orders, customers, products…). Copy its key and secret: they are shown once. Then choose it above.": "Uygulama Erişimi'nde Claude adında bir uygulama oluşturun. Çalışma Alanı ve Görevler için okuma ve yazma, Claude'un bakabileceği kayıtlar (siparişler, müşteriler, ürünler…) için okuma izni verin. Anahtarı ve gizli değeri kopyalayın: bir kez gösterilir. Sonra uygulamayı yukarıdan seçin.",
     "In Application Access, create an application named Pinegrap AI, apart from Claude's. Give it read and write on Workspace and on Tasks, and read on the records it may look at (orders, customers, products…); its key and secret are not needed here. Then choose it above.": "Uygulama Erişimi'nde, Claude'unkinden ayrı, Pinegrap AI adında bir uygulama oluşturun. Çalışma Alanı ve Görevler için okuma ve yazma, bakabileceği kayıtlar (siparişler, müşteriler, ürünler…) için okuma izni verin; anahtarı ve parolası burada gerekmez. Sonra yukarıdan seçin.",

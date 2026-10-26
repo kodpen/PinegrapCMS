@@ -977,6 +977,7 @@
     "Written in the head of every page of this design. A tag of the same name in the Meta Tags of a page replaces it on that page.": "Bu tasarımın her sayfasının head bölümüne yazılır. Bir sayfanın Meta Etiketleri bölümündeki aynı adlı etiket, o sayfada bunun yerine geçer.",
     "Written in the head of this page only. A tag here replaces a design tag of the same name.": "Yalnız bu sayfanın head bölümüne yazılır. Buradaki bir etiket, tasarımın aynı adlı etiketinin yerine geçer.",
     "Written in the note": "Yazıldığı not",
+    "Written in your name when the box runs. {{node.ID.text}} puts in what an earlier box of the run did, {{node.ID.message_id}} the message it posted; {{date}} and the other words of scheduled actions work too.": "Kutu çalıştığında sizin adınıza yazılır. {{node.ID.text}} çalıştırmadaki önceki bir kutunun yaptığını, {{node.ID.message_id}} gönderdiği mesajı yazar; {{date}} ve programlanmış işlerin diğer sözcükleri de çalışır.",
     "Written into the channel's summary when it has none yet.": "Kanalın henüz özeti yoksa özetine yazılır.",
     "Written into the task when it opens.": "Görev açıldığında içine yazılır.",
     "Written once the order is complete.": "Sipariş tamamlandığında kesilir.",
