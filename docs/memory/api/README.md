@@ -59,4 +59,5 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - mcp-resources-prompts.md: MCP resources (pinegrap://workspace/my-day, channels/{id}/context, refs/{type}/{id}) read through their GET routes; prompts channel_summary and weekly_report; who sees them, errors, caching
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/).
+- translations-api-dry-run.md: The seven translation API writes take X-Dry-Run (PR #1911): where each stops, the batch counts, translate_api_write_check(), pg_tr_result_judge(), pg_tr_reviewed_kept()
 - workspace-mcp-small-file.md: Posting a file into a channel over MCP (workspace_files_create, PR #1830): content_base64 and name only, at most 1 MB measured before decoding, larger files over REST, why

@@ -813,12 +813,8 @@ function pg_tr_save_translation($string_id, $language, $text, $engine, $status =
     $status = ($status === 'reviewed') ? 'reviewed' : 'machine';
     $now = time();
 
-    if (!$force && ($status === 'machine')) {
-        $current = db_value("SELECT status FROM translations WHERE string_id = '$string_id' AND language = '" . e($language) . "' LIMIT 1");
-
-        if ($current === 'reviewed') {
-            return false;
-        }
+    if (pg_tr_reviewed_kept($string_id, $language, $status, $force)) {
+        return false;
     }
 
     db("INSERT INTO translations (string_id, language, text, engine, status, suspicious, updated_by, created_at, updated_at)
@@ -830,6 +826,25 @@ function pg_tr_save_translation($string_id, $language, $text, $engine, $status =
     pg_tr_invalidate_pages($language, 0, !pg_tr_write_keeps_verdicts($status));
 
     return true;
+}
+
+/**
+ * Whether a write would leave the translation there as it is: a machine
+ * answer does not replace a reviewed one unless forced.
+ *
+ * @param int    $string_id
+ * @param string $language
+ * @param string $status     machine | reviewed, as it would be written
+ * @param bool   $force
+ * @return bool
+ */
+function pg_tr_reviewed_kept($string_id, $language, $status, $force = false)
+{
+    if ($force || ($status === 'reviewed')) {
+        return false;
+    }
+
+    return (db_value("SELECT status FROM translations WHERE string_id = '" . ((int) $string_id) . "' AND language = '" . e($language) . "' LIMIT 1") === 'reviewed');
 }
 
 /**
