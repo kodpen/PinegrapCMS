@@ -736,6 +736,8 @@
     "Its text can be bound to the form's fields.": "Metni formun alanlarına bağlanabilir.",
     "Its time has already gone by. Change it to run again.": "Zamanı geçti. Yeniden çalışması için değiştirin.",
     "Its title and description": "Başlığı ve açıklaması",
+    "Its tools have not been read yet: ask the server for them again.": "Araçları henüz okunmadı: sunucudan araçlarını yeniden isteyin.",
+    "Its tools were read.": "Araçları okundu.",
     "Its webhook is still registered on {var:1}. Remove it in your {var:1} seller panel.": "Webhook'u hâlâ {var:1} üzerinde kayıtlı. {var:1} satıcı panelinizden kaldırın.",
     "Its {n} page(s) will be moved to the Recycle Bin.": "{n} sayfası Geri Dönüşüm Kutusuna taşınacak.",
     "i.e. display multiple ads per page view": "yani, sayfa görünümü başına birden çok reklam göster",

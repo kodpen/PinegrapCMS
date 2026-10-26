@@ -885,6 +885,7 @@
     "No title of its own: the title of the site is shown.": "Sayfanın kendi başlığı yok: sitenin başlığı gösterilir.",
     "No title yet": "Henüz başlık yok",
     "No titled block found.": "Başlıklı blok bulunamadı.",
+    "No tool is on yet: turn on the ones that may be used.": "Henüz hiçbir araç açık değil: kullanılabilecek olanları açın.",
     "No tool of @{var:1} is on yet, so it is not offered after @ in the channels and cannot be asked. Turn on the ones that may be used and save.": "@{var:1} için henüz açık araç yok; bu yüzden kanallarda @ yazınca önerilmez ve ona soru sorulamaz. Kullanılabilecek araçları açıp kaydedin.",
     "No tool on": "Açık araç yok",
     "No tool that reads is turned on here.": "Burada açık, okuyan bir araç yok.",

@@ -25,5 +25,5 @@ description: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-ma
 - Owner decision (2026-10-24): the form-run link (`ws_mcp_form_hint()`) is posted when Pinegrap AI is not set up (`ws_ai_after_send()`), and once at a request's first hold (`ws_ai_step()` → `ws_ai_hold_form_hint()`, gated by `ws_ai_form_hint_due()`), not on retries.
 
 ## How is it checked?
-- tests/workspace_mcp_test.php: catalogue rows and icons, alias from a host, Already added, the probe with a stand-in fetch, first read, declare, kept fields, link due; workspace_api_test.php: the route.
+- tests/workspace_mcp_test.php: catalogue rows and icons, alias from a host, Already added, the probe with a stand-in fetch, first read, declare, kept fields, link due; workspace_api_test.php: the route. The API of the added servers: `workspace-mcp-servers-api.md`.
 - CLI harness on a bare MariaDB, 2026-10-24: one-click adds and probes against the live servers. No browser session; OAuth registration and sign-in never run live.

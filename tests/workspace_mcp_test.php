@@ -756,6 +756,67 @@ function test_workspace_mcp_declare_all_turns_on_the_unsaid_tools()
 	pg_assert_false(isset($declared['reads']), 'a tool the server says reads only is left to its switch');
 }
 
+// The tools form and the API meet one check: the form names every tool (a
+// missing one off), the API only the ones it changes; a tool that writes,
+// asked on where nobody can approve its calls, is refused, an unknown name
+// reported.
+function test_workspace_mcp_tools_check_shared_by_form_and_api()
+{
+	$tools = array(
+		workspace_mcp_test_tool('reads', array('readOnlyHint' => true)),
+		workspace_mcp_test_tool('unsaid'),
+		workspace_mcp_test_tool('writes', array('readOnlyHint' => false)),
+	);
+	$shared = workspace_mcp_test_server($tools, array('reads' => 'auto'));
+	$oauth = workspace_mcp_test_server($tools, array(), 'oauth');
+
+	$form = ws_mcp_tools_check($shared, array('unsaid' => '1', 'writes' => '1', 'gone' => '1'), false);
+	pg_assert_same(array('unsaid' => 'auto_declared'), $form['rules'], 'the form starts from nothing: reads is off');
+	pg_assert_same(array('gone'), $form['unknown']);
+	pg_assert_same(array('writes'), $form['refused'], 'a tool that writes cannot be on without OAuth');
+
+	$api = ws_mcp_tools_check($shared, array('unsaid' => '1'), false, ws_mcp_tool_rules($shared));
+	pg_assert_same(array('reads' => 'auto', 'unsaid' => 'auto_declared'), $api['rules'], 'the API keeps the rules it does not name');
+
+	$off = ws_mcp_tools_check($shared, array('reads' => ''), false, ws_mcp_tool_rules($shared));
+	pg_assert_same(array(), $off['rules'], 'off takes the rule away');
+	pg_assert_same(array(), $off['refused'], 'off is never refused');
+
+	$approve = ws_mcp_tools_check($oauth, array('writes' => '1', 'unsaid' => 'approve'), true);
+	pg_assert_same('approve', $approve['rules']['writes'], 'on a server people sign in to a writing tool asks first');
+	pg_assert_same('approve', $approve['rules']['unsaid']);
+	pg_assert_false(isset($approve['rules']['reads']), 'declare_all leaves a reading tool to its switch');
+
+	$declared = ws_mcp_tools_check($shared, array(), true);
+	pg_assert_same(array('unsaid' => 'auto_declared'), $declared['rules'], 'declare_all turns on the unsaid one');
+}
+
+// The badge on the card and the state the API gives come from one place.
+function test_workspace_mcp_server_state()
+{
+	$tools = array(workspace_mcp_test_tool('reads', array('readOnlyHint' => true)));
+	$server = workspace_mcp_test_server($tools, array('reads' => 'auto')) + array('last_error' => '', 'tools_at' => 1800000000);
+
+	$ready = ws_mcp_server_state($server);
+	pg_assert_same('ready', $ready['state']);
+	pg_assert_same('', $ready['reason']);
+	pg_assert_same(array('turned_on', 'tools_read', 'tool_on'), array_column($ready['checklist'], 'key'), 'no sign-in step without OAuth');
+	pg_assert_same(array(true, true, true), array_column($ready['checklist'], 'done'));
+
+	pg_assert_same('no_tool_on', ws_mcp_server_state(array('tool_rules' => '{}') + $server)['state']);
+	pg_assert_same('unreachable', ws_mcp_server_state(array('last_error' => 'Down.') + $server)['state']);
+	pg_assert_same('Down.', ws_mcp_server_state(array('last_error' => 'Down.') + $server)['reason']);
+	pg_assert_same('off', ws_mcp_server_state(array('status' => 'disabled', 'last_error' => 'Down.') + $server)['state'], 'off comes first');
+}
+
+// The address check the probe and the API share sends nothing.
+function test_workspace_mcp_probe_check()
+{
+	pg_assert_same('', ws_mcp_probe_check('https://mcp.example.com/mcp', true));
+	pg_assert_true(ws_mcp_probe_check('http://mcp.example.com/mcp', true) !== '', 'http is refused');
+	pg_assert_true(ws_mcp_probe_check('', true) !== '', 'an empty address is refused');
+}
+
 function test_workspace_mcp_settings_form_keeps_no_secret()
 {
 	$kept = ws_mcp_settings_keep_values(array(
