@@ -352,3 +352,55 @@ function test_shipment_merge_fields()
 		array('name' => 'tracking_url', 'data' => ''),
 	), pg_shipment_merge_fields(array()));
 }
+
+// A parcel as the API's shipments and the order.shipped / order.delivered
+// payloads give it: the carrier and link the order screen shows, the status,
+// and the dates as UTC times (null when not known).
+function test_shipment_api_parcel()
+{
+	$named = pg_shipment_api_parcel(array(
+		'number' => '12345678901', 'carrier' => 'aras', 'tracking_url' => '', 'status' => 'delivered',
+		'shipped_at' => '1792836000', 'delivered_at' => '1793008800',
+	), 'Standart Teslimat', '');
+
+	pg_assert_same(array(
+		'number'       => '12345678901',
+		'carrier'      => 'aras',
+		'carrier_name' => 'Aras Kargo',
+		'tracking_url' => str_replace('{code}', '12345678901', pg_shipping_carriers()['aras']['url']),
+		'status'       => 'delivered',
+		'shipped_at'   => gmdate('Y-m-d\TH:i:s\Z', 1792836000),
+		'delivered_at' => gmdate('Y-m-d\TH:i:s\Z', 1793008800),
+	), $named);
+
+	// The carrier the method code spells, as on the order screen.
+	$guessed = pg_shipment_api_parcel(array('number' => '1234567890', 'carrier' => ''), 'MNG Ertesi Gün', '');
+	pg_assert_same('mng', $guessed['carrier']);
+	pg_assert_same('created', $guessed['status']);
+	pg_assert_same(null, $guessed['shipped_at']);
+	pg_assert_same(null, $guessed['delivered_at']);
+
+	// Nothing known: null rather than an empty string.
+	$unknown = pg_shipment_api_parcel(array('number' => 'ABC-12345', 'carrier' => 'nope'), 'Standart Teslimat', '');
+	pg_assert_same(null, $unknown['carrier']);
+	pg_assert_same(null, $unknown['carrier_name']);
+	pg_assert_same(null, $unknown['tracking_url']);
+}
+
+// The carrier POST /orders/{id}/shipment names goes on each number it sends,
+// but only a carrier the store knows: free text is no carrier for the row.
+function test_shipment_numbers_with_carrier()
+{
+	pg_assert_same(array(
+		array('number' => '111', 'carrier' => 'yurtici'),
+		array('number' => '222', 'carrier' => 'yurtici'),
+	), pg_shipment_numbers_with_carrier(array('111', '222'), 'YURTİÇİ KARGO'));
+
+	pg_assert_same(array(array('number' => '111', 'carrier' => 'ups')),
+		pg_shipment_numbers_with_carrier(array('111'), 'ups'));
+
+	// Unknown or empty: the plain numbers, so each row keeps its own carrier.
+	pg_assert_same(array('111'), pg_shipment_numbers_with_carrier(array('111'), 'Bizim Kurye'));
+	pg_assert_same(array('111'), pg_shipment_numbers_with_carrier(array('111'), ''));
+	pg_assert_same(array(), pg_shipment_numbers_with_carrier(array(), 'aras'));
+}

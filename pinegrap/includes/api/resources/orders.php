@@ -202,7 +202,10 @@ function api_order_shipments($order_id) {
 			'ship_date'        => api_order_date($row['ship_date']),
 			'delivery_date'    => api_order_date($row['delivery_date']),
 			'complete'         => ((int)$row['complete'] === 1),
-			'tracking_numbers' => isset($numbers[$key]) ? $numbers[$key] : array()
+			'tracking_numbers' => isset($numbers[$key]) ? $numbers[$key] : array(),
+			// Each number with the carrier, link, status and dates the order
+			// screen shows for it; tracking_numbers stays for older clients.
+			'parcels'          => pg_shipment_api_parcels($key, (string)$row['shipping_method_code'])
 		);
 
 	}
@@ -730,7 +733,9 @@ function api_orders_ship($params) {
 
 	// The carrier is written only into an empty slot. The code beside it is the
 	// shipping method the customer chose and paid for; a fulfilment system
-	// naming the carrier it happened to use must not overwrite that.
+	// naming the carrier it happened to use must not overwrite that. A carrier
+	// the store knows also goes on each number sent
+	// (api_orders_ship_recipient()), where the parcel keeps it.
 	if (isset($params['carrier'])) {
 
 		$carrier = trim((string)$params['carrier']);
@@ -824,7 +829,8 @@ function api_orders_ship_recipient($recipient, $params, $numbers) {
 
 	if (isset($params['tracking_numbers'])) {
 
-		$request['tracking_numbers'] = array_values((array)$numbers);
+		$request['tracking_numbers'] = pg_shipment_numbers_with_carrier($numbers,
+			isset($params['carrier']) ? (string)$params['carrier'] : '');
 
 	}
 
@@ -1535,7 +1541,16 @@ function api_order_schema() {
 			'ship_date'         => 'string?',
 			'delivery_date'     => 'string?',
 			'complete'          => 'boolean',
-			'tracking_numbers'  => 'string[]'
+			'tracking_numbers'  => 'string[]',
+			'parcels' => array(array(
+				'number'       => 'string',
+				'carrier'      => 'string?',
+				'carrier_name' => 'string?',
+				'tracking_url' => 'string?',
+				'status'       => 'string',
+				'shipped_at'   => 'string?',
+				'delivered_at' => 'string?'
+			))
 		))
 	);
 

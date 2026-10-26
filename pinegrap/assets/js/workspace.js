@@ -2777,6 +2777,7 @@
             placeholder: options.placeholder || '',
             previews: !!options.previews,
             slashInserts: options.slashInserts,
+            pasteFiles: options.pasteFiles,
             onInput: function () {
                 field.pickerCheck();
             },
@@ -22154,6 +22155,8 @@
                 previews: true,
                 // "/" lists the inserts of the box (PGWsEditor).
                 slashInserts: { insertLabel: t('insert_to_note') },
+                // A picture pasted into the note is attached, as a dropped one.
+                pasteFiles: function (files) { attach(files); },
                 onKeydown: function (event) {
                     if (event.key === 'Enter' && !event.shiftKey && assistantTokens().length) {
                         setTimeout(function () {

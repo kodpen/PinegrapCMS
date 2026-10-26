@@ -262,6 +262,7 @@ function update_order($request) {
                 && ($shipped_recipient['ship_date'] !== '0000-00-00'))
                 ? $shipped_recipient['ship_date']
                 : null,
+            'parcels'          => pg_shipment_api_parcels((int) $shipped_recipient['id']),
         ));
 
         // The customer's text message, held back like the e-mail when the
