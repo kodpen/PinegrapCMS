@@ -158,7 +158,7 @@ function ws_api_scheduled_body_params($create)
     $params = array(
         array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 160, 'required' => $create, 'description' => 'What the action is called, up to 160 characters.'),
         array('name' => 'rules', 'in' => 'body', 'type' => 'list', 'max_items' => 12, 'required' => $create, 'description' => 'When it runs and its conditions, as objects with a type: exactly one "when" of at {date YYYY-MM-DD, time HH:MM, repeat none|minutes|hourly|daily|workdays|weekly|monthly|yearly, every, days 1-7 for weekly, until}, trigger (started by another action), join {channel_id} or event {event, channel_id, and the event\'s filters}; besides it, conditions of weekdays {days}, hours {from, to}, workday, record {record, id, field, op, value} or metric {metric, param, op, value}. Replaces every rule.'),
-        array('name' => 'action', 'in' => 'body', 'type' => 'object', 'required' => $create, 'description' => 'The step, as an object with a type: post {channel_id, text}, notify {user_ids, text}, email {to, subject, body}, task {title, description, assignees, due_in, priority, channel_id}, approval, checkin, report, task_digest, change, webhook, web_check or trigger {target_id}, with the fields the Scheduled actions form sends for it. Texts take the placeholders the form lists, such as {{date}} and {{name}}.'),
+        array('name' => 'action', 'in' => 'body', 'type' => 'object', 'required' => $create, 'description' => 'The step, as an object with a type: post {channel_id, body}, notify {user_ids, text}, email {to, subject, body}, task {title, description, assignees, due_in, priority, channel_id}, approval, checkin, report, task_digest, change, webhook, web_check or trigger {target_id}, with the fields the Scheduled actions form sends for it. Texts take the placeholders the form lists, such as {{date}} and {{name}}.'),
         array('name' => 'follow', 'in' => 'body', 'type' => 'list', 'max_items' => WS_SCHEDULED_MAX_FOLLOW, 'of' => array('on' => 'string', 'do' => 'object'), 'description' => 'What follows by how the step went, as objects of {on, do}: on done, failed, skipped or always; do a step as action takes it. Replaces every follow-up; an empty list takes them away.'),
     );
 
@@ -524,9 +524,10 @@ function ws_api_scheduled_own_session_refusal()
  *
  * @param array $row    decoded
  * @param array $params the route's values
+ * @param array $money  the metrics kept in minor units (ws_scheduled_metrics() kind money)
  * @return array id, name, rules, action, follow
  */
-function ws_api_scheduled_change_data($row, $params)
+function ws_api_scheduled_change_data($row, $params, $money = array())
 {
     $data = array('id' => (int) $row['id']);
 
@@ -534,7 +535,51 @@ function ws_api_scheduled_change_data($row, $params)
         $data[$key] = (array_key_exists($key, $params) && ($params[$key] !== null)) ? $params[$key] : ($row[$key] ?? $none);
     }
 
+    // Rules kept from the action are as stored, money in minor units, while
+    // the save reads them as the form sends them and multiplies money by 100.
+    if (!array_key_exists('rules', $params) || ($params['rules'] === null)) {
+        $data['rules'] = ws_api_scheduled_rules_as_sent((array) $data['rules'], $money);
+    }
+
     return $data;
+}
+
+/**
+ * Stored rules as the form sends them (pure): a money condition's value back
+ * in major units with two decimals, the way the panel loads it.
+ *
+ * @param array $rules as stored
+ * @param array $money the money metrics' keys
+ * @return array
+ */
+function ws_api_scheduled_rules_as_sent($rules, $money)
+{
+    foreach ($rules as $i => $rule) {
+        if (is_array($rule) && (($rule['type'] ?? '') === 'metric') && isset($rule['value'])
+            && in_array((string) ($rule['metric'] ?? ''), (array) $money, true)) {
+            $rules[$i]['value'] = number_format(((int) $rule['value']) / 100, 2, '.', '');
+        }
+    }
+
+    return $rules;
+}
+
+/**
+ * The keys of the conditions counted in money, kept in minor units.
+ *
+ * @return array
+ */
+function ws_api_scheduled_money_metrics()
+{
+    $keys = array();
+
+    foreach (ws_scheduled_metrics() as $key => $metric) {
+        if ($metric['kind'] === 'money') {
+            $keys[] = $key;
+        }
+    }
+
+    return $keys;
 }
 
 /**
@@ -602,7 +647,7 @@ function ws_api_scheduled_actions_update($params)
     ws_api_own_words_only(ws_api_scheduled_own_session_refusal());
     $viewer = ws_api_scheduled_viewer();
     $row = ws_api_scheduled_action_or_404($params['id']);
-    $id = ws_api_scheduled_save($viewer, ws_api_scheduled_change_data($row, $params), false);
+    $id = ws_api_scheduled_save($viewer, ws_api_scheduled_change_data($row, $params, ws_api_scheduled_money_metrics()), false);
 
     api_ok(ws_api_scheduled_action_present($viewer, ws_scheduled_action($id), true));
 }

@@ -129,6 +129,38 @@ function test_workspace_scheduled_api_change_keeps_what_is_not_sent()
 	pg_assert_same($row['action'], $changed['action'], 'the step is kept');
 }
 
+// A change that leaves the rules out keeps a money condition's threshold:
+// the stored minor units go to the save as the form sends them, in major
+// units, and the save turns them into minor units again.
+function test_workspace_scheduled_api_change_keeps_a_money_threshold()
+{
+	$row = array(
+		'id'     => 9,
+		'name'   => 'Sales watch',
+		'rules'  => array(
+			array('type' => 'at', 'date' => '2026-11-01', 'time' => '09:00', 'repeat' => 'daily', 'every' => 1),
+			array('type' => 'metric', 'metric' => 'sales_today', 'param' => 0, 'op' => 'gt', 'value' => 500000),
+		),
+		'action' => array('type' => 'post', 'channel_id' => 4, 'body' => 'Good day'),
+		'follow' => array(),
+	);
+
+	$money = array('sales_today', 'invoices_overdue_amount');
+	$renamed = ws_api_scheduled_change_data($row, array('id' => 9, 'name' => 'Renamed'), $money);
+
+	pg_assert_same('5000.00', $renamed['rules'][1]['value'], 'money back in major units');
+	pg_assert_same($row['rules'][0], $renamed['rules'][0], 'the other rules as they are');
+
+	$sent = ws_api_scheduled_change_data($row, array('id' => 9, 'rules' => array(
+		array('type' => 'metric', 'metric' => 'sales_today', 'param' => 0, 'op' => 'gt', 'value' => '75'),
+	)), $money);
+
+	pg_assert_same('75', $sent['rules'][0]['value'], 'rules sent are taken as sent');
+
+	$change = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_scheduled.php');
+	pg_assert_contains('ws_api_scheduled_change_data($row, $params, ws_api_scheduled_money_metrics())', $change, 'the change passes the money metrics');
+}
+
 // The panel's save and the API share one check; the save writes only what
 // the check accepted.
 function test_workspace_scheduled_api_save_check_is_shared()

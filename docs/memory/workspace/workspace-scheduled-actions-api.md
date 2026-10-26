@@ -24,5 +24,5 @@ description: Scheduled actions in the external API (api_scheduled.php): list, ge
 
 ## How do create and change write?
 - `ws_scheduled_save_check()` (scheduled.php; refusals 403 / 404 / 422, also run by the panel's `ws_scheduled_save()`) → a rehearsal answers `ws_scheduled_preview()`'s words → `ws_scheduled_save()` inside `ws_api_as_owner()`.
-- Body: `name`, `rules` (list), `action` (the `object` type of the router and the OpenAPI document: a JSON object, a list refused), `follow` (list of {on, do}), `channel_id` on create only. A change keeps every field it leaves out (`ws_api_scheduled_change_data()`, pure); a resume goes through `ws_scheduled_set_status_check()`.
+- Body: `name`, `rules` (list), `action` (the `object` type of the router and the OpenAPI document: a JSON object, a list refused), `follow` (list of {on, do}), `channel_id` on create only. A change keeps every field it leaves out (`ws_api_scheduled_change_data()`, pure); kept rules go to the save as the form sends them, a money condition back in major units (`ws_api_scheduled_rules_as_sent()`), or each rename multiplied its threshold by 100; a resume goes through `ws_scheduled_set_status_check()`.
 - Tests: `tests/workspace_scheduled_api_test.php`; the three ids are lines of the parity table's `api_routes` group.
