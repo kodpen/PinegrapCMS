@@ -291,6 +291,8 @@ function ws_api_routes()
                 array('name' => 'members', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'description' => 'User ids of the colleagues to bring in besides the owner.'),
                 array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours, as color on a channel group shows it; null or empty for none.'),
                 array('name' => 'icon', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_channel_icon_choices()), 'nullable' => true, 'description' => 'A Bootstrap Icons class from the channel form\'s list; null or empty keeps the icon the kind gives (a hash, or a lock for a private channel).'),
+                array('name' => 'customer_type', 'in' => 'body', 'type' => 'enum', 'values' => array('contact', 'user_account', 'erp_account'), 'nullable' => true, 'description' => 'The kind of record the channel is about, with customer_id: contact, user_account or erp_account (a current account, with the ERP module). null or empty for none.'),
+                array('name' => 'customer_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The id of that record. With the user role, a contact must be filed in one of the owner\'s contact groups. 0, null or empty for none.'),
             ),
         ),
 
@@ -313,6 +315,8 @@ function ws_api_routes()
                 array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours; null or empty for none.'),
                 array('name' => 'icon', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_channel_icon_choices()), 'nullable' => true, 'description' => 'A Bootstrap Icons class from the channel form\'s list; null or empty brings back the icon the kind gives.'),
                 array('name' => 'archived', 'in' => 'body', 'type' => 'bool'),
+                array('name' => 'customer_type', 'in' => 'body', 'type' => 'enum', 'values' => array('contact', 'user_account', 'erp_account'), 'nullable' => true, 'description' => 'The kind of record the channel is about, with customer_id: contact, user_account or erp_account. Sent together with customer_id (one alone is refused unless it clears); null or empty, or customer_id 0, takes the customer off.'),
+                array('name' => 'customer_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The id of that record. With the user role, a contact must be filed in one of the owner\'s contact groups. Left out with customer_type, the customer is left alone.'),
             ),
         ),
 
