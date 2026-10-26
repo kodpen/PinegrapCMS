@@ -62,14 +62,16 @@ function ws_api_flow_version_schema()
 
 /**
  * A graph as the API hands it out: a box's settings always an object, even
- * an end's empty ones.
+ * an end's empty ones; a hook's address whole only to whoever may change
+ * the flow (ws_flow_graph_present()).
  *
  * @param array $graph ws_flow_graph_normalize()
+ * @param bool  $edit  the reader may change the flow
  * @return array
  */
-function ws_api_flow_graph_present($graph)
+function ws_api_flow_graph_present($graph, $edit = false)
 {
-    return ws_flow_graph_present($graph);
+    return ws_flow_graph_present($graph, $edit);
 }
 
 // What ws_api_flow_graph_present() returns.
@@ -129,8 +131,8 @@ function ws_api_flow_present($flow, $version, $full)
         'channel_id' => ((int) $flow['channel_id'] > 0) ? (int) $flow['channel_id'] : null,
         'draft_rev'  => (int) $flow['draft_rev'],
         'version'    => is_array($version) ? ws_api_flow_version_present($version) : null,
-        'draft'      => ($draft !== null) ? ws_api_flow_graph_present($draft) : null,
-        'graph'      => ($full && is_array($version)) ? ws_api_flow_graph_present(ws_flow_graph_of($version)) : null,
+        'draft'      => ($draft !== null) ? ws_api_flow_graph_present($draft, $edit) : null,
+        'graph'      => ($full && is_array($version)) ? ws_api_flow_graph_present(ws_flow_graph_of($version), $edit) : null,
         'problems'   => ($edit && ($draft !== null)) ? array_map('ws_api_flow_problem_present', ws_flow_problems($draft)) : null,
         'created_at' => api_time($flow['created_at']),
         'updated_at' => api_time($flow['updated_at']),
@@ -735,7 +737,7 @@ function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null
         'steps'       => $full ? array_map(function ($step) use ($graph) {
             return ws_api_flow_run_step_present($step, $graph);
         }, $steps) : null,
-        'graph'       => $full ? ws_api_flow_graph_present($graph) : null,
+        'graph'       => $full ? ws_api_flow_graph_present($graph, (string) $run['access'] === 'edit') : null,
     );
 }
 

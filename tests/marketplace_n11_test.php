@@ -390,3 +390,69 @@ function test_marketplace_n11_vat_rate_follows_the_applied_rate()
 	pg_assert_same(20, mp_n11_vat_rate(array('taxable' => true, 'tax_rate' => 20.0, 'vat_rate' => null)));
 	pg_assert_same(20, mp_n11_vat_rate(array('tax_rate' => 20.0)));
 }
+
+/* ---------------------------------------------------------- their catalogue */
+
+// One page of their product-query answer, in the shape of the documentation's
+// example.
+function n11_test_product_page($products, $page, $pages, $last)
+{
+	return json_encode(array(
+		'content'          => $products,
+		'totalElements'    => 250,
+		'totalPages'       => $pages,
+		'number'           => $page,
+		'numberOfElements' => count($products),
+		'last'             => $last,
+	));
+}
+
+function test_marketplace_n11_remote_products_reads_one_page_of_the_catalogue()
+{
+	$calls = array();
+
+	$body = n11_test_product_page(array(
+		array(
+			'n11ProductId' => 123456789, 'stockCode' => ' TestSKU123 ', 'productMainId' => 'GRP1',
+			'title' => 'Test Ürünü Gri', 'barcode' => null, 'status' => 'Active', 'saleStatus' => 'On_Sale',
+			'salePrice' => 249.9, 'quantity' => 2,
+			'imageUrls' => array('http://plain.example/a.jpg', 'https://n11scdn.akamaized.net/a1/org/1.jpg'),
+		),
+		array('n11ProductId' => 5, 'stockCode' => '', 'title' => 'No code'),
+		array('n11ProductId' => 6, 'stockCode' => 'B-2', 'title' => 'Second', 'salePrice' => '1.234,5'),
+	), 1, 3, false);
+
+	$result = mp_n11_remote_products(n11_test_account(), 1, n11_test_fixed_transport(200, $body, $calls));
+
+	pg_assert_true($result['ok']);
+	pg_assert_contains('/ms/product-query?page=1&size=100', $calls[0]['url']);
+	pg_assert_same(8388608, $calls[0]['options']['max_body'], 'a page is read whole');
+	pg_assert_same(2, count($result['data']['products']), 'a product without a stock code is left out');
+
+	$first = $result['data']['products'][0];
+
+	pg_assert_same('TestSKU123', $first['remote_code']);
+	pg_assert_same('123456789', $first['remote_id']);
+	pg_assert_same('GRP1', $first['group_code']);
+	pg_assert_same('', $first['barcode']);
+	pg_assert_same(24990, $first['price'], 'the sale price in minor units');
+	pg_assert_same('https://n11scdn.akamaized.net/a1/org/1.jpg', $first['image_url'], 'the first https picture');
+	pg_assert_same('Active/On_Sale', $first['status']);
+	pg_assert_same(3, $result['data']['pages']);
+	pg_assert_false($result['data']['last']);
+}
+
+function test_marketplace_n11_remote_products_knows_the_last_page()
+{
+	$calls = array();
+
+	$last = mp_n11_remote_products(n11_test_account(), 2,
+		n11_test_fixed_transport(200, n11_test_product_page(array(array('stockCode' => 'A')), 2, 3, false), $calls));
+
+	pg_assert_true($last['data']['last'], 'the page count says so');
+
+	$empty = mp_n11_remote_products(n11_test_account(), 0,
+		n11_test_fixed_transport(200, n11_test_product_page(array(), 0, 0, false), $calls));
+
+	pg_assert_true($empty['data']['last'], 'an empty page is the end');
+}

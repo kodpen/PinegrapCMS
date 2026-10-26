@@ -43,6 +43,9 @@
 //   create_listings($account, $items)     open listings, answers a task handle
 //   listing_status($account, $barcodes)   where those listings stand (approved,
 //                                         pending, rejected), by barcode
+//   remote_products($account, $page)     one page of the products the store
+//                                         sells there, for matching; answers
+//                                         products, page, pages, total, last
 //
 // Two rules hold for all of them, and they are the correction to the accounting
 // integration that is still in the tree:

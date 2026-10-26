@@ -12,7 +12,7 @@ description: The one product group writer pg_catalog_group_create(): who calls i
 ## Who calls it?
 - POST /product-groups, `api_product_groups_create()`: 409 `name_taken`, parent and product checks, `api_dry_run_stop()` above the writer, handed `api_product_group_create_data()` (`description` as `full_description`) and `$app['owner']`, 500 when it returns 0, then its log line and 201.
 - A Workspace create, `ws_change_write_product_group()` with `ws_change_group_create_data($values)` (the proposal's one parent, its products), through `ws_change_write()`.
-- Not add_product_group.php (images, codes, details, its form) nor `pg_pb_create_group()` (a 'select' variant set): they keep their own code (owner decision).
+- Not add_product_group.php (images, codes, details, its form) nor variant sets (`catalog-variant-set-writer.md`): own code (owner decision).
 - Clouds: `pg_catalog_group_clouds($group_id, $clear_only, $opts)`; `api_product_group_clouds()` and `ws_change_group_clouds()` are one-line twins of it for updates and deletes.
 
 ## Why does it take 'api' => true?

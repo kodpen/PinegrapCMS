@@ -79,6 +79,7 @@
     "Unknown event: {var:1}": "Bilinmeyen olay: {var:1}",
     "Unknown field {var:1}. This message can use: {var:2}": "Bilinmeyen alan {var:1}. Bu mesajda kullanılabilenler: {var:2}",
     "Unknown kind of SMS message.": "Bilinmeyen SMS mesajı türü.",
+    "Unknown request.": "Bilinmeyen istek.",
     "Unlimited": "Sınırsız",
     "Unlimited pages and content": "Sınırsız sayfa ve içerik",
     "Unlimited projects": "Sınırsız proje",

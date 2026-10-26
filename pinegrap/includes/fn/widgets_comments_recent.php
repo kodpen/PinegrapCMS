@@ -979,7 +979,7 @@ function pg_comments_recent_default_tree()
             $sem('span', array('cssClass' => 'pg-hide-if-empty', 'text' => lang('2 days ago'), '_bindings' => array('text' => '__comment_date'))),
         )),
         $sem('div', array('cssClass' => 'text-warning small mt-1', 'customName' => lang('Stars'),
-            '_bindings' => array('text' => '__comment_stars_html', 'eo_visible_if' => 'comment_has_rating'))),
+            '_bindings' => array('eo_visible_if' => 'comment_has_rating')), pg_sw_part_comment_stars()),
         $sem('p', array('cssClass' => 'small mb-0 mt-1', 'text' => lang('Comment text'), 'customName' => lang('Excerpt'),
             '_bindings' => array('text' => '__comment_excerpt'))),
     ));
@@ -1568,7 +1568,7 @@ function _render_system_widget_comments_recent($tree, $widget_id, $cfg, $mode = 
     pg_comments_drop_mode_bindings($tree, 'recent');
     _pg_inject_messages_node($tree, 'comments_recent');
 
-    return pg_comments_widget_draw($tree, array(
+    $html = pg_comments_widget_draw($tree, array(
         'recent' => true,
         'default_tree' => pg_comments_recent_default_tree(),
         'widget_id' => (int) $widget_id,
@@ -1587,4 +1587,6 @@ function _render_system_widget_comments_recent($tree, $widget_id, $cfg, $mode = 
         'slots' => array(),
         'edit_chips' => $staff_any && pg_sw_edit_chips_on(),
     ));
+
+    return pg_sw_parts_css($html) . $html;
 }

@@ -4,7 +4,7 @@ description: A sales quote added from a change card (kind erp_quote, PR #1705): 
 ---
 
 ## What is it?
-- `erp_quote` in `ws_change_types()` (includes/workspace/changes.php): a sales quote, create only, ERP right (`erp`, refused to `manage_erp_readonly` through `ws_change_erp_types()`), tag `erp_quote`, table `erp_quotes`. Never a cart quote (plans/workspace-quotes.md, answer 1).
+- `erp_quote` in `ws_change_types()` (includes/workspace/changes.php): a sales quote, actions `create` and `invoice`, ERP right (`erp`, refused to `manage_erp_readonly` through `ws_change_erp_types()`), tag `erp_quote`, table `erp_quotes`. Never a cart quote (plans/workspace-quotes.md, answer 1).
 - Proposed like every kind: an application through `workspace.changes.propose` or its task twin, Claude in its answer's `changes`, Pinegrap AI with `propose_change` (field `lines` as one JSON list). The person applies it on the card.
 - Only on a site with the ERP and the `erp_quotes` table (`line_data` probe).
 
@@ -21,12 +21,15 @@ description: A sales quote added from a change card (kind erp_quote, PR #1705): 
 - `ws_change_write_erp_quote()` maps the values with `ws_change_erp_quote_data()` (the shape of `erp_api_quote_in()`: foreign currency takes the rate recorded for the date, else 0) and calls `erp_quote_save()`: numbered in its series, `erp.quote.created` (ERP audit trail, webhooks), `created_by` the person who applied. Site Log line through `ws_change_log()`; no `pg_audit_tables()` line (erp_quotes is not there).
 - The decision tags `<#erp_quote:id>`.
 
+## How is a quote invoiced from a card?
+- Action `invoice` (PR #1907): workspace-sales-quote-invoice.md.
+
 ## How is it shown?
 - Card: one row per line, "2 × Desk · Unit price ₺1.200,00 · VAT %20" (`ws_change_erp_line_text()`, in the quote's currency through `erp_money_out_currency()`). Decision and API `to_shown`: the lines in one text, bare amounts (`ws_change_show()`), the currency row beside.
 - Pinegrap AI's search details leave out a list of objects (a quote's lines); `read_record` gives them.
 
 ## What is left out on purpose?
-- No update, status move, sending or invoicing from a card: the quote screen does them (slice 6 plans an invoicing action). Not a drawer kind, not bulk, not a scheduled action's change or rule record (`ws_scheduled_change_skipped()`, `ws_scheduled_record_types()`).
+- No update, status move or sending from a card: the quote screen does them. Invoicing is the `invoice` action above. Not a drawer kind, not bulk, not a scheduled action's change or rule record (`ws_scheduled_change_skipped()`, `ws_scheduled_record_types()`).
 
 ## What guards it?
 - tests/workspace_erp_quote_change_test.php (lines, refusals, text, catalogue, writer and checks from source); the record kind lists (workspace-record-kinds.md); erp_quotes widths in tests/workspace_change_limits_test.php.

@@ -58,7 +58,8 @@ function mp_n11_connector() {
 		'request_collection' => 'mp_n11_request_collection',
 		'category_tree'    => 'mp_n11_category_tree',
 		'category_attributes' => 'mp_n11_category_attributes',
-		'create_listings'  => 'mp_n11_create_listings'
+		'create_listings'  => 'mp_n11_create_listings',
+		'remote_products'  => 'mp_n11_remote_products'
 	);
 
 }
@@ -1438,5 +1439,122 @@ function mp_n11_currency() {
 	}
 
 	return 'TL';
+
+}
+
+/* ------------------------------------------------------- their catalogue */
+
+// One page of the products the store sells on n11, for matching them to the
+// shop's (includes/api/outbound/remote_products.php).
+//
+// GET /ms/product-query with no filter lists the seller's products a page at
+// a time, pages counted from 0, at most 250 a page. A hundred are asked for:
+// every product comes with its whole description, and 250 long descriptions
+// run to megabytes. The default sender (SELLER) leaves out what n11 ships
+// from its own warehouse, whose stock is n11's to keep.
+//
+// A product without a stock code is left out: the stock code is what a match
+// is written with and what stock is sent to.
+//
+// Answers data: products (remote_code, remote_id, group_code, barcode, title,
+// image_url, price in minor units as sold there, quantity, status), page,
+// pages, total, last.
+function mp_n11_remote_products($account, $page, $transport = null) {
+
+	$page = max(0, (int) $page);
+
+	$result = mp_n11_call($account, 'GET',
+		'/ms/product-query?page=' . $page . '&size=' . mp_n11_remote_page_size(),
+		null, 8388608, $transport);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	$data = $result['data'];
+
+	$content = (isset($data['content']) && is_array($data['content'])) ? $data['content'] : array();
+
+	$products = array();
+
+	foreach ($content as $entry) {
+
+		if (!is_array($entry)) {
+
+			continue;
+
+		}
+
+		$code = isset($entry['stockCode']) ? trim((string) $entry['stockCode']) : '';
+
+		if ($code === '') {
+
+			continue;
+
+		}
+
+		$image = '';
+
+		foreach ((isset($entry['imageUrls']) && is_array($entry['imageUrls'])) ? $entry['imageUrls'] : array() as $url) {
+
+			// Shown on a panel served over https, so only an https address of
+			// theirs is kept.
+			if (is_string($url) && preg_match('#^https://[^\s"<>]+$#i', $url)) {
+
+				$image = $url;
+
+				break;
+
+			}
+
+		}
+
+		$status = array();
+
+		foreach (array('status', 'saleStatus') as $field) {
+
+			if (isset($entry[$field]) && is_scalar($entry[$field]) && (string) $entry[$field] !== '') {
+
+				$status[] = (string) $entry[$field];
+
+			}
+
+		}
+
+		$products[] = array(
+			'remote_code' => $code,
+			'remote_id'   => isset($entry['n11ProductId']) && is_scalar($entry['n11ProductId']) ? (string) $entry['n11ProductId'] : '',
+			'group_code'  => isset($entry['productMainId']) && is_scalar($entry['productMainId']) ? trim((string) $entry['productMainId']) : '',
+			'barcode'     => isset($entry['barcode']) && is_scalar($entry['barcode']) ? trim((string) $entry['barcode']) : '',
+			'title'       => isset($entry['title']) && is_scalar($entry['title']) ? trim((string) $entry['title']) : '',
+			'image_url'   => $image,
+			'price'       => mp_n11_minor($entry, 'salePrice'),
+			'quantity'    => isset($entry['quantity']) ? (int) $entry['quantity'] : 0,
+			'status'      => implode('/', $status)
+		);
+
+	}
+
+	$pages = isset($data['totalPages']) ? (int) $data['totalPages'] : 0;
+
+	// Their own flag, an empty page, or the page count, whichever says so
+	// first: the documentation names the empty page as the end.
+	$last = !empty($data['last']) || !$content || (($pages > 0) && ($page + 1 >= $pages));
+
+	return mp_ok(array(
+		'products' => $products,
+		'page'     => $page,
+		'pages'    => $pages,
+		'total'    => isset($data['totalElements']) ? (int) $data['totalElements'] : count($products),
+		'last'     => $last
+	));
+
+}
+
+function mp_n11_remote_page_size() {
+
+	return 100;
 
 }

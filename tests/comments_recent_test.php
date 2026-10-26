@@ -820,7 +820,9 @@ function test_comments_recent_flags_and_rows()
 	pg_assert_same('', $values['__comment_staff_name'], 'no user name for a visitor');
 	pg_assert_same('', $values['__comment_edit_url'], 'no edit link');
 	pg_assert_same('', $values['__comment_date'], 'no date when the page hides it');
-	pg_assert_same('', $values['__comment_stars_html'], 'no stars when the page has them off');
+	pg_assert_same('', $values['__comment_rating'], 'no rating when the page has them off');
+	pg_assert_same('', $values['__comment_rating_label'], 'nor its words');
+	pg_assert_same('', $values['__comment_stars_text'], 'nor its stars');
 	pg_assert_false($row_flags['comment_has_rating'], 'and no rating flag');
 	pg_assert_same('Hello there', $values['__comment_excerpt'], 'the excerpt in both modes');
 
@@ -1184,7 +1186,9 @@ function comments_recent_test_js_bindings($block)
 // The same, walking a PHP tree depth first; with $key, that prop instead.
 function comments_recent_test_php_walk($node, &$out, $key = '')
 {
-	if (!is_array($node)) {
+	// A default part: the starter calls its editor twin, which
+	// tests/widget_default_parts_test.php compares with the server's.
+	if (!is_array($node) || (isset($node['props']['cssClass']) && $node['props']['cssClass'] === 'pg-comment-stars')) {
 		return;
 	}
 

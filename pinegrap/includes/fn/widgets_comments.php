@@ -876,29 +876,18 @@ function _pg_comments_rating_value($rating)
 }
 
 /**
- * A comment's stars (^^__comment_stars_html^^): five stars, the first
- * $rating filled, said once as "Rated N out of 5". No inline style; the
- * colour comes from the design (text-warning in the starter). '' for a
- * rating outside 1-5.
+ * What a comment's stars say once to a screen reader
+ * (^^__comment_rating_label^^, the stars part's aria-label): "Rated N out
+ * of 5". '' for a rating outside 1-5.
  *
  * @param mixed $rating
  * @return string
  */
-function pg_comments_stars_html($rating)
+function pg_comments_rating_label($rating)
 {
     $n = _pg_comments_rating_value($rating);
 
-    if ($n === 0) {
-        return '';
-    }
-
-    $html = '<span class="pg-comment-stars" role="img" aria-label="' . h(lang(array('string' => 'Rated {var:1} out of 5', 'vars' => $n))) . '">';
-
-    for ($i = 1; $i <= 5; $i++) {
-        $html .= _pg_comments_star_svg($i <= $n);
-    }
-
-    return $html . '</span>';
+    return ($n === 0) ? '' : lang(array('string' => 'Rated {var:1} out of 5', 'vars' => $n));
 }
 
 /**
@@ -3035,7 +3024,7 @@ function pg_comments_default_tree()
                 $sem('div', array('cssClass' => 'small text-danger mb-2', 'text' => lang('Awaiting approval'), 'customName' => lang('Comment Status'),
                     '_bindings' => array('text' => '__comment_status', 'eo_visible_if' => 'comment_is_pending'))),
                 $sem('div', array('cssClass' => 'text-warning mb-1', 'customName' => lang('Stars'),
-                    '_bindings' => array('text' => '__comment_stars_html', 'eo_visible_if' => 'comment_has_rating'))),
+                    '_bindings' => array('eo_visible_if' => 'comment_has_rating')), pg_sw_part_comment_stars()),
                 $sem('div', array('cssClass' => 'd-flex flex-wrap align-items-center gap-1', 'customName' => lang('Name Line')), array(
                     $sem('span', array('cssClass' => 'fw-semibold', 'text' => lang('Jane Cooper'), '_bindings' => array('text' => '__comment_name'))),
                     $sem('span', array('cssClass' => 'small text-body-secondary', 'text' => 'jane',
@@ -3597,15 +3586,16 @@ function pg_comments_email_thread_values($settings)
 }
 
 /**
- * A comment's stars for an e-mail (^^__comment_stars_html^^): the same span
- * and words as pg_comments_stars_html(), with star characters in place of
- * the drawings, which mail clients leave out. '' for a rating outside 1-5.
- * Pure but for the translation.
+ * A comment's stars as characters (^^__comment_stars_text^^): the first
+ * $rating filled star characters, then empty ones to five; an e-mail
+ * draws them in place of the drawings, which mail clients leave out. ''
+ * for a rating outside 1-5.
+ * Pure.
  *
  * @param mixed $rating
  * @return string
  */
-function pg_comments_stars_text_html($rating)
+function pg_comments_stars_text($rating)
 {
     $n = _pg_comments_rating_value($rating);
 
@@ -3613,8 +3603,7 @@ function pg_comments_stars_text_html($rating)
         return '';
     }
 
-    return '<span class="pg-comment-stars" role="img" aria-label="' . h(lang(array('string' => 'Rated {var:1} out of 5', 'vars' => $n))) . '">'
-        . str_repeat('&#9733;', $n) . str_repeat('&#9734;', 5 - $n) . '</span>';
+    return str_repeat("\u{2605}", $n) . str_repeat("\u{2606}", 5 - $n);
 }
 
 /**
@@ -3627,7 +3616,6 @@ function pg_comments_stars_text_html($rating)
  * - __comment_file_url: the file on the site's address ($site_base, raw:
  *   URL_SCHEME . HOSTNAME_SETTING . PATH) when the comment has one, else
  *   ''.
- * - __comment_stars_html: text stars (pg_comments_stars_text_html()).
  * - __comment_staff_name, __comment_edit_url, __comment_status: '', for
  *   nobody is staff in an e-mail and only a published comment is drawn.
  *
@@ -3651,7 +3639,6 @@ function pg_comments_email_row_values($row, $flags, $site_base, $dates)
         '__comment_date' => $date('date'),
         '__comment_seller_reply_date' => $date('seller_reply_date'),
         '__comment_file_url' => (!empty($flags['comment_has_file']) && ($file_name !== '') && ($site_base !== '')) ? $site_base . encode_url_path($file_name) : '',
-        '__comment_stars_html' => !empty($flags['comment_has_rating']) ? pg_comments_stars_text_html(_pg_comments_row_text($row, 'rating')) : '',
         '__comment_staff_name' => '',
         '__comment_edit_url' => '',
         '__comment_status' => '',
@@ -4355,7 +4342,9 @@ function pg_comments_widget_row_values($row, $flags, $env)
         '__comment_excerpt' => pg_comments_quote_excerpt(_pg_comments_row_text($row, 'message')),
         '__comment_date' => !empty($env['show_date']) ? get_relative_time(array('timestamp' => $created, 'format' => 'plain_text')) : '',
         '__comment_rating' => $has_rating ? (string) (int) _pg_comments_row_text($row, 'rating') : '',
-        '__comment_stars_html' => $has_rating ? pg_comments_stars_html((int) _pg_comments_row_text($row, 'rating')) : '',
+        '__comment_rating_label' => $has_rating ? pg_comments_rating_label(_pg_comments_row_text($row, 'rating')) : '',
+        // The stars part draws these in an e-mail (pg_sw_parts_mail_stars()).
+        '__comment_stars_text' => $has_rating ? pg_comments_stars_text(_pg_comments_row_text($row, 'rating')) : '',
         '__comment_badge' => $badge,
         '__comment_file_name' => $has_file ? $file_name : '',
         '__comment_file_url' => $has_file ? OUTPUT_PATH . encode_url_path($file_name) : '',
@@ -4935,5 +4924,5 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         (new liveform('add_or_remove_watcher', $page_id))->remove_form();
     }
 
-    return $html;
+    return pg_sw_parts_css($html) . $html;
 }

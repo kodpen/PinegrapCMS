@@ -36,18 +36,23 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 define('WS_STEP_BEGAN', 'began:');
 
 /**
- * The kinds of step box: their name, the texts of their settings that
- * {{node.*}} values are filled into when the box runs, and of those the ones
- * kept on one line (a value read into an e-mail's subject brings no line
- * break into its header).
+ * The kinds of step box: their name, the scheduled action's step they are
+ * (type), the texts of their settings that {{node.*}} values are filled into
+ * when the box runs, and of those the ones kept on one line (a value read
+ * into an e-mail's subject brings no line break into its header). A task
+ * opened without waiting is task_open: the kind task is the box that waits.
  *
- * @return array kind => label, texts, lines
+ * @return array kind => label, type, texts, lines
  */
 function ws_step_kinds()
 {
     return array(
-        'post'  => array('label' => lang('Post a message'), 'texts' => array('body'), 'lines' => array()),
-        'email' => array('label' => lang('Send an e-mail'), 'texts' => array('subject', 'body'), 'lines' => array('subject')),
+        'post'      => array('label' => lang('Post a message'), 'type' => 'post', 'texts' => array('body'), 'lines' => array()),
+        'email'     => array('label' => lang('Send an e-mail'), 'type' => 'email', 'texts' => array('subject', 'body'), 'lines' => array('subject')),
+        'notify'    => array('label' => lang('Let people know'), 'type' => 'notify', 'texts' => array('text'), 'lines' => array('text')),
+        'task_open' => array('label' => lang('Open a task without waiting'), 'type' => 'task', 'texts' => array('title', 'description'), 'lines' => array('title')),
+        'webhook'   => array('label' => lang('Call a webhook'), 'type' => 'webhook', 'texts' => array('text'), 'lines' => array()),
+        'web_check' => array('label' => lang('Check a web address'), 'type' => 'web_check', 'texts' => array(), 'lines' => array()),
     );
 }
 
@@ -66,9 +71,14 @@ function ws_step_outcomes()
  * dropped. Pure: whether the owner may write in the channel, or the
  * addresses are good, is asked by ws_step_check().
  *
- * post:  channel_id, body
- * email: to (addresses, separated by commas or lines), subject, body,
- *        page_id (a page sent instead of the body, 0 for none)
+ * post:      channel_id, body
+ * email:     to (addresses, separated by commas or lines), subject, body,
+ *            page_id (a page sent instead of the body, 0 for none)
+ * notify:    user_ids (up to 50), text
+ * task_open: title, description, assignees (up to 20), channel_id (0 for
+ *            none), due_in ('' or 0-3650 days), priority
+ * webhook:   url, format (ws_scheduled_webhook_formats()), text
+ * web_check: url, mode (status, ssl), redirect, contains, max_ms, days
  *
  * @param string $kind
  * @param mixed  $config
@@ -79,6 +89,17 @@ function ws_step_config_normalize($kind, $config)
     $config = is_array($config) ? $config : array();
     $number = function ($value) {
         return (is_bool($value) || !is_numeric($value)) ? 0 : max(0, (int) $value);
+    };
+    $people = function ($value, $max) use ($number) {
+        $ids = array();
+
+        foreach ((is_array($value) ? $value : array()) as $id) {
+            if ($number($id) > 0) {
+                $ids[$number($id)] = $number($id);
+            }
+        }
+
+        return array_slice(array_values($ids), 0, $max);
     };
 
     switch ($kind) {
@@ -96,6 +117,46 @@ function ws_step_config_normalize($kind, $config)
                 'subject' => ws_flow_line($config['subject'] ?? '', 250),
                 'body'    => ws_flow_lines($config['body'] ?? '', 20000),
                 'page_id' => $number($config['page_id'] ?? 0),
+            );
+
+        case 'notify':
+            return array(
+                'user_ids' => $people($config['user_ids'] ?? array(), 50),
+                'text'     => ws_flow_line($config['text'] ?? '', 500),
+            );
+
+        case 'task_open':
+            $due_in = $config['due_in'] ?? '';
+            $priority = ws_flow_text($config['priority'] ?? '');
+
+            return array(
+                'title'       => ws_flow_line($config['title'] ?? '', 200),
+                'description' => ws_flow_lines($config['description'] ?? '', 8000),
+                'assignees'   => $people($config['assignees'] ?? array(), 20),
+                'channel_id'  => $number($config['channel_id'] ?? 0),
+                'due_in'      => (is_bool($due_in) || !is_numeric($due_in)) ? '' : max(0, min(3650, (int) $due_in)),
+                'priority'    => in_array($priority, array('low', 'normal', 'high', 'urgent'), true) ? $priority : 'normal',
+            );
+
+        case 'webhook':
+            $format = ws_flow_token($config['format'] ?? '', 16);
+
+            return array(
+                'url'    => ws_flow_line($config['url'] ?? '', 2000),
+                'format' => in_array($format, array('generic', 'text', 'discord'), true) ? $format : 'generic',
+                'text'   => ws_flow_lines($config['text'] ?? '', 4000),
+            );
+
+        case 'web_check':
+            $days = $number($config['days'] ?? 14);
+
+            return array(
+                'url'      => ws_flow_line($config['url'] ?? '', 2000),
+                'mode'     => (($config['mode'] ?? '') === 'ssl') ? 'ssl' : 'status',
+                'redirect' => !empty($config['redirect']),
+                'contains' => ws_flow_line($config['contains'] ?? '', 200),
+                'max_ms'   => min(60000, $number($config['max_ms'] ?? 0)),
+                'days'     => max(1, min(365, ($days > 0) ? $days : 14)),
             );
     }
 
@@ -137,6 +198,36 @@ function ws_step_config_problems($kind, $config, $name)
             }
 
             break;
+
+        case 'notify':
+            if (empty($config['user_ids'])) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the people to tell.', 'vars' => $name));
+            }
+
+            if ($config['text'] === '') {
+                $problems[] = lang(array('string' => 'The box {var:1} needs what they are to be told.', 'vars' => $name));
+            }
+
+            break;
+
+        case 'task_open':
+            if ($config['title'] === '') {
+                $problems[] = lang(array('string' => 'The task box {var:1} needs a title.', 'vars' => $name));
+            }
+
+            break;
+
+        case 'webhook':
+        case 'web_check':
+            if (!preg_match('#^https://\S+$#i', $config['url'])) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs an address that starts with https://.', 'vars' => $name));
+            }
+
+            if (($kind === 'webhook') && ($config['format'] !== 'generic') && ($config['text'] === '')) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the message to send.', 'vars' => $name));
+            }
+
+            break;
     }
 
     return $problems;
@@ -151,7 +242,7 @@ function ws_step_config_problems($kind, $config, $name)
  */
 function ws_step_action($kind, $config)
 {
-    return array('type' => (string) $kind) + (array) $config;
+    return array('type' => (string) (ws_step_kinds()[$kind]['type'] ?? $kind)) + (array) $config;
 }
 
 /**
@@ -252,6 +343,20 @@ function ws_step_fill_action($kind, $action, $values)
 }
 
 /**
+ * The Idempotency-Key a webhook box sends: one per run, box and pass, the
+ * same however often the call is made. Pure.
+ *
+ * @param int    $run_id
+ * @param string $node_id
+ * @param int    $pass
+ * @return string
+ */
+function ws_step_idempotency_key($run_id, $node_id, $pass)
+{
+    return 'pg-flow-' . (int) $run_id . '-' . (string) $node_id . '-' . (int) $pass;
+}
+
+/**
  * How a step's end settles its box: done on done; a failure leaves on
  * failed where an arrow does, and fails the box where none does. Pure.
  *
@@ -315,9 +420,29 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         'last_run_at' => 0,
     );
 
-    $done = ws_scheduled_do($owner, $row, ws_step_fill_action($kind, $check['action'], $values), array('depth' => (int) ($run['depth'] ?? 0)));
+    $action = ws_step_fill_action($kind, $check['action'], $values);
+
+    // A line in somebody's inbox names the flow it comes from: the notice
+    // has no scheduled action to take its title from.
+    if ($kind === 'notify') {
+        $action['text'] = lang(array('string' => 'Flow “{var:1}”: {var:2}', 'vars' => array($row['name'], $action['text'])));
+    }
+
+    // A webhook carries a key of the box's one try, so the system it calls
+    // knows a call it has taken already (Idempotency-Key).
+    $done = ws_scheduled_do($owner, $row, $action, array(
+        'depth'           => (int) ($run['depth'] ?? 0),
+        'idempotency_key' => ws_step_idempotency_key($run['id'], $step['node_id'], $step['pass'] ?? 0),
+        'flow'            => array('id' => (int) $run['flow_id'], 'run' => (int) $run['id'], 'box' => (string) $step['node_id']),
+    ));
     $end = ws_step_settlement(!empty($done['ok']), $routed);
-    $data = ((int) ($done['message_id'] ?? 0) > 0) ? array('message_id' => (int) $done['message_id']) : array();
+    $data = array();
+
+    foreach (array('message_id', 'task_id') as $key) {
+        if ((int) ($done[$key] ?? 0) > 0) {
+            $data[$key] = (int) $done[$key];
+        }
+    }
 
     ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), $data);
 }
