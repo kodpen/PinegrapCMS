@@ -940,6 +940,22 @@ function ws_scheduled_clock_ok($clock)
 }
 
 /**
+ * A day as the form sends it (YYYY-MM-DD) that is on the calendar:
+ * strtotime() alone takes 2027-02-29 and moves it to 1 March.
+ *
+ * @param string $date
+ * @return bool
+ */
+function ws_scheduled_date_ok($date)
+{
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', (string) $date, $part)) {
+        return false;
+    }
+
+    return checkdate((int) $part[2], (int) $part[3], (int) $part[1]);
+}
+
+/**
  * One rule.
  *
  * @param array $viewer
@@ -961,7 +977,7 @@ function ws_scheduled_rule_input($viewer, $rule)
             $clock = (string) ($rule['time'] ?? '');
             $repeat = (string) ($rule['repeat'] ?? 'none');
 
-            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || (strtotime($date . ' 12:00:00') === false)) {
+            if (!ws_scheduled_date_ok($date)) {
                 return $fail(lang('The date is not valid.'));
             }
 
@@ -1012,7 +1028,7 @@ function ws_scheduled_rule_input($viewer, $rule)
             $until = (string) ($rule['until'] ?? '');
 
             if ($until !== '') {
-                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $until) || (strtotime($until . ' 12:00:00') === false)) {
+                if (!ws_scheduled_date_ok($until)) {
                     return $fail(lang('The last day is not valid.'));
                 }
 
