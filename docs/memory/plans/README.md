@@ -44,7 +44,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - merge-flow-tools.md: Plan (2026-10-25, not started): merge_train.php (lock, build, fast-forward landing), CI guards (changelog, trailers, size), filtered install matrix, generated fn-module map, lang cache, merge queue
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex, Keep and HTML import, note revision, delete and sources done; small items, later Notion/OneNote; open questions
-- passkeys.md: Plan (approved 2026-10-19; steps 1-3 done, 3b and 4 left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
+- passkeys.md: Plan (approved 2026-10-19; steps 1-3b done, 4 left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
 - payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 4a, 5 done; 3b, 4b, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1450, #1669, #1744, #1757
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows, retention, window function done): automatic "price before discount" (TR 10/30-day, EU 30-day rules)

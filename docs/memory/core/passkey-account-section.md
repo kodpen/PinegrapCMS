@@ -5,7 +5,7 @@ description: Passkeys on the account page (pg_passkey_account_section(), PR #138
 
 ## Where is it drawn?
 - `pg_passkey_account_section()` (`includes/fn/passkeys.php`), after the two-step part in `pg_account_security_section()`: the My Account profile page of members and staff, default and custom layouts. Plain markup like `pg_mfa_account_section()`.
-- Not in the designed `account_security` widget yet (plan step 3b).
+- The designed `account_security` widget lists them too: docs/memory/designer/passkey-widget-list.md (PR #1843).
 - Says nothing before the upgrade, or where passkeys cannot work (`pg_passkey_ready()` `unavailable`) and the account has none; opened at another host name it gives the `host` sentence. Kept passkeys stay listed in both cases.
 - While `logged_in_as_different_user`: the count only; `passkey.php` and `account_security.php` refuse changes then.
 
