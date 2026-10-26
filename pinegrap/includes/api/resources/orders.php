@@ -403,17 +403,7 @@ function api_orders_get($params) {
 // follow from anything else the software can check.
 function api_orders_has_notes() {
 
-	static $answer = null;
-
-	if ($answer !== null) {
-
-		return $answer;
-
-	}
-
-	$answer = (api_row("SHOW COLUMNS FROM orders LIKE 'notes'") !== null);
-
-	return $answer;
+	return pg_schema_has('orders', 'notes');
 
 }
 

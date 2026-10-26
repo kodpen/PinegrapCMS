@@ -233,6 +233,65 @@ function test_widget_entity_fields_order_no_secrets()
 	}
 }
 
+function _wef_account($extra = array())
+{
+	return $extra + array(
+		'user_reward_points' => '0',
+		'timezone' => '(UTC+03:00) Istanbul',
+		'expiration_date' => '2027-01-31',
+		'salutation' => 'Dr.',
+		'nickname' => ' Jo ',
+		'company' => 'Acme',
+		'title' => 'Buyer',
+		'website' => 'https://example.com',
+		'mobile_phone' => '555 1',
+		'business_phone' => '555 2',
+		'home_phone' => null,
+		'business_city' => 'Izmir',
+		'business_country' => 'Turkey',
+		'tax_number' => '1234567890',
+		'tax_office' => null,
+		'affiliate_approved' => '0',
+		'affiliate_code' => 'JO10',
+	);
+}
+
+function test_widget_entity_fields_account_values()
+{
+	$v = pg_sw_entity_values('account', _wef_account(), array('date_format' => 'd.m.Y'));
+
+	pg_assert_same('0', $v['__member_reward_points'], 'no points yet reads 0');
+	pg_assert_same('31.01.2027', $v['__member_expiry_date'], 'a DATE column in the site format');
+	pg_assert_same('Jo', $v['__member_nickname']);
+	pg_assert_same('Buyer', $v['__member_job_title']);
+	pg_assert_same('', $v['__member_home_phone'], 'NULL is empty');
+	pg_assert_same('', $v['__member_tax_office'], 'a column the database lacks');
+	pg_assert_same('(UTC+03:00) Istanbul', $v['__member_time_zone']);
+	pg_assert_same('', $v['__member_affiliate_code'], 'only an approved affiliate');
+
+	$v = pg_sw_entity_values('account', _wef_account(array('affiliate_approved' => '1', 'expiration_date' => '0000-00-00', 'user_reward_points' => null)));
+	pg_assert_same('JO10', $v['__member_affiliate_code']);
+	pg_assert_same('', $v['__member_expiry_date'], 'no expiry date');
+	pg_assert_same('', $v['__member_reward_points'], 'reward program off');
+}
+
+// Secrets, roles and rights never enter the account allow-list, and no
+// account token takes a name another widget already fills.
+function test_widget_entity_fields_account_no_secrets()
+{
+	$columns = array();
+	foreach (pg_sw_entity_fields('account') as $token => $spec) {
+		$columns[] = $spec[0];
+		pg_assert_true(strpos($token, '__member_') === 0, $token);
+	}
+	foreach (array('user_password', 'user_password_hint', 'token', 'secret_key', 'secret_key_iv', 'secret_key_hash',
+		'user_devpasspin', 'user_role', 'user_manage_ecommerce', 'user_view_card_data', 'description',
+		'affiliate_commission_rate', 'erp_account_id', 'parasut_contact_id', 'lead_source') as $secret) {
+		pg_assert_false(in_array($secret, $columns, true), $secret . ' stays off');
+	}
+	pg_assert_false(isset(pg_sw_entity_fields('account')['__member_id']), 'the order view fills __member_id');
+}
+
 // The list view never offers the record's allow-listed values.
 function test_widget_entity_fields_quiz_not_in_list_view()
 {
@@ -247,7 +306,7 @@ function test_widget_entity_fields_editor_twin()
 {
 	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 
-	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS', 'form_record' => 'SW_FORM_RECORD_ENTITY_TOKENS', 'order' => 'SW_ORDER_ENTITY_TOKENS') as $entity => $name) {
+	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS', 'form_record' => 'SW_FORM_RECORD_ENTITY_TOKENS', 'order' => 'SW_ORDER_ENTITY_TOKENS', 'account' => 'SW_MEMBER_ENTITY_TOKENS') as $entity => $name) {
 		pg_assert_true((bool)preg_match('/var ' . $name . ' = \[(.*?)\n    \];/s', $js, $m), $name . ' found');
 
 		preg_match_all("/\['(__[a-z0-9_]+)',[^\n]*?(, 'cond')?\]/", $m[1], $rows, PREG_SET_ORDER);

@@ -34,7 +34,7 @@ function pg_dashboard_widget_21($request, $user)
             pg_waf_refresh_ai_ranges();
         }
 
-        $waf_available = (mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'waf_log'")) > 0);
+        $waf_available = pg_schema_has('waf_log');
         $waf_current_mode = function_exists('waf_mode') ? waf_mode() : 'off';
 
         // Schema not upgraded yet — say so rather than render an

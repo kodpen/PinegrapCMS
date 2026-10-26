@@ -58,6 +58,7 @@ function ws_command_names()
         'ata' => 'assign', 'assign' => 'assign',
         'bitti' => 'done', 'tamam' => 'done', 'done' => 'done',
         'ertele' => 'postpone', 'postpone' => 'postpone',
+        'durum' => 'status', 'status' => 'status',
         'karar' => 'decision', 'decision' => 'decision',
         'not' => 'note', 'note' => 'note',
         'plan' => 'plan',
@@ -175,7 +176,7 @@ function ws_command_offered($viewer, $command)
  */
 function ws_command_argument_kinds()
 {
-    return array('person', 'people', 'department', 'task', 'record', 'date', 'estimate', 'priority', 'amount', 'quantity', 'text', 'options');
+    return array('person', 'people', 'department', 'task', 'record', 'date', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options');
 }
 
 /**
@@ -210,9 +211,11 @@ function ws_command_turkish($language = null)
  *                (ws_command_argument_kinds()), label, optional, suggest
  *                (where the composer finds values for it: people,
  *                people_departments, tasks, records, products, dates,
- *                estimates, priorities, or '' for none), multiple (takes more
+ *                estimates, priorities, statuses, or '' for none), multiple (takes more
  *                than one), anywhere (read wherever it is written, as /task
  *                reads its people, day, estimate and priority)
+ *   live         the composer asks ws_command_suggest() for a line under
+ *                the usage strip while it is written
  *
  * @param array|null $viewer leaves out the commands this person may not use
  * @return array[]
@@ -242,6 +245,7 @@ function ws_commands($viewer = null)
             'key' => 'task', 'tr' => 'görev', 'en' => 'task', 'label' => '/task · /görev',
             'description' => lang('Creates a task: people with @, a day, an estimate after ~, a priority after !. Shown to you before it is created.'),
             'example'     => lang('/task Logo revision @ayse friday ~2h !urgent'),
+            'live'        => true,
             'args'        => array(
                 $arg('title', 'text', lang('title'), false),
                 $arg('people', 'people', lang('@people'), true, 'people_departments', array('multiple' => true, 'anywhere' => true)),
@@ -268,6 +272,13 @@ function ws_commands($viewer = null)
             'description' => lang('Moves a task\'s due date.'),
             'example'     => lang('/postpone T-42 +2d'),
             'args'        => array($task, $arg('due', 'date', lang('day'), false, 'dates')),
+        ),
+        array(
+            'key' => 'status', 'tr' => 'durum', 'en' => 'status', 'label' => '/status · /durum',
+            'description' => lang('Moves a task to another status: to do, in progress, waiting, done or cancelled.'),
+            'example'     => lang('/status T-42 waiting'),
+            'live'        => true,
+            'args'        => array($task, $arg('status', 'status', lang('status'), false, 'statuses')),
         ),
         array(
             'key' => 'decision', 'tr' => 'karar', 'en' => 'decision', 'label' => '/decision · /karar',
@@ -361,6 +372,7 @@ function ws_commands($viewer = null)
             'usage'       => $usage,
             'example'     => $entry['example'],
             'args'        => $entry['args'],
+            'live'        => !empty($entry['live']),
         );
     }
 
@@ -374,8 +386,8 @@ function ws_commands($viewer = null)
  * @param array|null $viewer leaves out the commands this person may not use
  * @return array[] command (the label), names (every name it answers to, each
  *                 with its slash, for the composer's / picker), example,
- *                 description; and from the registry key, name, usage, args
- *                 for the composer's argument popup
+ *                 description; and from the registry key, name, usage, args,
+ *                 live for the composer's argument popup and live line
  */
 function ws_command_help($viewer = null)
 {
@@ -391,6 +403,7 @@ function ws_command_help($viewer = null)
             'name'        => $entry['name'],
             'usage'       => $entry['usage'],
             'args'        => $entry['args'],
+            'live'        => $entry['live'],
         );
     }
 
@@ -399,13 +412,15 @@ function ws_command_help($viewer = null)
 
 /**
  * The fixed values the composer's argument popup offers after a command:
- * days, estimates and priorities, each written as the parser reads it
- * (ws_parse_date_word(), ws_parse_estimate(), ws_parse_priority()), in the
+ * days, estimates, priorities and task statuses, each written as the parser
+ * reads it (ws_parse_date_word(), ws_parse_estimate(), ws_parse_priority(),
+ * ws_parse_status_word()), in the
  * screen's language. The first days are "top": the ones shown before
  * anything is typed; the others are found as they are typed.
  *
  * @param string|null $language a language code, or null for the active one
- * @return array dates, estimates, priorities: each a list of value, meta, top
+ * @return array dates, estimates, priorities, statuses: each a list of value,
+ *               meta, top
  */
 function ws_command_suggestions($language = null)
 {
@@ -422,8 +437,13 @@ function ws_command_suggestions($language = null)
         ? array('urgent' => '!acil', 'high' => '!yüksek', 'normal' => '!normal', 'low' => '!düşük')
         : array('urgent' => '!urgent', 'high' => '!high', 'normal' => '!normal', 'low' => '!low');
 
+    $statuses = $turkish
+        ? array('todo' => 'yapılacak', 'doing' => 'sürüyor', 'waiting' => 'bekliyor', 'done' => 'bitti', 'cancelled' => 'iptal')
+        : array('todo' => 'todo', 'doing' => 'doing', 'waiting' => 'waiting', 'done' => 'done', 'cancelled' => 'cancelled');
+
     $labels = function_exists('ws_task_priorities') ? ws_task_priorities() : array();
-    $out = array('dates' => array(), 'estimates' => array(), 'priorities' => array());
+    $status_labels = function_exists('ws_task_statuses') ? ws_task_statuses() : array();
+    $out = array('dates' => array(), 'estimates' => array(), 'priorities' => array(), 'statuses' => array());
 
     foreach ($days as $index => $word) {
         $date = ws_parse_date_word($word, $today);
@@ -437,6 +457,10 @@ function ws_command_suggestions($language = null)
 
     foreach ($priorities as $key => $word) {
         $out['priorities'][] = array('value' => $word, 'meta' => (string) ($labels[$key] ?? ''), 'top' => true);
+    }
+
+    foreach ($statuses as $key => $word) {
+        $out['statuses'][] = array('value' => $word, 'meta' => (string) ($status_labels[$key] ?? ''), 'top' => true);
     }
 
     return $out;
@@ -854,6 +878,27 @@ function ws_parse_priority($word)
 }
 
 /**
+ * A task status as /status reads it, in either language, in any case, with
+ * or without the Turkish letters: "bekliyor", "waiting", "sürüyor",
+ * "doing", "iptal"...
+ *
+ * @param string $word
+ * @return string a ws_task_statuses() key, or '' when the word is none
+ */
+function ws_parse_status_word($word)
+{
+    $words = array(
+        'yapilacak' => 'todo', 'todo' => 'todo', 'to-do' => 'todo', 'acik' => 'todo', 'open' => 'todo',
+        'suruyor' => 'doing', 'devam' => 'doing', 'basladi' => 'doing', 'doing' => 'doing', 'inprogress' => 'doing', 'started' => 'doing',
+        'bekliyor' => 'waiting', 'beklemede' => 'waiting', 'waiting' => 'waiting',
+        'bitti' => 'done', 'tamam' => 'done', 'done' => 'done',
+        'iptal' => 'cancelled', 'cancelled' => 'cancelled', 'canceled' => 'cancelled', 'cancel' => 'cancelled',
+    );
+
+    return $words[ws_command_fold(trim((string) $word))] ?? '';
+}
+
+/**
  * Reads a task out of the words after /task.
  *
  * @param string      $text
@@ -1207,6 +1252,9 @@ function ws_command_run($viewer, $channel, $body, $options = array())
 
             return array('type' => 'done');
 
+        case 'status':
+            return ws_command_status($viewer, $channel, $rest);
+
         case 'decision':
         case 'note':
             if ($rest === '') {
@@ -1357,8 +1405,9 @@ function ws_command_task($viewer, $channel, $text, $options)
 
 /**
  * The live line under a command being written: what sending it now would
- * do, read by the same parser that runs it, and what it cannot read. Only
- * /task has one yet; any other command answers with an empty line.
+ * do, read by the same parser that runs it, and what it cannot read: /task
+ * and /status (ws_command_status_suggest()) have one; any other command
+ * answers with an empty line.
  *
  * @param array  $viewer
  * @param array  $channel
@@ -1369,6 +1418,10 @@ function ws_command_suggest($viewer, $channel, $body)
 {
     $out = array('line' => '', 'warnings' => array());
     $split = ws_command_split($body);
+
+    if ($split && ($split['command'] === 'status')) {
+        return ws_command_status_suggest($viewer, $split['rest']);
+    }
 
     if (!$split || ($split['command'] !== 'task') || ($split['rest'] === '')) {
         return $out;
@@ -1425,6 +1478,137 @@ function ws_command_suggest($viewer, $channel, $body)
 
     if (!empty($parsed['assignees']) && !ws_can_assign_to($viewer, $parsed['assignees'])) {
         $out['warnings'][] = lang('You may only give tasks to yourself or to the people in the departments you lead.');
+    }
+
+    return $out;
+}
+
+/**
+ * What /status is given: the task it points at and the status word after
+ * it.
+ *
+ * @param string $text the line after the command's name
+ * @return array task_id, word (as typed, '' for none), status (a
+ *               ws_task_statuses() key, '' when the word is none)
+ */
+function ws_command_parse_status($text)
+{
+    list($task_id, $rest) = ws_command_task_ref($text);
+    $words = preg_split('/\s+/u', trim($rest), 2);
+    $word = (string) ($words[0] ?? '');
+
+    return array('task_id' => $task_id, 'word' => $word, 'status' => ($word === '') ? '' : ws_parse_status_word($word));
+}
+
+/**
+ * The status words /status reads, as the argument popup offers them, for a
+ * refusal to name.
+ *
+ * @return string
+ */
+function ws_command_status_words()
+{
+    return implode(', ', array_map(function ($item) {
+        return $item['value'];
+    }, ws_command_suggestions()['statuses']));
+}
+
+/**
+ * /status: moves a task to another status through ws_task_set_status(),
+ * which tells the creator and the task's channel when it is done; the
+ * channel the command was written in gets its own line otherwise. Without a
+ * status word it only shows the task's status, to the writer.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text
+ * @return array
+ */
+function ws_command_status($viewer, $channel, $text)
+{
+    $parsed = ws_command_parse_status($text);
+    $task = $parsed['task_id'] ? ws_task($parsed['task_id']) : null;
+
+    if (!$task || !ws_can_see_task($viewer, $task)) {
+        return array('type' => 'error', 'error' => lang('That task could not be found.'));
+    }
+
+    $name = ws_task_number($task['id']) . ' “' . $task['title'] . '”';
+
+    if ($parsed['word'] === '') {
+        return array('type' => 'ephemeral', 'html' => h(lang(array('string' => '{var:1} is {var:2}.', 'vars' => array($name, ws_task_status_label($task['status']))))));
+    }
+
+    if ($parsed['status'] === '') {
+        return array('type' => 'error', 'error' => lang(array('string' => '{var:1} is not a task status. Write one of: {var:2}.', 'vars' => array($parsed['word'], ws_command_status_words()))));
+    }
+
+    if ($parsed['status'] === $task['status']) {
+        return array('type' => 'ephemeral', 'html' => h(lang(array('string' => '{var:1} is already {var:2}.', 'vars' => array($name, ws_task_status_label($task['status']))))));
+    }
+
+    $result = ws_task_set_status($viewer, $task, $parsed['status']);
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    // A finished task is said in its own channel by ws_task_set_status();
+    // here only when that is another channel, as /done does.
+    if (($parsed['status'] !== 'done') || ((int) $task['channel_id'] !== (int) $channel['id'])) {
+        ws_message_system($channel['id'], lang(array(
+            'string' => '{var:1} set {var:2} to {var:3}',
+            'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . (int) $task['id'] . '>', ws_task_status_label($parsed['status'])),
+        )), $task['id']);
+    }
+
+    return array('type' => 'done');
+}
+
+/**
+ * The live line under /status: the task, its status now and the one the
+ * line would move it to; a warning when the task cannot be found, the word
+ * is no status or the writer may not change the task.
+ *
+ * @param array  $viewer
+ * @param string $text the line after the command's name
+ * @return array line, warnings
+ */
+function ws_command_status_suggest($viewer, $text)
+{
+    $out = array('line' => '', 'warnings' => array());
+    $parsed = ws_command_parse_status($text);
+
+    if ($parsed['task_id'] <= 0) {
+        return $out;
+    }
+
+    $task = ws_task($parsed['task_id']);
+
+    if (!$task || !ws_can_see_task($viewer, $task)) {
+        $out['warnings'][] = lang('That task could not be found.');
+
+        return $out;
+    }
+
+    $name = ws_task_number($task['id']) . ' “' . $task['title'] . '”';
+    $now = ws_task_status_label($task['status']);
+
+    if ($parsed['status'] === '') {
+        $out['line'] = $name . ' · ' . $now;
+
+        if ($parsed['word'] !== '') {
+            $out['warnings'][] = lang(array('string' => '{var:1} is not a task status. Write one of: {var:2}.', 'vars' => array($parsed['word'], ws_command_status_words())));
+        }
+
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will move: {var:1}', 'vars' => $name . ' · ' . $now . ' → ' . ws_task_status_label($parsed['status'])));
+    $check = ws_task_set_status_check($viewer, $task, $parsed['status']);
+
+    if (!$check['ok']) {
+        $out['warnings'][] = $check['error'];
     }
 
     return $out;

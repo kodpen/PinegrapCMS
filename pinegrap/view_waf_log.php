@@ -37,7 +37,7 @@ validate_area_access($user, 'manager');
 include_once('liveform.class.php');
 $liveform = new liveform('view_waf_log');
 
-$table_exists = mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'waf_log'")) > 0;
+$table_exists = pg_schema_has('waf_log');
 
 // ---- Actions ---------------------------------------------------------------
 

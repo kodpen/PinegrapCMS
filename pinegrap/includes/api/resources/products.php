@@ -1228,16 +1228,7 @@ function api_products_update($params) {
 // pretends otherwise. Asked once per request.
 function api_catalog_bin_columns() {
 
-	static $ready = null;
-
-	if ($ready === null) {
-
-		$ready = (api_row("SHOW COLUMNS FROM products LIKE 'recycled'") !== null)
-			&& (api_row("SHOW COLUMNS FROM product_groups LIKE 'recycled'") !== null);
-
-	}
-
-	return $ready;
+	return pg_schema_has('products', 'recycled') && pg_schema_has('product_groups', 'recycled');
 
 }
 

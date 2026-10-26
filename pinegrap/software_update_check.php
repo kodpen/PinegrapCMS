@@ -70,39 +70,24 @@ function software_update_check($return_details = false)
     // Beta sites ask their own question; see pg_update_channel().
     $REQUEST = function_exists('pg_update_request_key') ? pg_update_request_key() : 'latest_version';
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    // Identify this installation. Sent with no User-Agent, a licence or
-    // update request looks like an anonymous client to the receiving
-    // server's own firewall and gets rejected.
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    // Verify the certificate. See pg_curl_tls() for why this matters most
-    // on the update and licence channel.
-    pg_curl_tls($ch);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        'Content-Type: application/json',
-        'Content-Length: ' . strlen($data)
+    // Identify this installation (pg_curl_run() sends pinegrap_user_agent()).
+    // Sent with no User-Agent, a licence or update request looks like an
+    // anonymous client to the receiving server's own firewall and gets
+    // rejected. The certificate is verified with pg_curl_tls(); see there for
+    // why this matters most on the update and licence channel.
+    $answer = pg_curl_run('POST', 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST, array(
+        'body'            => $data,
+        'headers'         => array(
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($data)
+        ),
+        'timeout'         => 10,
+        'connect_timeout' => 10,
+        'forbid_reuse'    => true,
     ));
-
-    // if there is a proxy address, then send cURL request through proxy
-    if (PROXY_ADDRESS != '') {
-        curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-        curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-        curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-    }
-
-    $response = curl_exec($ch);
-    $curl_errno = curl_errno($ch);
-    $curl_error = curl_error($ch);
-    unset($ch);
+    $curl_errno = $answer['errno'];
+    $curl_error = $answer['error'];
+    $response = ($answer['errno'] === 0) ? $answer['body'] : false;
 
     if ($response === false) {
 
