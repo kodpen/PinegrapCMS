@@ -207,6 +207,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // Sign-in with a passkey alone (11.0.41). A switch that is off is not
+    // posted, so the column is written whenever it exists.
+    if (function_exists('pg_schema_has') && pg_schema_has('config', 'passkey_signin')) {
+        db("UPDATE config SET passkey_signin = " . ((post_value('passkey_signin') == '1') ? 1 : 0));
+    }
+
     // Sign in with Microsoft and Apple (10.74): the switches, and Apple's
     // application. Both wait for the upgrade, like the columns above.
     if (function_exists('pg_signin_schema_ready') && pg_signin_schema_ready() && pg_schema_has('config', 'signin_providers')) {
