@@ -474,6 +474,7 @@
     "Your tasks, plan items, days off and approval deadlines in the calendar on your phone or computer.": "Görevleriniz, plan kayıtlarınız, tatil günleri ve onay son tarihleri telefonunuzdaki ya da bilgisayarınızdaki takvimde.",
     "Your team's conversations, tasks, plans and decisions, in one place. This short tour shows you around. You can leave at any point and watch it again from the signpost button above the channel list.": "Ekibinizin konuşmaları, görevleri, planları ve kararları tek bir yerde. Bu kısa tur size etrafı gösterir. İstediğiniz an çıkabilir, kanal listesinin üstündeki tabela düğmesinden yeniden izleyebilirsiniz.",
     "Your timer is running on {var:1}. Starting it here stops that one.": "Sayacınız {var:1} üzerinde çalışıyor. Burada başlatmak onu durdurur.",
+    "Your timer runs on {var:1}: {var:2} so far.": "Sayacınız {var:1} üzerinde çalışıyor: şimdiye kadar {var:2}.",
     "Your tip": "İpucunuz",
     "Your topic": "Konunuz",
     "Your topic is public at once. Replies come by e-mail while you follow the topic.": "Konunuz hemen herkese açık olur. Konuyu takip ettiğiniz sürece yanıtlar e-postayla gelir.",
