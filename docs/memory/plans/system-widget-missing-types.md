@@ -41,5 +41,5 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 
 ## Which steps are there?
 1. Shipping address and arrival: done (#1746), [[shipping-address-widget]]; the verified addresses box is left.
-2. Shipping method: done (#PR), [[shipping-method-widget]].
+2. Shipping method: done (#1759), [[shipping-method-widget]].
 3. Billing information: next. 4. Order preview. Then the owner's list.
