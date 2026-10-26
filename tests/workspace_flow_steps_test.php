@@ -494,6 +494,7 @@ function test_workspace_flow_steps_try_writes_nothing()
 	// no MCP tool.
 	pg_assert_contains("case 'ws_flow_box_try':", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php'));
 	pg_assert_contains('ws_flow_box_try($viewer, $flow', ws_flow_steps_test_source('ws_api_flows_box_try'));
+	pg_assert_contains("'ws_flow_box_try',", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php'), 'the panel lets it through');
 
 	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 	$route = substr($api, strpos($api, "'id'          => 'workspace.flows.box_try'"), 400);
