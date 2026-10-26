@@ -19,5 +19,5 @@ description: Lists and quotes in Workspace texts drawn by the server (#1725): wh
 - The approval mail (`ws_approval_guest_details_text()`) turns the blocks back into lines (`ws_html_blocks_text()`) and keeps one line break per break (nl2br's newline used to double them).
 - `ws_calc_plain()` works out an item's words (`ws_text_block_items()`): in "- 10 - 4 =" the bullet is no minus sign, as on screen.
 
-## What is not done here?
-- The writing box (Enter continues, Tab, autoformat, toolbar items) is step 2b of plans/workspace-composer-tools.md; its twins must follow these rules.
+## Where does the writing box follow these rules?
+- workspace-editor-lists.md (#1897): its twins `listLine()` / `textBlocks()` make the same shapes lists; change both sides together.
