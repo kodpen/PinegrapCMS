@@ -22,7 +22,7 @@ description: Form list widget paging (W12a, #1924): own page parameter (page_par
 - `pg_sw_url_filter_page(..., $page_param)` reads the list's own name; `pg_sw_url_filter_state()` stores `page_param` beside `page_number` only when it is not `page_number` (the blank state is unchanged); `pg_sw_url_filter_query()` writes `&<name>=N`.
 
 ## What is left of W12?
-- W12b: the pagination as a designable list (`loop_area` source for the page links, a row per link with its number, address, current and gap flags), the default pagination left out when the design holds one.
+- W12b done: the page links as a list ([[widget-lists-paging]]).
 - W12c: the same page parameter, offset and tokens for the catalog listing and search results (both still `page_number`).
 - Search groups (digit grouping of search's `__result_count`) waits for the owner ([[form-list-result-count]]).
 
