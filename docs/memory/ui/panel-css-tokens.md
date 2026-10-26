@@ -27,5 +27,5 @@ description: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rul
 ## What has been converted?
 - B3a (#1694): the token block, every v5 `-rgb` use in panel CSS and panel style blocks (`check_bs6.php` RGB count 130 to 21; the rest are in the token layer, the editor, JavaScript and `design_themes.php`), the accent role variables.
 - B3b (#1711): the neutral variables in backend.src.css (1,055 `var(--bs-*)` to 80, 38 of them in the token layer).
-- B3c (#PR): the other panel stylesheets and the panel files' inline styles (438 to 29, 24 of them in the blocks).
+- B3c (#1723): the other panel stylesheets and the panel files' inline styles (438 to 29, 24 of them in the blocks).
 - Left on `--bs-*` on purpose: component-scoped variables (`--bs-card-*`, `--bs-modal-*`, `--bs-gutter-x`, opacities, `--bs-dropdown-border-radius`), the form validation colours, the focus ring and the guest page's `--bs-dark`: the switch converts them with their components.
