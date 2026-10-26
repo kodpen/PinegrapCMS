@@ -24649,13 +24649,40 @@ const StyleDesigner = (function () {
             else            node.props._attrs[idx].value = trimmed;
         }
     }
+    // Splits an inline style into declarations. A ';' or ':' inside brackets
+    // (url(), var(), calc()) or a quoted string belongs to the value, so a
+    // data URL or `content: "a;b"` stays one declaration. An unclosed bracket
+    // or quote runs to the end, as in the browser.
     function _parseInlineStyle(s) {
         if (!s) return [];
-        return s.split(';').map(function (d) {
-            var c = d.indexOf(':');
-            if (c === -1) return null;
-            return { name: d.slice(0, c).trim(), value: d.slice(c + 1).trim() };
-        }).filter(function (d) { return d && d.name; });
+        s = String(s);
+        var decls = [], start = 0, colon = -1, depth = 0, quote = '';
+        var flush = function (end) {
+            if (colon !== -1) {
+                var name = s.slice(start, colon).trim();
+                if (name) decls.push({ name: name, value: s.slice(colon + 1, end).trim() });
+            }
+            start = end + 1;
+            colon = -1;
+        };
+        for (var i = 0; i < s.length; i++) {
+            var ch = s.charAt(i);
+            if (quote) {
+                if (ch === '\\') i++;
+                else if (ch === quote) quote = '';
+            } else if (ch === '"' || ch === "'") {
+                quote = ch;
+            } else if (ch === '(' || ch === '[') {
+                depth++;
+            } else if ((ch === ')' || ch === ']') && depth > 0) {
+                depth--;
+            } else if (depth === 0) {
+                if (ch === ':' && colon === -1) colon = i;
+                else if (ch === ';') flush(i);
+            }
+        }
+        flush(s.length);
+        return decls;
     }
     function _serializeInlineDecls(decls) {
         return decls.map(function (d) { return d.name + ': ' + d.value; }).join('; ');
