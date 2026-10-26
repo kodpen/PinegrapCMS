@@ -11,6 +11,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 - B3 Token layer: panel CSS reads `--pg-*` tokens, mapped to v5 variables in one block (`ui/panel-css-tokens.md`). B3a the block, the v5 `-rgb` uses and the accent role variables: done (#1694). B3b the neutral variables in backend.src.css: done (#1711). B3c the other panel stylesheets and inline style blocks.
 - B4 Collisions: drop `class="menu"` from `#menu`, rename `<span class="btn-text">` and the own `.submenu`; `data-bs-display="static"` on the account and notification toggles.
 - B6 Wrappers with a switchable engine (v5 engine now): `pgChips`, `pgCombobox`, `pgDatePicker`, `pgDateTimeField`; call sites move to `data-pg-*` hooks.
+  - Slice 1 (#1733): `pg_fields.js`, liveform `data-pg-*`, `pg_fields_script()`; gift cards, shipping methods, ERP screens (`ui/pg-field-wrappers.md`). Left: `backend.src.js` generic inits and `pgInitInjected()`, the other panel screens (users, contacts, products, orders, forms, calendar, firewall, `view_order.php`, `mass_edit.php`, menus, zones, campaigns, `product_builder.*`, `offer_editor.js`), `fn/auth.php` and `fn/content.php` pickers.
 - B7 Visual editor stage 0: `/* @pg-site-output */` on the 54 site-output members of style_designer.js with a CI test, the chrome look pinned in style_designer.css, editor calls through `pgUI`.
 
 ## What happens at and after the switch?
