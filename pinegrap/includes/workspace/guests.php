@@ -1018,28 +1018,40 @@ function ws_guest_render($body)
     $text = preg_replace('/^\s*- \[( |x)\]\s*/mi', '• ', $text);
     $text = preg_replace('/^\s*:::.*$/m', '', $text);
 
-    $html = htmlspecialchars(trim($text), ENT_QUOTES, 'UTF-8');
+    $inline = function ($words) {
+        $html = htmlspecialchars($words, ENT_QUOTES, 'UTF-8');
 
-    // Addresses are set aside first, so the marks below cannot reach into
-    // them; then the marks the staff's screen reads the same way (render.php):
-    // **bold**, _italics_, ~~strike-through~~.
-    $links = array();
-    $html = preg_replace_callback('#https?://[^\s<>"]{2,500}#i', function ($match) use (&$links) {
-        $url = rtrim($match[0], '.,;:!?)');
-        $links[] = '<a href="' . $url . '" target="_blank" rel="nofollow noopener noreferrer">' . $url . '</a>';
+        // Addresses are set aside first, so the marks below cannot reach into
+        // them; then the marks the staff's screen reads the same way
+        // (render.php): **bold**, _italics_, ~~strike-through~~.
+        $links = array();
+        $html = preg_replace_callback('#https?://[^\s<>"]{2,500}#i', function ($match) use (&$links) {
+            $url = rtrim($match[0], '.,;:!?)');
+            $links[] = '<a href="' . $url . '" target="_blank" rel="nofollow noopener noreferrer">' . $url . '</a>';
 
-        return "\x01" . (count($links) - 1) . "\x01" . substr($match[0], strlen($url));
-    }, $html);
+            return "\x01" . (count($links) - 1) . "\x01" . substr($match[0], strlen($url));
+        }, $html);
 
-    $html = preg_replace('/\*\*([^*\n]{1,300})\*\*/', '<strong>$1</strong>', $html);
-    $html = preg_replace('/~~([^~\n]{1,300})~~/', '<del>$1</del>', $html);
-    $html = preg_replace('/(?<![\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])/u', '<em>$1</em>', $html);
+        $html = preg_replace('/\*\*([^*\n]{1,300})\*\*/', '<strong>$1</strong>', $html);
+        $html = preg_replace('/~~([^~\n]{1,300})~~/', '<del>$1</del>', $html);
+        $html = preg_replace('/(?<![\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])/u', '<em>$1</em>', $html);
 
-    $html = preg_replace_callback("/\x01([0-9]+)\x01/", function ($match) use ($links) {
-        return $links[(int) $match[1]] ?? '';
-    }, $html);
+        $html = preg_replace_callback("/\x01([0-9]+)\x01/", function ($match) use ($links) {
+            return $links[(int) $match[1]] ?? '';
+        }, $html);
 
-    return nl2br($html, false);
+        return nl2br($html, false);
+    };
+
+    // Lists and quotes as the staff's screen draws them (ws_text_blocks());
+    // the lines of a block of code are no items.
+    $text = trim($text);
+
+    return ws_text_blocks_html($text, function ($run) use ($inline) {
+        $run = trim($run, "\n");
+
+        return (trim($run) !== '') ? $inline($run) : '';
+    }, $inline, ws_code_fence_lines(preg_split('/\r\n|\r|\n/', $text)));
 }
 
 /**

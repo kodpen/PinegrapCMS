@@ -503,6 +503,19 @@ body.pg-guest {
   font-weight: 600;
 }
 
+/* Lists and quotes written in a message (ws_text_blocks_html()). */
+.ws-list {
+  margin: .1rem 0 .25rem;
+  padding-left: 1.4rem;
+}
+
+.ws-quote {
+  margin: .1rem 0 .25rem;
+  padding: .05rem 0 .05rem .7rem;
+  border-left: 3px solid var(--pg-border-color);
+  color: var(--pg-fg-2);
+}
+
 .ws-checklist {
   margin: 0 0 .15rem;
   padding: 0;

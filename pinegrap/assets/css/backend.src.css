@@ -11720,6 +11720,22 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   padding: 0;
   margin: 0 0 .15rem;
 }
+/* Lists and quotes written in a text (ws_text_blocks_html()). Classed, so
+   one rule serves every place a drawn text appears: messages, forwards,
+   note cards, task and channel fields. */
+.ws-list {
+  margin: .1rem 0 .25rem;
+  padding-left: 1.4rem;
+}
+.ws-list > li + li {
+  margin-top: .05rem;
+}
+.ws-quote {
+  margin: .1rem 0 .25rem;
+  padding: .05rem 0 .05rem .7rem;
+  border-left: 3px solid var(--pg-border-color);
+  color: var(--pg-fg-2);
+}
 .ws-check {
   display: flex;
   flex-wrap: wrap;
