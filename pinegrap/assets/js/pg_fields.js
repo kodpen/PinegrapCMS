@@ -13,7 +13,12 @@
  *   <input data-pg-chips>                 tagin; the input keeps the joined list,
  *                                         comma or data-pg-separator (" " for classes)
  *   <select data-pg-combobox>             select2; the native <select> keeps the value
+ *     data-pg-source="url"                options searched on the server as you type:
+ *                                         GET url?q=<text> answers {results: [{id, text}]};
+ *                                         data-pg-min-length, data-pg-free-text (a typed
+ *                                         value is kept), data-placeholder
  *   <input data-pg-date>                  jQuery UI datepicker, site date format
+ *   <input data-pg-date="plain">          the same in the picker's own English wording
  *   <input data-pg-datetime>              date and time in one field
  *   <input data-pg-time>                  time only
  *
@@ -201,6 +206,9 @@
                     if ($(el).data('allowClear')) {
                         opts.allowClear = true;
                     }
+                    if (el.getAttribute('data-pg-source')) {
+                        remoteOptions(el, opts);
+                    }
                     if (window.pgUI && window.pgUI.overlayHost) {
                         opts.dropdownParent = $(window.pgUI.overlayHost(el));
                     }
@@ -212,7 +220,14 @@
             },
             date: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.datepicker); },
-                init: function (el) { jq()(el).datepicker(window.datetimepicker_options || {}); },
+                init: function (el) {
+                    // "plain" keeps the screens that never passed the translated
+                    // names: only the site date format.
+                    var opts = el.getAttribute(HOOKS.date) === 'plain'
+                        ? { dateFormat: (window.datetimepicker_options && window.datetimepicker_options.dateFormat) || window.date_picker_format }
+                        : (window.datetimepicker_options || {});
+                    jq()(el).datepicker(opts);
+                },
                 redraw: function () {},
                 destroy: destroyPicker
             },
@@ -230,6 +245,26 @@
             }
         }
     };
+
+    // select2 asks data-pg-source for the options matching the typed text.
+    // A value the field already holds is an <option> in the markup.
+    function remoteOptions(el, opts) {
+        opts.ajax = {
+            url: el.getAttribute('data-pg-source'),
+            dataType: 'json',
+            delay: 200,
+            cache: true,
+            data: function (params) { return { q: params.term }; },
+            processResults: function (data) { return { results: (data && data.results) ? data.results : [] }; }
+        };
+        opts.minimumInputLength = parseInt(el.getAttribute('data-pg-min-length'), 10) || 0;
+        if (el.hasAttribute('data-pg-free-text')) {
+            opts.tags = true;
+        }
+        if (el.getAttribute('data-placeholder')) {
+            opts.placeholder = el.getAttribute('data-placeholder');
+        }
+    }
 
     function removeTaginWrapper(el) {
         var next = el.nextElementSibling;

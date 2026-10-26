@@ -18,7 +18,7 @@ if (!defined('PG_INIT_LOADED')) {
 }
 ?>
 <main id="content" class="container-fluid">
-    <?=get_date_picker_format()?>
+    <?=get_date_picker_format() . pg_fields_script()?>
     <div id="pg-offer-editor">
 
         <div class="pg-toolbar mb-3">
@@ -221,9 +221,9 @@ if (!defined('PG_INIT_LOADED')) {
                                         </div>
                                         <div class="col-12 col-sm-7 col-md-6 col-lg-5 col-xl-4 d-none" id="pg-if-dates">
                                             <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control" id="pg-if-start" maxlength="10" autocomplete="off" data-on="start" placeholder="<?=lang('Start Date')?>">
+                                                <input type="text" class="form-control" id="pg-if-start" maxlength="10" autocomplete="off" data-on="start" data-pg-date placeholder="<?=lang('Start Date')?>">
                                                 <span class="input-group-text">–</span>
-                                                <input type="text" class="form-control" id="pg-if-end" maxlength="10" autocomplete="off" data-on="end" placeholder="<?=lang('End Date')?>">
+                                                <input type="text" class="form-control" id="pg-if-end" maxlength="10" autocomplete="off" data-on="end" data-pg-date placeholder="<?=lang('End Date')?>">
                                             </div>
                                         </div>
                                         <div class="col-12 small text-danger-emphasis d-none" id="pg-if-dates-error"></div>
