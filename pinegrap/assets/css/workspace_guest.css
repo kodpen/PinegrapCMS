@@ -20,6 +20,8 @@
   --pg-success-fg-emphasis: var(--bs-success-text-emphasis);
   --pg-warning-fg-emphasis: var(--bs-warning-text-emphasis);
   --pg-warning-bg-subtle: var(--bs-warning-bg-subtle);
+  --pg-border-color: var(--bs-border-color);
+  --pg-fg-2: var(--bs-secondary-color);
 }
 
 html,
@@ -494,6 +496,19 @@ body.pg-guest {
 .ws-table thead th {
   background: var(--bs-tertiary-bg);
   font-weight: 600;
+}
+
+/* Lists and quotes written in a message (ws_text_blocks_html()). */
+.ws-list {
+  margin: .1rem 0 .25rem;
+  padding-left: 1.4rem;
+}
+
+.ws-quote {
+  margin: .1rem 0 .25rem;
+  padding: .05rem 0 .05rem .7rem;
+  border-left: 3px solid var(--pg-border-color);
+  color: var(--pg-fg-2);
 }
 
 .ws-checklist {

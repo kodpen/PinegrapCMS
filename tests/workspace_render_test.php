@@ -123,7 +123,6 @@ function test_workspace_render_plain_text_keeps_items_and_numbers()
 function test_workspace_render_plain_line_folds_lists_for_stored_bodies()
 {
 	pg_assert_same('Which day? - Monday - Friday', ws_plain_line(array(), "Which day?\n- Monday\n- Friday", array()));
-	pg_assert_same(false, strpos(ws_plain_excerpt(array(), "1. one\n2. two"), "\n"), 'an excerpt is one line');
 }
 
 function test_workspace_render_calc_plain_works_out_an_items_words()

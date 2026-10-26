@@ -73,7 +73,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, not started, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-catalog-create.md: Plan (2026-10-23, 1a #1603, 1b #1604, 2 #1613, answers 1 and 3 given): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 - workspace-channel-icons.md: Plan (2026-10-23, slices 1-3 done #1510, answers given): left: channel templates carry icon and colour, optional group icons
-- workspace-composer-lists.md: Step 2 of plans/workspace-composer-tools.md (lists and quotes), not started on development: an unmerged branch, its 9 open review findings, the split into 2a (server) and 2b (editor)
+- workspace-composer-lists.md: Step 2 of plans/workspace-composer-tools.md (lists and quotes): 2a server done (#1725); 2b editor open, with an unmerged reference branch and its editor findings
 - workspace-composer-tools.md: Plan (2026-10-23, 1 done #1554, 2 handed over, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, 4 #1681, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
