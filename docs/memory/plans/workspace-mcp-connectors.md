@@ -1,6 +1,6 @@
 ---
 name: workspace-mcp-connectors
-description: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521, 13 #1800, 7-8 #1815, 10; answers 1, 3, 4): MCP client like Claude's connectors: protocol, card, catalogue, add, API
+description: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521, 13 #1800, 7-8 #1815, 10 #1829; answers 1, 3, 4): MCP client like Claude's connectors: protocol, card, catalogue, add, API
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -25,7 +25,7 @@ No schema; one PR each.
 6. `api_http_request()` returns `errno`; 28 says "took too long", not curl's words.
 7-8 (#1815): random first id in `pg_mcp_client_next_id()`; `api_http_header_line()` joins repeated WWW-Authenticate.
 9. Card: tools open after save while none is on; the add form keeps its input (not the secret) after an error; Pinegrap AI's last error; GET list, refresh.
-10 (#PR): connect_client.php skips the bot policy and the country restriction (`waf_is_client_metadata_request()`); never seen refused live.
+10 (#1829): connect_client.php skips the bot policy and the country restriction (`waf_is_client_metadata_request()`); never seen refused live.
 11. Catalogue, its GET (Q1, Q5). 12. URL-only add, probe. 13. Three-state rules, bulk declare (Q3): panel #1471, API #1800.
 
 ## Which questions are answered? (owner, 2026-10-24: 1 a, 3 b, 4 b; 2, 5 open)
