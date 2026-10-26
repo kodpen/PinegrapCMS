@@ -38,10 +38,10 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 - 2 done #1728: breakpoint-aware dedupe ([[designer-class-dedupe]]).
 - 3 done #1722: predictor ([[style-predictor]]).
 - 4 Loader and class field, `class_suggestions.js` removed. Done #1754 ([[style-suggest]]).
-- 5 Attribute rows and Styles panel inputs.
+- 5 done #1778: panel inputs ([[style-fields]]).
 - 6 Custom style model and Styles "This element": tests/designer_custom_style_test.php.
 - 7 Custom style row in the Attributes panel.
-- 8 CM6 html/css sources; 9 CM6 Bootstrap JS source.
+- 8 done #1770; 9 done #1779.
 - Optional: User Styles CSS tab (after F1), inline hint.
 
 ## Where to start?

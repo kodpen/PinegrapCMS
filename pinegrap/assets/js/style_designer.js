@@ -11097,6 +11097,7 @@ const StyleDesigner = (function () {
                     comments_recent:      _sdT('Recent Comments'),
                     shipping_address_and_arrival: _sdT('Shipping Address and Arrival'),
                     shipping_method:      _sdT('Shipping Method'),
+                    billing_information:  _sdT('Billing Information'),
                     menu_region:          _sdT('Menu'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
@@ -22282,6 +22283,10 @@ const StyleDesigner = (function () {
                 { label: _sdT('Images of the product'), type: 'loop_area', icon: 'bi-images', extra: { listSource: 'product.images' } },
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
+                { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
+                { label: _sdT('Days of the week'), type: 'loop_area', icon: 'bi-calendar-week', extra: { listSource: 'calendar.weekdays' } },
+                { label: _sdT('Days of the calendar'), type: 'loop_area', icon: 'bi-calendar-day', extra: { listSource: 'calendar.days' } },
+                { label: _sdT('Events of the day'), type: 'loop_area', icon: 'bi-calendar-event', extra: { listSource: 'calendar.events' } },
                 { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
@@ -24382,6 +24387,9 @@ const StyleDesigner = (function () {
         _sdPanelLock(panel.querySelector('.sd-styles-user-rules'), designLock);
         var createRuleBtn = document.getElementById('sd-styles-create');
         if (createRuleBtn) createRuleBtn.disabled = !!designLock;
+        // Suggestions first: Enter on a highlighted row picks before the
+        // add rows' own Enter handlers run.
+        _sdAttachStylesSuggest(panel);
 
         // ── Bind element.style declaration events ──
         panel.querySelectorAll('.sd-styles-decl-toggle').forEach(function (cb) {
@@ -25040,6 +25048,9 @@ const StyleDesigner = (function () {
                 '</button>' +
             '</div>';
         _sdPanelLock(panel, _sdPanelLockReason([n]));
+        // Suggestions first: Enter on a highlighted row picks before the
+        // row's own handlers see it.
+        _sdAttachAttrsSuggest(panel, n);
 
         // ── id change ──
         var idInp = panel.querySelector('.sd-attr-val[data-prop="id"]');
@@ -25159,7 +25170,8 @@ const StyleDesigner = (function () {
                         _writeInlineStyleValue(n, inp.value);
                     };
                     inp.addEventListener('keydown', function (e) {
-                        if (e.key !== 'Enter') return;
+                        // A suggestion picked with Enter is still being typed.
+                        if (e.key !== 'Enter' || e.defaultPrevented) return;
                         e.preventDefault();
                         commitStyle();
                     });
@@ -25453,6 +25465,195 @@ const StyleDesigner = (function () {
                 if (next && next !== input) next.focus();
             }
         });
+    }
+
+    // ── Panel input suggestions ────────────────────────────────────────────
+    // The Attributes panel's attribute rows and the Styles panel's property,
+    // value and selector inputs ask the same predictor as the class field;
+    // PgStyleFields reads the part of the field under the caret and splices
+    // the pick in. A filled field lists nothing until it is typed in, so
+    // clicking into a value does not cover the panel.
+    function _sdTreeIds() {
+        var out = [];
+        _frWalk(tree, function (n) {
+            if (n.props && n.props.id) {
+                out.push({ id: n.props.id, classes: String(n.props.cssClass || '').split(/\s+/).filter(Boolean) });
+            }
+        });
+        return out;
+    }
+
+    // One short reason beside a property, value, selector or attribute.
+    function _sdFieldHint(it) {
+        var has = function (code) { return (it.codes || []).indexOf(code) !== -1; };
+        if (has('design')) return _sdT('Used in this design');
+        if (has('own')) return _sdT('On this element');
+        if (has('ctx')) return _sdT('Fits the parent');
+        if (has('pseudo')) return _sdT('Element state');
+        if (has('token')) return _sdT('Bootstrap variable');
+        if (has('option')) return _sdT('Component option');
+        if (has('component')) return _sdT('Bootstrap component');
+        if (has('tag')) return _sdT('Common on this tag');
+        return it.swatch || '';
+    }
+
+    // spec: { kind, name } as PgStyleFields.suggest() takes it; name may be
+    // a function, read at every list (the row's property or attribute).
+    // opts.node: whose context is read; opts.styles(): the declarations
+    // already set; opts.input: the field writes on `input`, so a pick sends
+    // one; opts.change: the field writes on `change`, which a pick set by
+    // script never fires, so it is sent on Enter or blur after a pick;
+    // opts.after(): runs after a pick instead of listing what follows.
+    function _sdAttachFieldSuggest(input, spec, opts) {
+        if (!input || input.disabled || typeof PgStyleSuggest === 'undefined' || typeof PgStyleFields === 'undefined') return;
+        opts = opts || {};
+        var design = null, last = null, handle = null;
+        var typed = false, picked = false;
+        // Before the dropdown's own listeners, which list on focus and input.
+        input.addEventListener('focus', function () { typed = !String(input.value || '').trim(); picked = false; });
+        input.addEventListener('input', function () { typed = true; picked = false; });
+        input.addEventListener('change', function () { picked = false; });
+        handle = PgStyleSuggest.dropdown(input, {
+            openEmpty: true,
+            onFocus: function () {
+                design = null;
+                PgStyleSuggest.load(function () { if (handle) handle.refresh(); });
+            },
+            items: function () {
+                var P = PgStyleSuggest.get();
+                last = null;
+                if (!P || !typed) return [];
+                if (!design) {
+                    design = { classes: _sdTreeClassCounts(), tokens: PgStyleFields.cssTokens(_userStylesGet()), ids: _sdTreeIds() };
+                }
+                var ctx = _sdClassPredictCtx(opts.node, design.classes);
+                ctx.design = design;
+                ctx.styles = opts.styles ? opts.styles() : {};
+                var s = { kind: spec.kind, name: typeof spec.name === 'function' ? spec.name() : spec.name };
+                last = PgStyleFields.suggest(P, s, input.value, input.selectionStart, ctx);
+                return last.items.map(function (it) {
+                    return { label: it.label, hint: _sdFieldHint(it) };
+                });
+            },
+            pick: function (it) {
+                if (!last) return;
+                var r = PgStyleFields.apply(input.value, last, it.label);
+                input.value = r.text;
+                try { input.setSelectionRange(r.caret, r.caret); } catch (e) { /* not a text field */ }
+                if (opts.input) input.dispatchEvent(new Event('input'));
+                if (opts.change) picked = true;
+                if (opts.after) opts.after();
+                else if (handle) handle.refresh();
+            }
+        });
+        if (!handle) return;
+        // The list follows the caret, so a pick lands where the caret is.
+        var follow = function (e) {
+            if (typed && (!e.key || /^(ArrowLeft|ArrowRight|Home|End)$/.test(e.key))) handle.refresh();
+        };
+        input.addEventListener('keyup', follow);
+        input.addEventListener('mouseup', follow);
+        if (opts.change) {
+            // After the dropdown's keydown: Enter on a highlighted row picks.
+            var fire = function () {
+                if (!picked) return;
+                picked = false;
+                input.dispatchEvent(new Event('change'));
+            };
+            input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.defaultPrevented) fire(); });
+            input.addEventListener('blur', fire);
+        }
+    }
+
+    // The Attributes panel's own attribute rows: a name, its value, and the
+    // style row as a declaration list.
+    function _sdAttachAttrsSuggest(panel, n) {
+        if (_sdPanelLockReason([n])) return;
+        var dyn = panel.querySelector('#sd-attr-dynamic');
+        if (!dyn) return;
+        dyn.querySelectorAll('.sd-attr-row').forEach(function (row) {
+            var nameInp = row.querySelector('input.sd-attr-name');
+            var valInp = row.querySelector('input.sd-attr-val');
+            if (valInp && valInp.classList.contains('sd-attr-style-val')) {
+                _sdAttachFieldSuggest(valInp, { kind: 'style' }, { node: n, change: true });
+                return;
+            }
+            if (nameInp) {
+                _sdAttachFieldSuggest(nameInp, { kind: 'attribute' }, {
+                    node: n, input: true,
+                    after: function () { if (valInp) valInp.focus(); }
+                });
+            }
+            if (valInp) {
+                _sdAttachFieldSuggest(valInp, { kind: 'attrValue', name: function () { return nameInp ? nameInp.value : ''; } }, {
+                    node: n, input: true, after: function () {}
+                });
+            }
+        });
+    }
+
+    // The Styles panel's element.style and User Styles cards: properties,
+    // values (units and tokens among them) and rule selectors.
+    function _sdAttachStylesSuggest(panel) {
+        var node = selectedNode;
+        if (!node) return;
+        var declMap = function (decls, skip) {
+            var m = {};
+            decls.forEach(function (d, i) { if (i !== skip && d.name) m[d.name.toLowerCase()] = d.value; });
+            return m;
+        };
+        var inline = function (skip) {
+            return function () { return declMap(_parseInlineStyle(_currentInlineStyleValue(node)), skip); };
+        };
+        var ruleDecls = function (ri, skip) {
+            return function () {
+                var r = _parseUserStyles(_userStylesGet())[ri];
+                return r ? declMap(r.decls, skip) : {};
+            };
+        };
+        var valueOf = function (inp) { return function () { return inp ? inp.value : ''; }; };
+        var one = function (sel) { return panel.querySelector(sel); };
+        // A property picked in a declaration row is written at once and
+        // the caret moves on to the row's value, drawn again.
+        var nameThenValue = function (inp, valueSel) {
+            return function () {
+                inp.dispatchEvent(new Event('change'));
+                var v = one(valueSel);
+                if (v) v.focus();
+            };
+        };
+        var focusOn = function (inp) { return function () { if (inp) inp.focus(); }; };
+
+        if (!_sdPanelLockReason([node])) {
+            panel.querySelectorAll('.sd-styles-decl-name-inp').forEach(function (inp) {
+                var idx = parseInt(inp.dataset.declIdx, 10);
+                var valueSel = '.sd-styles-decl-value-inp[data-decl-idx="' + idx + '"]';
+                _sdAttachFieldSuggest(inp, { kind: 'property' }, { node: node, styles: inline(idx), after: nameThenValue(inp, valueSel) });
+                _sdAttachFieldSuggest(one(valueSel), { kind: 'value', name: valueOf(inp) }, { node: node, styles: inline(idx), change: true });
+            });
+            var addName = one('.sd-styles-decl-add-name');
+            var addValue = one('.sd-styles-decl-add-value');
+            _sdAttachFieldSuggest(addName, { kind: 'property' }, { node: node, styles: inline(-1), after: focusOn(addValue) });
+            _sdAttachFieldSuggest(addValue, { kind: 'value', name: valueOf(addName) }, { node: node, styles: inline(-1) });
+        }
+
+        if (!_sdPanelLockReason(null, 'design')) {
+            panel.querySelectorAll('.sd-styles-user-rule-sel').forEach(function (inp) {
+                _sdAttachFieldSuggest(inp, { kind: 'selector' }, { node: node, change: true });
+            });
+            panel.querySelectorAll('.sd-styles-ur-name-inp').forEach(function (inp) {
+                var ri = parseInt(inp.dataset.urIdx, 10), di = parseInt(inp.dataset.declIdx, 10);
+                var valueSel = '.sd-styles-ur-value-inp[data-ur-idx="' + ri + '"][data-decl-idx="' + di + '"]';
+                _sdAttachFieldSuggest(inp, { kind: 'property' }, { node: node, styles: ruleDecls(ri, di), after: nameThenValue(inp, valueSel) });
+                _sdAttachFieldSuggest(one(valueSel), { kind: 'value', name: valueOf(inp) }, { node: node, styles: ruleDecls(ri, di), change: true });
+            });
+            panel.querySelectorAll('.sd-styles-ur-add-name').forEach(function (inp) {
+                var ri = parseInt(inp.dataset.urIdx, 10);
+                var addVal = one('.sd-styles-ur-add-value[data-ur-idx="' + ri + '"]');
+                _sdAttachFieldSuggest(inp, { kind: 'property' }, { node: node, styles: ruleDecls(ri, -1), after: focusOn(addVal) });
+                _sdAttachFieldSuggest(addVal, { kind: 'value', name: valueOf(inp) }, { node: node, styles: ruleDecls(ri, -1) });
+            });
+        }
     }
 
     // ========================= CSS STYLES PANEL (legacy — DEPRECATED) =====
@@ -26871,6 +27072,10 @@ const StyleDesigner = (function () {
         // after {{ only in the view, where the text has nodes behind it.
         PgCodeEditor.addCompletionSource('html', _sdCodeClassCompletion);
         PgCodeEditor.addCompletionSource('html', _sdCodeBindingCompletion);
+        // Attribute names and values, CSS values and var(--…) tokens ranked
+        // by the element around the cursor (pg_style_complete.js, loaded
+        // with the predictor on the first completion).
+        if (typeof PgStyleSuggest !== 'undefined') PgStyleSuggest.installCode(PgCodeEditor, { design: _sdCodeDesignContext });
 
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -28222,6 +28427,15 @@ const StyleDesigner = (function () {
             else P.classes(typed, { limit: 5000 }).forEach(function (it) { push(it.label, 'keyword'); });
         }
         return { from: word.from, options: options, validFor: /^[A-Za-z0-9_-]*$/ };
+    }
+
+    // The design's part of the predictor's context in a code editor: the
+    // classes the page uses, with their counts, and the custom properties
+    // User Styles declare.
+    function _sdCodeDesignContext() {
+        var tokens = {};
+        if (typeof PgStyleComplete !== 'undefined') tokens = PgStyleComplete.docTokens(_userStylesGet());
+        return { classes: _sdTreeClassCounts(), tokens: tokens };
     }
 
     // ========================= CODE VIEW: FILE TABS =========================
@@ -31667,7 +31881,8 @@ const StyleDesigner = (function () {
 
         var src = SW_LIST_SOURCES[p.source];
         if (src) {
-            // A product list takes no field: it lists what the product holds.
+            // A product or calendar list takes no field: it lists what the
+            // product or the calendar holds.
             var formId = src.arg ? _getSystemWidgetCustomFormPageId(n) : 0;
             var fields = formId ? _formFieldsCache[formId] : null;
             var fieldCtl = '';
@@ -31715,6 +31930,10 @@ const StyleDesigner = (function () {
             'product.images':     _sdT('One row for every image of the product, its main image first. Bind a picture to "Image address" in Bind Data. A variant picked on the page does not change the list.'),
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
+            'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
+            'calendar.weeks':     _sdT('One row for every week the monthly or weekly view shows. Put a list of the days of the calendar inside the row: it lists that week\'s days.'),
+            'calendar.days':      _sdT('One row for every day: inside a list of weeks that week\'s days, else every day the view shows. Days of the next or previous month hold no events; a condition on "Day of another month" or "Today" styles them.'),
+            'calendar.events':    _sdT('One row for every event of the day, inside a list of the days of the calendar. An event lasting several days is on each of them.'),
             'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.')
         };
         if (about[p.source]) html += note(about[p.source], false);
@@ -31894,6 +32113,7 @@ const StyleDesigner = (function () {
             var _isWishlist        = (_regionType === 'wishlist');
             var _isShippingAddress = (_regionType === 'shipping_address_and_arrival');
             var _isShippingMethod  = (_regionType === 'shipping_method');
+            var _isBillingInfo     = (_regionType === 'billing_information');
             var _isMenuRegion      = (_regionType === 'menu_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
@@ -31945,6 +32165,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isMenuRegion) {
                 _sourceInfoHtml = _sdT('One of the site\'s menus, read on every visit: its items, their order, links and who may see them are edited under Menus, by the users who may edit that menu, and every page that shows the widget follows. The loop repeats the top-level items; a list of the sub-items of a menu item inside a row repeats the items under it.');
+            } else if (_isBillingInfo) {
+                _sourceInfoHtml = _sdT('The third step of the classic checkout: the billing address, e-mail and phone of the visitor\'s order, with the order\'s own fields. A part the page does not ask for (a custom field without a label, the PO number, referral sources, tax exemption) is left out with its controls.');
             } else if (_isShippingMethod) {
                 _sourceInfoHtml = _sdT('The second step of the classic checkout: the shipping address step sends the visitor here with one recipient of the order, who picks one of the methods that can ship its items to its address by its requested arrival date. The methods and their costs are the ones the express order offers. Opened without a recipient, it shows only the block for that case.');
             } else if (_isShippingAddress) {
@@ -33043,6 +33265,39 @@ const StyleDesigner = (function () {
                         '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The items are added, ordered and linked under Menus; without a menu the widget draws no items.')) + '</div>'
                     )
+                );
+            }
+
+            // ── billing_information settings ─────────────────────────────────
+            // Written into the page's billing_information_pages row, which
+            // the handler reads; a setting never touched leaves the row as
+            // the classic page stored it.
+            if (_isBillingInfo) {
+                if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+                var _biHint = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + t + '</div>'; };
+                var _biSwitch = function (key) {
+                    return '<label class="sd-prop-switch">' +
+                        '<input type="checkbox" class="sd-sw-inp" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="bool"' + (_cfg[key] ? ' checked' : '') + '>' +
+                        '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                    '</label>';
+                };
+                var _biField = function (n) {
+                    return row(_sdT('Custom field {var}', String(n)),
+                        '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="custom_field_' + n + '_label" maxlength="255" value="' + esc(_cfg['custom_field_' + n + '_label'] || '') + '" placeholder="' + esc(_sdT('Label (empty: no field)')) + '">' +
+                        '<div class="d-flex align-items-center gap-2 mt-1">' + _biSwitch('custom_field_' + n + '_required') + '<span style="font-size:.7rem">' + esc(_sdT('Required')) + '</span></div>' +
+                        _biHint(esc(_sdT('Elements bound to "{var}" show this text.', _swBindLabel('billing_information', '__custom_field_' + n + '_label')))));
+                };
+                systemSection += sect('bi-receipt', _sdT('Billing Information Settings'),
+                    row(_sdT('Next page'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
+                            _swPageOptions(_cfg.next_page_id, _allPagesCache, { none: _sdT('— The page\'s own setting —') }) +
+                        '</select>' +
+                        _biHint(esc(_sdT('Where the visitor goes once the billing details are saved: the order preview page.')))
+                    ) +
+                    _biField(1) + _biField(2) +
+                    row(_sdT('PO number'), _biSwitch('po_number') + _biHint(_sdT('While on, the purchase order number (name: <code>po_number</code>) is drawn.'))) +
+                    row(_sdT('Controls'),
+                        _biHint(_sdT('The form reads its controls by name: {var}.', '<code>billing_salutation, billing_first_name, billing_last_name, billing_company, billing_address_1, billing_address_2, billing_city, billing_state, billing_zip_code, billing_country, billing_phone_number, billing_fax_number, billing_email_address, custom_field_1, custom_field_2, po_number, referral_source, tax_number, tax_office, tax_exempt, opt_in, update_contact</code>')))
                 );
             }
 
@@ -36459,7 +36714,7 @@ const StyleDesigner = (function () {
         account_security: 1, account_invoices: 1, account_email: 1, logout: 1, error_page: 1,
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
-        shipping_address_and_arrival: 1, shipping_method: 1, menu_region: 1
+        shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1, menu_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37450,6 +37705,22 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // billing_information token palette — no loop_area. Mirrors
+    // _render_system_widget_billing_information() in
+    // widgets_billing_information.php.
+    var SW_BILLING_INFORMATION_TOKEN_GROUPS = [
+        { label: _sdT('Labels'), tokens: [
+            ['__custom_field_1_label', _sdT('Custom field 1 label')],
+            ['__custom_field_2_label', _sdT('Custom field 2 label')],
+            ['__tax_exempt_label',     _sdT('Tax exemption label')],
+            ['__opt_in_label',         _sdT('Opt-in checkbox label')],
+            ['__custom_form_title',    _sdT('Custom billing form title')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__cart_url',             _sdT('Cart page address (the link drops when the site has none)')]
+        ]}
+    ];
+
     // menu_region token palette — has loop_area (one row per top-level
     // item); the sub-item lists give the same row tokens. Mirrors
     // _render_system_widget_menu_region() in widgets_menu.php.
@@ -37486,6 +37757,7 @@ const StyleDesigner = (function () {
         wishlist:          SW_WISHLIST_TOKEN_GROUPS,
         shipping_address_and_arrival: SW_SHIPPING_ADDRESS_TOKEN_GROUPS,
         shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS,
+        billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS,
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS
     };
 
@@ -38419,6 +38691,16 @@ const StyleDesigner = (function () {
         menu_region: [
             ['has_menu_items',             _sdT('The menu has an item the visitor may see')],
             ['no_menu_items',              _sdT('No menu is chosen, or it has no item the visitor may see')]
+        ],
+        billing_information: [
+            ['has_custom_field_1',   _sdT('Custom field 1 has a label')],
+            ['has_custom_field_2',   _sdT('Custom field 2 has a label')],
+            ['has_po_number',        _sdT('The page asks for a PO number')],
+            ['has_custom_form',      _sdT('The page has a custom billing form')],
+            ['shows_opt_in',         _sdT('The opt-in box is offered (the contact has not opted in)')],
+            ['can_update_contact',   _sdT('A signed-in member may update their contact')],
+            ['has_referral_sources', _sdT('The site has referral sources')],
+            ['has_tax_exempt',       _sdT('Tax exemption can be asked for')]
         ],
         shipping_method: [
             ['has_recipient',              _sdT('A recipient of the visitor\'s order is being shown')],
@@ -40887,6 +41169,8 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
             } else if (_semSwRegion === 'calendar_event_view') {
                 _sectionOpts.push(['reserve_form',         _sdT('Reserve button (hidden when reservations are closed)')]);
+            } else if (_semSwRegion === 'billing_information') {
+                _sectionOpts.push(['custom_billing_form',  _sdT('Custom billing form fields (hidden when the page has none)')]);
             } else if (_semSwRegion === 'shipping_method') {
                 _sectionOpts.push(['recipient_items',      _sdT('The recipient\'s items (a product that cannot go to the address carries its remove link)')]);
             } else if (_semSwRegion === 'shipping_address_and_arrival') {
@@ -50628,6 +50912,7 @@ const StyleDesigner = (function () {
         { type: 'comments_recent',   label: _sdT('Recent Comments'),   slug: _sdT('recent-comments'),   icon: 'bi-chat-square-quote' },
         { type: 'shipping_address_and_arrival', label: _sdT('Shipping Address and Arrival'), slug: _sdT('shipping-address'), icon: 'bi-truck' },
         { type: 'shipping_method',   label: _sdT('Shipping Method'),   slug: _sdT('shipping-method'),   icon: 'bi-box-seam' },
+        { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' },
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
@@ -51829,6 +52114,63 @@ const StyleDesigner = (function () {
                 ['__related_original_price',    _sdT('Price before the discount')]
             ]
         },
+        // The calendar grid sources (pg_sw_list_calendar_sources()): the
+        // monthly and weekly views' heads, weeks, days and a day's events;
+        // none takes a field.
+        'calendar.weekdays': {
+            label: _sdT('Days of the week'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__weekday_name',  _sdT('Day name')],
+                ['__weekday_short', _sdT('Short day name')]
+            ]
+        },
+        'calendar.weeks': {
+            label: _sdT('Weeks of the calendar'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__week_key',    _sdT('Week in the calendar')],
+                ['__week_number', _sdT('Week number')]
+            ]
+        },
+        'calendar.days': {
+            label: _sdT('Days of the calendar'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__day_key',         _sdT('Day key')],
+                ['__day_number',      _sdT('Day number')],
+                ['__day_date',        _sdT('Date')],
+                ['__day_weekday',     _sdT('Weekday')],
+                ['__day_is_today',    _sdT('Today (1 or empty)')],
+                ['__day_is_outside',  _sdT('Day of another month (1 or empty)')],
+                ['__day_event_count', _sdT('Number of events')]
+            ]
+        },
+        'calendar.events': {
+            label: _sdT('Events of the day'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__event_title',          _sdT('Event title')],
+                ['__event_url',            _sdT('Event detail URL')],
+                ['__event_excerpt',        _sdT('Event summary')],
+                ['__event_date',           _sdT('Event date')],
+                ['__event_day',            _sdT('Day of the month')],
+                ['__event_month',          _sdT('Month name')],
+                ['__event_weekday',        _sdT('Day of the week')],
+                ['__event_time',           _sdT('Start time')],
+                ['__event_end_time',       _sdT('End time')],
+                ['__event_time_range',     _sdT('Time range ("All day" for all-day events)')],
+                ['__event_date_range',     _sdT('Full date and time range')],
+                ['__event_location',       _sdT('Location')],
+                ['__event_calendar_names', _sdT('Calendars')],
+                ['__event_is_all_day',     _sdT('All-day event (1 or empty)')],
+                ['__event_ical_url',       _sdT('Add to my calendar — .ics file (href)')]
+            ]
+        },
         // The menu source (pg_sw_list_menu_sources()): the items under the
         // row's menu item, the top level outside the main loop.
         'menu.children': {
@@ -51864,6 +52206,17 @@ const StyleDesigner = (function () {
         __related_image_url: '',
         __related_price: '99.90',
         __related_original_price: '',
+        __weekday_name:  _sdT('Monday'),
+        __weekday_short: _sdT('Mon'),
+        __week_key:      '1',
+        __week_number:   '40',
+        __day_key:       '20261005',
+        __day_number:    '5',
+        __day_date:      '05.10.2026',
+        __day_weekday:   _sdT('Monday'),
+        __day_is_today:  '',
+        __day_is_outside: '',
+        __day_event_count: '1',
         __menu_item_name: _sdT('Menu item'),
         __menu_item_id: '2',
         __menu_item_url: '#',
@@ -51989,6 +52342,7 @@ const StyleDesigner = (function () {
     function _sdListStarter(source) {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
+        if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
         if (source === 'menu.children') {
             return createNode('semantic', { tag: 'ul', cssClass: bs ? 'list-unstyled ps-3' : '', customName: _sdT('Sub-items of a menu item') }, [
                 createNode('loop_area', { source: source }, [
@@ -52005,6 +52359,86 @@ const StyleDesigner = (function () {
             : createNode('semantic', { tag: 'span', cssClass: bs ? 'badge text-bg-light border me-1' : '', text: _sdT('Value'),
                 customName: _sdT('List row'), _bindings: { text: '__value_text' } }, []);
         return createNode('loop_area', { source: source }, [row]);
+    }
+
+    // How many lists deep a new list of `source` lands (_sdListStarter()):
+    // a month grid is weeks > days > events, a days list holds its events.
+    function _sdListStarterDepth(source) {
+        return (source === 'calendar.weeks') ? 3 : ((source === 'calendar.days') ? 2 : 1);
+    }
+
+    // A new calendar list. The month grid: a table, its heads from the days
+    // of the week, a row per week, a cell per day holding the day's number
+    // (dimmed on a day of another month), a "Today" badge and its events as
+    // links. The others: a list of their own rows, the days list with its
+    // events. Every word is the designer's to restyle or translate.
+    function _sdCalendarListStarter(source, bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var when = function (token, op) {
+            return { _bindings: { show_if: token }, _bindParams: { show_if: { op: op } } };
+        };
+        var merge = function (a, b) {
+            var o = {};
+            Object.keys(a).forEach(function (k) { o[k] = a[k]; });
+            Object.keys(b).forEach(function (k) {
+                if (o[k] && typeof o[k] === 'object') {
+                    Object.keys(b[k]).forEach(function (kk) { o[k][kk] = b[k][kk]; });
+                } else {
+                    o[k] = b[k];
+                }
+            });
+            return o;
+        };
+        var events = function () {
+            return sem('ul', 'list-unstyled small mb-0', _sdT('Events of the day'), {}, [createNode('loop_area', { source: 'calendar.events' }, [
+                sem('li', 'text-truncate', _sdT('Event'), {}, [
+                    sem('span', 'me-1 text-body-secondary', _sdT('Start time'), merge({ text: '10:00', _bindings: { text: '__event_time' } }, when('__event_time', 'not_empty'))),
+                    sem('a', 'link-underline link-underline-opacity-0', _sdT('Event title'), { text: _sdT('Event title'), href: '#', _bindings: { href: '__event_url', text: '__event_title' } })
+                ])
+            ])]);
+        };
+        var dayHead = function () {
+            return sem('div', 'd-flex align-items-center gap-1 small mb-1', _sdT('Day number'), {}, [
+                sem('span', 'fw-semibold', _sdT('Day number'), merge({ text: '5', _bindings: { text: '__day_number' } }, when('__day_is_outside', 'empty'))),
+                sem('span', 'text-body-tertiary', _sdT('Day of another month'), merge({ text: '30', _bindings: { text: '__day_number' } }, when('__day_is_outside', 'not_empty'))),
+                sem('span', 'badge text-bg-primary', _sdT('Today'), merge({ text: _sdT('Today') }, when('__day_is_today', 'not_empty')))
+            ]);
+        };
+        if (source === 'calendar.weeks') {
+            return sem('div', 'table-responsive', _sdT('Month grid'), {}, [
+                sem('table', 'table table-bordered table-sm mb-0', _sdT('Month grid'), {}, [
+                    sem('thead', '', _sdT('Days of the week'), {}, [sem('tr', '', _sdT('Days of the week'), {}, [
+                        createNode('loop_area', { source: 'calendar.weekdays' }, [
+                            sem('th', 'text-center small fw-semibold', _sdT('Day name'), { text: _sdT('Mon'), _attrs: [{ name: 'scope', value: 'col' }], _bindings: { text: '__weekday_short' } })
+                        ])
+                    ])]),
+                    sem('tbody', '', _sdT('Weeks of the calendar'), {}, [
+                        createNode('loop_area', { source: 'calendar.weeks' }, [
+                            sem('tr', '', _sdT('Week'), {}, [
+                                createNode('loop_area', { source: 'calendar.days' }, [
+                                    sem('td', 'align-top p-1', _sdT('Day'), {}, [dayHead(), events()])
+                                ])
+                            ])
+                        ])
+                    ])
+                ])
+            ]);
+        }
+        if (source === 'calendar.weekdays') {
+            return createNode('loop_area', { source: source }, [
+                sem('div', 'small fw-semibold', _sdT('Day name'), { text: _sdT('Mon'), _bindings: { text: '__weekday_short' } })
+            ]);
+        }
+        if (source === 'calendar.days') {
+            return createNode('loop_area', { source: source }, [
+                sem('div', 'border p-1', _sdT('Day'), {}, [dayHead(), events()])
+            ]);
+        }
+        return events();
     }
 
     // A new product list: the images as pictures in a row, the attributes
@@ -52113,7 +52547,10 @@ const StyleDesigner = (function () {
         if (!kind) return false;
         if (_sdKindLists(kind).indexOf(source) === -1 && !(list && _isInsideSystemWidget(list) === sid)) return false;
         if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(target)) return false;
-        var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : 1);
+        // The calendar's grid lists read the calendar, not an event: never
+        // in the event loop.
+        if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
+        var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : _sdListStarterDepth(source));
         return depth <= SW_LIST_MAX_DEPTH;
     }
 
@@ -52197,6 +52634,10 @@ const StyleDesigner = (function () {
         var kind = _sdListWidgetKind(_isInsideSystemWidget(node));
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
         if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
+        if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
+        if (spec.source === 'calendar.events' && !_sdListsAbove(node).some(function (l) { return l.props.source === 'calendar.days'; })) {
+            return { off: true, text: _sdT('{var}: outside a list of days, nothing is drawn', src.label) };
+        }
         if (_sdListsAbove(node).length >= SW_LIST_MAX_DEPTH) return { off: true, text: _sdT('{var}: more than four lists deep, nothing is drawn', src.label) };
         var name = src.label;
         if (spec.arg) {
@@ -55982,6 +56423,95 @@ const StyleDesigner = (function () {
                     createNode('semantic', { tag: 'div', cssClass: 'list-group', customName: _sdT('Documents'),
                         _bindings: { eo_visible_if: 'has_documents' } }, [aiLoop])
                 ], true);
+            }
+
+            case 'billing_information': {
+                // The third step of the classic checkout, posting to
+                // billing_information.php under the classic page's field
+                // names. The state is a text box and a pick list, both named
+                // billing_state: the page's script shows the one the chosen
+                // country uses. A part the page does not ask for goes with
+                // its block. Mirrors _render_system_widget_billing_information().
+                var biId = 'f_' + Math.random().toString(36).slice(2, 7);
+                var biMax = function (n) { return [{ name: 'maxlength', value: String(n) }]; };
+                var biCountry = _swAcctSelect(_sdT('Country'), biId + '_country', 'billing_country', 'col-sm-6');
+                biCountry.children[1].props._attrs.push({ name: 'required', value: '' });
+                var biCheck = function (name, label, suffix, labelToken, flag) {
+                    var lp = { tag: 'label', cssClass: 'form-check-label', text: label, customName: _sdT('Label'),
+                        _attrs: [{ name: 'for', value: biId + suffix }] };
+                    if (labelToken) lp._bindings = { text: labelToken };
+                    var wp = { tag: 'div', cssClass: 'form-check mb-2', customName: label };
+                    if (flag) wp._bindings = { eo_visible_if: flag };
+                    return createNode('semantic', wp, [
+                        createNode('semantic', { tag: 'input', cssClass: 'form-check-input', id: biId + suffix,
+                            _attrs: [{ name: 'type', value: 'checkbox' }, { name: 'name', value: name }, { name: 'value', value: '1' }] }),
+                        createNode('semantic', lp)
+                    ]);
+                };
+                var biOptional = function (flag, field, labelToken) {
+                    field.props._bindings = { eo_visible_if: flag };
+                    if (labelToken) field.children[0].props._bindings = { text: labelToken };
+                    return field;
+                };
+                var biReferral = _swAcctSelect(_sdT('How did you hear about us?'), biId + '_referral', 'referral_source');
+                biReferral.props._bindings = { eo_visible_if: 'has_referral_sources' };
+                return _swAcctPage(_sdT('Billing Information Card'), '10', '8', [
+                    createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Billing Information'), cssClass: 'card-title mb-3' }),
+                    createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Name') }, [
+                        _swAcctSelect(_sdT('Salutation'), biId + '_salutation', 'billing_salutation', 'col-sm-4'),
+                        _swAcctField(_sdT('First Name'), biId + '_first', 'text', 'billing_first_name', { required: true, autocomplete: 'given-name', colCss: 'col-sm-4', attrs: biMax(50) }),
+                        _swAcctField(_sdT('Last Name'), biId + '_last', 'text', 'billing_last_name', { required: true, autocomplete: 'family-name', colCss: 'col-sm-4', attrs: biMax(50) })
+                    ]),
+                    _swAcctField(_sdT('Company'), biId + '_company', 'text', 'billing_company', { autocomplete: 'organization', attrs: biMax(50) }),
+                    _swAcctField(_sdT('Address'), biId + '_addr1', 'text', 'billing_address_1', { required: true, autocomplete: 'address-line1', attrs: biMax(50) }),
+                    _swAcctField(_sdT('Address (line 2)'), biId + '_addr2', 'text', 'billing_address_2', { autocomplete: 'address-line2', attrs: biMax(50) }),
+                    createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
+                        _swAcctField(_sdT('City'), biId + '_city', 'text', 'billing_city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: biMax(50) }),
+                        biCountry
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('State') }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'col-sm-6 mb-3', customName: _sdT('State / Province') }, [
+                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('State / Province'), customName: _sdT('Label'),
+                                _attrs: [{ name: 'for', value: biId + '_state' }] }),
+                            createNode('semantic', { tag: 'input', cssClass: 'form-control', id: biId + '_state',
+                                _attrs: [{ name: 'type', value: 'text' }, { name: 'name', value: 'billing_state' },
+                                         { name: 'autocomplete', value: 'address-level1' }, { name: 'maxlength', value: '50' }] }),
+                            createNode('semantic', { tag: 'select', cssClass: 'form-select', id: biId + '_state_list',
+                                _attrs: [{ name: 'name', value: 'billing_state' }, { name: 'hidden', value: '' }] }, [
+                                createNode('semantic', { tag: 'option', text: _sdT('Filled by the server'), customName: _sdT('Option'),
+                                    _attrs: [{ name: 'value', value: '' }] })
+                            ])
+                        ]),
+                        _swAcctField(_sdT('Zip / Postal Code'), biId + '_zip', 'text', 'billing_zip_code', { autocomplete: 'postal-code', colCss: 'col-sm-6', attrs: biMax(50) })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Contact') }, [
+                        _swAcctField(_sdT('Phone'), biId + '_phone', 'tel', 'billing_phone_number', { required: true, autocomplete: 'tel', colCss: 'col-sm-6', attrs: biMax(50) }),
+                        _swAcctField(_sdT('Email'), biId + '_email', 'email', 'billing_email_address', { required: true, autocomplete: 'email', colCss: 'col-sm-6', attrs: biMax(100) })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Tax') }, [
+                        _swAcctField(_sdT('Tax Number'), biId + '_taxno', 'text', 'tax_number', { colCss: 'col-sm-6', attrs: biMax(11) }),
+                        _swAcctField(_sdT('Tax Office'), biId + '_taxoffice', 'text', 'tax_office', { colCss: 'col-sm-6', attrs: biMax(100) })
+                    ]),
+                    biOptional('has_custom_field_1', _swAcctField(_sdT('Custom field 1 label'), biId + '_cf1', 'text', 'custom_field_1', { attrs: biMax(255) }), '__custom_field_1_label'),
+                    biOptional('has_custom_field_2', _swAcctField(_sdT('Custom field 2 label'), biId + '_cf2', 'text', 'custom_field_2', { attrs: biMax(255) }), '__custom_field_2_label'),
+                    biOptional('has_po_number', _swAcctField(_sdT('PO Number'), biId + '_po', 'text', 'po_number', { attrs: biMax(50) })),
+                    biReferral,
+                    biCheck('tax_exempt', _sdT('Tax-Exempt?'), '_taxex', '__tax_exempt_label', 'has_tax_exempt'),
+                    biCheck('opt_in', _sdT('Opt-in checkbox label'), '_optin', '__opt_in_label', 'shows_opt_in'),
+                    biCheck('update_contact', _sdT('Update my contact information with these details.'), '_upd', '', 'can_update_contact'),
+                    createNode('semantic', { tag: 'div', cssClass: 'my-4', customName: _sdT('Custom Billing Form'),
+                        _bindings: { eo_visible_if: 'has_custom_form' } }, [
+                        createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Custom billing form title'), cssClass: 'mb-3',
+                            _bindings: { text: '__custom_form_title' } }),
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Custom Billing Form Fields'),
+                            _bindings: { section: 'custom_billing_form' } })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2 align-items-center mt-3', customName: _sdT('Buttons') }, [
+                        _swAcctSubmit(_sdT('Continue'), _sdT('Continue Button')),
+                        createNode('content', { contentType: 'link', text: _sdT('Back to the cart'), href: '#', cssClass: '',
+                            _bindings: { href: '__cart_url' } })
+                    ])
+                ]);
             }
 
             case 'menu_region': {

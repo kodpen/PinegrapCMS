@@ -51,6 +51,7 @@ function pg_sw_page_type_widgets()
         'express order'         => 'express_order',
         'shipping address and arrival' => 'shipping_address_and_arrival',
         'shipping method'       => 'shipping_method',
+        'billing information'   => 'billing_information',
         'view order'            => 'order_view',
         'calendar view'         => 'calendar_view',
         'calendar event view'   => 'calendar_event_view',

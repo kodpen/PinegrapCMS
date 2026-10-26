@@ -1754,8 +1754,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<div class="tab-pane fade" id="d_security">
 				<div class="mb-3">
 					<label class="form-label small">' . lang('Allowed addresses') . '</label>
-					<input type="text" class="form-control tagin min-height-tagin" name="ip_allowlist" id="d_ip"
-						data-placeholder="' . lang('Add an address') . '" value="">
+					<input type="text" class="form-control tagin min-height-tagin" name="ip_allowlist" id="d_ip" data-pg-chips
+						data-placeholder="' . lang('Add an address') . '" value="">' . pg_fields_script() . '
 					<div class="form-text">'
 						. lang('Leave empty to let this application connect from anywhere. Once an address is added, requests from anywhere else are refused.')
 						. '<br>' . lang('Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32') . '</div>
@@ -2158,17 +2158,9 @@ echo '
 			? ("•••••••• " + app.hint)
 			: ' . json_encode(lang('No secret issued yet'), JSON_UNESCAPED_UNICODE) . ';
 		document.getElementById("d_status").checked = (app.status === "active");
-		// tagin() builds its chips from the value the input holds at the moment
-		// it is called, and offers no way to be told that value changed. So the
-		// wrapper from the previous application is removed and it is set up
-		// again. One drawer serving every application is what makes this
-		// necessary, and is still cheaper than putting one drawer per
-		// application into the page.
-		var ip = document.getElementById("d_ip");
-		var previous = ip.nextElementSibling;
-		if (previous && previous.classList.contains("tagin-wrapper")) { previous.remove(); }
-		ip.value = (app.ip || "").split(/[\s,;]+/).filter(Boolean).join(",");
-		if (typeof tagin === "function") { tagin(ip); }
+		// One drawer serves every application, so the chips are redrawn with
+		// the addresses of the application being opened.
+		pgChips.set("#d_ip", (app.ip || "").split(/[\s,;]+/).filter(Boolean));
 		document.getElementById("d_expires").value = app.expires || "";
 		document.getElementById("d_rate").value = app.rate;
 

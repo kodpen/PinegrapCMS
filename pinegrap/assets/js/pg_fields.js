@@ -183,9 +183,15 @@
             chips: {
                 ready: function () { return typeof window.tagin === 'function'; },
                 init: function (el) { window.tagin(el, { separator: separator(el) }); },
-                // tagin redraws its tags on the input's change event, which
-                // set() fires anyway.
-                redraw: function () {}
+                // tagin reads the input only when it is drawn and never hears
+                // a change, so its chips are dropped and drawn again.
+                redraw: function (el) {
+                    var next = el.nextElementSibling;
+                    if (next && next.classList && next.classList.contains('tagin-wrapper')) {
+                        next.parentNode.removeChild(next);
+                    }
+                    window.tagin(el, { separator: separator(el) });
+                }
             },
             combobox: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.select2); },

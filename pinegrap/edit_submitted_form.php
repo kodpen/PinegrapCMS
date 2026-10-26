@@ -343,6 +343,7 @@ if (!$_POST) {
     $wysiwyg_fields = array();
 
     $output_fields = '';
+    $picker_kinds = array();
 
     // Prepare to keep track if whether there are file upload fields or not,
     // in order to know later if we need to output enctype for form.
@@ -631,28 +632,22 @@ if (!$_POST) {
                     break;
                     
                 case 'date':
+                    $picker_kinds['date'] = true;
                     $output_fields .=
                         '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
-                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'10')) . '
+                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'10', 'data-pg-date' => '')) . '
                             ' . $field_required . '
-                            ' . get_date_picker_format() . '
-                                <script>
-                                    $("#' . $field['id'] . '").datepicker(datetimepicker_options);
-                                </script>
                         </div>';
                     break;
                     
                 case 'date and time':
+                    $picker_kinds['date and time'] = true;
                     $output_fields .=
                         '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
-                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'22')) . '
+                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'22', 'data-pg-datetime' => '')) . '
                             ' . $field_required . '
-                            ' . get_date_time_picker_format() . '
-                                <script>
-                                    $("#' . $field['id'] . '").datetimepicker(datetimepicker_options);
-                                </script>
                         </div>';
                     break;
                     
@@ -662,16 +657,13 @@ if (!$_POST) {
                     break;
                     
                 case 'time':
+                    $picker_kinds['time'] = true;
                     $output_fields .=
                         '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
-                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11')) . '
+                            ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11', 'data-pg-time' => '')) . '
                             ' . $field_required . '
                             <div class="form-text text-end">' . lang('Format: h:mm AM/PM') . '</div>
-                            ' . get_time_picker_format() . '
-                                <script>
-                                    $("#' . $field['id'] . '").timepicker(timepicker_options);
-                                </script>
                         </div>';
                     break;
                     
@@ -692,6 +684,23 @@ if (!$_POST) {
         }
     }
     
+
+    // The picker options once, after the fields: they are drawn when the
+    // page has loaded and all read the one datetimepicker_options, so a form
+    // with a date and time field gets the variant with the time wording.
+    if (isset($picker_kinds['date and time'])) {
+        $output_fields .= get_date_time_picker_format();
+    } elseif (isset($picker_kinds['date'])) {
+        $output_fields .= get_date_picker_format();
+    }
+
+    if (isset($picker_kinds['time'])) {
+        $output_fields .= get_time_picker_format();
+    }
+
+    if ($picker_kinds) {
+        $output_fields .= pg_fields_script();
+    }
 
     $output_wysiwyg_javascript = '';
     

@@ -1732,10 +1732,6 @@ $(document).ready(function () {
             + "&redirect_uri=" + encodeURIComponent("urn:ietf:wg:oauth:2.0:oob") + "&response_type=code");
     });
 
-    if ($("input.timepicker").length > 0) {
-        $("input.timepicker").timepicker(timepicker_options);
-    };
-
     if ($("input[name=convert_to_metric_system]").length > 0) {
         var unit_lb_label = $("input[name=weight]").parent().find("label.unit");
         var unit_lb_label_text = unit_lb_label.text();
@@ -1853,13 +1849,6 @@ $(document).ready(function () {
         }
     });
 
-    if ($("select.select2").length) {
-        $("select.select2").each(function () {
-            var opts = { theme: "bootstrap-5" };
-            if ($(this).data('allowClear')) opts.allowClear = true;
-            $(this).select2(opts);
-        });
-    }
     $(".show-password-btn").each(function () {
         $(this).on("click", function () {
             var input = $(this).siblings("input");
@@ -3664,21 +3653,26 @@ function init_product_groups(properties) {
         $('.group_list').append(
             '<div class="col-12">\
                 <div class="input-group my-2 group group_' + id + '" >\
-                    <select name="product_group" class="form-select product_group"><option value=""></option>' + group_options + '</select>\
+                    <select name="product_group" class="form-select product_group" data-pg-combobox data-allow-clear="true"><option value=""></option>' + group_options + '</select>\
                     <a href="javascript:void(0)" title="' + label['Remove'] + '" class="remove btn btn-danger no-popover">x</a>\
                 </div>\
             </div>');
 
-        $('.group_' + id + ' .product_group').select2({
-            theme: 'bootstrap-5',
-            placeholder: '-' + label['Select Group'] + '-',
-            allowClear: true
-        });
+        // select2 reads its placeholder from the data attribute.
+        var select = $('.group_' + id + ' .product_group').attr('data-placeholder', '-' + label['Select Group'] + '-')[0];
+
+        if (window.pgCombobox) {
+            pgCombobox.init(select);
+        }
 
         // If this group is an existing group for the product,
         // then set value and trigger change event so that option pick list appears.
         if (typeof group.product_group !== 'undefined') {
-            $('.group_' + id + ' .product_group').val(group.product_group).trigger('change');
+            if (window.pgCombobox) {
+                pgCombobox.set(select, group.product_group);
+            } else {
+                $(select).val(group.product_group).trigger('change');
+            }
         }
 
         $('.group_' + id + ' .remove').click(function () {
@@ -6158,7 +6152,7 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for date and time cell
     var td_2 = document.createElement('td');
-    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + properties['date_and_time'] + '" size="20" maxlength="22" />';
+    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + properties['date_and_time'] + '" size="20" maxlength="22" data-pg-datetime />';
 
     // prepare content for delete cell
     var td_3 = document.createElement('td');
@@ -6170,7 +6164,9 @@ function create_shipping_cutoff(properties) {
 
     tbody.appendChild(tr);
 
-    $('#shipping_cutoff_' + shipping_cutoff_number + '_date_and_time').datetimepicker(datetimepicker_options);
+    if (window.pgDateTimeField) {
+        pgDateTimeField.init(document.getElementById('shipping_cutoff_' + shipping_cutoff_number + '_date_and_time'));
+    }
 
     // show the shipping cut-off table in case it was hidden
     document.getElementById('shipping_cutoff_table').style.display = '';
@@ -10096,14 +10092,10 @@ function pgInitInjected(scope) {
     }
 
     // Chips, combobox, date and time fields marked with a data-pg-* hook.
+    // Chips, combobox, date and time fields marked with a data-pg-* hook; a
+    // card whose library arrives with its markup prints pg_fields_script().
     if (window.pgFields) {
         pgFields.init($scope[0]);
-    }
-
-    // The timepicker addon and its wording arrive with the card that uses it,
-    // as a <script src> inside the markup, so neither can be assumed.
-    if ($.fn.timepicker && (typeof timepicker_options !== 'undefined')) {
-        $scope.find('input.timepicker').timepicker(timepicker_options);
     }
 }
 
