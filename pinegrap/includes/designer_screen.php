@@ -227,6 +227,8 @@ function pg_designer_screen_render($ctx)
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
     $sd_proto_share = pg_page_draft_ready() && pg_proto_links_ready();
 
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+
     // The order and groups of the tabs, for the pages listed above.
     $tab_page_ids = array();
     foreach ($js_pages as $jp) {
@@ -256,6 +258,13 @@ function pg_designer_screen_render($ctx)
         // the classic Dynamic Region screen admits (administrators); the
         // endpoint (dynamic_region_code) checks the same.
         'dynamicRegionCode' => ((int)$user['role'] === 0),
+        // A classic page's custom layout opens as a code-view tab from its
+        // system region for the role the classic layout editor admits
+        // (designers and administrators); the endpoint (layout_code) checks
+        // the same. Read only on a hosted site, which ignores the file.
+        'layoutCode'    => ((int)$user['role'] <= 1),
+        'layoutPages'   => ((int)$user['role'] <= 1) ? pg_layout_custom_page_ids($tab_page_ids) : array(),
+        'layoutReadOnly' => pg_hosted(),
         // A designer region becomes a designer-only shared component for the
         // roles edit_designer_region.php admits (administrators and
         // designers); shared_component's from_designer_region checks the same.
