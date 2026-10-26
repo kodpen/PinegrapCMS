@@ -1417,6 +1417,7 @@
     "© 2026 ACME. All rights reserved.": "© 2026 ACME. Tüm hakları saklıdır.",
     "· required": " · zorunlu",
     "Ödendi": "Ödendi",
+    "İYS consent sync": "İYS izin eşitleme",
     "İptal": "İptal",
     "İşbaşı accepted the invoice but returned no invoice id (fields: {var:1}).": "İşbaşı faturayı kabul etti ama fatura kimliği döndürmedi (alanlar: {var:1}).",
     "İşbaşı answered HTTP {var:1}.": "İşbaşı HTTP {var:1} yanıtı verdi.",
