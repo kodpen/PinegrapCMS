@@ -4,19 +4,21 @@ description: Step B8 of plans/bootstrap-6-panel.md (claim #1866): building a reh
 ---
 
 ## How is the switch rehearsed?
-- Rebuild `feature/bootstrap-6` (#1866, a draft until the owner says go) on the latest `development`, comment the result there. Tool commits first, the generated commit last, pushed only when every check passes: drop it (`git reset --hard HEAD~1`), `git rebase origin/development`, `php tools/bs6_migrate.php --all --write`, `--switch --write`, `php tools/build_js.php`, every CI check, commit, `git push --force-with-lease`.
-- Hand fixes a script can make are code in `tools/bs6_switch.php` (`--switch`, tests `tests/bs6_switch_test.php`), never a patch file: head flip and bridge `assets/js/pg_bs6_bridge.js` (no v5 aliases, `dialog-open` follows open modal dialogs, `pg:bootstrap-ready`), own heads, panel sheets and listed `<style>` blocks into `@layer custom`, vendor sheets in a `vendor` layer below it, navbar z-index, the `modal-open` repair dropped, check/radio/switch markup (`.form-field`, `.check`/`.radio` by type, `.switch` box, liveform calls too), selectors on renamed classes, unit tests pinned to v5 classes (`bs6_switch_test_pins()`).
+- Rebuild `feature/bootstrap-6` (#1866, a draft until the owner says go) on the latest `development`, comment the result there. Tool commits first, the generated commit last, pushed only when every check passes: drop it (`git rebase --onto <gen>~1 <gen>`), `git rebase origin/development`, `php tools/bs6_migrate.php --all --write`, `--switch --write`, `php tools/build_js.php`, every CI check, commit, `git push --force-with-lease`. Never commit the sandbox's `data/config.php`; `git checkout -- pinegrap` also resets it.
+- Scriptable hand fixes are code in `tools/bs6_switch.php` and `tools/bs6_switch_shell.php` (tests `tests/bs6_switch_test.php`, `bs6_switch_shell_test.php`); a fix found by its exact text goes into `tools/bs6_switch_texts.txt`. Never a patch file. What each fix does: the file headers and `ui/bootstrap-6-codemod.md`.
 
-## What is still on the hand-fix list (rehearsal 2, 2026-10-26)?
-- Pushed as the generated commit; every check passes. `check_bs6.php` in panel files: modal 512, dropdown 314, link colour helpers 274, classes inside code 219, CSS selectors 114 (modal/menu/drawer ones), light/dark 112, offcanvas 83, class built in code 54, print utilities 32, others under 25.
-- `check_bs6.php` still counts v6 sizes (`p-5`) as v5 classes to rewrite (4,637): it must read a converted tree before `--strict` goes into CI.
-- Media queries at 992/1200 px (18), one decision. Loading curtain and tour bubbles over an open dialog. `CUSTOM_CSS` stays unlayered. `d-none` on `.pg-sm-help`, `#sd-publish-page`. Empty `class=""` left by dropped check classes.
+## What is still on the hand-fix list (rehearsal 3, 2026-10-26)?
+- `check_bs6.php` reads the converted tree (309 findings): class API calls that would split 61, classes built in code 59, modal markup left 33 (class strings and the open sheets' own JS), surfaces with no v6 class 27, `display-*`/`lead` 23, text colours 22, dropdown markup left 12, CSS selectors 10, accordion 9, others under 15.
+- Look (B1b round of rehearsal 3): the panel's own button variables (v5 `--bs-btn-*`) no longer reach v6 buttons (pill toolbar buttons, the header's account and "Siteye Git" buttons; the header is 6 px taller); taller table rows; DataTables still writes v5 classes (length select, header checkbox); dialogs are centred.
+- The visual editor's canvas-facing code in `style_designer.js` is left on v5 on purpose; only its own dialogs are converted.
+- `forms.php` and the other shared files (`bs6_scope_kind()`) are not converted yet.
 
 ## Where does the next rehearsal start?
-- Rebuild as above; then `check_bs6.php` on a converted tree, then the dialog shell (modal markup to `<dialog class="dialog">` where `pgUI.dialog.build()`'s shape fits).
+- Rebuild as above. Then map the panel's button and table variables to v6 tokens (backend.src.css token block), the DataTables class overrides in backend.src.js, then the class API calls and the code-built classes from `check_bs6.php --verbose`.
+- Open question for the owner: own media queries now follow v6's breakpoints (lg 1024, xl 1280); `bs6_switch_breakpoints()` is dropped if the owner keeps 992/1200.
 
 ## What does the owner check?
-- B1b screenshots of the liked screens, the secure screens and the visual editor (3 widths), before and after, on one private page the PR links. Then the branch runs on dev.pinegrap.com (a linked session checks it out) and the owner says go.
+- The before/after page of each round (rehearsal 3: https://claude.ai/artifact/Xdh6cnCar778Z77jphtzS4): liked, secure and visual editor screens at 1440, 834 and 390 px, light and dark (`ui/panel-screenshots.md`). Then the branch runs on dev.pinegrap.com (a linked session checks it out) and the owner says go.
 
 ## What happens at and after the merge?
 - In the same PR: CLAUDE.md's "Bootstrap 5 + jQuery", the ui and designer key rules, `php tools/check_bs6.php --strict` in php-checks.yml, CLAUDE.md's check list and pre_push.sh; the body names the changelog's `[NEW] Added …` line; new `lang()` keys go in with `php tools/tr_add.php`. The merging session merges it; tag the merge `bs6-switch`.
