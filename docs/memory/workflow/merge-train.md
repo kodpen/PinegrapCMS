@@ -7,7 +7,7 @@ description: Working rule (2026-10-25) for the merging session: one merger, one 
 - A CI run takes about ten minutes, more when runs queue. One PR at a time caps the queue at a few PRs an hour, and every merge makes the PRs behind it conflict again. A train tests a batch once, and `development` moves once per window instead of once per PR.
 
 ## Who merges?
-- One merging session. A backup merges only when the owner says so, and then the first one stops. Two mergers shift `development` under each other: a train tests one base, and if another train lands first that test is wasted. An open `merge-train/*` PR is the lock: while one is open nobody builds another, and no train is built on an open train (stacked trains all go `dirty` once the first lands).
+- One merging session. A backup merges only when the owner says so, and then the first one stops. Two mergers shift `development` under each other: a train tests one base, and if another train lands first that test is wasted. An open `merge-train/*` PR is the lock: only the merger builds trains, the next one on the open train's tip ([[merger-wake]]).
 - The merging session need not live long: the open train PR, the `ready` labels and this file carry its state.
 
 ## When does the merging session merge?
