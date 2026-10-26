@@ -5290,14 +5290,14 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
 
         // The rows of the product lists the tree draws, read for this
         // product alone (widgets_lists_product.php).
-        // __has_related (1 or empty) shows the cross-sell part's heading
-        // and cards: products to suggest, and cfg['cross_sell_enabled'] not
-        // switched off, which leaves a list the design placed itself as it
-        // is.
+        // __has_related draws the cross-sell part: empty with
+        // cfg['cross_sell_enabled'] switched off (a list the design placed
+        // itself stays as it is), else 1 with products to suggest, 0
+        // without (the part's empty box the variant script fills).
         if ($_civ_listed) {
             $_civ_list_rows = pg_sw_list_product_read(array($p), $_civ_listed, isset($_civ_listed['product.related']) ? $_civ_detail_pid() : 0);
             pg_sw_list_publish('product', $_civ_list_rows);
-            if (!$_civ_xsell_off && !empty($_civ_list_rows['product.related'][(int)$p_id])) $values['__has_related'] = '1';
+            if (!$_civ_xsell_off) $values['__has_related'] = !empty($_civ_list_rows['product.related'][(int)$p_id]) ? '1' : '0';
         }
     }
 

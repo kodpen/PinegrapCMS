@@ -685,7 +685,8 @@ function pg_sw_part_catalog_breadcrumb_item($cfg = array())
 
 // The products bought together with the one a catalog detail view shows,
 // as the view added them after its record: a box the variant script finds
-// (data-pg-civ-cross-sell) holding, when there are any (__has_related), a
+// (data-pg-civ-cross-sell), drawn unless switched off (__has_related
+// empty), holding, when there are any (__has_related 1, 0 for none), a
 // heading and a row of up to four cards (product.related), each a link
 // around the picture (or a grey box without one), the short description
 // (else the name) and the price, struck through beside the sale price when
@@ -700,7 +701,7 @@ function pg_sw_part_catalog_cross_sell($cfg = array())
         }
         return pg_sw_part_el($tag, $class, $name, $props);
     };
-    $has = pg_sw_part_when('__has_related', 'not_empty');
+    $has = pg_sw_part_when('__has_related', 'eq', '1');
     $card = pg_sw_part_el('a', 'card h-100 text-decoration-none text-body', 'Product card', array('href' => '#', '_bindings' => array('href' => '__related_url')), array(
         array('type' => 'content', 'props' => array(
             'contentType' => 'image', 'src' => '', 'alt' => '', 'fluid' => false, 'rounded' => false, 'loading' => 'lazy',
@@ -723,9 +724,9 @@ function pg_sw_part_catalog_cross_sell($cfg = array())
             )),
         )),
     ));
-    return array(pg_sw_part_el('div', 'pg-civ-cross-sell mt-4', 'Products bought together', array(
+    return array(pg_sw_part_el('div', 'pg-civ-cross-sell mt-4', 'Products bought together', array_merge(array(
         '_attrs' => array(array('name' => 'data-pg-civ-cross-sell', 'value' => '1')),
-    ), array(
+    ), pg_sw_part_when('__has_related', 'not_empty')), array(
         pg_sw_part_el('h3', 'h5 mb-3', 'Heading', array_merge(array('text' => lang('Frequently bought together')), $has)),
         pg_sw_part_el('div', 'row g-3', 'Products', $has, array(
             array('type' => 'loop_area', 'props' => array('source' => 'product.related', 'limit' => 4), 'children' => array(

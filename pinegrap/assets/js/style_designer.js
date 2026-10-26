@@ -38198,7 +38198,7 @@ const StyleDesigner = (function () {
             ['__discount_percent',         _sdT('Discount percentage (number, without the % sign)')]
         ]},
         { label: _sdT('Cross-sell / Sold Together'), tokens: [
-            ['__cross_sell_html', _sdT('Frequently bought together (HTML — a row of cards)')]
+            ['__has_related', _sdT('Products bought together: 1 shown, 0 none to suggest, empty switched off')]
         ]},
         { label: _sdT('Breadcrumb / Page Path'), tokens: [
             ['__has_breadcrumb', _sdT('Whether a breadcrumb is drawn (1 or empty)')]
@@ -39469,7 +39469,8 @@ const StyleDesigner = (function () {
             '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); },
             '__breadcrumb_inner_html': function (cfg) { return _sdPartCatalogCrumbs(true); },
             'section:breadcrumb':      function (cfg) { return _sdPartCatalogCrumbs(true); },
-            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); }
+            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); },
+            '__cross_sell_html':       function (cfg) { return _sdPartCatalogCrossSell(); }
         }
     };
 
@@ -39769,11 +39770,15 @@ const StyleDesigner = (function () {
     // The blocks the server added after each row of the main loop whose row
     // placed none of their tokens, now parts added to the end of the main
     // loop once (pg_sw_default_loop_tail_parts()): kind => [tokens that
-    // place it, part].
+    // place it, part, 'tree' when placed anywhere in the tree (added to
+    // the end of the tree without a main loop)].
     var SW_DEFAULT_LOOP_TAILS = {
         order_view: [
             [['__item_form_data_html', 'order.item_forms'], function () { return _sdPartOrderItemForm(); }],
             [['__item_gift_card_html', 'order.item_gift_cards'], function () { return _sdPartOrderItemGiftCard(); }]
+        ],
+        catalog_item_view: [
+            [['__cross_sell_html', 'product.related'], function () { return _sdPartCatalogCrossSell(); }, 'tree']
         ]
     };
 
@@ -39795,13 +39800,68 @@ const StyleDesigner = (function () {
     // anything was added.
     function _sdDefaultLoopTails(tree, kind, cfg) {
         var tails = SW_DEFAULT_LOOP_TAILS[kind];
-        var loop = tails ? _sdMainLoop(tree) : null;
-        if (!loop) return false;
-        var row = { type: 'root', children: loop.children || [] };
-        var due = tails.filter(function (t) { return !_sdPartPlaced(row, t[0]); });
-        loop.children = loop.children || [];
-        due.forEach(function (t) { loop.children = loop.children.concat(t[1](cfg || null)); });
-        return due.length > 0;
+        if (!tails || !tree || typeof tree !== 'object') return false;
+        var placed = JSON.parse(JSON.stringify(tree));
+        var loop = _sdMainLoop(tree);
+        var row = { type: 'root', children: loop ? (loop.children || []) : [] };
+        var added = false;
+        tails.forEach(function (t) {
+            var whole = t[2] === 'tree';
+            if (_sdPartPlaced(whole ? placed : row, t[0])) return;
+            var host = loop || (whole ? tree : null);
+            if (!host) return;
+            host.children = (host.children || []).concat(t[1](cfg || null));
+            added = true;
+        });
+        return added;
+    }
+
+    // The products bought together (pg_sw_part_catalog_cross_sell()): a box
+    // the variant script finds, unless switched off (__has_related empty),
+    // holding a heading and a row of up to four cards (product.related)
+    // when there are any (__has_related 1).
+    /* @pg-site-output */
+    function _sdPartCatalogCrossSell() {
+        var value = function (tag, cls, name, token, op, test) {
+            var p = { text: '', _bindings: { text: token } };
+            if (op) {
+                p._bindings.show_if = test || token;
+                p._bindParams = { show_if: { op: op } };
+            }
+            return _sdPartEl(tag, cls, name, p);
+        };
+        var card = _sdPartEl('a', 'card h-100 text-decoration-none text-body', _sdT('Product card'), { href: '#', _bindings: { href: '__related_url' } }, [
+            createNode('content', {
+                contentType: 'image', src: '', alt: '', fluid: false, rounded: false, loading: 'lazy',
+                cssClass: 'card-img-top', customName: _sdT('Picture'),
+                _bindings: { src: '__related_image_url', show_if: '__related_image_url' },
+                _bindParams: { show_if: { op: 'not_empty' } }
+            }, []),
+            _sdPartEl('div', 'card-img-top bg-body-tertiary', _sdT('No picture'), _sdPartWhen('__related_image_url', 'empty')),
+            _sdPartEl('div', 'card-body p-2', _sdT('Card Body'), {}, [
+                value('div', 'small fw-semibold text-truncate', _sdT('Short Description'), '__related_short_description', 'not_empty'),
+                value('div', 'small fw-semibold text-truncate', _sdT('Name'), '__related_name', 'empty', '__related_short_description'),
+                _sdPartEl('div', 'small mt-1', _sdT('Price'), {}, [
+                    _sdPartEl('span', 'pg-price-block has-discount', _sdT('Discounted price'), _sdPartWhen('__related_original_price', 'not_empty'), [
+                        value('span', 'pg-price-original', _sdT('Price before the discount'), '__related_original_price'),
+                        value('span', 'pg-price-current', _sdT('Price'), '__related_price')
+                    ]),
+                    _sdPartEl('span', 'pg-price-block', _sdT('Price'), _sdPartWhen('__related_original_price', 'empty'), [
+                        value('span', 'pg-price', _sdT('Price'), '__related_price')
+                    ])
+                ])
+            ])
+        ]);
+        var box = _sdPartWhen('__has_related', 'not_empty');
+        box._attrs = [{ name: 'data-pg-civ-cross-sell', value: '1' }];
+        return [_sdPartEl('div', 'pg-civ-cross-sell mt-4', _sdT('Products bought together'), box, [
+            _sdPartEl('h3', 'h5 mb-3', _sdT('Heading'), { text: _sdT('Frequently bought together'), _bindings: { show_if: '__has_related' }, _bindParams: { show_if: { op: 'eq', value: '1' } } }),
+            _sdPartEl('div', 'row g-3', _sdT('Products'), _sdPartWhen('__has_related', 'eq', '1'), [
+                createNode('loop_area', { source: 'product.related', limit: 4 }, [
+                    _sdPartEl('div', 'col-6 col-md-3', _sdT('Product'), {}, [card])
+                ])
+            ])
+        ])];
     }
 
     // The props of an element showing `token`, `sample` on the canvas,
@@ -56835,7 +56895,9 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
-                var loopArea = createNode('loop_area', {}, []);
+                // The products bought together at the end of the record, where
+                // the widget drew them when no layout placed them.
+                var loopArea = createNode('loop_area', {}, _sdPartCatalogCrossSell());
                 // Breadcrumb at the top — designer can move/style/remove:
                 // "Main Catalog → Group → Subgroup → Product", drawn by the
                 // catalog.crumbs list.
