@@ -508,6 +508,24 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.messages.forward',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/forwards',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_forward',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessage',
+            'status'      => 201,
+            'summary'     => 'Forward messages to a channel',
+            'description' => 'Forwards messages into a channel, as Forward does in the panel: id is the channel they go to, message_ids the messages, all of one channel the owner reads, written by people or applications, not deleted, at most 20. The channel they go to must be one the owner may post in and not archived (403 otherwise); a room with a guest takes no forwards. A new message is written there carrying a copy of each forwarded message as it is now - its words, who wrote it, when and where - so a later change or deletion of the original does not reach the copy; a file goes as its name, the file itself stays in its channel. text puts a few words above them. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. Whoever reads the channel it goes to reads the copies too, so forwarding out of a private channel shares its words. A dry run makes every check and its detail gives source_channel_id and how many messages would be forwarded. Send an Idempotency-Key so a retried call does not forward twice.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'message_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'required' => true, 'description' => 'Ids of the messages to forward (GET /workspace/channels/{id}/messages), all of one channel; they are forwarded oldest first.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'A few words above the forwarded messages. Tags are written as tokens, as when writing.'),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.files.create',
             'method'      => 'POST',
             'path'        => '/workspace/channels/{id}/files',

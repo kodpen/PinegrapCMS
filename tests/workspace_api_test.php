@@ -2316,6 +2316,7 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_scheduled_actions_set_status' => array('ws_api_scheduled_viewer(', 'ws_api_scheduled_action_or_404(', 'ws_scheduled_set_status_check(', 'api_dry_run_stop(', 'ws_scheduled_set_status('),
 		'ws_api_flow_shares_set'      => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_set_check(', 'api_dry_run_stop(', 'ws_flow_share_set('),
 		'ws_api_flow_shares_delete'   => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_remove_check(', 'api_dry_run_stop(', 'ws_flow_share_remove('),
+		'ws_api_messages_forward'     => array('ws_forward_to_channel_check(', 'ws_api_channel_or_404($viewer, $checked', 'api_dry_run_stop(', 'ws_forward_to_channel('),
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
 		'ws_api_changes_propose'      => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_message_send_check(', 'ws_api_proposal_rows(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
 		'ws_api_task_changes_propose' => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_task_note_add_check(', 'ws_api_proposal_rows(', 'ws_task_delegation_open_run(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
@@ -2378,4 +2379,36 @@ function test_ws_api_decision_change_names_its_agent()
 	pg_assert_same('claude', ws_api_decision_present(array('id' => 4), $row, array(), array(), $people, array(70 => $change))['claude_change']['agent'] ?? null, 'a change with no agent is Claude\'s');
 	pg_assert_same('string', ws_api_decision_change_schema()['agent'] ?? null, 'the field is declared');
 	pg_assert_contains('ws_change_agent_key(', ws_api_test_handler_source('ws_timeline_claude_changes'), 'the agent is the one GET /workspace/changes gives');
+}
+
+// Forwarding messages over the API (workspace.messages.forward) is an
+// ordinary write, offered to an MCP client as a tool: the new message carries
+// the writer's name, so it needs no team devices session. The panel's
+// forward and the route meet one check.
+function test_ws_api_messages_forward_route()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $candidate) {
+		if ($candidate['id'] === 'workspace.messages.forward') {
+			$route = $candidate;
+		}
+	}
+
+	pg_assert_true(is_array($route), 'the forward route is declared');
+	pg_assert_same('POST', $route['method']);
+	pg_assert_same('/workspace/channels/{id}/forwards', $route['path']);
+	pg_assert_same('workspace:write', $route['scope']);
+	pg_assert_true(!empty($route['dry_run']), 'forward rehearses');
+	pg_assert_true(pg_mcp_route_is_offered($route), 'forward is an MCP tool');
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_owner_scopes'), "'workspace:write'") !== false, 'the scope is in the owner ceiling');
+
+	$source = ws_api_test_handler_source('ws_api_messages_forward');
+
+	pg_assert_false(strpos($source, 'ws_api_own_words_only(') !== false, 'forward is not gated as the person\'s own words');
+	pg_assert_false(strpos($source, 'ws_api_person_only(') !== false, 'an application key may forward');
+	pg_assert_true(strpos($source, 'ws_api_writer_app_id()') !== false, 'an application forwards as itself');
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_forward_to_channel'), 'ws_forward_to_channel_check(') !== false, 'the panel meets the same check');
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_forward_to_channel_check'), 'ws_forward_pick(') !== false, 'the source channel is read with ws_can_read_channel()');
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_forward_pick'), 'ws_can_read_channel(') !== false, 'the pick reads the source channel');
 }

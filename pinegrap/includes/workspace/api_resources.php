@@ -1088,6 +1088,55 @@ function ws_api_messages_create($params)
 }
 
 /**
+ * Forwards messages into a channel, as the panel's Forward does: a new
+ * message there carrying a copy of each. It is an ordinary write, not a
+ * change to the person's words: the copies are frozen as they were, and the
+ * new message carries the writer's name like any other message, so an
+ * application writes it as itself (ws_api_writer_app_id()).
+ */
+function ws_api_messages_forward($params)
+{
+    $viewer = ws_api_viewer();
+    $target = ws_api_channel_or_404($viewer, $params['id']);
+    $text = (string) ($params['text'] ?? '');
+    $app_id = ws_api_writer_app_id();
+
+    $checked = ws_forward_to_channel_check($viewer, (array) $params['message_ids'], $target, $text, array('app_id' => $app_id));
+
+    if (!$checked['ok']) {
+        if ($checked['field'] === '') {
+            api_fail(503, 'service_unavailable', $checked['error']);
+        }
+
+        if ($checked['field'] === 'channel') {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        api_fail_validation($checked['error'], ($checked['field'] === 'text') ? 'text' : 'message_ids');
+    }
+
+    // The channel the messages come from is read under the same rules as
+    // any other: Claude's application reads only where Claude may be asked.
+    $source = ws_api_channel_or_404($viewer, $checked['channel']['id']);
+
+    api_dry_run_stop('created', 'workspace_message', array(
+        'channel_id'        => (int) $target['id'],
+        'source_channel_id' => (int) $source['id'],
+        'forwards'          => count($checked['rows']),
+    ));
+
+    $result = ws_forward_to_channel($viewer, (array) $params['message_ids'], $target, $text, array('app_id' => $app_id));
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'message_ids');
+    }
+
+    $row = ws_message($result['message_id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
+}
+
+/**
  * Does a message written now ask the assistants it names? Only a person's
  * own message, as the panel's composer writes it: an application's words
  * never ask one (an agent quoting an alias in its answer would ask itself
