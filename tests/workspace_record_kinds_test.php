@@ -546,7 +546,7 @@ function test_workspace_record_kinds_source_reader_reads_the_change_catalogue()
 {
 	$types = pg_test_ws_change_types();
 
-	pg_assert_same(array('product', 'stock', 'order', 'contact', 'erp_account', 'erp_quote', 'product_group', 'channel', 'user', 'page', 'file', 'offer', 'form', 'calendar_event', 'task', 'task_note', 'note'), array_keys($types), 'the kinds, in their order');
+	pg_assert_same(array('product', 'stock', 'order', 'contact', 'erp_account', 'erp_quote', 'product_group', 'variant_set', 'channel', 'user', 'page', 'file', 'offer', 'form', 'calendar_event', 'task', 'task_note', 'note'), array_keys($types), 'the kinds, in their order');
 
 	pg_assert_same('money', $types['product']['fields']['price'][0], 'the kind of value');
 	pg_assert_same(2147483647, $types['product']['fields']['price'][1], 'a literal limit');

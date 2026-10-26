@@ -344,13 +344,13 @@ function ws_scheduled_webhook_formats()
 /**
  * The kinds of change a scheduled action does not make: a channel's summary,
  * the workspace's own tasks and notes, which an assistant proposes, and a
- * sales quote, which is only ever added.
+ * sales quote or a variant set, which is only ever added.
  *
  * @return string[]
  */
 function ws_scheduled_change_skipped()
 {
-    return array('channel', 'task', 'task_note', 'note', 'erp_quote');
+    return array('channel', 'task', 'task_note', 'note', 'erp_quote', 'variant_set');
 }
 
 /**
@@ -366,9 +366,9 @@ function ws_scheduled_record_types()
     $out = array();
 
     foreach (ws_change_types() as $type => $info) {
-        // A task note, a note or a sales quote is only ever added from here:
-        // nothing to wait on.
-        if (in_array($type, array('channel', 'task_note', 'note', 'erp_quote'), true)) {
+        // A task note, a note, a sales quote or a variant set is only ever
+        // added from here: nothing to wait on.
+        if (in_array($type, array('channel', 'task_note', 'note', 'erp_quote', 'variant_set'), true)) {
             continue;
         }
 

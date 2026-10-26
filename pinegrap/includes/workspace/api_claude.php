@@ -419,8 +419,9 @@ function ws_api_claude_change_fields_present($list)
             $limit = array('min' => (int) $field[1][0], 'max' => (int) $field[1][1]);
         } elseif ($field[0] === 'decimal') {
             $limit = array('min' => $field[1][0], 'max' => $field[1][1], 'decimals' => (int) $field[1][2], 'may_be_empty' => !empty($field[1][3]));
-        } elseif (in_array($field[0], array('lines', 'erp_lines'), true)) {
-            // A document's lines: max_length is a line's description.
+        } elseif (in_array($field[0], array('lines', 'erp_lines', 'variants'), true)) {
+            // A document's lines: max_length is a line's description; a
+            // variant set's rows: a SKU or a short description.
             $limit = array('max_items' => (int) $field[1][0], 'max_length' => (int) $field[1][1]);
         } elseif ($field[0] === 'ids') {
             $values = array((string) $field[1]);
