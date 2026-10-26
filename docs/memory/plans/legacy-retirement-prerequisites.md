@@ -17,7 +17,7 @@ description: Plan (2026-10-19, not started): regions editable in the visual desi
 - R3 Designer region -> designer-only shared component: done (PR #1806): per page from the region node's panel, PHP blocks as `custom_php` nodes, nested designer regions as nested shared refs, inner placeholders as region nodes (the placeholder half of L1) (`designer/designer-region-to-shared-component.md`).
 - R4 Dynamic region stays PHP: done (PR #1788): region node attribute, code-view tab for administrators, the classic screen's right (`designer/dynamic-region-in-designer.md`).
 - R5 Page regions: converting a page moves its `pregion` content into the page tree as `_editable` rich-text blocks; page edit rights unchanged.
-- R6 Widgets for the data-driven regions, items still edited in their own screens; mobile switch and PDF stay region nodes unless asked. Done: menu (#1781, [[menu-widget]]), menu sequence (#1817, [[menu-sequence-widget]]), ad region (#1836, [[ad-region-widget]]), tag cloud (#1872, [[tag-cloud-widget]]). Left: a page's menu, menu sequence, ad and tag cloud region nodes are not yet turned into these widgets.
+- R6 Widgets for the data-driven regions, items still edited in their own screens; mobile switch and PDF stay region nodes unless asked. Done: menu (#1781, [[menu-widget]]), menu sequence (#1817, [[menu-sequence-widget]]), ad region (#1836, [[ad-region-widget]]), tag cloud (#1872, [[tag-cloud-widget]]), "Make designable" on their region nodes (#1893, [[region-node-to-widget]]). R6 is done.
 - Missing system widget types: `system-widget-missing-types.md`. Custom layouts of classic pages (half the pages of the starting site; `edit_page.php` and the design's page queries hide them): `legacy-layouts-in-designer.md`, Y1 first.
 
 ## Open questions?

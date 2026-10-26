@@ -325,45 +325,23 @@ function pg_integrity_http_get($url, $headers)
 {
     $user_agent = function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap';
 
-    if (function_exists('curl_init')) {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
-        curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
-        curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
-        curl_setopt($ch, CURLOPT_MAXFILESIZE, 16 * 1024 * 1024);
+    if (function_exists('curl_init') && function_exists('pg_curl_run')) {
         // The tree of a release is over a megabyte of JSON; compressed it is a
         // quarter of that.
-        curl_setopt($ch, CURLOPT_ENCODING, '');
+        $answer = pg_curl_run('GET', $url, [
+            'headers'         => $headers,
+            'timeout'         => 10,
+            'connect_timeout' => 3,
+            'follow'          => 3,
+            'max_size'        => 16 * 1024 * 1024,
+            'encoding'        => true,
+        ]);
 
-        if (function_exists('pg_curl_tls')) {
-            pg_curl_tls($ch);
-        } else {
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-        }
-
-        if (defined('PROXY_ADDRESS') && (PROXY_ADDRESS != '')) {
-            curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-            curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-            curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-        }
-
-        $body = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        unset($ch);
-
-        if ($body === false) {
+        if ($answer['errno'] !== 0) {
             return false;
         }
 
-        return ['status' => $status, 'body' => (string) $body];
+        return ['status' => $answer['status'], 'body' => $answer['body']];
     }
 
     $context = stream_context_create([

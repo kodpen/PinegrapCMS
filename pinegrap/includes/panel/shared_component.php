@@ -61,8 +61,7 @@ function pg_panel_shared_component($request, $action)
 
     // Defensive: ensure shared_components table exists (migration may not have been run).
     // Returns a clear JSON error instead of a cryptic HTML dump / 500.
-    $_sc_check = @mysqli_query(db::$con, "SHOW TABLES LIKE 'shared_components'");
-    if (!$_sc_check || mysqli_num_rows($_sc_check) === 0) {
+    if (!pg_schema_has('shared_components')) {
         respond(array(
             'status'  => 'error',
             'message' => 'shared_components table is missing — please run the software upgrade at install/index.php',
