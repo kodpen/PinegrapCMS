@@ -423,6 +423,7 @@
     "{var:1} backup{suffix:1}": "{var:1} yedek",
     "{var:1} barcode(s) assigned.": "{var:1} barkod atandı.",
     "{var:1} baskets": "{var:1} sepet",
+    "{var:1} became the invoice draft {var:2} on Claude's proposal.": "{var:1}, Claude'un önerisiyle {var:2} fatura taslağına dönüştü.",
     "{var:1} blocked addresses also show signed-in activity or a completed order. See Possible False Positives below.": "Engellenen adreslerden {var:1} tanesi aynı zamanda oturum açmış etkinlik ya da tamamlanmış sipariş gösteriyor. Aşağıdaki Olası Yanlış Pozitifler bölümüne bakın.",
     "{var:1} bounced": "{var:1} karşılıksız",
     "{var:1} brought this channel back": "{var:1} bu kanalı arşivden geri getirdi",

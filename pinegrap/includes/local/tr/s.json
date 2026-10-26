@@ -87,6 +87,7 @@
     "Sales quote": "Satış teklifi",
     "Sales quote {var:1} runs out": "Satış teklifi {var:1} sona eriyor",
     "Sales quote {var:1} was added in the Workspace, on Claude's proposal.": "Satış teklifi {var:1} Çalışma Alanı'nda Claude'un önerisiyle eklendi.",
+    "Sales quote {var:1} was turned into an invoice draft in the Workspace, on Claude's proposal.": "Satış teklifi {var:1} Çalışma Alanı'nda Claude'un önerisiyle fatura taslağına dönüştürüldü.",
     "Sales return": "Satış iadesi",
     "Sales returns": "Satış iadeleri",
     "Sales settings (ERP card)": "Satış ayarları (ERP kartı)",
