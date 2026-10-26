@@ -303,10 +303,12 @@ function test_widget_conditions_placement_checks_skip_conditions()
 	$cart    = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
 	pg_assert_contains("strpos(pg_sw_cond_tree_json(\$tree_decoded), 'not_logged_in')", $widgets);
 	pg_assert_contains("strpos(pg_sw_cond_tree_json(\$tree_decoded), '__not_found_message')", $widgets);
-	pg_assert_contains('$placed_json = pg_sw_cond_tree_json((string)$tree_json);', $widgets);
-	foreach (array('__legal_preinfo_url', '__legal_contract_url', '__withdrawal_deadline', '__return_form', '__returns') as $name) {
-		pg_assert_contains("strpos(\$placed_json, '" . $name . "')", $widgets, $name);
-	}
+	// The order view's blocks ask pg_sw_placed(), which reads the tree
+	// without its conditions (widget_default_parts_test.php).
+	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__legal_preinfo_url', '__legal_contract_url'))", $widgets);
+	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__withdrawal_deadline'))", $widgets);
+	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__return_form', '__returns'))", $widgets);
+	pg_assert_contains('$json = pg_sw_cond_tree_json($tree);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php'));
 	pg_assert_contains("strpos(pg_sw_cond_tree_json((string)\$tree_json), '\"has_items\"')", $cart);
 	foreach (array($widgets, $cart) as $i => $source) {
 		pg_assert_same(0, preg_match("/strpos\\(\\(string\\)(\\\$tree_json|json_encode\\(\\\$tree_decoded\\)), '(__legal|__withdrawal|__return|__not_found|not_logged_in|\"has_items)/", $source), 'no raw check left in file ' . $i);

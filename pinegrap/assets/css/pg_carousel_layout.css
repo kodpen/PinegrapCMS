@@ -175,3 +175,12 @@ button.pg-civ-out-of-stock {
 .pg-civ-picker-notice {
     font-size: 0.85rem;
 }
+
+/* ── Order timeline (the order view's timeline part) ─────────────────── */
+.pg-ov-timeline{list-style:none;padding:0;margin:0;position:relative}
+.pg-ov-timeline::before{content:"";position:absolute;left:1.15rem;top:.5rem;bottom:.5rem;width:2px;background:#dee2e6}
+.pg-ov-timeline-item{position:relative;padding:.25rem 0 1rem 3rem;min-height:2.5rem}
+.pg-ov-timeline-item:last-child{padding-bottom:0}
+.pg-ov-timeline-icon{position:absolute;left:0;top:0;width:2.3rem;height:2.3rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem}
+.pg-ov-timeline-label{font-weight:600;line-height:1.2}
+.pg-ov-timeline-ts{color:#6c757d;font-size:.875rem}

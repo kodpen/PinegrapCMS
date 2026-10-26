@@ -855,6 +855,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                               : (isset($configs[$ov_sid]['_tree_json']) ? $configs[$ov_sid]['_tree_json'] : '');
         $configs[(int)$ov_sid] = $ov_cfg;
     }
+    // A saved tree still binding a token a default part now draws gets the
+    // part here, the one door every render passes (widgets_parts.php).
+    foreach ($configs as $c_sid => $c_cfg) {
+        $configs[$c_sid]['_tree_json'] = pg_sw_default_parts_apply(
+            $c_cfg['_tree_json'], isset($c_cfg['regionType']) ? (string)$c_cfg['regionType'] : '', $c_cfg, $email
+        );
+    }
 
     // A widget's records show their pictures through bound ^^tokens^^, so
     // their srcset is written on each widget's finished output
@@ -4309,6 +4316,7 @@ function pg_scroller_inject($content, $src = null)
  *   • Unified price block (.pg-price-block strike-through styling)
  *   • Empty-element hiding rules (auto-hide discount tokens when blank)
  *   • Variant chooser visual states
+ *   • The order view's timeline (.pg-ov-timeline)
  *
  * Called from EVERY system widget render (catalog_listing, catalog_item_view,
  * shopping_cart, …) — not just carousel. The price block + discount
@@ -4324,7 +4332,7 @@ function _pg_widget_layout_css_once()
     $base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
           . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
           . '/assets/css/';
-    $v = '3';   // bump on layout css changes
+    $v = '4';   // bump on layout css changes
     return '<link rel="stylesheet" href="' . h($base) . 'pg_carousel_layout.css?v=' . $v . '">';
 }
 

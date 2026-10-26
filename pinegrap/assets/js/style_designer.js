@@ -892,6 +892,9 @@ const StyleDesigner = (function () {
                                 var mcfg = null;
                                 try { mcfg = JSON.parse(item.system_region_config); } catch (e) {}
                                 if (mcfg && _SW_NO_MESSAGES[_swKindOf(mcfg)]) _sdDropMessagesNodes(parsed);
+                                // An old token a default part now draws gets
+                                // the part; the site draws the same.
+                                if (mcfg) _sdDefaultParts(parsed, _swKindOf(mcfg), mcfg);
                             }
                             // A template's widget whose layout was never written
                             // (the loss above): it still holds the placeholder and
@@ -12838,7 +12841,7 @@ const StyleDesigner = (function () {
             // If text is bound, show a lorem-ipsum preview (canvas only — server still emits
             // the ^^token^^ at save/render time via _apply_bindings in functions.php).
             // A bound element is previewed even when it has no literal text:
-            // a <div> bound to __timeline carries only the binding, and the
+            // a <div> bound to __currency_selector carries only the binding, and the
             // server writes the value into it whatever `text` holds.
             var _semBoundText = !!(node.props._bindings && node.props._bindings.text);
             if (!_isBtnLike && node.type === 'semantic' && ((node.props.text !== undefined && node.props.text !== '') || _semBoundText)) {
@@ -13605,9 +13608,10 @@ const StyleDesigner = (function () {
     };
 
     // Order-view status badge classes, per lifecycle stage. PHP twin lives in
-    // _pg_order_status_badge_class() (functions.php) — the two MUST stay in
-    // lockstep or the canvas preview shows a different colour than the front
-    // end. Designer overrides these per widget via the settings panel.
+    // _pg_order_status_badge_class() (ecommerce.php) — the two MUST stay in
+    // lockstep. The status badge part (_sdPartOrderStatusBadge()) takes a
+    // widget's own status_class_* setting, else these; once the part is in
+    // the tree each badge's classes are the designer's.
     var SD_OV_STATUS_CLASS_DEFAULTS = {
         complete:  'badge bg-success',
         pending:   'badge bg-warning text-dark',
@@ -13754,14 +13758,6 @@ const StyleDesigner = (function () {
     // approximation from the SAME markup shapes the PHP renderer emits.
     //
     // Preview only: never saved to the tree, never sent to the server.
-    function _sdOvStatusClass(key) {
-        var cfg = _sysWidgetRenderCfg;
-        if (cfg && typeof cfg['status_class_' + key] === 'string' && cfg['status_class_' + key] !== '') {
-            return cfg['status_class_' + key];
-        }
-        return SD_OV_STATUS_CLASS_DEFAULTS[key] || SD_OV_STATUS_CLASS_DEFAULTS['default'];
-    }
-
     var _SD_HTML_PREVIEW_TOKENS = {
         // Mirrors pg_comments_stars_html(): five stars, four of them filled.
         '__comment_stars_html': function () {
@@ -13807,11 +13803,6 @@ const StyleDesigner = (function () {
                    btn('#dadce0', '#fff', '#3c4043', _sdT('Connect with Google')) +
                    btn('#8c8c8c', '#fff', '#5e5e5e', _sdT('Connect with Microsoft')) + '</div>';
         },
-        // Mirrors _pg_order_status_badge_class() — picks up the designer's own
-        // class override so the canvas shows the colour they just chose.
-        '__order_status_badge': function () {
-            return '<span class="' + esc(_sdOvStatusClass('complete')) + '">' + esc(_sdT('Completed')) + '</span>';
-        },
         // Shape mirrors _eo_render_cancel_order_form(): reason textarea +
         // destructive submit + refund warning.
         '__cancel_form': function () {
@@ -13848,21 +13839,6 @@ const StyleDesigner = (function () {
                    '<ul class="small mb-2 ps-3"><li>' + esc(_sdT('Sample Product Name')) + ' × 1</li></ul>' +
                    '<div class="alert alert-info small py-2 my-2">' + esc(_sdT('Your return was approved. You can send the goods back now.')) + '</div>' +
                    '</div></div>';
-        },
-        // Mirrors _eo_render_order_timeline() — <ul class="pg-ov-timeline">
-        // with a Bootstrap Icon + label + timestamp per event.
-        '__timeline': function () {
-            var ev = [
-                ['bi-receipt',     'primary', _sdT('Order Created'), _sdDateSample(true)],
-                ['bi-credit-card', 'success', _sdT('Payment Received'),        _sdDateSample(true)],
-                ['bi-truck',       'info',    _sdT('Shipped Out'),   _sdDateSample(false)]
-            ];
-            return '<ul class="pg-ov-timeline list-unstyled mb-0">' + ev.map(function (e) {
-                return '<li class="d-flex align-items-start gap-2 mb-2">' +
-                       '<span class="bi ' + e[0] + ' text-' + e[1] + '"></span>' +
-                       '<span><span class="fw-semibold d-block">' + e[2] + '</span>' +
-                       '<span class="text-muted small">' + e[3] + '</span></span></li>';
-            }).join('') + '</ul>';
         },
         // Mirrors _pg_render_order_item_form_data_readonly() — fieldset +
         // legend + stacked label/value pairs.
@@ -34080,24 +34056,6 @@ const StyleDesigner = (function () {
                 var _ovCurrencySymbol = (typeof _cfg.currency_symbol === 'string') ? _cfg.currency_symbol : '';
                 var _ovNotFound       = (typeof _cfg.not_found_message === 'string' && _cfg.not_found_message !== '') ? _cfg.not_found_message : _sdT('The order could not be found.');
 
-                // Status badge classes — one field per lifecycle stage so the
-                // COLOUR decision belongs to the designer, not the renderer.
-                // Defaults mirror the PHP fallbacks in
-                // _render_system_widget_order_view (SD_OV_STATUS_CLASS_DEFAULTS).
-                var _ovBadgeCls = function (key) {
-                    var v = _cfg['status_class_' + key];
-                    return (typeof v === 'string' && v !== '') ? v : SD_OV_STATUS_CLASS_DEFAULTS[key];
-                };
-                var _ovBadgeRow = function (key, label, hint) {
-                    return row(label,
-                        '<input type="text" class="form-control form-control-sm sd-sw-ov-status-cls"' +
-                        ' data-sw-id="' + sid + '" data-status-key="' + key + '"' +
-                        ' value="' + esc(_ovBadgeCls(key)) + '" maxlength="120"' +
-                        ' placeholder="' + esc(SD_OV_STATUS_CLASS_DEFAULTS[key]) + '">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + hint + '</div>'
-                    );
-                };
-
                 systemSection += sect('bi-receipt', _sdT('View Order Settings'),
                     row(_sdT('Date format'),
                         '<select class="form-select form-select-sm" id="sd-sw-ov-date-format" data-sw-id="' + sid + '">' +
@@ -34115,17 +34073,6 @@ const StyleDesigner = (function () {
                     )
                 );
 
-                systemSection += sect('bi-palette', _sdT('Status Badge Classes'),
-                    '<div style="font-size:.66rem;color:#888;line-height:1.4;padding:2px 0 6px">' +
-                        esc(_sdT('The CSS classes of the badge in elements bound to "{var}". The status text comes from the order; you pick its colour here. Left empty, the default is used.', _swBindLabel('order_view', '__order_status_badge'))) +
-                    '</div>' +
-                    _ovBadgeRow('complete',  _sdT('Completed'),  'complete / exported / paid / tamamlandı') +
-                    _ovBadgeRow('pending',   _sdT('Pending'),    'incomplete / pending / bekliyor') +
-                    _ovBadgeRow('shipped',   _sdT('Shipped'),  'shipped / kargo') +
-                    _ovBadgeRow('cancelled', _sdT('Cancelled'),       'cancelled / iptal') +
-                    _ovBadgeRow('refunded',  _sdT('Refunded'),        'refund / iade') +
-                    _ovBadgeRow('default',   _sdT('Other'),       _sdT('Statuses that match none of the above'))
-                );
             }
 
             // ── membership settings ───────────────────────────────────────────
@@ -36538,22 +36485,6 @@ const StyleDesigner = (function () {
             });
         }
 
-        // status badge classes (one text input per lifecycle stage).
-        // Blank input = "use the default", stored as '' rather than the literal
-        // default string so a later change to the defaults reaches old widgets.
-        document.querySelectorAll('.sd-sw-ov-status-cls').forEach(function (el) {
-            el.addEventListener('change', function () {
-                var sid = parseInt(this.dataset.swId, 10);
-                var key = this.dataset.statusKey;
-                if (!sid || !key) return;
-                // Only class-name characters — this string lands in a class
-                // attribute server-side, so nothing that could close it.
-                var v = ('' + this.value).replace(/[^A-Za-z0-9 _-]/g, '').trim().slice(0, 120);
-                this.value = v;
-                _patchSysCfg(sid, function (cfg) { cfg['status_class_' + key] = v; });
-                if (typeof render === 'function') render();
-            });
-        });
 
         // ── membership settings ───────────────────────────────────────────────
 
@@ -38281,7 +38212,8 @@ const StyleDesigner = (function () {
             ['__order_no',            _sdT('Order number')],
             ['__order_date',          _sdT('Order date')],
             ['__order_status',        _sdT('Status (raw text)')],
-            ['__order_status_badge',  _sdT('Status badge (colored HTML)')],
+            ['__order_status_text',   _sdT('Status as the badge shows it')],
+            ['__order_status_stage',  _sdT('Status stage (complete, pending, shipped, cancelled, refunded, default)')],
             ['__order_item_count',    _sdT('Number of distinct products')],
             ['__order_unit_count',    _sdT('Total quantity')],
             ['__order_notes',         _sdT('Order notes (when there are any)')],
@@ -38355,7 +38287,6 @@ const StyleDesigner = (function () {
             ['__tracking_company_name', _sdT('Carrier name')]
         ]},
         { label: _sdT('Order history / document'), tokens: [
-            ['__timeline',              _sdT('Order timeline (ready-made HTML)')],
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
             ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
@@ -38710,6 +38641,152 @@ const StyleDesigner = (function () {
         return SD_STRUCTURAL_TAGS.indexOf((tag || '').toLowerCase()) !== -1;
     }
 
+    // ── Default parts (widgets_parts.php) ──────────────────────────────────
+    // A token that stood for a block of markup the server built is drawn by
+    // a part made of real elements the designer can select and change. A
+    // widget's tree still binding one gets the part when it loads; the
+    // server gives a saved tree the same part where it renders, so nothing
+    // is marked unsaved and the next save stores it. kind => token => part.
+    var SW_DEFAULT_PARTS = {
+        order_view: {
+            '__timeline':           function (cfg) { return _sdPartOrderTimeline(cfg); },
+            '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); }
+        }
+    };
+
+    // Gives every node under `node` drawing a token of `kind` its part
+    // (pg_sw_default_parts_tree()). Returns whether anything changed.
+    function _sdDefaultParts(node, kind, cfg) {
+        var parts = SW_DEFAULT_PARTS[kind];
+        if (!parts || !node || typeof node !== 'object') return false;
+        var token = _sdPartTokenOf(node, Object.keys(parts));
+        if (token) {
+            _sdPartHost(node);
+            node.children = parts[token](cfg || null).concat(node.children || []);
+            return true;
+        }
+        var changed = false;
+        (node.children || []).forEach(function (child) {
+            if (_sdDefaultParts(child, kind, cfg)) changed = true;
+        });
+        return changed;
+    }
+
+    // The token of `tokens` that `node` draws: its text binding, or a text
+    // that is the token alone (^^token^^). '' for none.
+    function _sdPartTokenOf(node, tokens) {
+        var p = node.props || {};
+        if (p._bindings && tokens.indexOf(p._bindings.text) !== -1) return p._bindings.text;
+        var m = (typeof p.text === 'string') ? /^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/.exec(p.text) : null;
+        return (m && tokens.indexOf(m[1]) !== -1) ? m[1] : '';
+    }
+
+    // `node`, in place, as an element that holds a part (pg_sw_part_host()):
+    // its text and text binding go, a content node becomes the element it
+    // drew; any other node is moved into a new <div> that takes its place.
+    function _sdPartHost(node) {
+        var p = node.props || (node.props = {});
+        delete p.text;
+        ['_bindings', '_bindParams', '_bindFormats'].forEach(function (key) {
+            if (!p[key] || typeof p[key] !== 'object') return;
+            delete p[key].text;
+            if (!Object.keys(p[key]).length) delete p[key];
+        });
+        if (node.type === 'content') {
+            var ct = p.contentType || '', tag = 'div', cls = [];
+            if (ct === 'paragraph') tag = 'p';
+            else if (ct === 'span' || ct === 'text') tag = 'span';
+            else if (ct === 'heading') tag = /^h[1-6]$/i.test(p.tag || '') ? p.tag.toLowerCase() : 'h2';
+            if (p.lead && ct === 'paragraph') cls.push('lead');
+            if (p.align) cls.push('text-' + p.align);
+            if (p.cssClass) cls.push(p.cssClass);
+            delete p.contentType; delete p.lead; delete p.align;
+            p.tag = tag;
+            p.cssClass = cls.join(' ');
+            node.type = 'semantic';
+        } else if (node.type !== 'semantic') {
+            var inner = { _id: node._id, type: node.type, props: p, children: node.children || [] };
+            node._id = gid();
+            node.type = 'semantic';
+            node.props = { tag: 'div' };
+            node.children = [inner];
+        }
+        node.children = node.children || [];
+    }
+
+    // One element of a part (pg_sw_part_el()).
+    function _sdPartEl(tag, cls, name, props, children) {
+        var p = { tag: tag, cssClass: cls, customName: name };
+        Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+        return createNode('semantic', p, children || []);
+    }
+
+    // The props of an element drawn only when `token` passes `op` (`value`).
+    function _sdPartWhen(token, op, value) {
+        var param = { op: op };
+        if (value) param.value = value;
+        return { _bindings: { show_if: token }, _bindParams: { show_if: param } };
+    }
+
+    // The order timeline (pg_sw_part_order_timeline()): an order.steps list,
+    // the icon and colour by the step's kind, an estimated date greyed.
+    function _sdPartOrderTimeline() {
+        var icon = function (colour, bi, props) {
+            return _sdPartEl('span', 'pg-ov-timeline-icon bg-' + colour, _sdT('Icon'), props, [
+                _sdPartEl('i', 'bi ' + bi, _sdT('Icon'))
+            ]);
+        };
+        var kind = function (k, label, children) {
+            return _sdPartEl('span', '', _sdT('Step') + ': ' + label, _sdPartWhen('__step_kind', 'eq', k), children);
+        };
+        var dated = function (colour, bi) {
+            return [icon(colour, bi, _sdPartWhen('__step_is_estimate', 'empty')),
+                    icon('secondary', bi, _sdPartWhen('__step_is_estimate', 'not_empty'))];
+        };
+        var text = function (tag, cls, name, token, sample) {
+            return _sdPartEl(tag, cls, name, { text: sample, _bindings: { text: token } });
+        };
+        var dash = _sdPartWhen('__step_note', 'not_empty');
+        dash.text = ' — ';
+        return [_sdPartEl('ul', 'pg-ov-timeline', _sdT('Order timeline'), {}, [
+            createNode('loop_area', { source: 'order.steps' }, [
+                _sdPartEl('li', 'pg-ov-timeline-item', _sdT('Step'), {}, [
+                    kind('created', _sdT('Order Created'), [icon('primary', 'bi-receipt')]),
+                    kind('paid', _sdT('Payment Received'), [icon('success', 'bi-credit-card')]),
+                    kind('shipped', _sdT('Shipped'), dated('info', 'bi-truck')),
+                    kind('delivered', _sdT('Delivered'), dated('success', 'bi-box-seam')),
+                    kind('cancelled', _sdT('Cancelled'), [icon('danger', 'bi-x-circle')]),
+                    _sdPartEl('div', 'pg-ov-timeline-label', _sdT('Step'), {}, [
+                        text('span', '', _sdT('Step'), '__step_label', _sdT('Order Created')),
+                        _sdPartEl('span', '', _sdT('Dash'), dash),
+                        text('span', '', _sdT('Note (the reason of a cancellation)'), '__step_note', '')
+                    ]),
+                    text('div', 'pg-ov-timeline-ts', _sdT('Date'), '__step_date', _sdDateSample(true))
+                ])
+            ])
+        ])];
+    }
+
+    // The stages of the status badge (pg_sw_order_status_stages()).
+    var SD_OV_STATUS_STAGES = ['complete', 'pending', 'shipped', 'cancelled', 'refunded', 'default'];
+
+    // The order's status badge (pg_sw_part_order_status_badge()): one badge
+    // per stage, drawn at that stage, with the classes the widget's settings
+    // gave it (_pg_order_status_badge_class()).
+    function _sdPartOrderStatusBadge(cfg) {
+        var labels = { complete: _sdT('Completed'), pending: _sdT('Pending'), shipped: _sdT('Shipped'),
+                       cancelled: _sdT('Cancelled'), refunded: _sdT('Refunded'), 'default': _sdT('Other') };
+        return SD_OV_STATUS_STAGES.map(function (stage) {
+            var own = (cfg && typeof cfg['status_class_' + stage] === 'string')
+                ? cfg['status_class_' + stage].replace(/[^A-Za-z0-9 _-]/g, '').trim() : '';
+            return _sdPartEl('span', own || SD_OV_STATUS_CLASS_DEFAULTS[stage], _sdT('Status') + ': ' + labels[stage], {
+                text: labels[stage],
+                _bindings: { text: '__order_status_text', show_if: '__order_status_stage' },
+                _bindParams: { show_if: { op: 'eq', value: stage } }
+            });
+        });
+    }
+
     // One-time migration for trees saved before the "bind content, not layout"
     // rule. Walks the tree; whenever a structural tag carries a text/src/href
     // binding, the binding (and the cell's preview text) moves into a <span>
@@ -38779,7 +38856,7 @@ const StyleDesigner = (function () {
                 out.push({ prop: 'alt',  label: _sdT('Alt text'),  kind: 'text'  });
             } else if (node.props && (node.props.text || (node.props._bindings && node.props._bindings.text))) {
                 // A bound element needs no literal text of its own: a <div>
-                // bound to a ready-made HTML block (__timeline, __currency_selector)
+                // bound to a ready-made HTML block (__currency_selector)
                 // carries only the binding. Keying this on props.text alone
                 // left such a binding out of the panel entirely.
                 //
@@ -56005,14 +56082,9 @@ const StyleDesigner = (function () {
                                     text: _sdT('Order date'), cssClass: 'text-muted small mb-0',
                                     _bindings: { text: '__order_date' } })
                             ]),
-                            // Status badge — pre-built <span class="badge …">
-                            // from __order_status_badge; a phrasing element, so
-                            // a <p> may hold it.
-                            createNode('content', { contentType: 'paragraph',
-                                text: _sdT('Status'),
-                                cssClass: 'mb-0 fs-5',
-                                customName: _sdT('Status Badge'),
-                                _bindings: { text: '__order_status_badge' } })
+                            // Status badge: one badge per stage of the status.
+                            createNode('semantic', { tag: 'p', cssClass: 'mb-0 fs-5',
+                                customName: _sdT('Status Badge') }, _sdPartOrderStatusBadge(null))
                         ]),
 
                         // ── 2-COLUMN BODY ───────────────────────────────
@@ -56220,10 +56292,7 @@ const StyleDesigner = (function () {
                                 ]),
 
                                 // ── Order History (timeline) ───────────────
-                                // Server builds the whole <ul.pg-ov-timeline>;
-                                // bound to a <div>, not a <p>, because the token
-                                // expands to a list (block inside <p> would make
-                                // the browser close the paragraph early).
+                                // A list of the order's steps.
                                 createNode('semantic', { tag: 'div',
                                     cssClass: 'card mb-3', customName: _sdT('Order History Card'),
                                     _bindings: { eo_visible_if: 'has_timeline' } }, [
@@ -56233,8 +56302,7 @@ const StyleDesigner = (function () {
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
                                         createNode('semantic', { tag: 'div',
-                                            customName: _sdT('Timeline (HTML)'),
-                                            _bindings: { text: '__timeline' } })
+                                            customName: _sdT('Order timeline') }, _sdPartOrderTimeline())
                                     ])
                                 ]),
 
