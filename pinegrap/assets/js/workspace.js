@@ -2776,6 +2776,7 @@
         var editor = window.PGWsEditor.create({
             placeholder: options.placeholder || '',
             previews: !!options.previews,
+            slashInserts: options.slashInserts,
             onInput: function () {
                 field.pickerCheck();
             },
@@ -22151,6 +22152,8 @@
             field = richField(wrap, {
                 placeholder: t('notes_text'),
                 previews: true,
+                // "/" lists the inserts of the box (PGWsEditor).
+                slashInserts: { insertLabel: t('insert_to_note') },
                 onKeydown: function (event) {
                     if (event.key === 'Enter' && !event.shiftKey && assistantTokens().length) {
                         setTimeout(function () {

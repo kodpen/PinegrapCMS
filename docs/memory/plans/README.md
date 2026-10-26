@@ -49,9 +49,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - legacy-page-designer-parity.md: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, with a build-or-drop proposal and files per item; waits for the owner
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
 - legacy-retirement-prerequisites.md: Plan (2026-10-19, not started): regions editable in the visual designer before classic pages move: common/designer regions as shared components with content rights, dynamic, page, menu
-- marketplace-product-matching.md: Plan (approved 2026-10-26): match a shop's products to its marketplace catalogue in bulk, with pictures, on a new Marketplace products screen; step 1 done (#1880), step 2 next
+- marketplace-product-matching.md: Plan (approved 2026-10-26): match a shop's products to its marketplace catalogue in bulk, with pictures, on a new Marketplace products screen; steps 1 (#1880) and 2 (#1931) done, step 3 next
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b (with rejection), 5c, 6, A, B done; Hepsiburada open
-- merge-flow-tools.md: Plan (2026-10-25, steps 2, 3 and 5 done): merge_train.php (lock, build, fast-forward landing), CI guards, filtered install matrix, generated fn-module map, lang cache, merge queue
+- merge-flow-tools.md: Plan (2026-10-25, steps 1, 2, 3 and 5 done): merge_train.php (lock, build, fast-forward landing), CI guards, filtered install matrix, generated fn-module map, lang cache, merge queue
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex, Keep and HTML import, note revision, delete, sources and unshare in sync done; later Notion/OneNote; open questions
 - passkeys.md: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor and for sign-in with a passkey alone
@@ -59,7 +59,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - payment-driver-paypal.md: Step 4b (PayPal Checkout v2) hand-over: branch feature/payment-4b-paypal-v2 (closed PR #1827), what is missing before it lands, the open PENDING-capture question
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows, retention, window function done): automatic "price before discount" (TR 10/30-day, EU 30-day rules)
-- privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1-5b and 5d done, last #1844 and #1919; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+- privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1-5b, 5d and 5e done, last #1919 and #2000; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
@@ -83,7 +83,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1 (#1462), 2 (#1523), 3 (#1726) done; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-catalog-create.md: Plan (2026-10-23, 1a #1603, 1b #1604, 2 #1613, answers 1 and 3 given): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
-- workspace-composer-tools.md: Plan (2026-10-23; 1, 2, 4 done but autoformat; answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+- workspace-composer-tools.md: Plan (2026-10-23; 1, 2, 6 done, 4 but autoformat; answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, 4 #1681, 5 #1790, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
 - workspace-flows-scheduled-merge.md: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, slice 2 #1810, answers 1-3): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes, opt-in convert
