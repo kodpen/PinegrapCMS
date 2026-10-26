@@ -6,15 +6,16 @@
  *
  * The box stays a chat box: one field, Enter sends, Shift+Enter starts a new
  * line. What it knows about formatting shows only when asked for: select a
- * few words and a small bar offers bold, italic, strikethrough, code and a
- * link; double-click a link to change or remove it. People and records picked
- * with @ and # sit in the text as chips, and a table, a checklist or a block
- * of code sits in it as a card that opens its window again when clicked.
+ * few words and a small bar offers bold, italic, strikethrough, highlight,
+ * code and a link; double-click a link to change or remove it. People and
+ * records picked with @ and # sit in the text as chips, and a table, a
+ * checklist or a block of code sits in it as a card that opens its window
+ * again when clicked.
  *
  * Messages are still stored as the light markup the server draws
- * (includes/workspace/render.php): **bold**, _italic_, ~~struck~~, `code`,
- * [text](address), tables with pipes, "- [ ]" items, ``` fences, and tags as
- * <@user:12> / <#order:1045>. This file turns the box into that text and back.
+ * (includes/workspace/render.php): **bold**, _italic_, ~~struck~~,
+ * ==highlighted==, `code`, [text](address), tables with pipes, "- [ ]"
+ * items, ``` fences, and tags as <@user:12> / <#order:1045>. This file turns the box into that text and back.
  *
  * The marks are made here on the nodes themselves (format()), never with
  * document.execCommand(), and the rows of tools under a box (the channel's,
@@ -171,8 +172,14 @@
     }
 
     // One line of text as nodes: tags, code, links, emphasis.
+    //
+    // A highlight is the server's pair rule, (?<!=)==(?=\S)([^=\n]{1,300}?)
+    // (?<=\S)==(?!=): its words hold no =, so the first = after them closes
+    // it. The sign before it is a group of its own rather than a lookbehind,
+    // which older browsers cannot read (a syntax error stops the whole
+    // bundle); the start of what is left of the line is never after a =.
     function inlineNodes(text, labels, parent) {
-        var pattern = /(<[@#][a-z_]+:[0-9]{1,10}>)|`([^`\n]{1,300})`|\[([^\]\n]{1,300})\]\(((?:https?:\/\/|mailto:)[^\s()<>"]{1,1000})\)|\*\*([^*\n]{1,300})\*\*|~~([^~\n]{1,300})~~|(^|[^\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])/u;
+        var pattern = /(<[@#][a-z_]+:[0-9]{1,10}>)|`([^`\n]{1,300})`|\[([^\]\n]{1,300})\]\(((?:https?:\/\/|mailto:)[^\s()<>"]{1,1000})\)|\*\*([^*\n]{1,300})\*\*|~~([^~\n]{1,300})~~|(^|[^\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])|(^|[^=])==([^=\s](?:[^=\n]{0,298}[^=\s])?)==(?!=)/u;
         var rest = String(text || '');
         var guard = 0;
 
@@ -184,7 +191,7 @@
                 break;
             }
 
-            var lead = (match[7] !== undefined) ? match[7] : '';
+            var lead = (match[7] !== undefined) ? match[7] : ((match[9] !== undefined) ? match[9] : '');
             var before = rest.slice(0, match.index) + lead;
 
             if (before !== '') {
@@ -208,6 +215,10 @@
                 var struck = el('s');
                 inlineNodes(match[6], labels, struck);
                 parent.appendChild(struck);
+            } else if (match[10] !== undefined) {
+                var marked = el('mark');
+                inlineNodes(match[10], labels, marked);
+                parent.appendChild(marked);
             } else {
                 var italic = el('i');
                 inlineNodes(match[8], labels, italic);
@@ -242,6 +253,15 @@
 
     function fenceClose(line) {
         return /^\s*```\s*$/.test(line);
+    }
+
+    // A table cell is a formula when it starts with =, unless it starts with
+    // a highlight (==x==, the pair rule of inlineNodes()): the twin of
+    // ws_calc_is_formula() (includes/workspace/calc.php).
+    function isFormula(value) {
+        var text = String((value === undefined || value === null) ? '' : value).trim();
+
+        return (text.charAt(0) === '=') && !/^==[^=\s](?:[^=\n]{0,298}[^=\s])?==(?!=)/.test(text);
     }
 
     function tableRow(line) {
@@ -701,6 +721,12 @@
             return wrapLines(inner, '~~');
         }
 
+        // Words holding a = cannot be read back as one highlight: they are
+        // written without its signs.
+        if (tag === 'MARK') {
+            return (inner.indexOf('=') === -1) ? wrapLines(inner, '==') : inner;
+        }
+
         // Spaces at either end stay outside the marks, as with emphasis.
         if (tag === 'CODE') {
             var code = (node.textContent || '').replace(/[\n\u00a0]/g, ' ').replace(/\u200b/g, '').replace(/`/g, '\'');
@@ -893,25 +919,26 @@
         card.classList.add('ws-rich-block-shown');
     }
 
-    // ── Marks: bold, italic, strikethrough, code, links ────────────────
+    // ── Marks: bold, italic, strikethrough, highlight, code, links ─────
     //
     // Made on the nodes themselves rather than with document.execCommand():
     // the browsers' commands differ (<b> or <strong>, spans with styles),
     // keep undo steps of their own that the box's history cannot follow, and
     // are deprecated. Only what the markup carries is made: <b>, <i>, <s>,
-    // <code> and <a href>; <strong>, <em>, <del> from elsewhere are read as
+    // <mark>, <code> and <a href>; <strong>, <em>, <del> from elsewhere are read as
     // the same marks.
 
     var MARKS = {
         bold: { tag: 'b', match: /^(B|STRONG)$/ },
         italic: { tag: 'i', match: /^(I|EM)$/ },
         strike: { tag: 's', match: /^(S|STRIKE|DEL)$/ },
+        highlight: { tag: 'mark', match: /^MARK$/ },
         code: { tag: 'code', match: /^CODE$/ },
         link: { tag: 'a', match: /^A$/ }
     };
 
     // The marks a caret with nothing selected keeps for what is typed next.
-    var TYPED_MARKS = ['bold', 'italic', 'strike'];
+    var TYPED_MARKS = ['bold', 'italic', 'strike', 'highlight'];
 
     function markName(node) {
         if (!node || node.nodeType !== 1) {
@@ -1431,7 +1458,7 @@
     // and the ones waiting there, a selection by whether all its words carry
     // them.
     function marksAt(surface, range) {
-        var state = { bold: false, italic: false, strike: false, code: false, link: false };
+        var state = { bold: false, italic: false, strike: false, highlight: false, code: false, link: false };
 
         if (!surface || !range || !surface.contains(range.startContainer) || !surface.contains(range.endContainer)) {
             return state;
@@ -2174,6 +2201,7 @@
             ['bold', 'bi-type-bold', t('fmt_bold')],
             ['italic', 'bi-type-italic', t('fmt_italic')],
             ['strike', 'bi-type-strikethrough', t('fmt_strike')],
+            ['highlight', 'bi-highlighter', t('fmt_highlight')],
             ['code', 'bi-code', t('fmt_code')],
             ['link', 'bi-link-45deg', t('fmt_link')]
         ].forEach(function (entry) {
@@ -2398,7 +2426,8 @@
     }, true);
 
     // Keyboard shortcuts in any writing surface: Ctrl+B, Ctrl+I,
-    // Ctrl+Shift+X, Ctrl+E (code) and Ctrl+K (link), Cmd on a Mac.
+    // Ctrl+Shift+X, Ctrl+Shift+H (highlight), Ctrl+E (code) and Ctrl+K
+    // (link), Cmd on a Mac.
     function shortcut(surface, event) {
         if (!(event.ctrlKey || event.metaKey) || event.altKey) {
             return false;
@@ -2406,7 +2435,7 @@
 
         var key = String(event.key || '').toLowerCase();
         var keys = { b: 'bold', i: 'italic', e: 'code', k: 'link' };
-        var name = Object.prototype.hasOwnProperty.call(keys, key) ? keys[key] : (((key === 'x') && event.shiftKey) ? 'strike' : '');
+        var name = Object.prototype.hasOwnProperty.call(keys, key) ? keys[key] : (((key === 'x') && event.shiftKey) ? 'strike' : (((key === 'h') && event.shiftKey) ? 'highlight' : ''));
 
         if (!name) {
             return false;
@@ -2970,9 +2999,10 @@
         },
 
         /**
-         * A mark on the selection, or off it: bold, italic, strike, code or
-         * link (the link tip). With nothing selected bold, italic and strike
-         * wait for what is typed next at the caret. Made on the nodes, never
+         * A mark on the selection, or off it: bold, italic, strike,
+         * highlight, code or link (the link tip). With nothing selected bold,
+         * italic, strike and highlight wait for what is typed next at the
+         * caret. Made on the nodes, never
          * with document.execCommand(), and kept as a step of the box's undo.
          */
         format: function (name) {
@@ -2993,7 +3023,7 @@
         },
 
         // Which marks the caret or the selection has ({ bold, italic, strike,
-        // code, link }); where the selection is elsewhere, the caret the box
+        // highlight, code, link }); where the selection is elsewhere, the caret the box
         // kept when it was left, which a button acts on.
         formatState: function () {
             var range = selectionRange();
@@ -3557,6 +3587,7 @@
         bold: { icon: 'bi-type-bold', label: 'tool_bold', keys: 'Control+B', mark: 'bold' },
         italic: { icon: 'bi-type-italic', label: 'tool_italic', keys: 'Control+I', mark: 'italic' },
         strike: { icon: 'bi-type-strikethrough', label: 'tool_strike', keys: 'Control+Shift+X', mark: 'strike' },
+        highlight: { icon: 'bi-highlighter', label: 'tool_highlight', keys: 'Control+Shift+H', mark: 'highlight' },
         code: { icon: 'bi-code', label: 'tool_code', keys: 'Control+E', mark: 'code' },
         link: { icon: 'bi-link-45deg', label: 'tool_link', keys: 'Control+K', mark: 'link' },
         bullets: { icon: 'bi-list-ul', label: 'tool_bullets', list: 'bullet' },
@@ -3598,7 +3629,7 @@
      *
      * items, in order, each one of:
      *   - the name of one of the box's own tools: undo, redo, bold, italic,
-     *     strike, code, link, bullets, numbers, quote, checklist, table,
+     *     strike, highlight, code, link, bullets, numbers, quote, checklist, table,
      *     calc, codeblock;
      *   - a node the caller made (attach, emoji, voice, send), put in as it is;
      *   - an array of those, drawn as a group of options.groupClass.
@@ -3964,7 +3995,7 @@
             var raw = cellValue(cell);
             var found = results[gridRow(row) + ':' + column];
 
-            if (!/^\s*=/.test(raw) || !found) {
+            if (!isFormula(raw) || !found) {
                 if (cell.hasAttribute('data-raw')) {
                     cell.textContent = raw;
                     cell.removeAttribute('data-raw');
@@ -4001,7 +4032,7 @@
                 formulaInput.value = raw;
             }
 
-            resultBox.textContent = (/^\s*=/.test(raw) && found) ? '= ' + found.display : '';
+            resultBox.textContent = (isFormula(raw) && found) ? '= ' + found.display : '';
             resultBox.classList.toggle('ws-sheet-error-text', !!(found && found.error));
             resultBox.title = (found && found.error) ? found.error : '';
 
@@ -4039,8 +4070,9 @@
             }
         });
 
-        // Formulas (cells starting with =) worked out as they are typed, by the
-        // code that works them out in the message itself.
+        // Formulas (cells starting with =, not a highlight) worked out as
+        // they are typed, by the code that works them out in the message
+        // itself.
         var calcTimer = 0;
         var calcSerial = 0;
 
@@ -4049,7 +4081,7 @@
 
             var grid = [model.head].concat(model.rows);
             var formulas = grid.some(function (row) {
-                return row.some(function (value) { return /^\s*=/.test(String(value)); });
+                return row.some(isFormula);
             });
 
             if (!formulas || !CFG.api_url) {
@@ -4251,7 +4283,7 @@
                 var numbers = model.rows.some(function (cells) {
                     var value = String(cells[column] || '').replace(/[₺$€£]|\bTL\b/g, '').trim();
 
-                    return /^=/.test(value) || figure.test(value);
+                    return isFormula(value) || figure.test(value);
                 });
 
                 return numbers ? '=' + calcName('SUM') + '(' + sheetLetter(column) + '2:' + sheetLetter(column) + last + ')' : '';
@@ -4263,7 +4295,7 @@
 
             model.rows.push(row);
             draw();
-            focusCell(model.rows.length - 1, Math.max(0, row.findIndex(function (value) { return value !== '' && value.charAt(0) === '='; })));
+            focusCell(model.rows.length - 1, Math.max(0, row.findIndex(isFormula)));
         }
 
         // The formula of the cell copied to the cells under it, its row
@@ -4281,7 +4313,7 @@
             var column = current.column;
             var source = (row >= 0 && model.rows[row]) ? String(model.rows[row][column] || '') : '';
 
-            if (!/^\s*=/.test(source)) {
+            if (!isFormula(source)) {
                 formulaInput.classList.add('is-invalid');
                 window.setTimeout(function () { formulaInput.classList.remove('is-invalid'); }, 1200);
                 return;
