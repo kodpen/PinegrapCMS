@@ -13631,6 +13631,7 @@ const StyleDesigner = (function () {
     // lockstep. The status badge part (_sdPartOrderStatusBadge()) takes a
     // widget's own status_class_* setting, else these; once the part is in
     // the tree each badge's classes are the designer's.
+    /* @pg-site-output */
     var SD_OV_STATUS_CLASS_DEFAULTS = {
         complete:  'badge bg-success',
         pending:   'badge bg-warning text-dark',
@@ -13777,6 +13778,7 @@ const StyleDesigner = (function () {
     // approximation from the SAME markup shapes the PHP renderer emits.
     //
     // Preview only: never saved to the tree, never sent to the server.
+    /* @pg-site-output */
     var _SD_HTML_PREVIEW_TOKENS = {
         // Mirrors pg_comments_stars_html(): five stars, four of them filled.
         '__comment_stars_html': function () {
