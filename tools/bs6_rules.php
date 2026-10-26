@@ -726,12 +726,13 @@ function bs6_scope_kind($path)
 		return in_array(substr($base, 0, -4), $panel_templates, true) ? 'panel' : 'site';
 	}
 
+	// Every system widget module (widgets.php, widgets_*.php) draws site
+	// output, the ones added later included.
 	$site_fn = array(
-		'widgets.php', 'widgets_account.php', 'widgets_cart.php', 'widgets_catalog.php', 'widgets_error.php',
-		'widgets_express_order.php', 'widgets_language.php', 'consent.php', 'language_redirect.php',
-		'maintenance_mode.php', 'meta_tags.php', 'reviews.php', 'visitor_texts.php',
+		'consent.php', 'language_redirect.php', 'maintenance_mode.php', 'meta_tags.php', 'reviews.php',
+		'visitor_texts.php',
 	);
-	if (strpos($path, 'includes/fn/') === 0 && in_array($base, $site_fn, true)) {
+	if (strpos($path, 'includes/fn/') === 0 && (in_array($base, $site_fn, true) || preg_match('/^widgets(_[a-z0-9_]+)?\.php$/', $base))) {
 		return 'site';
 	}
 
