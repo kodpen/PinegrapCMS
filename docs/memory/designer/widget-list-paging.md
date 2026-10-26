@@ -23,7 +23,7 @@ description: Form list widget paging (W12a, #1924): own page parameter (page_par
 
 ## What is left of W12?
 - W12b done: the page links as a list ([[widget-lists-paging]]).
-- W12c done: the catalog listing and search results ([[widget-list-paging-catalog-search]]).
+- W12c done (#1968): the catalog listing and search results ([[widget-list-paging-catalog-search]]).
 - Search groups (digit grouping of search's `__result_count`) waits for the owner ([[form-list-result-count]]).
 
 ## How is it tested?

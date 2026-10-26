@@ -1,6 +1,6 @@
 ---
 name: widget-list-paging-catalog-search
-description: Catalog listing and search results paging (W12c): own page parameter, offset, paging tokens and flags as the form list has them; what differs from the form list, the canonical, what is left
+description: Catalog listing and search results paging (W12c, #1968): own page parameter, offset, paging tokens and flags as the form list has them; what differs from the form list, the canonical, what is left
 ---
 
 ## What did the two widgets get?
