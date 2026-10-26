@@ -1259,6 +1259,19 @@
         }
 
         var spot = range.cloneRange();
+        var lastItem = (range.startContainer === surface) ? boundaryItem(surface, range.startContainer, range.startOffset) : null;
+
+        // A caret straight after a list that ends the box types into its
+        // last item.
+        if (lastItem) {
+            spot.selectNodeContents(lastItem);
+            spot.collapse(false);
+
+            if (isBreak(lastItem.lastChild)) {
+                spot.setStartBefore(lastItem.lastChild);
+                spot.collapse(true);
+            }
+        }
 
         if (outer) {
             var tail = document.createRange();
@@ -3349,17 +3362,23 @@
             var item = caret ? boundaryItem(this.node, caret.startContainer, caret.startOffset) : null;
 
             if (item) {
-                var after = indexIn(item.parentNode) + 1;
+                // As nodes: insertHTML at the box level next to a list is
+                // drawn into the list.
+                var list = item.parentNode;
+                var card = blockNode(kind, markup);
+                var end = el('br');
 
-                select(this.node, after, this.node, after);
+                this.node.insertBefore(card, list.nextSibling);
+                this.node.insertBefore(end, card.nextSibling);
+                select(this.node, indexIn(end) + 1, this.node, indexIn(end) + 1);
+            } else {
+                var before = this.beforeCaret();
+                var holder = el('span');
+
+                holder.appendChild(blockNode(kind, markup));
+
+                command('insertHTML', ((before !== '' && !/\n$/.test(before)) ? '<br>' : '') + holder.innerHTML + '<br>');
             }
-
-            var before = this.beforeCaret();
-            var holder = el('span');
-
-            holder.appendChild(blockNode(kind, markup));
-
-            command('insertHTML', ((before !== '' && !/\n$/.test(before)) ? '<br>' : '') + holder.innerHTML + '<br>');
 
             // A line after the card to write on.
             if (!this.node.lastChild || this.node.lastChild.nodeType !== 1 || this.node.lastChild.tagName !== 'BR') {

@@ -339,3 +339,18 @@ function test_workspace_editor_lists_select_all_delete()
 	pg_assert_contains('wholeBox(', $source, 'the whole box is seen');
 	pg_assert_contains("ul, ol, blockquote", workspace_editor_lists_test_method('isEmpty'), 'a list made empty on purpose stays');
 }
+
+// A card put in from a list item stands below the list: insertHTML next to
+// a list draws it into the last item, where it was saved as "- - [ ] one".
+// Letters typed with a mark waiting right after a list that ends the box go
+// into its last item, as letters without one do.
+function test_workspace_editor_lists_card_after_list()
+{
+	$body = workspace_editor_lists_test_method('insertBlock');
+	$placed = strpos($body, 'this.node.insertBefore(card, list.nextSibling)');
+	$html = strpos($body, "command('insertHTML'");
+
+	pg_assert_true($placed !== false, 'the card is put in after the list as a node');
+	pg_assert_true(($html !== false) && ($placed < $html) && (strpos($body, '} else {', (int) $placed) < $html), 'insertHTML only without a list item at the caret');
+	pg_assert_contains('boundaryItem(surface, range.startContainer, range.startOffset)', workspace_editor_lists_test_function('typeMarked'), 'typed marks follow a caret after a list');
+}
