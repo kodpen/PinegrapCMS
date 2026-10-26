@@ -4416,10 +4416,48 @@ const StyleDesigner = (function () {
         var now = Date.now();
         if (now - _sdContentNudgeAt < 2500) return;
         _sdContentNudgeAt = now;
-        var msg = (why === 'shared')
-            ? _sdT('System widgets and shared components are managed by designers.')
-            : _sdT('You can edit text, and anything inside an area marked as editable.');
-        if (typeof sdToast === 'function') sdToast(esc(msg), 'info', 4000);
+        if (typeof sdToast === 'function') sdToast(esc(_sdContentReason(why)), 'info', 4000);
+    }
+
+    // Why the content level may not change something: 'shared', 'design'
+    // or 'area' (the default).
+    function _sdContentReason(why) {
+        if (why === 'shared') return _sdT('System widgets and shared components are managed by designers.');
+        if (why === 'design') return _sdT('The design\'s styles are managed by designers.');
+        return _sdT('You can edit text, and anything inside an area marked as editable.');
+    }
+
+    // Why the Attributes panel or the Styles panel's element.style ('node',
+    // the default) or its User Styles ('design') are read-only, '' when they
+    // may be edited. At content level an element's classes, attributes and
+    // inline style are the operator's only inside a marked area: elsewhere
+    // the save takes text and image addresses alone
+    // (pg_designer_merge_restricted_tree()), so an edit showed on the canvas
+    // and was gone after the save. The design's stylesheets are never
+    // written at this level. View mode keeps its own nudge.
+    function _sdPanelLockReason(nodes, part) {
+        if (!_collab.mayEdit || !_sdIsContentLevel()) return '';
+        if (part === 'design') return 'design';
+        var list = [].concat(nodes || []).filter(Boolean);
+        for (var i = 0; i < list.length; i++) {
+            if (_sdCanEditNode(list[i])) continue;
+            return _sdInClosedShared(list[i]) ? 'shared' : 'area';
+        }
+        return '';
+    }
+
+    // Draws a rendered panel part read-only: its fields and buttons are
+    // disabled (their handlers never fire), its remove marks hidden, and a
+    // line on top says why. Navigation (a class chip pointing at its
+    // control, the Find box) stays.
+    function _sdPanelLock(container, why) {
+        if (!container || !why) return;
+        container.classList.add('sd-panel-readonly');
+        container.querySelectorAll('input, textarea, select, button').forEach(function (el) { el.disabled = true; });
+        var note = document.createElement('div');
+        note.className = 'sd-panel-readonly-note';
+        note.innerHTML = '<span class="bi bi-lock"></span> ' + esc(_sdContentReason(why));
+        container.insertBefore(note, container.firstChild);
     }
 
     var _sdReadOnlyNudgeAt = 0;
@@ -24336,6 +24374,11 @@ const StyleDesigner = (function () {
         }
 
         panel.innerHTML = html;
+        if (selectedNode) _sdPanelLock(panel.querySelector('.sd-styles-element-style'), _sdPanelLockReason([selectedNode]));
+        var designLock = _sdPanelLockReason(null, 'design');
+        _sdPanelLock(panel.querySelector('.sd-styles-user-rules'), designLock);
+        var createRuleBtn = document.getElementById('sd-styles-create');
+        if (createRuleBtn) createRuleBtn.disabled = !!designLock;
 
         // ── Bind element.style declaration events ──
         panel.querySelectorAll('.sd-styles-decl-toggle').forEach(function (cb) {
@@ -24489,6 +24532,7 @@ const StyleDesigner = (function () {
     }
     function _writeUserStylesText(text) {
         if (typeof _assetsApi === 'undefined' || !_assetsApi || !_assetsApi.setUserStylesContent) return;
+        if (_sdPanelLockReason(null, 'design')) { _sdContentNudge('design'); return; }
         // Snapshot BEFORE the mutation so undo restores the pre-edit state.
         // saveState() captures the css hidden field as part of `assets`, so
         // there's nothing else to do — restoring the snapshot rolls the
@@ -24590,7 +24634,7 @@ const StyleDesigner = (function () {
     }
 
     function _writeInlineStyleValue(node, value) {
-        if (!node) return;
+        if (!node || !_sdMayEdit(node)) return;
         // Snapshot BEFORE we start mutating node.props. Without this, the
         // saveState() call at the bottom of the function would capture the
         // POST-mutation state, making undo a no-op for inline-style edits.
@@ -24992,6 +25036,7 @@ const StyleDesigner = (function () {
                     '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add an Attribute')) + '' +
                 '</button>' +
             '</div>';
+        _sdPanelLock(panel, _sdPanelLockReason([n]));
 
         // ── id change ──
         var idInp = panel.querySelector('.sd-attr-val[data-prop="id"]');
@@ -25194,7 +25239,7 @@ const StyleDesigner = (function () {
     }
 
     function addClassToken(val, node) {
-        if (!val) return;
+        if (!val || !_sdMayEdit(node)) return;
         var ci = document.getElementById('sd-class-input');
 
         // Built-in class binding short-circuit: if the typed class is registered
@@ -25279,6 +25324,7 @@ const StyleDesigner = (function () {
                 '<span class="bi bi-collection me-1" style="opacity:.5"></span>' +
                 '<span style="opacity:.6;font-size:.7rem">' + esc(_sdT('{var} elements selected — id / attribute editing needs a single selection', nodes.length)) + '</span>' +
             '</div>';
+        _sdPanelLock(panel, _sdPanelLockReason(nodes));
 
         // Remove common class from ALL nodes
         panel.querySelectorAll('.sd-class-tag-remove').forEach(function(btn) {
@@ -25303,7 +25349,7 @@ const StyleDesigner = (function () {
         if (ci) {
             function _addMultiClass(val) {
                 var toAdd = (val || '').trim().split(/\s+/).filter(Boolean);
-                if (!toAdd.length) return;
+                if (!toAdd.length || !_sdMayEditAll(nodes)) return;
                 saveState();
                 toAdd.forEach(function(c) {
                     nodes.forEach(function(n) {

@@ -127,6 +127,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-collab-notes-sync.md: How a note left in the designer reaches the other editor without a reload: presence notes map, page_notes_at counter, notes_fetch, merge rules.
 - designer-collab-view-mode.md: Designer view mode when another person holds the lock: _sdMayEdit, _sdGuardItem, hidden panels, one-item context menu, chat bubble, avatars and the narrow note_save exception.
 - designer-collapse-open-state.md: Open state an accordion item (.collapse) saves and publishes: the one its toggle is written with, not the item last clicked on the canvas; modal, offcanvas, dropdown-menu always close.
+- designer-content-roles-panels.md: The Attributes and Styles panels at content level: read-only outside a marked area, User Styles always, _sdPanelLockReason / _sdPanelLock, the refused commit points
 - designer-content-roles-save-gate.md: Designer content roles (manager/user): what they may edit, how pg_designer_merge_restricted_tree() merges a save, note stamping, body classes, locked vs hidden.
 - designer-content-roles-text-nodes.md: Which designer nodes a manager or user may edit as text outside a marked area (_sdIsTextNode()): content, semantic, the btn and badge components; why not an old card.
 - designer-content-roles-translations.md: What a content-level editor (manager, user) may do with translations and drafts in the designer: the Translate section, translations_action.php limits for role 3, a text's page scope, draft state.
