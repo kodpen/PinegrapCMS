@@ -5452,6 +5452,26 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $discount_save_pct        = ($original_price_cents > 0 && $discount_save_cents > 0)
                                     ? (int)round(($discount_save_cents / $original_price_cents) * 100) : 0;
 
+        // The page a cross-sell card or a related product links to, read
+        // once when asked: cfg['catalog_detail_page_id'], else the current
+        // page (the visitor IS on the detail page).
+        $_civ_detail_page = null;
+        $_civ_detail_pid  = function () use (&$_civ_detail_page, $cfg) {
+            if ($_civ_detail_page === null) {
+                $_civ_detail_page = (isset($cfg['catalog_detail_page_id']) && (int)$cfg['catalog_detail_page_id'] > 0)
+                    ? (int)$cfg['catalog_detail_page_id']
+                    : (int)db_value("SELECT page_id FROM page WHERE page_name = '"
+                                    . e(isset($_GET['page']) ? explode('/', (string)$_GET['page'])[0] : '')
+                                    . "' LIMIT 1");
+            }
+            return $_civ_detail_page;
+        };
+        $_civ_listed         = pg_sw_list_wanted('product');
+        $_civ_related_listed = isset($_civ_listed['product.related']);
+        $_civ_xsell_off      = isset($cfg['cross_sell_enabled']) && !$cfg['cross_sell_enabled'];
+        $_civ_xsell_placed   = (strpos($loop_template, '^^__cross_sell_html^^') !== false)
+                            || (strpos($static_html, '^^__cross_sell_html^^') !== false);
+
         $values = array(
             // Basic
             '__id'                   => (string)$p_id,
@@ -5602,22 +5622,20 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // Falling back to the current page is what every catalog item
             // detail page actually wants — sibling products link to the
             // same detail-page route the visitor came in via.
-            '__cross_sell_html'      => (isset($cfg['cross_sell_enabled']) && !$cfg['cross_sell_enabled'])
+            //
+            // A list of the products bought together (product.related)
+            // takes the block's place: the block is drawn only where its
+            // token is placed.
+            '__cross_sell_html'      => ($_civ_xsell_off || ($_civ_related_listed && !$_civ_xsell_placed))
                 ? ''
-                : _civ_render_cross_sell(
-                    (int)$p_id,
-                    // catalog_detail page id source:
-                    //   1. cfg['catalog_detail_page_id'] (explicit)
-                    //   2. The current page (visitor IS on the detail page)
-                    //   3. cfg['catalog_listing_page_name'] (slug fallback —
-                    //      cross-sell cards link to listing's group view)
-                    isset($cfg['catalog_detail_page_id']) && (int)$cfg['catalog_detail_page_id'] > 0
-                        ? (int)$cfg['catalog_detail_page_id']
-                        : (int)db_value("SELECT page_id FROM page WHERE page_name = '"
-                                        . e(isset($_GET['page']) ? explode('/', (string)$_GET['page'])[0] : '')
-                                        . "' LIMIT 1")
-                ),
+                : _civ_render_cross_sell((int)$p_id, $_civ_detail_pid()),
         );
+
+        // The rows of the product lists the tree draws, read for this
+        // product alone (widgets_lists_product.php).
+        if ($_civ_listed) {
+            pg_sw_list_publish('product', pg_sw_list_product_read($p, $_civ_listed, isset($_civ_listed['product.related']) ? $_civ_detail_pid() : 0));
+        }
     }
 
     // Both branches escape here, so the not-found map cannot drift from the

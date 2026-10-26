@@ -22238,7 +22238,10 @@ const StyleDesigner = (function () {
             { title: _sdT('Lists in a record'), icon: 'bi-list-ul', items: [
                 { label: _sdT('Values of a field'), type: 'loop_area', icon: 'bi-list-check', extra: { listSource: 'form_record.values' } },
                 { label: _sdT('Parts of a field, split at commas'), type: 'loop_area', icon: 'bi-list-ul', extra: { listSource: 'form_record.split' } },
-                { label: _sdT('Attachments'), type: 'loop_area', icon: 'bi-paperclip', extra: { listSource: 'form_record.files' } }
+                { label: _sdT('Attachments'), type: 'loop_area', icon: 'bi-paperclip', extra: { listSource: 'form_record.files' } },
+                { label: _sdT('Images of the product'), type: 'loop_area', icon: 'bi-images', extra: { listSource: 'product.images' } },
+                { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
+                { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
@@ -31561,10 +31564,13 @@ const StyleDesigner = (function () {
 
         var src = SW_LIST_SOURCES[p.source];
         if (src) {
-            var formId = _getSystemWidgetCustomFormPageId(n);
+            // A product list takes no field: it lists what the product holds.
+            var formId = src.arg ? _getSystemWidgetCustomFormPageId(n) : 0;
             var fields = formId ? _formFieldsCache[formId] : null;
-            var fieldCtl;
-            if (!formId) {
+            var fieldCtl = '';
+            if (!src.arg) {
+                // no field
+            } else if (!formId) {
                 fieldCtl = note(_sdT('Pick the widget\'s form first (the System Widget section).'), true);
             } else if (!fields) {
                 _fetchFormFields(formId, function () { renderProperties(); });
@@ -31585,7 +31591,7 @@ const StyleDesigner = (function () {
                 if (!known) fOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
                 fieldCtl = '<select class="form-select form-select-sm sd-list-arg" aria-label="' + esc(_sdT('Field')) + '">' + fOpts + '</select>';
             }
-            html += row(esc(_sdT('Field')), fieldCtl);
+            if (src.arg) html += row(esc(_sdT('Field')), fieldCtl);
             var limit = parseInt(p.limit, 10);
             html += row(esc(_sdT('Rows to show')),
                 '<input type="number" min="0" max="100" step="1" class="form-control form-control-sm sd-list-limit" value="' + ((limit > 0 && limit <= 100) ? limit : 0) + '" aria-label="' + esc(_sdT('Rows to show')) + '">' +
@@ -31602,7 +31608,10 @@ const StyleDesigner = (function () {
         var about = {
             'form_record.values': _sdT('One row for every value the field holds: every ticked box of a check box group, every choice of a multiple choice list. Bind the row\'s elements to "Value" in Bind Data.'),
             'form_record.split':  _sdT('One row for every part of the field\'s text cut at its commas, spaces at either end dropped: "red, green, blue" gives three rows. Bind the row\'s elements to "Value" in Bind Data.'),
-            'form_record.files':  _sdT('One row for every file the record holds. Bind a link to "File address" and its text to "File Name" in Bind Data; the file opens for visitors who may see the record.')
+            'form_record.files':  _sdT('One row for every file the record holds. Bind a link to "File address" and its text to "File Name" in Bind Data; the file opens for visitors who may see the record.'),
+            'product.images':     _sdT('One row for every image of the product, its main image first. Bind a picture to "Image address" in Bind Data. A variant picked on the page does not change the list.'),
+            'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
+            'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.')
         };
         if (about[p.source]) html += note(about[p.source], false);
         html += note(_sdT('A list without rows draws nothing. The canvas shows its row once.'), false);
@@ -51576,6 +51585,38 @@ const StyleDesigner = (function () {
                 ['__file_field', _sdT('Field')],
                 ['__file_ext',   _sdT('File type')]
             ]
+        },
+        // The product sources (pg_sw_list_product_sources()): what the
+        // product a catalog detail view shows holds; none takes a field.
+        'product.images': {
+            label: _sdT('Images of the product'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view'],
+            rows: [
+                ['__gallery_url', _sdT('Image address')]
+            ]
+        },
+        'product.attributes': {
+            label: _sdT('Attributes of the product'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view'],
+            rows: [
+                ['__attr_name',  _sdT('Attribute')],
+                ['__attr_value', _sdT('Attribute value')]
+            ]
+        },
+        'product.related': {
+            label: _sdT('Products bought together'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view'],
+            rows: [
+                ['__related_name',              _sdT('Product name')],
+                ['__related_short_description', _sdT('Short Description')],
+                ['__related_url',               _sdT('Product address')],
+                ['__related_image_url',         _sdT('Image address')],
+                ['__related_price',             _sdT('Price')],
+                ['__related_original_price',    _sdT('Price before the discount')]
+            ]
         }
     };
 
@@ -51586,7 +51627,16 @@ const StyleDesigner = (function () {
         __file_name:   'document.pdf',
         __file_url:    '#',
         __file_field:  _sdT('Attachment'),
-        __file_ext:    'pdf'
+        __file_ext:    'pdf',
+        __gallery_url: '',
+        __attr_name:   _sdT('Colour'),
+        __attr_value:  _sdT('Blue'),
+        __related_name: 'SKU-1001',
+        __related_short_description: _sdT('Example product'),
+        __related_url: '#',
+        __related_image_url: '',
+        __related_price: '99.90',
+        __related_original_price: ''
     };
 
     // The orders a list's rows take (props.order).
@@ -51704,12 +51754,56 @@ const StyleDesigner = (function () {
     // or a link opening the file. The row is the designer's to restyle.
     function _sdListStarter(source) {
         var bs = _sdUsesBootstrap();
+        if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
         var row = (source === 'form_record.files')
             ? createNode('semantic', { tag: 'a', cssClass: bs ? 'd-block' : '', text: _sdT('File Name'), href: '#', target: '_blank',
                 customName: _sdT('Attachment link'), _bindings: { href: '__file_url', text: '__file_name' } }, [])
             : createNode('semantic', { tag: 'span', cssClass: bs ? 'badge text-bg-light border me-1' : '', text: _sdT('Value'),
                 customName: _sdT('List row'), _bindings: { text: '__value_text' } }, []);
         return createNode('loop_area', { source: source }, [row]);
+    }
+
+    // A new product list: the images as pictures in a row, the attributes
+    // as a table of name and value, the products bought together as cards
+    // in a grid (the list inside its row, at most four shown). Pictures
+    // carry the product's short description as their text.
+    function _sdProductListStarter(source, bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var img = function (cls, bind) {
+            return createNode('content', { contentType: 'image', src: '', alt: '', fluid: true, rounded: false,
+                cssClass: bs ? cls : '', _bindings: bind });
+        };
+        if (source === 'product.images') {
+            return sem('div', 'row g-2', _sdT('Images'), {}, [createNode('loop_area', { source: source }, [
+                sem('div', 'col-4 col-md-3', _sdT('Image'), {}, [
+                    img('rounded border', { src: '__gallery_url', alt: '__short_description' })
+                ])
+            ])]);
+        }
+        if (source === 'product.attributes') {
+            return sem('dl', 'row mb-0', _sdT('Attributes'), {}, [createNode('loop_area', { source: source }, [
+                sem('dt', 'col-5 fw-semibold', _sdT('Attribute'), { text: _sdT('Attribute'), _bindings: { text: '__attr_name' } }),
+                sem('dd', 'col-7', _sdT('Attribute value'), { text: _sdT('Attribute value'), _bindings: { text: '__attr_value' } })
+            ])]);
+        }
+        return sem('div', 'row g-3', _sdT('Products bought together'), {}, [createNode('loop_area', { source: source, limit: 4 }, [
+            sem('div', 'col-6 col-md-3', _sdT('Product'), {}, [
+                sem('a', 'card h-100 text-decoration-none text-body', _sdT('Product card'), { href: '#', _bindings: { href: '__related_url' } }, [
+                    img('card-img-top', { src: '__related_image_url', alt: '__related_short_description' }),
+                    sem('div', 'card-body p-2', _sdT('Card Body'), {}, [
+                        sem('div', 'small fw-semibold text-truncate', _sdT('Name'), { text: _sdT('Short Description'), _bindings: { text: '__related_short_description' } }),
+                        sem('div', 'small mt-1', _sdT('Price'), {}, [
+                            sem('del', 'text-body-secondary me-1', _sdT('Price before the discount'), { text: '', _bindings: { text: '__related_original_price' } }),
+                            sem('span', 'fw-semibold', _sdT('Price'), { text: _sdT('Price'), _bindings: { text: '__related_price' } })
+                        ])
+                    ])
+                ])
+            ])
+        ])]);
     }
 
     // The kind the site draws widget `sid` as (pg_sw_finish_kind()): its
@@ -51948,10 +52042,11 @@ const StyleDesigner = (function () {
     function _swBindLabel(type, token) {
         var position = _swPositionLabel(token);
         if (position) return position;
+        // A list row's value is named the same in every kind with lists.
+        var listRow = _sdListRowLabel(token);
+        if (listRow) return listRow;
         if (type === 'form_list_view' || type === 'form_item_view') {
             if (token === SW_PAGE_LINK_TOKEN) return _sdT('Another page, with values from the record');
-            var listRow = _sdListRowLabel(token);
-            if (listRow) return listRow;
             // Names the settings once gave these values (see _bindAlias).
             if (token === '__detail_url' && type === 'form_list_view') token = 'form_item_view';
             if (token === '__not_found_message' && type === 'form_item_view') token = 'not_found';

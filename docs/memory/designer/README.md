@@ -245,6 +245,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-fill-shop.md: A bound value's format in the shop widgets (catalog, catalog detail, cart, express order, order view): fills, no change without a format, order view dates, fallback words (#1701).
 - widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, the pg-hide-if-empty rerun, the edit pencil, the strip (#1592).
 - widget-lists-editor.md: Lists inside a record in the designer (#1688): palette items, where one may land, the list panel, Bind Data row values, canvas band and fade, the JS twins and their test.
+- widget-lists-product.md: Product lists in the catalog detail widget (W9 slice 1, #1752): images, attributes, products bought together; where rows are read, the cross-sell block they replace, what is left
 - widget-lists.md: Lists inside a widget record (#1680): loop_area + props.source, sources and tokens, span and published rows, pass stage 2, empty lists, escaping, nesting, edit pencil, get_file
 - widget-loop-position.md: Row position tokens of widget lists (#1597; __loop_index, __loop_count, first/last/odd/even): row marks only when used, filled by the finish pass per printed page, what counts as a row.
 - wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates
