@@ -2449,6 +2449,7 @@
     "At least one page could not be deleted, because there are submitted forms for the page(s).  All submitted forms for the page(s) must be deleted before the page(s) are allowed to be deleted.": "Sayfa(lar) için gönderilen formlar olduğundan en az bir sayfa silinemedi. Sayfa(lar) için gönderilen tüm formlar, silinmelidir.",
     "At least one page could not be deleted, because you do not have access to the page(s).": "Sayfalara erişiminiz olmadığı için en az bir sayfa silinemedi.",
     "At least one shipping method can be chosen": "En az bir nakliye yöntemi seçilebiliyor",
+    "At least one tool is on.": "En az bir araç açık.",
     "At most": "En fazla",
     "At most 100 cards are created per order line, whatever the quantity.": "Adet ne olursa olsun sipariş satırı başına en fazla 100 kart üretilir.",
     "At most {var:1} MB. On a phone the camera can take it.": "En fazla {var:1} MB. Telefonda kamerayla çekilebilir.",

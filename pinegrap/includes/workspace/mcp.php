@@ -1051,8 +1051,10 @@ function ws_mcp_remember($server, $conn, $error)
  */
 function ws_mcp_refresh_tools($server, $user_id = 0)
 {
-    if (!function_exists('curl_init')) {
-        return array('ok' => false, 'error' => lang('This server cannot make outgoing HTTPS requests (cURL is missing).'), 'count' => 0, 'turned_on' => 0);
+    $problem = ws_mcp_refresh_check($server, $user_id);
+
+    if ($problem !== '') {
+        return array('ok' => false, 'error' => $problem, 'count' => 0, 'turned_on' => 0);
     }
 
     $conn = ws_mcp_connection($server, WS_MCP_SCREEN_TIMEOUT, $user_id);
@@ -1135,6 +1137,316 @@ function ws_mcp_host($url)
     $host = (string) parse_url((string) $url, PHP_URL_HOST);
 
     return ($host !== '') ? $host : (string) $url;
+}
+
+/* ---------------------------------------------------------------------------
+   Checks and writes the settings screen and the API share
+   --------------------------------------------------------------------------- */
+
+/**
+ * Where a server stands, for the badge on the card and the API: the state,
+ * why it is not ready, and the checklist of what it needs.
+ *
+ * @param array $server
+ * @return array state (off, connect_again, not_connected, unreachable,
+ *               no_tool_on, ready), reason ('' when ready), checklist (key,
+ *               done, text)
+ */
+function ws_mcp_server_state($server)
+{
+    $oauth = ((string) $server['auth_kind'] === 'oauth');
+    $account = $oauth ? ws_mcp_site_account($server) : null;
+    $connected = $account && ($account['status'] === 'active');
+    $active = ((string) $server['status'] === 'active');
+    $error = (string) $server['last_error'];
+    $tools = ws_mcp_tools($server);
+    $on = ws_mcp_tools_on($server);
+
+    $checklist = array(array('key' => 'turned_on', 'done' => $active, 'text' => lang('The server is turned on.')));
+
+    if ($oauth) {
+        $checklist[] = array('key' => 'connected', 'done' => $connected, 'text' => lang('The site is connected to the service.'));
+    }
+
+    $checklist[] = array('key' => 'tools_read', 'done' => ((int) $server['tools_at'] > 0) && ($error === ''), 'text' => lang('Its tools were read.'));
+    $checklist[] = array('key' => 'tool_on', 'done' => !empty($on), 'text' => lang('At least one tool is on.'));
+
+    if (!$active) {
+        $state = 'off';
+        $reason = lang(array('string' => '@{var:1} is turned off. Nothing is sent to it until it is turned on again.', 'vars' => $server['alias']));
+    } elseif ($oauth && $account && !$connected) {
+        $state = 'connect_again';
+        $reason = lang('The site\'s connection to the service ended: connect it again in the Workspace settings.');
+    } elseif ($oauth && !$account) {
+        $state = 'not_connected';
+        $reason = lang('The site is not connected to the service yet: connect it in the Workspace settings.');
+    } elseif ($error !== '') {
+        $state = 'unreachable';
+        $reason = $error;
+    } elseif (empty($on)) {
+        $state = 'no_tool_on';
+        $reason = empty($tools) ? lang('Its tools have not been read yet: ask the server for them again.') : lang('No tool is on yet: turn on the ones that may be used.');
+    } else {
+        $state = 'ready';
+        $reason = '';
+    }
+
+    return array('state' => $state, 'reason' => $reason, 'checklist' => $checklist);
+}
+
+/**
+ * The checks a server meets before it is added or changed, and what is
+ * written once it passes them. A credential left empty keeps the stored one
+ * while the sign-in kind stays the same.
+ *
+ * @param array|null $server the server changed, null for a new one
+ * @param array      $post   mcp_alias, mcp_name, mcp_url, mcp_auth and the
+ *                           credential's fields (mcp_token, mcp_header_name,
+ *                           mcp_header_value, mcp_user, mcp_password,
+ *                           mcp_client_id, mcp_client_secret)
+ * @return array problem ('' when it passes), full (the site has as many
+ *               servers as it may), alias, name, url, kind, secret,
+ *               client_id, client_secret
+ */
+function ws_mcp_save_check($server, $post)
+{
+    $text = function ($field) use ($post) {
+        return is_scalar($post[$field] ?? '') ? (string) ($post[$field] ?? '') : '';
+    };
+
+    $alias = ws_mcp_alias_clean($text('mcp_alias'));
+    $kind = array_key_exists('mcp_auth', $post) ? $text('mcp_auth') : 'none';
+    $out = array(
+        'problem'       => '',
+        'full'          => false,
+        'alias'         => $alias,
+        'name'          => trim(mb_substr(preg_replace('/\s+/u', ' ', $text('mcp_name')), 0, 100)),
+        'url'           => trim($text('mcp_url')),
+        'kind'          => $kind,
+        'secret'        => array(),
+        'client_id'     => '',
+        'client_secret' => '',
+    );
+
+    if (!$server && (count(ws_mcp_servers()) >= WS_MCP_MAX_SERVERS)) {
+        $out['problem'] = lang(array('string' => 'A site can have at most {var:1} MCP servers.', 'vars' => WS_MCP_MAX_SERVERS));
+        $out['full'] = true;
+        return $out;
+    }
+
+    $problem = ws_mcp_alias_problem($alias, $server ? (int) $server['id'] : 0);
+
+    if ($problem === '' && !pg_mcp_client_url_is_valid($out['url'])) {
+        $problem = lang('The address must be an https address, without a user name, a password or a # part.');
+    }
+
+    if ($problem === '' && !isset(ws_mcp_auth_kinds()[$kind])) {
+        $problem = lang('Choose how the site signs in to the server.');
+    }
+
+    // The credential: what was typed, or what is kept when the field was
+    // left empty and the kind did not change.
+    $kept = ($server && ($server['auth_kind'] === $kind)) ? ws_mcp_secret_decode($server['secret'] ?? '') : array();
+    $secret = array();
+
+    if ($problem === '') {
+        switch ($kind) {
+            case 'bearer':
+                $token = trim($text('mcp_token'));
+                $secret = array('token' => ($token !== '') ? $token : (string) ($kept['token'] ?? ''));
+
+                if ($secret['token'] === '') {
+                    $problem = lang('Enter the access token.');
+                }
+                break;
+
+            case 'header':
+                $header = trim($text('mcp_header_name'));
+                $value = trim($text('mcp_header_value'));
+                $secret = array('name' => $header, 'value' => ($value !== '') ? $value : (string) ($kept['value'] ?? ''));
+                $problem = ws_mcp_header_name_problem($header);
+
+                if (($problem === '') && ($secret['value'] === '')) {
+                    $problem = lang('Enter the value of the header.');
+                }
+                break;
+
+            case 'basic':
+                $user = trim($text('mcp_user'));
+                $password = $text('mcp_password');
+                $secret = array('user' => $user, 'password' => ($password !== '') ? $password : (string) ($kept['password'] ?? ''));
+
+                if (($user === '') || (strpos($user, ':') !== false)) {
+                    $problem = lang('Enter the user name (without a colon).');
+                }
+                break;
+
+            // Nothing is kept on the row: the application goes to connect_apps
+            // once the server is saved (ws_mcp_oauth_setup()).
+            case 'oauth':
+                $out['client_id'] = trim($text('mcp_client_id'));
+                $out['client_secret'] = trim($text('mcp_client_secret'));
+
+                if (preg_match('/[\r\n]/', $out['client_id'] . $out['client_secret'])) {
+                    $problem = lang('A credential cannot hold a line break.');
+                } elseif ((strlen($out['client_id']) > 255) || (strlen($out['client_secret']) > 1000)) {
+                    $problem = lang('The client ID is too long.');
+                } elseif (!function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready()) {
+                    $problem = lang('The database has not been upgraded yet.');
+                }
+                break;
+        }
+    }
+
+    if (preg_match('/[\r\n]/', implode('', array_map('strval', $secret)))) {
+        $problem = lang('A credential cannot hold a line break.');
+    }
+
+    $out['problem'] = $problem;
+    $out['secret'] = $secret;
+
+    return $out;
+}
+
+/**
+ * Writes a server that passed ws_mcp_save_check(): the credential sealed
+ * with the site's key, a sign-in made for another address ended, the
+ * activity line in the signed-in person's name.
+ *
+ * @param array      $viewer
+ * @param array|null $server
+ * @param array      $check  ws_mcp_save_check()
+ * @return array id, changed (new, or its address or credential changed: its
+ *               tools are to be read again)
+ */
+function ws_mcp_save($viewer, $server, $check)
+{
+    $alias = $check['alias'];
+    $url = $check['url'];
+    $kind = $check['kind'];
+    $username = (string) ($_SESSION['sessionusername'] ?? '');
+    $now = time();
+    $stored = ws_mcp_secret_encode($check['secret']);
+    $changed = !$server || ($server['url'] !== $url) || ($server['auth_kind'] !== $kind) || ($stored !== '' && ws_mcp_secret_decode($server['secret'] ?? '') !== $check['secret']);
+
+    // A sign-in made for another address, or no longer wanted, ends first,
+    // while the row still says how to tell the service.
+    if ($server && ($server['auth_kind'] === 'oauth') && (($kind !== 'oauth') || ($server['url'] !== $url))) {
+        ws_mcp_oauth_forget($server);
+    }
+
+    if (!$server) {
+        db("INSERT INTO ws_mcp_servers (alias, name, url, auth_kind, secret, status, tool_rules, created_by, created_at, updated_at)
+            VALUES ('" . e($alias) . "', '" . e($check['name']) . "', '" . e($url) . "', '" . e($kind) . "', '" . e($stored) . "', 'active', '{}',
+                '" . (int) $viewer['id'] . "', '" . $now . "', '" . $now . "')");
+
+        $id = (int) mysqli_insert_id(db::$con);
+        log_activity(lang(array('string' => 'the MCP server @{var:1} was added', 'vars' => $alias)), $username);
+    } else {
+        $id = (int) $server['id'];
+
+        // A new address or credential is a new conversation: what the old one
+        // agreed on is forgotten.
+        db("UPDATE ws_mcp_servers SET
+                alias = '" . e($alias) . "',
+                name = '" . e($check['name']) . "',
+                url = '" . e($url) . "',
+                auth_kind = '" . e($kind) . "',
+                secret = '" . e($stored) . "',
+                " . ($changed ? "protocol = '', session_id = ''," : '') . "
+                updated_at = '" . $now . "'
+            WHERE id = '" . $id . "'");
+
+        log_activity(lang(array('string' => 'the MCP server @{var:1} was changed', 'vars' => $alias)), $username);
+    }
+
+    ws_mcp_servers(true);
+
+    return array('id' => $id, 'changed' => $changed);
+}
+
+/**
+ * The rules a server's tools get from what is asked for each: the tools
+ * form (every tool, a missing one off) or the API (the named ones; the
+ * others keep their rule). A tool the server does not list is unknown; one
+ * asked on that the server cannot have on is refused.
+ *
+ * @param array $server
+ * @param array $wanted      name => 1, auto_declared, approve, or '' / 0 for off
+ * @param bool  $declare_all also every tool the server says nothing about,
+ *                           declared to read only (the warned button)
+ * @param array $rules       the rules the asked ones go on top of
+ * @return array rules, unknown (names), refused (names)
+ */
+function ws_mcp_tools_check($server, $wanted, $declare_all, $rules = array())
+{
+    $tools = ws_mcp_tools($server);
+    $out = array('rules' => (array) $rules, 'unknown' => array(), 'refused' => array());
+
+    foreach ((array) $wanted as $name => $on) {
+        $name = (string) $name;
+
+        if (!isset($tools[$name]) || !is_scalar($on)) {
+            $out['unknown'][] = $name;
+            continue;
+        }
+
+        $rule = ws_mcp_tool_rule_for($server, $tools[$name], (string) $on);
+
+        if ($rule !== '') {
+            $out['rules'][$name] = $rule;
+            continue;
+        }
+
+        unset($out['rules'][$name]);
+
+        if (((string) $on !== '') && ((string) $on !== '0')) {
+            $out['refused'][] = $name;
+        }
+    }
+
+    if ($declare_all) {
+        $out['rules'] = ws_mcp_rules_declare_all($server, $tools, $out['rules']);
+    }
+
+    return $out;
+}
+
+/**
+ * Keeps a server's tool rules (ws_mcp_tools_check()), with the activity
+ * line in the signed-in person's name.
+ *
+ * @param array $server
+ * @param array $rules  name => rule
+ */
+function ws_mcp_tools_save($server, $rules)
+{
+    db("UPDATE ws_mcp_servers SET tool_rules = '" . e((string) json_encode((object) $rules)) . "', updated_at = '" . time() . "' WHERE id = '" . (int) $server['id'] . "'");
+    ws_mcp_servers(true);
+
+    log_activity(lang(array('string' => 'the tools of the MCP server @{var:1} were changed', 'vars' => $server['alias'])), (string) ($_SESSION['sessionusername'] ?? ''));
+}
+
+/**
+ * Can a server be asked for its tools: the site can send, and a server
+ * people sign in to has an account to ask with (the site's or the
+ * asker's)? Sends nothing.
+ *
+ * @param array $server
+ * @param int   $user_id who asks (0: the site's account only)
+ * @return string the problem, '' when it can
+ */
+function ws_mcp_refresh_check($server, $user_id = 0)
+{
+    if (!function_exists('curl_init')) {
+        return lang('This server cannot make outgoing HTTPS requests (cURL is missing).');
+    }
+
+    if (((string) $server['auth_kind'] === 'oauth') && !ws_mcp_site_account($server) && !(($user_id > 0) && ws_mcp_person_account($server, $user_id))) {
+        return lang(array('string' => 'Connect @{var:1} first: the site signs in to the service before its tools can be read.', 'vars' => $server['alias']));
+    }
+
+    return '';
 }
 
 /* ---------------------------------------------------------------------------
@@ -1281,34 +1593,13 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
                 break;
             }
 
-            $tools = ws_mcp_tools($server);
             $wanted = (isset($_POST['mcp_tool']) && is_array($_POST['mcp_tool'])) ? $_POST['mcp_tool'] : array();
-            $rules = array();
-
-            foreach ($wanted as $name => $on) {
-                $name = (string) $name;
-
-                if (!isset($tools[$name]) || !is_scalar($on)) {
-                    continue;
-                }
-
-                $rule = ws_mcp_tool_rule_for($server, $tools[$name], (string) $on);
-
-                if ($rule !== '') {
-                    $rules[$name] = $rule;
-                }
-            }
 
             // The warned button: every tool the server says nothing about
             // is declared to read only, on top of what the form says.
-            if (($_POST['mcp_declare_all'] ?? '') === '1') {
-                $rules = ws_mcp_rules_declare_all($server, $tools, $rules);
-            }
+            $rules = ws_mcp_tools_check($server, $wanted, ($_POST['mcp_declare_all'] ?? '') === '1')['rules'];
 
-            db("UPDATE ws_mcp_servers SET tool_rules = '" . e((string) json_encode((object) $rules)) . "', updated_at = '" . time() . "' WHERE id = '" . (int) $server['id'] . "'");
-            ws_mcp_servers(true);
-
-            log_activity(lang(array('string' => 'the tools of the MCP server @{var:1} were changed', 'vars' => $server['alias'])), $username);
+            ws_mcp_tools_save($server, $rules);
             $liveform->add_notice(lang(array('string' => '{var:1} tools of @{var:2} can be used.', 'vars' => array(count($rules), $server['alias']))));
 
             // The tool that takes the messages of a server that is an agent
@@ -1361,129 +1652,26 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
 function ws_mcp_settings_save($viewer, $server, $liveform, $username, $input = null)
 {
     $post = is_array($input) ? $input : $_POST;
-    $alias = ws_mcp_alias_clean($post['mcp_alias'] ?? '');
-    $name = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) ($post['mcp_name'] ?? '')), 0, 100));
-    $url = trim((string) ($post['mcp_url'] ?? ''));
-    $kind = (string) ($post['mcp_auth'] ?? 'none');
     $anchor = $server ? '#ws-mcp-' . (int) $server['id'] : '#ws-mcp';
+    $check = ws_mcp_save_check($server, $post);
 
-    if (!$server && (count(ws_mcp_servers()) >= WS_MCP_MAX_SERVERS)) {
-        $liveform->add_error(lang(array('string' => 'A site can have at most {var:1} MCP servers.', 'vars' => WS_MCP_MAX_SERVERS)));
-        return $anchor;
-    }
-
-    $problem = ws_mcp_alias_problem($alias, $server ? (int) $server['id'] : 0);
-
-    if ($problem === '' && !pg_mcp_client_url_is_valid($url)) {
-        $problem = lang('The address must be an https address, without a user name, a password or a # part.');
-    }
-
-    if ($problem === '' && !isset(ws_mcp_auth_kinds()[$kind])) {
-        $problem = lang('Choose how the site signs in to the server.');
-    }
-
-    // The credential: what was typed, or what is kept when the field was
-    // left empty and the kind did not change.
-    $kept = ($server && ($server['auth_kind'] === $kind)) ? ws_mcp_secret_decode($server['secret'] ?? '') : array();
-    $secret = array();
-    $oauth_client_id = '';
-    $oauth_client_secret = '';
-
-    if ($problem === '') {
-        switch ($kind) {
-            case 'bearer':
-                $token = trim((string) ($post['mcp_token'] ?? ''));
-                $secret = array('token' => ($token !== '') ? $token : (string) ($kept['token'] ?? ''));
-
-                if ($secret['token'] === '') {
-                    $problem = lang('Enter the access token.');
-                }
-                break;
-
-            case 'header':
-                $header = trim((string) ($post['mcp_header_name'] ?? ''));
-                $value = trim((string) ($post['mcp_header_value'] ?? ''));
-                $secret = array('name' => $header, 'value' => ($value !== '') ? $value : (string) ($kept['value'] ?? ''));
-                $problem = ws_mcp_header_name_problem($header);
-
-                if (($problem === '') && ($secret['value'] === '')) {
-                    $problem = lang('Enter the value of the header.');
-                }
-                break;
-
-            case 'basic':
-                $user = trim((string) ($post['mcp_user'] ?? ''));
-                $password = (string) ($post['mcp_password'] ?? '');
-                $secret = array('user' => $user, 'password' => ($password !== '') ? $password : (string) ($kept['password'] ?? ''));
-
-                if (($user === '') || (strpos($user, ':') !== false)) {
-                    $problem = lang('Enter the user name (without a colon).');
-                }
-                break;
-
-            // Nothing is kept on the row: the application goes to connect_apps
-            // once the server is saved (ws_mcp_oauth_setup()).
-            case 'oauth':
-                $oauth_client_id = trim((string) ($post['mcp_client_id'] ?? ''));
-                $oauth_client_secret = trim((string) ($post['mcp_client_secret'] ?? ''));
-
-                if (preg_match('/[\r\n]/', $oauth_client_id . $oauth_client_secret)) {
-                    $problem = lang('A credential cannot hold a line break.');
-                } elseif ((strlen($oauth_client_id) > 255) || (strlen($oauth_client_secret) > 1000)) {
-                    $problem = lang('The client ID is too long.');
-                } elseif (!function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready()) {
-                    $problem = lang('The database has not been upgraded yet.');
-                }
-                break;
+    if ($check['problem'] !== '') {
+        // The server count is no fault of the form: it is not kept.
+        if (empty($check['full'])) {
+            ws_mcp_settings_keep($liveform, $server, $check['problem'], $post);
         }
-    }
 
-    if (preg_match('/[\r\n]/', implode('', array_map('strval', $secret)))) {
-        $problem = lang('A credential cannot hold a line break.');
-    }
-
-    if ($problem !== '') {
-        ws_mcp_settings_keep($liveform, $server, $problem, $post);
-        $liveform->add_error($problem);
+        $liveform->add_error($check['problem']);
         return $anchor;
     }
 
-    $now = time();
-    $stored = ws_mcp_secret_encode($secret);
-    $changed = !$server || ($server['url'] !== $url) || ($server['auth_kind'] !== $kind) || ($stored !== '' && ws_mcp_secret_decode($server['secret'] ?? '') !== $secret);
-
-    // A sign-in made for another address, or no longer wanted, ends first,
-    // while the row still says how to tell the service.
-    if ($server && ($server['auth_kind'] === 'oauth') && (($kind !== 'oauth') || ($server['url'] !== $url))) {
-        ws_mcp_oauth_forget($server);
-    }
-
-    if (!$server) {
-        db("INSERT INTO ws_mcp_servers (alias, name, url, auth_kind, secret, status, tool_rules, created_by, created_at, updated_at)
-            VALUES ('" . e($alias) . "', '" . e($name) . "', '" . e($url) . "', '" . e($kind) . "', '" . e($stored) . "', 'active', '{}',
-                '" . (int) $viewer['id'] . "', '" . $now . "', '" . $now . "')");
-
-        $id = (int) mysqli_insert_id(db::$con);
-        log_activity(lang(array('string' => 'the MCP server @{var:1} was added', 'vars' => $alias)), $username);
-    } else {
-        $id = (int) $server['id'];
-
-        // A new address or credential is a new conversation: what the old one
-        // agreed on is forgotten.
-        db("UPDATE ws_mcp_servers SET
-                alias = '" . e($alias) . "',
-                name = '" . e($name) . "',
-                url = '" . e($url) . "',
-                auth_kind = '" . e($kind) . "',
-                secret = '" . e($stored) . "',
-                " . ($changed ? "protocol = '', session_id = ''," : '') . "
-                updated_at = '" . $now . "'
-            WHERE id = '" . $id . "'");
-
-        log_activity(lang(array('string' => 'the MCP server @{var:1} was changed', 'vars' => $alias)), $username);
-    }
-
-    ws_mcp_servers(true);
+    $alias = $check['alias'];
+    $kind = $check['kind'];
+    $oauth_client_id = $check['client_id'];
+    $oauth_client_secret = $check['client_secret'];
+    $written = ws_mcp_save($viewer, $server, $check);
+    $id = $written['id'];
+    $changed = $written['changed'];
     $saved = ws_mcp_server($id);
 
     if (!$saved) {
@@ -2018,19 +2206,16 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
             }
         }
 
-        if ($server['status'] !== 'active') {
-            $state = '<span class="badge text-bg-secondary">' . h(lang('Off')) . '</span>';
-        } elseif ($oauth && $account && !$connected) {
-            $state = '<span class="badge text-bg-danger">' . h(lang('Connect again')) . '</span>';
-        } elseif ($oauth && !$account) {
-            $state = '<span class="badge text-bg-warning">' . h(lang('Not connected')) . '</span>';
-        } elseif ($server['last_error'] !== '') {
-            $state = '<span class="badge text-bg-danger">' . h(lang('Cannot be reached')) . '</span>';
-        } elseif (empty($on)) {
-            $state = '<span class="badge text-bg-warning">' . h(lang('No tool on')) . '</span>';
-        } else {
-            $state = '<span class="badge text-bg-success">' . h(lang('Ready')) . '</span>';
-        }
+        $badges = array(
+            'off'           => array('secondary', lang('Off')),
+            'connect_again' => array('danger', lang('Connect again')),
+            'not_connected' => array('warning', lang('Not connected')),
+            'unreachable'   => array('danger', lang('Cannot be reached')),
+            'no_tool_on'    => array('warning', lang('No tool on')),
+            'ready'         => array('success', lang('Ready')),
+        );
+        $badge = $badges[ws_mcp_server_state($server)['state']];
+        $state = '<span class="badge text-bg-' . $badge[0] . '">' . h($badge[1]) . '</span>';
 
         $details = array(ws_mcp_host($server['url']));
 
