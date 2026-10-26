@@ -4516,6 +4516,9 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     $_parents[] = array('type' => $type, 'class' => isset($props['cssClass']) ? (string)$props['cssClass'] : '');
 
     $_sz = _build_node_sizing_attrs($props);  // {style, class} — applied per-case below
+    // The carriers of the values in this element's attributes are written
+    // after it (widgets_attrs.php).
+    $_attr_mark = pg_sw_attr_mark();
 
     switch ($type) {
         case 'root':
@@ -4730,7 +4733,7 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
 
     array_pop($_stretch);
     array_pop($_parents);
-    return $html;
+    return $html . pg_sw_attr_take($_attr_mark);
 }
 
 // One entry per element being drawn, outermost first: its node type and
@@ -4936,7 +4939,8 @@ function _render_extra_attrs($props, $skip_names = array(), $title = false)
             // written once after the id (here or by the semantic case).
             if ($lname === 'data-pg-search-section' && !empty($props['id']) && !empty($props['searchSection'])) continue;
             $val = isset($a['value']) ? (string)$a['value'] : '';
-            $out .= ' ' . h($name) . '="' . h($val) . '"';
+            // A {{token}} in it is a value of the widget's record.
+            $out .= ' ' . h($name) . '="' . pg_sw_attr_value_html($lname, $val) . '"';
         }
     }
     return $out;
@@ -4976,7 +4980,7 @@ function _pg_node_title_attrs($props)
     $title = $tip ? (string)$props['tooltipTitle']
         : ((isset($props['title']) && is_scalar($props['title'])) ? (string)$props['title'] : '');
     $out = '';
-    if ($title !== '' && !in_array('title', $written, true)) $out .= ' title="' . h($title) . '"';
+    if ($title !== '' && !in_array('title', $written, true)) $out .= ' title="' . pg_sw_attr_value_html('title', $title) . '"';
     if ($tip) {
         $out .= ' data-bs-toggle="tooltip"';
         if (!in_array('data-bs-placement', $written, true)) {

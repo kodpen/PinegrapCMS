@@ -28060,20 +28060,25 @@ const StyleDesigner = (function () {
     }
 
     // Inside an element's text, or the value of a bindable attribute, typing
-    // {{ offers the tokens of the element's widget. Only in the page's code
-    // view: a file tab and the dialog have no nodes.
+    // {{ offers the tokens of the element's widget. In any other attribute
+    // that takes a value of the record (_sdAttrBindNameOk()) it offers the
+    // tokens an attribute may print. Only in the page's code view: a file
+    // tab and the dialog have no nodes.
     function _sdCodeBindingCompletion(context, syntax) {
         if (!_sdCodeEnabled() || !_sdCode.ed.view) return null;
         if (context.view ? (context.view !== _sdCode.ed.view) : (context.state.doc !== _sdCode.ed.view.state.doc)) return null;
         var word = context.matchBefore(/\{\{\s*[A-Za-z0-9_-]*/);
         if (!word) return null;
         var sn = syntax.node;
-        var prop = '';
+        var prop = '', inAttr = false;
         if (sn.name === 'AttributeValue' || sn.name === 'UnquotedAttributeValue') {
             var attr = sn.parent;
             var nameNode = attr ? attr.getChild('AttributeName') : null;
             prop = nameNode ? context.state.sliceDoc(nameNode.from, nameNode.to).toLowerCase() : '';
-            if (['href', 'src', 'alt', 'value'].indexOf(prop) === -1) return null;
+            if (['href', 'src', 'alt', 'value'].indexOf(prop) === -1) {
+                if (!_sdAttrBindNameOk(prop)) return null;
+                inAttr = true;
+            }
         } else if (sn.name === 'Text') {
             prop = 'text';
         } else {
@@ -28081,9 +28086,14 @@ const StyleDesigner = (function () {
         }
         var node = _sdCodeNodeAtPos(context.pos);
         if (!node) return null;
-        if (prop !== 'text') prop = _sdCodeAttrProp(node, prop) || prop;
-        if (prop === 'value' || !_sdCodeBindable(node, prop, (prop === 'text') ? word.text : '')) return null;
+        if (inAttr) {
+            if (!_isInsideSystemWidget(node)) return null;
+        } else {
+            if (prop !== 'text') prop = _sdCodeAttrProp(node, prop) || prop;
+            if (prop === 'value' || !_sdCodeBindable(node, prop, (prop === 'text') ? word.text : '')) return null;
+        }
         var options = _swBindTokenOptions(node);
+        if (inAttr) options = options.filter(function (o) { return o.token && _sdAttrTokenOk(o.token); });
         if (!options.length) return null;
         var typedFrom = word.from + word.text.replace(/[A-Za-z0-9_-]*$/, '').length;
         var typed = context.state.sliceDoc(typedFrom, context.pos);
@@ -36424,6 +36434,36 @@ const StyleDesigner = (function () {
         return !/^__(page_link|link_label)_\d+$/.test(t);
     }
 
+    // Values of the record in an attribute ({{token}} in an Attributes
+    // panel entry or a title): the attributes that never take one and the
+    // tokens whose value is markup. Twins of pg_sw_attr_denied_names() and
+    // pg_sw_raw_token_keys(); tests/widget_attr_bindings_test.php checks them.
+    var SW_ATTR_DENY_NAMES = [
+        'id', 'class', 'style',
+        'href', 'src', 'srcset', 'srcdoc', 'action', 'formaction', 'poster', 'data', 'cite',
+        'background', 'ping', 'xlink:href', 'manifest', 'codebase', 'longdesc', 'usemap',
+        'archive', 'lowsrc', 'dynsrc', 'content', 'http-equiv'
+    ];
+    var SW_ATTR_MARKUP = [
+        '__description', '__details', '__out_of_stock_message', '__price_formatted', '__price_block_html',
+        '__price_range', '__breadcrumb_html', '__breadcrumb_inner_html', '__cross_sell_html', '__variant_picker',
+        '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
+        '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
+        '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
+        '__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html'
+    ];
+    // Twin of pg_sw_attr_name_ok().
+    function _sdAttrBindNameOk(name) {
+        var n = String(name == null ? '' : name).trim().toLowerCase();
+        if (!/^[a-z][a-z0-9_.:-]*$/.test(n)) return false;
+        if (n.indexOf('on') === 0) return false;
+        return SW_ATTR_DENY_NAMES.indexOf(n) === -1;
+    }
+    // Twin of pg_sw_attr_token_ok().
+    function _sdAttrTokenOk(token) {
+        return _sdCondTokenAllowed(token) && SW_ATTR_MARKUP.indexOf(String(token).toLowerCase()) === -1;
+    }
+
     // The SW_COND_OPS entry of `op`, or null.
     function _sdCondOp(op) {
         for (var i = 0; i < SW_COND_OPS.length; i++) {
@@ -39475,6 +39515,7 @@ const StyleDesigner = (function () {
             } else if (_swPageLinkPageGone(spec.page_id, (typeof _pages !== 'undefined' && _pages) ? _pages : [], _allPagesCache)) {
                 html += note(_sdT('This page is deleted or in the Recycle Bin, so the link opens nothing. Choose another page.'), true);
             }
+            var rowTokens = _sdPageLinkRowTokens(n);
             var tokenOptions = function (curToken) {
                 var lc = String(curToken || '').toLowerCase(), known = (lc === '');
                 var opt = function (token, label) {
@@ -39483,6 +39524,11 @@ const StyleDesigner = (function () {
                     return '<option value="' + esc(token) + '"' + (on ? ' selected' : '') + '>' + esc(label) + '</option>';
                 };
                 var out = '<option value=""' + (lc === '' ? ' selected' : '') + '>' + esc(_sdT('— Choose a field —')) + '</option>';
+                if (rowTokens.length) {
+                    out += '<optgroup label="' + esc(_sdT('Row of the list')) + '">';
+                    rowTokens.forEach(function (r) { out += opt(r[0], r[1]); });
+                    out += '</optgroup>';
+                }
                 if (fields.length) {
                     out += '<optgroup label="' + esc(_sdT('Form fields')) + '">';
                     fields.forEach(function (ff) { out += opt(_swFormFieldToken(ff), ff.label || ff.name || ('#' + ff.id)); });
@@ -51589,6 +51635,15 @@ const StyleDesigner = (function () {
             });
         });
         return out;
+    }
+
+    // The row tokens of the nearest list `node` is drawn in, as [token,
+    // label] pairs: the values a page link may take from the row
+    // (_pg_sw_page_link_walk() reads the nearest list alone).
+    function _sdPageLinkRowTokens(node) {
+        var list = _sdListsAbove(node)[0];
+        var src = list ? SW_LIST_SOURCES[list.props.source] : null;
+        return src ? src.rows.slice() : [];
     }
 
     // The label of a list row token, or '' for any other token.

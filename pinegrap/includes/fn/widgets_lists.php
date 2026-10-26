@@ -237,6 +237,15 @@ function pg_sw_list_span($node, $indent = 0, $depth = 0)
     }, $template);
     if ($out === null) return '';
 
+    // The links whose address takes a value of this list's row
+    // (pg_sw_page_link_bindings()).
+    $links = array();
+    if (isset($node['props']['_pgRowLinks']) && is_array($node['props']['_pgRowLinks'])) {
+        foreach ($node['props']['_pgRowLinks'] as $token) {
+            if (is_string($token) && preg_match('/^__page_link_\d+$/', $token)) $links[] = '^^' . $token . '^^';
+        }
+    }
+
     $n = ++$seq;
     $templates = &_pg_sw_list_templates();
     $templates[$n] = array(
@@ -245,6 +254,7 @@ function pg_sw_list_span($node, $indent = 0, $depth = 0)
         'spec'    => $spec,
         'html'    => $out,
         'parents' => $parents,
+        'links'   => $links,
     );
 
     $nonce = pg_sw_marker_nonce();
@@ -669,6 +679,13 @@ function pg_sw_lists_expand($html, $nonce, $scope, $published, &$cut)
                 }
                 foreach ($t['parents'] as $p => $text) {
                     if (!isset($map[$text])) $map[$text] = $span[6][$p];
+                }
+                // A link with a value of this row: its address, from the
+                // placeholder its record's carrier holds.
+                foreach ($t['links'] as $text) {
+                    if (!isset($map[$text])) continue;
+                    $url = pg_sw_page_link_row_value($map[$text], $nonce, $row);
+                    if ($url !== '') $map[$text] = $url;
                 }
                 $filled = pg_sw_sweep_tokens(pg_sw_lists_fill_row($t['html'], $map));
                 $out   .= pg_sw_uniquify_row_ids(pg_sw_uniquify_row_ids($filled, $t['n'], $i + 1), $sid, $copy + 1);
