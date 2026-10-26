@@ -20,6 +20,6 @@ description: W16 placed beats pushed: the one placement rule (pg_sw_placed()), d
 ## What is left after #1808, #1824 and #1863?
 - Form blocks: the cart rows' editable `__item_form_data_html`, `__item_gift_card_html` (placed by `pg_sw_placed()` since #1863; parts with controls are an open owner question), `__returns`/`__return_form` (still server-built inside the returns card), `__cancel_form`. The order view's item blocks: [[widget-default-parts-order-items]].
 - Express order offers; cart row form data; catalog listing body; variant picker auto-inject; cross-sell; breadcrumb; filters (`__filter_chips` …); comment stars. Each check moves to `pg_sw_placed()`; a token freed from a rendered-template `strpos()` leaves `pg_sw_cond_denied_tokens()`. Then the raw keys in `pg_sw_raw_token_keys()` shrink.
-- Canvas: all six badges and every timeline icon show at once until W19's state preview.
+- Canvas: the band's state chips draw one status badge at a time ([[widget-condition-canvas]]); the timeline's row sample draws its one kind (`created`), the others only in "All elements" until W19's loop ghosts.
 - A literal token inside a longer text is not given a part (prints empty); a condition on `__timeline` or `__order_status_badge` reads empty.
 - Owed: a browser round (editor load, Preview, a receipt e-mail).
