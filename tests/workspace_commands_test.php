@@ -187,7 +187,7 @@ function test_workspace_command_registry_holds_every_name_once()
 		return $entry['key'];
 	}, ws_commands(null));
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
 }
 
 // Every argument is typed with a known kind, says whether it may be left
@@ -541,5 +541,131 @@ function test_workspace_command_status_reads_task_and_word()
 		}
 	}
 
-	pg_assert_same(array('task', 'status'), $live, 'the commands with a live line');
+	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting'), $live, 'the commands with a live line');
 }
+
+// /schedule (/zamanla) answers to its names and reads when at the start of
+// the line: a time from now, a day, a time of day or both; the rest is the
+// message. 2026-10-21 is a Wednesday; the line is read at 10:15.
+function test_workspace_command_schedule_reads_when_and_message()
+{
+	$now = strtotime('2026-10-21 10:15:20');
+
+	pg_assert_same(array('command' => 'schedule', 'rest' => 'yarın 09:00 Toplantı'), ws_command_split('/zamanla yarın 09:00 Toplantı'), '/zamanla');
+	pg_assert_same(array('command' => 'schedule', 'rest' => 'friday x'), ws_command_split('/SCHEDULE friday x'), '/SCHEDULE in capitals');
+
+	$at = function ($date, $time, $body) {
+		return array('date' => $date, 'time' => $time, 'at' => strtotime($date . ' ' . $time . ':00'), 'body' => $body);
+	};
+
+	pg_assert_same($at('2026-10-22', '09:00', 'Toplantı on dakika sonra'), ws_command_parse_schedule('yarın 09:00 Toplantı on dakika sonra', $now), 'a day and a time');
+	pg_assert_same($at('2026-10-23', '14:30', 'Ship it'), ws_command_parse_schedule('friday at 14:30 Ship it', $now), '"at" before the time');
+	pg_assert_same($at('2026-10-23', '14:30', 'Gönder'), ws_command_parse_schedule("cuma saat 14:30'da Gönder", $now), '"saat" and a suffix');
+	pg_assert_same($at('2026-10-23', '09:00', 'Rapor'), ws_command_parse_schedule('cuma Rapor', $now), 'a day alone is at 09:00');
+	pg_assert_same($at('2026-10-21', '16:00', 'Çay'), ws_command_parse_schedule('16:00 Çay', $now), 'a time alone, still ahead today');
+	pg_assert_same($at('2026-10-22', '08:00', 'Günaydın cuma'), ws_command_parse_schedule('08:00 Günaydın cuma', $now), 'a time gone by is tomorrow; a day after it is the message');
+	pg_assert_same($at('2026-10-21', '10:45', 'Ara bitti'), ws_command_parse_schedule('+30dk Ara bitti', $now), '+30dk');
+	pg_assert_same($at('2026-10-21', '12:15', 'Lunch'), ws_command_parse_schedule('+2h Lunch', $now), '+2h is two hours, not a week');
+	pg_assert_same($at('2026-10-23', '09:00', '<@user:5> rapor'), ws_command_parse_schedule('+2g <@user:5> rapor', $now), '+2g is a day');
+	pg_assert_same(array('date' => '', 'time' => '', 'at' => 0, 'body' => 'Merhaba dünya'), ws_command_parse_schedule('Merhaba dünya', $now), 'no time read');
+	pg_assert_same($at('2026-10-22', '09:00', ''), ws_command_parse_schedule('yarın', $now), 'no message');
+}
+
+// A time from now is read only with a minute or hour unit after +.
+function test_workspace_command_schedule_offset()
+{
+	pg_assert_same(30, ws_parse_schedule_offset('+30dk'), '+30dk');
+	pg_assert_same(45, ws_parse_schedule_offset('+45m'), '+45m');
+	pg_assert_same(120, ws_parse_schedule_offset('+2SA'), '+2SA');
+	pg_assert_same(60, ws_parse_schedule_offset('+1hour'), '+1hour');
+	pg_assert_same(0, ws_parse_schedule_offset('+2g'), 'a day is no offset');
+	pg_assert_same(0, ws_parse_schedule_offset('30dk'), 'no plus');
+	pg_assert_same(0, ws_parse_schedule_offset('+0dk'), 'nothing');
+}
+
+// The message /schedule posts is the text as written after its time: line
+// breaks, a list, a quote and a code block stay, as they do when the clock
+// beside the send button schedules it. 2026-10-21 is a Wednesday.
+function test_workspace_command_schedule_keeps_the_message_as_written()
+{
+	$now = strtotime('2026-10-21 10:15:20');
+	$message = "Günaydın!\n\nGündem:\n- Satış\n- Stok\n> Önce rakamlar";
+
+	pg_assert_same($message, ws_command_parse_schedule('yarın 09:00 ' . $message, $now)['body'], 'a day and a time');
+	pg_assert_same($message, ws_command_parse_schedule("cuma saat 14:30\n" . $message, $now)['body'], '"saat", then the message on the next line');
+	pg_assert_same($message, ws_command_parse_schedule('+30dk ' . $message, $now)['body'], 'a time from now');
+	pg_assert_same("Kod:\n```\nfoo  bar\n```", ws_command_parse_schedule("16:00 Kod:\n```\nfoo  bar\n```", $now)['body'], 'a code block keeps its spaces');
+}
+
+// /timer (/süre) answers to its names and tells a stop word from a task.
+function test_workspace_command_timer_names_and_stop_words()
+{
+	pg_assert_same(array('command' => 'timer', 'rest' => 'G-42'), ws_command_split('/süre G-42'), '/süre');
+	pg_assert_same(array('command' => 'timer', 'rest' => 'dur'), ws_command_split('/SURE dur'), '/SURE without Turkish letters');
+	pg_assert_same(array('command' => 'timer', 'rest' => 'stop'), ws_command_split('/timer stop'), '/timer');
+
+	foreach (array('dur', 'Durdur', 'bitir', 'STOP', 'end.') as $word) {
+		pg_assert_true(ws_command_timer_stop_word($word), $word . ' stops');
+	}
+
+	foreach (array('', 'G-42', '42', 'durum') as $word) {
+		pg_assert_true(!ws_command_timer_stop_word($word), '"' . $word . '" does not stop');
+	}
+}
+
+// /away (/izin) reads the first day, a last day when one follows, and the
+// rest as the title. 2026-10-21 is a Wednesday.
+function test_workspace_command_away_reads_its_days()
+{
+	pg_assert_same(array('command' => 'away', 'rest' => 'cuma'), ws_command_split('/izin cuma'), '/izin');
+
+	$away = function ($start, $end, $title) {
+		return array('kind' => 'leave', 'scope' => 'people', 'start' => $start, 'end' => $end, 'title' => $title);
+	};
+
+	pg_assert_same($away('2026-10-23', '2026-10-26', 'Aile ziyareti'), ws_command_away_data('cuma pazartesi Aile ziyareti', '2026-10-21'), 'two days and a note');
+	pg_assert_same($away('2026-10-22', '2026-10-22', ''), ws_command_away_data('yarın', '2026-10-21'), 'one day');
+	pg_assert_same($away('2026-11-02', '2026-11-06', ''), ws_command_away_data('2.11 6.11', '2026-10-21'), 'two dates');
+	pg_assert_same($away('', '', 'Tatil'), ws_command_away_data('Tatil', '2026-10-21'), 'no day');
+}
+
+// /away reads its last day from its first, so two weekdays are a range that
+// starts on the first whatever day the line is typed on. 2026-10-26 is a
+// Monday, 2026-10-27 a Tuesday, 2026-10-31 a Saturday.
+function test_workspace_command_away_reads_its_last_day_from_its_first()
+{
+	$away = function ($start, $end, $title) {
+		return array('kind' => 'leave', 'scope' => 'people', 'start' => $start, 'end' => $end, 'title' => $title);
+	};
+
+	pg_assert_same($away('2026-10-30', '2026-11-02', 'Family visit'), ws_command_away_data('friday monday Family visit', '2026-10-26'), 'friday monday, typed on a Monday');
+	pg_assert_same($away('2026-11-02', '2026-11-06', ''), ws_command_away_data('pazartesi cuma', '2026-10-27'), 'pazartesi cuma, typed on a Tuesday');
+	pg_assert_same($away('2026-11-06', '2026-11-09', ''), ws_command_away_data('cuma pazartesi', '2026-10-31'), 'cuma pazartesi, typed on a Saturday');
+	pg_assert_same($away('2026-12-28', '2027-01-04', ''), ws_command_away_data('28.12 4.1', '2026-10-27'), 'a date without a year before the first day is in the next year');
+}
+
+// /meeting (/toplantı) reads when it starts as /schedule does, then an end
+// or a length (an hour by default), the people tagged and the title.
+function test_workspace_command_meeting_reads_its_parts()
+{
+	$now = strtotime('2026-10-21 10:15:00');
+
+	pg_assert_same(array('command' => 'meeting', 'rest' => 'yarın 14:00 x'), ws_command_split('/Toplantı yarın 14:00 x'), '/Toplantı');
+	pg_assert_same(array('command' => 'meeting', 'rest' => 'x'), ws_command_split('/toplanti x'), '/toplanti');
+
+	$meeting = function ($people, $title, $start, $start_time, $end, $end_time) {
+		return array('kind' => 'meeting', 'scope' => 'people', 'people' => $people, 'title' => $title, 'start' => $start, 'end' => $end, 'start_time' => $start_time, 'end_time' => $end_time);
+	};
+
+	pg_assert_same($meeting(array(5, 7), 'Açılış toplantısı', '2026-10-22', '14:00', '2026-10-22', '15:30'), ws_command_meeting_data('yarın 14:00 ~1.5sa Açılış <@user:5> toplantısı <@user:7> <@user:5>', $now), 'a day, a time, a length, people');
+	pg_assert_same($meeting(array(), 'Plan', '2026-10-23', '09:30', '2026-10-23', '11:00'), ws_command_meeting_data('cuma 09:30 11:00 Plan', $now), 'an end time');
+	pg_assert_same($meeting(array(), 'Kahve', '2026-10-21', '16:00', '2026-10-21', '17:00'), ws_command_meeting_data('16:00 Kahve', $now), 'an hour by default');
+	pg_assert_same($meeting(array(), 'Gece', '2026-10-21', '23:30', '2026-10-22', '00:30'), ws_command_meeting_data('bugün 23:30 Gece', $now), 'past midnight');
+	pg_assert_same($meeting(array(), 'Plan', '', '', '', ''), ws_command_meeting_data('Plan', $now), 'no start');
+
+	$viewer = array('id' => 3);
+	$data = ws_command_meeting_people($viewer, ws_command_meeting_data('16:00 Kahve <@user:5>', $now));
+
+	pg_assert_same(array(3, 5), $data['people'], 'the writer is on the meeting');
+}
+

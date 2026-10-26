@@ -4,7 +4,7 @@ description: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.p
 ---
 
 ## Where is it kept?
-- `stock_notify` (11.0.14): id, product_id, email_address VARCHAR(100), user_id, phone (empty until SMS, step 4c), created_at, sent_at (0 = waiting). KEY (product_id, sent_at); no unique key: duplicates are refused in code.
+- `stock_notify` (11.0.14): id, product_id, email_address VARCHAR(100), user_id, phone (SMS: [[back-in-stock-sms]]), created_at, sent_at (0 = waiting). KEY (product_id, sent_at); no unique key: duplicates are refused in code.
 - `includes/fn/stock_notify.php` (PR #1659); before the table, `pg_stock_notify_ready()` is false and all answers are empty.
 
 ## Which product can be asked for?

@@ -17,7 +17,8 @@
  * later needs no schema change.
  *
  * Every message has a kind. Transactional kinds (an order, a shipment, a
- * sign-in code, a reminder) go out as informational messages; a commercial
+ * sign-in code, a reminder, the one back-in-stock notice a customer asked
+ * for) go out as informational messages; a commercial
  * one needs the recipient's consent recorded in İYS, and until the consent
  * records exist pg_sms_send() refuses it.
  *
@@ -163,6 +164,7 @@ function pg_sms_kinds()
         'shipping'  => false,
         'otp'       => false,
         'reminder'  => false,
+        'stock'     => false,
         'marketing' => true,
     );
 }
@@ -340,6 +342,34 @@ function pg_sms_driver($provider)
     }
 
     return function_exists('pg_sms_' . $provider . '_send') && function_exists('pg_sms_' . $provider . '_senders');
+}
+
+/**
+ * Whether a provider can text a number. A driver names the numbers it takes
+ * with pg_sms_<key>_number() ('' for one it does not take): Netgsm takes
+ * Turkish mobile numbers only, its international sending being a separate
+ * permission on the account. A number kept for a message sent later (a
+ * back-in-stock request) is asked about first: queued as it is, it would be
+ * refused only when the general job sends it. A driver without that function
+ * takes every number pg_sms_number() reads.
+ *
+ * @param string $number   E.164 digits, as pg_sms_number() gives them
+ * @param string $provider a pg_sms_providers() key: pg_sms_provider() for the
+ *                         one messages go through, '' when SMS is not set up
+ * @return bool false without a provider
+ */
+function pg_sms_reachable($number, $provider)
+{
+    $number = (string) $number;
+
+    // Only the stored form: digits that pg_sms_dial() reads back unchanged.
+    if (($number === '') || (pg_sms_number(pg_sms_dial($number)) !== $number) || !pg_sms_driver((string) $provider)) {
+        return false;
+    }
+
+    $rule = 'pg_sms_' . $provider . '_number';
+
+    return !function_exists($rule) || ($rule($number) !== '');
 }
 
 /**

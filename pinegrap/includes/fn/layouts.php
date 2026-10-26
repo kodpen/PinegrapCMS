@@ -202,3 +202,85 @@ function pg_layout_open_page_id($flag, $page_id, array $layout_page_ids)
 
     return in_array($page_id, array_map('intval', $layout_page_ids), true) ? $page_id : 0;
 }
+
+// While on, get_page_content() puts a marker before and after the output of
+// the page's own system region, so the visual designer's canvas can cut the
+// region out of a whole page render (pg_layout_region_preview()). Off in
+// every ordinary request.
+function pg_layout_region_marking($set = null)
+{
+    static $on = false;
+
+    if ($set !== null) {
+        $on = (bool) $set;
+    }
+
+    return $on;
+}
+
+// The system region's output between the markers pg_layout_region_marking()
+// puts around it; '' when the page drew no system region of its own (its
+// saved tree has none yet).
+function pg_layout_region_cut($html)
+{
+    $html = (string) $html;
+
+    if (!preg_match('/<!--pg-layout-region-start-->(.*?)<!--pg-layout-region-end-->/s', $html, $m)) {
+        return '';
+    }
+
+    return trim($m[1]);
+}
+
+// The system region of a page that draws a custom layout, as the server draws
+// it for the signed-in user, for the visual designer's canvas to show read
+// only in place of the region's placeholder. The page's saved state is drawn
+// (its stored tree, type settings and layout file; a hosted site's generated
+// layout). A background render, as the editor's Preview: no status code, no
+// redirect, no view counted, and an error comes back as '' instead of a
+// screen.
+function pg_layout_region_preview($page_id)
+{
+    $page_id = (int) $page_id;
+
+    if (($page_id <= 0) || !pg_layout_custom_page_ids(array($page_id))) {
+        return '';
+    }
+
+    $page_name = (string) db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1");
+
+    if ($page_name === '') {
+        return '';
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+    if (function_exists('pg_rendered_page')) {
+        pg_rendered_page($page_id);
+    }
+
+    $saved_get = $_GET;
+    $saved_seo = pg_seo_rendering();
+    $saved_throw = pg_error_throws();
+    $_GET = array('page' => $page_name);
+    pg_seo_rendering(true);
+    pg_error_throws(true);
+    pg_layout_region_marking(true);
+
+    $html = '';
+    ob_start();
+
+    try {
+        $html = (string) get_page_content($page_id, '', '', 'preview', false, array(), false, 'desktop');
+    } catch (Throwable $t) {
+        $html = '';
+    } finally {
+        ob_end_clean();
+        pg_layout_region_marking(false);
+        pg_seo_rendering($saved_seo);
+        pg_error_throws($saved_throw);
+        $_GET = $saved_get;
+    }
+
+    return pg_layout_region_cut($html);
+}

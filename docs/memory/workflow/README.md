@@ -24,6 +24,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - coordinator.md: Coordinator session (pilot, 2026-10-26): one per account, keeps its cloud workers on free plan steps, looks at them every 10 minutes, carries owner questions, writes no code, merges nothing
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
+- decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS.
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated compared text, old blocks equal in look not bytes (W16), layout gallery sources (W5), entity values allow-list (W8).
 - decisions-made-workspace.md: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task).
