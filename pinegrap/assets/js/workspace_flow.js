@@ -108,6 +108,9 @@
     // the one a new arrow takes), as ws_flow_kinds() has them.
     var KINDS = {
         manual: { icon: 'bi-play-circle', name: 'fl_kind_manual', into: false, out: ['next'] },
+        schedule: { icon: 'bi-clock', name: 'fl_kind_schedule', into: false, out: ['next'] },
+        event: { icon: 'bi-lightning', name: 'fl_kind_event', into: false, out: ['next'] },
+        join: { icon: 'bi-person-plus', name: 'fl_kind_join', into: false, out: ['next'] },
         task: { icon: 'bi-check2-square', name: 'fl_kind_task', into: true, out: ['done', 'cancelled'] },
         post: { icon: 'bi-chat-left-text', name: 'fl_kind_post', into: true, out: ['done', 'failed'] },
         email: { icon: 'bi-envelope', name: 'fl_kind_email', into: true, out: ['done', 'failed'] },
@@ -143,6 +146,9 @@
     // What the palette adds.
     var PALETTE = [
         ['manual', 'bi-play-circle', 'fl_add_manual'],
+        ['schedule', 'bi-clock', 'fl_kind_schedule'],
+        ['event', 'bi-lightning', 'fl_kind_event'],
+        ['join', 'bi-person-plus', 'fl_kind_join'],
         ['task', 'bi-check2-square', 'fl_add_task'],
         ['condition', 'bi-signpost-split', 'fl_kind_condition'],
         ['post', 'bi-chat-left-text', 'fl_add_post'],
@@ -404,7 +410,9 @@
             changes: steps.changes || {},
             records: steps.records || {},
             operators: steps.operators || {},
-            counts: steps.counts || []
+            counts: steps.counts || [],
+            repeats: steps.repeats || {},
+            events: steps.events || null
         };
     }
 
@@ -471,6 +479,23 @@
 
         if (node.kind === 'condition') {
             return conditionMeta(config.rule || {});
+        }
+
+        if (node.kind === 'schedule') {
+            return config.date ? config.date + ' ' + (config.time || '') + ' · ' + (stepLists().repeats[config.repeat] || '') : t('fl_when_none');
+        }
+
+        if (node.kind === 'event') {
+            var events = stepLists().events;
+            var happening = (events && events.list[config.event]) ? events.list[config.event].label : config.event;
+
+            return happening || t('fl_when_none');
+        }
+
+        if (node.kind === 'join') {
+            var joined = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+            return joined ? t('fl_post_meta', joined.name) : t('fl_join_any');
         }
 
         if (node.kind === 'change') {
@@ -1895,6 +1920,18 @@
             conditionFields(box, node);
         }
 
+        if (node.kind === 'schedule') {
+            scheduleFields(box, node);
+        }
+
+        if (node.kind === 'event') {
+            eventFields(box, node);
+        }
+
+        if (node.kind === 'join') {
+            channelField(box, node, t('fl_join_channel'), t('fl_join_any'));
+        }
+
         if (state.edit) {
             box.appendChild(connections(node));
 
@@ -2319,6 +2356,146 @@
         });
         box.appendChild(field(t('fl_start_target'), pick));
         box.appendChild(field(t('fl_start_delay'), delay, t('fl_start_delay_help')));
+    }
+
+    // A time the flow starts at: its first day and time, how it repeats, the
+    // days of a weekly one and its last day, as a scheduled action's "when".
+    function scheduleFields(box, node) {
+        var config = node.config;
+        var date = el('input', 'form-control form-control-sm');
+        var clock = el('input', 'form-control form-control-sm');
+        var repeats = stepLists().repeats;
+        var repeat = K.select(Object.keys(repeats).map(function (key) { return [key, repeats[key]]; }), config.repeat || 'none');
+
+        date.type = 'date';
+        date.value = config.date || '';
+        date.addEventListener('input', function () {
+            config.date = date.value;
+            refreshNode(node);
+        });
+        clock.type = 'time';
+        clock.value = config.time || '';
+        clock.addEventListener('input', function () {
+            config.time = clock.value;
+            refreshNode(node);
+        });
+        repeat.addEventListener('change', function () {
+            config.repeat = repeat.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_when_date'), date, t('fl_when_help')));
+        box.appendChild(field(t('fl_when_time'), clock));
+        box.appendChild(field(t('fl_when_repeat'), repeat));
+
+        if (['none', 'workdays'].indexOf(config.repeat || 'none') === -1) {
+            var every = el('input', 'form-control form-control-sm wsf-number');
+
+            every.type = 'number';
+            every.min = '1';
+            every.max = '720';
+            every.value = String(config.every || 1);
+            every.addEventListener('input', function () {
+                config.every = clamp(parseInt(every.value, 10) || 1, 1, 720);
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_when_every'), every));
+        }
+
+        if (config.repeat === 'weekly') {
+            var days = el('div', 'wsf-people-list');
+
+            days.setAttribute('role', 'group');
+            days.setAttribute('aria-label', t('fl_cond_weekdays'));
+            [1, 2, 3, 4, 5, 6, 7].forEach(function (day) {
+                var row = el('label', 'wsf-person');
+                var check = el('input', 'form-check-input m-0');
+
+                check.type = 'checkbox';
+                check.checked = (config.days || []).indexOf(day) !== -1;
+                check.disabled = !state.edit;
+                check.addEventListener('change', function () {
+                    var chosen = (config.days || []).filter(function (item) { return item !== day; });
+
+                    if (check.checked) {
+                        chosen.push(day);
+                    }
+
+                    config.days = chosen.sort();
+                    refreshNode(node);
+                });
+                row.appendChild(check);
+                row.appendChild(document.createTextNode(t(DAYS[day])));
+                days.appendChild(row);
+            });
+            box.appendChild(field(t('fl_cond_weekdays'), days));
+        }
+
+        if ((config.repeat || 'none') !== 'none') {
+            var until = el('input', 'form-control form-control-sm');
+
+            until.type = 'date';
+            until.value = config.until || '';
+            until.addEventListener('input', function () {
+                config.until = until.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_when_until'), until, t('fl_when_until_help')));
+        }
+    }
+
+    // Something happening on the site: the event, narrowed to a form, the
+    // status it moves to, or a channel, as the event rule takes it.
+    function eventFields(box, node) {
+        var config = node.config;
+        var events = stepLists().events || { list: {}, forms: [], statuses: [] };
+        var options = [['', t('fl_event_pick')]].concat(Object.keys(events.list).map(function (key) { return [key, events.list[key].label]; }));
+
+        if (config.event && !events.list[config.event]) {
+            options.push([config.event, config.event]);
+        }
+
+        var pick = K.select(options, config.event || '');
+        var info = events.list[config.event] || null;
+
+        pick.addEventListener('change', function () {
+            config.event = pick.value;
+            config.page_id = 0;
+            config.status = '';
+            config.channel_id = 0;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_event'), pick, t('fl_event_help')));
+
+        if (!info) {
+            return;
+        }
+
+        if (info.filter === 'page') {
+            var form = K.select([[0, t('fl_event_any_form')]].concat(events.forms || []), config.page_id || 0);
+
+            form.addEventListener('change', function () {
+                config.page_id = parseInt(form.value, 10) || 0;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_event_form'), form));
+        }
+
+        if ((info.filter === 'status') || info.options) {
+            var values = (info.filter === 'status') ? (events.statuses || []) : info.options;
+            var status = K.select([['', info.any || t('fl_event_any_status')]].concat(values), config.status || '');
+
+            status.addEventListener('change', function () {
+                config.status = status.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(info.filter_label || t('fl_event_status'), status));
+        }
+
+        if (info.channel) {
+            channelField(box, node, t('fl_event_channel'), t('fl_event_any_channel'));
+        }
     }
 
     // The days of the week by number, 1 Monday - 7 Sunday.
@@ -3187,6 +3364,12 @@
             config = { record: '', action: 'update', id: 0, fields: {} };
         } else if (kind === 'condition') {
             config = { rule: { type: 'workday' } };
+        } else if (kind === 'schedule') {
+            config = { date: new Date().toISOString().slice(0, 10), time: '09:00', repeat: 'none', every: 1, days: [], until: '' };
+        } else if (kind === 'event') {
+            config = { event: '', page_id: 0, status: '', channel_id: 0 };
+        } else if (kind === 'join') {
+            config = { channel_id: 0 };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };
