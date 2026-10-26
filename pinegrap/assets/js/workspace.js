@@ -12772,6 +12772,11 @@
                 return;
             }
 
+            if (source === 'statuses') {
+                show(fixed(values.statuses, 'bi-circle-half'));
+                return;
+            }
+
             // The team, as the @ picker lists it, without whoever the line
             // already names; never the site's members.
             if (source === 'people' || source === 'people_departments') {
@@ -12884,15 +12889,16 @@
             this.commandLive(argument);
         },
 
-        // Under /task's usage: what sending the line now would do, read by
-        // the parser that runs it (ws_command_suggest), and what it cannot
-        // read, such as a typed @name no team member, or several, answer to. The last
+        // Under the usage of a command the registry marks live (/task,
+        // /status): what sending the line now would do, read by the parser
+        // that runs it (ws_command_suggest), and what it cannot read, such
+        // as a typed @name no team member, or several, answer to. The last
         // answer stays on screen until the next one comes.
         commandLive: function (argument) {
             var self = this;
             var body = self.inputText();
 
-            if (!self.channel || (argument.entry.key !== 'task')) {
+            if (!self.channel || !argument.entry.live) {
                 return;
             }
 

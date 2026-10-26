@@ -710,6 +710,7 @@
     "Movements": "Hareket",
     "Movements from {var:1} to {var:2}": "{var:1} – {var:2} arası hareketler",
     "Movements: {var:1}": "Hareketler: {var:1}",
+    "Moves a task to another status: to do, in progress, waiting, done or cancelled.": "Bir görevin durumunu değiştirir: yapılacak, sürüyor, bekliyor, bitti ya da iptal.",
     "Moves a task's due date.": "Bir görevin bitiş tarihini değiştirir.",
     "Moving the due date moves the copies after it as well.": "Bitiş tarihini değiştirirseniz sonraki kopyalar da yeni tarihe göre gelir.",
     "Moving the task there causes these clashes:": "Görevi oraya taşımak şu çakışmalara yol açıyor:",
