@@ -87,6 +87,9 @@ function _test_designer_attrs_cases()
 		'semantic image' => _test_designer_attrs_semantic(array('tag' => 'img', 'src' => 'https://example.com/b.png', 'alt' => 'B', '_attrs' => $a(array('src' => '/stale')))),
 		'semantic search section' => _test_designer_attrs_semantic(array('tag' => 'section', 'id' => 'faq', 'searchSection' => true, 'cssClass' => 'py-5')),
 		'heading search section' => _test_designer_attrs_content('heading', array('tag' => 'h2', 'text' => 'Q', 'id' => 'q1', 'searchSection' => true)),
+		'heading interaction' => _test_designer_attrs_content('heading', array('tag' => 'h2', 'text' => 'I', 'id' => 'i1', 'title' => 'T', '_fx' => array('effect' => 'slide-up', 'duration' => 900, 'stagger' => 80), '_attrs' => $a(array('data-pg-fx' => 'typed', 'data-pg-fx-delay' => '5', 'data-k' => 'v')))),
+		'semantic sticky' => _test_designer_attrs_semantic(array('tag' => 'nav', 'cssClass' => 'p-2', '_fx' => array('effect' => 'sticky', 'offset' => 12))),
+		'paragraph unknown interaction' => _test_designer_attrs_content('paragraph', array('text' => 'P', '_fx' => array('effect' => 'spin'), '_attrs' => $a(array('data-pg-fx-delay' => '5')))),
 	);
 }
 
