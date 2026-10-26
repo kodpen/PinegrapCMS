@@ -99,12 +99,18 @@ function pg_curl_tls($ch)
  *   forbid_reuse     true to close the connection afterwards
  *   user_agent       replaces $env['user_agent']
  *   userpwd          "user:password" for HTTP basic authentication
+ *   allow_http       true to accept http as well as https for this request
+ *                    (never for a redirect): only for an address the
+ *                    operator types and the site reaches itself, such as a
+ *                    migration source on the same host or LAN; leave
+ *                    check_address off with it
  *
  * $env: 'user_agent', 'proxy' (PROXY_ADDRESS or ''), 'resolve' (the
  * "host:port:ip" pin of a checked address, or '').
  *
- * @return array option name => value; a value naming a cURL constant
- *               ('CURLPROTO_HTTPS', 'CURLPROXY_HTTP') is that constant
+ * @return array option name => value; a value naming cURL constants
+ *               ('CURLPROTO_HTTPS', 'CURLPROTO_HTTP|CURLPROTO_HTTPS',
+ *               'CURLPROXY_HTTP') is those constants or-ed together
  */
 function pg_curl_run_options($method, $url, $options, $env)
 {
@@ -120,7 +126,7 @@ function pg_curl_run_options($method, $url, $options, $env)
         'CURLOPT_TIMEOUT'        => $timeout,
         'CURLOPT_CONNECTTIMEOUT' => $connect,
         'CURLOPT_FOLLOWLOCATION' => ($follow > 0),
-        'CURLOPT_PROTOCOLS'      => 'CURLPROTO_HTTPS',
+        'CURLOPT_PROTOCOLS'      => empty($options['allow_http']) ? 'CURLPROTO_HTTPS' : 'CURLPROTO_HTTP|CURLPROTO_HTTPS',
     );
 
     if ($follow > 0) {
@@ -248,7 +254,13 @@ function pg_curl_run($method, $url, $options = array())
 
     foreach (pg_curl_run_options($method, $url, $options, $env) as $name => $value) {
         if (in_array($name, array('CURLOPT_PROTOCOLS', 'CURLOPT_REDIR_PROTOCOLS', 'CURLOPT_PROXYTYPE'), true)) {
-            $value = constant($value);
+            $bits = 0;
+
+            foreach (explode('|', $value) as $constant) {
+                $bits |= constant($constant);
+            }
+
+            $value = $bits;
         }
 
         curl_setopt($ch, constant($name), $value);
@@ -290,6 +302,25 @@ function pg_license_request_options($data, $follow)
         'connect_timeout' => 10,
         'forbid_reuse'    => true,
         'follow'          => (int) $follow,
+    );
+}
+
+/**
+ * The pg_curl_run() options of migration.php's request to the source site's
+ * API ($data is the JSON body): the explicit Content-Length it always sent,
+ * 60 s, a fresh connection, no redirect. The operator types the source
+ * address, and a source on the same host or LAN may answer on plain http, so
+ * http is allowed; the address is not checked, because api_http_check_url()
+ * refuses exactly those private addresses.
+ */
+function pg_migration_request_options($data)
+{
+    return array(
+        'body'         => $data,
+        'headers'      => array('Content-Type: application/json', 'Content-Length: ' . strlen($data)),
+        'timeout'      => 60,
+        'forbid_reuse' => true,
+        'allow_http'   => true,
     );
 }
 
