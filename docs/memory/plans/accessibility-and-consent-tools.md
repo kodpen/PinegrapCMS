@@ -15,7 +15,7 @@ description: Plan (approved 2026-10-19; designer checks #628 #642, statement blo
 
 ## What remains?
 1. Done (PR #628, PR #642): contrast helper with the PHP-JS test, designer contrast, target size and redundant entry checks. The nightly report (2) reuses `_pg_theme_contrast()`. Left: drop `_SD_ENTRY_SOFTWARE_TWICE` (the `email_verify` exemption); PR #668 (the address asked once) is in, so nothing requires the second field any more.
-2. Nightly a11y report: done (PR #1748 checks, job, storage, API filter; PR #<this> screen `view_accessibility.php` and PDF; `platform/accessibility-report.md`). Left: a Pages menu entry in `includes/fn/output.php` (held by another PR when built).
+2. Nightly a11y report: done (PR #1748 checks, job, storage, API filter; PR #1760 screen `view_accessibility.php` and PDF; `platform/accessibility-report.md`). Left: a Pages menu entry in `includes/fn/output.php` (held by another PR when built).
 3. Statement block: done (PR #688; palette Blocks › Legal › "Legal: Accessibility Statement", `legal-accessibility-statement`, six sections).
 4. Consent notice: done (PR #619).
 
