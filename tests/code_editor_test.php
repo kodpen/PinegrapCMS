@@ -499,3 +499,88 @@ function test_code_editor_format_command()
 
 	pg_assert_true(($vscode !== false) && ($shortcut !== false) && ($shortcut < $vscode), 'Shift+Alt+F comes before either keymap');
 }
+
+// Runs the facade's minimap part under Node: _minimapExtension() cut from
+// the facade on the bundle's window.PgCM. Null when there is no Node.
+function code_editor_test_minimap_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, '    function _minimapExtension(');
+	$to = ($from !== false) ? strpos($facade, "\n    }\n", $from) : false;
+
+	if ($to === false) {
+		return array('error' => '_minimapExtension() was not found');
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodeminimap');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, 'global.window = global;' . "\n"
+		. '(0, eval)(require("fs").readFileSync(' . json_encode(PG_FUNCTIONS_DIR . '/assets/lib/code_editor/cm6.bundle.js') . ', "utf8"));' . "\n"
+		. substr($facade, $from, $to - $from + 6) . "\n"
+		. $script);
+
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	if ($code !== 0) {
+		return array('error' => implode("\n", $out));
+	}
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// The bundle carries the minimap; an editor opened with `minimap` gets the
+// engine's showMinimap facet (drawn as blocks, its overlay only on hover),
+// one without it gets nothing.
+function test_code_editor_minimap_extension()
+{
+	$result = code_editor_test_minimap_node(
+		'var cm = window.PgCM;' . "\n"
+		. 'function conf(on) {'
+		. ' var st = cm.state.EditorState.create({ doc: "a", extensions: _minimapExtension(cm, on) });'
+		. ' var c = st.facet(cm.minimap.showMinimap);'
+		. ' return c ? { create: typeof c.create, text: c.displayText, overlay: c.showOverlay } : null; }' . "\n"
+		. 'console.log(JSON.stringify({ bundled: !!(cm.minimap && cm.minimap.showMinimap), on: conf(true), off: conf(false) }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_true($result['bundled'], 'the bundle exports PgCM.minimap');
+	pg_assert_same(array('create' => 'function', 'text' => 'blocks', 'overlay' => 'mouse-over'), $result['on'], 'minimap on');
+	pg_assert_same(null, $result['off'], 'minimap off');
+}
+
+// The option is opt-in per editor, with a page default from configure(), and
+// can be switched while the editor is open; the designer turns it on.
+function test_code_editor_minimap_option()
+{
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+
+	pg_assert_contains("if (typeof opts.minimap === 'boolean') _cfg.minimap = opts.minimap;", $facade, 'configure() takes the page default');
+	pg_assert_contains('minimapComp.of(_minimapExtension(cm, _minimapOn(opts)))', $facade, 'the editor reads the option');
+	pg_assert_contains('inst.setMinimap = function', $facade, 'the instance can switch it');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+
+	pg_assert_contains('PgCodeEditor.configure({ minimap: true, bundle:', $screen, 'the designer turns it on');
+}
