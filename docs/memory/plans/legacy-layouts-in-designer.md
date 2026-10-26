@@ -19,7 +19,7 @@ description: Plan (2026-10-19; Y1-Y4, Y6 done): how a classic page's custom layo
   - Y2a done (#1819): pane, endpoint, Layout Type, type not changeable; email a friend, folder view, photo gallery, search results, update address book, custom form confirmation, catalog, catalog detail, order form, shipping method, order receipt, affiliate sign up form, calendar event view.
   - Y2b done (#1851): the other ten types; form editor links instead of the redirect; the type stays unchangeable.
 - Y3 Layout as a code tab: done (#1823, `designer/layout-code-tab.md`): the `system` node of a `layout_type = 'custom'` page opens "Layout (PHP)" in the code editor like a CSS/JS file (R4 pattern). Read and save moved to `includes/fn/`; whitespace-equal → unmodified stays; Regenerate button; designer role; read-only on hosted; the field-change warning (`add_field.php:956`) stays.
-- Y4 Canvas preview: done (#PR, `designer/legacy-region-preview.md`): the placeholder shows the region drawn by the server for the signed-in user (`designer/legacy_region_preview`), read-only, from the saved page.
+- Y4 Canvas preview: done (#1950, `designer/legacy-region-preview.md`): the placeholder shows the region drawn by the server for the signed-in user (`designer/legacy_region_preview`), read-only, from the saved page.
 - Y5 Replace with widget, opt-in per page: a system widget of the matching type with its default tree beside the region; the designer restyles it by hand and removes the `system` node when they say so. Classic `/<page>/<group>` addresses vs widget routes need 301s. Never automatic.
 - Y6 Retirement check: done (#1881, `designer/layout-code-tab.md`): Ctrl+G opens the page's layout tab.
 
