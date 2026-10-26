@@ -317,7 +317,7 @@ function test_bs6_parse_added_lines()
 function test_bs6_convert_class_list_keeps_code()
 {
 	$value = "' . ((\$b > 0) ? 'text-success' : ((\$b < 0) ? 'text-danger' : '')) . '";
-	pg_assert_same($value, bs6_convert_class_list($value)['value'], 'ternary colons kept');
+	pg_assert_same("' . ((\$b > 0) ? 'fg-success' : ((\$b < 0) ? 'fg-danger' : '')) . '", bs6_convert_class_list($value)['value'], 'ternary colons kept');
 
 	$value = "x ' . (\$a ? ' p-3 foo' : ' foo bar') . ' foo";
 	pg_assert_same("x ' . (\$a ? ' p-5 foo' : ' foo bar') . ' foo", bs6_convert_class_list($value)['value'], 'no de-duplication across code');
@@ -326,14 +326,20 @@ function test_bs6_convert_class_list_keeps_code()
 	pg_assert_same(array(), $r['reviews'], 'theme count only for lists without code');
 }
 
-// A v5 class quoted inside the code of a class list is reported with the
-// class it should become.
-function test_bs6_convert_class_list_reports_code_classes()
+// A v5 class quoted inside the code of a class list is rewritten in place;
+// one that needs a hand is reported, and so is one that would split in a
+// class API call.
+function test_bs6_convert_class_list_rewrites_code_classes()
 {
 	$r = bs6_convert_class_list("' . (\$ok ? 'text-success' : 'p-3') . '");
+	pg_assert_same("' . (\$ok ? 'fg-success' : 'p-5') . '", $r['value']);
+	pg_assert_same(array(), $r['reviews']);
+	pg_assert_same(2, $r['changed']);
+
+	$r = bs6_convert_class_list("' . (\$ok ? 'modal' : 'text-bg-danger') . '", true);
 	pg_assert_same(array(
-		array('text-success -> fg-success', 'class inside code: convert it by hand'),
-		array('p-3 -> p-5', 'class inside code: convert it by hand'),
+		array('modal', 'class inside code: convert it by hand'),
+		array('text-bg-danger -> bg-danger fg-contrast-danger', 'class inside code: convert it by hand'),
 	), $r['reviews']);
 	pg_assert_same(0, $r['changed']);
 }
