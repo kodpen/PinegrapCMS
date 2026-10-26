@@ -5017,7 +5017,7 @@ function _render_region_tag($props)
 // when the caller didn't already include it in $skip_names.
 //
 // $title: also write the node's title and tooltip (_pg_node_title_attrs())
-//   after the id. Content, semantic and grid nodes pass true; a component's
+//   and its interaction (pg_fx_attrs()) after the id. Content, semantic and grid nodes pass true; a component's
 //   props.title is its heading text, not an attribute.
 function _render_extra_attrs($props, $skip_names = array(), $title = false)
 {
@@ -5030,7 +5030,10 @@ function _render_extra_attrs($props, $skip_names = array(), $title = false)
         // render knows to describe its parts in the structured data.
         if (!empty($props['searchSection'])) $out .= ' data-pg-search-section';
     }
-    if ($title) $out .= _pg_node_title_attrs($props);
+    // Content, semantic and grid nodes also carry their interaction
+    // (pg_fx_attrs()); its own names typed into the panel are left out.
+    $fx = $title ? pg_fx_attrs($props) : '';
+    if ($title) $out .= _pg_node_title_attrs($props) . $fx;
     if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
         foreach ($props['_attrs'] as $a) {
             if (!is_array($a) || empty($a['name'])) continue;
@@ -5038,6 +5041,7 @@ function _render_extra_attrs($props, $skip_names = array(), $title = false)
             $lname = strtolower($name);
             if ($lname === 'class' || $lname === 'style' || $lname === 'id') continue;
             if (isset($skip_map[$lname])) continue;
+            if ($fx !== '' && pg_fx_attr_name($lname)) continue;
             // The search section mark is the Search section switch's,
             // written once after the id (here or by the semantic case).
             if ($lname === 'data-pg-search-section' && !empty($props['id']) && !empty($props['searchSection'])) continue;

@@ -13,7 +13,7 @@ description: Plan (approved 2026-10-19, watch list, designer session): interacti
 - Legacy: classic pages and legacy form pages are untouched.
 
 ## What remains?
-- Interactions: cut into steps I1–I4 in `plans/designer-interactions.md`.
+- Interactions: cut into steps I1–I4 in `plans/designer-interactions-steps.md`.
 - Collections: not cut yet; a later designer session writes their slices here. Dependencies to note: `designer/page-schedule.md` (collections items want scheduling too), `designer/responsive-images.md` (image fields), translations (reference labels).
 
 ## Open questions?
