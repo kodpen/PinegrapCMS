@@ -2758,7 +2758,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
     $extras_ready  = pg_page_seo_extras_ready();
     $sched_ready   = function_exists('pg_page_schedule_ready') && pg_page_schedule_ready();
 
-    $cols = "page.page_id, page.page_name, page.page_folder, page.page_title,
+    $cols = "page.page_id, page.page_name, page.page_type, page.page_folder, page.page_title,
              page.page_meta_description, page.page_search, page.page_search_keywords,
              page.sitemap, page.page_home,
              " . ($noindex_ready ? "page.noindex, page.nofollow," : "'0' AS noindex, '0' AS nofollow,") . "
@@ -2813,6 +2813,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
         $out[] = array(
             'page_id'               => (int)$r['page_id'],
             'page_name'             => (string)$r['page_name'],
+            'page_type'             => (string)$r['page_type'],
             'page_folder'           => $draft ? pg_page_draft_publish_folder($r['page_id']) : (int)$r['page_folder'],
             'page_draft'            => $draft ? 1 : 0,
             'page_title'            => (string)$r['page_title'],

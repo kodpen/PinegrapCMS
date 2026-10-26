@@ -50812,6 +50812,12 @@ const StyleDesigner = (function () {
         // The head code and the page's JSON-LD become code fields the first
         // time their pane opens (_sdSettingsCodeFields()).
         pgUI.tab.on(phpModal, 'shown', _sdSettingsCodeFields);
+        // The Page Type pane reads its fields when it opens.
+        pgUI.tab.on(phpModal, 'shown', function (e) {
+            if (e.target && e.target.id === 'tab-page-type-btn') _sdPageTypeLoad();
+        });
+        var pageTypeSave = document.getElementById('sd-page-type-save');
+        if (pageTypeSave) pageTypeSave.addEventListener('click', _sdPageTypeSave);
         var jsonld = document.getElementById('pg_page_custom_jsonld');
         if (jsonld) jsonld.addEventListener('input', _sdJsonLdStatus);
         ['pg_page_canonical_url', 'pg_page_max_snippet'].forEach(function (id) {
@@ -50858,6 +50864,121 @@ const StyleDesigner = (function () {
             }, { once: true });
         }
         pgUI.dialog.show(modalEl);
+    }
+
+    // ── Page Type pane ────────────────────────────────────────────────
+    // A classic page placed in the design (its page_type is not standard)
+    // keeps the fields of its type and its Layout Type. The pane reads them
+    // from edit_page.php?properties=1 and saves them there with its own
+    // button, at once and apart from the design: the endpoint applies the
+    // rights of edit_page.php, the form token and the page lock
+    // (includes/fn/page_type_pane.php).
+    var _sdPageType = { pageId: 0, busy: false };
+
+    function _sdPageTypeUrl(pageId) {
+        var base = (_design && _design.pageTypeUrl) ? _design.pageTypeUrl : 'edit_page.php';
+        return base + '?properties=1&id=' + encodeURIComponent(pageId);
+    }
+
+    function _sdPageTypeShown(p) {
+        return !!(p && p.page_id > 0 && p.page_type && p.page_type !== 'standard');
+    }
+
+    // The pill follows the page on screen; the fields of another page are
+    // dropped and read again when the pane opens.
+    function _sdPageTypeSync(p) {
+        var btn = document.getElementById('tab-page-type-btn');
+        var box = document.getElementById('sd-page-type-fields');
+        if (!btn || !box) return;
+        var show = _sdPageTypeShown(p);
+        btn.classList.toggle('d-none', !show);
+        if (!show && btn.classList.contains('active')) {
+            var pageBtn = document.getElementById('tab-page-btn');
+            if (pageBtn) pgUI.tab.show(pageBtn);
+        }
+        if (!show || _sdPageType.pageId !== p.page_id) {
+            _sdPageType.pageId = 0;
+            box.innerHTML = '';
+            var status = document.getElementById('sd-page-type-status');
+            if (status) status.textContent = '';
+            var save = document.getElementById('sd-page-type-save');
+            if (save) save.disabled = true;
+        }
+        if (show && btn.classList.contains('active')) _sdPageTypeLoad();
+    }
+
+    function _sdPageTypeLoad() {
+        var p = _pgActivePage();
+        var box = document.getElementById('sd-page-type-fields');
+        var save = document.getElementById('sd-page-type-save');
+        if (!box || !_sdPageTypeShown(p) || _sdPageType.pageId === p.page_id) return;
+        _sdPageType.pageId = p.page_id;
+        box.innerHTML = '<div class="small text-muted">' + esc(_sdT('Loading...')) + '</div>';
+        if (save) save.disabled = true;
+        var failed = function (message) {
+            if (_sdPageType.pageId !== p.page_id) return;
+            box.innerHTML = '<div class="alert alert-info py-2 px-3 small mb-0">' + esc(message || _sdT('Network error')) + '</div>';
+        };
+        fetch(_sdPageTypeUrl(p.page_id), { credentials: 'same-origin',
+                                           headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (_sdPageType.pageId !== p.page_id) return;
+                if (!data || !data.ok) { failed(data && data.message); return; }
+                var name = document.getElementById('sd-page-type-name');
+                if (name) name.textContent = data.page_type_name || p.page_type;
+                // jQuery runs the scripts the fields carry with them.
+                if (window.jQuery) window.jQuery(box).html(data.html || '');
+                else box.innerHTML = data.html || '';
+                // The classic screen prints every type's rows hidden for its
+                // type picker; the pane keeps the page's own type, so only
+                // the shown rows stay and post.
+                box.querySelectorAll('#options_row .card-body > .row > [style*="display: none"]').forEach(function (row) {
+                    row.remove();
+                });
+                var options = box.querySelector('#options_row');
+                if (options) options.classList.remove('collapse');
+                if (typeof pgInitInjected === 'function') pgInitInjected(box);
+                if (save) save.disabled = !_collab.mayEdit;
+            })
+            .catch(function () { failed(''); _sdPageType.pageId = 0; });
+    }
+
+    function _sdPageTypeSave() {
+        var p = _pgActivePage();
+        var box = document.getElementById('sd-page-type-fields');
+        var save = document.getElementById('sd-page-type-save');
+        var status = document.getElementById('sd-page-type-status');
+        if (!box || !save || _sdPageType.busy || !p || _sdPageType.pageId !== p.page_id) return;
+        // The fields sit inside the designer's own form, so they are posted
+        // one by one, as a form submit would: unticked boxes not at all.
+        var body = new FormData();
+        body.append('id', p.page_id);
+        body.append('token', _pgToken());
+        body.append('collab_key', _collabKey());
+        box.querySelectorAll('input[name], select[name], textarea[name]').forEach(function (el) {
+            if (el.disabled) return;
+            if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
+            if (el.tagName === 'SELECT' && el.multiple) {
+                Array.prototype.forEach.call(el.selectedOptions, function (o) { body.append(el.name, o.value); });
+                return;
+            }
+            body.append(el.name, el.value);
+        });
+        _sdPageType.busy = true;
+        save.disabled = true;
+        if (status) status.textContent = '';
+        var done = function (ok, message) {
+            _sdPageType.busy = false;
+            save.disabled = !_collab.mayEdit;
+            if (status) status.textContent = ok ? _sdT('Saved.') : (message || _sdT('Network error'));
+            if (!ok) sdToast(esc(message || _sdT('Network error')), 'danger', 5000);
+        };
+        fetch(_sdPageTypeUrl(p.page_id), { method: 'POST', body: body, credentials: 'same-origin',
+                                           headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) { done(!!(data && data.ok), data && data.message); })
+            .catch(function () { done(false, ''); });
     }
 
     // The footer's main button says what the toolbar's says: a draft is
@@ -61612,6 +61733,7 @@ const StyleDesigner = (function () {
         // code field follow it.
         _sdSettingsCodeSync('pg_page_custom_jsonld');
         _sdSettingsPageLabel(p.page_name);
+        _sdPageTypeSync(p);
         _sdSettingsRefresh();
     }
 
