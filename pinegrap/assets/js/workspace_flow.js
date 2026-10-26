@@ -120,6 +120,7 @@
         checkin: { icon: 'bi-person-check', name: 'fl_kind_checkin', into: true, out: ['done', 'failed'] },
         start_action: { icon: 'bi-alarm', name: 'fl_kind_start_action', into: true, out: ['done', 'failed'] },
         change: { icon: 'bi-pencil-square', name: 'fl_kind_change', into: true, out: ['done', 'failed'] },
+        condition: { icon: 'bi-signpost-split', name: 'fl_kind_condition', into: true, out: ['yes', 'no'] },
         end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] }
     };
 
@@ -127,7 +128,9 @@
     var OUTCOMES = {
         done: 'fl_on_done',
         cancelled: 'fl_on_cancelled',
-        failed: 'fl_on_failed'
+        failed: 'fl_on_failed',
+        yes: 'fl_on_yes',
+        no: 'fl_on_no'
     };
 
     // What a share lets its holder do (ws_flow_share_levels()), lowest first.
@@ -141,6 +144,7 @@
     var PALETTE = [
         ['manual', 'bi-play-circle', 'fl_add_manual'],
         ['task', 'bi-check2-square', 'fl_add_task'],
+        ['condition', 'bi-signpost-split', 'fl_kind_condition'],
         ['post', 'bi-chat-left-text', 'fl_add_post'],
         ['email', 'bi-envelope', 'fl_add_email'],
         ['notify', 'bi-bell', 'fl_kind_notify'],
@@ -393,7 +397,15 @@
     function stepLists() {
         var steps = FL.steps || {};
 
-        return { metrics: steps.metrics || [], digest: steps.digest_only || {}, targets: steps.targets || [], changes: steps.changes || {} };
+        return {
+            metrics: steps.metrics || [],
+            digest: steps.digest_only || {},
+            targets: steps.targets || [],
+            changes: steps.changes || {},
+            records: steps.records || {},
+            operators: steps.operators || {},
+            counts: steps.counts || []
+        };
     }
 
     // Up to two names, then how many more.
@@ -455,6 +467,10 @@
             var target = stepLists().targets.filter(function (item) { return item.id === config.target_id; })[0];
 
             return target ? target.name : t('fl_start_none');
+        }
+
+        if (node.kind === 'condition') {
+            return conditionMeta(config.rule || {});
         }
 
         if (node.kind === 'change') {
@@ -1875,6 +1891,10 @@
             changeFields(box, node);
         }
 
+        if (node.kind === 'condition') {
+            conditionFields(box, node);
+        }
+
         if (state.edit) {
             box.appendChild(connections(node));
 
@@ -2299,6 +2319,252 @@
         });
         box.appendChild(field(t('fl_start_target'), pick));
         box.appendChild(field(t('fl_start_delay'), delay, t('fl_start_delay_help')));
+    }
+
+    // The days of the week by number, 1 Monday - 7 Sunday.
+    var DAYS = { 1: 'fl_day_mon', 2: 'fl_day_tue', 3: 'fl_day_wed', 4: 'fl_day_thu', 5: 'fl_day_fri', 6: 'fl_day_sat', 7: 'fl_day_sun' };
+
+    // What a condition box's rule is, in a few words on the box.
+    function conditionMeta(rule) {
+        var lists = stepLists();
+
+        if (rule.type === 'workday') {
+            return t('fl_cond_workday');
+        }
+
+        if (rule.type === 'weekdays') {
+            return (rule.days || []).map(function (day) { return t(DAYS[day]); }).join(', ') || t('fl_cond_none');
+        }
+
+        if (rule.type === 'hours') {
+            return (rule.from || '?') + ' – ' + (rule.to || '?');
+        }
+
+        if (rule.type === 'metric') {
+            var metric = lists.metrics.filter(function (item) { return item.key === rule.metric; })[0];
+
+            return metric ? metric.label : (rule.metric || t('fl_cond_none'));
+        }
+
+        if (rule.type === 'record') {
+            var record = lists.records[rule.record];
+            var meta = (record && record.fields[rule.field]) ? record.fields[rule.field].label : rule.field;
+
+            return (record ? record.label : (rule.record || '')) + (rule.id ? ' #' + rule.id : '') + (meta ? ' · ' + meta : '');
+        }
+
+        return t('fl_cond_none');
+    }
+
+    // A condition: its kind of rule, then that rule's settings, as the
+    // scheduled form takes them. Somebody who may not change the flow reads
+    // no record number and no value (ws_flow_condition_masked()).
+    function conditionFields(box, node) {
+        var config = node.config;
+        var rule = config.rule = (config.rule && typeof config.rule === 'object') ? config.rule : { type: '' };
+        var types = [['', t('fl_cond_pick')], ['workday', t('fl_cond_workday')], ['weekdays', t('fl_cond_weekdays')], ['hours', t('fl_cond_hours')], ['metric', t('fl_cond_metric')], ['record', t('fl_cond_record')]];
+        var type = K.select(types, rule.type || '');
+        var changed = function () {
+            refreshNode(node);
+        };
+
+        type.addEventListener('change', function () {
+            config.rule = { type: type.value };
+
+            if (type.value === 'weekdays') {
+                config.rule.days = [1, 2, 3, 4, 5];
+            } else if (type.value === 'hours') {
+                config.rule.from = '09:00';
+                config.rule.to = '18:00';
+            } else if ((type.value === 'metric') || (type.value === 'record')) {
+                config.rule.op = (type.value === 'metric') ? 'gt' : 'eq';
+                config.rule.value = '';
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_cond_kind'), type, t('fl_cond_help')));
+
+        if (rule.type === 'weekdays') {
+            var days = el('div', 'wsf-people-list');
+
+            days.setAttribute('role', 'group');
+            days.setAttribute('aria-label', t('fl_cond_weekdays'));
+            [1, 2, 3, 4, 5, 6, 7].forEach(function (day) {
+                var row = el('label', 'wsf-person');
+                var check = el('input', 'form-check-input m-0');
+
+                check.type = 'checkbox';
+                check.checked = (rule.days || []).indexOf(day) !== -1;
+                check.disabled = !state.edit;
+                check.addEventListener('change', function () {
+                    var chosen = (rule.days || []).filter(function (item) { return item !== day; });
+
+                    if (check.checked) {
+                        chosen.push(day);
+                    }
+
+                    rule.days = chosen.sort();
+                    changed();
+                });
+                row.appendChild(check);
+                row.appendChild(document.createTextNode(t(DAYS[day])));
+                days.appendChild(row);
+            });
+            box.appendChild(field(t('fl_cond_weekdays'), days));
+        }
+
+        if (rule.type === 'hours') {
+            [['from', 'fl_cond_from'], ['to', 'fl_cond_to']].forEach(function (pair) {
+                var key = pair[0];
+                var clock = el('input', 'form-control form-control-sm');
+
+                clock.type = 'time';
+                clock.value = rule[key] || '';
+                clock.addEventListener('input', function () {
+                    rule[key] = clock.value;
+                    changed();
+                });
+                box.appendChild(field(t(pair[1]), clock));
+            });
+        }
+
+        if (rule.type === 'metric') {
+            conditionMetric(box, node, rule);
+        }
+
+        if (rule.type === 'record') {
+            conditionRecord(box, node, rule);
+        }
+    }
+
+    // A count compared with a number; a count of a channel's tasks reads one
+    // channel, or every one.
+    function conditionMetric(box, node, rule) {
+        var lists = stepLists();
+        var options = [['', t('fl_cond_metric_pick')]].concat(lists.metrics.map(function (item) { return [item.key, item.label]; }));
+
+        if (rule.metric && !lists.metrics.some(function (item) { return item.key === rule.metric; })) {
+            options.push([rule.metric, rule.metric]);
+        }
+
+        var metric = K.select(options, rule.metric || '');
+        var info = lists.metrics.filter(function (item) { return item.key === rule.metric; })[0];
+
+        metric.addEventListener('change', function () {
+            rule.metric = metric.value;
+            rule.param = 0;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_cond_metric'), metric));
+
+        if (info && (info.scope === 'channel')) {
+            var place = channelPick({ channel_id: rule.param || 0 }, t('fl_cond_any_channel'));
+
+            place.addEventListener('change', function () {
+                rule.param = parseInt(place.value, 10) || 0;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_task_channel'), place));
+        }
+
+        conditionCompare(box, node, rule, lists.counts.map(function (op) { return [op, lists.operators[op] || op]; }), null);
+    }
+
+    // A field of a record compared with a value.
+    function conditionRecord(box, node, rule) {
+        var lists = stepLists();
+        var options = [['', t('fl_change_pick')]];
+
+        Object.keys(lists.records).forEach(function (key) {
+            options.push([key, lists.records[key].label]);
+        });
+
+        if (rule.record && !lists.records[rule.record]) {
+            options.push([rule.record, rule.record]);
+        }
+
+        var kind = K.select(options, rule.record || '');
+        var record = lists.records[rule.record] || null;
+        var id = el('input', 'form-control form-control-sm wsf-number');
+
+        kind.addEventListener('change', function () {
+            rule.record = kind.value;
+            rule.field = '';
+            rule.value = '';
+            refreshNode(node);
+            drawSettings();
+        });
+        id.type = 'number';
+        id.min = '1';
+        id.value = rule.id ? String(rule.id) : '';
+        id.addEventListener('input', function () {
+            rule.id = Math.max(0, parseInt(id.value, 10) || 0);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_change_kind'), kind));
+        box.appendChild(field(t('fl_change_id'), id, state.edit ? t('fl_cond_id_help') : t('fl_cond_hidden')));
+
+        var fields = record ? record.fields : {};
+        var names = Object.keys(fields).filter(function (name) { return fields[name].column; });
+        var pick = K.select([['', t('fl_cond_field_pick')]].concat(names.map(function (name) { return [name, fields[name].label]; })), rule.field || '');
+
+        if (rule.field && (names.indexOf(rule.field) === -1)) {
+            pick.appendChild(new Option(rule.field, rule.field, true, true));
+        }
+
+        pick.addEventListener('change', function () {
+            rule.field = pick.value;
+            rule.value = '';
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_cond_field'), pick));
+
+        var meta = fields[rule.field] || null;
+        var ops = Object.keys(lists.operators).filter(function (op) {
+            return ((op !== 'within') && (op !== 'overdue')) || (meta && ((meta.kind === 'date') || (meta.kind === 'datetime')));
+        });
+
+        conditionCompare(box, node, rule, ops.map(function (op) { return [op, lists.operators[op]]; }), meta);
+    }
+
+    // How the value is compared, and the value: a field's choices where it
+    // has them, else what is typed. No value for "is empty" and its twin.
+    function conditionCompare(box, node, rule, ops, meta) {
+        var op = K.select(ops, rule.op || (ops[0] ? ops[0][0] : ''));
+
+        op.addEventListener('change', function () {
+            rule.op = op.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_cond_op'), op));
+
+        if ((rule.op === 'empty') || (rule.op === 'not_empty')) {
+            return;
+        }
+
+        var input;
+
+        if (meta && (meta.kind === 'enum') && ((rule.op === 'eq') || (rule.op === 'neq'))) {
+            input = K.select([['', t('fl_cond_value_pick')]].concat((meta.values || []).map(function (item) {
+                return [item, (meta.labels && meta.labels[item]) ? meta.labels[item] : item];
+            })), rule.value || '');
+            input.addEventListener('change', function () {
+                rule.value = input.value;
+                refreshNode(node);
+            });
+        } else {
+            input = textInput(rule.value, 500, function (value) {
+                rule.value = value;
+                refreshNode(node);
+            });
+        }
+
+        box.appendChild(field(t('fl_cond_value'), input, (rule.op === 'within') ? t('fl_cond_within_help') : ''));
     }
 
     // A record changed: its kind, update or delete, its number, and for an
@@ -2855,6 +3121,8 @@
             config = { target_id: 0, delay: 0 };
         } else if (kind === 'change') {
             config = { record: '', action: 'update', id: 0, fields: {} };
+        } else if (kind === 'condition') {
+            config = { rule: { type: 'workday' } };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };

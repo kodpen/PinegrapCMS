@@ -57,6 +57,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
 - workspace-flows-change-box.md: The change box of a flow (F4b3, PR #1957): the scheduled change step as a box, its settings, rights, what it writes, and why its record and values reach only the flow's editors
+- workspace-flows-condition-box.md: The condition box of a flow (F4c, PR #1980, flow_conditions.php): one scheduled-action condition, yes/no outcomes, a no without an arrow ends the branch, owner rights, what non-editors read
 - workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php, no schema change): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
