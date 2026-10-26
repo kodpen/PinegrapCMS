@@ -1,6 +1,6 @@
 ---
 name: widget-list-paging
-description: Form list widget paging (W12a): own page parameter (page_param), offset, paging tokens and flags, canonical of a later page; what W12 still leaves for its next slices
+description: Form list widget paging (W12a, #1924): own page parameter (page_param), offset, paging tokens and flags, canonical of a later page; what W12 still leaves for its next slices
 ---
 
 ## Which page parameter does a form list read?
