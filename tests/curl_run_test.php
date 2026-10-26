@@ -148,3 +148,17 @@ function test_curl_run_pin_line()
 	pg_assert_same('example.com:80:1.2.3.4', pg_curl_run_pin('http://example.com/', '1.2.3.4'));
 	pg_assert_same('', pg_curl_run_pin('not a url', '1.2.3.4'));
 }
+
+function test_curl_run_basic_credentials_only_when_given()
+{
+	$options = pg_curl_run_options('POST', 'https://example.com/oauth/token', array(
+		'body'    => 'grant_type=password',
+		'userpwd' => 'id:secret',
+	), curl_run_test_env());
+
+	pg_assert_same('id:secret', $options['CURLOPT_USERPWD']);
+
+	$options = pg_curl_run_options('GET', 'https://example.com/', array('userpwd' => ''), curl_run_test_env());
+
+	pg_assert_false(isset($options['CURLOPT_USERPWD']), 'no credentials option when none given');
+}
