@@ -599,8 +599,9 @@ function erp_line_tax_rate($line_total, $tax_total, $product_rate = null)
  * Map an order's payment method to the e-archive payment method vocabulary.
  *
  * The codes are the OdemeSekli values of the GIB e-Arsiv technical guide's
- * internet sales section. PayPal and Iyzico are payment intermediaries: they
- * collect the money and settle it later, so they are not reported as a card.
+ * internet sales section. PayPal, Iyzico and the redirect drivers' services are
+ * payment intermediaries: they collect the money and settle it later, so they
+ * are not reported as a card.
  *
  * @param string $order_payment_method  orders.payment_method
  * @return string  Code, or '' when the method is unknown
@@ -615,6 +616,12 @@ function erp_payment_method_code($order_payment_method)
             return 'ODEMEARACISI';
         case 'Offline Payment':
             return 'EFT/HAVALE';
+    }
+
+    // A redirect driver's method (PayTR, PayPal Checkout and the like) is a
+    // payment service that collects and settles later, as PayPal and Iyzico.
+    if (function_exists('pg_payment_driver_for_method') && (pg_payment_driver_for_method((string) $order_payment_method) !== '')) {
+        return 'ODEMEARACISI';
     }
 
     return '';

@@ -3100,6 +3100,10 @@ function get_express_order($properties) {
             // assume that the paypal express checkout payment method will not be shown until we find out otherwise
             $show_paypal_express_checkout_payment_method = FALSE;
 
+            // The redirect drivers' methods this order is offered (pg_payment_checkout_methods()),
+            // each drawn as a radio after PayPal Express Checkout.
+            $payment_driver_methods = pg_payment_checkout_driver_methods($recurring_transaction == TRUE);
+
             $output_surcharge_rows = '';
             // Also read by the shipping script below, which is emitted whether
             // or not the credit/debit card method (which sets it) is shown.
@@ -3116,6 +3120,7 @@ function get_express_order($properties) {
                 (
                     ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS === true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true)))
                     || ((ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == TRUE) && ($recurring_transaction == FALSE))
+                    || ($payment_driver_methods !== array())
                     ||
                     (
                         (ECOMMERCE_OFFLINE_PAYMENT == TRUE)
@@ -3151,6 +3156,7 @@ function get_express_order($properties) {
                     // if the Credit/Debit Card payment method is the only payment method, then select radio button by default
                     if (
                         ($show_paypal_express_checkout_payment_method == FALSE)
+                        && ($payment_driver_methods === array())
                         &&
                         (
                             (ECOMMERCE_OFFLINE_PAYMENT == FALSE)
@@ -3253,6 +3259,7 @@ function get_express_order($properties) {
                         // above until the customer selected the credit card payment method.
                         if (
                             ($show_paypal_express_checkout_payment_method)
+                            || ($payment_driver_methods !== array())
                             ||
                             (
                                 (ECOMMERCE_OFFLINE_PAYMENT)
@@ -3345,6 +3352,7 @@ function get_express_order($properties) {
                     // if the PayPal Express Checkout payment method is the only payment method, then select radio button by default
                     if (
                         ($show_credit_debit_card_payment_method == FALSE)
+                        && ($payment_driver_methods === array())
                         &&
                         (
                             (ECOMMERCE_OFFLINE_PAYMENT == FALSE)
@@ -3364,6 +3372,28 @@ function get_express_order($properties) {
                     $output_payment_methods .= '<div class="payment data" style="margin-bottom: 1em">' . $form->output_field(array('type'=>'radio', 'name'=>'payment_method', 'id'=>'payment_method_paypal_express_checkout', 'value'=>'PayPal Express Checkout', 'checked'=>$paypal_express_checkout_checked, 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="payment_method_paypal_express_checkout"> <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/images/paypal.png" width="40" height="26" border="0" alt="PayPal" onclick="document.getElementById(\'payment_method_paypal_express_checkout\').checked = true;"></label></div>';
                 }
                 
+                // A redirect driver's method: its own radio, selected when it is the only method.
+                foreach ($payment_driver_methods as $payment_driver_method => $payment_driver_label) {
+                    $payment_driver_method_id = 'payment_method_' . preg_replace('/[^a-z0-9]+/', '_', strtolower($payment_driver_method));
+
+                    $payment_driver_method_checked = (
+                        ($show_credit_debit_card_payment_method == FALSE)
+                        && ($show_paypal_express_checkout_payment_method == FALSE)
+                        && (count($payment_driver_methods) == 1)
+                        &&
+                        (
+                            (ECOMMERCE_OFFLINE_PAYMENT == FALSE)
+                            ||
+                            (
+                                ($offline_payment_allowed == '0')
+                                && ($offline_payment_always_allowed == 0)
+                            )
+                        )
+                    ) ? 'checked' : '';
+
+                    $output_payment_methods .= '<div class="payment data" style="margin-bottom: 1em">' . $form->output_field(array('type'=>'radio', 'name'=>'payment_method', 'id'=>$payment_driver_method_id, 'value'=>$payment_driver_method, 'checked'=>$payment_driver_method_checked, 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="' . h($payment_driver_method_id) . '"> ' . h($payment_driver_label) . '</label></div>';
+                }
+
                 // if allow offline orders is on, and if this order is allowed to be paid for offline, then output the offline payment method
                 if (
                     (ECOMMERCE_OFFLINE_PAYMENT == TRUE)
@@ -3382,7 +3412,7 @@ function get_express_order($properties) {
                     $_SESSION['ecommerce']['offline_payment_label'] = $offline_payment_label;
                     
                     // if the offline payment method is the only payment method, then select radio button by default
-                    if (($show_credit_debit_card_payment_method == FALSE) && ($show_paypal_express_checkout_payment_method == FALSE)) {
+                    if (($show_credit_debit_card_payment_method == FALSE) && ($show_paypal_express_checkout_payment_method == FALSE) && ($payment_driver_methods === array())) {
                         $offline_payment_checked = 'checked';
                         
                     } else {
@@ -3460,6 +3490,7 @@ function get_express_order($properties) {
                 (
                     (ECOMMERCE_GIFT_CARD == FALSE)
                     && (ECOMMERCE_CREDIT_DEBIT_CARD == FALSE)
+                    && ($payment_driver_methods === array())
                     &&
                     (
                         (ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == FALSE)
@@ -4141,6 +4172,7 @@ function get_express_order($properties) {
         $paypal_express_checkout = false;
         $paypal_express_checkout_image_url = '';
         $offline_payment = false;
+        $payment_driver_methods = array();
         $offline_payment_allowed = false;
         $terms_url = '';
         $purchase_now_button = false;
@@ -5675,6 +5707,7 @@ function get_express_order($properties) {
                 (
                     ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS === true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true)))
                     || ((ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == TRUE) && ($recurring_transaction == FALSE))
+                    || (pg_payment_checkout_driver_methods($recurring_transaction == TRUE) !== array())
                     ||
                     (
                         (ECOMMERCE_OFFLINE_PAYMENT == TRUE)
@@ -5707,6 +5740,11 @@ function get_express_order($properties) {
                     $number_of_payment_methods++;
                 }
 
+                // The redirect drivers' methods this order is offered
+                // (pg_payment_checkout_methods()), method => label.
+                $payment_driver_methods = pg_payment_checkout_driver_methods($recurring_transaction == TRUE);
+                $number_of_payment_methods += count($payment_driver_methods);
+
                 // If offline payment method should be available to this order,
                 // then remember that.
                 if (
@@ -5729,7 +5767,7 @@ function get_express_order($properties) {
 
                     // If credit/debit card is the only payment method, then select that method by
                     // default.
-                    if (!$paypal_express_checkout and !$offline_payment) {
+                    if (!$paypal_express_checkout and !$payment_driver_methods and !$offline_payment) {
                         $form->set('payment_method', 'Credit/Debit Card');
                     }
 
@@ -5844,7 +5882,7 @@ function get_express_order($properties) {
                         // If there are multiple payment methods, then output surcharge warning,
                         // because the surcharge might not have been included in the totals
                         // above until the customer selected the credit card payment method.
-                        if ($paypal_express_checkout or $offline_payment) {
+                        if ($paypal_express_checkout or $payment_driver_methods or $offline_payment) {
                             $surcharge_message = true;
                         }
 
@@ -6035,12 +6073,23 @@ function get_express_order($properties) {
                     // then select it by default.
                     if (
                         !$credit_debit_card
+                        and !$payment_driver_methods
                         and !$offline_payment
                     ) {
                         $form->set('payment_method', 'PayPal Express Checkout');
                     }
 
                     $paypal_express_checkout_image_url = PATH . SOFTWARE_DIRECTORY . '/images/paypal.png';
+                }
+
+                // A redirect driver's method that is the only payment method is selected by default.
+                if (
+                    !$credit_debit_card
+                    and !$paypal_express_checkout
+                    and !$offline_payment
+                    and (count($payment_driver_methods) == 1)
+                ) {
+                    $form->set('payment_method', key($payment_driver_methods));
                 }
 
                 // If offline payment method should be shown, then prepare.
@@ -6051,6 +6100,7 @@ function get_express_order($properties) {
                     if (
                         !$credit_debit_card
                         and !$paypal_express_checkout
+                        and !$payment_driver_methods
                     ) {
                         $form->set('payment_method', 'Offline Payment');
                     }
@@ -6109,6 +6159,7 @@ function get_express_order($properties) {
                 (
                     (ECOMMERCE_GIFT_CARD == FALSE)
                     && (ECOMMERCE_CREDIT_DEBIT_CARD == FALSE)
+                    && ($payment_driver_methods === array())
                     &&
                     (
                         (ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == FALSE)
@@ -6345,6 +6396,7 @@ function get_express_order($properties) {
             'paypal_express_checkout' => $paypal_express_checkout,
             'paypal_express_checkout_image_url' => $paypal_express_checkout_image_url,
             'offline_payment' => $offline_payment,
+            'payment_driver_methods' => $payment_driver_methods,
             'offline_payment_label' => $offline_payment_label,
             'offline_payment_allowed' => $offline_payment_allowed,
             'terms_url' => $terms_url,

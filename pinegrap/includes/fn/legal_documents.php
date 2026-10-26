@@ -756,18 +756,25 @@ function pg_legal_document_seller()
  */
 function pg_legal_document_payment_methods()
 {
-    return array(
+    $methods = array(
         'Credit/Debit Card'       => lang('Credit/Debit Card'),
         'PayPal Express Checkout' => lang('PayPal Express Checkout'),
         'Offline Payment'         => lang('Offline Payment'),
         'Pay With Iyzico'         => lang('Pay With Iyzico'),
     );
+
+    // Each redirect driver's method, under the name the service writes.
+    foreach (array_keys(pg_payment_driver_methods()) as $method) {
+        $methods[$method] = pg_payment_method_label($method);
+    }
+
+    return $methods;
 }
 
 /**
  * The customer-facing name of a stored payment method.
  *
- * @param string $payment_method  one of the four orders.payment_method values
+ * @param string $payment_method  an orders.payment_method value
  * @return string
  */
 function pg_legal_document_payment_label($payment_method)

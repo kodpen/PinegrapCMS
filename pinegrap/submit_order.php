@@ -1078,7 +1078,7 @@ function submit_order($type) {
             // runs without strict mode, so an unknown value would be stored as ''
             // and the order would be saved with no payment method at all.
             if ($liveform->check_field_error('payment_method') == FALSE) {
-                $known_payment_methods = array('Credit/Debit Card', 'PayPal Express Checkout', 'Offline Payment', 'Pay With Iyzico');
+                $known_payment_methods = pg_payment_method_values();
                 $posted_payment_method = trim((string) $liveform->get_field_value('payment_method'));
 
                 if (in_array($posted_payment_method, $known_payment_methods, true) == FALSE) {
@@ -1104,30 +1104,10 @@ function submit_order($type) {
             // allow-list on purpose: an unknown value would fall through the payment switches
             // further below and complete the order without a charge.
             if ($liveform->check_field_error('payment_method') == FALSE) {
-                $allowed_payment_methods = array();
-
-                if (ECOMMERCE_CREDIT_DEBIT_CARD == TRUE) {
-                    $allowed_payment_methods[] = 'Credit/Debit Card';
-                }
-
-                if ((ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == TRUE) && ($recurring_transaction == FALSE)) {
-                    $allowed_payment_methods[] = 'PayPal Express Checkout';
-                }
-
-                if ((defined('ECOMMERCE_PAY_WITH_IYZICO') == TRUE) && (ECOMMERCE_PAY_WITH_IYZICO == TRUE) && ($recurring_transaction == FALSE)) {
-                    $allowed_payment_methods[] = 'Pay With Iyzico';
-                }
-
-                if (
-                    (ECOMMERCE_OFFLINE_PAYMENT == TRUE)
-                    &&
-                    (
-                        ($offline_payment_allowed == '1')
-                        || ($offline_payment_always_allowed == 1)
-                    )
-                ) {
-                    $allowed_payment_methods[] = 'Offline Payment';
-                }
+                $allowed_payment_methods = pg_payment_checkout_methods(array(
+                    'recurring'       => ($recurring_transaction == TRUE),
+                    'offline_allowed' => (($offline_payment_allowed == '1') || ($offline_payment_always_allowed == 1)),
+                ));
 
                 // An order goes on the account only for a member who has one
                 // to put it on (pg_erp_open_account()) and only while the
@@ -1862,8 +1842,13 @@ function submit_order($type) {
                 break;
 
             // The allow-list above already rejects any other value; refuse to continue rather than
-            // completing the order without a charge.
+            // completing the order without a charge. A redirect driver's method is paid by its
+            // driver below.
             default:
+                if (isset(pg_payment_driver_methods(true)[$liveform->get_field_value('payment_method')])) {
+                    break;
+                }
+
                 $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                 exit();
