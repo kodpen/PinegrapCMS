@@ -253,6 +253,11 @@ function mp_matches_set_code($account, $product_id, $code) {
 
 	}
 
+	// A match left by a product deleted since holds the code for nobody: it
+	// sends nothing and no view lists it, so it goes before the check below
+	// instead of refusing the code for ever.
+	mp_matches_clear_stale($account_id, $code, false);
+
 	// Another product sending to the same code would overwrite this one's
 	// stock over there on every send.
 	$other = db_item("SELECT marketplace_product_map.product_id, products.name
@@ -265,8 +270,15 @@ function mp_matches_set_code($account, $product_id, $code) {
 
 	if ($other) {
 
+		// One in the Recycle Bin is not listed in the shop view; the account
+		// screen removes the matches of binned products.
+		$binned = !db_value("SELECT id FROM products
+			WHERE (id = '" . e((int) $other['product_id']) . "')" . pg_catalog_bin_live_sql('products'));
+
 		return mp_error(lang(array(
-			'string' => '{var:1} is already matched to {var:2} on this marketplace.',
+			'string' => $binned
+				? '{var:1} is already matched to {var:2}, which is in the Recycle Bin. Remove its match on the marketplace screen, or restore it.'
+				: '{var:1} is already matched to {var:2} on this marketplace.',
 			'vars'   => array($code, ($other['name'] !== null) ? $other['name'] : '#' . (int) $other['product_id'])
 		)));
 
@@ -366,19 +378,97 @@ function mp_matches_remove($account, $product_ids) {
 
 }
 
-// Queue the stock and price of these products, first in line. Only an active
-// account with an active match is sent to (mp_enqueue()).
-function mp_matches_send($product_ids) {
+// Queue the stock and price of these products on this account, first in
+// line; null for every product it has matched. Answers how many are waiting
+// to go now: only an active account sends, and only an active match.
+//
+// This account only, not through mp_enqueue(), which queues every account
+// the product is matched on and pulls a waiting row's run time forward past
+// its lease and its retry wait. A product already waiting keeps its row.
+function mp_matches_send($account, $product_ids = null) {
 
-	$queued = 0;
+	if (($account['status'] !== 'active') || !mp_can($account['provider'], 'push_stock_price')) {
 
-	foreach (mp_matches_ids($product_ids) as $product_id) {
-
-		$queued += mp_enqueue($product_id, 'stock_price', 1);
+		return 0;
 
 	}
 
-	return $queued;
+	$account_id = (int) $account['id'];
+
+	$where = "WHERE (account_id = '" . e($account_id) . "') AND (status = 'active')";
+
+	if ($product_ids !== null) {
+
+		$product_ids = mp_matches_ids($product_ids);
+
+		if (!$product_ids) {
+
+			return 0;
+
+		}
+
+		$where .= " AND (product_id IN (" . implode(',', $product_ids) . "))";
+
+	}
+
+	$active = array_map('intval', (array) db_values("SELECT product_id FROM marketplace_product_map " . $where));
+
+	foreach ($active as $product_id) {
+
+		db("INSERT INTO marketplace_sync_queue
+			(account_id, product_id, operation, priority, status, run_after, created_timestamp, updated_timestamp)
+			SELECT '" . e($account_id) . "', '" . e($product_id) . "', 'stock_price', 1, 'waiting', 0,
+				UNIX_TIMESTAMP(), UNIX_TIMESTAMP()
+			FROM DUAL
+			WHERE NOT EXISTS (SELECT 1 FROM marketplace_sync_queue
+				WHERE (account_id = '" . e($account_id) . "') AND (product_id = '" . e($product_id) . "')
+				  AND (operation = 'stock_price') AND (status = 'waiting'))");
+
+	}
+
+	return count($active);
+
+}
+
+/* --------------------------------------------- matches of products gone */
+
+// The WHERE fragment of an account's matches whose product was deleted, or
+// with $binned also those whose product is in the Recycle Bin. Neither is
+// listed in the shop view.
+function mp_matches_stale_sql($account_id, $binned = true) {
+
+	$live = $binned ? pg_catalog_bin_live_sql('products') : '';
+
+	return "WHERE (marketplace_product_map.account_id = '" . e((int) $account_id) . "')
+		AND ((products.id IS NULL)" . (($live !== '') ? " OR NOT (1 = 1" . $live . ")" : '') . ")";
+
+}
+
+// How many of an account's matches belong to deleted or binned products.
+function mp_matches_stale_count($account_id) {
+
+	return (int) db_value("SELECT COUNT(*) FROM marketplace_product_map
+		LEFT JOIN products ON products.id = marketplace_product_map.product_id
+		" . mp_matches_stale_sql($account_id));
+
+}
+
+// Remove those matches (with $code, only the ones on that code; with
+// $binned false, only the deleted products'). Answers how many went.
+function mp_matches_clear_stale($account_id, $code = null, $binned = true) {
+
+	$ids = array_map('intval', (array) db_values("SELECT marketplace_product_map.id FROM marketplace_product_map
+		LEFT JOIN products ON products.id = marketplace_product_map.product_id
+		" . mp_matches_stale_sql($account_id, $binned)
+		. (($code !== null) ? " AND " . mp_remote_products_map_code_sql($code) : '')));
+
+	if ($ids) {
+
+		db("DELETE FROM marketplace_product_map WHERE id IN (" . implode(',', $ids) . ")");
+
+	}
+
+	return count($ids);
 
 }
 

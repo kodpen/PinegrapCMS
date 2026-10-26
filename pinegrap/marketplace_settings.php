@@ -20,7 +20,8 @@
 //
 //   Is the connection alive - the account list, with when it last worked.
 //   Which products go over there - the mapping, which is where the shop's
-//     product meets the code the marketplace knows it by.
+//     product meets the code the marketplace knows it by. Counted here, kept
+//     on marketplace_products.php.
 //   Did it land - the queue, which is the only honest answer, because these
 //     marketplaces accept a batch and refuse it line by line minutes later.
 
@@ -39,6 +40,7 @@ validate_ecommerce_access($user);
 
 require_once(dirname(__FILE__) . '/includes/api/outbound/connectors/base.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/listings.php');
+require_once(dirname(__FILE__) . '/includes/api/outbound/product_matches.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhook_receiver.php');
 
 $liveform = new liveform('marketplace_settings');
@@ -517,6 +519,20 @@ if ($_POST) {
 		}
 
 		header('Location: ' . $screen_url . '?account=' . $account_id . '&group=' . $group_id . '#mp-list');
+
+		exit();
+
+	}
+
+	// Matches of products deleted since, or in the Recycle Bin: no view lists
+	// them, and while they stand they hold their codes.
+	if ($action === 'clear_stale_matches' && $account) {
+
+		$cleared = mp_matches_clear_stale($account_id);
+
+		$liveform->add_notice(lang(array('string' => '{var:1} match(es) removed. Nothing was changed on the marketplace.', 'vars' => array($cleared))));
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-map');
 
 		exit();
 
@@ -1696,7 +1712,7 @@ if (!$selected_id && $accounts) {
 
 $selected = $selected_id ? mp_account($selected_id) : null;
 
-$map_counts = array('all' => 0, 'errors' => 0);
+$map_counts = array('all' => 0, 'errors' => 0, 'stale' => 0);
 
 $orders = array();
 
@@ -1720,12 +1736,15 @@ $failures = array();
 
 if ($selected) {
 
-	// How many products are matched, and how many of them a send was refused
-	// for; the products themselves are listed on marketplace_products.php.
+	// How many products are matched, how many of them a send was refused
+	// for, and how many matches belong to products deleted or binned since;
+	// the same counts as the shop view of marketplace_products.php.
+	$shop_counts = mp_matches_counts($selected_id);
+
 	$map_counts = array(
-		'all'    => (int) db_value("SELECT COUNT(*) FROM marketplace_product_map WHERE account_id = '" . e($selected_id) . "'"),
-		'errors' => (int) db_value("SELECT COUNT(*) FROM marketplace_product_map
-			WHERE (account_id = '" . e($selected_id) . "') AND (status = 'error')")
+		'all'    => $shop_counts['matched'],
+		'errors' => $shop_counts['errors'],
+		'stale'  => mp_matches_stale_count($selected_id)
 	);
 
 	foreach ((array) db_items("SELECT status, COUNT(*) AS n FROM marketplace_sync_queue
@@ -1934,14 +1953,6 @@ if ($selected) {
 	// left out, since the job would never pick that row up.
 	$can_list = mp_can($selected['provider'], 'create_listings');
 
-	// A marketplace whose connector reads its listings' approval shows where
-	// each matched product's listing stands.
-	$can_listing_status = mp_can($selected['provider'], 'listing_status');
-
-	// One whose connector updates approved listings gets a tick box on each
-	// of them and a button that queues the ticked ones.
-	$can_update_listings = mp_can($selected['provider'], 'update_listings');
-
 	// Orders come in only from a marketplace whose connector reads them, and
 	// are accepted only by one that can accept them. The job skips the rest
 	// without a word, so their switches and the orders card are not drawn: a
@@ -2063,7 +2074,16 @@ if ($selected) {
 						? ' <a class="text-danger" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=shop&amp;view=errors">'
 							. h(lang(array('string' => '{var:1} of them were not sent.', 'vars' => array(pg_format_number($map_counts['errors'], 0))))) . '</a>'
 						: '')
-				: h(lang('No product is matched yet. Nothing is sent until at least one is.'))) . '
+				: h(lang('No product is matched yet. Nothing is sent until at least one is.')))
+			. ($map_counts['stale'] ? '
+			<form method="post" action="marketplace_settings.php" class="d-flex flex-wrap align-items-center gap-2 mt-2">
+				' . get_token_field() . '
+				<input type="hidden" name="mp_action" value="clear_stale_matches">
+				<input type="hidden" name="account_id" value="' . $selected_id . '">
+				<span class="text-warning">' . h(lang(array('string' => '{var:1} match(es) belong to products deleted since or in the Recycle Bin. They hold their codes, and no list shows them.',
+					'vars' => array(pg_format_number($map_counts['stale'], 0))))) . '</span>
+				<button type="submit" class="btn btn-sm btn-outline-warning"><i class="bi bi-trash me-1"></i>' . h(lang('Remove them')) . '</button>
+			</form>' : '') . '
 		</div>
 	</div>';
 

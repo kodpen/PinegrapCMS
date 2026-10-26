@@ -59,3 +59,57 @@ function test_marketplace_product_matches_selected_ids()
 	pg_assert_same(array(3, 5), mp_matches_ids(array('3', 'x', 5, -2, '5', array(9), '0')));
 	pg_assert_same(array(), mp_matches_ids('7'), 'a single value is not a list');
 }
+
+// escape() asks the connection class; without a database it falls back to
+// addslashes() once the class exists.
+function product_matches_test_db_stub()
+{
+	if (!class_exists('db')) {
+		class db
+		{
+			public static $con;
+		}
+	}
+}
+
+function product_matches_test_body($function)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/product_matches.php');
+	$start = strpos($source, "\nfunction " . $function . '(');
+	$end = strpos($source, "\nfunction ", $start + 10);
+
+	return (string) substr($source, $start, ($end === false) ? null : $end - $start);
+}
+
+function test_marketplace_product_matches_a_deleted_holder_does_not_keep_its_code()
+{
+	$body = product_matches_test_body('mp_matches_set_code');
+	$clear = strpos($body, 'mp_matches_clear_stale($account_id, $code, false)');
+	$check = strpos($body, '$other = db_item(');
+
+	pg_assert_true($clear !== false, 'the deleted products\' matches on the code are cleared');
+	pg_assert_true(($check !== false) && ($clear < $check), 'before another holder is looked for');
+	pg_assert_contains('which is in the Recycle Bin', $body, 'a binned holder is named as such');
+}
+
+function test_marketplace_product_matches_stale_sql()
+{
+	product_matches_test_db_stub();
+
+	$sql = mp_matches_stale_sql(7, false);
+
+	pg_assert_contains("(marketplace_product_map.account_id = '7')", $sql);
+	pg_assert_contains('(products.id IS NULL)', $sql, 'a deleted product\'s match');
+	pg_assert_false(strpos($sql, 'OR NOT') !== false, 'without $binned, a binned product\'s match is kept');
+}
+
+function test_marketplace_product_matches_send_needs_an_active_account()
+{
+	pg_assert_same(0, mp_matches_send(array('id' => 3, 'provider' => 'n11', 'status' => 'paused'), array(1, 2)),
+		'a paused account queues nothing');
+
+	$body = product_matches_test_body('mp_matches_send');
+
+	pg_assert_false(strpos($body, 'mp_enqueue(') !== false, 'this account only, not every account the product is on');
+	pg_assert_contains("(status = 'active')", $body, 'only an active match is sent');
+}

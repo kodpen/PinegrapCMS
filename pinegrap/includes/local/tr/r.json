@@ -555,6 +555,7 @@
     "Remove the watcher {var:1}": "{var:1} takipçisini kaldır",
     "Remove the webhook before changing the environment or the seller ID: the webhook was registered for the current ones and would keep delivering their packages.": "Ortamı ya da satıcı kimliğini değiştirmeden önce webhook'u kaldırın: webhook şu ankiler için kaydedildi ve onların paketlerini göndermeye devam eder.",
     "Remove the webhook?": "Webhook kaldırılsın mı?",
+    "Remove them": "Bunları kaldır",
     "Remove these shipping zones": "Bu kargo bölgelerini kaldır",
     "Remove this MCP server and its credential?": "Bu MCP sunucusu ve kimlik bilgisi kaldırılsın mı?",
     "Remove this address from the 404 log?": "Bu adres 404 kaydından çıkarılsın mı?",

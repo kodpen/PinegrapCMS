@@ -9,17 +9,20 @@
  */
 
 // Marketplace products: what a store sells on a marketplace, matched to this
-// shop's products.
+// shop's products. Two views.
 //
-// The account screen (marketplace_settings.php) matches one product at a time
-// against a typed code. A store that has sold on a marketplace for years has
-// hundreds of products there, under codes that are not its shop codes, so
-// this screen works the other way round: it reads the store's catalogue from
-// the marketplace (includes/api/outbound/remote_products.php), works out which
-// shop product each one most likely is (matching.php), and shows the two side
-// by side with their pictures. The operator accepts, picks another product
-// from a picture grid, or says the shop does not sell it; the sure ones can be
+// The catalogue view, where the connector lists the store's products there: a
+// store that has sold on a marketplace for years has hundreds of products
+// there, under codes that are not its shop codes, so the catalogue is read
+// (includes/api/outbound/remote_products.php), the shop product each one most
+// likely is is worked out (matching.php), and the two are shown side by side
+// with their pictures. The operator accepts, picks another product from a
+// picture grid, or says the shop does not sell it; the sure ones can be
 // accepted together.
+//
+// The shop view, on every marketplace: the shop's products with their state
+// on the account (product_matches.php), a code typed in the row, and steps on
+// the ticked ones.
 //
 // GET draws the screen; every POST is the screen's script asking for one step
 // and is answered in JSON.
@@ -615,15 +618,28 @@ function mp_products_shop_step($account, $action, $id, $user) {
 
 	} elseif (($action === 'shop_send') || ($action === 'shop_send_all')) {
 
-		$queued = ($action === 'shop_send_all') ? mp_enqueue_account($account_id) : mp_matches_send($ids);
+		$queued = mp_matches_send($account, ($action === 'shop_send_all') ? null : $ids);
 
 		$message = $queued
 			? lang(array('string' => '{var:1} product(s) queued. They go out on the next run.', 'vars' => array($queued)))
 			: '';
 
-		$error = $queued ? '' : (($account['status'] !== 'active')
-			? lang('This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.')
-			: lang('Nothing to send: no product is matched and active on this account.'));
+		if ($account['status'] !== 'active') {
+
+			$error = lang('This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.');
+
+		} elseif (!$queued) {
+
+			$error = lang('Nothing to send: no product is matched and active on this account.');
+
+		} elseif (($action === 'shop_send') && ($queued < count($ids))) {
+
+			// The rest are not matched, or their match was refused: a refused
+			// one is sent again once its reason is put right.
+			$error = lang(array('string' => '{var:1} of the ticked products are not matched, or their match was refused, and were not queued.',
+				'vars' => array(count($ids) - $queued)));
+
+		}
 
 	} elseif (($action === 'shop_listing_update') && mp_can($account['provider'], 'update_listings')) {
 
@@ -787,7 +803,12 @@ function mp_products_shop_row_html($account, $row) {
 
 		$buttons[] = '<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-act="code"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Change code')) . '</button>';
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-act="shop_send"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>';
+		// Only an active match is sent; a refused one shows its reason above.
+		if ($row['map_status'] === 'active') {
+
+			$buttons[] = '<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-act="shop_send"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>';
+
+		}
 
 		$buttons[] = '<button type="button" class="btn btn-sm btn-ghost" data-mp-act="shop_remove"><i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>';
 
