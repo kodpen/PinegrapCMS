@@ -929,6 +929,7 @@
     "{var:1} order(s) have no shipping address and were skipped": "{var:1} siparişin teslimat adresi olmadığı için atlandı",
     "{var:1} order(s) placed with this code": "Bu kodla {var:1} sipariş verildi",
     "{var:1} order(s) were already cancelled and skipped": "{var:1} sipariş zaten iptal edilmişti, atlandı",
+    "{var:1} order(s) were already shipped in full and skipped": "{var:1} sipariş zaten tamamen kargolanmış olduğu için atlandı",
     "{var:1} order(s) were cancelled": "{var:1} sipariş iptal edildi",
     "{var:1} order(s) were cancelled and skipped": "{var:1} sipariş iptal edilmiş olduğu için atlandı",
     "{var:1} order(s) were deleted": "{var:1} sipariş silindi",

@@ -34,12 +34,19 @@ function update_order($request) {
     $deliveries = array();
 
     $order = db_item(
-        "SELECT id, billing_email_address, order_number, contact_id FROM orders
+        "SELECT id, billing_email_address, order_number, contact_id,
+            " . (pg_schema_has('orders', 'type') ? 'type' : "'' AS type") . "
+        FROM orders
         WHERE id = '" . e($request['order']['id']) . "'");
 
     if (!$order) {
         return error_response('The order could not be found.');
     }
+
+    // A marketplace sold order's address is the marketplace's relay for its
+    // buyer, who hears about the shipment from the marketplace: the shop's
+    // shipped and delivered e-mails stay back, whatever the caller asked.
+    $mails_customer = pg_order_cancellation_mails_customer($order);
 
     if (!is_array($request['order']['recipients'])) {
         return error_response('There are no recipients in the request.');
@@ -69,6 +76,10 @@ function update_order($request) {
             $recipient['shipped'] = $recipient_request['shipped'];
         }
 
+        if (!$mails_customer) {
+            $recipient['shipped'] = false;
+        }
+
         // If there is a ship date or delivery date in the request, then update recipient.
         if (isset($recipient_request['ship_date']) or isset($recipient_request['delivery_date'])) {
 
@@ -87,7 +98,7 @@ function update_order($request) {
                 // switch that keeps the shipping e-mail back.
                 $deliveries[$recipient['id']] = array(
                     'day'    => pg_shipment_date((string) $recipient_request['delivery_date']),
-                    'notify' => !(isset($recipient_request['shipped']) && !$recipient_request['shipped']),
+                    'notify' => $mails_customer && !(isset($recipient_request['shipped']) && !$recipient_request['shipped']),
                 );
             }
 

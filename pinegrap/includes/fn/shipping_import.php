@@ -124,6 +124,13 @@ function pg_shipping_import_row_error($row)
         return lang('The order number is missing.');
     }
 
+    // orders.order_number is a number column: MySQL compares '10045-1' or
+    // '10045abc' by its numeric prefix and would find order 10045, and a
+    // UTF-16 file's cells would read as one-digit order numbers.
+    if (!preg_match('/^[0-9]{1,18}$/', $row['order_number'])) {
+        return lang('An order number is made of digits only.');
+    }
+
     if ($row['number'] === '') {
         return lang('The tracking number is missing.');
     }
@@ -186,40 +193,71 @@ function pg_shipping_import_entries($existing, $rows)
 
 /**
  * One address's part of the update_order() request a bulk "mark shipped"
- * sends: the customer is told ('shipped' true), the ship date is today, and
- * the delivery date goes back as it is, because update_order() writes the two
- * together and one sent alone blanks the other. No tracking numbers: the
- * address's list stays as it is, and a mark without a number is no parcel, so
- * the order does not count as shipped for the cancel gate
- * (_order_has_shipped()).
+ * sends: the customer is told ('shipped' true), the ship date is today, the
+ * delivery date goes back as it is (update_order() writes the two together
+ * and one sent alone blanks the other), and every line is shipped in full, so
+ * the Unshipped filter, the shipping report and the dashboard read the order
+ * as shipped. No tracking numbers: the address's list stays as it is, and a
+ * mark without a number is no parcel, so the order does not count as shipped
+ * for the customer's cancel gate (_order_has_shipped()).
  *
  * @param  array  $recipient ship_tos row: id, ship_date, delivery_date
+ * @param  array  $items     the address's order_items rows: id, quantity
  * @param  string $today     Y-m-d
  * @return array
  */
-function pg_shipping_bulk_mark_recipient($recipient, $today)
+function pg_shipping_bulk_mark_recipient($recipient, $items, $today)
 {
-    return array(
+    $request = array(
         'id'            => (int) $recipient['id'],
         'shipped'       => true,
         'ship_date'     => (string) $today,
         'delivery_date' => (string) $recipient['delivery_date'],
         'items'         => array(),
     );
+
+    foreach ((array) $items as $item) {
+        $request['items'][] = array(
+            'id'               => (int) $item['id'],
+            'shipped_quantity' => (int) $item['quantity'],
+        );
+    }
+
+    return $request;
+}
+
+/**
+ * Whether any of the lines still has something to ship.
+ *
+ * @param  array $items order_items rows: quantity, shipped_quantity
+ * @return bool
+ */
+function pg_shipping_bulk_mark_left($items)
+{
+    foreach ((array) $items as $item) {
+        if ((int) $item['quantity'] > (int) $item['shipped_quantity']) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
  * Why the bulk mark leaves an order alone, or '' to mark it: a cancelled
- * order, a cart that was never ordered, an order with nothing to ship to, and
- * one that already has a tracking number (its customer was told when the
- * number went in; a second mail would announce the same parcel again).
+ * order, a cart that was never ordered, an order with nothing to ship to, one
+ * that already has a tracking number (its customer was told when the number
+ * went in), and one whose lines are all shipped already (marked before, or
+ * shipped on the order screen); a second mark would mail the customer again.
  *
  * @param  string $status        orders.status
  * @param  int    $address_count the order's ship_tos rows
  * @param  bool   $has_parcel    _order_has_shipped()
- * @return string '', 'cancelled', 'incomplete', 'no_address' or 'shipped'
+ * @param  bool   $left          pg_shipping_bulk_mark_left() over its lines
+ * @return string '', 'cancelled', 'incomplete', 'no_address', 'shipped' or
+ *                'shipped_in_full'
  */
-function pg_shipping_bulk_mark_skip($status, $address_count, $has_parcel)
+function pg_shipping_bulk_mark_skip($status, $address_count, $has_parcel, $left)
 {
     if ($status === 'cancelled') {
         return 'cancelled';
@@ -235,6 +273,10 @@ function pg_shipping_bulk_mark_skip($status, $address_count, $has_parcel)
 
     if ($has_parcel) {
         return 'shipped';
+    }
+
+    if (!$left) {
+        return 'shipped_in_full';
     }
 
     return '';

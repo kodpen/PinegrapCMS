@@ -2082,6 +2082,7 @@
     "An order is invoiced once it is complete.": "Sipariş tamamlandığında faturalanır.",
     "An order is shipped": "Sipariş kargoya verildi",
     "An order made up only of gift cards cannot be paid for with a gift card.": "Yalnızca hediye kartlarından oluşan bir sipariş, hediye kartıyla ödenemez.",
+    "An order number is made of digits only.": "Sipariş numarası yalnızca rakamlardan oluşur.",
     "An order preview page could not be found for the id that was passed.": "İletilen kimlik için bir sipariş önizleme sayfası bulunamadı.",
     "An order was not invoiced automatically": "Bir sipariş kendiliğinden faturalanamadı",
     "An order's invoice does not repeat: its shipping and fees are not on its lines. Type the invoice in the ERP to repeat it.": "Siparişten kesilen fatura tekrarlanmaz: kargo ve ek ücretleri satırlarında değil. Tekrarlamak için faturayı ERP'de yazın.",

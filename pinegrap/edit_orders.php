@@ -648,8 +648,9 @@ if (!empty($_POST['orders'])) {
             break;
 
         // Mark the selected orders shipped without a tracking number: every
-        // address gets today's ship date and the customer the shipping e-mail,
-        // through update_order(), the order screen's own save. No parcel is
+        // address gets today's ship date and its lines are shipped in full,
+        // and the customer gets the shipping e-mail, through update_order(),
+        // the order screen's own save. No parcel is
         // recorded, so a marked order still counts as unshipped for the
         // customer's cancel gate. Orders that cannot or need not be marked are
         // skipped and counted (pg_shipping_bulk_mark_skip()).
@@ -659,7 +660,7 @@ if (!empty($_POST['orders'])) {
             require_once(PG_FUNCTIONS_DIR . '/update_order.php');
 
             $bulk_marked = 0;
-            $bulk_skipped = array('cancelled' => 0, 'incomplete' => 0, 'no_address' => 0, 'shipped' => 0);
+            $bulk_skipped = array('cancelled' => 0, 'incomplete' => 0, 'no_address' => 0, 'shipped' => 0, 'shipped_in_full' => 0);
             $bulk_failed = 0;
             $today = date('Y-m-d');
 
@@ -678,7 +679,18 @@ if (!empty($_POST['orders'])) {
                     "SELECT id, ship_date, delivery_date FROM ship_tos
                     WHERE order_id = '" . $order_id . "' ORDER BY id");
 
-                $skip = pg_shipping_bulk_mark_skip((string) $status, count($recipients), _order_has_shipped($order_id));
+                $items = array();
+                $left = false;
+
+                foreach ($recipients as $recipient) {
+                    $items[$recipient['id']] = db_items(
+                        "SELECT id, quantity, shipped_quantity FROM order_items
+                        WHERE ship_to_id = '" . (int) $recipient['id'] . "' AND order_id = '" . $order_id . "'");
+
+                    $left = $left || pg_shipping_bulk_mark_left($items[$recipient['id']]);
+                }
+
+                $skip = pg_shipping_bulk_mark_skip((string) $status, count($recipients), _order_has_shipped($order_id), $left);
 
                 if ($skip !== '') {
                     $bulk_skipped[$skip]++;
@@ -688,7 +700,7 @@ if (!empty($_POST['orders'])) {
                 $request = array();
 
                 foreach ($recipients as $recipient) {
-                    $request[] = pg_shipping_bulk_mark_recipient($recipient, $today);
+                    $request[] = pg_shipping_bulk_mark_recipient($recipient, $items[$recipient['id']], $today);
                 }
 
                 $outcome = update_order(array('order' => array('id' => $order_id, 'recipients' => $request)));
@@ -735,6 +747,9 @@ if (!empty($_POST['orders'])) {
                         break;
                     case 'no_address':
                         $message = lang(array('string' => '{var:1} order(s) have no shipping address and were skipped', 'vars' => $vars));
+                        break;
+                    case 'shipped_in_full':
+                        $message = lang(array('string' => '{var:1} order(s) were already shipped in full and skipped', 'vars' => $vars));
                         break;
                     default:
                         $message = lang(array('string' => '{var:1} order(s) already have a tracking number and were skipped', 'vars' => $vars));

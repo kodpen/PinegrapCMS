@@ -106,31 +106,90 @@ function test_shipping_import_entries()
 	pg_assert_same(array(2 => 'add', 3 => 'present', 4 => 'add', 5 => 'present'), $out['status']);
 }
 
-// The bulk mark tells the customer, dates the address today and sends its
-// delivery date back unchanged (update_order() writes the two together), with
-// no tracking numbers, so the list on the address is not touched.
+// An order number is digits only: orders.order_number is a number column, so
+// MySQL would match '10045-1' or '10045abc' to order 10045 by its prefix, and
+// a UTF-16 file's cells would read as one-digit numbers.
+function test_shipping_import_row_error_order_number_digits_only()
+{
+	$row = array('line' => 1, 'order_number' => '10045', 'number' => '123456789', 'carrier' => '');
+
+	pg_assert_same('', pg_shipping_import_row_error($row));
+
+	foreach (array('10045-1', '10045abc', "1\0", '1 0045', '+10045', '1.5', '#10045', str_repeat('9', 19)) as $order_number) {
+		pg_assert_true(pg_shipping_import_row_error(array('order_number' => $order_number) + $row) !== '', $order_number);
+	}
+}
+
+// A UTF-16 export's cells carry NUL bytes; no row of it passes the check.
+function test_shipping_import_utf16_rows_refused()
+{
+	$text = mb_convert_encoding("1001,123456789,aras\n1002,987654321,mng\n", 'UTF-16LE', 'UTF-8');
+
+	$read = pg_shipping_import_read(shipping_import_test_stream("\xFF\xFE" . $text), 100);
+
+	pg_assert_true(count($read['rows']) > 0);
+
+	foreach ($read['rows'] as $row) {
+		pg_assert_true(pg_shipping_import_row_error($row) !== '', 'line ' . $row['line']);
+	}
+}
+
+// The bulk mark tells the customer, dates the address today, sends its
+// delivery date back unchanged (update_order() writes the two together) and
+// ships every line in full, with no tracking numbers, so the list on the
+// address is not touched.
 function test_shipping_bulk_mark_recipient()
 {
 	$request = pg_shipping_bulk_mark_recipient(
-		array('id' => '7', 'ship_date' => '2026-01-01', 'delivery_date' => '2026-01-05'), '2026-10-26');
+		array('id' => '7', 'ship_date' => '2026-01-01', 'delivery_date' => '2026-01-05'),
+		array(array('id' => '31', 'quantity' => '3', 'shipped_quantity' => '1'), array('id' => '32', 'quantity' => '1', 'shipped_quantity' => '0')),
+		'2026-10-26');
 
 	pg_assert_same(array(
 		'id'            => 7,
 		'shipped'       => true,
 		'ship_date'     => '2026-10-26',
 		'delivery_date' => '2026-01-05',
-		'items'         => array(),
+		'items'         => array(
+			array('id' => 31, 'shipped_quantity' => 3),
+			array('id' => 32, 'shipped_quantity' => 1),
+		),
 	), $request);
 	pg_assert_false(array_key_exists('tracking_numbers', $request));
 }
 
-// Which orders the bulk mark leaves alone, and why.
+// Whether any line still has something to ship.
+function test_shipping_bulk_mark_left()
+{
+	pg_assert_true(pg_shipping_bulk_mark_left(array(array('quantity' => '2', 'shipped_quantity' => '1'))));
+	pg_assert_false(pg_shipping_bulk_mark_left(array(array('quantity' => '2', 'shipped_quantity' => '2'))));
+	pg_assert_false(pg_shipping_bulk_mark_left(array()));
+}
+
+// Which orders the bulk mark leaves alone, and why: a marked order has its
+// lines shipped in full, so a second click skips it instead of mailing again.
 function test_shipping_bulk_mark_skip()
 {
-	pg_assert_same('', pg_shipping_bulk_mark_skip('complete', 1, false));
-	pg_assert_same('', pg_shipping_bulk_mark_skip('exported', 2, false));
-	pg_assert_same('cancelled', pg_shipping_bulk_mark_skip('cancelled', 1, false));
-	pg_assert_same('incomplete', pg_shipping_bulk_mark_skip('incomplete', 1, false));
-	pg_assert_same('no_address', pg_shipping_bulk_mark_skip('complete', 0, false));
-	pg_assert_same('shipped', pg_shipping_bulk_mark_skip('complete', 1, true));
+	pg_assert_same('', pg_shipping_bulk_mark_skip('complete', 1, false, true));
+	pg_assert_same('', pg_shipping_bulk_mark_skip('exported', 2, false, true));
+	pg_assert_same('cancelled', pg_shipping_bulk_mark_skip('cancelled', 1, false, true));
+	pg_assert_same('incomplete', pg_shipping_bulk_mark_skip('incomplete', 1, false, true));
+	pg_assert_same('no_address', pg_shipping_bulk_mark_skip('complete', 0, false, true));
+	pg_assert_same('shipped', pg_shipping_bulk_mark_skip('complete', 1, true, true));
+	pg_assert_same('shipped_in_full', pg_shipping_bulk_mark_skip('complete', 1, false, false));
+}
+
+// update_order() keeps the shop's shipped and delivered mails from a
+// marketplace order's buyer whatever the caller asks: the bulk paths send
+// 'shipped' true. Pinned in the source, since the function needs a database.
+function test_update_order_does_not_mail_marketplace_buyer()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/update_order.php');
+
+	pg_assert_contains("'type'", $source);
+	pg_assert_contains('$mails_customer = pg_order_cancellation_mails_customer($order);', $source);
+	pg_assert_contains("if (!\$mails_customer) {\n            \$recipient['shipped'] = false;", $source);
+	pg_assert_contains("'notify' => \$mails_customer && ", $source);
+	pg_assert_false(pg_order_cancellation_mails_customer(array('type' => 'marketplace')));
+	pg_assert_true(pg_order_cancellation_mails_customer(array('type' => 'online')));
 }
