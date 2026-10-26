@@ -194,6 +194,35 @@ function ws_upload_max_bytes()
 }
 
 /**
+ * The largest file an MCP tool call posts: 1 MB, or the channel's own limit
+ * when that is lower. The file travels base64 inside one JSON-RPC message
+ * the client builds and often its model reads, so the tool is the path for a
+ * small file; a larger one goes over the REST route as a form part.
+ *
+ * @return int bytes
+ */
+function ws_mcp_upload_max_bytes()
+{
+    return min(1024 * 1024, ws_upload_max_bytes());
+}
+
+/**
+ * How many bytes a base64 text decodes to, read from its length alone so a
+ * file too large is refused before it is decoded. A data: prefix, line
+ * breaks and padding are not the file.
+ *
+ * @param string $data
+ * @return int bytes
+ */
+function ws_upload_base64_bytes($data)
+{
+    $parts = explode('base64,', (string) $data, 2);
+    $text = rtrim((string) preg_replace('/[\s]+/', '', end($parts)), '=');
+
+    return (int) floor(strlen($text) * 3 / 4);
+}
+
+/**
  * Can channels keep their files in folders yet (4.82)?
  *
  * @return bool

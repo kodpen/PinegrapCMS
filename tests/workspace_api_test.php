@@ -2182,7 +2182,7 @@ function test_ws_api_files_create_small_file_tool()
 // A file may answer a message (a voice reply): files.create declares an
 // optional parent_id, refuses a bad one on that field before its dry run
 // stops, and hands it to the write; the panel's upload sends it on through
-// the same check. Posting a file stays no MCP tool.
+// the same check.
 function test_ws_api_files_create_answers_a_message()
 {
 	$route = null;
@@ -2205,7 +2205,7 @@ function test_ws_api_files_create_answers_a_message()
 	pg_assert_same(1, $params['parent_id']['min'] ?? null, 'parent_id names a message');
 	pg_assert_true(empty($params['parent_id']['required']), 'parent_id may be left out');
 	pg_assert_contains('parent_id', (string) $route['description'], 'the description says what parent_id does');
-	pg_assert_false(pg_mcp_route_is_offered($route), 'posting a file stays no MCP tool');
+	pg_assert_true(pg_mcp_route_is_offered($route), 'posting a small file is a tool');
 
 	$api = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_files_create'));
 
