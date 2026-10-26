@@ -1252,6 +1252,22 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
+        // The canvas's read-only picture of a classic page's system region
+        // drawn by its custom layout, as the server draws it for the
+        // signed-in user (pg_layout_region_preview()). The layout editor's
+        // right (role 1 or better), as layout_code asks; '' for a page that
+        // draws no custom layout.
+        case 'legacy_region_preview':
+            if ((int)$user['role'] > 1) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+            respond(array(
+                'status' => 'success',
+                'html'   => pg_layout_region_preview(isset($request['page_id']) ? (int)$request['page_id'] : 0),
+            ));
+            break;
+
         // A page the user may not know is drawn as an unsaved one: a
         // comments widget then shows no thread of it. The comment settings
         // are the page's as the editor holds them, saved or not, on a page

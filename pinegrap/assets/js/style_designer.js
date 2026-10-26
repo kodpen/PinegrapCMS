@@ -5875,6 +5875,11 @@ const StyleDesigner = (function () {
         // Region placeholder
         '.sd-region-ph { padding:10px; text-align:center; color:#6c757d; font-size:11px; border:1px dashed #ccc; border-radius:4px; background:rgba(0,0,0,.015); }',
         '.sd-region-ph .bi { margin-right:4px; }',
+        // A classic system region drawn by the server under its label (_sdLegacyRegionAppend())
+        '.sd-region-ph.sd-legacy-live { padding:0; text-align:start; color:inherit; font-size:inherit; background:none; }',
+        '.sd-legacy-band { padding:4px 8px; text-align:center; color:#6c757d; font-size:11px; border-bottom:1px dashed #ccc; }',
+        '.sd-legacy-note { opacity:.85; }',
+        '.sd-legacy-region { padding:8px; pointer-events:none; user-select:none; overflow:hidden; }',
         // Drop active on parent
         // Drop indicators — doubled selector boosts specificity so semantic-wrap rules
         // (.sd-shared-wrap, .sd-custom-html-wrap, .sd-custom-php-wrap) with their own
@@ -13549,6 +13554,7 @@ const StyleDesigner = (function () {
                 var rn = node.props.regionName ? ': ' + node.props.regionName : '';
                 rg.innerHTML = '<span class="bi ' + ico + '"></span>' + esc(rl) + esc(rn) +
                     (SD_LEGACY_REGIONS[node.props.regionType] ? ' ' + _sdLegacyBadge() : '');
+                if (node.props.regionType === 'system') _sdLegacyRegionAppend(doc, rg);
                 return rg;
             case 'component':
                 var comp = COMPONENTS[node.props.componentType];
@@ -14135,6 +14141,65 @@ const StyleDesigner = (function () {
     }
 
     // Decide preview value for a bound prop based on the prop name + node context.
+    // ── Legacy region preview ────────────────────────────────────────────
+    // The system region of a classic page that draws a custom layout prints
+    // <system></system>, which the server fills from the layout. Under the
+    // region's label the canvas shows it as the server draws it for the
+    // signed-in user (api.php designer/legacy_region_preview): the page's
+    // saved state, read only. Canvas-only DOM like the ghost records: inert,
+    // no scripts, event attributes or ids, never in the tree JSON. Asked for once per page and
+    // again after a Save or a save of the page's layout tab.
+    var _sdLegacyRegionCache = {};   // page id → { html, loading, stale }
+
+    // Ask again at the next render; the last answer stays on screen meanwhile.
+    function _sdLegacyRegionForget(pageId) {
+        Object.keys(_sdLegacyRegionCache).forEach(function (k) {
+            if (!pageId || String(pageId) === k) _sdLegacyRegionCache[k].stale = true;
+        });
+    }
+
+    function _sdLegacyRegionAppend(doc, rg) {
+        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        if (!_design || !p || !(p.page_id > 0)) return;
+        if ((_design.layoutPages || []).indexOf(p.page_id) === -1) return;
+        var id = p.page_id;
+        var entry = _sdLegacyRegionCache[id] || (_sdLegacyRegionCache[id] = { html: '', loading: false, stale: true });
+        if (entry.stale && !entry.loading) {
+            entry.stale = false;
+            entry.loading = true;
+            _pgApiPost('legacy_region_preview', { page_id: id }).then(function (res) {
+                entry.loading = false;
+                var html = (res && res.status === 'success' && typeof res.html === 'string') ? res.html : '';
+                if (html === entry.html) return;
+                entry.html = html;
+                if (typeof renderCanvas === 'function') renderCanvas();
+            }).catch(function () { entry.loading = false; });
+        }
+        if (!entry.html) return;
+
+        var tpl = doc.createElement('template');
+        tpl.innerHTML = entry.html;
+        tpl.content.querySelectorAll('script').forEach(function (el) { el.remove(); });
+        tpl.content.querySelectorAll('*').forEach(function (el) {
+            Array.prototype.slice.call(el.attributes).forEach(function (a) {
+                if (a.name === 'id' || a.name.slice(0, 2) === 'on') el.removeAttribute(a.name);
+            });
+        });
+        var box = doc.createElement('div');
+        box.className = 'sd-legacy-region';
+        box.setAttribute('aria-hidden', 'true');
+        box.setAttribute('inert', '');
+        box.appendChild(tpl.content);
+
+        var band = doc.createElement('div');
+        band.className = 'sd-legacy-band';
+        band.innerHTML = rg.innerHTML + ' <span class="sd-legacy-note">· ' + esc(_sdT('as the site draws it, read only')) + '</span>';
+        rg.innerHTML = '';
+        rg.classList.add('sd-legacy-live');
+        rg.appendChild(band);
+        rg.appendChild(box);
+    }
+
     // ── Ghost records ────────────────────────────────────────────────────
     // A listing widget's repeated part is designed once, on one sample
     // record. The canvas follows that card with real records the server draws
@@ -28927,7 +28992,12 @@ const StyleDesigner = (function () {
                     if (res.ok && tab) { tab.dirty = true; _sdCodeTabsRender(); }
                 });
             },
-            save: function (content, cb) { post('save', { content: content }, cb); }
+            save: function (content, cb) {
+                post('save', { content: content }, function (res) {
+                    if (res.ok) { _sdLegacyRegionForget(page.page_id); if (typeof renderCanvas === 'function') renderCanvas(); }
+                    cb(res);
+                });
+            }
         };
         _sdCodeTabOpen(spec);
         if (!regenerate || !open) return;
@@ -63380,6 +63450,8 @@ const StyleDesigner = (function () {
                     _okDur = _liveToo ? 4500 : 2500;
                 }
                 sdToast(esc(_okMsg || _pgSavedMessage(res.data)) + ' <span class="bi bi-check2"></span>', 'success', _okDur);
+                // The canvas's classic system regions are drawn from the saved pages.
+                _sdLegacyRegionForget();
                 // Update last-modified statusbar label without a full page reload
                 var _lmLabel = document.getElementById('sd-last-modified-label');
                 if (_lmLabel && res.data.saved_ts && res.data.saved_by) {
