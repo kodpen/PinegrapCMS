@@ -1301,6 +1301,12 @@ function ws_api_upload_input($params)
         api_fail_validation(lang('Name the file, with its extension.'), 'name');
     }
 
+    // An MCP tool call carries the file inside its own message: the small
+    // file path, measured before the text is decoded.
+    if ((api_send_hook() !== null) && (ws_upload_base64_bytes($base64) > ws_mcp_upload_max_bytes())) {
+        api_fail_validation(lang(array('string' => 'Through MCP a file may be at most {var:1} KB; post a larger one over the REST API.', 'vars' => (int) floor(ws_mcp_upload_max_bytes() / 1024))), 'content_base64');
+    }
+
     // Line breaks some encoders add are still the file.
     return array('name' => $name, 'base64' => preg_replace('/[\r\n\t]+/', '', $base64), 'field' => 'content_base64');
 }

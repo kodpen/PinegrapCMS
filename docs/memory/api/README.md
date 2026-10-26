@@ -36,7 +36,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over, secrets kept out of the record
 - api-mcp-client-streams.md: The MCP client reads an event-stream answer only until the event that answers its request (api_http_request() option complete); why curl's error 23 then counts as success; other callers unchanged
 - api-mcp-client.md: The site as an MCP client (includes/mcp/client.php, the Workspace's MCP servers): what a refusal says (OAuth challenge, moved address, old /sse address, JSON-RPC error, timeout) and why
-- api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, files, own-words routes, Claude's queues, the person's decisions on a card, and why
+- api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why
 - api-mcp-server.md: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tools are the API's routes, which are left out, how a route runs, resources and prompts, addresses, callers, protocol generations
 - api-oauth-client-compat.md: What keeps real OAuth/MCP clients (Cursor, VS Code, Gemini CLI, Codex, mcp-remote, Claude) connecting: lenient registration, app schemes, loopback matching, unknown scopes, discovery, panel guide
 - api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Store, Accounting, All, PR #1716): what each ticks, why record writes are ticked only by hand, the propose route always ticked
@@ -59,3 +59,4 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - mcp-resources-prompts.md: MCP resources (pinegrap://workspace/my-day, channels/{id}/context, refs/{type}/{id}) read through their GET routes; prompts channel_summary and weekly_report; who sees them, errors, caching
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/).
+- workspace-mcp-small-file.md: Posting a file into a channel over MCP (workspace_files_create, PR #1830): content_base64 and name only, at most 1 MB measured before decoding, larger files over REST, why

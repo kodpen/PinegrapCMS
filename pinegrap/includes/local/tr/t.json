@@ -4267,6 +4267,7 @@
     "Three steps to your order": "Siparişinize üç adım",
     "Through @{var:1}, without calling its tools.": "@{var:1} üzerinden, araçları çağrılmadan.",
     "Through @{var:1}: {var:2}": "@{var:1} üzerinden: {var:2}",
+    "Through MCP a file may be at most {var:1} KB; post a larger one over the REST API.": "MCP üzerinden bir dosya en fazla {var:1} KB olabilir; daha büyüğünü REST API ile gönderin.",
     "Through the payment service": "Ödeme hizmeti üzerinden",
     "Thu": "Per",
     "Thumbnail": "Görsel",
