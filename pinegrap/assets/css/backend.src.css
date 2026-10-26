@@ -12978,6 +12978,12 @@ a.ws-chip:hover {
     display: none;
   }
 }
+/* The lists' group adds about 6rem: it goes first. */
+@container (max-width: 41rem) {
+  .ws-composer-format:has([data-ws-tool="bullets"]) {
+    display: none;
+  }
+}
 @media (max-width: 767.98px) {
   .ws-composer-format {
     display: none;
