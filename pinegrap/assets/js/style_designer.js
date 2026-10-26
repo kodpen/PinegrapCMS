@@ -143,7 +143,7 @@ const StyleDesigner = (function () {
     // `done` gets the new `pages` list ([] for every page); dismissing the
     // dialog changes nothing.
     function _sdAssetPagesDialog(entry, done) {
-        if (typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+        if (!window.pgUI) return;
         var current = Array.isArray(entry.pages) ? entry.pages.map(String) : [];
         var all = !current.length;
         var rows = _pages.map(function (p) {
@@ -191,11 +191,11 @@ const StyleDesigner = (function () {
             var some = !!el.querySelector('input[name="sd-ap-mode"][value="some"]:checked');
             var refs = some ? boxes.filter(function (b) { return b.checked; }).map(function (b) { return b.dataset.pageRef; }) : [];
             if (some && !refs.length) { el.querySelector('[data-ap-error]').classList.remove('d-none'); return; }
-            bootstrap.Modal.getOrCreateInstance(el).hide();
+            pgUI.dialog.hide(el);
             done(refs);
         });
-        el.addEventListener('hidden.bs.modal', function () { el.remove(); });
-        bootstrap.Modal.getOrCreateInstance(el).show();
+        pgUI.dialog.on(el, 'hidden', function () { el.remove(); });
+        pgUI.dialog.show(el);
     }
     let _pages     = [];     // [{ key, page_id, page_name, …settings, tree, undoStack, redoStack, nodeIdCounter, baseline }]
     let _activeKey = null;   // key of the page currently on the canvas
@@ -23350,7 +23350,7 @@ const StyleDesigner = (function () {
         // Resolves true on Delete, false otherwise.
         function _bulkConfirm(opts) {
             return new Promise(function (resolve) {
-                if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+                if (!window.pgUI) {
                     resolve(opts.need ? (window.prompt(opts.text, '') || '').trim() === opts.need : window.confirm(opts.text));
                     return;
                 }
@@ -23380,11 +23380,11 @@ const StyleDesigner = (function () {
                 okBtn.addEventListener('click', function () {
                     if (okBtn.disabled) return;
                     ok = true;
-                    bootstrap.Modal.getOrCreateInstance(el).hide();
+                    pgUI.dialog.hide(el);
                 });
-                el.addEventListener('shown.bs.modal', function () { (input || el.querySelector('[data-bs-dismiss].btn')).focus(); });
-                el.addEventListener('hidden.bs.modal', function () { el.remove(); resolve(ok); });
-                bootstrap.Modal.getOrCreateInstance(el, { backdrop: 'static' }).show();
+                pgUI.dialog.on(el, 'shown', function () { (input || el.querySelector('[data-bs-dismiss].btn')).focus(); });
+                pgUI.dialog.on(el, 'hidden', function () { el.remove(); resolve(ok); });
+                pgUI.dialog.show(el, { backdrop: 'static' });
             });
         }
 
@@ -50433,8 +50433,7 @@ const StyleDesigner = (function () {
             resetBtn.innerHTML = '<span class="bi bi-layout-three-columns me-1" aria-hidden="true"></span>' + esc(_sdT('Reset Layout'));
             resetBtn.addEventListener('click', function() {
                 resetLayout();
-                var bsModal = bootstrap.Modal.getInstance(phpModal);
-                if (bsModal) bsModal.hide();
+                if (pgUI.dialog.find(phpModal)) pgUI.dialog.hide(phpModal);
             });
             footer.insertBefore(resetBtn, footer.firstChild);
         }
@@ -50445,10 +50444,10 @@ const StyleDesigner = (function () {
             saveBtn.addEventListener('click', function () {
                 var main = document.getElementById('sd-ajax-save');
                 if (!main || main.disabled || !_collab.mayEdit) return;
-                phpModal.addEventListener('hidden.bs.modal', function () {
+                pgUI.dialog.on(phpModal, 'hidden', function () {
                     if (!main.disabled) main.click();
                 }, { once: true });
-                bootstrap.Modal.getOrCreateInstance(phpModal).hide();
+                pgUI.dialog.hide(phpModal);
             });
         }
         // A draft saves and stays off the site; the word follows the switch.
@@ -50483,7 +50482,7 @@ const StyleDesigner = (function () {
         // ── Panes ──
         // The head code and the page's JSON-LD become code fields the first
         // time their pane opens (_sdSettingsCodeFields()).
-        phpModal.addEventListener('shown.bs.tab', _sdSettingsCodeFields);
+        pgUI.tab.on(phpModal, 'shown', _sdSettingsCodeFields);
         var jsonld = document.getElementById('pg_page_custom_jsonld');
         if (jsonld) jsonld.addEventListener('input', _sdJsonLdStatus);
         ['pg_page_canonical_url', 'pg_page_max_snippet'].forEach(function (id) {
@@ -50492,7 +50491,7 @@ const StyleDesigner = (function () {
         });
 
         // ── Refresh dynamic values on modal open ──
-        phpModal.addEventListener('show.bs.modal', function() {
+        pgUI.dialog.on(phpModal, 'show', function() {
             _sdMetaListRender('design');
             _sdMetaListRender('page');
             _sdSettingsSyncSave();
@@ -50503,12 +50502,12 @@ const StyleDesigner = (function () {
         // Every way out keeps what was changed: the meta tag lists and the
         // page fields have written their inputs by now, the HTML tree shows
         // them from there.
-        phpModal.addEventListener('hide.bs.modal', function () {
+        pgUI.dialog.on(phpModal, 'hide', function () {
             renderHtmlTree();
         });
         // Page and design settings reach an open preview window once the
         // modal is closed.
-        phpModal.addEventListener('hidden.bs.modal', function() {
+        pgUI.dialog.on(phpModal, 'hidden', function() {
             _sdLivePreviewSchedule();
         });
 
@@ -50520,16 +50519,16 @@ const StyleDesigner = (function () {
     // page-meta), with a row of it in view when one is named.
     function _sdOpenSettingsPane(pane, rowId) {
         var modalEl = document.getElementById('styleSettingsModal');
-        if (!modalEl || typeof bootstrap === 'undefined') return;
+        if (!modalEl || !window.pgUI) return;
         var btn = document.getElementById('tab-' + pane + '-btn');
-        if (btn && bootstrap.Tab && !btn.classList.contains('d-none')) bootstrap.Tab.getOrCreateInstance(btn).show();
+        if (btn && !btn.classList.contains('d-none')) pgUI.tab.show(btn);
         if (rowId) {
-            modalEl.addEventListener('shown.bs.modal', function () {
+            pgUI.dialog.on(modalEl, 'shown', function () {
                 var row = document.getElementById(rowId);
                 if (row && row.scrollIntoView) row.scrollIntoView({ block: 'center' });
             }, { once: true });
         }
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        pgUI.dialog.show(modalEl);
     }
 
     // The footer's main button says what the toolbar's says: a draft is
@@ -50840,7 +50839,7 @@ const StyleDesigner = (function () {
         var nameEl  = document.getElementById('sd-make-template-name');
         var descEl  = document.getElementById('sd-make-template-description');
         var runBtn  = document.getElementById('sd-make-template-run');
-        if (!btn || !modalEl || !nameEl || !descEl || !runBtn || typeof bootstrap === 'undefined') return;
+        if (!btn || !modalEl || !nameEl || !descEl || !runBtn || !window.pgUI) return;
 
         var styleId = function () { return (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0; };
 
@@ -50851,16 +50850,16 @@ const StyleDesigner = (function () {
             nameEl.value = designName ? designName.value.trim() : '';
             nameEl.classList.remove('is-invalid');
             descEl.value = '';
-            var show = function () { bootstrap.Modal.getOrCreateInstance(modalEl).show(); };
+            var show = function () { pgUI.dialog.show(modalEl); };
             var settings = document.getElementById('styleSettingsModal');
-            if (settings && settings.classList.contains('show')) {
-                settings.addEventListener('hidden.bs.modal', show, { once: true });
-                bootstrap.Modal.getOrCreateInstance(settings).hide();
+            if (settings && pgUI.dialog.isOpen(settings)) {
+                pgUI.dialog.on(settings, 'hidden', show, { once: true });
+                pgUI.dialog.hide(settings);
             } else {
                 show();
             }
         };
-        modalEl.addEventListener('shown.bs.modal', function () { nameEl.focus(); nameEl.select(); });
+        pgUI.dialog.on(modalEl, 'shown', function () { nameEl.focus(); nameEl.select(); });
 
         btn.addEventListener('click', function () {
             if (styleId() <= 0) {
@@ -50895,7 +50894,7 @@ const StyleDesigner = (function () {
                         sdToast(esc((res && res.message) ? res.message : _sdT('Sorry, we could not accept your request.')), 'error');
                         return;
                     }
-                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                    pgUI.dialog.hide(modalEl);
                     if (res.message) sdToast(esc(res.message), 'success', 6000);
                 })
                 .catch(function () { done(); sdToast(esc(_sdT('Network error.')), 'error'); });
@@ -53747,7 +53746,7 @@ const StyleDesigner = (function () {
     function sdChoose(opts) {
         opts = opts || {};
         return new Promise(function (resolve) {
-            if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+            if (!window.pgUI) {
                 var first = (opts.choices || [])[0];
                 resolve(window.confirm(opts.message || '') && first ? first.value : null);
                 return;
@@ -53773,13 +53772,13 @@ const StyleDesigner = (function () {
                 var b = e.target.closest('[data-choice]');
                 if (!b) return;
                 picked = b.dataset.choice;
-                bootstrap.Modal.getOrCreateInstance(el).hide();
+                pgUI.dialog.hide(el);
             });
-            el.addEventListener('hidden.bs.modal', function () {
+            pgUI.dialog.on(el, 'hidden', function () {
                 if (!done) { done = true; resolve(picked); }
                 el.remove();
             });
-            bootstrap.Modal.getOrCreateInstance(el, { backdrop: 'static' }).show();
+            pgUI.dialog.show(el, { backdrop: 'static' });
         });
     }
 
@@ -61354,7 +61353,7 @@ const StyleDesigner = (function () {
         if (count) count.textContent = _pages.length > 1 ? String(_pages.length) : '';
         var hidden = list.scrollWidth <= list.clientWidth + 1 && !list.querySelector('.sd-tab-folded');
         if (wrap.hidden !== hidden) {
-            if (hidden && wrap.classList.contains('show')) return;
+            if (hidden && pgUI.menu.isOpen(wrap.querySelector('[data-bs-toggle="dropdown"]'))) return;
             wrap.hidden = hidden;
         }
     }
@@ -61387,16 +61386,16 @@ const StyleDesigner = (function () {
         if (all && !all._pgBound) {
             all._pgBound = true;
             var filter = document.getElementById('sd-tabs-all-filter');
-            all.addEventListener('show.bs.dropdown', function () {
+            pgUI.menu.on(all, 'show', function () {
                 if (filter) filter.value = '';
                 _pgTabsAllFill();
             });
-            all.addEventListener('shown.bs.dropdown', function () {
+            pgUI.menu.on(all, 'shown', function () {
                 if (filter) filter.focus();
                 var act = all.querySelector('.sd-tabs-all-item.active');
                 if (act) act.scrollIntoView({ block: 'nearest' });
             });
-            all.addEventListener('hidden.bs.dropdown', function () { _pgTabsAllSync(); });
+            pgUI.menu.on(all, 'hidden', function () { _pgTabsAllSync(); });
             if (filter) {
                 filter.addEventListener('input', _pgTabsAllFill);
                 filter.addEventListener('keydown', function (e) {
@@ -61410,7 +61409,7 @@ const StyleDesigner = (function () {
                 var it = e.target.closest('.sd-tabs-all-item');
                 if (!it || it.disabled) return;
                 var btn = all.querySelector('[data-bs-toggle="dropdown"]');
-                if (btn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) bootstrap.Dropdown.getOrCreateInstance(btn).hide();
+                if (btn) pgUI.menu.hide(btn);
                 if (it.dataset.key !== _activeKey) _pgTabsSwitch(it.dataset.key);
             });
             window.addEventListener('resize', function () { _pgTabsAllSync(); });
@@ -63530,12 +63529,12 @@ const StyleDesigner = (function () {
             document.body.appendChild(el);
             var btn = el.querySelector('#sd-locked-comment');
             if (btn) btn.addEventListener('click', function () {
-                bootstrap.Modal.getOrCreateInstance(el).hide();
+                pgUI.dialog.hide(el);
                 _collabOpenNote();
             });
             var tk = el.querySelector('#sd-locked-takeover');
             if (tk) tk.addEventListener('click', function () {
-                bootstrap.Modal.getOrCreateInstance(el).hide();
+                pgUI.dialog.hide(el);
                 _collabTakeOver();
             });
         }
@@ -63555,7 +63554,7 @@ const StyleDesigner = (function () {
                   '<p class="mb-2">' + esc(_sdT('Two people saving one page would overwrite each other, so you are in view mode: the canvas is read-only and Publish is off for this page.')) + '</p>' +
                   '<p class="mb-0 text-muted">' + esc(_sdT('You can still leave a note on any element — the same notes panel as always. When they move to another page, refresh and the page is yours.')) + '</p>';
         }
-        try { bootstrap.Modal.getOrCreateInstance(el).show(); } catch (e) {}
+        try { pgUI.dialog.show(el); } catch (e) {}
     }
 
     function _pgTabsOpenPicker() {
@@ -63565,7 +63564,7 @@ const StyleDesigner = (function () {
         if (!modalEl || !list) return;
         list.innerHTML = '<div class="list-group-item bg-transparent text-muted small">' + esc(_sdT('Loading...')) + '</div>';
         if (filter) filter.value = '';
-        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        var modal = pgUI.dialog.get(modalEl);
         modal.show();
 
         _pgApiPost('selectable_pages', { style_id: (_design && _design.styleId) || 0 }).then(function (res) {
@@ -63679,7 +63678,7 @@ const StyleDesigner = (function () {
             run._pgBound = true;
             run.addEventListener('click', _pgImportRun);
         }
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        pgUI.dialog.show(modalEl);
     }
 
     function _pgImportRun() {
@@ -63884,7 +63883,7 @@ const StyleDesigner = (function () {
                 '</div>';
             document.body.appendChild(el);
             var chosen = [];
-            var modal = new bootstrap.Modal(el, { backdrop: 'static', keyboard: false });
+            var modal = pgUI.dialog.get(el, { backdrop: 'static', keyboard: false });
             el.querySelector('[data-sd-imp="share"]').addEventListener('click', function () {
                 el.querySelectorAll('[data-sd-imp-group]').forEach(function (cb) {
                     if (cb.checked) chosen.push(groups[parseInt(cb.getAttribute('data-sd-imp-group'), 10)]);
@@ -63892,7 +63891,7 @@ const StyleDesigner = (function () {
                 modal.hide();
             });
             el.querySelector('[data-sd-imp="keep"]').addEventListener('click', function () { modal.hide(); });
-            el.addEventListener('hidden.bs.modal', function () {
+            pgUI.dialog.on(el, 'hidden', function () {
                 if (el.parentNode) el.parentNode.removeChild(el);
                 resolve(chosen);
             });
@@ -63955,7 +63954,7 @@ const StyleDesigner = (function () {
         var groups = (pages.length > 1) ? _pgImportFindShared(pages) : [];
         if (!groups.length) { _pgImportApplyPages(d, projectName, 0); return; }
         var im = document.getElementById('sdImportModal');
-        if (im) bootstrap.Modal.getOrCreateInstance(im).hide();
+        if (im) pgUI.dialog.hide(im);
         _pgImportAskShared(groups, projectName).then(function (chosen) {
             if (!chosen.length) return 0;
             return _pgImportMakeShared(chosen, pages, projectName).catch(function () {
@@ -64038,7 +64037,7 @@ const StyleDesigner = (function () {
                 if (!firstKey) firstKey = p.key;
             });
             var im = document.getElementById('sdImportModal');
-            if (im) bootstrap.Modal.getOrCreateInstance(im).hide();
+            if (im) pgUI.dialog.hide(im);
             if (firstKey) _pgTabsSwitch(firstKey); else _pgTabsRender();
             var summary = (d.pages || []).length + ' ' + _sdT('page(s)') + ', ' + added.css + ' CSS, ' + added.js + ' JS, ' + added.fonts + ' ' + _sdT('font(s)') +
                 (sharedMade ? ', ' + _sdT('{var} shared component(s)', sharedMade) : '');
@@ -64593,7 +64592,7 @@ const StyleDesigner = (function () {
     // asks first. Below, the form for a new link. A link always shows the
     // drafts as last saved.
     function _pgPrototypeShareDialog(startPageId) {
-        if (typeof bootstrap === 'undefined' || !bootstrap.Modal || !_pgPrototypeShareReady()) return;
+        if (!window.pgUI || !_pgPrototypeShareReady()) return;
         var styleId = _design.styleId;
         var state = { pages: [], durations: [], canShow: true };
         var when = function (unix) {
@@ -64863,8 +64862,8 @@ const StyleDesigner = (function () {
                 errorEl.classList.remove('d-none');
             });
         });
-        el.addEventListener('hidden.bs.modal', function () { el.remove(); });
-        bootstrap.Modal.getOrCreateInstance(el).show();
+        pgUI.dialog.on(el, 'hidden', function () { el.remove(); });
+        pgUI.dialog.show(el);
         load();
     }
 
@@ -65114,7 +65113,7 @@ const StyleDesigner = (function () {
     // it, and on its own would add the browser's tooltip beside it.
     function _sdSetButtonTitle(el, text) {
         if (!el) return;
-        var pop = (window.bootstrap && bootstrap.Popover && bootstrap.Popover.getInstance) ? bootstrap.Popover.getInstance(el) : null;
+        var pop = window.pgUI ? pgUI.popover.find(el) : null;
         if (pop) {
             el.removeAttribute('title');
             el.setAttribute('data-bs-original-title', text);
@@ -65461,7 +65460,7 @@ const StyleDesigner = (function () {
         });
         var designOpen = document.querySelector('#settingsTabs .nav-link.active[data-sd-settings-scope="design"]');
         var pageBtn = document.getElementById('tab-page-btn');
-        if (designOpen && pageBtn && window.bootstrap && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(pageBtn).show();
+        if (designOpen && pageBtn && window.pgUI) pgUI.tab.show(pageBtn);
         // …and the panels that edit the design's stylesheets, scripts, fonts
         // and themes, wherever they live in the left rail.
         ['sd-assets-panel', 'sd-themes-panel', 'sd-bp-assets', 'sd-bp-themes'].forEach(function (id) {
@@ -65761,10 +65760,7 @@ const StyleDesigner = (function () {
                 currentIconInput.dispatchEvent(evt);
             }
             var mEl = document.getElementById('sdIconModal');
-            if (window.bootstrap) {
-                var modalIns = window.bootstrap.Modal.getInstance(mEl);
-                if (modalIns) modalIns.hide();
-            }
+            if (window.pgUI && pgUI.dialog.find(mEl)) pgUI.dialog.hide(mEl);
         }
 
         function renderSections(filter) {
@@ -65825,10 +65821,8 @@ const StyleDesigner = (function () {
     function openIconModal(inputEl) {
         currentIconInput = inputEl;
         var mHtml = document.getElementById('sdIconModal');
-        if (window.bootstrap) {
-            var modal = window.bootstrap.Modal.getInstance(mHtml);
-            if (!modal) modal = new window.bootstrap.Modal(mHtml);
-            modal.show();
+        if (window.pgUI) {
+            pgUI.dialog.show(mHtml);
         } else {
             alert(_sdT('Bootstrap framework is not loaded.'));
         }
@@ -65899,8 +65893,8 @@ const StyleDesigner = (function () {
                 '</div>';
             document.body.appendChild(_sdShortcutsModalEl);
         }
-        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            bootstrap.Modal.getOrCreateInstance(_sdShortcutsModalEl).show();
+        if (window.pgUI) {
+            pgUI.dialog.show(_sdShortcutsModalEl);
         }
     }
 

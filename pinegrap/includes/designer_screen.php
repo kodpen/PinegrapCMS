@@ -603,7 +603,7 @@ function pg_designer_screen_render($ctx)
                 // written without an event, so the same events bring the
                 // counters and the switches up to date.
                 var _sdSettingsBound = false;
-                document.getElementById("styleSettingsModal").addEventListener("shown.bs.modal", function () {
+                pgUI.dialog.on(document.getElementById("styleSettingsModal"), "shown", function () {
                     if (_sdSettingsBound) {
                         ["pg_page_title", "pg_page_meta_description"].forEach(function (id) {
                             var el = document.getElementById(id);
@@ -1663,17 +1663,17 @@ function pg_designer_new_design_modal($from_pages)
                     var ic = modal.querySelector(".sd-fw-icon");
                     if (ic) ic.className = "bi me-2 sd-fw-icon " + (mode === "import" ? "bi-file-earmark-zip" : (mode === "paste" ? "bi-clipboard-plus" : "bi-file-earmark-plus"));
                 }
-                modal.addEventListener("show.bs.modal", function (e) {
+                pgUI.dialog.on(modal, "show", function (e) {
                     var src = e.relatedTarget;
                     setMode(src && src.dataset ? (src.dataset.sdStart || "") : (modal.dataset.sdStart || ""));
                 });
-                modal.addEventListener("hidden.bs.modal", function () { delete modal.dataset.sdStart; });
+                pgUI.dialog.on(modal, "hidden", function () { delete modal.dataset.sdStart; });
                 var q = new URLSearchParams(window.location.search).get("start");
                 if (q === "import" || q === "paste") {
                     var open = function () {
-                        if (!window.bootstrap || !window.bootstrap.Modal) return;
+                        if (!window.pgUI) return;
                         modal.dataset.sdStart = q;
-                        window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                        pgUI.dialog.show(modal);
                     };
                     if (document.readyState === "complete") open(); else window.addEventListener("load", open);
                 }
@@ -1899,7 +1899,7 @@ function pg_designer_template_modal($templates, $from_pages)
                 if (new URLSearchParams(window.location.search).get("start") !== "template") return;
                 var open = function () {
                     var modal = document.getElementById("sdTemplateModal");
-                    if (modal && window.bootstrap && window.bootstrap.Modal) window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                    if (modal && window.pgUI) pgUI.dialog.show(modal);
                 };
                 if (document.readyState === "complete") open(); else window.addEventListener("load", open);
             })();
@@ -2005,7 +2005,7 @@ function pg_designer_template_theme_picker()
                 });
                 // The cards come after this script in the page.
                 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sync); else sync();
-                if (modal) modal.addEventListener("show.bs.modal", sync);
+                if (modal) pgUI.dialog.on(modal, "show", sync);
             })();
         </script>';
 }
