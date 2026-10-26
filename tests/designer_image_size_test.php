@@ -568,3 +568,59 @@ function test_designer_image_size_canvas_matches_page()
 
 	pg_assert_false($result['wrapper of a heading'], 'only an image\'s wrapper');
 }
+
+// A ';' or ':' inside url(), var(), calc() or a quoted string belongs to the
+// value: the style row keeps such a declaration whole and writes it back
+// unchanged.
+function test_designer_inline_style_parser_brackets_and_quotes()
+{
+	$cases = array(
+		'data url' => 'background: url(data:image/png;base64,AAA=); color: red',
+		'quoted url' => 'background-image: url("a;b:c.png"); opacity: .5',
+		'double quotes' => 'content: "a;b:c"; color: red',
+		'single quotes' => "content: 'x;y'; color: red",
+		'escaped quote' => 'content: "a\\";b"; color: red',
+		'nested brackets' => 'width: calc(100% - var(--gap, 1px)); height: 2px',
+		'custom property' => '--grid: repeat(2, minmax(0;1fr)); gap: 1rem',
+		'plain' => ' color : red ;; ;opacity:.5; ',
+		'no colon' => 'color; width: 1px',
+		'unclosed bracket' => 'background: url(a;b; color: red',
+		'unclosed quote' => 'content: "a;b',
+	);
+	$result = designer_image_size_test_js(
+		'var cases = ' . json_encode($cases) . ';'
+		. 'Object.keys(cases).forEach(function (k) {'
+		. '  out[k] = _parseInlineStyle(cases[k]).map(function (d) { return [d.name, d.value]; });'
+		. '});'
+		. 'var n = { type: "content", props: { contentType: "image", src: "a.jpg", alt: "A" } };'
+		. '_sdApplyInlineStyle(n, cases["data url"]);'
+		. 'out.written = (n.props._attrs || []).map(function (a) { return a.name + "=" + a.value; });',
+		array('function getNodeBuiltinAttrs(', 'function _sdInlineStyleProps(', 'function _propDerivedInlineDecls(', 'function _currentInlineStyleValue(', 'function _sdApplyInlineStyle(', 'function _parseInlineStyle(', 'function _serializeInlineDecls(')
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+
+	$want = array(
+		'data url' => array(array('background', 'url(data:image/png;base64,AAA=)'), array('color', 'red')),
+		'quoted url' => array(array('background-image', 'url("a;b:c.png")'), array('opacity', '.5')),
+		'double quotes' => array(array('content', '"a;b:c"'), array('color', 'red')),
+		'single quotes' => array(array('content', "'x;y'"), array('color', 'red')),
+		'escaped quote' => array(array('content', '"a\\";b"'), array('color', 'red')),
+		'nested brackets' => array(array('width', 'calc(100% - var(--gap, 1px))'), array('height', '2px')),
+		'custom property' => array(array('--grid', 'repeat(2, minmax(0;1fr))'), array('gap', '1rem')),
+		'plain' => array(array('color', 'red'), array('opacity', '.5')),
+		'no colon' => array(array('width', '1px')),
+		'unclosed bracket' => array(array('background', 'url(a;b; color: red')),
+		'unclosed quote' => array(array('content', '"a;b')),
+	);
+
+	foreach ($want as $label => $w) {
+		pg_assert_same($w, $result[$label], $label);
+	}
+
+	pg_assert_same(array('style=background: url(data:image/png;base64,AAA=); color: red'), $result['written'], 'a data url is written back whole');
+}
