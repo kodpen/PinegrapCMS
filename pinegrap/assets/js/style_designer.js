@@ -14382,6 +14382,8 @@ const StyleDesigner = (function () {
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
         if (prop === 'href') return '#';
+        // A field of a referenced record ('__ref', SW_REF_TOKEN).
+        if ((prop === 'text' || prop === 'alt') && fieldName === '__ref') return _sdT('Example');
         if (prop === 'text' || prop === 'alt') {
             // Adaptive link caption — preview the DETAIL wording, since the
             // canvas always shows a sample product row and products always
@@ -37378,6 +37380,15 @@ const StyleDesigner = (function () {
     // The widget kinds whose renderer expands the link: the form list under
     // its four names and the form detail.
     var _SW_PAGE_LINK_TYPES = { form_list_view: 1, submitted_forms_list: 1, form_list: 1, blog_list: 1, form_item_view: 1 };
+    // A field of a record the record points at: the binding of a text, an
+    // image or a link in the same widget kinds (pg_coll_ref_bindings() in
+    // includes/fn/collections.php). Which own field holds the reference, the
+    // form it points into and the field to print are kept beside it in
+    // props._bindParams.<prop> (_swRefSpec()). In no token palette, like
+    // the link above.
+    var SW_REF_TOKEN = '__ref';
+    // The props it binds: what a text, an image or a link prints.
+    var _SW_REF_PROPS = { text: 1, alt: 1, src: 1, href: 1 };
 
     // Standard names a form's own field overrides on the server
     // (pg_sw_form_field_wins() in includes/fn/widgets.php keeps the same
@@ -41965,6 +41976,7 @@ const StyleDesigner = (function () {
         function _buildOptionsHtml(currentVal, prop) {
             if (currentVal && Object.prototype.hasOwnProperty.call(_bindAlias, currentVal)) currentVal = _bindAlias[currentVal];
             var withPageLink = (prop === 'href' && _pageLinkOffered);
+            var withRef = _pageLinkOffered && _SW_REF_PROPS[prop] === 1;
             var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
             if (_listRows.length) {
                 html += '<optgroup label="' + esc(_sdT('Row of the list')) + '">';
@@ -42006,9 +42018,13 @@ const StyleDesigner = (function () {
             if (withPageLink) {
                 html += '<option value="' + esc(SW_PAGE_LINK_TOKEN) + '"' + (currentVal === SW_PAGE_LINK_TOKEN ? ' selected' : '') + '>' + esc(_sdT('Another page, with values from the record')) + '</option>';
             }
+            if (withRef) {
+                html += '<option value="' + esc(SW_REF_TOKEN) + '"' + (currentVal === SW_REF_TOKEN ? ' selected' : '') + '>' + esc(_sdT('A field of a referenced record')) + '</option>';
+            }
             // Custom — shown when the saved binding doesn't match any known token
             var isCustom = !!(currentVal &&
                               !(withPageLink && currentVal === SW_PAGE_LINK_TOKEN) &&
+                              !(withRef && currentVal === SW_REF_TOKEN) &&
                               !_listRows.some(function (o) { return o.token === currentVal; }) &&
                               !formFields.some(function (ff) { return ((ff.name && ('' + ff.name).trim()) || ('field_' + ff.id)) === currentVal; }) &&
                               !(_withLabels && formFields.some(function (ff) { return _labelToken(ff) === currentVal; })) &&
@@ -42086,6 +42102,57 @@ const StyleDesigner = (function () {
             return html;
         }
 
+        // Which own field holds the reference, the form it points into and
+        // that form's field to print (props._bindParams[prop]), under the
+        // select. The other form's fields come with the first panel that
+        // asks for them.
+        function _sdRefRows(n, fields, prop) {
+            var spec = _swRefSpec(n.props && n.props._bindParams && n.props._bindParams[prop]);
+            if (!_customFormsCache && typeof _fetchCustomForms === 'function') _fetchCustomForms(function () { renderProperties(); });
+            var target = (typeof spec.page_id === 'number') ? spec.page_id : 0;
+            var targetFields = target ? _formFieldsCache[target] : [];
+            if (target && !targetFields) _fetchFormFields(target, function () { renderProperties(); });
+            var label = function (text) { return '<div style="font-size:.7rem;font-weight:600;margin:8px 0 2px">' + esc(text) + '</div>'; };
+            // The other form's staff-only fields are never read; this form's
+            // own may hold the reference (a category staff choose).
+            var fieldOptions = function (list, cur, extra) {
+                var known = (cur === '');
+                var out = '<option value=""' + (cur === '' ? ' selected' : '') + '>' + esc(_sdT('— Choose a field —')) + '</option>';
+                (list || []).forEach(function (ff) {
+                    if (extra ? !_swFormFieldShown(ff) : (ff.type === 'information')) return;
+                    var t = _swFormFieldToken(ff).toLowerCase();
+                    if (t === cur) known = true;
+                    out += '<option value="' + esc(t) + '"' + (t === cur ? ' selected' : '') + '>' + esc(ff.label || ff.name || ('#' + ff.id)) + '</option>';
+                });
+                (extra || []).forEach(function (o) {
+                    if (o[0] === cur) known = true;
+                    out += '<option value="' + esc(o[0]) + '"' + (o[0] === cur ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                });
+                if (!known) out += '<option value="' + esc(cur) + '" selected>' + esc(cur + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+                return out;
+            };
+            var pageOptions = '<option value="0"' + (spec.page_id ? '' : ' selected') + '>' + esc(_sdT('— Choose a form —')) + '</option>';
+            if (typeof spec.page_id === 'string') {
+                pageOptions += '<option value="' + esc(spec.page_id) + '" selected>' + esc(_sdT('A page of this design (not published yet)')) + '</option>';
+            }
+            pageOptions += _swFormOptions(target);
+            var html = '<div class="sd-sw-ref mt-2">' +
+                label(_sdT('Field holding the reference')) +
+                '<select class="form-select form-select-sm sd-sw-ref-field" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field holding the reference')) + '">' + fieldOptions(fields, spec.field) + '</select>' +
+                label(_sdT('Form it points into')) +
+                '<select class="form-select form-select-sm sd-sw-ref-page" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Form it points into')) + '">' + pageOptions + '</select>';
+            if (target) {
+                html += label(_sdT('Field to show')) +
+                    '<select class="form-select form-select-sm sd-sw-ref-show" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field to show')) + '">' +
+                        fieldOptions(targetFields || [], spec.show, [['reference_code', _sdT('Reference code')], ['address_name', _sdT('Address name')]]) +
+                    '</select>';
+            }
+            html += '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:#888">' +
+                esc(_sdT('The field holds the reference code or the address name of the other record; several are separated by commas. Only complete records are read, and never a field kept for staff only.')) +
+                '</div></div>';
+            return html;
+        }
+
         var rowsHtml = '';
         bindable.forEach(function (b) {
             var current = bindings[b.prop] || '';
@@ -42103,7 +42170,9 @@ const StyleDesigner = (function () {
                 (built.isCustom ? '' : ' style="display:none"') + '>';
             var pageLinkRows = (b.prop === 'href' && _pageLinkOffered && current === SW_PAGE_LINK_TOKEN)
                 ? _sdPageLinkRows(node, formFields) : '';
-            rowsHtml += row(b.label, sel + customInp + pageLinkRows + _sdBindFormatRow(b.prop, current, node));
+            var refRows = (_pageLinkOffered && _SW_REF_PROPS[b.prop] === 1 && current === SW_REF_TOKEN)
+                ? _sdRefRows(node, formFields, b.prop) : '';
+            rowsHtml += row(b.label, sel + customInp + pageLinkRows + refRows + _sdBindFormatRow(b.prop, current, node));
         });
 
         return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
@@ -42179,6 +42248,9 @@ const StyleDesigner = (function () {
             if (bp && value === SW_PAGE_LINK_TOKEN) {
                 if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
                 if (!bp._bindParams[propName]) bp._bindParams[propName] = { page_id: 0, params: [{ name: '', token: '' }] };
+            } else if (bp && value === SW_REF_TOKEN) {
+                if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
+                if (!bp._bindParams[propName]) bp._bindParams[propName] = { field: '', page_id: 0, show: '' };
             } else if (bp && bp._bindParams) {
                 delete bp._bindParams[propName];
                 if (!Object.keys(bp._bindParams).length) delete bp._bindParams;
@@ -42203,6 +42275,36 @@ const StyleDesigner = (function () {
             renderCanvas();
             if (repaint && typeof renderProperties === 'function') renderProperties();
         }
+        // One edit of a reference spec: `fn` changes it, stored back
+        // normalised, and the panel is drawn again.
+        function _sdRefEdit(prop, fn) {
+            if (!selectedNode || !selectedNode.props || !prop) return;
+            saveState();
+            var p = selectedNode.props;
+            if (!p._bindParams || typeof p._bindParams !== 'object' || Array.isArray(p._bindParams)) p._bindParams = {};
+            var spec = _swRefSpec(p._bindParams[prop]);
+            fn(spec);
+            p._bindParams[prop] = _swRefSpec(spec);
+            var sid = _isInsideSystemWidget(selectedNode);
+            if (sid) _sharedDirty[sid] = true;
+            renderCanvas();
+            if (typeof renderProperties === 'function') renderProperties();
+        }
+        document.querySelectorAll('.sd-sw-ref-field, .sd-sw-ref-page, .sd-sw-ref-show').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                var v = this.value;
+                var key = this.classList.contains('sd-sw-ref-field') ? 'field' : (this.classList.contains('sd-sw-ref-page') ? 'page_id' : 'show');
+                _sdRefEdit(this.dataset.refProp, function (spec) {
+                    if (key === 'page_id') {
+                        // Another form: its fields are other fields.
+                        if (String(spec.page_id) !== v) spec.show = '';
+                        spec.page_id = /^tab:/.test(v) ? v : (parseInt(v, 10) || 0);
+                    } else {
+                        spec[key] = v;
+                    }
+                });
+            });
+        });
         var plinkPage = document.querySelector('.sd-sw-plink-page');
         if (plinkPage) {
             plinkPage.addEventListener('change', function () {
@@ -54180,6 +54282,18 @@ const StyleDesigner = (function () {
         if (_SW_URL_PARAM_RESERVED.indexOf(n) !== -1) return '';
         return n;
     }
+    // A field of a record the record points at (props._bindParams.<prop>
+    // beside the binding SW_REF_TOKEN), as the panel edits it: twin of
+    // pg_coll_ref_spec(), except that a tab of this design not published
+    // yet ('tab:<key>') stays the form until Publish resolves it.
+    function _swRefSpec(spec) {
+        spec = (spec && typeof spec === 'object') ? spec : {};
+        var tok = function (v) { return (typeof v === 'string') ? v.replace(/[^a-z0-9_-]/gi, '').toLowerCase() : ''; };
+        var pid = spec.page_id, page = 0;
+        if (typeof pid === 'string' && /^tab:/.test(pid)) page = pid;
+        else if (parseInt(pid, 10) > 0 && /^\d+$/.test(String(pid))) page = parseInt(pid, 10);
+        return { field: tok(spec.field), page_id: page, show: tok(spec.show) };
+    }
     // A link's page and values (props._bindParams.href) as the panel edits
     // them. Not the server's normaliser (pg_sw_page_link_spec()): the page
     // stays a positive id, a 'tab:<key>' of an unsaved tab, or 0; a name is
@@ -55488,6 +55602,7 @@ const StyleDesigner = (function () {
         if (listRow) return listRow;
         if (type === 'form_list_view' || type === 'form_item_view') {
             if (token === SW_PAGE_LINK_TOKEN) return _sdT('Another page, with values from the record');
+            if (token === '__ref') return _sdT('A field of a referenced record'); // SW_REF_TOKEN
             // Names the settings once gave these values (see _bindAlias).
             if (token === '__detail_url' && type === 'form_list_view') token = 'form_item_view';
             if (token === '__not_found_message' && type === 'form_item_view') token = 'not_found';
