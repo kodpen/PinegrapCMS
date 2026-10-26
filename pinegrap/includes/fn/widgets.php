@@ -1688,6 +1688,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $page_links = pg_sw_page_link_bindings($tree_decoded);
     pg_sw_page_link_resolve($page_links);
     $page_link_bare = pg_sw_page_link_values($page_links, array(), array(), array());
+    // Fields of the records a record points at: a token each, filled per
+    // row once the rows are read (includes/fn/collections.php).
+    $refs = pg_coll_ref_bindings($tree_decoded);
     $split = _split_widget_tree($tree_decoded, true);
 
     // Render the loop template (per-record). If no loop_area was found, fall back to
@@ -2156,6 +2159,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     if (!empty($cfg['translate_records'])) {
         $by_form = array_map('pg_tr_record_fields', $by_form);
     }
+    pg_coll_ref_fill($refs, $by_form, $by_form_source);
 
     // 3. Render each submission by cloning the LOOP template and replacing tokens.
     //    An identifier this form does not answer is swept after the pass, so a
@@ -3215,6 +3219,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // below, so the no-record layout carries the same tokens.
     $page_links = pg_sw_page_link_bindings($tree_decoded);
     pg_sw_page_link_resolve($page_links);
+    // Fields of the records this record points at (includes/fn/collections.php).
+    $refs = pg_coll_ref_bindings($tree_decoded);
     // The tree as designed, for the no-record layout below.
     $tree_designed = $tree_decoded;
     // The record template (loop_area) and the surround, drawn from a tree.
@@ -3420,6 +3426,9 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         if (!empty($cfg['translate_records'])) {
             $custom = pg_tr_record_fields($custom);
         }
+        $by_record = array((int)$form_row['id'] => $custom);
+        pg_coll_ref_fill($refs, $by_record, array((int)$form_row['id'] => $custom_source));
+        $custom = $by_record[(int)$form_row['id']];
 
         // An account the form's auto-registration just opened for this
         // visitor: the confirmation page tells them how to sign in, as the

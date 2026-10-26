@@ -11,7 +11,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - The canvas stays the record: kinds live on the control (`props._cf.kind`, `_cf.ref`) and the save derives row columns, like `translate_values`.
 
 ## Which steps?
-- **C1 — reference resolution in record widgets (no schema).** New module `includes/fn/collections.php`. `form_list_view`/`form_item_view` bindings get `_bindParams.<attr>.ref {page, field}`: the value is read as reference codes (or address names) of that form's records and the bound field of the target printed instead (one query per render for all rows). Only complete records, never `office_use_only` fields; translated like own values. Bind Data panel twin, canvas placeholder, tests.
+- **C1 — reference resolution in record widgets (no schema). Done, #1981:** the `__ref` binding in `form_list_view`/`form_item_view` (`designer/collection-references.md`).
 
 - **C2 — collection flag and field kinds (Q1, Q2).** Migration step, `pg_collections_ready()`; form settings switch "Use as a collection"; Form Field panel "Kind" (number, image, reference + target, slug); `_pg_cf_controls()` / `pg_cf_sync_page_form()` write the columns; `list_form_fields` returns them.
 
