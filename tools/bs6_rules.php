@@ -504,8 +504,10 @@ function bs6_join_class_parts($value, $parts)
  * Contexts: a `class="..."` / `class='...'` attribute (escaped quotes too),
  * PHP array keys ending in "class" or "classes" (`'class' => '...'`), JS
  * object keys `class:` / `className:`, `.className = '...'`, jQuery
- * `addClass` / `removeClass` / `toggleClass` / `hasClass` and the
- * `classList` methods with string arguments.
+ * `addClass` / `removeClass` / `toggleClass` / `hasClass`, the
+ * `classList` methods with string arguments, and the element helpers of the
+ * panel scripts (`el('div', 'mb-3')`, `h.el(…)`, `make(…)`, `button('btn …')`,
+ * `icon('bi-x', 'me-2')`).
  */
 function bs6_find_class_lists($source)
 {
@@ -518,6 +520,12 @@ function bs6_find_class_lists($source)
 		'js-key' => '/\b(?:class|className)\s*:\s*([\'"])(.*?)(?<!\\\\)\1/',
 		'class-name' => '/\.className\s*\+?=\s*([\'"])(.*?)(?<!\\\\)\1/',
 		'jquery' => '/\.(?:addClass|removeClass|toggleClass|hasClass)\(\s*([\'"])(.*?)(?<!\\\\)\1/',
+		// Element helpers of the panel scripts: el('div', 'mb-3'),
+		// h.el(…), make(…), element(…), svgEl(…); button('btn …', label);
+		// icon('bi-x', 'me-2').
+		'helper' => '/(?<![\w$])(?:[A-Za-z_$][\w$]*\.)?(?:el|element|make|svgEl)\(\s*([\'"])[a-zA-Z][\w-]*\1\s*,\s*([\'"])(.*?)(?<!\\\\)\2/',
+		'helper-first' => '/(?<![\w$])(?:[A-Za-z_$][\w$]*\.)?button\(\s*()([\'"])(.*?)(?<!\\\\)\2/',
+		'helper-icon' => '/(?<![\w$])(?:[A-Za-z_$][\w$]*\.)?icon\(\s*([\'"])[^\'"]*\1\s*,\s*([\'"])(.*?)(?<!\\\\)\2/',
 	);
 
 	foreach ($patterns as $kind => $pattern) {
@@ -526,7 +534,7 @@ function bs6_find_class_lists($source)
 		}
 
 		foreach ($matches as $m) {
-			$group = ($kind === 'attribute' || $kind === 'php-key') ? 3 : 2;
+			$group = in_array($kind, array('attribute', 'php-key', 'helper', 'helper-first', 'helper-icon'), true) ? 3 : 2;
 
 			if ($m[$group][1] < 0) {
 				continue;
