@@ -11097,6 +11097,7 @@ const StyleDesigner = (function () {
                     comments_recent:      _sdT('Recent Comments'),
                     shipping_address_and_arrival: _sdT('Shipping Address and Arrival'),
                     shipping_method:      _sdT('Shipping Method'),
+                    billing_information:  _sdT('Billing Information'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -31913,6 +31914,7 @@ const StyleDesigner = (function () {
             var _isWishlist        = (_regionType === 'wishlist');
             var _isShippingAddress = (_regionType === 'shipping_address_and_arrival');
             var _isShippingMethod  = (_regionType === 'shipping_method');
+            var _isBillingInfo     = (_regionType === 'billing_information');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -31961,6 +31963,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isBillingInfo) {
+                _sourceInfoHtml = _sdT('The third step of the classic checkout: the billing address, e-mail and phone of the visitor\'s order, with the order\'s own fields. A part the page does not ask for (a custom field without a label, the PO number, referral sources, tax exemption) is left out with its controls.');
             } else if (_isShippingMethod) {
                 _sourceInfoHtml = _sdT('The second step of the classic checkout: the shipping address step sends the visitor here with one recipient of the order, who picks one of the methods that can ship its items to its address by its requested arrival date. The methods and their costs are the ones the express order offers. Opened without a recipient, it shows only the block for that case.');
             } else if (_isShippingAddress) {
@@ -33040,6 +33044,39 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Controls'),
                         _saHint(_sdT('The form reads its controls by name: {var}.', '<code>salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number, shipping_same_as_billing, arrival_date, custom_arrival_date</code>')))
+                );
+            }
+
+            // ── billing_information settings ─────────────────────────────────
+            // Written into the page's billing_information_pages row, which
+            // the handler reads; a setting never touched leaves the row as
+            // the classic page stored it.
+            if (_isBillingInfo) {
+                if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+                var _biHint = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + t + '</div>'; };
+                var _biSwitch = function (key) {
+                    return '<label class="sd-prop-switch">' +
+                        '<input type="checkbox" class="sd-sw-inp" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="bool"' + (_cfg[key] ? ' checked' : '') + '>' +
+                        '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                    '</label>';
+                };
+                var _biField = function (n) {
+                    return row(_sdT('Custom field {var}', String(n)),
+                        '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="custom_field_' + n + '_label" maxlength="255" value="' + esc(_cfg['custom_field_' + n + '_label'] || '') + '" placeholder="' + esc(_sdT('Label (empty: no field)')) + '">' +
+                        '<div class="d-flex align-items-center gap-2 mt-1">' + _biSwitch('custom_field_' + n + '_required') + '<span style="font-size:.7rem">' + esc(_sdT('Required')) + '</span></div>' +
+                        _biHint(esc(_sdT('Elements bound to "{var}" show this text.', _swBindLabel('billing_information', '__custom_field_' + n + '_label')))));
+                };
+                systemSection += sect('bi-receipt', _sdT('Billing Information Settings'),
+                    row(_sdT('Next page'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
+                            _swPageOptions(_cfg.next_page_id, _allPagesCache, { none: _sdT('— The page\'s own setting —') }) +
+                        '</select>' +
+                        _biHint(esc(_sdT('Where the visitor goes once the billing details are saved: the order preview page.')))
+                    ) +
+                    _biField(1) + _biField(2) +
+                    row(_sdT('PO number'), _biSwitch('po_number') + _biHint(_sdT('While on, the purchase order number (name: <code>po_number</code>) is drawn.'))) +
+                    row(_sdT('Controls'),
+                        _biHint(_sdT('The form reads its controls by name: {var}.', '<code>billing_salutation, billing_first_name, billing_last_name, billing_company, billing_address_1, billing_address_2, billing_city, billing_state, billing_zip_code, billing_country, billing_phone_number, billing_fax_number, billing_email_address, custom_field_1, custom_field_2, po_number, referral_source, tax_number, tax_office, tax_exempt, opt_in, update_contact</code>')))
                 );
             }
 
@@ -36456,7 +36493,7 @@ const StyleDesigner = (function () {
         account_security: 1, account_invoices: 1, account_email: 1, logout: 1, error_page: 1,
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
-        shipping_address_and_arrival: 1, shipping_method: 1
+        shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37447,6 +37484,22 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // billing_information token palette — no loop_area. Mirrors
+    // _render_system_widget_billing_information() in
+    // widgets_billing_information.php.
+    var SW_BILLING_INFORMATION_TOKEN_GROUPS = [
+        { label: _sdT('Labels'), tokens: [
+            ['__custom_field_1_label', _sdT('Custom field 1 label')],
+            ['__custom_field_2_label', _sdT('Custom field 2 label')],
+            ['__tax_exempt_label',     _sdT('Tax exemption label')],
+            ['__opt_in_label',         _sdT('Opt-in checkbox label')],
+            ['__custom_form_title',    _sdT('Custom billing form title')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__cart_url',             _sdT('Cart page address (the link drops when the site has none)')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -37462,7 +37515,8 @@ const StyleDesigner = (function () {
         account_email:     SW_ACCOUNT_EMAIL_TOKEN_GROUPS,
         wishlist:          SW_WISHLIST_TOKEN_GROUPS,
         shipping_address_and_arrival: SW_SHIPPING_ADDRESS_TOKEN_GROUPS,
-        shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS
+        shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS,
+        billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -38391,6 +38445,16 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        billing_information: [
+            ['has_custom_field_1',   _sdT('Custom field 1 has a label')],
+            ['has_custom_field_2',   _sdT('Custom field 2 has a label')],
+            ['has_po_number',        _sdT('The page asks for a PO number')],
+            ['has_custom_form',      _sdT('The page has a custom billing form')],
+            ['shows_opt_in',         _sdT('The opt-in box is offered (the contact has not opted in)')],
+            ['can_update_contact',   _sdT('A signed-in member may update their contact')],
+            ['has_referral_sources', _sdT('The site has referral sources')],
+            ['has_tax_exempt',       _sdT('Tax exemption can be asked for')]
         ],
         shipping_method: [
             ['has_recipient',              _sdT('A recipient of the visitor\'s order is being shown')],
@@ -40859,6 +40923,8 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
             } else if (_semSwRegion === 'calendar_event_view') {
                 _sectionOpts.push(['reserve_form',         _sdT('Reserve button (hidden when reservations are closed)')]);
+            } else if (_semSwRegion === 'billing_information') {
+                _sectionOpts.push(['custom_billing_form',  _sdT('Custom billing form fields (hidden when the page has none)')]);
             } else if (_semSwRegion === 'shipping_method') {
                 _sectionOpts.push(['recipient_items',      _sdT('The recipient\'s items (a product that cannot go to the address carries its remove link)')]);
             } else if (_semSwRegion === 'shipping_address_and_arrival') {
@@ -50599,7 +50665,8 @@ const StyleDesigner = (function () {
         // _swKindOf().
         { type: 'comments_recent',   label: _sdT('Recent Comments'),   slug: _sdT('recent-comments'),   icon: 'bi-chat-square-quote' },
         { type: 'shipping_address_and_arrival', label: _sdT('Shipping Address and Arrival'), slug: _sdT('shipping-address'), icon: 'bi-truck' },
-        { type: 'shipping_method',   label: _sdT('Shipping Method'),   slug: _sdT('shipping-method'),   icon: 'bi-box-seam' }
+        { type: 'shipping_method',   label: _sdT('Shipping Method'),   slug: _sdT('shipping-method'),   icon: 'bi-box-seam' },
+        { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -56073,6 +56140,95 @@ const StyleDesigner = (function () {
                     createNode('semantic', { tag: 'div', cssClass: 'list-group', customName: _sdT('Documents'),
                         _bindings: { eo_visible_if: 'has_documents' } }, [aiLoop])
                 ], true);
+            }
+
+            case 'billing_information': {
+                // The third step of the classic checkout, posting to
+                // billing_information.php under the classic page's field
+                // names. The state is a text box and a pick list, both named
+                // billing_state: the page's script shows the one the chosen
+                // country uses. A part the page does not ask for goes with
+                // its block. Mirrors _render_system_widget_billing_information().
+                var biId = 'f_' + Math.random().toString(36).slice(2, 7);
+                var biMax = function (n) { return [{ name: 'maxlength', value: String(n) }]; };
+                var biCountry = _swAcctSelect(_sdT('Country'), biId + '_country', 'billing_country', 'col-sm-6');
+                biCountry.children[1].props._attrs.push({ name: 'required', value: '' });
+                var biCheck = function (name, label, suffix, labelToken, flag) {
+                    var lp = { tag: 'label', cssClass: 'form-check-label', text: label, customName: _sdT('Label'),
+                        _attrs: [{ name: 'for', value: biId + suffix }] };
+                    if (labelToken) lp._bindings = { text: labelToken };
+                    var wp = { tag: 'div', cssClass: 'form-check mb-2', customName: label };
+                    if (flag) wp._bindings = { eo_visible_if: flag };
+                    return createNode('semantic', wp, [
+                        createNode('semantic', { tag: 'input', cssClass: 'form-check-input', id: biId + suffix,
+                            _attrs: [{ name: 'type', value: 'checkbox' }, { name: 'name', value: name }, { name: 'value', value: '1' }] }),
+                        createNode('semantic', lp)
+                    ]);
+                };
+                var biOptional = function (flag, field, labelToken) {
+                    field.props._bindings = { eo_visible_if: flag };
+                    if (labelToken) field.children[0].props._bindings = { text: labelToken };
+                    return field;
+                };
+                var biReferral = _swAcctSelect(_sdT('How did you hear about us?'), biId + '_referral', 'referral_source');
+                biReferral.props._bindings = { eo_visible_if: 'has_referral_sources' };
+                return _swAcctPage(_sdT('Billing Information Card'), '10', '8', [
+                    createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Billing Information'), cssClass: 'card-title mb-3' }),
+                    createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Name') }, [
+                        _swAcctSelect(_sdT('Salutation'), biId + '_salutation', 'billing_salutation', 'col-sm-4'),
+                        _swAcctField(_sdT('First Name'), biId + '_first', 'text', 'billing_first_name', { required: true, autocomplete: 'given-name', colCss: 'col-sm-4', attrs: biMax(50) }),
+                        _swAcctField(_sdT('Last Name'), biId + '_last', 'text', 'billing_last_name', { required: true, autocomplete: 'family-name', colCss: 'col-sm-4', attrs: biMax(50) })
+                    ]),
+                    _swAcctField(_sdT('Company'), biId + '_company', 'text', 'billing_company', { autocomplete: 'organization', attrs: biMax(50) }),
+                    _swAcctField(_sdT('Address'), biId + '_addr1', 'text', 'billing_address_1', { required: true, autocomplete: 'address-line1', attrs: biMax(50) }),
+                    _swAcctField(_sdT('Address (line 2)'), biId + '_addr2', 'text', 'billing_address_2', { autocomplete: 'address-line2', attrs: biMax(50) }),
+                    createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
+                        _swAcctField(_sdT('City'), biId + '_city', 'text', 'billing_city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: biMax(50) }),
+                        biCountry
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('State') }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'col-sm-6 mb-3', customName: _sdT('State / Province') }, [
+                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('State / Province'), customName: _sdT('Label'),
+                                _attrs: [{ name: 'for', value: biId + '_state' }] }),
+                            createNode('semantic', { tag: 'input', cssClass: 'form-control', id: biId + '_state',
+                                _attrs: [{ name: 'type', value: 'text' }, { name: 'name', value: 'billing_state' },
+                                         { name: 'autocomplete', value: 'address-level1' }, { name: 'maxlength', value: '50' }] }),
+                            createNode('semantic', { tag: 'select', cssClass: 'form-select', id: biId + '_state_list',
+                                _attrs: [{ name: 'name', value: 'billing_state' }, { name: 'hidden', value: '' }] }, [
+                                createNode('semantic', { tag: 'option', text: _sdT('Filled by the server'), customName: _sdT('Option'),
+                                    _attrs: [{ name: 'value', value: '' }] })
+                            ])
+                        ]),
+                        _swAcctField(_sdT('Zip / Postal Code'), biId + '_zip', 'text', 'billing_zip_code', { autocomplete: 'postal-code', colCss: 'col-sm-6', attrs: biMax(50) })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Contact') }, [
+                        _swAcctField(_sdT('Phone'), biId + '_phone', 'tel', 'billing_phone_number', { required: true, autocomplete: 'tel', colCss: 'col-sm-6', attrs: biMax(50) }),
+                        _swAcctField(_sdT('Email'), biId + '_email', 'email', 'billing_email_address', { required: true, autocomplete: 'email', colCss: 'col-sm-6', attrs: biMax(100) })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Tax') }, [
+                        _swAcctField(_sdT('Tax Number'), biId + '_taxno', 'text', 'tax_number', { colCss: 'col-sm-6', attrs: biMax(11) }),
+                        _swAcctField(_sdT('Tax Office'), biId + '_taxoffice', 'text', 'tax_office', { colCss: 'col-sm-6', attrs: biMax(100) })
+                    ]),
+                    biOptional('has_custom_field_1', _swAcctField(_sdT('Custom field 1 label'), biId + '_cf1', 'text', 'custom_field_1', { attrs: biMax(255) }), '__custom_field_1_label'),
+                    biOptional('has_custom_field_2', _swAcctField(_sdT('Custom field 2 label'), biId + '_cf2', 'text', 'custom_field_2', { attrs: biMax(255) }), '__custom_field_2_label'),
+                    biOptional('has_po_number', _swAcctField(_sdT('PO Number'), biId + '_po', 'text', 'po_number', { attrs: biMax(50) })),
+                    biReferral,
+                    biCheck('tax_exempt', _sdT('Tax-Exempt?'), '_taxex', '__tax_exempt_label', 'has_tax_exempt'),
+                    biCheck('opt_in', _sdT('Opt-in checkbox label'), '_optin', '__opt_in_label', 'shows_opt_in'),
+                    biCheck('update_contact', _sdT('Update my contact information with these details.'), '_upd', '', 'can_update_contact'),
+                    createNode('semantic', { tag: 'div', cssClass: 'my-4', customName: _sdT('Custom Billing Form'),
+                        _bindings: { eo_visible_if: 'has_custom_form' } }, [
+                        createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Custom billing form title'), cssClass: 'mb-3',
+                            _bindings: { text: '__custom_form_title' } }),
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Custom Billing Form Fields'),
+                            _bindings: { section: 'custom_billing_form' } })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2 align-items-center mt-3', customName: _sdT('Buttons') }, [
+                        _swAcctSubmit(_sdT('Continue'), _sdT('Continue Button')),
+                        createNode('content', { contentType: 'link', text: _sdT('Back to the cart'), href: '#', cssClass: '',
+                            _bindings: { href: '__cart_url' } })
+                    ])
+                ]);
             }
 
             case 'shipping_method': {

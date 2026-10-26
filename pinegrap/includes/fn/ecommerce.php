@@ -721,8 +721,9 @@ function get_page_name($page_id)
 /**
  * Whether $page_id names a page that a checkout step of $page_type ('express
  * order', 'order preview', 'billing information') is posted from: a page of
- * that type or, for an express order, a page that carries the designer's
- * express order widget (the widget gives its page an express_order_pages row).
+ * that type or, for an express order or billing information, a page that
+ * carries the designer's widget for it (the widget gives its page an
+ * express_order_pages or billing_information_pages row).
  * The step reads that page's settings by this id: required custom fields and
  * forms, terms, the order receipt e-mail and the next page. For any other id
  * it would carry on without them. Only a string of digits can name a page, so
@@ -750,6 +751,17 @@ function pg_order_page_known($page_id, $page_type)
             WHERE
                 (page.page_id = '" . e($page_id) . "')
                 AND ((page.page_type = 'express order') OR (express_order_pages.page_id IS NOT NULL))
+            LIMIT 1");
+    }
+
+    if ($page_type === 'billing information') {
+        return (bool) db(
+            "SELECT page.page_id
+            FROM page
+            LEFT JOIN billing_information_pages ON billing_information_pages.page_id = page.page_id
+            WHERE
+                (page.page_id = '" . e($page_id) . "')
+                AND ((page.page_type = 'billing information') OR (billing_information_pages.page_id IS NOT NULL))
             LIMIT 1");
     }
 
