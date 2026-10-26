@@ -15,7 +15,7 @@ description: What audit_log leaves out of before/after, how secrets are masked (
 ## How is JSON text stored?
 - A text value holding a JSON object or list up to 64 KB (`pg_audit_limits()` 'json') is decoded and masked by the same names (`config.product_feeds` keeps feed tokens inside). Up to 2000 bytes of masked JSON it is kept as the object or list; past that, as the masked text compacted (`truncated`, `length`, `sha1`, `start`): `length` and `sha1` are of the masked text, not of the column.
 - Longer text is never decoded (#905 review): a page tree (`page.page_tree_json`) can be megabytes; decoding it cost 11-12x its size in memory on a delete, and a 64 KB+ tree pushed the side past its limit so the row kept only field names (the page's name was lost). It is compacted like any long string, with the column's own `sha1`.
-- An empty JSON object comes back as `[]`. Before #905 the same column was stored as its original string. The audit screen (plan step 5) shows a string, an object/list and a compacted value.
+- An empty JSON object comes back as `[]`. Before #905 the same column was stored as its original string. The audit screen shows a string, an object/list and a compacted value (`core/audit-trail-screen.md`).
 
 ## What about lines written before #905?
 - An SEO settings save stored `config.product_feeds` as its text, whole or cut to its start, with the feed tokens in clear. Step 11.0.38 (PR #1792) masks those lines in place with `pg_audit_remask()`: `pg_audit_redact()`, then `pg_audit_mask_starts()` masks the secret `"name":"value"` pairs of a cut start. Kept, not deleted (owner, 2026-10-26: who changed the settings stays); only changed lines are written.

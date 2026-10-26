@@ -666,6 +666,7 @@
     "Who can open it": "Kimler açabilir",
     "Who can see it": "Kimler görebilir",
     "Who carries the work": "İşi kim taşıyor",
+    "Who changed what in the panel, through the API or in a scheduled job, with each changed field before and after. Secrets are kept as changed, never with their value.": "Panelde, API üzerinden veya zamanlanmış bir işte kimin neyi değiştirdiği; değişen her alanın önceki ve sonraki değeriyle. Gizli değerlerin yalnızca değiştiği kaydedilir, değeri asla.",
     "Who chooses the books?": "Kitapları kim seçiyor?",
     "Who connects": "Kim bağlanıyor",
     "Who decides": "Kim karar veriyor",

@@ -281,7 +281,8 @@ function pg_audit_view_csv_columns()
 /**
  * One audit_log row as a CSV line: the time in the site's time zone, the
  * names of the changed fields, and both sides as they are stored (secrets
- * masked when they were written).
+ * masked when they were written). A value that would start a formula in a
+ * spreadsheet carries a leading apostrophe.
  *
  * @param array $row  an audit_log row
  * @return array  values in the order of pg_audit_view_csv_columns()
@@ -303,6 +304,14 @@ function pg_audit_view_csv_line(array $row)
             $line[] = implode(', ', $fields);
         } else {
             $line[] = (string) ($row[$key] ?? '');
+        }
+    }
+
+    // A value spreadsheet software would run as a formula (a name or label
+    // starting with =, +, -, @) is shown as text.
+    foreach ($line as $index => $value) {
+        if (($value !== '') && (strpos("=+-@\t\r", $value[0]) !== false)) {
+            $line[$index] = "'" . $value;
         }
     }
 

@@ -480,12 +480,13 @@ function pg_settings_tool_groups($user)
 
     $groups = array();
 
-    // Watching: the log and who is signed in.
+    // Watching: the logs and who is signed in.
     $groups[] = array(
         'label' => lang('Monitoring'),
         'icon'  => 'bi-activity',
         'items' => array(
             array('label' => lang('Site Log'), 'icon' => 'bi-card-list', 'url' => 'view_log.php'),
+            array('label' => lang('Audit trail'), 'icon' => 'bi-clipboard-check', 'url' => 'view_audit_log.php'),
             array('label' => lang('Sessions'), 'icon' => 'bi-laptop',    'url' => 'view_sessions.php'),
         ),
     );

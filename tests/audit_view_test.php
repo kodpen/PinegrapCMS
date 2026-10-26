@@ -143,6 +143,13 @@ function test_audit_view_csv_line()
 
 	pg_assert_same(count(pg_audit_view_csv_columns()), count($line), 'one value per column');
 	pg_assert_same(array('9', '2026-10-26 14:05:00', 'panel', '3', 'ayse', '10.0.0.1', 'update', 'product', '44', 'Kalem', 'r1', 'price, name', '{"price":"1250"}', '{"price":"1300","name":"Kalem"}'), $line, 'line');
+
+	// A name a spreadsheet would run as a formula is kept as text.
+	$row['label'] = '=HYPERLINK("x")';
+	$row['username'] = '@app';
+	$line = pg_audit_view_csv_line($row);
+	pg_assert_same('\'=HYPERLINK("x")', $line[9], 'formula label');
+	pg_assert_same('\'@app', $line[4], 'formula name');
 }
 
 // Known types open their screen; others have no link.

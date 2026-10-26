@@ -275,6 +275,7 @@
     "Record filters apply only while the list reads a single page with a Form Item View: with the pages chosen now, it shows no comment. Choose one such page, or delete the filters.": "Kayıt filtreleri yalnızca liste Form Öğesi Görünümü olan tek bir sayfayı okurken uygulanır: şu an seçili sayfalarla hiçbir yorum göstermez. Böyle tek bir sayfa seçin ya da filtreleri silin.",
     "Record for {var:1}": "{var:1} için kaydet",
     "Record intact": "Kayıt bütün",
+    "Record name": "Kayıt adı",
     "Record not found.": "Kayıt bulunamadı.",
     "Record seal": "Kayıt mührü",
     "Record that the bank transfer for this order has arrived?": "Bu siparişin havalesinin geldiği kaydedilsin mi?",

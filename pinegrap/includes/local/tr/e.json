@@ -1149,6 +1149,7 @@
     "email-tip-received": "e-posta-ipucunuz-alindi",
     "email@example.com": "e-posta@ornek.com",
     "emily.turner@example.com": "zeynep.demir@example.com",
+    "empty": "boş",
     "empty (prompt)": "boş (istem)",
     "enabled": "etkin",
     "end_date must be a date as YYYY-MM-DD, or empty for an offer with no end.": "end_date YYYY-AA-GG biçiminde bir tarih olmalı; bitişi olmayan kampanya için boş bırakın.",

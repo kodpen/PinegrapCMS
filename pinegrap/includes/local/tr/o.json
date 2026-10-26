@@ -130,6 +130,7 @@
     "Old automatic backups could not be deleted from the remote copy: {var:1}": "Eski otomatik yedekler uzak kopyadan silinemedi: {var:1}",
     "Old backup taken before an update {var:1} was deleted.": "Güncelleme öncesi alınmış eski yedek {var:1} silindi.",
     "Old-school and proud": "Eski usul ve bununla gurur duyuyor",
+    "Older": "Daha eski",
     "Older decisions": "Daha eski kararlar",
     "Older entries": "Daha eski kayıtlar",
     "Older records are still left; the general job carries on with them.": "Daha eski kayıtlar hâlâ var; genel görev onlarla devam ediyor.",
