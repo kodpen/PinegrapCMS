@@ -18,16 +18,19 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_type_pane.php');
 
-function test_page_type_pane_types_are_known_page_types()
+function test_page_type_pane_has_fields()
 {
-	foreach (pg_page_type_pane_types() as $type) {
-		pg_assert_true(get_page_type_name($type) !== null, $type);
-		pg_assert_true($type !== 'standard', 'a standard page has no type fields');
-	}
+	pg_assert_false(pg_page_type_pane_has_fields('standard'));
+	pg_assert_false(pg_page_type_pane_has_fields('logout'), 'no fields, no layout');
+	pg_assert_false(pg_page_type_pane_has_fields('error'));
+	pg_assert_true(pg_page_type_pane_has_fields('my account'), 'a layout only');
 
-	foreach (array('custom form', 'form list view', 'form item view', 'form view directory', 'calendar view',
-		'express order', 'shopping cart', 'shipping address and arrival', 'billing information', 'order preview') as $type) {
-		pg_assert_true(!in_array($type, pg_page_type_pane_types(), true), $type . ' waits for the second step');
+	foreach (array('email a friend', 'folder view', 'photo gallery', 'search results', 'update address book',
+		'custom form', 'custom form confirmation', 'form list view', 'form item view', 'form view directory',
+		'calendar view', 'calendar event view', 'catalog', 'catalog detail', 'express order', 'order form',
+		'shopping cart', 'shipping address and arrival', 'shipping method', 'billing information', 'order preview',
+		'order receipt', 'affiliate sign up form') as $type) {
+		pg_assert_true(pg_page_type_pane_has_fields($type), $type);
 	}
 }
 
@@ -68,12 +71,15 @@ function test_page_type_pane_endpoint_checks_before_it_writes()
 	$token = strpos($body, 'hash_equals(');
 	$folder = strpos($body, 'check_edit_access(');
 	$right = strpos($body, 'pg_page_type_user_may_set(');
-	$types = strpos($body, 'pg_page_type_pane_types()');
+	$types = strpos($body, 'pg_page_type_pane_has_fields(');
 	$lock = strpos($body, 'pg_collab_may_edit_page(');
-	$write = strpos($body, 'create_or_update_page_type_record(');
+	$form = strpos($body, 'pg_page_type_custom_form_errors(');
+	$checked = strpos($body, 'pg_page_type_properties_for_save(');
+	$write = strpos($body, 'pg_page_form_save_type_links(');
 
 	pg_assert_true($token !== false && $token < $folder, 'token first');
-	pg_assert_true($folder < $right && $right < $types && $types < $lock && $lock < $write, 'every check before the first write');
+	pg_assert_true($folder < $right && $right < $types && $types < $lock && $lock < $form && $form < $write, 'every check before the first write');
+	pg_assert_true($checked < $write, 'the access rules of edit_page.php before the write');
 	pg_assert_true(strpos($body, 'output_error(') === false, 'refuses in JSON');
 }
 
@@ -83,6 +89,8 @@ function test_page_type_pane_wiring()
 	$hook = strpos($edit, 'pg_page_type_pane_request(');
 	pg_assert_true($hook !== false && $hook < strpos($edit, 'pg_page_is_visual_design('), 'answered before the redirect to the designer');
 	pg_assert_same(2, substr_count($edit, 'pg_page_type_user_may_set('), 'the form and the handler share the rights');
+	pg_assert_same(1, substr_count($edit, 'pg_page_type_properties_for_save('), 'the handler saves the type through the shared checks');
+	pg_assert_same(0, substr_count($edit, 'validate_contact_group_access('), 'no second copy of the checks');
 
 	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 	pg_assert_true(strpos($screen, "\$rail('page-type', 'bi-sliders', lang('Page Type'), 'page', false, true)") !== false, 'pill hidden until a classic page is open');
