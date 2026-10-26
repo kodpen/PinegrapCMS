@@ -15,7 +15,7 @@ description: How a change typed in the designer's code view reaches the tree: di
 - Children (`_sdCodeReconcileChildren`) are rebuilt only for a free node whose children the emitter placed (`entry.atomic` false) and whose text is not `inner`/`outer`; a half-locked node keeps its children. A shared component's or widget's elements inside a page node keep its `shared_ref` in place (`_sdCodeSharedRefFor`); their own changes arrive with the node as scope and mark `_sharedDirty`.
 
 ## What do file tabs and the dialog do?
-- A CSS/JS/JSON entry of the assets panel opens as a tab beside the page (`_sdCodeTabOpen(spec)`: `load`, `save`, `url` of an external link, `readOnly`). Ctrl+S in a file tab saves that file (`_sdCodeSaveShortcut()`), elsewhere the design. The props panel's code fields use `window.openCodeEditor()` (`codemirror_modal.js`, on the facade); no CodeMirror 5 is loaded.
+- A CSS/JS/JSON entry of the assets panel opens as a tab beside the page (`_sdCodeTabOpen(spec)`: `load`, `save`, `url` of an external link, `readOnly`). Ctrl+S in a file tab saves that file (`_sdCodeSaveShortcut()`), elsewhere the design. Search in all tabs: [[code-view-tab-search]]. The props panel's code fields use `window.openCodeEditor()` (`codemirror_modal.js`, on the facade); no CodeMirror 5 is loaded.
 
 ## How do undo, selection and locks work?
 - `saveState('run:code')` once per apply, then `render()`; the refresh writes back the tree's spelling (quotes, entities, indentation) with a cursor-preserving diff. Ctrl+Z in the editor undoes typed text and applies again; outside it restores the tree and the text follows.

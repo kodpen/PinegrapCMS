@@ -2288,6 +2288,31 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     margin-right: .35rem;
 }
 .sd-code-url:focus { outline: none; border-color: var(--sd-accent); }
+/* Search in all tabs: a field and the hits by tab, under the strip */
+.sd-code-find { flex-shrink: 0; max-height: 45%; display: flex; flex-direction: column; background: #15171b; border-bottom: 1px solid var(--sd-panel-border); }
+.sd-code-find-row { display: flex; align-items: center; gap: .25rem; padding: .2rem .4rem; color: var(--sd-text-muted); font-size: .66rem; }
+.sd-code-find-input {
+    flex: 1; min-width: 6rem; height: 22px;
+    background: #0f1115; color: var(--sd-text);
+    border: 1px solid rgba(255,255,255,.14); border-radius: 3px;
+    font-size: .7rem; padding: .1rem .4rem;
+}
+.sd-code-find-input:focus { outline: none; border-color: var(--sd-accent); }
+.sd-code-find-opt {
+    background: transparent; border: 1px solid transparent; border-radius: 3px;
+    color: var(--sd-text-muted); font-size: .66rem; line-height: 1; padding: .2rem .3rem; cursor: pointer;
+}
+.sd-code-find-opt:hover { color: var(--sd-text); }
+.sd-code-find-opt.active { color: #6ea8fe; background: rgba(13,110,253,.18); border-color: rgba(13,110,253,.5); }
+.sd-code-find-count { white-space: nowrap; margin: 0 .2rem; }
+.sd-code-find-results { overflow: auto; min-height: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .68rem; }
+.sd-code-find-tab { display: flex; align-items: center; gap: .3rem; padding: .2rem .5rem; color: var(--sd-text); font-family: inherit; font-weight: 600; }
+.sd-code-find-n { margin-left: auto; color: var(--sd-text-muted); font-weight: 400; }
+.sd-code-find-hit { display: flex; gap: .5rem; padding: .1rem .5rem .1rem 1.2rem; color: var(--sd-text-muted); cursor: pointer; white-space: nowrap; }
+.sd-code-find-hit:hover, .sd-code-find-hit.active { background: rgba(255,255,255,.06); color: var(--sd-text); }
+.sd-code-find-ln { min-width: 2.2rem; text-align: right; opacity: .6; }
+.sd-code-find-text { overflow: hidden; text-overflow: ellipsis; white-space: pre; }
+.sd-code-find-text mark { padding: 0; color: inherit; background: rgba(255,193,7,.35); }
 .sd-code-panes { flex: 1; min-height: 0; position: relative; }
 .sd-code-pane { display: none; height: 100%; min-height: 0; }
 .sd-code-pane-active { display: block; }
