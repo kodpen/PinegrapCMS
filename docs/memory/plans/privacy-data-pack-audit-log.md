@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; steps 1-4 done: #738, #813, #905, #1383, #938, #1706; next 4b): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+description: Plan (approved 2026-10-19; steps 1-4b done, last #1706 and #1792; next 5): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19; steps 1-4 done: #738, #813, #905, #1383,
 2. Done (#813, #905, #1383): save paths in `core/audit-trail-writers.md`, the Workspace's in `core/audit-trail-workspace.md`.
 3. Done (#938): `privacy_export.php`, JSON pack, PDF summary; `core/personal-data-export.md`.
 4. Done (#1706): `privacy_erase.php`, `core/personal-data-erasure.md`; the owner's answers in `workflow/decisions-made-product.md`.
-4b. Feed tokens in clear in `audit_log` lines with `label = 'seo'` (sites that ran `development` between #813 and #905): masked in place, not deleted (owner, 2026-10-26). Out of #1706 for size: `pg_audit_remask()` (`pg_audit_redact()` on the decoded side, then a regex masks secret pairs in a compacted `start`) and a data step over `entity_type = 'settings' AND label = 'seo'` writing changed lines only (S).
+4b. Done (#1792): feed tokens in clear in early SEO settings lines masked in place, step 11.0.38 (`core/audit-trail-stored-values.md`).
 5. Audit screen (JSON text is stored as object, list or compacted text: `core/audit-trail-stored-values.md`), export, API; retention jobs (S–M).
 
 ## Open questions?
@@ -26,4 +26,4 @@ description: Plan (approved 2026-10-19; steps 1-4 done: #738, #813, #905, #1383,
 - Which step writes cookie and `contract` consent rows? `sms-and-iys.md` step 4 (PR #1581) added the e-mail marketing writers (`core/consent-log-writers.md`); the cookie notice's server endpoint and a `contract` row next to `order_documents` are not assigned.
 
 ## Where to start?
-- Step 4b, once #1706 lands, then step 5. Read `core/audit-trail-stored-values.md` and `core/audit-trail-writers.md` first. The plan's `[NEW]` line is in (export); steps 4 and 5 widen it, no second line.
+- Step 5. Read `core/audit-trail-stored-values.md` and `core/audit-trail-writers.md` first. The plan's `[NEW]` line is in (export); steps 4 and 5 widen it, no second line.

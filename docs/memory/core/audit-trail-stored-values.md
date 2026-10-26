@@ -17,6 +17,9 @@ description: What audit_log leaves out of before/after, how secrets are masked (
 - Longer text is never decoded (#905 review): a page tree (`page.page_tree_json`) can be megabytes; decoding it cost 11-12x its size in memory on a delete, and a 64 KB+ tree pushed the side past its limit so the row kept only field names (the page's name was lost). It is compacted like any long string, with the column's own `sha1`.
 - An empty JSON object comes back as `[]`. Before #905 the same column was stored as its original string. The audit screen (plan step 5) shows a string, an object/list and a compacted value.
 
+## What about lines written before #905?
+- An SEO settings save stored `config.product_feeds` as its text, whole or cut to its start, with the feed tokens in clear. Step 11.0.38 (PR #1792) masks those lines in place with `pg_audit_remask()`: `pg_audit_redact()`, then `pg_audit_mask_starts()` masks the secret `"name":"value"` pairs of a cut start. Kept, not deleted (owner, 2026-10-26: who changed the settings stays); only changed lines are written.
+
 ## Which name is the label?
 - `pg_audit_label_of()`: the first non-empty label column of `pg_audit_tables()`, from the row after, or before when there is none (a delete).
 - A file or page in the Recycle Bin is parked as `pgbin_<id>_<name>`; the prefix built from the row's own id is taken off, so `recycle` and delete-from-bin lines carry the real name (PR #1058; before, `pgbin_6992_x.txt`, and a search by name missed the delete line). `before_json`/`after_json` keep the parked name.
