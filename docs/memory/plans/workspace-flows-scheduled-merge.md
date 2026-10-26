@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-scheduled-merge
-description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, answers 1-3 given): scheduled actions move into Flows, no feature lost; one screen, a read-only graph, boxes for every part, opt-in convert
+description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, answers 1-3): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes for every part, opt-in convert
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -11,7 +11,6 @@ description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, answers 1-3 given):
 - Scheduled messages (kind `message`, any member) share the table and ?view=scheduled; staff's actions are listed in Flows (slice 1, `ws_flows_scheduled()`).
 - `ws_scheduled_run()` / `ws_scheduled_due()` also drive approval expiry, read receipts, watch lines and the flow runner (#1551).
 - No API route (canvas plan S1, S2).
-- `ws_scheduled_rule_input()` takes a day that does not exist into March (2027-02-29, until 2026-02-31), pinned in tests/workspace_scheduled_test.php: own fix.
 - Flows: manual, task, end boxes; the owner edits, staff and home-channel readers run a live one (`ws_flow_access()`); no loops; runs swept after 30 days, start at depth 0; `flow_id` unread.
 
 ## What is proposed? (not approved yet)
@@ -35,4 +34,4 @@ description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, answers 1-3 given):
 6. Slice 1 before F4 → yes (#1555 is in).
 
 ## Where to start?
-- The date fix of `ws_scheduled_rule_input()`, then slice 2. Read workspace/README.md.
+- Date fix done (#1798). Next: slice 2; read workspace/README.md and workspace/workspace-flows-canvas.md.
