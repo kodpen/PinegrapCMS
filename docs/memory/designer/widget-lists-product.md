@@ -1,6 +1,6 @@
 ---
 name: widget-lists-product
-description: Product lists in the catalog detail widget (W9 slice 1): images, attributes, products bought together; rows the renderer reads and publishes, the cross-sell block they replace, starters, what is left
+description: Product lists in the catalog detail widget (W9 slice 1, #1752): images, attributes, products bought together; where rows are read, the cross-sell block they replace, what is left
 ---
 
 ## Which product lists exist?
