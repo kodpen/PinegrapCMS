@@ -152,6 +152,10 @@ function ws_channel_detail($viewer, $channel)
     $brief['claude'] = function_exists('ws_claude_channel_state') ? ws_claude_channel_state($channel) : null;
     $brief['ai'] = function_exists('ws_ai_channel_state') ? ws_ai_channel_state($channel) : null;
 
+    // The outside applications a mention here reaches, for the @ picker
+    // (app_handles.php).
+    $brief['apps'] = function_exists('ws_channel_app_picker') ? ws_channel_app_picker($channel) : array();
+
     // A room with a guest in it (guests.php): who, where their link stands,
     // what the reader may do. The assistants are never asked there.
     $brief['guest'] = function_exists('ws_guest_channel_state') ? ws_guest_channel_state($viewer, $channel) : null;
@@ -164,6 +168,7 @@ function ws_channel_detail($viewer, $channel)
     if (($brief['guest'] !== null) || (function_exists('ws_channel_share_open') && ws_channel_share_open($channel))) {
         $brief['claude'] = null;
         $brief['ai'] = null;
+        $brief['apps'] = array();
     }
     $brief['audit'] = !$membership && ($channel['kind'] === 'private');
     $brief['summary'] = (string) $channel['summary'];
