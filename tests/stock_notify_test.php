@@ -84,10 +84,21 @@ function test_stock_notify_request_status()
 	pg_assert_same('already', pg_stock_notify_request_status(true, 'a@example.com', $out, true, PG_STOCK_NOTIFY_PENDING_LIMIT), 'asked before, at the limit');
 	pg_assert_same('limit', pg_stock_notify_request_status(true, 'a@example.com', $out, false, PG_STOCK_NOTIFY_PENDING_LIMIT), 'too many waiting');
 	pg_assert_same('added', pg_stock_notify_request_status(true, 'a@example.com', $out, false, PG_STOCK_NOTIFY_PENDING_LIMIT - 1), 'one below the limit');
-	pg_assert_same('phone', pg_stock_notify_request_status(true, 'a@example.com', $out, false, 0, false), 'a number no text reaches');
-	pg_assert_same('email', pg_stock_notify_request_status(true, '', $out, false, 0, false), 'the address first');
-	pg_assert_same('added', pg_stock_notify_request_status(true, 'a@example.com', $out, false, 0, true), 'a good number, or none');
 	pg_assert_same('added', pg_stock_notify_request_status(true, 'a@example.com', $out, false, 0), 'first request');
+
+	// A mobile number typed is held like the address: one waiting request per
+	// product and PG_STOCK_NOTIFY_PENDING_LIMIT products, whatever address it
+	// comes with, since each one kept is a paid text message later.
+	$number = array('reachable' => true, 'already' => false, 'waiting' => 0);
+
+	pg_assert_same('phone', pg_stock_notify_request_status(true, 'a@example.com', $out, false, 0, array('reachable' => false) + $number), 'a number no text reaches');
+	pg_assert_same('email', pg_stock_notify_request_status(true, '', $out, false, 0, array('reachable' => false) + $number), 'the address first');
+	pg_assert_same('added', pg_stock_notify_request_status(true, 'a@example.com', $out, false, 0, $number), 'a good number');
+	pg_assert_same('added', pg_stock_notify_request_status(true, 'a@example.com', $out, false, 0, null), 'no number');
+	pg_assert_same('already', pg_stock_notify_request_status(true, 'b@example.com', $out, false, 0, array('already' => true) + $number), 'the number waits for this product under another address');
+	pg_assert_same('limit', pg_stock_notify_request_status(true, 'b@example.com', $out, false, 0, array('waiting' => PG_STOCK_NOTIFY_PENDING_LIMIT) + $number), 'the number waits for too many products');
+	pg_assert_same('added', pg_stock_notify_request_status(true, 'b@example.com', $out, false, 0, array('waiting' => PG_STOCK_NOTIFY_PENDING_LIMIT - 1) + $number), 'the number one below the limit');
+	pg_assert_same('in_stock', pg_stock_notify_request_status(true, 'b@example.com', stock_notify_test_row(1, 1, 4), false, 0, array('already' => true) + $number), 'a product in stock first');
 }
 
 // Every answer has a sentence for the visitor; a refusal is not a notice.
@@ -257,14 +268,29 @@ function test_stock_notify_endpoint_order()
 }
 
 // The number a request keeps for the text message: a mobile one in the
-// international form, nothing else.
+// international form that the SMS provider can text, nothing else. Netgsm
+// texts Turkish mobile numbers only: a foreign number used to be kept, its
+// text replaced the mail and Netgsm refused it when sent, so nothing came.
 function test_stock_notify_phone()
 {
-	pg_assert_same('905321234567', pg_stock_notify_phone('0532 123 45 67'), 'a Turkish mobile');
-	pg_assert_same('905321234567', pg_stock_notify_phone(' +90 (532) 123-45-67 '), 'with its country code');
-	pg_assert_same('', pg_stock_notify_phone('0212 123 45 67'), 'a landline takes no text');
-	pg_assert_same('', pg_stock_notify_phone(''), 'none typed');
-	pg_assert_same('', pg_stock_notify_phone(array('0532 123 45 67')), 'not a string');
+	pg_assert_same('905321234567', pg_stock_notify_phone('0532 123 45 67', 'netgsm'), 'a Turkish mobile');
+	pg_assert_same('905321234567', pg_stock_notify_phone(' +90 (532) 123-45-67 ', 'netgsm'), 'with its country code');
+	pg_assert_same('', pg_stock_notify_phone('+49 151 23456789', 'netgsm'), 'a German mobile: Netgsm does not text it');
+	pg_assert_same('', pg_stock_notify_phone('0049 151 23456789', 'netgsm'), 'the same with 00');
+	pg_assert_same('', pg_stock_notify_phone('+53 5123 4567', 'netgsm'), 'Cuba: ten digits from 5, still not Turkish');
+	pg_assert_same('', pg_stock_notify_phone('0532 123 45 67', ''), 'no provider texts anything');
+	pg_assert_same('', pg_stock_notify_phone('0212 123 45 67', 'netgsm'), 'a landline takes no text');
+	pg_assert_same('', pg_stock_notify_phone('', 'netgsm'), 'none typed');
+	pg_assert_same('', pg_stock_notify_phone(array('0532 123 45 67'), 'netgsm'), 'not a string');
+
+	// So a foreign number is no number kept: the visitor is asked to correct
+	// it or leave it empty, and the notice goes by e-mail.
+	foreach (array('+49 151 23456789', '0049 151 23456789') as $typed) {
+		$kept = pg_stock_notify_phone($typed, 'netgsm');
+		$status = pg_stock_notify_request_status(true, 'a@example.com', stock_notify_test_row(1, 1, 0), false, 0, array('reachable' => ($kept !== ''), 'already' => false, 'waiting' => 0));
+
+		pg_assert_same('phone', $status, $typed);
+	}
 }
 
 // The text message is a transactional one: its own non-commercial kind, off
@@ -291,7 +317,8 @@ function test_stock_notify_sms_event()
 
 // The sender texts a row with a number instead of mailing it, once per row
 // (the reference), reads the kept digits back with the plus, and mails when
-// the text cannot be queued; the request keeps a number only while texts go.
+// the text cannot be queued or the general job does not send the queue; the
+// request keeps a number only while texts go, held like the address.
 function test_stock_notify_sms_wiring()
 {
 	$send = pg_test_function_source('pg_stock_notify_send');
@@ -301,10 +328,12 @@ function test_stock_notify_sms_wiring()
 	pg_assert_contains("pg_sms_message_queue('stock_back', pg_sms_dial(\$phone)", $send, 'queued, never sent in the request');
 	pg_assert_contains("'stock:' . (int) \$row['id']", $send, 'one text per request');
 	pg_assert_true(strpos($send, 'pg_sms_message_queue(') < strpos($send, 'email(array('), 'the text first, the mail when it is not queued');
+	pg_assert_contains('pg_sms_job_alive()', $send, 'a text only while the general job sends the queue, else the mail');
 
 	$request = pg_test_function_source('pg_stock_notify_request');
 	pg_assert_contains('pg_stock_notify_sms_on()', $request, 'a number is kept only while texts go');
 	pg_assert_contains("e(\$phone)", $request, 'and written');
+	pg_assert_contains("(phone = '\" . e(\$phone) . \"')", $request, 'and held like the address');
 
 	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/stock_notify.php');
 	pg_assert_contains("'phone'", $endpoint, 'the endpoint reads the number');

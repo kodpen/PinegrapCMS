@@ -96,6 +96,19 @@ function test_sms_netgsm_number_takes_turkish_mobiles_only()
 	pg_assert_same('', pg_sms_netgsm_number('5321234567'));
 }
 
+// Whether a provider can text a number, asked before a number is kept for a
+// message sent later: the driver's own rule, Netgsm's Turkish mobiles only.
+function test_sms_reachable()
+{
+	pg_assert_true(pg_sms_reachable('905321234567', 'netgsm'), 'a Turkish mobile');
+	pg_assert_false(pg_sms_reachable('4915112345678', 'netgsm'), 'a German mobile');
+	pg_assert_false(pg_sms_reachable('5351234567', 'netgsm'), 'Cuba');
+	pg_assert_false(pg_sms_reachable('905321234567', ''), 'no provider set up');
+	pg_assert_false(pg_sms_reachable('905321234567', 'nonexistent'), 'an unknown provider');
+	pg_assert_false(pg_sms_reachable('', 'netgsm'), 'no number');
+	pg_assert_false(pg_sms_reachable('+905321234567', 'netgsm'), 'digits only, as pg_sms_number() gives them');
+}
+
 // "TR" for anything outside ASCII, which the default alphabet would garble.
 function test_sms_netgsm_encoding()
 {
