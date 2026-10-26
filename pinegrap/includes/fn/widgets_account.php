@@ -49,6 +49,7 @@ function pg_sw_page_type_widgets()
         'search results'        => 'search_results',
         'shopping cart'         => 'shopping_cart',
         'express order'         => 'express_order',
+        'shipping address and arrival' => 'shipping_address_and_arrival',
         'view order'            => 'order_view',
         'calendar view'         => 'calendar_view',
         'calendar event view'   => 'calendar_event_view',
