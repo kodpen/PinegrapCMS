@@ -3,6 +3,7 @@
     "OAuth application ({var:1}) was removed.": "OAuth uygulaması ({var:1}) kaldırıldı.",
     "OAuth application ({var:1}) was turned off.": "OAuth uygulaması ({var:1}) kapatıldı.",
     "OAuth application ({var:1}) was turned on.": "OAuth uygulaması ({var:1}) açıldı.",
+    "OAuth client": "OAuth istemcisi",
     "OAuth connection": "OAuth bağlantısı",
     "OK": "Tamam",
     "OPTIMIZE TABLE rewrites the table. On InnoDB it needs free disk space the size of the table and the site keeps writing to it meanwhile; on MyISAM writes wait.": "OPTIMIZE TABLE tabloyu baştan yazar. InnoDB'de tablonun boyutu kadar boş disk alanı gerekir ve site bu sırada tabloya yazmayı sürdürür; MyISAM'da yazma bekler.",
