@@ -21,7 +21,7 @@ description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, w
 - `widgets_wishlist`: the Favourites system widget, the visitor's saved products with add to cart and remove: [[wishlist-widget]].
 - `stock_notify`: back-in-stock requests, the `inventory.changed` listener that mails them, the request endpoint (`stock_notify.php`): [[back-in-stock-notices]].
 - `designer_vocab` (the Bootstrap vocabulary of the designer's smart completion; loaded by its build tool and test only): [[designer-bootstrap-vocabulary]].
-- `widgets_shipping_address`: the Shipping Address and Arrival system widget, the first step of the classic multi-step checkout: [[shipping-address-widget]].
+- `widgets_shipping_address`, `widgets_shipping_method`: the classic multi-step checkout's steps as system widgets (address and arrival, shipping method): [[shipping-address-widget]], [[shipping-method-widget]].
 - `a11y` (the accessibility report's WCAG checks and its nightly pass; loaded by `seo_a11y_job.php`, `view_accessibility.php` and its test): [[accessibility-report]].
 
 ## Where does a module added later go?

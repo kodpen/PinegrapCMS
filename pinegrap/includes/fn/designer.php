@@ -1099,6 +1099,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_shipping_address_and_arrival($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'shipping_method' — the second step of the classic checkout,
+            // posting to shipping_method.php (widgets_shipping_method.php).
+            if ($region_type === 'shipping_method') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_shipping_method($tree_json, $sid, $cfg, $mode);
+            }
+
             // Future region types handled here.
             // For now return empty — renders nothing rather than a broken page.
             return '';
