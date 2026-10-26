@@ -114,9 +114,8 @@ function pg_sw_cond_denied_tokens()
 
 // A widget tree as JSON with its conditions taken out, for a renderer that
 // looks in the saved tree for a name to decide whether the design placed
-// it (the order view's legal documents, withdrawal line, returns block and
-// not-found message, the cart's and the account's states): a condition
-// names a token without placing it. $tree is the decoded tree or its JSON;
+// it (pg_sw_placed(); the order view's not-found message, the cart's and
+// the account's states): a condition names a token without placing it. $tree is the decoded tree or its JSON;
 // JSON that holds no condition comes back as it is.
 function pg_sw_cond_tree_json($tree)
 {

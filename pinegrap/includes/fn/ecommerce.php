@@ -1284,11 +1284,12 @@ function pg_order_quick_update($order_id, $field, $value)
 /**
  * Resolve the CSS classes for an order-status badge.
  *
- * Designer-owned: each stage has its own widget setting, so the colour
- * decision lives in the settings panel rather than in this renderer. The
- * defaults below are mirrored in style_designer.js as
- * SD_OV_STATUS_CLASS_DEFAULTS — change one, change the other, or the canvas
- * preview and the front end drift apart.
+ * Designer-owned: the status badge part (pg_sw_part_order_status_badge())
+ * gives each stage's badge the widget's own status_class_* setting, else
+ * these defaults; once the part is in the tree its classes are edited there.
+ * The defaults are mirrored in style_designer.js as
+ * SD_OV_STATUS_CLASS_DEFAULTS — change one, change the other, or the
+ * editor's part and the site's drift apart.
  *
  * Input is sanitised to class-name characters: the value lands unescaped-ish
  * inside a class attribute, and a designer pasting a quote shouldn't be able

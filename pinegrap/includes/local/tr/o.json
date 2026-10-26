@@ -909,6 +909,7 @@
     "Order shipping fee": "Sipariş kargo bedeli",
     "Order summary": "Sipariş Özeti",
     "Order terms accepted (checkbox)": "Sipariş şartları kabul edildi (onay kutusu)",
+    "Order timeline": "Sipariş zaman çizelgesi",
     "Order timeline (ready-made HTML)": "Sipariş zaman çizelgesi (hazır HTML)",
     "Order totals (computed by backend: VAT, card surcharge, total)": "Sipariş Toplamları (arka uç hesaplar: KDV, kart ek ücreti, toplam)",
     "Order was already cancelled.": "Sipariş zaten iptal edilmiş.",

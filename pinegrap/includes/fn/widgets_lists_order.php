@@ -17,7 +17,7 @@
 //   order.items      the order's items, or one recipient's;
 //   order.parcels    the tracking numbers, or one recipient's;
 //   order.steps      the order's steps (created, paid, shipped, delivered,
-//                    cancelled), what the ^^__timeline^^ block draws;
+//                    cancelled), what the order timeline part draws;
 //   account.orders   the signed-in member's orders, what the my account
 //                    widget's order history section draws.
 //
