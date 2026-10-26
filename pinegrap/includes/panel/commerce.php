@@ -497,11 +497,20 @@ function pg_panel_get_cross_sell_for_product($request, $action)
     // product[id]     = source product id
     // detail_page_id  = (optional) catalog detail page id for URL prefix
     // count           = (optional) max items, default 4
+    // widget_id       = (optional) answer with the widget's part drawn
     $_x_pid    = isset($request['product']['id']) ? (int)$request['product']['id'] : 0;
     $_x_detail = isset($request['detail_page_id']) ? (int)$request['detail_page_id'] : 0;
     $_x_count  = isset($request['count']) ? max(1, min(12, (int)$request['count'])) : 4;
     if ($_x_pid <= 0) {
         echo encode_json(array('status' => 'error', 'message' => 'product[id] required'));
+        exit();
+    }
+    // widget_id: a catalog detail widget whose cross-sell part is drawn
+    // for the product with the design's elements (html); the script puts
+    // it in place of the part it shows.
+    if (!empty($request['widget_id'])) {
+        $_x_html = function_exists('_civ_cross_sell_part_html') ? _civ_cross_sell_part_html((int)$request['widget_id'], $_x_pid, $_x_detail) : '';
+        echo encode_json(array('status' => 'success', 'html' => $_x_html));
         exit();
     }
     $_x_items = function_exists('_civ_get_cross_sell_items')

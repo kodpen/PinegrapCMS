@@ -765,7 +765,7 @@ function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
 
 // The token keys whose values are HTML on purpose: the rich-text columns an
 // operator writes in the editor, and the blocks the renderer builds itself
-// (filter chips, variant picker, cross-sell, the strike-through
+// (filter chips, variant picker, the strike-through
 // price). Everything else a token map carries is plain text, a number or a
 // URL.
 function pg_sw_raw_token_keys()
@@ -783,7 +783,6 @@ function pg_sw_raw_token_keys()
         '__price_block_html',
         '__price_range',
         // Renderer-built blocks.
-        '__cross_sell_html',
         '__variant_picker',
         '__group_tree_html',
         '__group_tree_inner_html',
