@@ -10,7 +10,7 @@ description: What the code holds for plans/prototype-sharing.md: drafts and thei
 ## How does a draft open today?
 - At its address, `get_page.php` `case 'private'`: signed out, a redirect to sign-in (not a 404); signed in, `check_private_access()`: roles 0-2, role 3 with unexpired aclfolder rights 1 or 2 on the Drafts folder or a parent. Each view logs "User viewed private page.". The designer gives role 3 a draft's rights from its publish folder; the address does not.
 - "Open on Site" / "View page" (`#sd-vb-live`, `#sd-view-page`, `_pgPageViewUrl()`) open any saved tab there, drafts too: roles 0-2 already click draft to draft by name, widgets, forms, cart live. Gap: outsiders, unsaved tabs.
-- Preview: a blob page, page links to the live site. `pg_designer_preview_widgets()` only sets `pg_seo_rendering(true)` (account, cart, edit chips, URL filters act as a background render); records still follow the editor's `USER_LOGGED_IN`/`USER_ROLE` (viewer-filtered lists show staff every row). A signed-out view needs a render with no session.
+- Preview: a blob page, links play open tabs (#1867). `pg_designer_preview_widgets()` sets only `pg_seo_rendering(true)` (account, cart, edit chips, URL filters act as a background render); records still follow the editor's `USER_LOGGED_IN`/`USER_ROLE` (viewer-filtered lists show staff every row). Signed out needs a render with no session.
 - No preview token; not in the sitemap or robots.txt.
 
 ## How do links name pages?

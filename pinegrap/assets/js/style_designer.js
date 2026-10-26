@@ -60289,7 +60289,7 @@ const StyleDesigner = (function () {
         html = _sdInsertBeforeBodyEnd(html, _pvJsInject);
 
         // The preview's own harness, ahead of the page's scripts.
-        html = html.replace('</head>', function () { return _sdPreviewHarness(html) + '</head>'; });
+        html = html.replace('</head>', function () { return _sdPreviewHarness(html) + _sdPreviewPlayHarness(_siteUrl) + '</head>'; });
 
         return html;
     }
@@ -60409,6 +60409,88 @@ const StyleDesigner = (function () {
         return '    <script id="pg-preview-harness">' + js + '<\/script>\n';
     }
 
+    // The open tabs a Preview link plays, by lower-cased page name: the
+    // name typed on each tab (saved or not) first, then a renamed tab's
+    // saved name; '' is the home page's tab. Locked tabs do not open, so
+    // their links go to the site.
+    function _sdPreviewPlayMap() {
+        var map = {}, nameEl = document.getElementById('sd-page-name');
+        var add = function (name, key) {
+            name = String(name == null ? '' : name).trim().toLowerCase();
+            if (!Object.prototype.hasOwnProperty.call(map, name)) map[name] = key;
+        };
+        var open = _pages.filter(function (p) { return p && p.access !== 'locked'; });
+        open.forEach(function (p) {
+            var n = (p.key === _activeKey && nameEl) ? nameEl.value : p.page_name;
+            if (String(n || '').trim()) add(n, p.key);
+        });
+        open.forEach(function (p) { if (p.savedName) add(p.savedName, p.key); });
+        open.forEach(function (p) { if (p.page_home) add('', p.key); });
+        return map;
+    }
+
+    // The Preview as a prototype: a plain click on a link to a page of an
+    // open tab asks the editor to play that tab (_sdPreviewPlay()), any
+    // other web link opens the site in a new tab, so the preview window
+    // stays. A link one path segment below the site address is a page link.
+    // The hotspots button outlines the links (page links solid, site links
+    // dashed); its state lives in the window's sessionStorage, so it
+    // survives the live preview's reloads.
+    /* @pg-site-output */
+    function _sdPreviewPlayHarness(siteUrl) {
+        var json = function (v) { return JSON.stringify(v).replace(/</g, '\\u003c'); };
+        var js = '(function(){var S=' + json(siteUrl) + ',M=' + json(_sdPreviewPlayMap()) + ',C=' + json(_activeKey) + ',' +
+                'L=' + json(_sdT('Hotspots')) + ',T=' + json(_sdT('Outline the links you can click')) + ',K="pgPreviewHotspots";' +
+            'function link(e){if(!e.target||!e.target.closest)return null;var a=e.target.closest("a[href]");' +
+                'if(!a||(a.getAttribute("href")||"").charAt(0)==="#"||!/^https?:$/.test(a.protocol))return null;return a;}' +
+            'function tab(a){var u=a.href;if(u.indexOf(S)!==0)return null;' +
+                'var r=u.slice(S.length).split(/[?#]/)[0];if(r.indexOf("/")!==-1)return null;' +
+                'try{r=decodeURIComponent(r);}catch(x){}r=r.trim().toLowerCase();' +
+                'return Object.prototype.hasOwnProperty.call(M,r)?M[r]:null;}' +
+            'window.addEventListener("click",function(e){if(e.defaultPrevented||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;' +
+                'var a=link(e);if(!a)return;var k=tab(a);e.preventDefault();' +
+                'if(k!==null&&k===C){window.scrollTo(0,0);return;}' +
+                'if(k!==null&&window.opener){try{window.opener.postMessage({pgPreviewPlay:k},location.origin);return;}catch(x){}}' +
+                'window.open(a.href,"_blank","noopener");});' +
+            'function on(){try{return sessionStorage.getItem(K)==="1";}catch(x){return false;}}' +
+            'function mark(){var l=document.querySelectorAll("a[href]");for(var i=0;i<l.length;i++){var a=l[i];' +
+                'if(a.hasAttribute("data-bs-toggle")||!/^https?:$/.test(a.protocol)||(a.getAttribute("href")||"").charAt(0)==="#")continue;' +
+                'a.setAttribute("data-pg-pv",tab(a)!==null?"tab":"site");}}' +
+            'function show(b,v){document.documentElement.classList.toggle("pg-pv-hot",v);b.setAttribute("aria-pressed",v?"true":"false");' +
+                'b.style.background=v?"#0d6efd":"#fff";b.style.color=v?"#fff":"#212529";if(v)mark();}' +
+            'function init(){var st=document.createElement("style");' +
+                'st.textContent="html.pg-pv-hot a[data-pg-pv]{outline:2px solid rgba(13,110,253,.8)!important;outline-offset:2px!important}' +
+                    'html.pg-pv-hot a[data-pg-pv=site]{outline-style:dashed!important;outline-color:rgba(108,117,125,.9)!important}";' +
+                'document.head.appendChild(st);var b=document.createElement("button");b.type="button";b.id="pg-pv-hotspots";' +
+                'b.textContent=L;b.title=T;b.style.cssText="position:fixed;left:12px;bottom:12px;z-index:2147483647;' +
+                    'font:13px/1.2 system-ui,sans-serif;padding:6px 10px;border:1px solid #adb5bd;border-radius:6px;' +
+                    'box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer";' +
+                'b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var v=!on();' +
+                    'try{sessionStorage.setItem(K,v?"1":"0");}catch(x){}show(b,v);});' +
+                'document.body.appendChild(b);show(b,on());}' +
+            'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();' +
+            '})();';
+        return '    <script id="pg-preview-play">' + js + '<\/script>\n';
+    }
+
+    // A page link clicked in the Preview (_sdPreviewPlayHarness()): the
+    // editor opens that tab and the preview draws it at once, from the top.
+    function _sdPreviewPlay(key) {
+        var p = _pgPageByKey(key);
+        if (!p || p.access === 'locked') return;
+        if (key !== _activeKey) _pgTabsSwitch(key);
+        if (key !== _activeKey) return;
+        _sdLive.top = true;
+        clearTimeout(_sdLive.timer);
+        _sdLivePreviewRefresh();
+    }
+
+    window.addEventListener('message', function (e) {
+        if (!_sdPreviewWin || e.source !== _sdPreviewWin || e.origin !== location.origin) return;
+        var d = e.data;
+        if (d && typeof d.pgPreviewPlay === 'string') _sdPreviewPlay(d.pgPreviewPlay);
+    });
+
     // The request body of designer/preview_widgets for the system widgets
     // in a marked-up page, or null when the page has none.
     function _sdPreviewWidgetPayload(raw) {
@@ -60515,7 +60597,8 @@ const StyleDesigner = (function () {
     //     drawing the widgets queues exactly one more pass.
     // busy counts the preview_widgets requests in flight (the live pass and
     // an explicit Preview may overlap once).
-    var _sdLive = { timer: 0, busy: 0, again: false, sig: null, widgetHtml: null };
+    // top: the next document starts at the top (a page played from a link).
+    var _sdLive = { timer: 0, busy: 0, again: false, sig: null, widgetHtml: null, top: false };
 
     // Whether the preview window is still open; forgets it once closed.
     function _sdLivePreviewOpen() {
@@ -60575,11 +60658,13 @@ const StyleDesigner = (function () {
     // operator was reading. A window that has followed a link to another
     // site cannot be read; it is simply brought back to the preview.
     function _sdLivePreviewWrite(html) {
+        var top = _sdLive.top;
+        _sdLive.top = false;
         if (html === _sdPreviewSent) return;
         var w = _sdPreviewWin;
         var x = 0, y = 0, oldDoc = null;
         try {
-            if (w.location.href === _sdPreviewUrl) {
+            if (!top && w.location.href === _sdPreviewUrl) {
                 x = w.scrollX || 0;
                 y = w.scrollY || 0;
                 oldDoc = w.document;

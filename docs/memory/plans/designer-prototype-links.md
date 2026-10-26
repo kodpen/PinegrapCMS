@@ -20,7 +20,7 @@ description: Plan (2026-10-24, not started, answer 1 given): a Figma/XD-like pro
 ## Slices (one PR each)
 1. Read-only map: frames and arrows from every tab (`_pgTreeOf()`, shared components prefetched), classic menus (`pg_menu_tree()`) and legacy regions by a new read, the resolver's JS twin with tests (PHP split done in #1579), broken, draft and external marks; a hotspot selects its node.
 2. Draw and re-point arrows within today's rights, undo, the shared and Publish warnings, Save.
-3. Play: a hotspot opens the target tab's preview, unsaved tabs too (`tab:<key>`, as `__page_link` does).
+3. Done #1867 in the Preview (designer/designer-preview-play.md): a page link plays the open tab of that name, unsaved tabs too; the Prototype view's hotspots reuse `_sdPreviewPlay()`.
 4. Shared positions, thumbnails; links by page id that survive a rename, built from `__page_link` (outside widgets a new tree prop and renderer: ask first).
 - Schema: none for slices 1-3; a new table or column is asked first.
 
