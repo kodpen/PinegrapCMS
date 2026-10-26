@@ -26869,6 +26869,10 @@ const StyleDesigner = (function () {
         // after {{ only in the view, where the text has nodes behind it.
         PgCodeEditor.addCompletionSource('html', _sdCodeClassCompletion);
         PgCodeEditor.addCompletionSource('html', _sdCodeBindingCompletion);
+        // Attribute names and values, CSS values and var(--…) tokens ranked
+        // by the element around the cursor (pg_style_complete.js, loaded
+        // with the predictor on the first completion).
+        if (typeof PgStyleSuggest !== 'undefined') PgStyleSuggest.installCode(PgCodeEditor, { design: _sdCodeDesignContext });
 
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -28220,6 +28224,15 @@ const StyleDesigner = (function () {
             else P.classes(typed, { limit: 5000 }).forEach(function (it) { push(it.label, 'keyword'); });
         }
         return { from: word.from, options: options, validFor: /^[A-Za-z0-9_-]*$/ };
+    }
+
+    // The design's part of the predictor's context in a code editor: the
+    // classes the page uses, with their counts, and the custom properties
+    // User Styles declare.
+    function _sdCodeDesignContext() {
+        var tokens = {};
+        if (typeof PgStyleComplete !== 'undefined') tokens = PgStyleComplete.docTokens(_userStylesGet());
+        return { classes: _sdTreeClassCounts(), tokens: tokens };
     }
 
     // ========================= CODE VIEW: FILE TABS =========================
