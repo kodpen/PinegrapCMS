@@ -33,4 +33,4 @@ description: The site as an MCP client (includes/mcp/client.php, the Workspace's
 Related: api-mcp-server.md (the site's own server), api-connected-accounts-usage.md (`api_http_request()`).
 
 ## Which id does a request carry?
-- `pg_mcp_client_next_id()` starts each PHP request at a random number (`random_int()`) and counts up, so two requests of the site in one MCP session (a page and a background run) do not both send id 1. Never seen failing; done as a precaution (#PR).
+- `pg_mcp_client_next_id()` starts each PHP request at a random number (`random_int()`) and counts up, so two requests of the site in one MCP session (a page and a background run) do not both send id 1. Never seen failing; done as a precaution (#1815).
