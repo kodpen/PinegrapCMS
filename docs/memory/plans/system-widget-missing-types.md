@@ -40,5 +40,5 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - The multi-step checkout first (every existing shop uses it), then the owner's list; one widget per PR.
 
 ## Which steps are there?
-1-3. Done: shipping address (#1746; verified box left), method (#1759), billing (#PR); [[shipping-address-widget]] and siblings.
+1-3. Done: shipping address (#1746; verified box left), method (#1759), billing (#1777); [[shipping-address-widget]] and siblings.
 4. Order preview: next, from `get_order_preview.php` and `order_preview.php`; give `pg_order_page_known()` its row branch as for billing. Then the owner's list.
