@@ -498,7 +498,6 @@ function pg_panel_software_update($request, $action)
             curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
             curl_setopt($ch, CURLOPT_HEADER, 0);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($ch, CURLOPT_BINARYTRANSFER, 1);
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15); // seconds to establish the connection
             curl_setopt($ch, CURLOPT_TIMEOUT, 120);       // total seconds allowed for the zip download
 
@@ -513,7 +512,7 @@ function pg_panel_software_update($request, $action)
             $curl_error = curl_error($ch);
             $http_status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $expected_bytes = (int) curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
-            curl_close($ch);
+            unset($ch);
 
             // A non-200 body is still a successful transfer as far as cURL
             // is concerned. Without this check a 403 from the update

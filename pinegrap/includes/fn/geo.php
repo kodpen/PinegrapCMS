@@ -248,7 +248,7 @@ function pg_geo_db_download($url, $target)
     $errno = curl_errno($ch);
     $error = curl_error($ch);
     $http = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch);
     fclose($file);
 
     if (($ok === false) || $errno) {

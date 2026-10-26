@@ -543,7 +543,7 @@ function pg_waf_refresh_ai_ranges($force = false)
         $errno = curl_errno($ch);
         $error = curl_error($ch);
         $http  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch);
 
         if ($body === false || $http !== 200 || strlen($body) > 1048576) {
 

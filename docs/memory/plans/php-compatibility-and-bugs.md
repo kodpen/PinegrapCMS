@@ -1,6 +1,6 @@
 ---
 name: php-compatibility-and-bugs
-description: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, 8.1-8.5 deprecations, dead remnants; done: items 3 (#972), 4 (#1039), CSV $escape (#1450), imagedestroy (#1669)
+description: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1450, #1669, #1744
 ---
 
 ## Where does this come from?
@@ -13,7 +13,8 @@ description: Open items of the 2026-10-19 static analysis: undefined variables, 
 4. Done (#1039): the unguarded `imagecreatefrombmp()` of `edit_file.php`'s WebP conversion is gone with the screen's own GD code; its Rotate and WebP buttons go through `pg_process_image_file()` (`platform/image-processing-engine.md`).
 
 ## Which deprecations matter for "PHP 7.1-8.5"?
-- PHP 8.5 deprecated: `curl_close()` 49 calls (`submit_order.php` 17), `finfo_close()` 6 (`imagedestroy()`: done in #1669, `platform/gd-image-destroy.md`); PHP 8.4: `mysqli_ping()` `core.php:77`, `openssl_x509_free()` `update.php:553`, `CURLOPT_BINARYTRANSFER` `includes/panel/software.php:499` (the `$escape` argument of `fgetcsv()`/`fputcsv()`: done in #1450, `core/csv-escape-argument.md`). PHP 8.1: `auto_detect_line_endings` in the six importers; `htmlentities()`/`html_entity_decode()` default flags changed (`cloudflare.php` 23 calls, `download_assistant.php` 3) - pass the flags explicitly.
+- Done (#1744, `core/deprecated-resource-free-calls.md`): `curl_close()`/`finfo_close()` outside the files below, `mysqli_ping()` (`core.php`), `openssl_x509_free()` (`update.php`), `CURLOPT_BINARYTRANSFER` (`software.php`), the `htmlspecialchars()` flags of `cloudflare.php` and `download_assistant.php`. Earlier: `imagedestroy()` (#1669), the CSV `$escape` argument (#1450).
+- Left, the files were held by other open PRs: `curl_close()` in `submit_order.php` (17), `includes/fn/output.php`, `import_design.php`, `install/index.php` (one each): replace with `unset($handle)` as in #1744. PHP 8.1 `auto_detect_line_endings` in the six `import_*.php`: drop the `ini_set()` (no effect since 8.1; on 7.x it made `fgetcsv()` accept old Mac `\r`-only files, so check whether a guard `PHP_VERSION_ID < 80100` keeps that).
 - Dead remnants to remove once the owner agrees: `mysql_*` behind `DB_LEGACY` (`core.php` 168-180, `router.php` 160-170; gone since PHP 7.0), `pfpro_process()` (`submit_order.php` 2325/5079, extension removed in PHP 5.1), `get_magic_quotes_gpc()` (`init.php:847`, `install/index.php:357`). `mcrypt` (`ecommerce.php` 727-739) is a guarded PHP <= 7.1 path: keep while 7.1 is supported.
 - PHP 7.2+ APIs (`JSON_INVALID_UTF8_SUBSTITUTE`, `PHP_OS_FAMILY`, `imagebmp`, `imagecreatefrombmp`, `imageavif`, the `idn_to_ascii()` variant) are guarded everywhere. `custom_form.php:1793` "break outside loop" is a false positive (a brace-less `foreach`).
 

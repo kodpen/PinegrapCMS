@@ -733,7 +733,7 @@ function ws_claude_fire($test = false, $queue = 'workspace')
     $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     $header_size = (int) curl_getinfo($curl, CURLINFO_HEADER_SIZE);
     $network = curl_error($curl);
-    curl_close($curl);
+    unset($curl);
 
     $headers = is_string($raw) ? substr($raw, 0, $header_size) : '';
     $body = is_string($raw) ? substr($raw, $header_size) : '';

@@ -811,7 +811,7 @@ function erp_edoc_http($method, $url, $headers = array(), $body = null, $timeout
     $http_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curl_error = curl_error($ch);
     $curl_errno = curl_errno($ch);
-    curl_close($ch);
+    unset($ch);
 
     if (($curl_error !== '') && function_exists('pg_curl_tls_hint')) {
         $curl_error .= pg_curl_tls_hint($curl_errno);
