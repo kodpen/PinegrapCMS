@@ -214,6 +214,8 @@ function test_bs6_scope_kind()
 		'my_account.php' => 'site',
 		'frontend.src.js' => 'site',
 		'includes/fn/widgets_cart.php' => 'site',
+		'includes/fn/widgets_order_preview.php' => 'site',
+		'includes/fn/widgets_lists_cart.php' => 'site',
 		'includes/templates/membership_entrance.php' => 'site',
 		'includes/design_templates/forum/home.php' => 'site',
 		'assets/js/pg_consent.js' => 'site',
