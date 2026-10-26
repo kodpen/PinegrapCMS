@@ -98,6 +98,7 @@ function pg_curl_tls($ch)
  *   encoding         true to accept any compression cURL can undo
  *   forbid_reuse     true to close the connection afterwards
  *   user_agent       replaces $env['user_agent']
+ *   userpwd          "user:password" for HTTP basic authentication
  *
  * $env: 'user_agent', 'proxy' (PROXY_ADDRESS or ''), 'resolve' (the
  * "host:port:ip" pin of a checked address, or '').
@@ -155,6 +156,10 @@ function pg_curl_run_options($method, $url, $options, $env)
         $out['CURLOPT_FORBID_REUSE'] = true;
     }
 
+    if (isset($options['userpwd']) && (string) $options['userpwd'] !== '') {
+        $out['CURLOPT_USERPWD'] = (string) $options['userpwd'];
+    }
+
     if (isset($env['proxy']) && (string) $env['proxy'] !== '') {
         $out['CURLOPT_HTTPPROXYTUNNEL'] = true;
         $out['CURLOPT_PROXYTYPE'] = 'CURLPROXY_HTTP';
@@ -195,14 +200,19 @@ function pg_curl_run_pin($url, $ip)
  * a fixed host gains nothing from it.
  *
  * Answers like api_http_request(): array('ok' => bool (2xx), 'status' => int,
- * 'body' => string, 'errno' => int, 'error' => string). errno is cURL's
- * error number when the request failed in cURL, 0 otherwise - also for an
- * address refused before cURL ran, whose reason is in error alone. error is
- * cURL's own text; pg_curl_tls_hint($errno) is for the caller to append.
+ * 'body' => string, 'errno' => int, 'error' => string, 'connect' => int,
+ * 'request_size' => int). errno is cURL's error number when the request
+ * failed in cURL, 0 otherwise - also for an address refused before cURL ran,
+ * whose reason is in error alone. error is cURL's own text;
+ * pg_curl_tls_hint($errno) is for the caller to append. connect is the status
+ * a proxy answered the tunnel request with (0 without a proxy) and
+ * request_size the bytes of request headers written (0 when nothing went
+ * out); together they tell whether a failed request can have reached the
+ * other side.
  */
 function pg_curl_run($method, $url, $options = array())
 {
-    $result = array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0, 'error' => '');
+    $result = array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0, 'error' => '', 'connect' => 0, 'request_size' => 0);
 
     if (!function_exists('curl_init')) {
         $result['error'] = 'cURL is not available on this server.';
@@ -244,6 +254,8 @@ function pg_curl_run($method, $url, $options = array())
     pg_curl_tls($ch);
 
     $body = curl_exec($ch);
+    $result['connect'] = (int) curl_getinfo($ch, CURLINFO_HTTP_CONNECTCODE);
+    $result['request_size'] = (int) curl_getinfo($ch, CURLINFO_REQUEST_SIZE);
 
     if ($body === false) {
         $result['errno'] = (int) curl_errno($ch);
