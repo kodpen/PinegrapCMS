@@ -16,8 +16,7 @@
 		{"name": "edit_offer", "path": "edit_offer.php?id={offer_id}", "kept": true},
 		{"name": "signin", "path": "index.php", "signed_out": true},
 		{"name": "forgot_password", "path": "forgot_password.php", "signed_out": true},
-		{"name": "change_password", "path": "change_password.php"},
 		{"name": "designer_home", "path": "view_system_styles.php"},
-		{"name": "visual_editor", "path": "edit_system_style.php?id={style_id}"}
+		{"name": "visual_editor", "path": "add_system_style.php"}
 	]
 }
