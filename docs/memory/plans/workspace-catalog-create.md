@@ -21,7 +21,7 @@ None needs schema.
 1b. PR #1604: `pg_catalog_group_create()`, `pg_catalog_group_clouds()` (ecommerce.php) behind the API and Workspace twins; SEO scored, announced once (Q3).
 2. PR #1613: "New product / product group" in the drawer (`openRecord()` new mode), the palette, `/product` (`/ürün`, `ws_command_create_names()`, `ws_command_names()` unchanged); `ws_quick_create_save()`, panel action `ws_record_create`; decision tick. API: POST /products, /product-groups suffice (owner default, 2026-10-19).
 3. One 'bulk' `ws_ai_changes` row (action create, `rows`), checked at proposal and write, run in small `ws_bulk_step()` slices (SEO rescored per row: `pg_seo_recalculate()`), done rows kept: no double on resume. From a pasted list, a channel xlsx/csv ("Make products", as the import: `pg_products_import_to_csv()`, `pg_products_import_price_cents()`), Pinegrap AI / @Claude from a description (Premium like Pinegrap AI? plans/workspace-agent-handles.md Q2). API: the answer routes' `bulk`; MCP: one 'bulk' create entry via `workspace.changes.propose` after plans/workspace-mcp-capabilities.md slice 3, no own route.
-4. One-go variant set: new `pg_catalog_variant_set_create()` (ecommerce.php) out of `pg_pb_save_new_product()` (screen unchanged), kind `variant_set`: a matrix card priced by `pg_variant_price_compute()`; new `POST /product-groups/variant-sets` (products:write, dry_run), offered over MCP per the MCP plan's question on direct AI writes.
+4. One-go variant set. 4a (PR #PRNUM): `pg_catalog_variant_set_create()` and `POST /product-groups/variant-sets` (`commerce/catalog-variant-set-writer.md`). 4b: the `variant_set` change kind and matrix card (changes.php, ai.php, workspace.js). Was: new `pg_catalog_variant_set_create()` (ecommerce.php) out of `pg_pb_save_new_product()` (screen unchanged), kind `variant_set`: a matrix card priced by `pg_variant_price_compute()`; new `POST /product-groups/variant-sets` (products:write, dry_run), offered over MCP per the MCP plan's question on direct AI writes.
 
 ## Open questions (recommendation)
 1. Answered (a): add_product_group.php keeps its own code.
@@ -30,4 +30,4 @@ None needs schema.
 4. Bulk card events: (a) `product.created` per row, as AI bulk updates, (b) none, as imports → a.
 
 ## Where to start?
-- Slice 3.
+- Slice 3, or 4b.

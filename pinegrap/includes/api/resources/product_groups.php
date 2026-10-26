@@ -687,6 +687,35 @@ function api_product_group_create_data($params, $name, $parent_id, $product_ids)
 
 }
 
+// The parent a new group is filed under: the one named, which has to exist
+// and not be in the Recycle Bin, else the top of the catalogue, where the
+// catalogue screen files a group too.
+function api_product_group_parent_or_fail($params) {
+
+	$parent_id = isset($params['parent_id']) ? (int)$params['parent_id'] : 0;
+
+	if ($parent_id <= 0) {
+
+		return pg_catalog_group_top_id(array('api' => true));
+
+	}
+
+	$parent = api_row("SELECT id" . (api_catalog_bin_columns() ? ", recycled" : ", 0 AS recycled") . "
+		FROM product_groups WHERE id = '" . $parent_id . "' LIMIT 1");
+
+	if (($parent === null) || ((int)$parent['recycled'] === 1)) {
+
+		api_fail_validation(lang(array(
+			'string' => 'There is no product group with the id {var:1}.',
+			'vars'   => array($parent_id)
+		)), 'parent_id');
+
+	}
+
+	return $parent_id;
+
+}
+
 // A new group, filed under a parent that exists.
 //
 // Written by the catalogue's one group writer, pg_catalog_group_create()
@@ -723,29 +752,7 @@ function api_product_groups_create($params) {
 
 	}
 
-	// Under the top of the catalogue when no parent is named, which is where
-	// the catalogue screen files a group too.
-	$parent_id = isset($params['parent_id']) ? (int)$params['parent_id'] : 0;
-
-	if ($parent_id <= 0) {
-
-		$parent_id = pg_catalog_group_top_id(array('api' => true));
-
-	} else {
-
-		$parent = api_row("SELECT id" . (api_catalog_bin_columns() ? ", recycled" : ", 0 AS recycled") . "
-			FROM product_groups WHERE id = '" . $parent_id . "' LIMIT 1");
-
-		if (($parent === null) || ((int)$parent['recycled'] === 1)) {
-
-			api_fail_validation(lang(array(
-				'string' => 'There is no product group with the id {var:1}.',
-				'vars'   => array($parent_id)
-			)), 'parent_id');
-
-		}
-
-	}
+	$parent_id = api_product_group_parent_or_fail($params);
 
 	$product_ids = array_key_exists('product_ids', $params)
 		? api_product_group_product_ids($params['product_ids'], 'product_ids')
@@ -769,6 +776,264 @@ function api_product_groups_create($params) {
 	$row = api_row(api_product_group_select() . " WHERE id = '" . $id . "' LIMIT 1");
 
 	api_ok(api_product_group_present($row, api_product_group_extras(array($id), true), true), 201);
+
+}
+
+// The variant rows of POST /product-groups/variant-sets, checked against the
+// shop: each SKU unused and sent once, each text within its column (the
+// session is not strict and would cut it in silence), each option pair one
+// that belongs together. Shaped as pg_pb_decode_variants() shapes the
+// screen's rows; a row sent without a price is priced by the rules.
+function api_product_group_variant_rows($raw) {
+
+	$rows = array();
+	$skus = array();
+
+	foreach ((array)$raw as $entry) {
+
+		if (!is_array($entry)) {
+
+			api_fail_validation(lang('Each variant must be an object.'), 'variants');
+
+		}
+
+		$sku = isset($entry['name']) ? trim((string)$entry['name']) : '';
+
+		$texts = array(
+			'name'              => array($sku, 100),
+			'short_description' => array(isset($entry['short_description']) ? trim((string)$entry['short_description']) : '', 100),
+			'gtin'              => array(isset($entry['gtin']) ? trim((string)$entry['gtin']) : '', 50)
+		);
+
+		foreach ($texts as $field => $text) {
+
+			if (mb_strlen($text[0]) > $text[1]) {
+
+				api_fail_validation(lang(array(
+					'string' => '{var:1} is longer than the {var:2} characters accepted.',
+					'vars'   => array('variants.' . $field, $text[1])
+				)), 'variants');
+
+			}
+
+		}
+
+		if ($sku !== '') {
+
+			if (in_array(mb_strtolower($sku), $skus, true)) {
+
+				api_fail_validation(lang(array(
+					'string' => 'The SKU {var:1} was sent for two variants.',
+					'vars'   => array($sku)
+				)), 'variants');
+
+			}
+
+			$skus[] = mb_strtolower($sku);
+
+			$taken = api_value("SELECT id FROM products WHERE name = '" . escape($sku) . "' LIMIT 1");
+
+			if ($taken) {
+
+				api_fail(409, 'name_taken', lang(array(
+					'string' => 'A product with the name {var:1} already exists (id {var:2}).',
+					'vars'   => array($sku, (int)$taken)
+				)), 'variants');
+
+			}
+
+		}
+
+		$attributes = api_products_create_attributes(array('attributes' => isset($entry['attributes']) ? (array)$entry['attributes'] : array()));
+
+		if (!$attributes) {
+
+			api_fail_validation(lang('Each variant needs the option pairs that make it that variant.'), 'variants');
+
+		}
+
+		$quantity = isset($entry['inventory_quantity']) ? $entry['inventory_quantity'] : 0;
+
+		if (!is_int($quantity)) {
+
+			api_fail_validation(lang(array('string' => '{var:1} must be a whole number.', 'vars' => array('variants.inventory_quantity'))), 'variants');
+
+		}
+
+		$rows[] = array(
+			'name'               => $sku,
+			'short_description'  => $texts['short_description'][0],
+			'price'              => array_key_exists('price', $entry) ? $entry['price'] : 0,
+			'price_manual'       => array_key_exists('price', $entry),
+			'inventory'          => !empty($entry['inventory']) ? '1' : '0',
+			'inventory_quantity' => $quantity,
+			'images'             => array(),
+			'attributes'         => $attributes,
+			'recurring'          => array(),
+			'gtin'               => $texts['gtin'][0],
+			'barcode'            => ''
+		);
+
+	}
+
+	return $rows;
+
+}
+
+// A variant set in one go: the group the catalogue shows as one item with a
+// variant picker and a product per variant filed only in it, written by the
+// product screen's own writer, pg_catalog_variant_set_create()
+// (includes/fn/ecommerce.php), so the rows, addresses, price history and
+// rules are the ones a set made by hand gets. Its checks are the screen's
+// (pg_catalog_variant_set_check()) and, before them, the ones only a request
+// from outside needs: names unused (the screen renames a taken one to
+// NAME[1] in silence), the parent there, the images in the Files library, the
+// option pairs and price rules this shop's.
+function api_product_groups_variant_sets_create($params) {
+
+	$app = api_current_app();
+
+	$short = isset($params['short_description']) ? (string)$params['short_description'] : '';
+	$name  = ($short !== '') ? $short : trim((string)$params['name']);
+
+	if ($name !== '') {
+
+		$taken = api_value("SELECT id FROM product_groups WHERE name = '" . escape($name) . "' LIMIT 1");
+
+		if ($taken) {
+
+			api_fail(409, 'name_taken', lang(array(
+				'string' => 'A product group with the name {var:1} already exists (id {var:2}).',
+				'vars'   => array($name, (int)$taken)
+			)), ($short !== '') ? 'short_description' : 'name');
+
+		}
+
+	}
+
+	$parent_id = api_product_group_parent_or_fail($params);
+
+	$images = api_products_images($params);
+
+	$rules = null;
+
+	if (!empty($params['price_rules'])) {
+
+		$rules = pg_variant_price_rules_normalize(array('attributes' => $params['price_rules']));
+
+		if (!$rules || !pg_variant_price_rules_owned($rules)) {
+
+			api_fail_validation(lang('The price rules do not describe this shop\'s options: at most one attribute sets the price, and every option belongs to its attribute.'), 'price_rules');
+
+		}
+
+	}
+
+	$variants = api_product_group_variant_rows($params['variants']);
+
+	if (!$rules) {
+
+		foreach ($variants as $variant) {
+
+			if (!$variant['price_manual']) {
+
+				api_fail_validation(lang('A variant without a price needs price rules to be priced by.'), 'variants');
+
+			}
+
+		}
+
+	}
+
+	$owner_id = (int)$app['owner']['id'];
+
+	$common = api_products_create_defaults($owner_id);
+	$common['enabled']   = !empty($params['enabled']) ? '1' : '0';
+	$common['keywords']  = isset($params['keywords']) ? (string)$params['keywords'] : '';
+	$common['brand']     = isset($params['brand']) ? (string)$params['brand'] : '';
+	$common['taxable']   = (!array_key_exists('taxable', $params) || $params['taxable']) ? '1' : '0';
+	$common['shippable'] = (!array_key_exists('shippable', $params) || $params['shippable']) ? '1' : '0';
+	$common['tax_rate']  = null;
+
+	$data = array(
+		'name'              => trim((string)$params['name']),
+		'short_description' => $short,
+		'full_description'  => isset($params['description']) ? (string)$params['description'] : '',
+		'details'           => '',
+		'parent_id'         => $parent_id,
+		'enabled'           => !empty($params['enabled']),
+		'keywords'          => $common['keywords'],
+		'images'            => ($images === null) ? array() : $images,
+		'title'             => isset($params['title']) ? (string)$params['title'] : '',
+		'meta_description'  => isset($params['meta_description']) ? (string)$params['meta_description'] : '',
+		'attribute_meta'    => api_product_group_variant_axes($variants),
+		'common'            => $common,
+		'zone_ids'          => array(),
+		'price_base'        => array_key_exists('price', $params) ? $params['price'] : 0,
+		'price_rules'       => $rules,
+		'variants'          => $variants
+	);
+
+	$errors = pg_catalog_variant_set_check($data);
+
+	if ($errors) {
+
+		api_fail_validation($errors[0]['message'], $errors[0]['field']);
+
+	}
+
+	api_dry_run_stop('created', 'variant_set', array('name' => $name, 'parent_id' => $parent_id, 'variants' => count($variants)));
+
+	$created = pg_catalog_variant_set_create($data, $app['owner'], array(
+		'submit_form'  => array(),
+		'barcode_auto' => false,
+		'price_source' => 'api'
+	));
+
+	if ($created['group_id'] <= 0) {
+
+		api_fail_server(lang('The product group could not be created.'));
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'Variant set ({var:1}) with {var:2} products was added through the API by the application {var:3} (key {var:4}).',
+		'vars'   => array($created['name'], count($created['product_ids']), $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	$id = (int)$created['group_id'];
+
+	$row = api_row(api_product_group_select() . " WHERE id = '" . $id . "' LIMIT 1");
+
+	api_ok(array(
+		'product_group' => api_product_group_present($row, api_product_group_extras(array($id), true), true),
+		'product_ids'   => array_map('intval', $created['product_ids'])
+	), 201);
+
+}
+
+// The attributes a set varies on, in the order the variants first name them,
+// as the screen's attributes_meta_json lists them: the product page offers
+// them in this order and preselects nothing.
+function api_product_group_variant_axes($variants) {
+
+	$axes = array();
+
+	foreach ($variants as $variant) {
+
+		foreach ($variant['attributes'] as $pair) {
+
+			if (!isset($axes[$pair['attribute_id']])) {
+
+				$axes[$pair['attribute_id']] = array('id' => $pair['attribute_id'], 'default_option_id' => 0);
+
+			}
+
+		}
+
+	}
+
+	return array_values($axes);
 
 }
 

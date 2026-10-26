@@ -406,6 +406,36 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'product_groups.variant_sets_create',
+			'method'  => 'POST',
+			'path'    => '/product-groups/variant-sets',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_groups_variant_sets_create',
+			'dry_run' => true,
+			'returns' => array('product_group' => 'ProductGroup', 'product_ids' => 'integer[]'),
+			'status'  => 201,
+			'summary' => 'Add a variant set',
+			'description' => 'One article in several forms, written in one go as the product screen writes it: a group shown as one item with a variant picker, and one product per variant filed only in it, each carrying its {attribute_id, option_id} pairs. The group is named by short_description, else by name, and filed under parent_id (the top of the catalogue when omitted). Group and variants start switched off unless enabled=true is sent. A variant\'s price is in minor units; a variant sent without one is priced from price (the base) by price_rules, exactly as the screen prices it. The group name or a variant SKU another record already has is refused with 409 name_taken. Images belong to the set; every variant shows them. Nothing is announced, as for a set made on the screen; the products appear in GET /products.',
+			'params'  => array(
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The group\'s name when no short_description is sent.'),
+				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The group\'s name and short description.'),
+				array('name' => 'parent_id',         'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The group to file the set under. Omitted: the top of the catalogue.'),
+				array('name' => 'enabled',           'in' => 'body', 'type' => 'bool', 'description' => 'Published, the group and every variant. Off when not sent.'),
+				array('name' => 'title',             'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'description',       'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long description of the group and of every variant.'),
+				array('name' => 'meta_description',  'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'keywords',          'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Words that promote the set in the site search.'),
+				array('name' => 'brand',             'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'taxable',           'in' => 'body', 'type' => 'bool', 'description' => 'On when not sent.'),
+				array('name' => 'shippable',         'in' => 'body', 'type' => 'bool', 'description' => 'On when not sent.'),
+				array('name' => 'images',            'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Images from the Files library, by file name or by the url the API gives for it. The first is the main photo.'),
+				array('name' => 'price',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'The base the price rules start from, in minor units.'),
+				array('name' => 'price_rules',       'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'mode' => 'string', 'options' => array(array('option_id' => 'integer', 'amount' => 'integer', 'factor' => 'number', 'percent' => 'number'))), 'max_items' => 20, 'description' => 'One object per attribute that moves the price: mode set (the option\'s amount is the price), multiply (by factor) or adjust (add amount, or percent). Amounts in minor units. At most one attribute sets the price; every option has to belong to its attribute.'),
+				array('name' => 'variants',          'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'short_description' => 'string', 'price' => 'integer', 'inventory' => 'boolean', 'inventory_quantity' => 'integer', 'gtin' => 'string', 'attributes' => array(array('attribute_id' => 'integer', 'option_id' => 'integer'))), 'max_items' => 250, 'required' => true, 'description' => 'At least two. name is the SKU (100 characters at most, each one unused), short_description at most 100, gtin at most 50, price in minor units (left out: priced by price_rules), attributes the option pairs that make it this variant.')
+			)
+		),
+
+		array(
 			'id'      => 'product_groups.products',
 			'method'  => 'POST',
 			'path'    => '/product-groups/{id}/products',

@@ -21,6 +21,12 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+// The rich text is stored with {path} for the site's path; without a request
+// the path is the root, as elsewhere in the tests.
+if (!defined('PATH')) {
+	define('PATH', '/');
+}
+
 function catalog_variant_set_test_source($relative)
 {
 	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
