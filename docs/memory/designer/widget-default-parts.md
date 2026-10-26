@@ -22,7 +22,7 @@ description: W16 placed beats pushed: the one placement rule (pg_sw_placed()), d
 - E-mail: `pg_sw_parts_mail_styles()` writes `pg_sw_parts_mail_style_map()` inline (no flex, positioning or pseudo element; icon colour from its `bg-*`), before the element's own style.
 
 ## What is left after #1808 (slice 1)?
-- Form-carrying blocks: `__item_form_data_html`, `__item_gift_card_html` (order view, cart rows), returns `__return_form`/`__returns`, the legal card, `__cancel_form`.
+- Slice 2: legal and returns cards as parts. Then form blocks: `__item_form_data_html`, `__item_gift_card_html` (order view, cart rows), `__return_form`/`__returns`, `__cancel_form`.
 - Express order offers; cart row form data; catalog listing body; variant picker auto-inject; cross-sell; breadcrumb; filters (`__filter_chips` …); comment stars. Each check moves to `pg_sw_placed()`; a token freed from a rendered-template `strpos()` leaves `pg_sw_cond_denied_tokens()`. Then the raw keys in `pg_sw_raw_token_keys()` shrink.
 - Canvas: all six badges and every timeline icon show at once until W19's state preview.
 - A literal token inside a longer text is not given a part (prints empty); a condition on `__timeline` or `__order_status_badge` reads empty.
