@@ -753,6 +753,8 @@
     "Reserve a seat": "Yer ayırt",
     "Reserve button (filled by the backend — hidden when reservations are closed)": "Rezervasyon düğmesi (sunucu doldurur — rezervasyon kapalıyken gizlenir)",
     "Reserve button (hidden when reservations are closed)": "Rezervasyon düğmesi (rezervasyon kapalıyken gizlenir)",
+    "Reserved event date and time": "Rezerve edilen etkinlik tarihi ve saati",
+    "Reserved event name": "Rezerve edilen etkinlik adı",
     "Reserving a seat at an event": "Bir etkinlikte yer ayırtma",
     "Reset": "Sıfırla",
     "Reset & Send Password": "Şifreyi Sıfırla ve Gönder",

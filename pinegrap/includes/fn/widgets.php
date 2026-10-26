@@ -6723,13 +6723,25 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // per-row READ-ONLY blocks below: a product carrying an order form shows
     // what the visitor typed at checkout, a gift card shows the recipient
     // details. Both are output-only here — the order is already placed.
+    // The line's and its product's allow-listed values
+    // (pg_sw_entity_fields('order_line') and 'product'), read only when the
+    // tree names one.
+    $_ov_tree_cond  = pg_sw_cond_tree_json($tree_decoded);
+    $_ov_line_want  = pg_sw_entity_wanted('order_line', $_ov_tree_cond);
+    $_ov_prod_want  = pg_sw_entity_wanted('product', $_ov_tree_cond);
+    $_ov_entity_sql = ($_ov_line_want ? pg_sw_entity_select('order_line', 'oi') : '')
+                    . ($_ov_prod_want ? pg_sw_entity_select('product', 'p') : '');
+    $_ov_entity_ctx = array(
+        'currency_symbol' => $currency_symbol,
+        'format_stamp'    => function ($ts) use ($fmt_gc_date) { return $fmt_gc_date(date('Y-m-d', $ts)); },
+    );
     $item_rows = db_items(
         "SELECT oi.id AS item_id, oi.product_name,
                 oi.quantity, oi.price, oi.ship_to_id,
                 p.id AS product_id, p.address_name, p.image_name,
                 p.short_description, p.full_description,
                 p.form AS product_has_form, p.form_name, p.form_quantity_type,
-                p.gift_card AS product_is_gift_card,
+                p.gift_card AS product_is_gift_card" . $_ov_entity_sql . ",
                 st.first_name AS st_first_name, st.last_name AS st_last_name,
                 st.address_1 AS st_address_1, st.city AS st_city,
                 st.state AS st_state, st.zip_code AS st_zip, st.country AS st_country
@@ -6766,6 +6778,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             ));
             $item_ship_to = implode(', ', $item_ship_parts);
 
+            // Raw: the loop escapes them, the items list's pass does too.
+            $item_entity = array();
+            if ($_ov_line_want) $item_entity += pg_sw_entity_values('order_line', pg_sw_entity_order_line_event($r), $_ov_entity_ctx);
+            if ($_ov_prod_want) $item_entity += pg_sw_entity_values('product', !empty($r['product_id']) ? $r : null, $_ov_entity_ctx);
+
             $items[] = array(
                 'id'                => (int)$r['item_id'],
                 'product_id'        => (int)($r['product_id'] ?? 0),
@@ -6792,6 +6809,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 'url'               => $item_url,
                 'ship_to'           => $item_ship_to,
                 'ship_to_id'        => (int)$r['ship_to_id'],
+                'entity'            => $item_entity,
             );
         }
     }
@@ -7250,7 +7268,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 // have rows (the item form and gift card parts' boxes).
                 '__item_has_form_data'     => !empty($item['has_form_data']) ? '1' : '',
                 '__item_has_gift_card'     => !empty($item['has_gift_card']) ? '1' : '',
-            );
+            ) + array_map('h', $item['entity']);
             $row_html = pg_sw_fill_longest($loop_template, $row_values);
             $row_html = pg_sw_sweep_tokens($row_html);
 
