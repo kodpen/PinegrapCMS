@@ -262,9 +262,9 @@
         // Read again only while the drawer that holds the part is open: a
         // drawer drawn again for another task leaves this part behind.
         function visible() {
-            var panel = wrap.closest('.offcanvas');
+            var panel = wrap.closest('.offcanvas, dialog.drawer');
 
-            return document.body.contains(wrap) && (!panel || panel.classList.contains('show') || panel.classList.contains('showing'));
+            return document.body.contains(wrap) && (!panel || pgUI.drawer.isOpen(panel) || panel.classList.contains('showing'));
         }
 
         function schedule() {

@@ -2104,10 +2104,9 @@
         var dialog = document.getElementById('ws-ask');
 
         if (dialog) {
-            dialog.addEventListener('shown.bs.modal', function shown() {
-                dialog.removeEventListener('shown.bs.modal', shown);
+            pgUI.dialog.on(dialog, 'shown', function () {
                 pick.focus();
-            });
+            }, { once: true });
         }
     }
 
@@ -2466,7 +2465,7 @@
         modal.appendChild(dialog);
         document.body.appendChild(modal);
 
-        modal.addEventListener('hidden.bs.modal', function () {
+        pgUI.dialog.on(modal, 'hidden', function () {
             state.share = null;
             state.refocus = 'more';
             refocus();
@@ -2496,7 +2495,7 @@
             state.share = { flow: flow, data: data, busy: false };
             modal.querySelector('.modal-title').textContent = t('fl_share_title', flow.name);
             drawShares();
-            bootstrap.Modal.getOrCreateInstance(modal).show();
+            pgUI.dialog.show(modal);
         }).catch(K.fail);
     }
 
