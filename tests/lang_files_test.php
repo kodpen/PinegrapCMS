@@ -201,3 +201,118 @@ function test_lang_files_source_and_map()
 	@unlink($local . '/yy.json');
 	@rmdir($local);
 }
+
+// The compiled cache of a language sits in data/temp as lang_<code>.php; a
+// code that is not a plain name builds no path.
+function test_lang_files_cache_path()
+{
+	pg_assert_same('/x/temp/lang_tr.php', pg_lang_cache_path('tr', '/x/temp'));
+	pg_assert_same('/x/temp/lang_pt-BR.php', pg_lang_cache_path('pt-BR', '/x/temp/'), 'a trailing slash');
+	pg_assert_same(PG_FUNCTIONS_DIR . '/data/temp/lang_en.php', pg_lang_cache_path('en'), 'data/temp by default');
+
+	foreach (array('', '../tr', 'tr/x', 'tr.php', "tr\0", str_repeat('a', 33)) as $code) {
+		pg_assert_same(null, pg_lang_cache_path($code, '/x/temp'), 'no path from "' . $code . '"');
+	}
+}
+
+// The signature changes with any source file's name, time or size, and with
+// a file added or gone; the order the files are listed in does not matter.
+function test_lang_files_cache_signature()
+{
+	$stats = array('a.json' => array(1000, 10), 's.json' => array(2000, 20));
+	$signature = pg_lang_cache_signature($stats);
+
+	pg_assert_same($signature, pg_lang_cache_signature(array('s.json' => array(2000, 20), 'a.json' => array(1000, 10))), 'order does not count');
+	pg_assert_true($signature !== pg_lang_cache_signature(array('a.json' => array(1000, 10), 's.json' => array(2001, 20))), 'a newer shard');
+	pg_assert_true($signature !== pg_lang_cache_signature(array('a.json' => array(999, 10), 's.json' => array(2000, 20))), 'an older shard (a copy keeping old times)');
+	pg_assert_true($signature !== pg_lang_cache_signature(array('a.json' => array(1000, 11), 's.json' => array(2000, 20))), 'another size');
+	pg_assert_true($signature !== pg_lang_cache_signature(array('a.json' => array(1000, 10))), 'a shard gone');
+	pg_assert_true($signature !== pg_lang_cache_signature($stats + array('b.json' => array(1000, 10))), 'a shard added');
+	pg_assert_true($signature !== pg_lang_cache_signature(array('b.json' => array(1000, 10), 's.json' => array(2000, 20))), 'a shard renamed');
+}
+
+// The cache file: the Pinegrap header, a gate so it cannot run as a page,
+// and an array that gives back every key and text exactly.
+function test_lang_files_cache_text()
+{
+	$map = array(
+		'Save' => 'Kaydet',
+		"It's" => 'Bu \' ve \\ ve "',
+		'End ?> <?php' => '?>',
+		'10001' => '10001',
+		"Line\nbreak" => "Satır\r\nsonu\0",
+		'Ürün' => 'Ürün ı ğ ş',
+	);
+
+	$text = pg_lang_cache_text('sig1', $map);
+
+	pg_assert_same(0, strpos($text, "<?php\n/**\n * Pinegrap - Enterprise Website Platform\n"), 'the Pinegrap header');
+	pg_assert_true(strpos($text, "if (!defined('PG_FUNCTIONS_DIR')) {\n    exit;\n}\n") !== false, 'the gate');
+
+	$file = sys_get_temp_dir() . '/pg_lang_cache_text_' . getmypid() . '.php';
+	file_put_contents($file, $text);
+	$data = include $file;
+	@unlink($file);
+
+	pg_assert_same(array('signature' => 'sig1', 'map' => $map), $data, 'every key and text back');
+}
+
+// pg_lang_map() with a cache folder: the first read writes the compiled
+// file, the next reads it, a changed shard rebuilds it, a folder it cannot
+// write to only costs the cache.
+function test_lang_files_map_cache()
+{
+	$local = sys_get_temp_dir() . '/pg_lang_cache_local_' . getmypid();
+	$temp = sys_get_temp_dir() . '/pg_lang_cache_temp_' . getmypid();
+	@mkdir($local);
+	@mkdir($local . '/xx');
+	@mkdir($temp);
+
+	file_put_contents($local . '/xx/s.json', pg_lang_file_encode(array('Save' => 'Kaydet')));
+	touch($local . '/xx/s.json', 1000000000);
+
+	$cache = $temp . '/lang_xx.php';
+
+	pg_assert_same(array('Save' => 'Kaydet'), pg_lang_map('xx', $local, $temp), 'read from the shards');
+	pg_assert_true(is_file($cache), 'the cache is written');
+	pg_assert_same(array(), glob($temp . '/*.tmp-*'), 'no temporary file left');
+
+	// A cache whose signature matches is read instead of the shards.
+	$data = include $cache;
+	file_put_contents($cache, pg_lang_cache_text($data['signature'], array('Save' => 'From cache')));
+	pg_assert_same(array('Save' => 'From cache'), pg_lang_map('xx', $local, $temp), 'read from the cache');
+
+	// A shard edited, even to an older time, rebuilds it.
+	file_put_contents($local . '/xx/s.json', pg_lang_file_encode(array('Save' => 'Kaydet!')));
+	touch($local . '/xx/s.json', 999999999);
+	pg_assert_same(array('Save' => 'Kaydet!'), pg_lang_map('xx', $local, $temp), 'a changed shard');
+	$data = include $cache;
+	pg_assert_same(array('Save' => 'Kaydet!'), $data['map'], 'the cache rebuilt');
+
+	// A shard added.
+	file_put_contents($local . '/xx/a.json', pg_lang_file_encode(array('Apple' => 'Elma')));
+	pg_assert_same(array('Apple' => 'Elma', 'Save' => 'Kaydet!'), pg_lang_map('xx', $local, $temp), 'a new shard');
+
+	// A cache that does not parse is rebuilt.
+	file_put_contents($cache, "<?php\nreturn array(");
+	pg_assert_same(array('Apple' => 'Elma', 'Save' => 'Kaydet!'), pg_lang_map('xx', $local, $temp), 'a broken cache');
+	$data = include $cache;
+	pg_assert_same(array('Apple' => 'Elma', 'Save' => 'Kaydet!'), $data['map'], 'the broken cache rewritten');
+
+	// The single file is cached the same way.
+	file_put_contents($local . '/yy.json', '{"Save": "Tek"}');
+	pg_assert_same(array('Save' => 'Tek'), pg_lang_map('yy', $local, $temp), 'a single file');
+	pg_assert_true(is_file($temp . '/lang_yy.php'), 'a single file cached');
+
+	// No language, or a folder the cache cannot be written to.
+	pg_assert_same(array(), pg_lang_map('zz', $local, $temp), 'no language');
+	pg_assert_true(!is_file($temp . '/lang_zz.php'), 'nothing cached for no language');
+	pg_assert_same(array('Save' => 'Tek'), pg_lang_map('yy', $local, $temp . '/missing'), 'no cache folder');
+
+	foreach (array($local . '/xx/s.json', $local . '/xx/a.json', $local . '/yy.json', $cache, $temp . '/lang_yy.php') as $file) {
+		@unlink($file);
+	}
+	@rmdir($local . '/xx');
+	@rmdir($local);
+	@rmdir($temp);
+}
