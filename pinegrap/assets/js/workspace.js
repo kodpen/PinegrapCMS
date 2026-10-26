@@ -20139,6 +20139,10 @@
                 note_id: current.id || 0,
                 title: current.titleInput ? current.titleInput.value : current.title,
                 body: field ? field.value() : (current.body || ''),
+                // The revision catches any change since it was read, the
+                // person's own on another screen or device included; base is
+                // for a site whose schema step has not run yet.
+                revision: force ? 0 : (current.revision || 0),
                 base: force ? 0 : (current.updated_at || 0)
             };
         }
@@ -20180,7 +20184,7 @@
 
                 var wasNew = !note.id;
 
-                ['id', 'name', 'updated', 'updated_at', 'updated_by', 'created', 'created_at', 'versions', 'access', 'owner', 'with', 'in', 'pinned', 'excerpt'].forEach(function (key) {
+                ['id', 'name', 'updated', 'updated_at', 'revision', 'updated_by', 'created', 'created_at', 'versions', 'access', 'owner', 'with', 'in', 'pinned', 'excerpt'].forEach(function (key) {
                     note[key] = data.note[key];
                 });
 
@@ -20279,6 +20283,17 @@
             }
         });
 
+        // Whether the stored note moved on from the one held here: by its
+        // revision, which a pin or an import's link rewrite moves too, else
+        // (before the schema step) by the time of its last change.
+        function newer(fresh, held) {
+            if (fresh.revision && held.revision) {
+                return fresh.revision > held.revision;
+            }
+
+            return fresh.updated_at > held.updated_at;
+        }
+
         // Somebody else's change comes in while the note is open and nothing
         // was typed here since.
         function poll() {
@@ -20298,7 +20313,7 @@
 
                 var fresh = data.note;
 
-                if (fresh.updated_at > note.updated_at) {
+                if (newer(fresh, note)) {
                     var who = fresh.updated_by ? fresh.updated_by.name : '';
 
                     current = fresh;
@@ -21993,9 +22008,15 @@
         // ── sharing, pinning, leaving ──
 
         function pin(note) {
-            api('ws_note_save', { note_id: note.id, pinned: note.pinned ? 0 : 1 }).then(function () {
+            api('ws_note_save', { note_id: note.id, pinned: note.pinned ? 0 : 1 }).then(function (data) {
                 if (current && current.id === note.id) {
                     current.pinned = !note.pinned;
+
+                    // The pin moved the revision on: the text's next save
+                    // must not be refused as a change made meanwhile.
+                    if (data && data.note) {
+                        current.revision = Math.max(current.revision || 0, data.note.revision || 0);
+                    }
                 }
 
                 loadList();
