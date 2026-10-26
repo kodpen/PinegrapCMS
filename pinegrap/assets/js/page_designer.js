@@ -21,7 +21,7 @@ function init_page_designer(properties) {
         if (window.editor && window.editor.insertAtCursor) {
             window.editor.insertAtCursor('<pregion></pregion>');
         }
-        RegionModalInstance.hide();
+        pgUI.dialog.hide('#regionModal');
     }
 
     // Rebind the event from scratch
@@ -725,12 +725,9 @@ function init_page_designer(properties) {
         </div>
     </main>`);
     const previewPanel = document.getElementById('previewpanel');
-    const RegionModalInstance = new bootstrap.Modal('#regionModal', {});
-    const CregionModalInstance = new bootstrap.Modal('#editor_modal_add_designer_region', {});
-    var DregionModalInstance = '';
-    if (dynamic_regions && dynamic_regions === 1) {
-        var DregionModalInstance = new bootstrap.Modal('#editor_modal_add_dynamic_region', {});
-    }
+    // The region dialogs are reached through pgUI when they open or close,
+    // not built here: this runs while the page is parsed, and Bootstrap 6
+    // loads after it as a deferred module.
 
 
 
@@ -763,14 +760,14 @@ function init_page_designer(properties) {
     // Region-create wiring is bound once here rather than inside open_item(): the
     // modals, the submit button and the region buttons live outside the editor
     // panel, so re-binding on every open would fire one create request per open.
-    $('#editor_modal_add_designer_region').on('hide.bs.modal', function () {
+    pgUI.dialog.on('#editor_modal_add_designer_region', 'hide', function () {
         $('#designer_region_name').val('');
         clearRegionCode('designer_region_code');
         submit_button.removeClass('disabled');
         $('[name=designer_region_name]').removeClass('is-invalid');
     });
     if (dynamic_regions && dynamic_regions === 1) {
-        $('#editor_modal_add_dynamic_region').on('hide.bs.modal', function () {
+        pgUI.dialog.on('#editor_modal_add_dynamic_region', 'hide', function () {
             $('#dynamic_region_name').val('');
             clearRegionCode('dynamic_region_code');
             submit_button.removeClass('disabled');
@@ -814,10 +811,10 @@ function init_page_designer(properties) {
                 success: function (response) {
                     if (name) {
                         editor.insertAtCursor('<cregion>' + name + '</cregion>');
-                        RegionModalInstance.hide();
-                        CregionModalInstance.hide();
+                        pgUI.dialog.hide('#regionModal');
+                        pgUI.dialog.hide('#editor_modal_add_designer_region');
                         if (dynamic_regions && dynamic_regions === 1) {
-                            DregionModalInstance.hide();
+                            pgUI.dialog.hide('#editor_modal_add_dynamic_region');
                         }
 
                         editor.focus();
@@ -858,9 +855,9 @@ function init_page_designer(properties) {
                 success: function (response) {
                     if (name) {
                         editor.insertAtCursor('<dregion>' + name + '</dregion>');
-                        RegionModalInstance.hide();
-                        CregionModalInstance.hide();
-                        DregionModalInstance.hide();
+                        pgUI.dialog.hide('#regionModal');
+                        pgUI.dialog.hide('#editor_modal_add_designer_region');
+                        pgUI.dialog.hide('#editor_modal_add_dynamic_region');
                         editor.focus();
                     }
 
@@ -873,12 +870,12 @@ function init_page_designer(properties) {
     });
 
     document.getElementById('cregionButton').addEventListener('click', function () {
-        CregionModalInstance.show();
+        pgUI.dialog.show('#editor_modal_add_designer_region');
     });
 
     if (dynamic_regions && dynamic_regions === 1) {
         document.getElementById('dregionButton').addEventListener('click', function () {
-            DregionModalInstance.show();
+            pgUI.dialog.show('#editor_modal_add_dynamic_region');
         });
     }
 
@@ -1524,10 +1521,10 @@ function init_page_designer(properties) {
     let typingTimer;
     let doneTypingInterval = 300;
     let $queryinput = $('form.search_form input[name="query"]');
-    $('#SearchBox').on('shown.bs.modal', function () {
+    pgUI.dialog.on('#SearchBox', 'shown', function () {
         $queryinput.focus();
     });
-    $('#SearchBox').on('hide.bs.modal', function () {
+    pgUI.dialog.on('#SearchBox', 'hide', function () {
         //$('form.search_form .clear').click();
     });
 
@@ -1722,7 +1719,7 @@ function init_page_designer(properties) {
             }
 
             $('#search_results button').click(function () {
-                $('#SearchBox').modal('hide');
+                pgUI.dialog.hide('#SearchBox');
             });
 
 

@@ -2908,7 +2908,7 @@ function pg_seo_render_detail_offcanvas()
         var body = document.getElementById("pg_seo_offcanvas_body");
 
         body.innerHTML = "<div class=\"text-center py-4\"><div class=\"spinner-border text-primary\" role=\"status\"></div></div>";
-        bootstrap.Offcanvas.getOrCreateInstance(offcanvas_element).show();
+        pgUI.drawer.show(offcanvas_element);
 
         fetch(trigger.getAttribute("data-seo-url"), {credentials: "same-origin"})
             .then(function (response) { return response.text(); })

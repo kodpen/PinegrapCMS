@@ -258,7 +258,7 @@
             ok.className = 'btn btn-sm rounded-pill px-3 ' + (danger ? 'btn-outline-warning' : 'btn-primary');
             cancel.textContent = t('cancel');
 
-            var modal = bootstrap.Modal.getOrCreateInstance(dialog);
+            var modal = pgUI.dialog.get(dialog);
             var answered = false;
 
             ok.onclick = function () {
@@ -267,13 +267,12 @@
                 resolve(true);
             };
 
-            dialog.addEventListener('hidden.bs.modal', function onHidden() {
-                dialog.removeEventListener('hidden.bs.modal', onHidden);
+            pgUI.dialog.on(dialog, 'hidden', function () {
 
                 if (!answered) {
                     resolve(false);
                 }
-            });
+            }, { once: true });
 
             modal.show();
         });
@@ -288,10 +287,9 @@
                 return;
             }
 
-            dialog.addEventListener('hidden.bs.modal', function onClosed() {
-                dialog.removeEventListener('hidden.bs.modal', onClosed);
+            pgUI.dialog.on(dialog, 'hidden', function () {
                 resolve();
-            });
+            }, { once: true });
         });
     }
 
@@ -392,7 +390,7 @@
             document.body.appendChild(copyModal);
         }
 
-        var modal = bootstrap.Modal.getOrCreateInstance(copyModal);
+        var modal = pgUI.dialog.get(copyModal);
         var body = copyModal.querySelector('.modal-body');
         var note = copyModal.querySelector('[data-ws-copy-note]');
         var area = copyModal.querySelector('.ws-copy-area');
@@ -590,7 +588,7 @@
 
             // Changed cells or paragraphs are not thrown away by a click
             // beside the window or the cross without asking.
-            previewModal.addEventListener('hide.bs.modal', function (event) {
+            pgUI.dialog.on(previewModal, 'hide', function (event) {
                 var state = previewSheets;
 
                 if (state && !state.saving && state.view && state.view.count() > 0
@@ -599,7 +597,7 @@
                 }
             });
 
-            previewModal.addEventListener('hidden.bs.modal', function () {
+            pgUI.dialog.on(previewModal, 'hidden', function () {
                 clear(previewModal.querySelector('.modal-body'));
                 clear(previewModal.querySelector('.modal-footer')).classList.add('d-none');
                 previewSheets = null;
@@ -695,7 +693,7 @@
                     request[(state.view.kind === 'docx') ? 'paragraphs' : 'cells'] = state.view.edits();
 
                     api('ws_file_office_save', request).then(function (result) {
-                        bootstrap.Modal.getOrCreateInstance(previewModal).hide();
+                        pgUI.dialog.hide(previewModal);
                         toast(data.can_replace ? t('file_replaced') : t('file_copy_sent'), 'success');
 
                         if (typeof onSaved === 'function') {
@@ -722,7 +720,7 @@
             body.appendChild(frame);
         }
 
-        bootstrap.Modal.getOrCreateInstance(previewModal).show();
+        pgUI.dialog.show(previewModal);
     }
 
     // ── Context menus ──────────────────────────────────────────────────
@@ -2097,10 +2095,10 @@
 
         // The panel's chat bubble sits above offcanvas panels; it steps aside
         // while one of ours is open.
-        node.addEventListener('show.bs.offcanvas', function () {
+        pgUI.drawer.on(node, 'show', function () {
             document.body.classList.add('ws-drawer-open');
         });
-        node.addEventListener('hidden.bs.offcanvas', function () {
+        pgUI.drawer.on(node, 'hidden', function () {
             document.body.classList.remove('ws-drawer-open');
         });
 
@@ -2108,11 +2106,11 @@
     }
 
     function showOffcanvas(node) {
-        bootstrap.Offcanvas.getOrCreateInstance(node).show();
+        pgUI.drawer.show(node);
     }
 
     function hideOffcanvas(node) {
-        var instance = bootstrap.Offcanvas.getInstance(node);
+        var instance = pgUI.drawer.find(node);
 
         if (instance) {
             instance.hide();
@@ -4228,10 +4226,9 @@
                 var toGuest = button('btn btn-link btn-sm p-0 mb-3 text-decoration-none', t('guest_start'), 'bi-door-open');
 
                 toGuest.addEventListener('click', function () {
-                    node.addEventListener('hidden.bs.offcanvas', function once() {
-                        node.removeEventListener('hidden.bs.offcanvas', once);
+                    pgUI.drawer.on(node, 'hidden', function () {
                         guestForm(onDone);
-                    });
+                    }, { once: true });
                     hideOffcanvas(node);
                 });
                 body.appendChild(toGuest);
@@ -4568,10 +4565,9 @@
 
         // The question before it is still on its way out.
         if (shown && (shown.style.display === 'block')) {
-            shown.addEventListener('hidden.bs.modal', function once() {
-                shown.removeEventListener('hidden.bs.modal', once);
+            pgUI.dialog.on(shown, 'hidden', function () {
                 guestLinkShow(url, qr);
-            });
+            }, { once: true });
             return;
         }
 
@@ -9274,9 +9270,9 @@
                 }
 
                 document.body.appendChild(node);
-                instance = bootstrap.Modal.getOrCreateInstance(node);
-                node.addEventListener('hidden.bs.modal', function () { node.remove(); });
-                node.addEventListener('shown.bs.modal', function () { area.focus(); });
+                instance = pgUI.dialog.get(node);
+                pgUI.dialog.on(node, 'hidden', function () { node.remove(); });
+                pgUI.dialog.on(node, 'shown', function () { area.focus(); });
                 instance.show();
             }).catch(fail);
         },
@@ -19667,8 +19663,8 @@
             }
 
             document.body.appendChild(node);
-            node.addEventListener('hidden.bs.modal', function () { node.remove(); });
-            bootstrap.Modal.getOrCreateInstance(node).show();
+            pgUI.dialog.on(node, 'hidden', function () { node.remove(); });
+            pgUI.dialog.show(node);
         }).catch(fail);
     }
 
@@ -20536,7 +20532,7 @@
 
                 field.rich.setMarkup(chosen.body || '', chosen.labels || {}, true);
                 toast(t('notes_version_restored'));
-                bootstrap.Modal.getOrCreateInstance(node).hide();
+                pgUI.dialog.hide(node);
             });
 
             api('ws_note_get', { note_id: note.id, versions: 1 }).then(function (data) {
@@ -20589,8 +20585,8 @@
             }).catch(fail);
 
             document.body.appendChild(node);
-            node.addEventListener('hidden.bs.modal', function () { node.remove(); });
-            bootstrap.Modal.getOrCreateInstance(node).show();
+            pgUI.dialog.on(node, 'hidden', function () { node.remove(); });
+            pgUI.dialog.show(node);
         }
 
         // Notes brought in from another app, in the steps of
@@ -21542,7 +21538,7 @@
                     var open = button('btn btn-sm btn-primary rounded-pill px-3', t('notes_open'), 'bi-box-arrow-in-right');
 
                     open.addEventListener('click', function () {
-                        bootstrap.Modal.getOrCreateInstance(node).hide();
+                        pgUI.dialog.hide(node);
                         openNote(data.first, true);
                     });
                     footer.appendChild(open);
@@ -21559,13 +21555,13 @@
             }
 
             // Closed before the import ran: the staged upload is dropped.
-            node.addEventListener('hide.bs.modal', function (event) {
+            pgUI.dialog.on(node, 'hide', function (event) {
                 if (running) {
                     event.preventDefault();
                 }
             });
 
-            node.addEventListener('hidden.bs.modal', function () {
+            pgUI.dialog.on(node, 'hidden', function () {
                 closed = true;
                 window.removeEventListener('beforeunload', leaveGuard);
 
@@ -21585,7 +21581,7 @@
 
             drawPick();
             document.body.appendChild(node);
-            bootstrap.Modal.getOrCreateInstance(node).show();
+            pgUI.dialog.show(node);
         }
 
         // Files dropped on the note or picked: kept for those who may read it,
@@ -22314,8 +22310,8 @@
 
                 var navDrawer = document.getElementById('ws-nav-drawer');
 
-                if (navDrawer && window.bootstrap && navDrawer.classList.contains('show')) {
-                    window.bootstrap.Offcanvas.getOrCreateInstance(navDrawer).hide();
+                if (navDrawer && window.pgUI && pgUI.drawer.isOpen(navDrawer)) {
+                    pgUI.drawer.hide(navDrawer);
                 }
 
                 window.PGWsPalette.open();
@@ -22330,8 +22326,8 @@
 
             var drawer = document.getElementById('ws-nav-drawer');
 
-            if (drawer && window.bootstrap && drawer.classList.contains('show')) {
-                window.bootstrap.Offcanvas.getOrCreateInstance(drawer).hide();
+            if (drawer && window.pgUI && pgUI.drawer.isOpen(drawer)) {
+                pgUI.drawer.hide(drawer);
             }
 
             openInbox(function () {});

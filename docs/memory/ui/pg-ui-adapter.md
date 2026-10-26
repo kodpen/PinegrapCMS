@@ -16,7 +16,7 @@ description: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's Java
 - `pgUI.ready(fn)` and `window.pgBootstrapReady`: resolved at once under 5; under 6 when the bridge module fires `pg:bootstrap-ready`. Code that runs while the page is parsed and needs Bootstrap waits on it.
 
 ## What still calls Bootstrap directly?
-- Code step B2b has not reached yet (slices in `plans/bootstrap-6-panel-steps.md`): about 85 `bootstrap.X` calls (39 in panel files), 18 jQuery plugin calls and 71 `*.bs.*` listeners of renamed components (51 in panel files). `php tools/check_bs6.php` counts them; `pg_ui.js` itself is scope `adapter` and not counted. `style_designer.js` moves in step B7.
+- Code step B2b has not reached yet (slices in `plans/bootstrap-6-panel-steps.md`): about 60 `bootstrap.X` calls (17 in panel files, in `backend.src.js`), 14 jQuery plugin calls and 40 `*.bs.*` listeners of renamed components (20 in panel files). `php tools/check_bs6.php` counts them (`pg_ui.js` is scope `adapter`). `style_designer.js` moves in step B7.
 - The Bootstrap 6 bridge module and the `dialog-open` close listener come with the switch.
 
 ## How does code written for pgUI read?
