@@ -169,7 +169,7 @@ function test_bs6_switch_selectors()
 	$in = ".a .btn-primary:hover, .form-check-input:checked + .form-check-label, .col-md-6 > .p-3, .modal-content { color: red; }\n.x { background: url(a.text-white.png); }\n.form-select-sm, .text-white { margin: 0; }";
 	$result = bs6_switch_selectors($in);
 
-	pg_assert_same(".a .btn-solid.theme-primary:hover, :is(.check, .radio):checked + :is(.form-field > label), .md\\:col-6 > .p-3, .modal-content { color: red; }\n.x { background: url(a.text-white.png); }\n.form-control-sm, .fg-white { margin: 0; }", $result['source']);
+	pg_assert_same(".a .btn-solid.theme-primary:hover, :is(.check, .radio):checked + :is(.form-field > label), .md\\:col-6 > .p-3, .modal-content { color: red; }\n.x { background: url(a.text-white.png); }\n:is(select.form-control-sm), .fg-white { margin: 0; }", $result['source']);
 	pg_assert_same('done', bs6_switch_selectors($result['source'])['status'], 'second run');
 }
 
