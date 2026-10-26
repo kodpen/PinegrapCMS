@@ -272,3 +272,43 @@ function test_workspace_flow_steps_effects()
 	pg_assert_contains("'idempotency_key' => ws_step_idempotency_key(", $run);
 	pg_assert_contains("array('message_id', 'task_id')", $run);
 }
+
+// A hook's address carries its secret: only whoever may change the flow
+// reads it whole, on the screen, in the API and in a run's graph; everybody
+// else reads its host. A web check's sentence names the host only.
+function test_workspace_flow_steps_hook_address_is_kept_back()
+{
+	pg_assert_same('https://hooks.slack.com/…', ws_flow_url_masked('https://hooks.slack.com/services/T0/B0/secret'));
+	pg_assert_same('https://example.com/…', ws_flow_url_masked('https://user:pass@Example.com:8443/x?token=1'));
+	pg_assert_same('', ws_flow_url_masked(''));
+
+	$graph = ws_flow_graph_normalize(array('nodes' => array(
+		array('id' => 'start', 'kind' => 'manual'),
+		array('id' => 'hook', 'kind' => 'webhook', 'config' => array('url' => 'https://hooks.slack.com/services/T0/B0/secret', 'format' => 'text', 'text' => 'Hi')),
+		array('id' => 'look', 'kind' => 'web_check', 'config' => array('url' => 'https://user:pass@example.com/health')),
+		array('id' => 'say', 'kind' => 'post', 'config' => array('channel_id' => 4, 'body' => 'https://keep.example.com/x')),
+	)));
+	$url = function ($present, $index) {
+		return ((array) $present['nodes'][$index]['config'])['url'] ?? null;
+	};
+
+	$reader = ws_flow_graph_present($graph);
+	$editor = ws_flow_graph_present($graph, true);
+
+	pg_assert_same('https://hooks.slack.com/…', $url($reader, 1));
+	pg_assert_same('https://example.com/…', $url($reader, 2));
+	pg_assert_same('https://hooks.slack.com/services/T0/B0/secret', $url($editor, 1));
+	pg_assert_same('https://keep.example.com/x', ((array) $reader['nodes'][3]['config'])['body'], 'other boxes as they are');
+	pg_assert_true(is_object($reader['nodes'][1]['config']), 'settings stay an object');
+
+	// Every presenter passes whether the reader may change the flow.
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
+
+	pg_assert_contains('ws_flow_graph_present($live, $edit)', ws_flow_steps_test_source('ws_flow_detail'));
+	pg_assert_contains('ws_flow_graph_present($draft, $edit)', ws_flow_steps_test_source('ws_flow_detail'));
+	pg_assert_contains('ws_api_flow_graph_present($draft, $edit)', ws_flow_steps_test_source('ws_api_flow_present'));
+	pg_assert_contains('ws_api_flow_graph_present(ws_flow_graph_of($version), $edit)', ws_flow_steps_test_source('ws_api_flow_present'));
+	pg_assert_contains("ws_api_flow_graph_present(\$graph, (string) \$run['access'] === 'edit')", ws_flow_steps_test_source('ws_api_flow_run_present'));
+
+	pg_assert_contains("\$url = ws_scheduled_host((string) \$action['url']);", ws_flow_steps_test_source('ws_scheduled_web_check'));
+}

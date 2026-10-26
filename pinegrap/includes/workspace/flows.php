@@ -1154,17 +1154,40 @@ function ws_flow_bin($viewer, $flow)
    --------------------------------------------------------------------------- */
 
 /**
+ * The address a webhook or web check box calls, as somebody who may not
+ * change the flow reads it: only its host. A chat or automation hook
+ * (Slack, Discord, n8n, Zapier) carries its secret in the path, and anybody
+ * holding the address can post as the integration; a scheduled action shows
+ * no more of it either (ws_scheduled_host()). Pure.
+ *
+ * @param string $url
+ * @return string https://host/… , '' for none
+ */
+function ws_flow_url_masked($url)
+{
+    $host = parse_url((string) $url, PHP_URL_HOST);
+
+    return (is_string($host) && ($host !== '')) ? 'https://' . strtolower($host) . '/…' : '';
+}
+
+/**
  * A graph as the screen and the API hand it out: a box's settings always an
- * object, even an end's empty ones.
+ * object, even an end's empty ones. Only whoever may change the flow reads
+ * the whole address of a webhook or web check box (ws_flow_url_masked()).
  *
  * @param array $graph ws_flow_graph_normalize()
+ * @param bool  $edit  the reader may change the flow
  * @return array
  */
-function ws_flow_graph_present($graph)
+function ws_flow_graph_present($graph, $edit = false)
 {
     return array(
         'v'     => 1,
-        'nodes' => array_map(function ($node) {
+        'nodes' => array_map(function ($node) use ($edit) {
+            if (!$edit && in_array((string) $node['kind'], array('webhook', 'web_check'), true) && isset($node['config']['url'])) {
+                $node['config']['url'] = ws_flow_url_masked($node['config']['url']);
+            }
+
             $node['config'] = (object) $node['config'];
 
             return $node;
@@ -1334,8 +1357,8 @@ function ws_flow_detail($viewer, $flow)
     $draft = ws_flow_draft_readable((string) $flow['access'], is_array($version) ? (int) $version['id'] : 0) ? ws_flow_graph_of($flow) : null;
 
     return ws_flow_brief($viewer, $flow, is_array($version) ? (int) $version['n'] : 0) + array(
-        'draft'    => ($draft !== null) ? ws_flow_graph_present($draft) : null,
-        'graph'    => ($live !== null) ? ws_flow_graph_present($live) : null,
+        'draft'    => ($draft !== null) ? ws_flow_graph_present($draft, $edit) : null,
+        'graph'    => ($live !== null) ? ws_flow_graph_present($live, $edit) : null,
         'problems' => ($edit && ($draft !== null)) ? ws_flow_problems($draft) : array(),
         // The draft holds something its live version does not.
         'changed'  => $edit && ($draft !== null) && (($live === null) || ($draft !== $live)),

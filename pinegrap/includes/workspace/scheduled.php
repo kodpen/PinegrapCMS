@@ -4355,7 +4355,9 @@ function ws_scheduled_web_check($action)
         'agent'    => 'uptime-check',
     ));
 
-    $url = (string) $action['url'];
+    // Only the host in the sentence: a flow's run shows it to whoever reads
+    // the run, and the address may carry a secret (user:pass@, a token).
+    $url = ws_scheduled_host((string) $action['url']);
     $status = (int) $answer['status'];
     $fail = function ($text) {
         return array('ok' => false, 'text' => $text, 'message_id' => 0);
