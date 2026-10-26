@@ -385,13 +385,16 @@ function pg_panel_backend_search($request, $action)
     // ── Design: styles + design files (designer+) ────────────────────────
     if ($can_design) {
         $rows = db_items(
-            "SELECT style_id AS id, style_name AS name
+            "SELECT style_id AS id, style_name AS name, style_type AS style_type
              FROM style
              WHERE style_name LIKE '$s'
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
-            $add('style', $r['id'], $r['name'], '', $score_fn($r['name']));
+            // The palette builds edit_<style_type>_style.php from this value,
+            // so only the two edit screens that exist pass.
+            $style_type = in_array($r['style_type'], array('system', 'custom'), true) ? $r['style_type'] : '';
+            $add('style', $r['id'], $r['name'], '', $score_fn($r['name']), array('style_type' => $style_type));
         }
     }
 
