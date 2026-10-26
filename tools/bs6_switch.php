@@ -21,6 +21,14 @@
  *   stacked  the settings drawer no longer restores body.modal-open after a
  *            stacked dialog closes: Bootstrap 6 scrolls nothing behind a
  *            <dialog>, and the bridge keeps html.dialog-open while one is open
+ *   selectors  selectors in panel stylesheets on classes v6 renames: the v6
+ *            class (a compound for a pair, `.btn-solid.theme-primary`) or the
+ *            new check markup; structural ones (modal, dropdown) are left
+ *   pins     unit tests that pin panel markup to its v5 classes take the v6
+ *            classes the conversion writes (bs6_switch_test_pins())
+ *   checks   checkbox, radio and switch markup: the wrapper becomes
+ *            .form-field, the input .check or .radio by its type, a switch's
+ *            input goes into a .switch box, the label loses its class
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -79,13 +87,43 @@ function bs6_switch_plan($root)
 
 	$plan[] = array('assets/css/backend.src.css', 'navbar', 'bs6_switch_navbar');
 
+	foreach (bs6_switch_stylesheets($root) as $path) {
+		$plan[] = array($path, 'selectors', 'bs6_switch_selectors');
+	}
+
 	foreach (bs6_switch_style_files() as $path) {
 		$plan[] = array($path, 'style', 'bs6_switch_style_blocks');
 	}
 
 	$plan[] = array('assets/js/backend.src.js', 'stacked', 'bs6_switch_drop_stacked_repair');
 
+	foreach (bs6_switch_check_files($root) as $path) {
+		$plan[] = array($path, 'checks', 'bs6_switch_checks');
+	}
+
+	foreach (bs6_switch_test_pins() as $path => $pairs) {
+		$plan[] = array('../' . $path, 'pins', function ($source) use ($pairs) {
+			return bs6_switch_pins($source, $pairs);
+		});
+	}
+
 	return $plan;
+}
+
+// Files the codemod converts that name a v5 check class, sorted.
+function bs6_switch_check_files($root)
+{
+	$paths = array();
+
+	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
+		if (bs6_codemod_converts($path) && strpos((string) file_get_contents(rtrim($root, '/') . '/' . $path), 'form-check') !== false) {
+			$paths[] = $path;
+		}
+	}
+
+	sort($paths);
+
+	return $paths;
 }
 
 // Panel and editor stylesheets (not minified copies), sorted.
@@ -290,4 +328,318 @@ function bs6_switch_run($root, $write)
 	}
 
 	return $report;
+}
+
+// End offset (after '>') of the tag that starts at $start, or null. A '>'
+// right after '-', '=' or '?' belongs to PHP inside the tag (an arrow or
+// the end of a PHP block), not to the tag; so does one inside brackets
+// (`($ttl > 0)`), which attribute values only hold balanced.
+function bs6_switch_tag_end($source, $start)
+{
+	$length = strlen($source);
+	$depth = 0;
+
+	for ($i = $start + 1; $i < $length; $i++) {
+		$char = $source[$i];
+
+		if ($char === '(') {
+			$depth++;
+		} elseif ($char === ')') {
+			$depth = max(0, $depth - 1);
+		} elseif ($char === '<' && $depth === 0 && substr($source, $i, 2) !== '<?') {
+			return null;
+		} elseif ($char === '>' && $depth === 0 && strpos('-=?', $source[$i - 1]) === false) {
+			return $i + 1;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Checkbox, radio and switch markup in class="…" attributes, by tag:
+ *   form-check            .form-field
+ *   form-check-inline     d-inline-grid and the v5 1rem right margin
+ *   form-switch           dropped; the next <input> with form-check-input
+ *                         (before another check wrapper, within 800 bytes)
+ *                         goes into <div class="switch"> without a class
+ *   form-check-input      .check or .radio by the tag's literal type
+ *   form-check-label      dropped (v6 styles `.form-field > label`)
+ * Site-output code (`/* @pg-site-output *\/`) and the class keys of PHP
+ * arrays or JS objects are left for a hand: the tag is not in sight there.
+ */
+function bs6_switch_checks($source)
+{
+	$names = array('form-check', 'form-check-inline', 'form-switch', 'form-check-input', 'form-check-label');
+	$site_output = bs6_site_output_ranges($source);
+	$inline = bs6_map_token('me-3')['tokens'];
+	$edits = array();
+	$switch_at = null;
+
+	foreach (bs6_find_class_lists($source) as $list) {
+		if (!in_array($list['kind'], array('attribute', 'php-key'), true) || ($site_output && bs6_in_ranges($list['offset'], $site_output))) {
+			continue;
+		}
+
+		$parts = preg_split('/(\s+)/', $list['value'], -1, PREG_SPLIT_DELIM_CAPTURE);
+
+		if (!array_intersect($names, $parts)) {
+			continue;
+		}
+
+		$wrap = false;
+
+		if ($list['kind'] === 'php-key') {
+			// A liveform field: the input is the output_field() call, its type
+			// the call's 'type' key, and a switch box goes around the call.
+			$field = bs6_switch_field_call($source, $list['offset']);
+
+			if ($field === null) {
+				continue;
+			}
+
+			$tag = 'input';
+			$tag_start = $field['before'];
+			$tag_end = $field['after'];
+			$tag_text = $field['text'];
+		} else {
+			$tag_start = strrpos(substr($source, 0, $list['offset']), '<');
+			$tag = ($tag_start !== false && preg_match('/^<([a-zA-Z][a-zA-Z0-9]*)/', substr($source, $tag_start, 20), $m)) ? strtolower($m[1]) : '';
+			$tag_end = $tag !== '' ? bs6_switch_tag_end($source, $tag_start) : null;
+			$tag_text = $tag_end !== null ? substr($source, $tag_start, $tag_end - $tag_start) : '';
+		}
+
+		foreach ($parts as $i => $part) {
+			if (($i % 2) === 1) {
+				continue;
+			}
+
+			if ($part === 'form-check') {
+				$parts[$i] = 'form-field';
+				$switch_at = null;
+			} elseif ($part === 'form-check-inline') {
+				$parts[$i] = 'd-inline-grid ' . implode(' ', $inline);
+			} elseif ($part === 'form-switch') {
+				$parts[$i] = '';
+				$switch_at = $list['offset'];
+			} elseif ($part === 'form-check-label') {
+				$parts[$i] = '';
+			} elseif ($part === 'form-check-input' && $tag === 'input' && $tag_end !== null) {
+				if ($switch_at !== null && $list['offset'] - $switch_at < 800 && ($list['kind'] === 'attribute' || $field['wrappable'])) {
+					$parts[$i] = '';
+					$wrap = true;
+					$switch_at = null;
+				} elseif (preg_match('/\btype=\\\\?["\'](checkbox|radio)\\\\?["\']|[\'"]type[\'"]\s*=>\s*[\'"](checkbox|radio)[\'"]/', $tag_text, $type)) {
+					$type[1] = $type[1] !== '' ? $type[1] : $type[2];
+					$parts[$i] = $type[1] === 'checkbox' ? 'check' : 'radio';
+				}
+			}
+		}
+
+		// The `form-check` wrapper of a switch may come after `form-switch`
+		// in the same list; the switch stays pending then.
+		if (in_array('form-switch', explode(' ', preg_replace('/\s+/', ' ', $list['value'])), true)) {
+			$switch_at = $list['offset'];
+		}
+
+		$value = trim(bs6_join_class_parts($list['value'], $parts));
+		$edits[] = array($list['offset'], $list['length'], $value);
+
+		if ($wrap) {
+			$edits[] = array($tag_start, 0, '<div class="switch">');
+			$edits[] = array($tag_end, 0, '</div>');
+		}
+	}
+
+	if (!$edits) {
+		return bs6_switch_result($source, 'done');
+	}
+
+	// From the end, so earlier offsets stay valid; an insertion at a tag's
+	// start sorts after the class list inside that tag.
+	usort($edits, function ($a, $b) {
+		return $b[0] - $a[0];
+	});
+
+	foreach ($edits as $edit) {
+		$source = substr($source, 0, $edit[0]) . $edit[2] . substr($source, $edit[0] + $edit[1]);
+	}
+
+	return bs6_switch_result($source, 'applied');
+}
+
+// The $x->output_field(...) call around a PHP class key at $offset, as
+// array('text' => the call, 'before', 'after', 'wrappable'): the call sits
+// between two string pieces (`…">' . $liveform->output_field(…) . '<…`),
+// 'before' is the closing quote of the piece before it and 'after' the
+// offset past the opening quote of the piece after it, where a box can open
+// and close. Null when the key is not inside such a call.
+function bs6_switch_field_call($source, $offset)
+{
+	$head = substr($source, max(0, $offset - 600), min($offset, 600));
+	$at = strrpos($head, '->output_field(');
+
+	if ($at === false) {
+		return null;
+	}
+
+	$start = max(0, $offset - 600) + $at;
+	$open = $start + strlen('->output_field');
+	$length = strlen($source);
+	$depth = 0;
+	$quote = null;
+
+	for ($i = $open; $i < $length; $i++) {
+		$char = $source[$i];
+
+		if ($quote !== null) {
+			if ($char === '\\') {
+				$i++;
+			} elseif ($char === $quote) {
+				$quote = null;
+			}
+			continue;
+		}
+
+		if ($char === '\'' || $char === '"') {
+			$quote = $char;
+		} elseif ($char === '(') {
+			$depth++;
+		} elseif ($char === ')' && --$depth === 0) {
+			break;
+		}
+	}
+
+	if ($i >= $length || $i < $offset) {
+		return null;
+	}
+
+	$end = $i + 1;
+	$before = null;
+	$after = null;
+	$prefix = substr($source, 0, $start);
+
+	if (preg_match('/\'\s*\.\s*\$[A-Za-z_][A-Za-z0-9_]*$/', $prefix, $m)) {
+		$before = $start - strlen($m[0]);
+	}
+
+	if (preg_match('/^\s*\.\s*\'/', substr($source, $end, 40), $m)) {
+		$after = $end + strlen($m[0]);
+	}
+
+	return array(
+		'text' => substr($source, $start, $end - $start),
+		'before' => $before !== null ? $before : $start,
+		'after' => $after !== null ? $after : $end,
+		'wrappable' => $before !== null && $after !== null,
+	);
+}
+
+// Selector text for one v5 class in a panel stylesheet, or null to leave it.
+// Sizes (spacing, font size, radius) are never rewritten here: their v6
+// names are v5 names of other sizes, so a second run would change them again.
+function bs6_switch_selector_for($class)
+{
+	$checks = array(
+		'form-check' => '.form-field:has(> .check, > .radio, > .switch)',
+		'form-check-input' => ':is(.check, .radio)',
+		'form-check-label' => ':is(.form-field > label)',
+		'form-check-inline' => '.form-field.d-inline-grid',
+	);
+
+	if (isset($checks[$class])) {
+		return $checks[$class];
+	}
+
+	if (preg_match('/^(([mp][trblxyse]?|g[xy]?|gap|row-gap|column-gap)-|fs-|rounded)/', $class)) {
+		return null;
+	}
+
+	$mapped = bs6_map_token($class);
+
+	if ($mapped['review'] !== null || $mapped['tokens'] === array($class) || !$mapped['tokens']) {
+		return null;
+	}
+
+	$out = '';
+	foreach ($mapped['tokens'] as $token) {
+		$out .= '.' . str_replace(':', '\:', $token);
+	}
+
+	return $out;
+}
+
+function bs6_switch_selectors($source)
+{
+	$count = 0;
+
+	$source = preg_replace_callback('/\.([A-Za-z][A-Za-z0-9_-]*)(?![A-Za-z0-9_\\\\-])(?=[^{};]*\{)/', function ($m) use (&$count) {
+		$selector = bs6_switch_selector_for($m[1]);
+
+		if ($selector === null) {
+			return $m[0];
+		}
+
+		$count++;
+		return $selector;
+	}, $source);
+
+	return bs6_switch_result($source, $count > 0 ? 'applied' : 'done');
+}
+
+// Unit tests that check panel output or panel source for a v5 class, with
+// the text each must change from and to. The tests run against development
+// until the switch, so they change with the generated commit.
+function bs6_switch_test_pins()
+{
+	return array(
+		'tests/ai_fields_test.php' => array(
+			array('bg-primary-subtle text-primary-emphasis border border-primary-subtle', 'bg-subtle-primary fg-emphasis-primary border border-subtle-primary'),
+			array('column-gap-2', 'column-gap-3'),
+		),
+		'tests/ai_write_test.php' => array(
+			array('column-gap-2', 'column-gap-3'),
+		),
+		'tests/catalog_bin_test.php' => array(
+			array('btn my-1 btn-secondary', 'btn my-1 btn-solid theme-secondary'),
+		),
+		'tests/erp_edoc_service_test.php' => array(
+			array('<div class=\"col-12 my-2\">', '<div class=\"col-12 my-3\">'),
+		),
+		'tests/parasut_order_gates_test.php' => array(
+			array("pg_assert_contains('bg-success\">' . lang('Sent')", "pg_assert_contains('theme-success\">' . lang('Sent')"),
+			array("pg_assert_contains('bg-warning', \$open)", "pg_assert_contains('theme-warning', \$open)"),
+		),
+		'tests/parasut_order_invoice_test.php' => array(
+			array("pg_assert_contains('bg-warning', \$unsure)", "pg_assert_contains('theme-warning', \$unsure)"),
+		),
+		'tests/payment_drivers_test.php' => array(
+			array("pg_assert_contains('alert-warning', \$unread", "pg_assert_contains('alert theme-warning', \$unread"),
+		),
+		'tests/signin_test.php' => array(
+			array("'bg-warning'", "'theme-warning'"),
+		),
+		'tests/widget_fill_test.php' => array(
+			array('<select class="form-select form-select-sm sd-sw-bindfilter"', '<select class="form-control form-control-sm sd-sw-bindfilter"'),
+		),
+	);
+}
+
+// Replaces every occurrence of each pair's first text with its second.
+// Missing when a first text is gone and its second is not there: the test
+// changed on development and its pair needs updating.
+function bs6_switch_pins($source, array $pairs)
+{
+	$applied = false;
+
+	foreach ($pairs as $pair) {
+		if (strpos($source, $pair[0]) !== false) {
+			$source = str_replace($pair[0], $pair[1], $source);
+			$applied = true;
+		} elseif (strpos($source, $pair[1]) === false) {
+			return bs6_switch_result($source, 'missing');
+		}
+	}
+
+	return bs6_switch_result($source, $applied ? 'applied' : 'done');
 }
