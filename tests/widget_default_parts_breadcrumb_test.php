@@ -19,6 +19,12 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+// The translation extractor: which fields of a crumb enter the site
+// translation.
+require_once(PG_FUNCTIONS_DIR . '/includes/translate/store.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/translate/extract.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/translate/content.php');
+
 // The crumbs as the renderers printed them before the part: each crumb an
 // <li class="breadcrumb-item"> holding a link, words, or span.active.
 function _parts_bc_old_inner($rows)
@@ -232,6 +238,30 @@ function test_widget_parts_breadcrumb_tokens_retired()
 	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
 	pg_assert_true(strpos($src, "'__breadcrumb_html'") === false && strpos($src, "'__breadcrumb_inner_html'") === false, 'no renderer fills them');
 	pg_assert_true(strpos($src, 'pg-breadcrumb-placeholder') === false, 'the marker is not read');
+}
+
+// A crumb's kind is a code ('link', 'text', 'active'), the same in every
+// language: the text the three crumb elements compare it with is no words
+// to translate, or a translated "active" would never match and every crumb
+// would draw empty on a page in another language.
+function test_widget_parts_breadcrumb_kind_is_not_translated()
+{
+	$found = 0;
+	$walk = function ($node) use (&$walk, &$found) {
+		if (!is_array($node)) return;
+		$props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+		if (isset($props['_bindings']['show_if']) && $props['_bindings']['show_if'] === '__crumb_kind') {
+			$found++;
+			$what = $props['tag'] . ' ' . $props['_bindParams']['show_if']['value'];
+			pg_assert_false(pg_sw_cond_operand_is_words($props), $what . ': a code, not words');
+			foreach (pg_tr_node_fields($node['type'], $props) as $spec) {
+				pg_assert_true($spec[0] !== '_cond:show_if', $what . ': not taken into the translation');
+			}
+		}
+		foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) $walk($child);
+	};
+	foreach (pg_sw_part_catalog_breadcrumb_item() as $node) $walk($node);
+	pg_assert_same(3, $found, 'the three crumb elements');
 }
 
 // The editor's part, leads and starters (style_designer.js) are the server's.
