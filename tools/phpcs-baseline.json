@@ -33,9 +33,6 @@
     "pinegrap/includes/fn/office.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated": 1
     },
-    "pinegrap/includes/fn/output.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
     "pinegrap/includes/fn/product_feeds.php": {
         "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 1
     },

@@ -29,6 +29,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 
 - account-email-pages.md: Designable welcome and password reset e-mails: Account E-mail widget, *_email_page_id settings, resolver, stored recipient, 'secret' mail (#1192).
 - account-widget-forms.md: Designed account widgets: the login region's two states and per-placement ids, account_security's one form per block, links dropped in a grid, comments on a form detail page, one-screen widget kinds.
+- ad-region-widget.md: Ad Region widget (ad_region, #1836): the classic <ad> region in the designer; which ads show and in which order, the carousel and its rotation, raw ad markup, edit chips, what is left out.
 - attrs-panel-undo.md: Undo steps of the designer's Attributes panel text fields (id, prop-bound attributes, custom attribute name and value) and when its style row is written
 - billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
@@ -215,7 +216,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, the lazy first row of a page without one, source labels, retention and the daily sweep, what is not covered
 - page-schedule-editor-and-list.md: Page schedule in the designer: Page Settings boxes and the Draft switch (forced state vs own choice), tab badge, where a tab takes the stored times, designs list badge and chips
 - page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves
-- page-type-pane-in-designer.md: The Page Type pane of the designer's settings modal: a classic page's type fields and Layout Type, read and saved through edit_page.php?properties=1 in JSON, the types it handles, the rights.
+- page-type-pane-in-designer.md: Designer settings Page Type pane: a classic page's type fields, Layout Type and form editor links via edit_page.php?properties=1 (JSON), rights shared with edit_page.php.
 - palette-component-atomic.md: Palette components explode into a node tree; only btn, badge (atomic) and language_switcher (per request) carry render/toHTML; the two button models, their panel, children in a component button.
 - palette-component-rules.md: Rules for a new designer palette component: the full guide, no script or stylesheet, render equals toHTML, tree by default, inline style, cssClass vs _attrs, grid, canDrop, accessibility, registration
 - palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.
@@ -261,8 +262,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-default-parts.md: W16 placed beats pushed: the one placement rule (pg_sw_placed()), default parts that draw old HTML tokens with real design elements, the order timeline and status badge, slices left
 - widget-designability-decisions.md: The owner's 2026-10-26 answers for widget designability: W16 old blocks equal in look and behaviour (not bytes), W5 gallery sources, W8 entity fields (who sees what, secrets, yes/no, words).
 - widget-edit-chip-coverage.md: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and which renders and widget kinds draw none.
-- widget-entity-fields-list.md: W8, the rest of the owner's entity allow-list (2026-10-26) still to build per family (form record, order, order line, addresses, account) and the columns kept off it.
-- widget-entity-fields.md: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, the product and calendar event values built, the group card's description.
+- widget-entity-fields-list.md: W8, the rest of the owner's entity allow-list (2026-10-26) still to build per family (order, order line, addresses, account) and the columns kept off it.
+- widget-entity-fields.md: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, the product, calendar event and quiz score values built, the group card's description.
 - widget-fill-filters.md: A bound widget value's format (_bindFormats): text filters or a date format, how the suffix is read, which fills read it, escaping, Turkish case, what a condition compares, typed dates (#1602).
 - widget-fill-shop.md: A bound value's format in the shop widgets (catalog, catalog detail, cart, express order, order view): fills, no change without a format, order view dates, fallback words (#1701).
 - widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, the pg-hide-if-empty rerun, the edit pencil, the strip (#1592).

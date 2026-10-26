@@ -144,13 +144,33 @@ function test_widget_entity_fields_wanted()
 	pg_assert_false(pg_sw_entity_wanted('calendar_event', '{"_bindings":{"text":"__event_title"}}'));
 }
 
+function test_widget_entity_fields_quiz_score()
+{
+	$v = pg_sw_entity_values('form_record', array('quiz_score' => '0', 'quiz' => 1));
+	pg_assert_same('0', $v['__quiz_score'], 'a zero score shows');
+
+	$v = pg_sw_entity_values('form_record', array('quiz_score' => '85', 'quiz' => 1));
+	pg_assert_same('85', $v['__quiz_score']);
+
+	$v = pg_sw_entity_values('form_record', array('quiz_score' => '0', 'quiz' => 0));
+	pg_assert_same('', $v['__quiz_score'], 'not a quiz form');
+}
+
+// The list view never offers the record's allow-listed values.
+function test_widget_entity_fields_quiz_not_in_list_view()
+{
+	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_true((bool)preg_match('/var SW_BUILTIN_FIELD_OPTIONS = (.*?);\n/s', $js, $m), 'list view options found');
+	pg_assert_false(strpos($m[1], 'SW_FORM_RECORD_ENTITY_TOKENS') !== false || strpos($m[1], '__quiz_score') !== false);
+}
+
 // The editor's twin lists name the same tokens in the same order as
 // pg_sw_entity_fields(), and mark exactly the yes/no ones as condition-only.
 function test_widget_entity_fields_editor_twin()
 {
 	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 
-	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS') as $entity => $name) {
+	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS', 'form_record' => 'SW_FORM_RECORD_ENTITY_TOKENS') as $entity => $name) {
 		pg_assert_true((bool)preg_match('/var ' . $name . ' = \[(.*?)\n    \];/s', $js, $m), $name . ' found');
 
 		preg_match_all("/\['(__[a-z0-9_]+)',[^\n]*?(, 'cond')?\]/", $m[1], $rows, PREG_SET_ORDER);

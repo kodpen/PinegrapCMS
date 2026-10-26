@@ -1326,7 +1326,7 @@ function pg_seo_forget_findings($type, $id)
 {
     db("DELETE FROM seo_issue WHERE (entity_type = '" . e($type) . "') AND (entity_id = '" . (int) $id . "')");
 
-    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+    if (pg_schema_has('seo_link')) {
         db("DELETE FROM seo_link WHERE (from_type = '" . e($type) . "') AND (from_id = '" . (int) $id . "')");
     }
 }
@@ -1998,7 +1998,7 @@ function pg_seo_analyze_batch($time_budget)
     // halfway through would mark most of the site as orphaned and then quietly
     // unmark it on the following run. A wrong finding that disappears by itself
     // is worse than a finding that arrives a day late.
-    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+    if (pg_schema_has('seo_link')) {
 
         $pages_left = (int) db_value(
             "SELECT COUNT(*)

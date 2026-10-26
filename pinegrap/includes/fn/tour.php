@@ -85,7 +85,7 @@ function pg_tour_ready()
         return $ready;
     }
 
-    $ready = (db_item("SHOW COLUMNS FROM user LIKE 'tours_seen'")) ? true : false;
+    $ready = pg_schema_has('user', 'tours_seen');
 
     return $ready;
 }
