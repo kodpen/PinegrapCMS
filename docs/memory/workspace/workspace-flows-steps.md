@@ -1,15 +1,17 @@
 ---
 name: workspace-flows-steps
-description: Step boxes of a flow (steps.php, F4a #1835, F4b #1857): six step kinds run by ws_scheduled_do(), outcomes, owner rights, {{node.ID.FIELD}}, never twice, Idempotency-Key
+description: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923): ten step kinds run by ws_scheduled_do(), outcomes, owner rights, {{node.ID.FIELD}}, never twice, Idempotency-Key
 ---
 
 ## Where is it?
-- `includes/workspace/steps.php` (loaded after flow_runs.php); tests `tests/workspace_flow_steps_test.php`. Canvas forms `postFields()`, `emailFields()`, `notifyFields()`, `taskOpenFields()`, `urlFields()` in `assets/js/workspace_flow.js`.
+- `includes/workspace/steps.php` (loaded after flow_runs.php); tests `tests/workspace_flow_steps_test.php`. Canvas forms `postFields()`, `emailFields()`, `notifyFields()`, `taskOpenFields()`, `urlFields()`, `digestFields()`, `reportFields()`, `checkinFields()`, `startFields()` in `assets/js/workspace_flow.js`.
 
 ## What is a step box?
-- A scheduled action's step as a box kind of its own: `ws_step_kinds()` gives each its step `type`: post, email, notify, `task_open` (type task: opened without waiting; the kind `task` is the box that waits), webhook, web_check. F4b2 adds task_digest, report, change, checkin, trigger. `ws_flow_kinds()` merges them with `step => true`, outcomes `ws_step_outcomes()` (done, failed).
+- A scheduled action's step as a box kind of its own: `ws_step_kinds()` gives each its step `type`: post, email, notify, `task_open` (type task: opened without waiting; the kind `task` is the box that waits), webhook, web_check, task_digest, report, checkin, `start_action` (type trigger; source action 0, the run's depth counts). F4b3 adds change. `ws_flow_kinds()` merges them with `step => true`, outcomes `ws_step_outcomes()` (done, failed).
 - Config as the step keeps it (`ws_step_config_normalize()`, keys listed in its docblock); email `to` is one text, commas. `ws_step_config_problems()` gives `bad_config` lines in `ws_flow_graph_check()`.
 - `ws_step_action()` turns config into the step array, so `ws_scheduled_action_input()` and `ws_scheduled_do()` run unchanged.
+
+- Lists for the forms: `ws_flow_js_config()` `steps` (metrics the builder may read, `digest_only`, `targets` = `ws_scheduled_targets()`).
 
 ## Whose rights?
 - Publish: `ws_flow_publish_check()` runs `ws_step_check()` on every step box with the publisher (the owner).

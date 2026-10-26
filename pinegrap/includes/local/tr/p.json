@@ -669,6 +669,7 @@
     "Pinegrap AI may not be asked in the channel of this task.": "Bu görevin kanalında Pinegrap AI çağrılamaz.",
     "Pinegrap AI may not be asked in this channel.": "Bu kanalda Pinegrap AI çağrılamaz.",
     "Pinegrap AI needs an application of its own: the one chosen is Claude's.": "Pinegrap AI'ın kendine ait bir uygulaması olmalı: seçilen uygulama Claude'un.",
+    "Pinegrap AI puts what they missed into a few sentences": "Pinegrap AI kaçırdıklarını birkaç cümlede özetler",
     "Pinegrap AI refused the licence key: it does not match this site or it is not valid.": "Pinegrap AI lisans anahtarını reddetti: anahtar bu siteyle eşleşmiyor ya da geçerli değil.",
     "Pinegrap AI refused the subscription key under Settings › General: it does not match this site or it is not valid.": "Pinegrap AI, Ayarlar › Genel altındaki abonelik anahtarını kabul etmedi: anahtar bu siteye ait değil ya da geçerli değil.",
     "Pinegrap AI translates on the server through the site's own model connection, a few texts at a time with their context, the glossary and the style note. The update runs while this screen is open; the scheduled job finishes what is left.": "Pinegrap AI, sitenin kendi model bağlantısıyla sunucuda çevirir; metinleri bağlamı, sözlük ve üslup notuyla birkaçar birkaçar gönderir. Güncelleme bu ekran açıkken sürer; kalanı zamanlanmış iş bitirir.",

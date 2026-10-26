@@ -28,3 +28,10 @@ export * as langJson from '@codemirror/lang-json';
 export * as highlight from '@lezer/highlight';
 export * as lezer from '@lezer/common';
 export { vscodeKeymap } from '@replit/codemirror-vscode-keymap';
+
+// The formatter of ed.format(): js-beautify's CSS and JavaScript parts only
+// (its HTML part and command line are left out). JSON goes through the
+// JavaScript part.
+import formatCss from 'js-beautify/js/src/css/index.js';
+import formatJs from 'js-beautify/js/src/javascript/index.js';
+export const format = { css: formatCss, js: formatJs };
