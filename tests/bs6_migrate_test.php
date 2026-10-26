@@ -370,3 +370,14 @@ function test_bs6_converted_tree_keeps_v6_classes()
 	pg_assert_same(null, bs6_converted_tree_classes(), 'cleared');
 	pg_assert_same('p-12', bs6_test_tokens('p-5'), 'Bootstrap 5 reading again');
 }
+
+// The element helpers of the panel scripts carry class lists too.
+function test_bs6_helper_contexts()
+{
+	$in = "a = el('div', 'mb-2 text-muted', label); b = h.el(\"span\", \"col-md-6\"); c = K.button('btn btn-primary', t('x'));\n"
+		. "d = icon('bi-x', 'me-2'); e = model('a', 'p-3'); f = el(tag, 'p-3');";
+	$out = bs6_convert_source($in)['source'];
+
+	pg_assert_same("a = el('div', 'mb-3 fg-secondary', label); b = h.el(\"span\", \"md:col-6\"); c = K.button('btn btn-solid theme-primary', t('x'));\n"
+		. "d = icon('bi-x', 'me-3'); e = model('a', 'p-3'); f = el(tag, 'p-3');", $out);
+}
