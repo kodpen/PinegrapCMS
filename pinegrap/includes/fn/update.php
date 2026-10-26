@@ -83,6 +83,185 @@ function pg_curl_tls($ch)
 }
 
 /**
+ * The cURL options pg_curl_run() sets, by constant name so that no cURL
+ * extension is needed to build them. Never a TLS option: pg_curl_tls() is
+ * applied after these, so CURL_CA_BUNDLE and ALLOW_INSECURE_UPDATE_TLS reach
+ * every call and nothing here can override them.
+ *
+ * $options (all optional):
+ *   body             string; sent for any method but GET and HEAD
+ *   headers          list of "Name: value" strings
+ *   timeout          seconds for the whole request (default 10)
+ *   connect_timeout  seconds to connect (default: timeout, at most 10)
+ *   follow           how many redirects to follow, https only (default 0)
+ *   max_size         bytes after which the transfer stops
+ *   encoding         true to accept any compression cURL can undo
+ *   forbid_reuse     true to close the connection afterwards
+ *   user_agent       replaces $env['user_agent']
+ *
+ * $env: 'user_agent', 'proxy' (PROXY_ADDRESS or ''), 'resolve' (the
+ * "host:port:ip" pin of a checked address, or '').
+ *
+ * @return array option name => value; a value naming a cURL constant
+ *               ('CURLPROTO_HTTPS', 'CURLPROXY_HTTP') is that constant
+ */
+function pg_curl_run_options($method, $url, $options, $env)
+{
+    $method = strtoupper((string) $method);
+    $timeout = isset($options['timeout']) ? (int) $options['timeout'] : 10;
+    $connect = isset($options['connect_timeout']) ? (int) $options['connect_timeout'] : min($timeout, 10);
+    $follow = isset($options['follow']) ? (int) $options['follow'] : 0;
+
+    $out = array(
+        'CURLOPT_URL'            => (string) $url,
+        'CURLOPT_RETURNTRANSFER' => true,
+        'CURLOPT_USERAGENT'      => isset($options['user_agent']) ? (string) $options['user_agent'] : (string) $env['user_agent'],
+        'CURLOPT_TIMEOUT'        => $timeout,
+        'CURLOPT_CONNECTTIMEOUT' => $connect,
+        'CURLOPT_FOLLOWLOCATION' => ($follow > 0),
+        'CURLOPT_PROTOCOLS'      => 'CURLPROTO_HTTPS',
+    );
+
+    if ($follow > 0) {
+        $out['CURLOPT_MAXREDIRS'] = $follow;
+        $out['CURLOPT_REDIR_PROTOCOLS'] = 'CURLPROTO_HTTPS';
+    }
+
+    if ($method === 'POST') {
+        $out['CURLOPT_POST'] = true;
+    } elseif ($method === 'HEAD') {
+        $out['CURLOPT_NOBODY'] = true;
+    } elseif ($method !== 'GET') {
+        $out['CURLOPT_CUSTOMREQUEST'] = $method;
+    }
+
+    if (isset($options['body']) && $method !== 'GET' && $method !== 'HEAD') {
+        $out['CURLOPT_POSTFIELDS'] = $options['body'];
+    }
+
+    if (!empty($options['headers'])) {
+        $out['CURLOPT_HTTPHEADER'] = array_values($options['headers']);
+    }
+
+    if (!empty($options['max_size'])) {
+        $out['CURLOPT_MAXFILESIZE'] = (int) $options['max_size'];
+    }
+
+    if (!empty($options['encoding'])) {
+        $out['CURLOPT_ENCODING'] = '';
+    }
+
+    if (!empty($options['forbid_reuse'])) {
+        $out['CURLOPT_FORBID_REUSE'] = true;
+    }
+
+    if (isset($env['proxy']) && (string) $env['proxy'] !== '') {
+        $out['CURLOPT_HTTPPROXYTUNNEL'] = true;
+        $out['CURLOPT_PROXYTYPE'] = 'CURLPROXY_HTTP';
+        $out['CURLOPT_PROXY'] = (string) $env['proxy'];
+    }
+
+    if (isset($env['resolve']) && (string) $env['resolve'] !== '') {
+        $out['CURLOPT_RESOLVE'] = array((string) $env['resolve']);
+    }
+
+    return $out;
+}
+
+/**
+ * The CURLOPT_RESOLVE line that pins $url's host and port to $ip, or '' when
+ * $url has no host.
+ */
+function pg_curl_run_pin($url, $ip)
+{
+    $parts = @parse_url((string) $url);
+
+    if (!is_array($parts) || !isset($parts['host']) || !isset($parts['scheme'])) {
+        return '';
+    }
+
+    $port = isset($parts['port']) ? (int) $parts['port'] : ((strtolower($parts['scheme']) === 'https') ? 443 : 80);
+
+    return $parts['host'] . ':' . $port . ':' . $ip;
+}
+
+/**
+ * One request to a fixed vendor host (update server, CA bundle source,
+ * Cloudflare, GitHub): this installation's User-Agent, pg_curl_tls(), the
+ * proxy when PROXY_ADDRESS is set, no redirect unless 'follow' asks for one.
+ * Options: pg_curl_run_options(), and 'check_address' => true to run
+ * api_http_check_url() and pin cURL to the address it checked. That rule is
+ * opt-in: a site behind PROXY_ADDRESS may not resolve the host itself, and
+ * a fixed host gains nothing from it.
+ *
+ * Answers like api_http_request(): array('ok' => bool (2xx), 'status' => int,
+ * 'body' => string, 'errno' => int, 'error' => string). errno is cURL's
+ * error number when the request failed in cURL, 0 otherwise - also for an
+ * address refused before cURL ran, whose reason is in error alone. error is
+ * cURL's own text; pg_curl_tls_hint($errno) is for the caller to append.
+ */
+function pg_curl_run($method, $url, $options = array())
+{
+    $result = array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0, 'error' => '');
+
+    if (!function_exists('curl_init')) {
+        $result['error'] = 'cURL is not available on this server.';
+        return $result;
+    }
+
+    $env = array(
+        'user_agent' => function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap',
+        'proxy'      => (defined('PROXY_ADDRESS') && PROXY_ADDRESS != '') ? (string) PROXY_ADDRESS : '',
+        'resolve'    => '',
+    );
+
+    if (!empty($options['check_address'])) {
+        if (!function_exists('api_http_check_url')) {
+            $result['error'] = 'The address cannot be checked here.';
+            return $result;
+        }
+
+        $check = api_http_check_url($url);
+
+        if (!$check['ok']) {
+            $result['error'] = $check['error'];
+            return $result;
+        }
+
+        $env['resolve'] = pg_curl_run_pin($url, $check['ip']);
+    }
+
+    $ch = curl_init();
+
+    foreach (pg_curl_run_options($method, $url, $options, $env) as $name => $value) {
+        if (in_array($name, array('CURLOPT_PROTOCOLS', 'CURLOPT_REDIR_PROTOCOLS', 'CURLOPT_PROXYTYPE'), true)) {
+            $value = constant($value);
+        }
+
+        curl_setopt($ch, constant($name), $value);
+    }
+
+    pg_curl_tls($ch);
+
+    $body = curl_exec($ch);
+
+    if ($body === false) {
+        $result['errno'] = (int) curl_errno($ch);
+        $result['error'] = (string) curl_error($ch);
+    } else {
+        $result['status'] = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $result['body'] = (string) $body;
+        $result['ok'] = ($result['status'] >= 200 && $result['status'] < 300);
+    }
+
+    // PHP 8.5 deprecates curl_close(); the handle is freed with its last
+    // reference.
+    unset($ch);
+
+    return $result;
+}
+
+/**
  * Turn a certificate-related cURL error number into an actionable sentence.
  *
  * Without this the operator sees "cURL error 60" and has no idea that the
@@ -438,39 +617,25 @@ function pg_ca_bundle_update()
     }
 
     // ── Download ─────────────────────────────────────────────────────────
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $source);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 90);
-    // A redirect is followed, but only to another https address: the
-    // scheme check on the configured URL would mean nothing if the server
-    // could answer with a Location header pointing at http.
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-    curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
-    curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
-    curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    // Anything past this is not a CA bundle; stop reading rather than
-    // buffer it. Twice the upper size bound to leave room for the check
-    // below to report the real size.
-    curl_setopt($ch, CURLOPT_MAXFILESIZE, 4 * 1024 * 1024);
-    pg_curl_tls($ch);
+    // A redirect is followed, but only to another https address: the scheme
+    // check on the configured URL would mean nothing if the server could
+    // answer with a Location header pointing at http. Anything past
+    // max_size is not a CA bundle; stop reading rather than buffer it. Twice
+    // the upper size bound to leave room for the check below to report the
+    // real size.
+    $answer = pg_curl_run('GET', $source, array(
+        'timeout'         => 90,
+        'connect_timeout' => 15,
+        'follow'          => 3,
+        'forbid_reuse'    => true,
+        'max_size'        => 4 * 1024 * 1024,
+    ));
+    $curl_errno = $answer['errno'];
+    $curl_error = $answer['error'];
+    $http_code = $answer['status'];
+    $body = $answer['body'];
 
-    if (defined('PROXY_ADDRESS') && (PROXY_ADDRESS != '')) {
-        curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-        curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-        curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-    }
-
-    $body = curl_exec($ch);
-    $curl_errno = curl_errno($ch);
-    $curl_error = curl_error($ch);
-    $http_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    unset($ch);
-
-    if ($body === false) {
+    if ($curl_errno !== 0) {
         return array(
             'status'  => 'error',
             'message' => lang(array(
@@ -1020,43 +1185,27 @@ function pg_update_server_version()
     // Beta sites ask their own question; see pg_update_channel().
     $REQUEST = pg_update_request_key();
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt($ch, CURLOPT_URL, 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
     // Verify the certificate. See pg_curl_tls() for why this matters most
     // on the update and licence channel.
-    pg_curl_tls($ch);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        'Content-Type: application/json',
-        'Content-Length: ' . strlen($data)
+    $answer = pg_curl_run('POST', 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST, array(
+        'body'            => $data,
+        'headers'         => array(
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($data)
+        ),
+        'timeout'         => 10,
+        'connect_timeout' => 10,
+        'forbid_reuse'    => true,
     ));
+    $result['curl_errno'] = $answer['errno'];
+    $result['curl_error'] = $answer['error'];
 
-    // if there is a proxy address, then send cURL request through proxy
-    if (PROXY_ADDRESS != '') {
-        curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-        curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-        curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-    }
-
-    $response = curl_exec($ch);
-    $result['curl_errno'] = (int) curl_errno($ch);
-    $result['curl_error'] = (string) curl_error($ch);
-    unset($ch);
-
-    if ($response === false) {
+    if ($answer['errno'] !== 0) {
         $result['error'] = 'curl_error';
         return $result;
     }
 
-    $response = decode_json($response);
+    $response = decode_json($answer['body']);
 
     if (!is_array($response) || !isset($response['version'])) {
         $result['error'] = 'invalid_response';

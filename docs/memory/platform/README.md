@@ -8,7 +8,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 
 <!-- key-rules:start -->
 - Pass every user-sourced value placed after `HOSTNAME` (Location, `go()`, href, `window.location`) through `pg_safe_redirect_path()`; never write your own check (`redirect-after-hostname.md`).
-- Give every new outgoing cURL call `pg_curl_tls()` and `pinegrap_user_agent()`; never retry without verification (`update-tls-verification.md`).
+- Give every new outgoing cURL call `pg_curl_tls()` and `pinegrap_user_agent()` (`pg_curl_run()` does both for a fixed host); never retry without verification (`update-tls-verification.md`).
 - Call `pg_post_body_discarded()` right after `init.php` in every new form-POST script, never in a JSON endpoint; compare sizes with `pg_ini_bytes()` (`upload-limits-and-empty-post.md`).
 - Never call `lang()` or other `functions.php` code in `router.php`, the firewall's router phase or `get_file.php`; use `waf_text()` / `get_file_text()` (`router-no-functions-php.md`).
 - Guard every function a host may disable with `function_exists()` and treat its answer as optional, above all on the install and upgrade path (`disable-functions-rule.md`).
@@ -36,6 +36,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus
+- curl-run-wrapper.md: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the opt-in address rule, which calls use it and which wait.
 - design-template-install-at-setup.md: Install wizard step "Site Tasarımı": two-request template install, StyleDesigner.starterTree() API, home/staff keys, starter removal and preview lists.
 - disable-functions-rule.md: Shared hosts remove functions via disable_functions; in PHP 8 they throw Error, so guard with function_exists() and treat their output as optional.
 - dkim-key-in-file-manager.md: dkim.key never leaves the server through the panel (no view, archive, copy, rename, channel copy, designer read) and only staff may give a file that name; pg_file_withheld(), pg_file_name_reserved()
