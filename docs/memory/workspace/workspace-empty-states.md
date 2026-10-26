@@ -1,10 +1,10 @@
 ---
 name: workspace-empty-states
-description: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2010)
+description: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2027)
 ---
 
 ## How is an empty list drawn?
-- `emptyState(kind, text, extra)` in `workspace.js` (PR #2010): a small drawing plus one line, kinds `channels` (sidebar section, extra `ws-empty-side`), `tasks` (`taskRows()`), `inbox` (inbox zero), `notes` (the notes screen when there is no note at all, above the privacy intro). Before, these were grey text with a Bootstrap icon. Other `.ws-empty` lines stay text.
+- `emptyState(kind, text, extra)` in `workspace.js` (PR #2027): a small drawing plus one line, kinds `channels` (sidebar section, extra `ws-empty-side`), `tasks` (`taskRows()`), `inbox` (inbox zero), `notes` (the notes screen when there is no note at all, above the privacy intro). Before, these were grey text with a Bootstrap icon. Other `.ws-empty` lines stay text.
 
 ## Where do the drawings come from?
 - The drawings come from one kit, `ART` in `workspace.js`, exposed as `window.PGWsArt`; `workspace_tour.js` (served after `workspace.min.js`) draws its steps with it instead of its own copy. Colours are the `.pg-tour-art` classes of `pg_tour.css` (loaded on every panel screen, so light and dark follow the theme); an empty list's SVG is 120×80, class `pg-tour-art ws-empty-art`. A new empty kind goes into the kit's `EMPTY` map.
