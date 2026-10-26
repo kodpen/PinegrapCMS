@@ -793,7 +793,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
                                     'autocomplete' => 'off')) . '
                                 ' . get_date_picker_format() . pg_fields_script() . '                            </div>
                             <div class="col-12 col-sm-5">
-                                <button type="submit" name="submit_snooze" value="Snooze" class="btn btn-outline-secondary w-100"><i class="bi bi-bell-slash me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Put off') . '</span></button>
+                                <button type="submit" name="submit_snooze" value="Snooze" class="btn btn-outline-secondary w-100"><i class="bi bi-bell-slash me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Put off') . '</span></button>
                             </div>
                         </form>'
             . (($reminder['phase'] === 'snoozed')
@@ -802,7 +802,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="unsnooze" />
-                            <button type="submit" name="submit_unsnooze" value="Resume" class="btn btn-link link-body-emphasis text-decoration-none p-0"><i class="bi bi-bell me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Let the reminders resume') . '</span></button>
+                            <button type="submit" name="submit_unsnooze" value="Resume" class="btn btn-link link-body-emphasis text-decoration-none p-0"><i class="bi bi-bell me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Let the reminders resume') . '</span></button>
                         </form>'
                 : '');
     }
@@ -894,7 +894,7 @@ if (((string) $invoice['direction'] === 'sales')
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="edoc_send" />
-                        <button type="submit" class="btn btn-sm btn-primary m-1"><i class="bi bi-send me-2" aria-hidden="true"></i><span class="btn-text">' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $edoc_carrier_label))) . '</span></button>
+                        <button type="submit" class="btn btn-sm btn-primary m-1"><i class="bi bi-send me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $edoc_carrier_label))) . '</span></button>
                     </form>';
     }
 
@@ -905,7 +905,7 @@ if (((string) $invoice['direction'] === 'sales')
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="edoc_submit" />
-                        <button type="submit" class="btn btn-sm btn-primary m-1"><i class="bi bi-bank me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Hand to GİB') . '</span></button>
+                        <button type="submit" class="btn btn-sm btn-primary m-1"><i class="bi bi-bank me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Hand to GİB') . '</span></button>
                     </form>';
     }
 
@@ -914,7 +914,7 @@ if (((string) $invoice['direction'] === 'sales')
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="edoc_poll" />
-                        <button type="submit" class="btn btn-sm btn-outline-secondary m-1"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Ask After the Status') . '</span></button>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary m-1"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Ask After the Status') . '</span></button>
                     </form>';
     }
 
@@ -966,13 +966,13 @@ if (((string) $invoice['direction'] === 'sales')
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="edoc_redate_send" />
-                            <button type="submit" class="btn btn-sm btn-primary" data-confirm-content="' . h(lang(array('string' => 'Date the invoice {var:1} instead of {var:2} and send it to {var:3}?', 'vars' => array(prepare_form_data_for_output(date('Y-m-d'), 'date', false), prepare_form_data_for_output((string) $invoice['issue_date'], 'date', false), $edoc_carrier_label)))) . '"><i class="bi bi-send-check me-2" aria-hidden="true"></i><span class="btn-text">' . h(lang(array('string' => 'Move to today ({var:1}) and send', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '</span></button>
+                            <button type="submit" class="btn btn-sm btn-primary" data-confirm-content="' . h(lang(array('string' => 'Date the invoice {var:1} instead of {var:2} and send it to {var:3}?', 'vars' => array(prepare_form_data_for_output(date('Y-m-d'), 'date', false), prepare_form_data_for_output((string) $invoice['issue_date'], 'date', false), $edoc_carrier_label)))) . '"><i class="bi bi-send-check me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Move to today ({var:1}) and send', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '</span></button>
                         </form>' : '') . '
                         <form method="post" action="edit_erp_invoice.php">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="edoc_redate" />
-                            <button type="submit" class="btn btn-sm ' . ($edoc_gate['ok'] && empty($edoc_send_gaps) ? 'btn-outline-secondary' : 'btn-primary') . '" data-confirm-content="' . h(lang(array('string' => 'Date the invoice {var:1} instead of {var:2}?', 'vars' => array(prepare_form_data_for_output(date('Y-m-d'), 'date', false), prepare_form_data_for_output((string) $invoice['issue_date'], 'date', false))))) . '"><i class="bi bi-calendar-check me-2" aria-hidden="true"></i><span class="btn-text">' . h(lang(array('string' => 'Move to today ({var:1})', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '</span></button>
+                            <button type="submit" class="btn btn-sm ' . ($edoc_gate['ok'] && empty($edoc_send_gaps) ? 'btn-outline-secondary' : 'btn-primary') . '" data-confirm-content="' . h(lang(array('string' => 'Date the invoice {var:1} instead of {var:2}?', 'vars' => array(prepare_form_data_for_output(date('Y-m-d'), 'date', false), prepare_form_data_for_output((string) $invoice['issue_date'], 'date', false))))) . '"><i class="bi bi-calendar-check me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Move to today ({var:1})', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '</span></button>
                         </form>
                         </div>' : '') . '
                     </div>';
@@ -1110,7 +1110,7 @@ if (((string) $invoice['direction'] === 'sales')
                             <input type="hidden" name="erp_action" value="edoc_fix" />
                             <div class="row">' . $output_edoc_fix_fields . '
                                 <div class="col-12 mt-2">
-                                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Complete and save') . '</span></button>
+                                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Complete and save') . '</span></button>
                                 </div>
                             </div>
                         </form>
@@ -1469,7 +1469,7 @@ pg_page_shell([
                                 <div class="form-text">' . lang('Printed at the foot of the document. The only part of an issued invoice that may still be changed; the figures and the lines cannot.') . '</div>
                             </div>
                             <div class="col-12 col-lg-3 my-2 d-flex align-items-start">
-                                <button type="submit" name="submit_notes" value="Save" class="btn btn-outline-secondary"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Save the Note') . '</span></button>
+                                <button type="submit" name="submit_notes" value="Save" class="btn btn-outline-secondary"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save the Note') . '</span></button>
                             </div>
                         </div>
                     </div>
@@ -1520,10 +1520,10 @@ pg_page_shell([
                                 ? '<a class="btn my-1 btn-outline-warning" href="add_erp_return.php?invoice_id=' . $invoice_id . '"><i class="bi bi-arrow-return-left me-2" aria-hidden="true"></i>' . lang('Return an Invoice') . '</a>'
                                 : '') . '
                             ' . ($can_cancel
-                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline-danger"' . (((string) $provider_cancellable['reason'] !== '') ? ' title="' . h((string) $provider_cancellable['reason']) . '"' : '') . '><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="btn-text">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
+                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline-danger"' . (((string) $provider_cancellable['reason'] !== '') ? ' title="' . h((string) $provider_cancellable['reason']) . '"' : '') . '><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
                                 : '') . '
                             ' . (($cancel_locked !== '')
-                                ? '<span class="d-inline-block my-1" tabindex="0" title="' . h($cancel_locked) . '"><button type="button" class="btn btn-outline-danger" disabled><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Cancel the Document') . '</span></button></span>'
+                                ? '<span class="d-inline-block my-1" tabindex="0" title="' . h($cancel_locked) . '"><button type="button" class="btn btn-outline-danger" disabled><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button></span>'
                                 : '') . '
                         </div>
                     </div>
