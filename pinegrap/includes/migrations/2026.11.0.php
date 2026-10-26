@@ -70,6 +70,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
 	upgrade_2026_11_0_audit_feed_tokens();      // 11.0.38
 	upgrade_2026_11_0_erp_efatura_threshold();  // 11.0.61
+	upgrade_2026_11_0_marketplace_remote_products(); // 11.0.40
 
 }
 
@@ -2330,5 +2331,49 @@ function upgrade_2026_11_0_audit_feed_tokens() {
 	}
 
 	install_note('Audit trail: the product feed addresses that early SEO settings lines kept in clear are masked; the lines stay.');
+
+}
+
+// A marketplace's own catalogue, kept for matching (2026.11.0, 11.0.40;
+// includes/api/outbound/remote_products.php).
+//
+// One row per product the store sells on the marketplace, read from the
+// marketplace a page at a time when the operator asks. remote_code is what a
+// marketplace_product_map row for it would carry (n11: the seller's stock
+// code), so a match is that row written. The suggestion columns hold which
+// shop product the row most likely is, with its score, reason and whether it
+// is sure; dismissed says the operator answered that the shop does not sell
+// it. fetched_timestamp is the read that last saw the row: a read that ends
+// removes the rows it did not see, the products the store took off there.
+//
+// The unique key covers the first 191 characters of the code, for the same
+// reason marketplace_product_map.idx_code does: the whole column is past the
+// index limit of the older row formats.
+function upgrade_2026_11_0_marketplace_remote_products() {
+
+	install_create_table('marketplace_remote_products', "CREATE TABLE marketplace_remote_products (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		account_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		remote_code          VARCHAR(255) NOT NULL DEFAULT '',
+		remote_id            VARCHAR(64) NOT NULL DEFAULT '',
+		group_code           VARCHAR(255) NOT NULL DEFAULT '',
+		barcode              VARCHAR(64) NOT NULL DEFAULT '',
+		title                VARCHAR(500) NOT NULL DEFAULT '',
+		image_url            TEXT NULL,
+		price                INT NOT NULL DEFAULT 0,
+		quantity             INT NOT NULL DEFAULT 0,
+		remote_status        VARCHAR(60) NOT NULL DEFAULT '',
+		suggested_product_id INT UNSIGNED NOT NULL DEFAULT 0,
+		suggestion_score     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		suggestion_reason    VARCHAR(20) NOT NULL DEFAULT '',
+		suggestion_sure      TINYINT NOT NULL DEFAULT 0,
+		dismissed            TINYINT NOT NULL DEFAULT 0,
+		fetched_timestamp    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_code (account_id, remote_code(191)),
+		KEY idx_suggested (account_id, suggested_product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Marketplaces: the products a store sells on a marketplace can be read in and matched to this shop\'s products in bulk, with suggestions, on the new Marketplace products screen.');
 
 }

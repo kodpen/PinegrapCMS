@@ -391,8 +391,9 @@ function mp_match_weight($token, $index) {
 }
 
 // One remote row's candidates: product id => array(score, reason), closest
-// first, at most a handful.
-function mp_match_candidates($row, $index) {
+// first, at most $limit. $min_score is the lowest title score kept; the
+// picker asks for a lower one than a suggestion needs, to show a wider choice.
+function mp_match_candidates($row, $index, $limit = 5, $min_score = null) {
 
 	$found = array();
 
@@ -509,7 +510,7 @@ function mp_match_candidates($row, $index) {
 
 	}
 
-	foreach (mp_match_title_candidates($tokens, $row, $index) as $id => $score) {
+	foreach (mp_match_title_candidates($tokens, $row, $index, $min_score) as $id => $score) {
 
 		$offer($id, $score, 'title');
 
@@ -521,12 +522,18 @@ function mp_match_candidates($row, $index) {
 
 	});
 
-	return array_slice($found, 0, 5, true);
+	return array_slice($found, 0, $limit, true);
 
 }
 
 // Products whose titles share words with this one, scored.
-function mp_match_title_candidates($tokens, $row, $index) {
+function mp_match_title_candidates($tokens, $row, $index, $min_score = null) {
+
+	if ($min_score === null) {
+
+		$min_score = mp_match_min_score();
+
+	}
 
 	if (!$tokens || !$index['count']) {
 
@@ -669,7 +676,7 @@ function mp_match_title_candidates($tokens, $row, $index) {
 
 		$score = (int) round(min(99, max(0, $score)));
 
-		if ($score >= mp_match_min_score()) {
+		if ($score >= $min_score) {
 
 			$scores[$id] = $score;
 

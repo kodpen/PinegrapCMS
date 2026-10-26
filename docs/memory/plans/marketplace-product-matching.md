@@ -1,6 +1,6 @@
 ---
 name: marketplace-product-matching
-description: Plan (approved 2026-10-26): match a shop's products to its marketplace catalogue in bulk, with pictures, on a new Marketplace products screen; step 1 in progress
+description: Plan (approved 2026-10-26): match a shop's products to its marketplace catalogue in bulk, with pictures, on a new Marketplace products screen; step 1 done (#1880), step 2 next
 ---
 
 ## Why?
@@ -14,7 +14,7 @@ description: Plan (approved 2026-10-26): match a shop's products to its marketpl
 - A connector reads its catalogue a page at a time (`remote_products`); the screen reads pages in a loop with a progress bar, so a 10,000-product store needs no long request.
 
 ## What remains?
-1. Remote catalogue, suggestions and the review screen for n11: schema `marketplace_remote_products`, n11 `GET /ms/product-query`, matcher with tests, side-by-side cards with both pictures, accept, skip, pick another product from a picture grid, accept all sure ones. (In progress.)
+1. ~~Remote catalogue, suggestions and the review screen for n11.~~ Done #1880 (`commerce/marketplace-bulk-matching.md`).
 2. Products workspace on the same screen: every shop product with its picture and its state on the account (matched code, last sent, error, listing approval), filters, bulk match by own code, unmatch, send now; the account screen's "Matched products" card becomes a summary with a link.
 3. Listings on the same screen: article cards with pictures, category search by path, one category for several articles, required attributes first and optional ones folded; the old listing card goes.
 4. Trendyol `remote_products` (its product filter service, barcode as the key), so Trendyol accounts get the same suggestions.
@@ -23,4 +23,4 @@ description: Plan (approved 2026-10-26): match a shop's products to its marketpl
 - Whether n11 products sent from the n11 warehouse (`sender=N11`) should be read too; step 1 reads the default (the seller's own).
 
 ## Where to start?
-- `docs/memory/commerce/README.md`, `marketplace-outbound-layer.md`, `n11-api-facts.md`, then the step's PR.
+- Step 2, after `docs/memory/commerce/README.md`, `marketplace-bulk-matching.md` and `marketplace-outbound-layer.md`. One step per PR, in order.

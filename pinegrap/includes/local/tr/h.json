@@ -291,6 +291,7 @@
     "How We Help": "Nasıl Yardım Ediyoruz",
     "How We Hire": "İşe Alım Sürecimiz",
     "How We Work": "Nasıl Çalışıyoruz",
+    "How alike the two are, out of 100": "İkisinin ne kadar benzediği, 100 üzerinden",
     "How an order's shipping, surcharge and installment charge are written on its invoice. The customer paid them with no tax added, so a taxed charge carries its tax inside the amount (50.00 at 20% is 41.67 + 8.33) and the invoice total stays the same; goods at several rates share the charge between them. By the store's country: untaxed in the United States, included everywhere else.": "Siparişin nakliye ücreti, ek ücreti ve taksit masrafının faturaya nasıl yazılacağı. Müşteri bunları vergi eklenmeden ödedi; vergiliyse vergi tutarın içinden ayrılır (%20'de 50,00 → 41,67 + 8,33) ve fatura toplamı değişmez. Farklı oranlı mallar ücreti aralarında paylaşır. Mağazanın ülkesine göre: ABD'de vergisiz, başka her yerde tutarın içinde.",
     "How can I follow my order?": "Siparişimi nasıl takip ederim?",
     "How can we help?": "Size nasıl yardımcı olabiliriz?",
