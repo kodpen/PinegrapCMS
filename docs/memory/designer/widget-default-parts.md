@@ -21,7 +21,7 @@ description: W16 placed beats pushed: the one placement rule (pg_sw_placed()), d
 - Status badge: six spans, `show_if __order_status_stage eq <stage>` (`pg_sw_order_status_stages()`), text `__order_status_text` ("Awaiting Payment" for an unpaid transfer), classes from `status_class_<stage>` or `_pg_order_status_badge_class()`'s defaults, baked in when the part is made. The panel's "Status Badge Classes" section is gone: the classes are edited on each badge. `__order_status_badge` has no value.
 - E-mail: `pg_sw_parts_mail_styles()` writes `pg_sw_parts_mail_style_map()` inline (no flex, positioning or pseudo element; icon colour from its `bg-*`), before the element's own style.
 
-## What is left? (one slice each, about 1,000 lines)
+## What is left after #1808 (slice 1)?
 - Form-carrying blocks: `__item_form_data_html`, `__item_gift_card_html` (order view, cart rows), returns `__return_form`/`__returns`, the legal card, `__cancel_form`.
 - Express order offers; cart row form data; catalog listing body; variant picker auto-inject; cross-sell; breadcrumb; filters (`__filter_chips` …); comment stars. Each check moves to `pg_sw_placed()`; a token freed from a rendered-template `strpos()` leaves `pg_sw_cond_denied_tokens()`. Then the raw keys in `pg_sw_raw_token_keys()` shrink.
 - Canvas: all six badges and every timeline icon show at once until W19's state preview.
