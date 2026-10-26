@@ -37254,6 +37254,33 @@ const StyleDesigner = (function () {
         return row(label, html);
     }
 
+    // A product's allow-listed values, offered by the catalog card, the
+    // product detail and the favourites (pg_sw_entity_fields('product') in
+    // includes/fn/widgets_entity_fields.php; tests/widget_entity_fields_test.php
+    // keeps the two equal). An entry marked 'cond' is a yes/no value ('1' or
+    // ''): only "Show only when a value…" offers it, never a text binding.
+    var SW_PRODUCT_ENTITY_TOKENS = [
+        ['__keywords',            _sdT('Keywords')],
+        ['__length',              _sdT('Length')],
+        ['__width',               _sdT('Width')],
+        ['__height',              _sdT('Height')],
+        ['__minimum_quantity',    _sdT('Minimum order quantity')],
+        ['__maximum_quantity',    _sdT('Maximum order quantity')],
+        ['__preparation_days',    _sdT('Preparation time (days)')],
+        ['__extra_shipping_cost', _sdT('Extra shipping cost (with symbol)')],
+        ['__vat_rate',            _sdT('VAT rate (number, without the % sign)')],
+        ['__payment_period',      _sdT('Subscription payment period')],
+        ['__number_of_payments',  _sdT('Subscription number of payments')],
+        ['__is_free_shipping',    _sdT('Ships free'), 'cond'],
+        ['__is_gift_card',        _sdT('Is a gift card'), 'cond'],
+        ['__is_donation',         _sdT('Is a donation'), 'cond']
+    ];
+
+    // Whether a palette entry is offered only as a condition (yes/no).
+    function _swTokenCondOnly(t) {
+        return !!(t && t[2] === 'cond');
+    }
+
     // Catalog token palette (regionType='catalog_listing'). Grouped by purpose
     // so the binding dropdown stays scannable even with 30+ tokens. Token names
     // mirror the keys produced by _render_system_widget_catalog_listing in PHP.
@@ -37339,6 +37366,7 @@ const StyleDesigner = (function () {
             ['__filter_chips',           _sdT('Active filter chips (legacy — use the section binding)')],
             ['__clear_filters_button',   _sdT('Clear Filters button (old — use the clear_filters action)')]
         ]},
+        { label: _sdT('More product details'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Custom Fields'), tokens: [
             ['__custom_field_1', _sdT('Custom field 1')],
             ['__custom_field_2', _sdT('Custom field 2')],
@@ -37488,6 +37516,7 @@ const StyleDesigner = (function () {
             ['__has_variants',    _sdT('Whether it has variants (select type)')],
             ['__variant_count',   _sdT('Number of variants')]
         ]},
+        { label: _sdT('More product details'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Custom Fields'), tokens: [
             ['__custom_field_1', _sdT('Custom field 1')],
             ['__custom_field_2', _sdT('Custom field 2')],
@@ -37930,6 +37959,7 @@ const StyleDesigner = (function () {
             ['__out_of_stock_label',       _sdT('Out of stock label')],
             ['__added_date',               _sdT('Date saved')]
         ]},
+        { label: _sdT('More product details'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__detail_url',               _sdT('Detail URL')],
             ['__login_url',                _sdT('Sign-in page address (back to this page afterwards)')],
@@ -39514,6 +39544,7 @@ const StyleDesigner = (function () {
                 SW_CATALOG_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -39580,6 +39611,7 @@ const StyleDesigner = (function () {
                 SW_CATALOG_ITEM_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -40118,6 +40150,7 @@ const StyleDesigner = (function () {
                 acGroups.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== current) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === current ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';

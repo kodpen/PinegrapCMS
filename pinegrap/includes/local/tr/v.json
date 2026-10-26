@@ -17,6 +17,7 @@
     "VAT included": "KDV dahil",
     "VAT rate": "KDV oranı",
     "VAT rate (%)": "KDV oranı (%)",
+    "VAT rate (number, without the % sign)": "KDV oranı (sayı, % işareti olmadan)",
     "VAT report": "KDV raporu",
     "VAT summary": "KDV özeti",
     "VAT withheld on purchases": "Alışlarda tevkif edilen KDV",
