@@ -278,11 +278,46 @@ function bs6_map_plain_token($token)
 }
 
 /**
+ * The classes of the Bootstrap 6 dist while a converted tree is read, else
+ * null. On a converted tree `p-5` or `rounded-4` is a v6 class, not a v5 one
+ * to rewrite again: tools/check_bs6.php sets the dist's classes after the
+ * switch, and bs6_map_token() then keeps any class v6 defines. The codemod
+ * never sets it (it reads Bootstrap 5 markup). Pass false to clear.
+ */
+function bs6_converted_tree_classes($classes = null)
+{
+	static $set = null;
+
+	if ($classes === false) {
+		$set = null;
+	} elseif (is_array($classes)) {
+		$set = $classes;
+	}
+
+	return $set;
+}
+
+// True when the panel head (output_control_panel_header_includes()) loads the
+// Bootstrap 6 stylesheet: the tree has been switched.
+function bs6_panel_head_is_v6($product)
+{
+	$output = (string) @file_get_contents($product . '/includes/fn/output.php');
+
+	return strpos($output, '/assets/lib/bootstrap-6/css/bootstrap.min.css') !== false;
+}
+
+/**
  * Maps one class token, breakpoint infix included: `p-md-3` gives `md:p-5`,
  * `col-xxl-4` gives `2xl:col-4`. Same return shape as bs6_map_plain_token().
  */
 function bs6_map_token($token)
 {
+	$v6 = bs6_converted_tree_classes();
+
+	if ($v6 !== null && isset($v6[$token])) {
+		return array('tokens' => array($token), 'review' => null);
+	}
+
 	$split = bs6_split_responsive($token);
 
 	if ($split === null) {
@@ -380,7 +415,11 @@ function bs6_convert_class_list($value, $one_class_each = false)
 			continue;
 		}
 
-		if ($is_badge && preg_match('/^(text-bg|bg)-(' . $colours . ')$/', $part, $m)) {
+		$v6 = bs6_converted_tree_classes();
+
+		if ($v6 !== null && isset($v6[$part])) {
+			$mapped = array('tokens' => array($part), 'review' => null);
+		} elseif ($is_badge && preg_match('/^(text-bg|bg)-(' . $colours . ')$/', $part, $m)) {
 			$mapped = array('tokens' => array('theme-' . $m[2]), 'review' => null);
 		} else {
 			$mapped = bs6_map_token($part);
