@@ -713,9 +713,9 @@ echo pg_page_shell(array(
     /* The source text is read, the translation is typed: the source gets the
        quiet treatment and keeps the line breaks of a multi-line text. */
     .pg-tr-source { white-space: pre-wrap; word-break: break-word; font-size: .9rem; }
-    .pg-tr-inline { font-family: var(--bs-font-monospace); font-size: .82rem; }
+    .pg-tr-inline { font-family: var(--pg-font-mono); font-size: .82rem; }
     .pg-tr-target { font-size: .9rem; }
-    .pg-tr-row.pg-tr-dirty .pg-tr-save { --bs-btn-color: var(--bs-primary); --bs-btn-border-color: var(--bs-primary); }
+    .pg-tr-row.pg-tr-dirty .pg-tr-save { --bs-btn-color: var(--pg-primary); --bs-btn-border-color: var(--pg-primary); }
     .pg-tr-pages { max-height: calc(100vh - 16rem); overflow-y: auto; }
     .pg-tr-progress { display: none; }
     .pg-tr-progress.show { display: block; }

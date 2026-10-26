@@ -9,17 +9,24 @@
    notes on that block hold for this one. */
 :root,
 [data-bs-theme] {
-  --pg-primary: var(--bs-primary);
-  --pg-secondary: var(--bs-secondary);
-  --pg-success: var(--bs-success);
+  --pg-bg-1: var(--bs-tertiary-bg);
+  --pg-bg-2: var(--bs-secondary-bg);
+  --pg-bg-body: var(--bs-body-bg);
+  --pg-border-color: var(--bs-border-color);
+  --pg-border-color-translucent: var(--bs-border-color-translucent);
   --pg-danger: var(--bs-danger);
-  --pg-warning: var(--bs-warning);
-  --pg-primary-fg-emphasis: var(--bs-primary-text-emphasis);
+  --pg-fg-2: var(--bs-secondary-color);
+  --pg-fg-body: var(--bs-body-color);
+  --pg-primary: var(--bs-primary);
   --pg-primary-bg-subtle: var(--bs-primary-bg-subtle);
   --pg-primary-border-subtle: var(--bs-primary-border-subtle);
+  --pg-primary-fg-emphasis: var(--bs-primary-text-emphasis);
+  --pg-secondary: var(--bs-secondary);
+  --pg-success: var(--bs-success);
   --pg-success-fg-emphasis: var(--bs-success-text-emphasis);
-  --pg-warning-fg-emphasis: var(--bs-warning-text-emphasis);
+  --pg-warning: var(--bs-warning);
   --pg-warning-bg-subtle: var(--bs-warning-bg-subtle);
+  --pg-warning-fg-emphasis: var(--bs-warning-text-emphasis);
 }
 
 html,
@@ -29,7 +36,7 @@ body.pg-guest {
 
 body.pg-guest {
   margin: 0;
-  background: var(--bs-tertiary-bg);
+  background: var(--pg-bg-1);
 }
 
 .pg-guest-app {
@@ -39,8 +46,8 @@ body.pg-guest {
   height: 100dvh;
   max-width: 52rem;
   margin: 0 auto;
-  background: var(--bs-body-bg);
-  box-shadow: 0 0 0 1px var(--bs-border-color-translucent);
+  background: var(--pg-bg-body);
+  box-shadow: 0 0 0 1px var(--pg-border-color-translucent);
 }
 
 .pg-guest-head {
@@ -49,7 +56,7 @@ body.pg-guest {
   gap: .75rem;
   padding: .75rem 1rem;
   padding-top: max(.75rem, env(safe-area-inset-top));
-  border-bottom: 1px solid var(--bs-border-color);
+  border-bottom: 1px solid var(--pg-border-color);
 }
 
 .pg-guest-head-text {
@@ -59,7 +66,7 @@ body.pg-guest {
 
 .pg-guest-site {
   font-size: .75rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
   text-transform: uppercase;
   letter-spacing: .04em;
 }
@@ -79,8 +86,8 @@ body.pg-guest {
   margin-top: .15rem;
   padding: .05rem .5rem;
   border-radius: 1rem;
-  background: var(--bs-secondary-bg);
-  color: var(--bs-secondary-color);
+  background: var(--pg-bg-2);
+  color: var(--pg-fg-2);
   font-size: .72rem;
   font-weight: 600;
 }
@@ -100,7 +107,7 @@ body.pg-guest {
   height: 2rem;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 0 2px var(--bs-body-bg);
+  box-shadow: 0 0 0 2px var(--pg-bg-body);
 }
 
 .pg-guest-log {
@@ -117,7 +124,7 @@ body.pg-guest {
   margin: auto;
   max-width: 26rem;
   text-align: center;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-guest-note-closed {
@@ -125,12 +132,12 @@ body.pg-guest {
   flex-direction: column;
   align-items: center;
   gap: .5rem;
-  color: var(--bs-body-color);
+  color: var(--pg-fg-body);
 }
 
 .pg-guest-note-closed .bi {
   font-size: 2rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-guest-msg {
@@ -150,7 +157,7 @@ body.pg-guest {
   min-width: 0;
   padding: .5rem .75rem .35rem;
   border-radius: 1rem 1rem 1rem .25rem;
-  background: var(--bs-secondary-bg);
+  background: var(--pg-bg-2);
 }
 
 .pg-guest-mine .pg-guest-bubble {
@@ -167,11 +174,11 @@ body.pg-guest {
   flex-wrap: wrap;
   gap: 0 .5rem;
   font-size: .75rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-guest-meta b {
-  color: var(--bs-body-color);
+  color: var(--pg-fg-body);
 }
 
 .pg-guest-body {
@@ -191,7 +198,7 @@ body.pg-guest {
   border: 0;
   border-left: 3px solid var(--pg-primary);
   border-radius: .35rem;
-  background: var(--bs-body-bg);
+  background: var(--pg-bg-body);
   color: inherit;
   font-size: .8rem;
   text-align: left;
@@ -206,7 +213,7 @@ body.pg-guest {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-guest-actions {
@@ -220,9 +227,9 @@ body.pg-guest {
 
 .pg-guest-reaction {
   padding: .05rem .45rem;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid var(--pg-border-color);
   border-radius: 1rem;
-  background: var(--bs-body-bg);
+  background: var(--pg-bg-body);
   color: inherit;
   font-size: .8rem;
 }
@@ -236,7 +243,7 @@ body.pg-guest {
   padding: .1rem .3rem;
   border: 0;
   background: none;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
   opacity: .55;
 }
 
@@ -254,9 +261,9 @@ body.pg-guest {
   display: flex;
   gap: .15rem;
   padding: .25rem;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid var(--pg-border-color);
   border-radius: 2rem;
-  background: var(--bs-body-bg);
+  background: var(--pg-bg-body);
   box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .15);
 }
 
@@ -277,13 +284,13 @@ body.pg-guest {
 
 .pg-guest-picker button:hover,
 .pg-guest-picker button:focus-visible {
-  background: var(--bs-secondary-bg);
+  background: var(--pg-bg-2);
 }
 
 .pg-guest-foot {
   padding: .5rem .75rem;
   padding-bottom: max(.5rem, env(safe-area-inset-bottom));
-  border-top: 1px solid var(--bs-border-color);
+  border-top: 1px solid var(--pg-border-color);
 }
 
 .pg-guest-reply {
@@ -294,7 +301,7 @@ body.pg-guest {
   padding: .3rem .5rem;
   border-left: 3px solid var(--pg-primary);
   border-radius: .35rem;
-  background: var(--bs-secondary-bg);
+  background: var(--pg-bg-2);
   font-size: .8rem;
 }
 
@@ -316,7 +323,7 @@ body.pg-guest {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-guest-composer {
@@ -332,7 +339,7 @@ body.pg-guest {
 
 .pg-guest-tools .btn {
   padding: .25rem .35rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-guest-composer textarea {
@@ -355,7 +362,7 @@ body.pg-guest {
   margin-top: .3rem;
   font-size: .72rem;
   text-align: center;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-guest-toast {
@@ -416,7 +423,7 @@ body.pg-guest {
 .pg-guest-body code {
   padding: .05rem .3rem;
   border-radius: .3rem;
-  background: var(--bs-tertiary-bg);
+  background: var(--pg-bg-1);
   font-size: .85em;
 }
 
@@ -461,7 +468,7 @@ body.pg-guest {
   margin-bottom: .2rem;
   font-size: .8rem;
   font-weight: 700;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .ws-block-title .bi {
@@ -478,9 +485,9 @@ body.pg-guest {
   width: auto;
   min-width: 40%;
   margin: 0;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid var(--pg-border-color);
   font-size: .85rem;
-  --bs-table-bg: var(--bs-body-bg);
+  --bs-table-bg: var(--pg-bg-body);
 }
 
 .ws-table > :not(caption) > * > * {
@@ -492,7 +499,7 @@ body.pg-guest {
 }
 
 .ws-table thead th {
-  background: var(--bs-tertiary-bg);
+  background: var(--pg-bg-1);
   font-weight: 600;
 }
 
@@ -531,21 +538,21 @@ body.pg-guest {
 
 .ws-check.ws-checked .ws-check-text {
   text-decoration: line-through;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .ws-check-who {
   font-size: .72rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .ws-code {
   max-width: 100%;
   margin: .25rem 0 .35rem;
   overflow: hidden;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid var(--pg-border-color);
   border-radius: .6rem;
-  background: var(--bs-tertiary-bg);
+  background: var(--pg-bg-1);
 }
 
 .ws-code-head {
@@ -554,9 +561,9 @@ body.pg-guest {
   justify-content: space-between;
   gap: .5rem;
   padding: .15rem .25rem .15rem .7rem;
-  border-bottom: 1px solid var(--bs-border-color);
+  border-bottom: 1px solid var(--pg-border-color);
   font-size: .72rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .ws-code-copy {
@@ -604,7 +611,7 @@ body.pg-guest {
   max-width: 100%;
   margin: .25rem 0;
   overflow: hidden;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid var(--pg-border-color);
   border-radius: .6rem;
 }
 
@@ -629,14 +636,14 @@ body.pg-guest {
 
 .ws-calc-remark td {
   font-size: .8rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .ws-calc-group th {
   padding-top: .45rem;
   font-size: .75rem;
   font-weight: 700;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .ws-calc-in th,
@@ -647,15 +654,15 @@ body.pg-guest {
 .ws-calc-total th,
 .ws-calc-total td {
   font-weight: 700;
-  border-top: 1px solid var(--bs-border-color-translucent);
-  background: var(--bs-tertiary-bg);
+  border-top: 1px solid var(--pg-border-color-translucent);
+  background: var(--pg-bg-1);
 }
 
 .ws-calc-func {
   margin-left: .25rem;
   font-size: .72rem;
   font-weight: 500;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .ws-calc-gap td {
@@ -675,7 +682,7 @@ body.pg-guest {
   max-height: 20rem;
   border-radius: .6rem;
   object-fit: contain;
-  background: var(--bs-body-bg);
+  background: var(--pg-bg-body);
 }
 
 .pg-guest-file video,
@@ -696,9 +703,9 @@ body.pg-guest {
   gap: .4rem;
   max-width: 100%;
   padding: .35rem .7rem;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid var(--pg-border-color);
   border-radius: .6rem;
-  background: var(--bs-body-bg);
+  background: var(--pg-bg-body);
   color: inherit;
   text-decoration: none;
   font-size: .85rem;
@@ -728,9 +735,9 @@ body.pg-guest {
   gap: .5rem;
   padding: .35rem .6rem;
   overflow: hidden;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid var(--pg-border-color);
   border-radius: .5rem;
-  background: var(--bs-body-bg);
+  background: var(--pg-bg-body);
   cursor: pointer;
 }
 
@@ -762,7 +769,7 @@ div.pg-guest-poll-option {
   z-index: 1;
   flex: none;
   font-size: .8rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-guest-poll-bar {
@@ -777,7 +784,7 @@ div.pg-guest-poll-option {
 .pg-guest-poll-foot {
   margin-top: .3rem;
   font-size: .75rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-guest-task {
@@ -786,10 +793,10 @@ div.pg-guest-poll-option {
   gap: .5rem;
   margin-top: .35rem;
   padding: .45rem .6rem;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid var(--pg-border-color);
   border-left: 3px solid var(--pg-success);
   border-radius: .5rem;
-  background: var(--bs-body-bg);
+  background: var(--pg-bg-body);
 }
 
 .pg-guest-task.done {
@@ -804,7 +811,7 @@ div.pg-guest-poll-option {
 
 .pg-guest-task-text span {
   font-size: .78rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 @media (prefers-reduced-motion: reduce) {
