@@ -396,3 +396,31 @@ function test_ws_contact_changes_follow_the_user_role_rule()
 		pg_assert_true(preg_match('/ws_bulk_match\\(\\s*\\$spec\\s*,\\s*\\$/', pg_test_ws_proposals_code($function)) === 1, $function . ' matches for the person');
 	}
 }
+
+// A scheduled action is proposed with the changes, as a draft the person
+// opens in its form: taken only from an application's proposal, before the
+// record kinds are read, in a channel, never on a task, where the drawer has
+// no form to open it in. Applying it stays refused.
+function test_ws_proposal_takes_a_scheduled_draft()
+{
+	$code = pg_test_ws_proposals_code('ws_changes_input');
+	$branch = strpos($code, 'ws_scheduled_draft_proposal_row(');
+	$kinds = strpos($code, 'isset($types[$type])');
+
+	pg_assert_true($branch !== false, 'a scheduled draft is checked');
+	pg_assert_true(($kinds !== false) && ($branch < $kinds), 'before the record kinds refuse it');
+	pg_assert_contains('$for_proposal', pg_test_ws_proposals_between($code, "'scheduled'", 'ws_scheduled_draft_proposal_row('), 'only in an application\'s proposal');
+	pg_assert_contains('$task_id', pg_test_ws_proposals_between($code, "'scheduled'", 'ws_scheduled_draft_proposal_row('), 'not on a task');
+
+	$param = ws_api_changes_param('the person', true);
+	pg_assert_same('object', $param['of']['data'], 'data is described');
+	pg_assert_contains('scheduled', $param['description'], 'and the kind');
+
+	pg_assert_contains("'scheduled'", pg_test_ws_proposals_code('ws_change_apply_check'), 'applying a draft stays refused');
+
+	foreach (ws_scheduled_api_routes() as $route) {
+		if (in_array($route['id'], array('workspace.scheduled_actions.create', 'workspace.scheduled_actions.update', 'workspace.scheduled_actions.resume'), true)) {
+			pg_assert_false($route['mcp'], $route['id'] . ' is still no tool');
+		}
+	}
+}
