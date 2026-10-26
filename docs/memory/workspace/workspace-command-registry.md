@@ -1,6 +1,6 @@
 ---
 name: workspace-command-registry
-description: One registry (ws_commands()) for the / picker, /help, palette and the Tab argument popup after "/name "; an unknown /word refused with the closest names; "//" posts it
+description: One registry (ws_commands()) for the / picker, /help, palette, the Tab argument popup after "/name " and the API list; an unknown /word refused with the closest names; "//" posts it
 ---
 
 ## What does ws_commands($viewer) hold?
@@ -20,4 +20,4 @@ description: One registry (ws_commands()) for the / picker, /help, palette and t
 - "//word …" posts "/word …" (`ws_command_unescape()` in `ws_send`); "// TODO", "///x", "//claude" stay as typed. Scheduled messages and the API do not unescape.
 
 ## Tests and checks?
-- tests/workspace_commands_test.php (registry, unknown, closest, "//", suggestions parsed). Composer run once in Chromium.
+- tests/workspace_commands_test.php (registry, unknown, closest, "//", suggestions parsed, the API route). The API answer: workspace-command-api.md. Composer run once in Chromium.
