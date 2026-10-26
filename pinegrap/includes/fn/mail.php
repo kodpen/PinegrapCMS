@@ -811,10 +811,13 @@ function get_email_campaign_profile_options()
  * one with a host or more text around the field included, is left as it is.
  *
  * @param string $body   the e-mail's HTML
- * @param array  $fields names of the fields that hold a whole address
+ * @param array  $fields names of the fields that hold a whole address; by
+ *                       default those of the auto campaigns: review_url
+ *                       (review request) and tracking_url (order shipped and
+ *                       order delivered)
  * @return string
  */
-function pg_mail_merge_address_hrefs($body, $fields = array('review_url'))
+function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url'))
 {
     $body = (string) $body;
     $names = array();
@@ -972,7 +975,7 @@ function create_auto_email_campaigns($properties)
             require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
             // Get html for page.
             $body = get_page_content($email_campaign_profile['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, $data);
-            // A link made with the editor's Link button to ^^review_url^^ was stored with http:// in front of it.
+            // A link made with the editor's Link button to ^^review_url^^ or ^^tracking_url^^ was stored with http:// in front of it.
             $body = pg_mail_merge_address_hrefs($body);
             // Find if there is a base tag in the HTML.
             $base_in_html = preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body);

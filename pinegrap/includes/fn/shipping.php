@@ -701,9 +701,9 @@ function pg_shipment_delivered($ship_to_id, $time, $opts = array())
             'action'        => 'order_delivered',
             'contact_id'    => $recipient['contact_id'],
             'email_address' => $recipient['billing_email_address'],
-            'fields'        => array(
-                array('name' => 'order_number', 'data' => $recipient['order_number']),
-            ),
+            'fields'        => array_merge(
+                array(array('name' => 'order_number', 'data' => $recipient['order_number'])),
+                pg_shipment_mail_fields(array($ship_to_id))),
             'data'          => array('order' => array(
                 'id'                    => (int) $recipient['order_id'],
                 'order_number'          => $recipient['order_number'],
@@ -805,6 +805,75 @@ function pg_shipment_view($row, $method, $default)
         'status'       => $status,
         'warning'      => !empty($row['format_warning']),
     );
+}
+
+/**
+ * The mail-merge fields the order_shipped and order_delivered e-mails offer:
+ * ^^tracking_numbers^^ (every number), ^^carrier_name^^ (each carrier once)
+ * and ^^tracking_url^^ (the first parcel that has a link: one link is what an
+ * href can hold). Always all three, empty when there is no parcel, so a
+ * [[...||...]] conditional falls to its else part.
+ *
+ * @param  array $views rows of pg_shipment_view()
+ * @return array list of name, data
+ */
+function pg_shipment_merge_fields($views)
+{
+    $numbers = array();
+    $carriers = array();
+    $url = '';
+
+    foreach ((array) $views as $view) {
+        $number = isset($view['number']) ? trim((string) $view['number']) : '';
+
+        if ($number === '') {
+            continue;
+        }
+
+        $numbers[] = $number;
+        $carrier = isset($view['carrier_name']) ? (string) $view['carrier_name'] : '';
+
+        if (($carrier !== '') && !in_array($carrier, $carriers, true)) {
+            $carriers[] = $carrier;
+        }
+
+        if (($url === '') && !empty($view['url'])) {
+            $url = (string) $view['url'];
+        }
+    }
+
+    return array(
+        array('name' => 'tracking_numbers', 'data' => implode(', ', $numbers)),
+        array('name' => 'carrier_name', 'data' => implode(', ', $carriers)),
+        array('name' => 'tracking_url', 'data' => $url),
+    );
+}
+
+/**
+ * The tracking mail-merge fields of the given addresses of one order, read
+ * from their parcel rows the way the order screen shows them.
+ *
+ * @param  int[] $ship_to_ids
+ * @return array list of name, data (pg_shipment_merge_fields())
+ */
+function pg_shipment_mail_fields($ship_to_ids)
+{
+    $default = pg_shipping_default_carrier();
+    $views = array();
+
+    foreach (array_unique(array_map('intval', (array) $ship_to_ids)) as $ship_to_id) {
+        if ($ship_to_id <= 0) {
+            continue;
+        }
+
+        $method = (string) db_value("SELECT shipping_method_code FROM ship_tos WHERE id = '" . $ship_to_id . "'");
+
+        foreach (pg_shipment_rows($ship_to_id) as $row) {
+            $views[] = pg_shipment_view($row, $method, $default);
+        }
+    }
+
+    return pg_shipment_merge_fields($views);
 }
 
 /**
