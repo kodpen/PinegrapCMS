@@ -60,6 +60,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-outbound-layer.md: Design rules of the outbound marketplace layer (includes/api/outbound/connectors/): connector contract, three tables, queue, lease and rotation job.
 - marketplace-price.md: Price and VAT rate sent to Trendyol and n11 - the checkout's tax-inclusive price (mp_product_price()), the rate inside it (vat_rate), the mapping screen's price column.
 - marketplace-provider-fields.md: How a marketplace provider declares its credential fields in mp_providers() (text, secret, select), help, cargo template and barcode keys, and the transport seam of Trendyol's functions.
+- marketplace-shop-view.md: Shop view of marketplace_products.php (#1931): shop products with pictures and their state on an account, codes typed in the row, bulk own-code match, send, remove, listing changes
 - marketplace-variant-attributes.md: Listed products' variant attributes (Trendyol varianter and slicer, n11 isVariant): own option first, the article's value as fallback, duplicate refusal, mapping screen field.
 - marketplace-webhook-receiver.md: marketplace_webhook.php: what calls it and what it imports, its checks and status codes, why it never calls out, the job's acceptance pass, the firewall entry.
 - marketplace-webhook-registration.md: How a marketplace order webhook is registered and removed from the account screen, which saves are refused while one exists, what account delete does with it, and Trendyol's webhook facts.
@@ -135,7 +136,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - trendyol-api-facts.md: Trendyol seller API (V2) facts for the connector: hosts, Basic auth + mandatory User-Agent, stage IP whitelist (503), category tree, V2 attributes with separately paged values, limits, test call.
 - trendyol-invoice-link.md: Trendyol invoice link of an imported package: typed by the operator on the Imported orders card, the seller-invoice-links call, link checks, 409, invoice_sent, no removal
 - trendyol-listing-status.md: Trendyol listing approval read onto the mapping row: the two filter calls, what each state writes, which rows are asked about, what is not stored, unverified points.
-- trendyol-listing-update.md: Updating approved Trendyol listings by contentId (content-bulk-update): what is sent, queue operation listing_update, result by content id, screen tick boxes, commission at approval
+- trendyol-listing-update.md: Updating approved Trendyol listings by contentId (content-bulk-update): what is sent, queue operation listing_update, result by content id, the shop view's tick boxes, commission at approval
 - trendyol-listings.md: Trendyol V2 listing create (connectors/trendyol.php): barcode as the key, brand id by name at send time, what is refused before the call, batch result per barcode, what SUCCESS means.
 - trendyol-orders.md: Trendyol order packages: v2/orders pull, 14-day window and page caps, Awaiting/Verified skipped, UnPacked = cancelled, seller-only discount money, barcode/sku match, Picking push, unverified points.
 - trendyol-own-carrier-shipping.md: Trendyol packages shipped with the shop's own carrier: the Shipping carrier choice, the alternative-delivery call, which packages and parcels the job reports, Picking first (unverified).
