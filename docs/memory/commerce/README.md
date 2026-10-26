@@ -133,6 +133,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - trendyol-listings.md: Trendyol V2 listing create (connectors/trendyol.php): barcode as the key, brand id by name at send time, what is refused before the call, batch result per barcode, what SUCCESS means.
 - trendyol-orders.md: Trendyol order packages: v2/orders pull, 14-day window and page caps, Awaiting/Verified skipped, UnPacked = cancelled, seller-only discount money, barcode/sku match, Picking push, unverified points.
 - trendyol-own-carrier-shipping.md: Trendyol packages shipped with the shop's own carrier: the Shipping carrier choice, the alternative-delivery call, which packages and parcels the job reports, Picking first (unverified).
+- trendyol-questions.md: Trendyol buyer questions: read on a button for the last 14 days, kept in the session only, answer a waiting one from the panel (10-2000 chars, reviewed before publishing); calls, unverified points
 - trendyol-returns.md: Trendyol returns (claims): read on a button for the last 14 days, kept in the session only, approve a return's waiting units after a confirm; the calls, what the docs did not prove
 - trendyol-stock-price.md: Trendyol stock and price push: price-and-inventory batch by barcode, what is left out before the call, the 15-minute repeat refusal, status-less batch result; webhooks carry no stock.
 - variant-price-rules.md: How variant prices are computed from attribute price rules (base, multiplier, delta), the fixed order and rounding, the single compute function and its JS preview twin.

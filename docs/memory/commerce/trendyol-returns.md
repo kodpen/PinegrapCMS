@@ -5,7 +5,7 @@ description: Trendyol returns (claims): read on a button for the last 14 days, k
 
 ## Where are returns shown?
 - Account screen (`marketplace_settings.php`), card "Returns from Trendyol" (`#mp-claims`), drawn when the connector can `claims`. Nothing reads returns on a schedule: the "Read returns" button (action `claims_read`) reads, and the approve button (action `claim_approve`) shows only where the connector can `approve_claim`.
-- The read is kept in `$_SESSION['software']['marketplace_read'][<account id>]['claims']` = `{read, claims, more}` (`mp_settings_claims_read()`), never in a table: the marketplace holds the returns, a copy would go stale. A failed read keeps the last good one.
+- The read is kept in `$_SESSION['software']['marketplace_read'][<account id>]['claims']` = `{read, claims, more}` (`mp_settings_marketplace_read()`), never in a table: the marketplace holds the returns, a copy would go stale. A failed read keeps the last good one.
 
 ## Which call reads them? (`mp_trendyol_claims()`)
 - `GET /integration/order/sellers/{sellerId}/claims?startDate=&endDate=&page=&size=50`, every status (no `claimItemStatus` filter). Window: the order feed's, now − 14 days + 1 hour to now, in ms. At most 4 pages of 50 (`mp_trendyol_claim_pages()`, `mp_trendyol_claim_page_size()`; their ceiling is 200); stops at `totalPages`, a short page, or the cap, then `more` is true and the card says only 200 are shown.
