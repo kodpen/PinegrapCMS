@@ -48,7 +48,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - passkeys.md: Plan (approved 2026-10-19; steps 1-3b and 4a done, 4b-4c left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
 - payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 4a, 5 done; 3b, 4b, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 - payment-driver-paypal.md: Step 4b (PayPal Checkout v2) hand-over: branch feature/payment-4b-paypal-v2 (closed PR #1827), what is missing before it lands, the open PENDING-capture question
-- php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1450, #1669, #1744, #1757
+- php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows, retention, window function done): automatic "price before discount" (TR 10/30-day, EU 30-day rules)
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1-5b done, last #1821 and #1844; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
