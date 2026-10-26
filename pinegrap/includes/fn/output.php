@@ -4552,7 +4552,7 @@ function license_check($properties = false)
                 $response = @curl_exec($ch);
                 $curl_errno = curl_errno($ch);
                 $curl_error = curl_error($ch);
-                curl_close($ch);
+                unset($ch);
             } else {
                 // Fallback: file_get_contents with stream context if allow_url_fopen is enabled
                 // The certificate is verified here as well, against the same CA bundle
