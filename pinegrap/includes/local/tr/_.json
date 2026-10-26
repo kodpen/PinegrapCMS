@@ -1312,6 +1312,7 @@
     "{var:2} waits for {var:1}.": "{var:2}, {var:1} kutusunu bekler.",
     "{var:2} was removed by {var:1}": "{var:1}, {var:2} kişisini kanaldan çıkardı",
     "{var} (legacy)": "{var} (eski)",
+    "{var} (not found)": "{var} (bulunamadı)",
     "{var} B": "{var} B",
     "{var} Category": "{var} Kategorisi",
     "{var} Column": "{var} Sütunu",

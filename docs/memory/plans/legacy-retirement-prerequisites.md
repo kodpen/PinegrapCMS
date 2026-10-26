@@ -17,7 +17,7 @@ description: Plan (2026-10-19, not started): regions editable in the visual desi
 - R3 Designer region -> designer-only shared component: PHP blocks lifted to `custom_php` nodes before parsing, nested designer regions as nested shared refs, inner placeholders as region nodes (the placeholder half of L1).
 - R4 Dynamic region stays PHP: done (PR #1788): region node attribute, code-view tab for administrators, the classic screen's right (`designer/dynamic-region-in-designer.md`).
 - R5 Page regions: converting a page moves its `pregion` content into the page tree as `_editable` rich-text blocks; page edit rights unchanged.
-- R6 Widgets for menu / menu sequence (items still edited in the menu screen), ad region (rotation) and tag cloud. Mobile switch and PDF stay region nodes unless asked.
+- R6 Widgets for menu / menu sequence (items still edited in the menu screen), ad region (rotation) and tag cloud. Mobile switch and PDF stay region nodes unless asked. One widget per PR: menu done (#1781, [[menu-widget]]); menu sequence, ad region, tag cloud next. Turning a page's `<menu>` region node into the widget is not done yet.
 - Missing system widget types: `system-widget-missing-types.md`. Custom layouts of classic pages (half the pages of the starting site; `edit_page.php` and the design's page queries hide them): `legacy-layouts-in-designer.md`, Y1 first.
 
 ## Open questions?
