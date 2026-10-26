@@ -2042,7 +2042,7 @@ function pg_designer_design_draft_counts($style_ids)
                              " . ($draft_folder > 0 ? "SUM(page_folder = '$draft_folder')" : "0") . " AS drafts,
                              SUM(page_home = 'yes') AS home
                       FROM page
-                      WHERE page_style IN (" . implode(',', $ids) . ") AND layout_type = 'system'" . pg_designer_not_binned_sql() . "
+                      WHERE page_style IN (" . implode(',', $ids) . ") AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
                       GROUP BY page_style");
     foreach ((array)$rows as $r) {
         $out[(int)$r['page_style']] = array('pages' => (int)$r['pages'], 'drafts' => (int)$r['drafts'], 'home' => (int)$r['home']);
@@ -2117,7 +2117,7 @@ function pg_designer_design_set_draft($style_id, $on, $user)
     $uid  = (int)$user['id'];
     $who  = isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '';
     $rows = db_items("SELECT page_id, page_name, page_folder, page_home FROM page
-                      WHERE page_style = '$style_id' AND layout_type = 'system'" . pg_designer_not_binned_sql() . "
+                      WHERE page_style = '$style_id' AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
                       ORDER BY page_id");
     foreach ((array)$rows as $r) {
         $pid   = (int)$r['page_id'];
@@ -2412,6 +2412,33 @@ function pg_page_is_visual_design($page)
         if (isset($ids[$style_id])) return true;
     }
     return !empty($page['has_tree']);
+}
+
+/**
+ * SQL twin of pg_page_is_visual_design(): a condition true for the pages of
+ * a design, whatever their layout_type. A converted classic page keeps
+ * layout_type 'custom' and its layout file, and is still one of the
+ * design's pages.
+ *
+ * @param string $column_prefix table name or alias with its dot ('page.', 'p2.') or ''
+ */
+function pg_page_visual_design_sql($column_prefix = 'page.')
+{
+    return pg_page_visual_design_sql_for(array_keys(pg_visual_design_style_ids()), pg_multi_page_design_ready(), $column_prefix);
+}
+
+/**
+ * pg_page_visual_design_sql() from its inputs: the visual design style ids
+ * and whether page.page_tree_json exists yet. '0' when nothing can match.
+ */
+function pg_page_visual_design_sql_for($style_ids, $tree_ready, $column_prefix = 'page.')
+{
+    $prefix = preg_replace('/[^A-Za-z0-9_.]/', '', (string)$column_prefix);
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)$style_ids))));
+    $parts = array();
+    if ($ids) $parts[] = $prefix . 'page_style IN (' . implode(',', $ids) . ')';
+    if ($tree_ready) $parts[] = '(' . $prefix . "page_tree_json IS NOT NULL AND " . $prefix . "page_tree_json <> '')";
+    return $parts ? '(' . implode(' OR ', $parts) . ')' : '0';
 }
 
 /**
@@ -2734,7 +2761,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
          WHERE page.page_style = '$style_id'
-           AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . "
+           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
          ORDER BY page.page_id ASC");
     if (!is_array($rows)) $rows = array();
 
@@ -2822,7 +2849,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
 /**
  * Pages that could be attached to a design from the "Sayfa Seç" picker.
  *
- * Only pages the visual editor made (layout_type = 'system'), excluding the
+ * Only pages of a design (pg_page_visual_design_sql()), excluding the
  * ones already on this design. Each row says which design it currently
  * belongs to so the picker can warn before moving it: attaching a page to
  * this design swaps its shared assets for this design's.
@@ -2830,21 +2857,15 @@ function pg_designer_load_pages($style_id, $style_name = '')
 function pg_designer_selectable_pages($style_id)
 {
     $style_id = (int)$style_id;
-    // `layout_type = 'system'` alone is not the test — the legacy system
-    // layouts (interior, emailer-inline, …) use it too and their pages have
-    // no tree the editor could open. A visual-designer page is one whose
-    // style was made by the editor, or that already carries its own tree.
-    $own_tree = pg_multi_page_design_ready()
-        ? " OR (page.page_tree_json IS NOT NULL AND page.page_tree_json <> '')"
-        : '';
+    // Not layout_type: the legacy system layouts (interior, emailer-inline,
+    // …) carry 'system' too, and a converted page keeps 'custom'.
     $rows = db_items(
         "SELECT page.page_id, page.page_name, page.page_title,
                 page.page_style, style.style_name AS current_style_name
          FROM page
          LEFT JOIN style ON page.page_style = style.style_id
-         WHERE page.layout_type = 'system'
-           AND page.page_style <> '$style_id'
-           AND (style.style_layout = 'visual_designer'$own_tree)" . pg_designer_not_binned_sql() . "
+         WHERE page.page_style <> '$style_id'
+           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
          ORDER BY page.page_name ASC");
     if (!is_array($rows)) return array();
     $out = array();
@@ -2884,7 +2905,7 @@ function pg_designer_design_targets($folder_id = 0, $exclude_style_id = 0)
         : '';
     $rows = db_items(
         "SELECT style.style_id, style.style_name,
-                (SELECT COUNT(*) FROM page WHERE page.page_style = style.style_id AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . ") AS pages
+                (SELECT COUNT(*) FROM page WHERE page.page_style = style.style_id AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . ") AS pages
          FROM style
          WHERE (style.style_layout = 'visual_designer'$own_tree)" . ($exclude_style_id > 0 ? " AND style.style_id <> '$exclude_style_id'" : '') . "
          ORDER BY style.style_timestamp DESC, style.style_name ASC");
@@ -2904,7 +2925,7 @@ function pg_designer_design_targets($folder_id = 0, $exclude_style_id = 0)
         // belongs to the design most of its pages are on.
         if ($folder_style === 0) {
             foreach ((array)db_items("SELECT page_style, COUNT(*) AS n FROM page
-                                      WHERE page_folder = '$folder_id' AND layout_type = 'system'
+                                      WHERE page_folder = '$folder_id' AND " . pg_page_visual_design_sql() . "
                                       GROUP BY page_style ORDER BY n DESC") as $fs) {
                 if (isset($ids[(int)$fs['page_style']])) { $folder_style = (int)$fs['page_style']; break; }
             }
@@ -8731,7 +8752,7 @@ function pg_shared_component_usage($ids = null)
                     " . pg_page_tree_sql_expr() . " AS tree_json
              FROM page
              LEFT JOIN style ON page.page_style = style.style_id
-             WHERE page.layout_type = 'system'
+             WHERE " . pg_page_visual_design_sql() . "
              HAVING tree_json IS NOT NULL AND tree_json != ''"
         );
     } else {
@@ -9275,7 +9296,7 @@ function pg_designer_tab_layout_save($style_id, $layout, $user)
         "SELECT page.page_id
          FROM page
          WHERE page.page_style = '$style_id'
-           AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . "
+           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
          ORDER BY page.page_id ASC");
     $page_ids = array();
     foreach ((array)$ids as $row) $page_ids[] = (int)$row['page_id'];

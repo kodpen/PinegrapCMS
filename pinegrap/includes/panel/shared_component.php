@@ -523,7 +523,7 @@ function pg_panel_shared_component($request, $action)
                         "SELECT page.page_id, page.page_name, page.page_title
                              FROM page
                              INNER JOIN style ON page.page_style = style.style_id
-                             WHERE page.layout_type = 'system'
+                             WHERE " . pg_page_visual_design_sql() . "
                                AND $sc_cl_where" . pg_designer_not_binned_sql('page.page_folder')
                     );
                 }
@@ -587,7 +587,7 @@ function pg_panel_shared_component($request, $action)
                         "SELECT page.page_id, page.page_name, page.page_title
                              FROM page
                              INNER JOIN style ON page.page_style = style.style_id
-                             WHERE page.layout_type = 'system'
+                             WHERE " . pg_page_visual_design_sql() . "
                                AND $sc_cd_where" . pg_designer_not_binned_sql('page.page_folder')
                     );
                 }
@@ -653,7 +653,7 @@ function pg_panel_shared_component($request, $action)
                         "SELECT page.page_id, page.page_name, page.page_title
                              FROM page
                              INNER JOIN style ON page.page_style = style.style_id
-                             WHERE page.layout_type = 'system'
+                             WHERE " . pg_page_visual_design_sql() . "
                                AND $sc_sc_where" . pg_designer_not_binned_sql('page.page_folder')
                     );
                 }

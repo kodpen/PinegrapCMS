@@ -194,7 +194,6 @@ function api_design_pages_list($params) {
 	api_design_ready();
 
 	$where = array(
-		"page.layout_type = 'system'",
 		"page.page_style > 0",
 		"(style.style_layout = 'visual_designer' OR (page.page_tree_json IS NOT NULL AND page.page_tree_json <> ''))",
 		"page.page_tree_json IS NOT NULL",

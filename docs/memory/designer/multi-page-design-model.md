@@ -20,6 +20,7 @@ description: Data model of multi-page visual designer designs (style + page_styl
 ## What counts as a "visual designer page"?
 - NOT `layout_type='system'`: that column is `system` on every standard page and legacy system layouts use it too.
 - Criterion is `pg_page_is_visual_design()`: the page's own `page_style` is `visual_designer` OR it has its own tree.
+- In SQL use its twin `pg_page_visual_design_sql()` (never `layout_type`): a converted classic page keeps `layout_type = 'custom'` and its layout file and is still listed, counted, scheduled and asset-cleaned with its design (#PR). Left on `layout_type`: only the legacy same-name bridge in `pg_designer_load_pages()`; the language redirect tests the tree alone, as `translate/render.php` does.
 - Edit link everywhere via `pg_page_edit_url()` (view_pages, explorer, edit_page.php redirect).
 - `select_style()` does not list visual designs: they cannot be assigned as folder/page default.
 

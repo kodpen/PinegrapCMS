@@ -145,7 +145,7 @@ if ($style['layout'] === 'visual_designer' && pg_multi_page_design_ready()) {
     $src_pages = db_items(
         "SELECT * FROM page
          WHERE page_style = '" . (int)$_GET['id'] . "'
-           AND layout_type = 'system'
+           AND " . pg_page_visual_design_sql() . "
          ORDER BY page_id ASC");
     $copied_ids = array();
     foreach ((array)$src_pages as $src_page) {

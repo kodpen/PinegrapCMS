@@ -661,7 +661,7 @@ function pg_designer_list_designs()
     $rows = db_items(
         "SELECT style.style_id, style.style_name, style.style_timestamp AS last_modified_timestamp,
                 user.user_username AS last_modified_username, files.name AS theme_name,
-                (SELECT COUNT(*) FROM page WHERE page.page_style = style.style_id AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . ") AS page_count
+                (SELECT COUNT(*) FROM page WHERE page.page_style = style.style_id AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . ") AS page_count
          FROM style
          LEFT JOIN user ON style.style_user = user.user_id
          LEFT JOIN files ON style.theme_id = files.id
@@ -750,7 +750,7 @@ function pg_designer_list_pages($style_ids, $user)
     $rows = db_items(
         "SELECT page_id, page_name, page_style, page_home, page_folder
          FROM page
-         WHERE page_style IN (" . implode(',', $ids) . ") AND layout_type = 'system'" . pg_designer_not_binned_sql() . "
+         WHERE page_style IN (" . implode(',', $ids) . ") AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
          ORDER BY (page_home = 'yes') DESC, page_id ASC");
     $full = pg_designer_is_full($user);
     foreach ((array)$rows as $r) {
@@ -1719,7 +1719,7 @@ function pg_designer_start_action($user, $style_id)
             "SELECT page.page_id, page.page_name, page.page_folder, page.page_style, style.style_name
              FROM page
              LEFT JOIN style ON style.style_id = page.page_style
-             WHERE page.page_id = '$page_id' AND page.layout_type = 'system'" . pg_designer_not_binned_sql() . "
+             WHERE page.page_id = '$page_id' AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
              LIMIT 1");
         // A page already on this design has nowhere to move; one the
         // operator may not edit is not theirs to move or copy.
@@ -3061,7 +3061,7 @@ function pg_designer_screen_post($ctx)
     // deleted from the design.
     if ($can_write_design && pg_multi_page_design_ready()) {
         db("UPDATE page SET page_custom_css = '', page_custom_js = '', page_custom_fonts = ''
-            WHERE page_style = '$style_id' AND layout_type = 'system'");
+            WHERE page_style = '$style_id' AND " . pg_page_visual_design_sql());
     }
 
     // Asset files follow the design's stylesheets and scripts, which a
