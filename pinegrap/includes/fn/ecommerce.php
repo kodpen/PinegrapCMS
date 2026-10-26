@@ -2529,6 +2529,270 @@ function pg_catalog_group_create($data, $user, $opts = array())
 }
 
 /**
+ * Is this a whole, non-negative amount of minor units a price column holds?
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function pg_catalog_variant_set_minor_units($value)
+{
+    return is_int($value) && ($value >= 0) && ($value <= 2147483647);
+}
+
+/**
+ * What would stop a variant set from being written, checked before anything
+ * is: the product screen's group mode and POST /product-groups/variant-sets
+ * meet the same refusals. Needs no database; the API adds its own checks
+ * against the rows (names taken, parent, options) before it writes.
+ *
+ * @param array $data see pg_catalog_variant_set_create()
+ * @return array list of array('field' => ..., 'message' => ...); empty when
+ *               the set can be written
+ */
+function pg_catalog_variant_set_check($data)
+{
+    $errors = array();
+
+    if (pg_catalog_variant_set_name($data) === '') {
+        $errors[] = array('field' => 'name', 'message' => lang(array('string' => '{var:1} is required', 'vars' => array('name'))));
+    }
+
+    if (isset($data['price_base']) && !pg_catalog_variant_set_minor_units($data['price_base'])) {
+        $errors[] = array('field' => 'price', 'message' => lang('A price is a whole number of minor units, from 0 to 2147483647.'));
+    }
+
+    $variants = (isset($data['variants']) && is_array($data['variants'])) ? $data['variants'] : array();
+
+    if (count($variants) < 2) {
+        $errors[] = array('field' => 'variants', 'message' => lang('A variant set needs at least two variants.'));
+    }
+
+    foreach ($variants as $variant) {
+
+        if (!is_array($variant) || !isset($variant['name']) || (trim((string) $variant['name']) === '')) {
+            $errors[] = array('field' => 'variants', 'message' => lang('Every variant needs a product ID / SKU.'));
+            break;
+        }
+
+        if (!array_key_exists('price', $variant) || !pg_catalog_variant_set_minor_units($variant['price'])) {
+            $errors[] = array('field' => 'variants', 'message' => lang('A price is a whole number of minor units, from 0 to 2147483647.'));
+            break;
+        }
+    }
+
+    return $errors;
+}
+
+/**
+ * The group's name: the short description, else the name (the screen's
+ * Product ID / SKU field).
+ *
+ * @param array $data
+ * @return string
+ */
+function pg_catalog_variant_set_name($data)
+{
+    $short = isset($data['short_description']) ? trim((string) $data['short_description']) : '';
+
+    return ($short !== '') ? $short : (isset($data['name']) ? trim((string) $data['name']) : '');
+}
+
+/**
+ * One variant's price in minor units: what the set's rules give it from the
+ * base (pg_variant_price_compute()), unless its price was typed over them or
+ * the set has no rules, when the row's own price stays.
+ *
+ * @param array      $variant    a row, price in minor units
+ * @param int        $base_cents
+ * @param array|null $rules      canonical rules
+ * @return int
+ */
+function pg_catalog_variant_set_price($variant, $base_cents, $rules)
+{
+    if (!$rules || !empty($variant['price_manual'])) {
+        return $variant['price'];
+    }
+
+    $selection = array();
+
+    foreach ($variant['attributes'] as $pair) {
+        $selection[(int) $pair['attribute_id']] = (int) $pair['option_id'];
+    }
+
+    $priced = pg_variant_price_compute($base_cents, $rules, $selection);
+
+    return $priced['cents'];
+}
+
+/**
+ * The product row and links one variant of a set is written with, built
+ * without a query.
+ *
+ * @param array      $data      see pg_catalog_variant_set_create()
+ * @param array      $variant   one row of $data['variants']
+ * @param int        $group_id  the set's group
+ * @param array|null $ai_posted the texts an accepted "Write with AI" draft
+ *                              filled in (pg_ai_fields_posted()), NULL for none
+ * @return array 'product' => columns, 'relations' => for pg_pb_create_product()
+ */
+function pg_catalog_variant_set_product($data, $variant, $group_id, $ai_posted)
+{
+    $common = isset($data['common']) ? $data['common'] : array();
+
+    $product = $common;
+
+    $product['name']               = $variant['name'];
+    $product['short_description']  = $variant['short_description'];
+    $product['price']              = pg_catalog_variant_set_price($variant, isset($data['price_base']) ? $data['price_base'] : 0, isset($data['price_rules']) ? $data['price_rules'] : null);
+    $product['full_description']   = prepare_rich_text_editor_content_for_input(isset($data['full_description']) ? $data['full_description'] : '');
+    $product['details']            = prepare_rich_text_editor_content_for_input(isset($data['details']) ? $data['details'] : '');
+    $product['title']              = isset($data['title']) ? trim($data['title']) : '';
+    $product['meta_description']   = isset($data['meta_description']) ? trim($data['meta_description']) : '';
+    $product['inventory']          = $variant['inventory'];
+    $product['inventory_quantity'] = $variant['inventory_quantity'];
+
+    // The shared GTIN field is hidden while a set is built, so whatever it
+    // holds is stale: the row wins, empty included.
+    $product['gtin'] = $variant['gtin'];
+
+    // Each variant has its own address (sitemap, feed, JSON-LD): short
+    // description first, SKU otherwise. An empty one would make the whole set
+    // share one blank address with [1], [2] appended.
+    $product['address_name'] = ($variant['short_description'] !== '') ? $variant['short_description'] : $variant['name'];
+
+    // Per-variant recurring overrides, only for columns the shared set
+    // carries: those are the ones the store's gateway allows.
+    if (!empty($variant['recurring'])) {
+        foreach ($variant['recurring'] as $recurring_column => $recurring_value) {
+            if (array_key_exists($recurring_column, $common)) {
+                $product[$recurring_column] = $recurring_value;
+            }
+        }
+    }
+
+    if ($ai_posted !== null) {
+        $product['ai_fields'] = pg_ai_fields_after_save(
+            'product',
+            pg_ai_fields_for_variant($ai_posted, isset($data['short_description']) ? $data['short_description'] : '', $product['short_description']),
+            null,
+            pg_ai_fields_values('product', $product));
+    }
+
+    // The set is the only group a variant joins: it reaches the catalogue
+    // through its parent, and filing every variant in a category too would
+    // list the same article once per variant there. A variant without images
+    // of its own shows the set's.
+    return array(
+        'product'   => $product,
+        'relations' => array(
+            'images'     => !empty($variant['images']) ? $variant['images'] : (isset($data['images']) ? $data['images'] : array()),
+            'group_ids'  => array((int) $group_id),
+            'zone_ids'   => isset($data['zone_ids']) ? $data['zone_ids'] : array(),
+            'attributes' => $variant['attributes'],
+        ),
+    );
+}
+
+/**
+ * A variant set: one 'select' product group (pg_pb_create_group()) and one
+ * product per variant filed in it (pg_pb_create_product(), which starts each
+ * price history), the rows' barcodes, then the price rules kept with the
+ * group. The writer of the product screen's group mode
+ * (pg_pb_save_new_product()) and of POST /product-groups/variant-sets.
+ * Nothing is announced and no marketplace is told: a new product is matched
+ * to no listing yet, and the screen never announced a set.
+ *
+ * @param array $data name, short_description (the group's name when given),
+ *                    full_description, details, parent_id, enabled, code,
+ *                    keywords, images (file names, cover first),
+ *                    address_name, title, meta_description, attribute_meta
+ *                    (list of id, default_option_id), form, form_name,
+ *                    form_label_column_width, form_quantity_type, common
+ *                    (the columns every variant shares), zone_ids,
+ *                    price_base (minor units), price_rules (canonical, or
+ *                    null), variants (rows as pg_pb_decode_variants() gives
+ *                    them, price in minor units)
+ * @param array|int|null $user the person or the key's owner (an array with
+ *                    id) or a user id; null: the session's user (USER_ID)
+ * @param array $opts ai_fields (pg_ai_fields_posted(), null for none),
+ *                    submit_form (the array form-field rows are read from;
+ *                    absent: $_POST), barcode_auto (absent: the screen's
+ *                    switch), price_source (pg_price_history_sources())
+ * @return array group_id, product_ids, name, errors (pg_catalog_variant_set_check();
+ *               nothing is written when there are any)
+ */
+function pg_catalog_variant_set_create($data, $user = null, $opts = array())
+{
+    $name = pg_catalog_variant_set_name($data);
+
+    $errors = pg_catalog_variant_set_check($data);
+
+    if ($errors) {
+        return array('group_id' => 0, 'product_ids' => array(), 'name' => $name, 'errors' => $errors);
+    }
+
+    if (!function_exists('pg_pb_create_group')) {
+        require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
+    }
+
+    $user_id = null;
+
+    if (is_array($user)) {
+        $user_id = isset($user['id']) ? (int) $user['id'] : 0;
+    } elseif ($user !== null) {
+        $user_id = (int) $user;
+    }
+
+    $group = array('name' => $name);
+
+    foreach (array('parent_id', 'enabled', 'short_description', 'full_description', 'details', 'code', 'keywords', 'images',
+        'address_name', 'title', 'meta_description', 'attribute_meta',
+        'form', 'form_name', 'form_label_column_width', 'form_quantity_type') as $key) {
+        if (array_key_exists($key, $data)) {
+            $group[$key] = $data[$key];
+        }
+    }
+
+    if ($user_id !== null) {
+        $group['user'] = $user_id;
+    }
+
+    $group_id = pg_pb_create_group($group);
+
+    $ai_posted   = isset($opts['ai_fields']) ? $opts['ai_fields'] : null;
+    $product_ids = array();
+
+    foreach ($data['variants'] as $variant) {
+
+        $built = pg_catalog_variant_set_product($data, $variant, $group_id, $ai_posted);
+
+        if ($user_id !== null) {
+            $built['product']['user'] = $user_id;
+        }
+
+        if (array_key_exists('submit_form', $opts)) {
+            $built['relations']['submit_form'] = $opts['submit_form'];
+        }
+
+        if (isset($opts['price_source'])) {
+            $built['relations']['price_source'] = $opts['price_source'];
+        }
+
+        $product_id = pg_pb_create_product($built['product'], $built['relations']);
+
+        pg_pb_apply_barcode($product_id, isset($variant['barcode']) ? $variant['barcode'] : '', isset($opts['barcode_auto']) ? $opts['barcode_auto'] : null);
+
+        $product_ids[] = $product_id;
+    }
+
+    if (!empty($data['price_rules'])) {
+        pg_variant_price_rules_store($group_id, $data['price_rules'], $data['price_base']);
+    }
+
+    return array('group_id' => $group_id, 'product_ids' => $product_ids, 'name' => $name, 'errors' => array());
+}
+
+/**
  * The search results pages whose keyword cloud is built from a catalogue that
  * takes in this group: their clouds are taken down, and built again unless
  * the group is on its way out, the order the group screens follow, so a page

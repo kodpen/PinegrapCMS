@@ -9175,6 +9175,8 @@ const StyleDesigner = (function () {
         if (!cached || !cached.tree || !cached.system_region_config) return false;
         var cfg = cached.system_region_config;
         if (typeof cfg === 'string') { try { cfg = JSON.parse(cfg); } catch (e) { cfg = null; } }
+        // A node that the value conditions' state leaves out.
+        if (_sdCondStateFor(cached.tree, selectedNode) !== _sdCondStateOf(cached.tree)) return true;
         // A comments widget's node that the state on the canvas leaves out.
         var _cmtKind = _swKindOf(cfg);
         if (_cmtKind === 'comments' || _cmtKind === 'comments_recent') {
@@ -11157,6 +11159,15 @@ const StyleDesigner = (function () {
                     band.appendChild(_sdStateChips(doc, node, _sdCommentsCanvasStates(_sysCfg), _sdCommentsStateOf(_sysCfg),
                         _sdSetCommentsCanvasState, 'sd-chips-wrap'));
                 }
+                // A tree with value conditions draws one state of its values;
+                // an element picked from the layer tree, in a state that
+                // draws it.
+                var _condStates = _sdCondCanvasStates(cached.tree);
+                if (_condStates.length) {
+                    if (selectedNode) _sdCondCanvasState = _sdCondStateFor(cached.tree, selectedNode);
+                    band.appendChild(_sdStateChips(doc, node, _condStates, _sdCondStateOf(cached.tree),
+                        _sdSetCondCanvasState, 'sd-chips-wrap'));
+                }
                 inner.appendChild(band);
             }
             var _hasKids = cached.tree.children && cached.tree.children.length > 0;
@@ -12442,10 +12453,12 @@ const StyleDesigner = (function () {
         }
 
         // A value condition (Bind Data, "Show only when a value…") is named
-        // on the element; the page and Preview decide it.
+        // on the element; the state the band chose decides whether it is
+        // drawn (_sdCondCanvasShows()).
         if (_sysWidgetRenderCfg && node.props && node.props._bindings && node.props._bindings.show_if) {
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
+            if (!_sdCondCanvasShows(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) wrapper.classList.add('sd-state-off');
         }
 
         // Login region: the canvas draws one session state at a time; an
@@ -37288,6 +37301,160 @@ const StyleDesigner = (function () {
         return !/^__(page_link|link_label)_\d+$/.test(t);
     }
 
+    // The test of a value condition, twin of pg_sw_cond_eval() and its
+    // helpers (includes/fn/widgets_conditions.php); the canvas decides with
+    // it what a state draws. tests/widget_condition_eval_test.php runs the
+    // vectors of tests/fixtures/widget_condition_vectors.json through both.
+
+    // White space as the server reads it (pg_sw_cond_plain()): a set written
+    // out, since JavaScript's \s is not PCRE's.
+    var SD_COND_WS = /[\t\n\x0B\f\r \u0085\u00A0\u1680\u180E\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+/g;
+
+    // Runs of white space as one space, none at either end.
+    function _sdCondPlain(s) {
+        return String(s == null ? '' : s).replace(SD_COND_WS, ' ').replace(/^ +| +$/g, '');
+    }
+
+    // What a visitor reads in a value: tags dropped, entities decoded
+    // (pg_sw_cond_text()).
+    function _sdCondText(html) {
+        var s = String(html == null ? '' : html).replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]*>/g, '');
+        if (s.indexOf('&') !== -1 && typeof document !== 'undefined') {
+            var ta = document.createElement('textarea');
+            ta.innerHTML = s;
+            s = ta.value;
+        }
+        return _sdCondPlain(s);
+    }
+
+    // Folded for comparison (pg_sw_cond_fold()): lower case, the dot of a
+    // capital İ dropped, the dotless ı read as i.
+    function _sdCondFold(s) {
+        return String(s).toLowerCase().replace(/\u0307/g, '').replace(/\u0131/g, 'i');
+    }
+
+    // Whether a figure is grouped as an amount (pg_sw_cond_figure_ok()).
+    function _sdCondFigureOk(figure) {
+        var parts = String(figure).split(/([., ])/);
+        var groups = [], seps = [];
+        parts.forEach(function (part, i) { (i % 2 ? seps : groups).push(part); });
+        var n = seps.length;
+        if (n === 0) return true;
+        var last = seps[n - 1];
+        if (last !== ' ' && seps.filter(function (s) { return s === last; }).length === 1) {
+            if (n === 1) return true;
+            seps.pop();
+            groups.pop();
+        }
+        if (seps.some(function (s) { return s !== seps[0]; }) || groups[0].length > 3) return false;
+        for (var i = 1; i < groups.length; i++) {
+            if (groups[i].length !== 3) return false;
+        }
+        return true;
+    }
+
+    // The number a figure stands for (pg_parse_amount() on digits and
+    // separators): one separator with three digits after it is the decimal
+    // point only when the site writes one so (`decimal`, its language).
+    function _sdCondFigureNumber(figure, decimal) {
+        var v = String(figure).replace(/ /g, '');
+        var dot = v.lastIndexOf('.'), comma = v.lastIndexOf(',');
+        var point = '';
+        if (dot !== -1 && comma !== -1) {
+            point = dot > comma ? '.' : ',';
+        } else if (dot !== -1 || comma !== -1) {
+            var sep = dot !== -1 ? '.' : ',';
+            if (v.split(sep).length === 2) {
+                point = (v.length - v.lastIndexOf(sep) - 1 === 3) ? (decimal === sep ? sep : '') : sep;
+            }
+        }
+        if (point === '') return parseFloat(v.replace(/[.,]/g, '')) || 0;
+        var at = v.lastIndexOf(point);
+        return parseFloat(v.slice(0, at).replace(/[.,]/g, '') + '.' + v.slice(at + 1).replace(/[.,]/g, '')) || 0;
+    }
+
+    // The amount a value shows, {number, units}, or null (pg_sw_cond_amount()).
+    function _sdCondAmount(s, decimal) {
+        s = _sdCondPlain(s);
+        if (s === '') return null;
+        var unit = '\\p{Sc}|[A-Z]{1,2}\\$|[A-Z]{3}|TL';
+        var m = new RegExp('^(-?) ?(?:(' + unit + ') ?)?([0-9]+(?:[., ][0-9]+)*) ?(' + unit + '|%)?$', 'u').exec(s);
+        if (!m || !_sdCondFigureOk(m[3])) return null;
+        var number = _sdCondFigureNumber(m[3], decimal);
+        var units = [];
+        if (m[2]) units.push(m[2]);
+        if (m[4]) units.push(m[4]);
+        return { number: m[1] === '-' ? -number : number, units: units };
+    }
+
+    // The number a value shows, or null (pg_sw_cond_number()).
+    function _sdCondNumber(s, decimal) {
+        var a = _sdCondAmount(s, decimal);
+        return a === null ? null : a.number;
+    }
+
+    // Whether eq and neq compare two amounts as numbers
+    // (pg_sw_cond_comparable()).
+    function _sdCondComparable(a, b) {
+        if (a === null || b === null) return false;
+        if (!a.units.length || !b.units.length) return true;
+        return a.units.some(function (u) { return b.units.indexOf(u) !== -1; });
+    }
+
+    // Whether a number is whole and exact (pg_sw_cond_is_whole()).
+    function _sdCondIsWhole(n) {
+        return typeof n === 'number' && isFinite(n) && Math.abs(n) < 9007199254740992 && Math.floor(n) === n;
+    }
+
+    // The test (pg_sw_cond_eval()). `decimal` is the site's decimal point;
+    // missing, the one software_money_format carries, else '.'.
+    function _sdCondEval(op, value, operand, decimal) {
+        if (decimal == null) {
+            decimal = (typeof software_money_format !== 'undefined' && software_money_format && software_money_format.decimal) || '.';
+        }
+        value = _sdCondPlain(value);
+        operand = _sdCondPlain(operand);
+        var a, b;
+        switch (String(op)) {
+            case 'not_empty':
+                return value !== '';
+            case 'empty':
+                return value === '';
+            case 'eq':
+            case 'neq':
+                a = _sdCondAmount(value, decimal);
+                b = _sdCondAmount(operand, decimal);
+                var same = _sdCondComparable(a, b)
+                    ? Math.abs(a.number - b.number) < 0.000001
+                    : _sdCondFold(value) === _sdCondFold(operand);
+                return op === 'eq' ? same : !same;
+            case 'contains':
+            case 'not_contains':
+                var found = operand === '' || _sdCondFold(value).indexOf(_sdCondFold(operand)) !== -1;
+                return op === 'contains' ? found : !found;
+            case 'starts':
+                var prefix = Array.from(_sdCondFold(operand));
+                return Array.from(_sdCondFold(value)).slice(0, prefix.length).join('') === prefix.join('');
+            case 'gt':
+            case 'gte':
+            case 'lt':
+            case 'lte':
+                a = _sdCondNumber(value, decimal);
+                b = _sdCondNumber(operand, decimal);
+                if (a === null || b === null) return false;
+                if (op === 'gt') return a > b;
+                if (op === 'gte') return a >= b;
+                if (op === 'lt') return a < b;
+                return a <= b;
+            case 'multiple_of':
+                a = _sdCondNumber(value, decimal);
+                b = _sdCondNumber(operand, decimal);
+                if (!_sdCondIsWhole(a) || !_sdCondIsWhole(b) || b <= 0) return false;
+                return a % b === 0;
+        }
+        return false;
+    }
+
     // Values of the record in an attribute ({{token}} in an Attributes
     // panel entry or a title): the attributes that never take one and the
     // tokens whose value is markup. Twins of pg_sw_attr_denied_names() and
@@ -37369,8 +37536,8 @@ const StyleDesigner = (function () {
 
     // The canvas chip of a node with a condition: "Only when: <value's
     // name> <operator> <compared text>", the three as numbered parts so a
-    // language can order them. The canvas does not evaluate it; the page
-    // and Preview do.
+    // language can order them. Whether the canvas draws the node is the
+    // state's (_sdCondCanvasShows()).
     function _sdCondSentence(node) {
         var b = (node && node.props && node.props._bindings) || {};
         if (!b.show_if) return '';
@@ -37382,6 +37549,130 @@ const StyleDesigner = (function () {
             entry ? entry[1] : String(params.op),
             value
         ]).replace(/\s+/g, ' ').trim();
+    }
+
+    // ── Canvas states of value conditions ────────────────────────────────
+    // A widget whose tree holds a value condition draws one state at a time,
+    // chosen on its band: its sample values, every value empty, or every
+    // element (as before W19). A code token's values are states of their own:
+    // the order view's status stages, so one status badge shows. The canvas
+    // tests each condition with _sdCondEval(), as the page does. Editor only.
+    var _sdCondCanvasState = 'sample';
+
+    // Tokens whose value is a code the canvas offers one state per value of
+    // (pg_sw_cond_code_tokens() that are a widget's, not a list row's).
+    function _sdCondCodeStates(token) {
+        if (token !== '__order_status_stage') return null;
+        var labels = { complete: _sdT('Completed'), pending: _sdT('Pending'), shipped: _sdT('Shipped'),
+                       cancelled: _sdT('Cancelled'), refunded: _sdT('Refunded'), 'default': _sdT('Other') };
+        return SD_OV_STATUS_STAGES.map(function (stage) { return [stage, labels[stage]]; });
+    }
+
+    // The tokens the value conditions of `tree` read.
+    function _sdCondTreeTokens(tree) {
+        var out = [];
+        (function walk(n) {
+            if (!n || typeof n !== 'object') return;
+            var t = n.props && n.props._bindings ? n.props._bindings.show_if : '';
+            if (t && typeof t === 'string' && out.indexOf(t) === -1) out.push(t);
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        })(tree);
+        return out;
+    }
+
+    // The states the band offers for `tree`, [[key, label]]: none without a
+    // condition; a code token's values (code:<token>:<value>) in place of
+    // the sample values; then every value empty and every element.
+    function _sdCondCanvasStates(tree) {
+        var tokens = _sdCondTreeTokens(tree);
+        if (!tokens.length) return [];
+        var states = [];
+        tokens.forEach(function (t) {
+            (_sdCondCodeStates(t) || []).forEach(function (s) { states.push(['code:' + t + ':' + s[0], s[1]]); });
+        });
+        if (!states.length) states.push(['sample', _sdT('Sample values')]);
+        states.push(['empty', _sdT('Empty values')]);
+        states.push(['all', _sdT('All elements')]);
+        return states;
+    }
+
+    // The state drawn for `tree`: the one chosen when the tree offers it,
+    // else its first.
+    function _sdCondStateOf(tree) {
+        var states = _sdCondCanvasStates(tree);
+        for (var i = 0; i < states.length; i++) {
+            if (states[i][0] === _sdCondCanvasState) return _sdCondCanvasState;
+        }
+        return states.length ? states[0][0] : 'all';
+    }
+
+    // The value `token` reads in `state` for `node`: empty in the empty
+    // state; a code token its state's value (the first one otherwise); a
+    // flag set; else the text the canvas previews for it.
+    function _sdCondCanvasValue(token, node, state) {
+        if (state === 'empty') return '';
+        var codes = _sdCondCodeStates(token);
+        if (codes) {
+            var prefix = 'code:' + token + ':';
+            return state.indexOf(prefix) === 0 ? state.slice(prefix.length) : codes[0][0];
+        }
+        if (_SD_FLAG_TOKENS[token]) return '1';
+        var v = _displayValueForBinding('text', token, node);
+        return _sdCondText(typeof v === 'function' ? v() : v);
+    }
+
+    // Whether the canvas draws `node` in `state` by its own condition. An
+    // invalid condition draws nothing, as on the page (pg_sw_cond_spec());
+    // one on a required control is ignored there, and here.
+    function _sdCondCanvasShows(node, state) {
+        var b = node && node.props && node.props._bindings;
+        if (!b || !b.show_if || state === 'all') return true;
+        if (_sdCondHoldsRequired(node)) return true;
+        var token = String(b.show_if).replace(/[^a-z0-9_\-]/gi, '');
+        if (!token || !_sdCondTokenAllowed(token)) return false;
+        var params = (node.props._bindParams && node.props._bindParams.show_if) || {};
+        var entry = _sdCondOp(params.op || 'not_empty');
+        if (!entry) return false;
+        var operand = entry[2] ? String(params.value == null ? '' : params.value).trim() : '';
+        if (entry[2] && operand === '') return false;
+        return _sdCondEval(entry[0], _sdCondCanvasValue(token, node, state), operand);
+    }
+
+    // The state that draws `target` of `root`'s tree: the one drawn when it
+    // does, else the first that does, else every element. A node outside
+    // the tree keeps the state.
+    function _sdCondStateFor(root, target) {
+        var current = _sdCondStateOf(root);
+        var path = null;
+        (function walk(n, trail) {
+            if (path || !n) return;
+            var here = trail.concat([n]);
+            if (n === target) { path = here; return; }
+            if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, here); });
+        })(root, []);
+        if (!path) return current;
+        var shows = function (state) { return path.every(function (n) { return _sdCondCanvasShows(n, state); }); };
+        if (shows(current)) return current;
+        var states = _sdCondCanvasStates(root);
+        for (var i = 0; i < states.length; i++) {
+            if (shows(states[i][0])) return states[i][0];
+        }
+        return 'all';
+    }
+
+    // Switch the state the canvas draws. A selection the new state hides
+    // moves up to the widget (refNode), or the next render would switch back.
+    function _sdSetCondCanvasState(state, refNode) {
+        _sdCondCanvasState = state;
+        if (refNode && selectedNode && selectedNode !== refNode) {
+            var sid = parseInt(refNode.props && refNode.props.sharedId, 10) || 0;
+            var cached = sid ? _sharedCache[sid] : null;
+            if (cached && cached.tree && _sdCondStateFor(cached.tree, selectedNode) !== _sdCondStateOf(cached.tree)) {
+                selectedNode = refNode;
+                selectedNodes = [];
+            }
+        }
+        render();
     }
 
     // The "Show only when a value…" row of Bind Data, on any element of a
@@ -37475,6 +37766,20 @@ const StyleDesigner = (function () {
         ['__order_refunded_amount',      _sdT('Refunded amount (with symbol)')],
         ['__order_refunded_date',        _sdT('Refund date')],
         ['__order_is_tax_exempt',        _sdT('Is tax exempt'), 'cond']
+    ];
+
+    // An order line's allow-listed values (pg_sw_entity_fields('order_line')),
+    // offered by the order view's item loop beside the line's product values.
+    var SW_ORDER_LINE_ENTITY_TOKENS = [
+        ['__item_shipped_qty',         _sdT('Quantity shipped (when the shop shows it)')],
+        ['__item_vat',                 _sdT('Line VAT (with symbol)')],
+        ['__item_payment_period',      _sdT('Subscription payment period')],
+        ['__item_payment_count',       _sdT('Subscription number of payments')],
+        ['__item_first_payment_date',  _sdT('First payment date (subscriptions)')],
+        ['__item_event_name',          _sdT('Reserved event name')],
+        ['__item_event_date',          _sdT('Reserved event date and time')],
+        ['__item_added_by_offer',      _sdT('Added by an offer'), 'cond'],
+        ['__item_discounted_by_offer', _sdT('Discounted by an offer'), 'cond']
     ];
 
     // An account's allow-listed values (pg_sw_entity_fields('account')),
@@ -38655,6 +38960,8 @@ const StyleDesigner = (function () {
             ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
         { label: _sdT('More order details'), tokens: SW_ORDER_ENTITY_TOKENS },
+        { label: _sdT('More item details (loop)'), tokens: SW_ORDER_LINE_ENTITY_TOKENS },
+        { label: _sdT('Item\'s product details (loop)'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
             ['__item_name',              _sdT('Product name (products.name)')],
@@ -59299,6 +59606,7 @@ const StyleDesigner = (function () {
     // linked, and the widget's settings stay as they are.
     var _sdLgState = null;   // { sid, original: json, label, key } while a layout is tried
     var _sdLgSite  = {};     // sid → { kind, loading, items: [{ id, name, tree }] }
+    var _sdLgTpl   = {};     // sid → { kind, loading, items: [{ key, label, tree }] }
     var _sdLgDrawing = false; // the gallery's own redraw is not an edit
 
     function _sdLgApi(body, cb) {
@@ -59412,7 +59720,10 @@ const StyleDesigner = (function () {
     // one equal to the widget's own, and each distinct layout once.
     function _sdLgSiteItems(sid, kind) {
         var entry = _sdLgSite[sid];
-        if (!entry || entry.kind !== kind) return [];
+        return (entry && entry.kind === kind) ? _sdLgFit(sid, kind, entry.items) : [];
+    }
+
+    function _sdLgFit(sid, kind, items) {
         var cur = _sharedCache[sid] && _sharedCache[sid].tree;
         if (_sdLgState && _sdLgState.sid === sid) {
             try { cur = JSON.parse(_sdLgState.original); } catch (e) {}
@@ -59420,12 +59731,54 @@ const StyleDesigner = (function () {
         var seen = {};
         if (cur) seen[_sdSharedTreeJSON(_sdLgStrip(cur))] = true;
         var mineNames = (kind === 'custom_form' && cur) ? _sdLgNames(_cfControls(cur)) : null;
-        return entry.items.filter(function (it) {
+        return items.filter(function (it) {
             if (mineNames !== null && _sdLgNames(_cfControls(it.tree)) !== mineNames) return false;
             var key = _sdSharedTreeJSON(_sdLgStrip(it.tree));
             if (seen[key]) return false;
             seen[key] = true;
             return true;
+        });
+    }
+
+    // The design's template, when it was made from one: the saved row's,
+    // else the one being opened.
+    function _sdLgTemplateId() {
+        var el = document.querySelector('[name="style_template"]');
+        var v = el ? String(el.value || '') : '';
+        if (!v && _design && _design.template && typeof _design.template.id === 'string') v = _design.template.id;
+        return v;
+    }
+
+    // The layouts the design's template ships for this kind
+    // (pg_sw_template_layouts()), once per widget. A form view keeps only
+    // those made for a form with the same field names as this one's.
+    function _sdLgLoadTemplate(sid, kind, tplId) {
+        var have = _sdLgTpl[sid];
+        if (have && have.kind === kind) return;
+        var entry = _sdLgTpl[sid] = { kind: kind, loading: true, items: [] };
+        var done = function () {
+            entry.loading = false;
+            if (_sdLgTpl[sid] !== entry || typeof renderProperties !== 'function') return;
+            _sdLgDrawing = true;
+            try { renderProperties(); } finally { _sdLgDrawing = false; }
+        };
+        var styleId = (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0;
+        _sdLgApi({ action: 'shared_component', sub_action: 'template_layouts', kind: kind,
+                   style_id: styleId, template: tplId }, function (resp) {
+            var cfg = _sdLgCfg(sid);
+            ((resp && resp.layouts) || []).forEach(function (l) {
+                var t = l && l.tree ? _sdLgPrepare(JSON.stringify(l.tree), kind, cfg) : null;
+                if (!t || _isDefaultEmptyTree(t)) return;
+                entry.items.push({ key: String(l.key), label: String(l.label || l.key), tree: t,
+                                   fields: Array.isArray(l.fields) ? _sdLgNames(l.fields.map(function (n) { return { name: n }; })) : null });
+            });
+            if (kind !== 'form_list_view' && kind !== 'form_item_view') { done(); return; }
+            var fid = _sdLgFormId(cfg);
+            _fetchFormFields(fid, function () {
+                var mine = fid ? _sdLgNames(_formFieldsCache[fid]) : null;
+                entry.items = entry.items.filter(function (it) { return mine !== null && it.fields === mine; });
+                done();
+            });
         });
     }
 
@@ -59451,7 +59804,25 @@ const StyleDesigner = (function () {
         var head = function (text) {
             return '<div class="text-uppercase text-muted mt-2 mb-1" style="font-size:.62rem;letter-spacing:.04em">' + esc(text) + '</div>';
         };
+        var muted = function (text) {
+            return '<div class="text-muted py-1" style="font-size:.72rem">' + esc(text) + '</div>';
+        };
         var h = head(_sdT('Default')) + rowHtml('default', _sdT('Default layout'), 'bi-stars');
+        // Only the template this design was made from: its layouts carry
+        // that template's styles.
+        var tplId = _sdLgTemplateId();
+        if (tplId) {
+            _sdLgLoadTemplate(sid, kind, tplId);
+            h += head(_sdT('From the template'));
+            var tEntry = _sdLgTpl[sid];
+            if (!tEntry || tEntry.loading) {
+                h += muted(_sdT('Loading…'));
+            } else {
+                var tItems = _sdLgFit(sid, kind, tEntry.items);
+                if (!tItems.length) h += muted(_sdT('The design\'s template has no layout for this widget that fits here.'));
+                tItems.forEach(function (it) { h += rowHtml('tpl:' + it.key, it.label, 'bi-grid-1x2'); });
+            }
+        }
         h += head(_sdT('On this site'));
         var entry = _sdLgSite[sid];
         if (!entry || entry.loading) {
@@ -59528,6 +59899,13 @@ const StyleDesigner = (function () {
             var t = _buildStarterTree(cfg.regionType || kind);
             if (!t) { sdToast(_sdT('There is no default layout for this widget type.'), 'warning'); return; }
             _sdLgShow(sid, key, label, t);
+            return;
+        }
+        if (String(key).indexOf('tpl:') === 0) {
+            var tk = String(key).slice(4);
+            var te = _sdLgTpl[sid];
+            var ti = te ? _sdLgFit(sid, kind, te.items).filter(function (x) { return x.key === tk; })[0] : null;
+            if (ti) _sdLgShow(sid, key, ti.label, JSON.parse(JSON.stringify(ti.tree)));
             return;
         }
         var id = parseInt(String(key).replace('site:', ''), 10);

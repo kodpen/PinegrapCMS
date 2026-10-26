@@ -9,7 +9,7 @@ description: The Bind Data row "Show only when a value…" (#1665): token, opera
 - A new value redraws the panel; the operator and the compared text change in place (one undo step per choice and per word typed).
 
 ## What does the canvas show?
-- A chip at the element's top left: "Only when: <value> <operator> <compared text>" (`_sdCondSentence()`, three numbered parts so Turkish orders them `{var:1} {var:3} {var:2}`). It names the condition; Preview and the page evaluate it. Hidden on `.sd-fx-flat` wrappers and while the element's text is edited.
+- A chip at the element's top left: "Only when: <value> <operator> <compared text>" (`_sdCondSentence()`, three numbered parts so Turkish orders them `{var:1} {var:3} {var:2}`). It names the condition; whether the canvas draws the element is the band's state ([[widget-condition-canvas]]). Hidden on `.sd-fx-flat` wrappers and while the element's text is edited.
 
 ## Which lists must match the server?
 - `SW_COND_OPS` = `pg_sw_cond_ops()` (order and "takes a value"); `SW_COND_DENY` = `pg_sw_cond_denied_tokens()`; `_sdCondTokenAllowed()` = `pg_sw_cond_token_allowed()`. `tests/widget_condition_panel_test.php` checks all three.

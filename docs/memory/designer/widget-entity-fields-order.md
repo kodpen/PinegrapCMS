@@ -1,6 +1,6 @@
 ---
 name: widget-entity-fields-order
-description: W8 order values in the order view and its receipt e-mail: the tokens, who sees them, where the custom field labels come from, the refund words, the one extra query.
+description: W8 order and order line values in the order view and its receipt e-mail: the tokens, who sees them, custom field labels, refund words, the line's product values, the queries.
 ---
 
 ## Which order values does the order view offer?
@@ -17,3 +17,8 @@ description: W8 order values in the order view and its receipt e-mail: the token
 ## What does the refund status say?
 - `refunded`: "Refunded"; `pending`, `failed`, `manual_required`: "Refund in progress", as the cancellation e-mail tells the customer (a failed refund is the shop's to fix). `__order_refunded_amount` also counts what returns gave back.
 - Tax exemption reads yes only where tax and tax exemption are switched on, as on the classic receipt.
+
+## Which order line values does the item loop offer?
+- `__item_shipped_qty` (only where the line shows its shipped quantity; `0` shows), `__item_vat` (`order_items.tax_total`, empty on a database without it), `__item_payment_period` (words), `__item_payment_count`, `__item_first_payment_date` (subscriptions only), `__item_event_name`, `__item_event_date` (the reserved event, as the classic receipt prints it, through `get_calendar_event()`); yes/no `__item_added_by_offer`, `__item_discounted_by_offer`. Editor groups "More item details (loop)" (`SW_ORDER_LINE_ENTITY_TOKENS`) and "Item's product details (loop)" (the product's list, `SW_PRODUCT_ENTITY_TOKENS`).
+- Read by the item query itself (`pg_sw_entity_select('order_line', 'oi')`, `('product', 'p')`) only when the tree names one; kept raw in `$items[...]['entity']`, escaped in the loop, and carried by the `order.items` list rows too. No line token begins with an older `__item_` token.
+- Not done: the `order.items` list's token palette does not name them yet (a Custom binding fills).

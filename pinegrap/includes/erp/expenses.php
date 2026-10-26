@@ -519,19 +519,18 @@ function erp_expense_till_row_refusal($till, $currency)
 }
 
 /**
- * Write the payment of an expense: the movement out of the till and the
- * expense's paid fields. Runs inside the caller's transaction.
+ * Why an expense cannot be paid this way, or '': the payment method, the
+ * period lock on the day, a day before the expense or after today, and the
+ * till.
  *
- * @param array $expense  erp_expenses row (id, currency, exchange_rate, ...)
+ * @param array $expense  expense_date, currency
  * @param array $payment  cash_account_id, paid_date, payment_method
- * @param int   $user_id
- * @return string  Why it failed, or ''
+ * @return string
  */
-function erp_expense_post_payment($expense, $payment, $user_id)
+function erp_expense_payment_refusal($expense, $payment)
 {
     $paid_date = (string) ($payment['paid_date'] ?? date('Y-m-d'));
     $method = (string) ($payment['payment_method'] ?? 'cash');
-    $cash_account_id = (int) ($payment['cash_account_id'] ?? 0);
 
     if (!in_array($method, erp_cash_payment_methods(), true)) {
         return lang('Choose a payment method.');
@@ -549,7 +548,27 @@ function erp_expense_post_payment($expense, $payment, $user_id)
         return lang('The payment cannot be dated before the expense.');
     }
 
-    if (($refusal = erp_expense_till_refusal($cash_account_id, (string) $expense['currency'])) !== '') {
+    return erp_expense_till_refusal((int) ($payment['cash_account_id'] ?? 0), (string) $expense['currency']);
+}
+
+/**
+ * Write the payment of an expense: the movement out of the till and the
+ * expense's paid fields. Runs inside the caller's transaction.
+ *
+ * @param array $expense  erp_expenses row (id, currency, exchange_rate, ...)
+ * @param array $payment  cash_account_id, paid_date, payment_method
+ * @param int   $user_id
+ * @return string  Why it failed, or ''
+ */
+function erp_expense_post_payment($expense, $payment, $user_id)
+{
+    $paid_date = (string) ($payment['paid_date'] ?? date('Y-m-d'));
+    $method = (string) ($payment['payment_method'] ?? 'cash');
+    $cash_account_id = (int) ($payment['cash_account_id'] ?? 0);
+
+    // Asked again under the row lock: the lock date or the till may have
+    // changed since the caller's check.
+    if (($refusal = erp_expense_payment_refusal($expense, $payment)) !== '') {
         return $refusal;
     }
 
@@ -602,27 +621,19 @@ function erp_expense_post_payment($expense, $payment, $user_id)
 }
 
 /**
- * Record an expense, or change one.
+ * Why an expense cannot be recorded or changed as given, with what would be
+ * written: every check erp_expense_save() makes before its transaction, the
+ * payment of one paid on the spot included.
  *
- * A paid expense keeps its figures and date, which are what left the till;
- * what it is (category, supplier, receipt number, words, whether its VAT is
- * taken back) can still be corrected. Nothing dated in a locked period is
- * written or changed.
- *
- * @param array $data     expense_date, category_id, supplier, supplier_tax_number,
- *                        document_no, description, currency, exchange_rate,
- *                        exchange_rate_date, exchange_rate_source, amount (kurus),
- *                        includes_tax (bool), tax_rate, tax_amount (kurus or null),
- *                        tax_deductible (bool), due_date; to pay it now:
- *                        pay (bool), cash_account_id, payment_method, paid_date
- * @param int   $user_id
- * @param int   $id       0 to record a new one
- * @return array ['success' => bool, 'id' => int, 'error' => string, 'field' => string]
+ * @param array $data  As for erp_expense_save()
+ * @param int   $id    0 for a new one
+ * @return array ['error' => string, 'field' => string, 'existing' => array|null,
+ *                'columns' => array, 'pay' => bool]
  */
-function erp_expense_save($data, $user_id = 0, $id = 0)
+function erp_expense_save_check($data, $id = 0)
 {
     $fail = function ($message, $field = '') {
-        return array('success' => false, 'id' => 0, 'error' => $message, 'field' => $field);
+        return array('error' => $message, 'field' => $field, 'existing' => null, 'columns' => array(), 'pay' => false);
     };
 
     if (!erp_expenses_ready()) {
@@ -738,9 +749,77 @@ function erp_expense_save($data, $user_id = 0, $id = 0)
 
     $pay = !$paid && !empty($data['pay']);
 
-    if ($pay && ((int) ($data['cash_account_id'] ?? 0) <= 0)) {
-        return $fail(lang('Choose a till or bank account.'), 'cash_account_id');
+    if ($pay) {
+        if ((int) ($data['cash_account_id'] ?? 0) <= 0) {
+            return $fail(lang('Choose a till or bank account.'), 'cash_account_id');
+        }
+
+        $refusal = erp_expense_payment_refusal(array(
+            'expense_date' => $columns['expense_date'],
+            'currency' => $columns['currency'],
+        ), erp_expense_save_payment($data, $columns['expense_date']));
+
+        if ($refusal !== '') {
+            return $fail($refusal, 'cash_account_id');
+        }
     }
+
+    return array('error' => '', 'field' => '', 'existing' => $existing, 'columns' => $columns, 'pay' => $pay);
+}
+
+/**
+ * The payment a save that pays on the spot makes: the expense date when no
+ * paid_date is given.
+ *
+ * @param array  $data          As for erp_expense_save()
+ * @param string $expense_date
+ * @return array  cash_account_id, payment_method, paid_date
+ */
+function erp_expense_save_payment($data, $expense_date)
+{
+    $paid_date = (string) ($data['paid_date'] ?? '');
+
+    return array(
+        'cash_account_id' => (int) ($data['cash_account_id'] ?? 0),
+        'payment_method' => (string) ($data['payment_method'] ?? 'cash'),
+        'paid_date' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $paid_date) ? $paid_date : (string) $expense_date,
+    );
+}
+
+/**
+ * Record an expense, or change one.
+ *
+ * A paid expense keeps its figures and date, which are what left the till;
+ * what it is (category, supplier, receipt number, words, whether its VAT is
+ * taken back) can still be corrected. Nothing dated in a locked period is
+ * written or changed.
+ *
+ * @param array $data     expense_date, category_id, supplier, supplier_tax_number,
+ *                        document_no, description, currency, exchange_rate,
+ *                        exchange_rate_date, exchange_rate_source, amount (kurus),
+ *                        includes_tax (bool), tax_rate, tax_amount (kurus or null),
+ *                        tax_deductible (bool), due_date; to pay it now:
+ *                        pay (bool), cash_account_id, payment_method, paid_date
+ * @param int   $user_id
+ * @param int   $id       0 to record a new one
+ * @return array ['success' => bool, 'id' => int, 'error' => string, 'field' => string]
+ */
+function erp_expense_save($data, $user_id = 0, $id = 0)
+{
+    $fail = function ($message, $field = '') {
+        return array('success' => false, 'id' => 0, 'error' => $message, 'field' => $field);
+    };
+
+    $checked = erp_expense_save_check($data, $id);
+
+    if ($checked['error'] !== '') {
+        return $fail($checked['error'], $checked['field']);
+    }
+
+    $id = (int) $id;
+    $existing = $checked['existing'];
+    $columns = $checked['columns'];
+    $pay = $checked['pay'];
 
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
@@ -773,13 +852,8 @@ function erp_expense_save($data, $user_id = 0, $id = 0)
 
     if ($pay) {
         $expense = db_item("SELECT * FROM erp_expenses WHERE id = '" . $id . "' LIMIT 1 FOR UPDATE");
-        $paid_date = (string) ($data['paid_date'] ?? '');
 
-        $error = erp_expense_post_payment($expense, array(
-            'cash_account_id' => (int) $data['cash_account_id'],
-            'payment_method' => (string) ($data['payment_method'] ?? 'cash'),
-            'paid_date' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $paid_date) ? $paid_date : (string) $expense['expense_date'],
-        ), $user_id);
+        $error = erp_expense_post_payment($expense, erp_expense_save_payment($data, (string) $expense['expense_date']), $user_id);
 
         if ($error !== '') {
             erp_tx_rollback();
@@ -806,6 +880,30 @@ function erp_expense_save($data, $user_id = 0, $id = 0)
 }
 
 /**
+ * Why an expense cannot be paid this way, or '': it must be waiting to be
+ * paid, and erp_expense_payment_refusal() must take the payment.
+ *
+ * @param int   $id
+ * @param array $payment  cash_account_id, paid_date, payment_method
+ * @return array ['error' => string, 'expense' => array|null]
+ */
+function erp_expense_pay_check($id, $payment)
+{
+    $expense = erp_expense((int) $id);
+
+    if ($expense === null) {
+        return array('error' => lang('The expense could not be found.'), 'expense' => null);
+    }
+    if ((string) $expense['status'] !== 'unpaid') {
+        return array('error' => lang('That expense is not waiting to be paid.'), 'expense' => null);
+    }
+
+    $refusal = erp_expense_payment_refusal($expense, $payment);
+
+    return array('error' => $refusal, 'expense' => ($refusal === '') ? $expense : null);
+}
+
+/**
  * Pay an expense that was left to pay later.
  *
  * @param int   $id
@@ -815,10 +913,17 @@ function erp_expense_save($data, $user_id = 0, $id = 0)
  */
 function erp_expense_pay($id, $payment, $user_id = 0)
 {
+    $checked = erp_expense_pay_check($id, $payment);
+
+    if ($checked['error'] !== '') {
+        return array('success' => false, 'error' => $checked['error']);
+    }
+
     if (!erp_tx_begin()) {
         return array('success' => false, 'error' => lang('Could not start a database transaction.'));
     }
 
+    // Read again under the lock: another payment may have come in since.
     $expense = db_item("SELECT * FROM erp_expenses WHERE id = '" . (int) $id . "' LIMIT 1 FOR UPDATE");
 
     if (!is_array($expense) || ((string) $expense['status'] !== 'unpaid')) {
@@ -844,6 +949,54 @@ function erp_expense_pay($id, $payment, $user_id = 0)
 }
 
 /**
+ * Why an expense cannot be cancelled, or '': the reason, the expense not
+ * cancelled already, and neither it nor the payment of a paid one in a
+ * locked period.
+ *
+ * @param int    $id
+ * @param string $reason
+ * @return array ['error' => string, 'expense' => array|null, 'movement' => array|null]
+ *               movement: the payment's till movement, for a paid expense
+ */
+function erp_expense_cancel_check($id, $reason)
+{
+    $refuse = function ($message) {
+        return array('error' => $message, 'expense' => null, 'movement' => null);
+    };
+
+    if (trim((string) $reason) === '') {
+        return $refuse(lang('The reason is required.'));
+    }
+
+    $expense = erp_expense((int) $id);
+
+    if ($expense === null) {
+        return $refuse(lang('The expense could not be found.'));
+    }
+    if ((string) $expense['status'] === 'cancelled') {
+        return $refuse(lang('That expense has already been cancelled.'));
+    }
+    if (($refusal = erp_lock_refusal((string) $expense['expense_date'])) !== '') {
+        return $refuse($refusal);
+    }
+
+    $movement = null;
+
+    if ((string) $expense['status'] === 'paid') {
+        $movement = db_item("SELECT * FROM erp_cash_transactions WHERE id = '" . (int) $expense['cash_id'] . "' LIMIT 1");
+
+        if (!is_array($movement)) {
+            return $refuse(lang('The payment of this expense could not be found.'));
+        }
+        if (($refusal = erp_lock_refusal((string) $movement['doc_date'])) !== '') {
+            return $refuse($refusal);
+        }
+    }
+
+    return array('error' => '', 'expense' => $expense, 'movement' => $movement);
+}
+
+/**
  * Cancel an expense. A paid one gets its money back into the till with a
  * reversal dated today; neither the expense nor its payment may sit in a
  * locked period.
@@ -856,9 +1009,10 @@ function erp_expense_pay($id, $payment, $user_id = 0)
 function erp_expense_cancel($id, $reason, $user_id = 0)
 {
     $reason = trim((string) $reason);
+    $checked = erp_expense_cancel_check($id, $reason);
 
-    if ($reason === '') {
-        return array('success' => false, 'error' => lang('The reason is required.'));
+    if ($checked['error'] !== '') {
+        return array('success' => false, 'error' => $checked['error']);
     }
 
     if (!erp_tx_begin()) {
@@ -870,6 +1024,8 @@ function erp_expense_cancel($id, $reason, $user_id = 0)
         return array('success' => false, 'error' => $message);
     };
 
+    // Read again under the lock: an expense paid or cancelled since the
+    // check is not cancelled on what the check saw.
     $expense = db_item("SELECT * FROM erp_expenses WHERE id = '" . (int) $id . "' LIMIT 1 FOR UPDATE");
 
     if (!is_array($expense)) {
@@ -878,19 +1034,12 @@ function erp_expense_cancel($id, $reason, $user_id = 0)
     if ((string) $expense['status'] === 'cancelled') {
         return $fail(lang('That expense has already been cancelled.'));
     }
-    if (($refusal = erp_lock_refusal((string) $expense['expense_date'])) !== '') {
-        return $fail($refusal);
+    if ((string) $expense['status'] !== (string) $checked['expense']['status']) {
+        return $fail(lang('The expense could not be cancelled.'));
     }
 
     if ((string) $expense['status'] === 'paid') {
-        $movement = db_item("SELECT * FROM erp_cash_transactions WHERE id = '" . (int) $expense['cash_id'] . "' LIMIT 1");
-
-        if (!is_array($movement)) {
-            return $fail(lang('The payment of this expense could not be found.'));
-        }
-        if (($refusal = erp_lock_refusal((string) $movement['doc_date'])) !== '') {
-            return $fail($refusal);
-        }
+        $movement = $checked['movement'];
 
         $reversal = erp_cash_post(array(
             'cash_account_id' => (int) $movement['cash_account_id'],
@@ -1034,8 +1183,41 @@ function erp_expense_receipt_refusal($expense)
  */
 function erp_expense_keep_receipt($id, $bytes, $user_id = 0, $replace = false)
 {
+    $checked = erp_expense_receipt_check($id, $bytes, $replace);
+
+    if ($checked['error'] !== '') {
+        return array('success' => false, 'error' => $checked['error'], 'replaced' => false, 'code' => $checked['code']);
+    }
+
+    $expense = $checked['expense'];
+    $existing = $checked['existing'];
+    $bytes = (string) $bytes;
+
+    $label = ((string) $expense['document_no'] !== '') ? (string) $expense['document_no'] : ('G' . (int) $id);
+    $kept = erp_archive_store('expense', (int) $id, $bytes, $label, $checked['extension'], (int) $user_id, $existing !== null);
+
+    if (($kept === null) || (($existing !== null) && ((int) $kept['id'] === (int) $existing['id']))) {
+        return array('success' => false, 'error' => lang('The file could not be kept.'), 'replaced' => false, 'code' => 'disk');
+    }
+
+    return array('success' => true, 'error' => '', 'replaced' => ($existing !== null), 'code' => '');
+}
+
+/**
+ * Why a receipt file cannot be kept with an expense, or '': everything
+ * erp_expense_keep_receipt() asks before the file reaches the disk.
+ *
+ * @param int    $id
+ * @param string $bytes
+ * @param bool   $replace  Take this file in place of the one kept
+ * @return array ['error' => string, 'code' => string, 'expense' => array|null,
+ *                'existing' => array|null, 'extension' => string]
+ *               code as for erp_expense_keep_receipt()
+ */
+function erp_expense_receipt_check($id, $bytes, $replace = false)
+{
     $fail = function ($message, $code) {
-        return array('success' => false, 'error' => $message, 'replaced' => false, 'code' => $code);
+        return array('error' => $message, 'code' => $code, 'expense' => null, 'existing' => null, 'extension' => '');
     };
 
     $expense = erp_expense($id);
@@ -1070,14 +1252,7 @@ function erp_expense_keep_receipt($id, $bytes, $user_id = 0, $replace = false)
         return $fail(lang('Choose a picture (JPG, PNG, WEBP) or a PDF of the receipt.'), 'invalid');
     }
 
-    $label = ((string) $expense['document_no'] !== '') ? (string) $expense['document_no'] : ('G' . (int) $id);
-    $kept = erp_archive_store('expense', (int) $id, $bytes, $label, $extension, (int) $user_id, $existing !== null);
-
-    if (($kept === null) || (($existing !== null) && ((int) $kept['id'] === (int) $existing['id']))) {
-        return $fail(lang('The file could not be kept.'), 'disk');
-    }
-
-    return array('success' => true, 'error' => '', 'replaced' => ($existing !== null), 'code' => '');
+    return array('error' => '', 'code' => '', 'expense' => $expense, 'existing' => $existing, 'extension' => $extension);
 }
 
 /**

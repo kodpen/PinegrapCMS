@@ -1,0 +1,29 @@
+---
+name: storefront-bundles-hooks
+description: Bundles design note, part 2: hook points checked in the code, steps, owner questions
+---
+
+## Where does a bundle hook in? (git grep, 2026-10-26)
+- Cart: `add_order_item()` and `check_inventory()` (`includes/fn/ecommerce.php`) need nothing for the line itself; `check_inventory()` and `submit_order.php` add the demand of a bundle and of the same component bought alone, so a cart cannot sell one component twice.
+- Sale: the stock loop of `submit_order.php` (after the order is saved) and `local_sale_complete()` (`includes/local_sale.php`) take a bundle line off its components (fresh read, `$stock_left`, `pg_product_stock_changed()` per component), write `order_item_components`, then refresh the bundle. `mp_order_take_stock()` (`includes/api/outbound/orders.php`) the same; its refund restock at line ~551 puts components back.
+- `inventory.changed`: `pg_product_stock_changed()` announces per component; `pg_stock_notify_heard()` (`includes/fn/stock_notify.php`) hears the bundle's own one from the refresh, unchanged.
+- ERP: `erp_order_lines()` (`includes/erp/order_bridge.php`) keeps one line; the bridge copies `order_item_components` into `erp_invoice_item_components`. `erp_stock_post_invoice()` (`includes/erp/stock.php`) expands a bundle line into one move per component (line net split by component cost); `erp_stock_post_return()` and `erp_stock_post_cancel()` follow the moves by `reverses_id`; `erp_stock_apply_pending()` unchanged. A manual sales invoice of a bundle snapshots `product_bundle_items` and counts as today.
+- API: `api_product_present()` / `api_product_extras()` (`includes/api/resources/products.php`) add the bundle fields and `bundle_items` (batch read); `api_inventory_apply()` (`includes/api/resources/inventory.php`) refuses a bundle id; `includes/api/schema.php`.
+- Catalog widget: the token rows of `_render_system_widget_catalog_listing()` and `_render_system_widget_catalog_item_view()` (`includes/fn/widgets_catalog.php`) get `__is_bundle`, `__bundle_saving_formatted`; contents as a list source in `includes/fn/widgets_lists_product.php`. `get_catalog.php` unchanged.
+- Designer binding: catalog token palette and `SW_VISIBILITY_FLAGS` in `assets/js/style_designer.js` (`_sdT()`), `check_bindings.php`.
+- Product screen: a contents card (`edit_product.php`, `product_builder.php`); `pg_pb_delete_product()` refuses a component.
+- Feeds: `pg_product_feed_availability()` reads the cached stock.
+
+## How is the work cut? (about 1,000 product lines each)
+1. Schema step, `includes/fn/bundles.php` (readiness probe, contents read/write, pure `pg_bundle_stock()` / `pg_bundle_price()`, tested), refresh from the two stock hooks and the import, product screen card. No storefront change.
+2. Sale paths: checkout, local sale, marketplace import and restock, combined demand in `check_inventory()`, `order_item_components`, refusals in the inventory API, barcode and stock count.
+3. ERP: component snapshot on invoice lines, the `erp_stock_moves` key, component moves on post, return and cancel, profit report check.
+4. API fields, catalog tokens, list source, designer palette and flags.
+
+## Questions for the owner (Turkish)
+1. Paket stoku bileşenlerden hesaplanıp `products.inventory_quantity` alanına önbellek olarak yazılsın mı? Öneri: evet; vitrin, sepet, pazaryeri, feed ve API değişmeden çalışır.
+2. Paket içinde paket ve "paket içinde renk seçimi" olsun mu? Öneri: hayır; bileşen sabit bir ürün satırıdır, ilk sürüm basit kalır.
+3. Bileşen silinmek istenirse ne olsun? Öneri: paketten çıkarılana kadar silme reddedilsin.
+4. Faturada paket tek satır mı olsun? Öneri: evet, tek satır ve paketin KDV oranı; döküm yalnız stok hareketi ve maliyette.
+5. `erp_stock_moves` benzersiz anahtarının `(kind, line_id, product_id)` olarak değişmesine ve yeni tablolara onay var mı? Öneri: evet; mevcut satırlar zaten benzersiz kalır.
+6. Paket pazaryerine listelensin mi? Öneri: ilk sürümde hayır, sonra ayrı adım.

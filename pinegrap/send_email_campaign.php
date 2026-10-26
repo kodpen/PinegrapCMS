@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
 
 $user = validate_user();
 validate_email_access($user);
@@ -137,6 +138,15 @@ if (mysqli_num_rows($result) > 0) {
             db("DELETE FROM email_recipients WHERE id = '" . $email_recipient['id'] . "'");
 
             // Skip to the next recipient.
+            continue;
+        }
+
+        // An address İYS holds a refusal for gets no commercial mail while
+        // İYS is on for e-mail (includes/iys/client.php).
+        if (($purpose == 'commercial') and pg_iys_email_refused($email_recipient['email_address'])) {
+
+            db("DELETE FROM email_recipients WHERE id = '" . $email_recipient['id'] . "'");
+
             continue;
         }
 

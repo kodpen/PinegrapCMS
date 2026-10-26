@@ -258,6 +258,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - user-styles-card-edits.md: How the Styles panel's User Styles cards read and edit the User Styles text (assets/js/pg_user_styles.js): which rules are listed, edits in place, Create as one undo step
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
 - widget-attr-bindings.md: A widget record's values in an element's attributes ({{token}} in the Attributes panel or a title): placeholder and carrier, the pass stage, refused attributes and tokens, editor completion (W15)
+- widget-condition-canvas.md: The canvas state preview of value conditions (W19, #1904): band chips, states, which value a token reads, picking a hidden node, the _sdCondEval twin of pg_sw_cond_eval
 - widget-condition-panel.md: The Bind Data row "Show only when a value…" (#1665): token, operator, compared text, the canvas chip, the twin lists, no condition on a required control, the compared text translated.
 - widget-conditions.md: Value conditions on system widget nodes (show_if): operators, how a value reads as text or a number, refused tokens, tree checks, fail closed (#1592).
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
@@ -267,13 +268,13 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-designability-decisions.md: The owner's 2026-10-26 answers for widget designability: W16 old blocks equal in look and behaviour (not bytes), W5 gallery sources, W8 entity fields (who sees what, secrets, yes/no, words).
 - widget-edit-chip-coverage.md: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and which renders and widget kinds draw none.
 - widget-entity-fields-account.md: W8 account values (the member's own): which widgets offer them, the __member_ names, gates (reward and affiliate programs), country and time zone words, when they are read.
-- widget-entity-fields-list.md: W8, the rest of the owner's entity allow-list (2026-10-26) still to build per family (order line, addresses; order and account are built) and the columns kept off it.
-- widget-entity-fields-order.md: W8 order values in the order view and its receipt e-mail: the tokens, who sees them, where the custom field labels come from, the refund words, the one extra query.
-- widget-entity-fields.md: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, the product, calendar event, quiz score, order and account values built, the group card's description.
+- widget-entity-fields-list.md: W8, the rest of the owner's entity allow-list (2026-10-26) still to build per family (addresses; order, order line and account are built) and the columns kept off it.
+- widget-entity-fields-order.md: W8 order and order line values in the order view and its receipt e-mail: the tokens, who sees them, custom field labels, refund words, the line's product values, the queries.
+- widget-entity-fields.md: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, which families are built (product, event, quiz, order, order line, account), the group card.
 - widget-fill-filters.md: A bound widget value's format (_bindFormats): text filters or a date format, how the suffix is read, which fills read it, escaping, Turkish case, what a condition compares, typed dates (#1602).
 - widget-fill-shop.md: A bound value's format in the shop widgets (catalog, catalog detail, cart, express order, order view): fills, no change without a format, order view dates, fallback words (#1701).
 - widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, the pg-hide-if-empty rerun, the edit pencil, the strip (#1592).
-- widget-layout-gallery.md: W5 layout gallery of a system widget: sources (Default, On this site; From templates left), the filters, Try/Keep/Cancel, undo, saves and rights
+- widget-layout-gallery.md: W5 layout gallery of a system widget: sources (Default, From the template, On this site), the filters, Try/Keep/Cancel, undo, saves and rights
 - widget-lists-calendar.md: The calendar view's month and week grid as lists (W13): the four sources, their keys, nesting, day and event tokens, what the classic month_grid section keeps, the editor's grid starter.
 - widget-lists-cart.md: The cart as a list (W11): cart.items in the cart link (mini cart) and the cart widget, its key, tokens, where rows are read, the editor's mini cart starter, what is left
 - widget-lists-editor.md: Lists inside a record in the designer (#1688): palette items, where one may land, the list panel, Bind Data row values, canvas band and fade, the JS twins and their test.
