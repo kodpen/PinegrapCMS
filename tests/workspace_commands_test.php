@@ -187,7 +187,7 @@ function test_workspace_command_registry_holds_every_name_once()
 		return $entry['key'];
 	}, ws_commands(null));
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'schedule', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
 }
 
 // Every argument is typed with a known kind, says whether it may be left
@@ -541,7 +541,7 @@ function test_workspace_command_status_reads_task_and_word()
 		}
 	}
 
-	pg_assert_same(array('task', 'status', 'schedule'), $live, 'the commands with a live line');
+	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting'), $live, 'the commands with a live line');
 }
 
 // /schedule (/zamanla) answers to its names and reads when at the start of
@@ -581,5 +581,62 @@ function test_workspace_command_schedule_offset()
 	pg_assert_same(0, ws_parse_schedule_offset('+2g'), 'a day is no offset');
 	pg_assert_same(0, ws_parse_schedule_offset('30dk'), 'no plus');
 	pg_assert_same(0, ws_parse_schedule_offset('+0dk'), 'nothing');
+}
+
+// /timer (/süre) answers to its names and tells a stop word from a task.
+function test_workspace_command_timer_names_and_stop_words()
+{
+	pg_assert_same(array('command' => 'timer', 'rest' => 'G-42'), ws_command_split('/süre G-42'), '/süre');
+	pg_assert_same(array('command' => 'timer', 'rest' => 'dur'), ws_command_split('/SURE dur'), '/SURE without Turkish letters');
+	pg_assert_same(array('command' => 'timer', 'rest' => 'stop'), ws_command_split('/timer stop'), '/timer');
+
+	foreach (array('dur', 'Durdur', 'bitir', 'STOP', 'end.') as $word) {
+		pg_assert_true(ws_command_timer_stop_word($word), $word . ' stops');
+	}
+
+	foreach (array('', 'G-42', '42', 'durum') as $word) {
+		pg_assert_true(!ws_command_timer_stop_word($word), '"' . $word . '" does not stop');
+	}
+}
+
+// /away (/izin) reads the first day, a last day when one follows, and the
+// rest as the title. 2026-10-21 is a Wednesday.
+function test_workspace_command_away_reads_its_days()
+{
+	pg_assert_same(array('command' => 'away', 'rest' => 'cuma'), ws_command_split('/izin cuma'), '/izin');
+
+	$away = function ($start, $end, $title) {
+		return array('kind' => 'leave', 'scope' => 'people', 'start' => $start, 'end' => $end, 'title' => $title);
+	};
+
+	pg_assert_same($away('2026-10-23', '2026-10-26', 'Aile ziyareti'), ws_command_away_data('cuma pazartesi Aile ziyareti', '2026-10-21'), 'two days and a note');
+	pg_assert_same($away('2026-10-22', '2026-10-22', ''), ws_command_away_data('yarın', '2026-10-21'), 'one day');
+	pg_assert_same($away('2026-11-02', '2026-11-06', ''), ws_command_away_data('2.11 6.11', '2026-10-21'), 'two dates');
+	pg_assert_same($away('', '', 'Tatil'), ws_command_away_data('Tatil', '2026-10-21'), 'no day');
+}
+
+// /meeting (/toplantı) reads when it starts as /schedule does, then an end
+// or a length (an hour by default), the people tagged and the title.
+function test_workspace_command_meeting_reads_its_parts()
+{
+	$now = strtotime('2026-10-21 10:15:00');
+
+	pg_assert_same(array('command' => 'meeting', 'rest' => 'yarın 14:00 x'), ws_command_split('/Toplantı yarın 14:00 x'), '/Toplantı');
+	pg_assert_same(array('command' => 'meeting', 'rest' => 'x'), ws_command_split('/toplanti x'), '/toplanti');
+
+	$meeting = function ($people, $title, $start, $start_time, $end, $end_time) {
+		return array('kind' => 'meeting', 'scope' => 'people', 'people' => $people, 'title' => $title, 'start' => $start, 'end' => $end, 'start_time' => $start_time, 'end_time' => $end_time);
+	};
+
+	pg_assert_same($meeting(array(5, 7), 'Açılış toplantısı', '2026-10-22', '14:00', '2026-10-22', '15:30'), ws_command_meeting_data('yarın 14:00 ~1.5sa Açılış <@user:5> toplantısı <@user:7> <@user:5>', $now), 'a day, a time, a length, people');
+	pg_assert_same($meeting(array(), 'Plan', '2026-10-23', '09:30', '2026-10-23', '11:00'), ws_command_meeting_data('cuma 09:30 11:00 Plan', $now), 'an end time');
+	pg_assert_same($meeting(array(), 'Kahve', '2026-10-21', '16:00', '2026-10-21', '17:00'), ws_command_meeting_data('16:00 Kahve', $now), 'an hour by default');
+	pg_assert_same($meeting(array(), 'Gece', '2026-10-21', '23:30', '2026-10-22', '00:30'), ws_command_meeting_data('bugün 23:30 Gece', $now), 'past midnight');
+	pg_assert_same($meeting(array(), 'Plan', '', '', '', ''), ws_command_meeting_data('Plan', $now), 'no start');
+
+	$viewer = array('id' => 3);
+	$data = ws_command_meeting_people($viewer, ws_command_meeting_data('16:00 Kahve <@user:5>', $now));
+
+	pg_assert_same(array(3, 5), $data['people'], 'the writer is on the meeting');
 }
 

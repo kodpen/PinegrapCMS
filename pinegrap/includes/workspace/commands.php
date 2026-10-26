@@ -8,7 +8,10 @@
  *   /assign T-42 @mehmet                                     (also /ata)
  *   /done T-42                                               (also /bitti, /tamam)
  *   /postpone T-42 +2d                                       (also /ertele)
+ *   /timer T-42, or /timer stop                              (also /süre, /sure)
  *   /schedule tomorrow 09:00 Stand-up in ten minutes         (also /zamanla)
+ *   /away friday monday Family visit                         (also /izin)
+ *   /meeting tomorrow 14:00 ~1h Kick-off @ayse               (also /toplantı, /toplanti)
  *   /decision The packaging will be kraft                    (also /karar)
  *   /note Accounts contact: Selin, ext. 204                  (also /not)
  *   /plan @ayse                                              the next working week
@@ -60,7 +63,10 @@ function ws_command_names()
         'bitti' => 'done', 'tamam' => 'done', 'done' => 'done',
         'ertele' => 'postpone', 'postpone' => 'postpone',
         'durum' => 'status', 'status' => 'status',
+        'süre' => 'timer', 'sure' => 'timer', 'timer' => 'timer',
         'zamanla' => 'schedule', 'schedule' => 'schedule',
+        'izin' => 'away', 'away' => 'away',
+        'toplantı' => 'meeting', 'toplanti' => 'meeting', 'meeting' => 'meeting',
         'karar' => 'decision', 'decision' => 'decision',
         'not' => 'note', 'note' => 'note',
         'plan' => 'plan',
@@ -148,7 +154,8 @@ function ws_command_assistant_ready($command)
  * May this person use a command? /price, /stock and /product write a
  * product, so they are offered only to whoever may change products (the
  * e-commerce right, as add_product.php asks it); /schedule only to whoever
- * may schedule messages (scheduled_messages.php); /claude and /ai only once
+ * may schedule messages (scheduled_messages.php); /timer once task time is
+ * kept (task_time.php); /claude and /ai only once
  * their assistant is set up on the site; the others are anybody's. Without a
  * person every command the parser answers to is listed, and the assistants
  * are left out: that list is read without asking the database anything.
@@ -166,6 +173,10 @@ function ws_command_offered($viewer, $command)
 
     if (($command === 'schedule') && is_array($viewer)) {
         return function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer);
+    }
+
+    if (($command === 'timer') && is_array($viewer)) {
+        return function_exists('ws_task_time_ready') && ws_task_time_ready();
     }
 
     if (!in_array($command, array('price', 'stock', 'product'), true) || !is_array($viewer)) {
@@ -288,6 +299,13 @@ function ws_commands($viewer = null)
             'args'        => array($task, $arg('status', 'status', lang('status'), false, 'statuses')),
         ),
         array(
+            'key' => 'timer', 'tr' => 'süre', 'en' => 'timer', 'label' => '/timer · /süre',
+            'description' => lang('Starts your timer on a task, stopping the one that runs; /timer stop stops it and keeps the time.'),
+            'example'     => lang('/timer T-42'),
+            'live'        => true,
+            'args'        => array($arg('task', 'task', lang('task'), true, 'tasks')),
+        ),
+        array(
             'key' => 'schedule', 'tr' => 'zamanla', 'en' => 'schedule', 'label' => '/schedule · /zamanla',
             'description' => lang('Posts a message later: a day, a time such as 14:00 or +30m, then the message. Only you see it until then.'),
             'example'     => lang('/schedule tomorrow 09:00 Stand-up in ten minutes'),
@@ -296,6 +314,30 @@ function ws_commands($viewer = null)
                 $arg('day', 'date', lang('day'), true, 'dates'),
                 $arg('time', 'time', lang('time'), true),
                 $arg('message', 'text', lang('message'), false),
+            ),
+        ),
+        array(
+            'key' => 'away', 'tr' => 'izin', 'en' => 'away', 'label' => '/away · /izin',
+            'description' => lang('Writes your leave on the plan: the first day, the last day if it is longer, then a note if you like.'),
+            'example'     => lang('/away friday monday Family visit'),
+            'live'        => true,
+            'args'        => array(
+                $arg('from', 'date', lang('first day'), false, 'dates'),
+                $arg('to', 'date', lang('last day'), true, 'dates'),
+                $arg('title', 'text', lang('note'), true),
+            ),
+        ),
+        array(
+            'key' => 'meeting', 'tr' => 'toplantı', 'en' => 'meeting', 'label' => '/meeting · /toplantı',
+            'description' => lang('Puts a meeting on the plan: a day, the start, the end or ~1h (an hour if left out), a title and the people with @.'),
+            'example'     => lang('/meeting tomorrow 14:00 ~1h Kick-off @ayse'),
+            'live'        => true,
+            'args'        => array(
+                $arg('day', 'date', lang('day'), true, 'dates'),
+                $arg('start', 'time', lang('start'), false),
+                $arg('end', 'time', lang('end or ~length'), true),
+                $arg('title', 'text', lang('title'), false),
+                $arg('people', 'people', lang('@people'), true, 'people', array('multiple' => true, 'anywhere' => true)),
             ),
         ),
         array(
@@ -1277,6 +1319,15 @@ function ws_command_run($viewer, $channel, $body, $options = array())
         case 'schedule':
             return ws_command_schedule($viewer, $channel, $rest, $options);
 
+        case 'timer':
+            return ws_command_timer($viewer, $rest);
+
+        case 'away':
+            return ws_command_away($viewer, $rest);
+
+        case 'meeting':
+            return ws_command_meeting($viewer, $channel, $rest);
+
         case 'decision':
         case 'note':
             if ($rest === '') {
@@ -1428,9 +1479,9 @@ function ws_command_task($viewer, $channel, $text, $options)
 /**
  * The live line under a command being written: what sending it now would
  * do, read by the same parser that runs it, and what it cannot read: /task,
- * /status (ws_command_status_suggest()) and /schedule
- * (ws_command_schedule_suggest()) have one; any other command answers with
- * an empty line.
+ * /status, /timer, /schedule, /away and /meeting (their
+ * ws_command_*_suggest()) have one; any other command answers with an empty
+ * line.
  *
  * @param array  $viewer
  * @param array  $channel
@@ -1448,6 +1499,18 @@ function ws_command_suggest($viewer, $channel, $body)
 
     if ($split && ($split['command'] === 'schedule')) {
         return ws_command_schedule_suggest($viewer, $channel, $split['rest']);
+    }
+
+    if ($split && ($split['command'] === 'timer')) {
+        return ws_command_timer_suggest($viewer, $split['rest']);
+    }
+
+    if ($split && ($split['command'] === 'away')) {
+        return ws_command_event_suggest($viewer, ws_command_away_data($split['rest']));
+    }
+
+    if ($split && ($split['command'] === 'meeting')) {
+        return ws_command_event_suggest($viewer, ws_command_meeting_data($split['rest']));
     }
 
     if (!$split || ($split['command'] !== 'task') || ($split['rest'] === '')) {
@@ -1827,6 +1890,356 @@ function ws_command_schedule_suggest($viewer, $channel, $text)
         $out['warnings'][] = lang('That time has already gone by.');
     } elseif ($parsed['at'] > strtotime('+' . WS_SCHEDULED_MESSAGES_AHEAD . ' days')) {
         $out['warnings'][] = lang('A message can be scheduled at most a year ahead.');
+    }
+
+    return $out;
+}
+
+/**
+ * Whether a word asks /timer to stop rather than to start.
+ *
+ * @param string $word
+ * @return bool
+ */
+function ws_command_timer_stop_word($word)
+{
+    return in_array(ws_command_fold(rtrim((string) $word, '.,;!')), array('dur', 'durdur', 'bitir', 'stop', 'end'), true);
+}
+
+/**
+ * /timer: starts the writer's timer on a task (ws_task_time_start(), which
+ * stops and keeps one running elsewhere), stops it with a stop word, or
+ * says what runs when nothing follows the name. Only the writer is told;
+ * a stopped timer is announced the way the drawer's is.
+ *
+ * @param array  $viewer
+ * @param string $text the line after the command's name
+ * @return array
+ */
+function ws_command_timer($viewer, $text)
+{
+    $text = trim((string) $text);
+
+    if (ws_command_timer_stop_word($text)) {
+        $result = ws_task_time_stop($viewer);
+
+        if (!$result['ok']) {
+            return array('type' => 'error', 'error' => $result['error']);
+        }
+
+        return array('type' => 'ephemeral', 'html' => h(lang(array(
+            'string' => 'Timer stopped: {var:1} kept on {var:2}.',
+            'vars'   => array(ws_task_time_label($result['minutes']), ws_task_number($result['task_id'])),
+        ))));
+    }
+
+    if ($text === '') {
+        $running = ws_task_time_ready() ? ws_task_time_running($viewer['id']) : null;
+
+        return array('type' => 'ephemeral', 'html' => h($running
+            ? lang(array('string' => 'Your timer runs on {var:1}: {var:2} so far.', 'vars' => array(ws_task_number($running['task_id']), ws_task_time_label(ws_task_time_elapsed($running['started_at'], time())))))
+            : lang('No timer of yours is running.')));
+    }
+
+    list($task_id) = ws_command_task_ref($text);
+    $task = ws_task($task_id);
+
+    if (!$task || !ws_can_see_task($viewer, $task)) {
+        return array('type' => 'error', 'error' => lang('That task could not be found.'));
+    }
+
+    $result = ws_task_time_start($viewer, $task);
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    $said = lang(array('string' => 'Timer started on {var:1}.', 'vars' => ws_task_number($task['id']) . ' “' . $task['title'] . '”'));
+
+    if ($result['stopped'] !== '') {
+        $said .= ' ' . lang(array('string' => 'The timer on {var:1} was stopped and its time kept.', 'vars' => $result['stopped']));
+    }
+
+    return array('type' => 'ephemeral', 'html' => h($said));
+}
+
+/**
+ * The live line under /timer: the task the timer would start on, the one
+ * it would stop, or the one a stop word stops.
+ *
+ * @param array  $viewer
+ * @param string $text the line after the command's name
+ * @return array line, warnings
+ */
+function ws_command_timer_suggest($viewer, $text)
+{
+    $out = array('line' => '', 'warnings' => array());
+    $text = trim((string) $text);
+    $running = ws_task_time_ready() ? ws_task_time_running($viewer['id']) : null;
+
+    if (ws_command_timer_stop_word($text)) {
+        if ($running) {
+            $out['line'] = lang(array('string' => 'Will stop the timer on {var:1}', 'vars' => ws_task_number($running['task_id']) . ' · ' . ws_task_time_label(ws_task_time_elapsed($running['started_at'], time()))));
+        } else {
+            $out['warnings'][] = lang('No timer of yours is running.');
+        }
+
+        return $out;
+    }
+
+    list($task_id) = ws_command_task_ref($text);
+
+    if ($task_id <= 0) {
+        return $out;
+    }
+
+    $task = ws_task($task_id);
+
+    if (!$task || !ws_can_see_task($viewer, $task)) {
+        $out['warnings'][] = lang('That task could not be found.');
+
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will start the timer on {var:1}', 'vars' => ws_task_number($task['id']) . ' “' . $task['title'] . '”'));
+
+    if (!ws_task_time_may_log($viewer, $task, ws_task_assignee_ids($task['id']))) {
+        $out['warnings'][] = lang('Only the people on a task, the one who created it and staff can write time on it.');
+    } elseif ($running && ((int) $running['task_id'] !== (int) $task['id'])) {
+        $out['warnings'][] = lang(array('string' => 'The timer on {var:1} will be stopped and its time kept.', 'vars' => ws_task_number($running['task_id'])));
+    }
+
+    return $out;
+}
+
+/**
+ * What /away is given, as ws_event_save() takes it: the first day, the last
+ * day when a second day word follows, the rest as the title (Leave when
+ * there is none). Days are read from today.
+ *
+ * @param string      $text the line after the command's name
+ * @param string|null $today Y-m-d, for tests
+ * @return array kind, scope, start, end ('' when no day was read), title
+ */
+function ws_command_away_data($text, $today = null)
+{
+    $today = ($today === null) ? date('Y-m-d') : $today;
+    $words = preg_split('/\s+/u', trim((string) $text));
+    $start = ws_parse_date_word($words[0] ?? '', $today);
+    $end = ($start !== '') ? ws_parse_date_word($words[1] ?? '', $today) : '';
+    $taken = ($start === '') ? 0 : (($end === '') ? 1 : 2);
+
+    return array(
+        'kind'  => 'leave',
+        'scope' => 'people',
+        'start' => $start,
+        'end'   => ($end !== '') ? $end : $start,
+        'title' => trim(implode(' ', array_slice($words, $taken))),
+    );
+}
+
+/**
+ * What /meeting is given, as ws_event_save() takes it: when it starts as
+ * /schedule reads it (ws_command_parse_schedule(): a day, a time or both,
+ * or +30m), then the end as a time or a length after ~ (an hour when there
+ * is neither), the people tagged with @ (the writer among them) and the
+ * rest as the title.
+ *
+ * @param string   $text the line after the command's name
+ * @param int|null $now  for tests
+ * @return array kind, scope, people, title, start, end, start_time, end_time
+ *               ('' dates when no start was read)
+ */
+function ws_command_meeting_data($text, $now = null)
+{
+    $when = ws_command_parse_schedule($text, $now);
+    $words = preg_split('/\s+/u', $when['body']);
+    $minutes = 60;
+    $end_time = '';
+
+    if (ws_parse_time_word($words[0] ?? '') !== '') {
+        $end_time = ws_parse_time_word(array_shift($words));
+    } elseif (ws_parse_estimate($words[0] ?? '') > 0) {
+        $minutes = ws_parse_estimate(array_shift($words));
+    }
+
+    $body = implode(' ', $words);
+    $people = array();
+
+    foreach (ws_tokens($body) as $token) {
+        if ($token['type'] === 'user') {
+            $people[] = (int) $token['id'];
+        }
+    }
+
+    $data = array(
+        'kind'   => 'meeting',
+        'scope'  => 'people',
+        'people' => array_values(array_unique($people)),
+        'title'  => trim(preg_replace('/\s+/u', ' ', preg_replace('/<@user:[0-9]+>/', ' ', $body))),
+        'start'  => '', 'end' => '', 'start_time' => '', 'end_time' => '',
+    );
+
+    if ($when['at'] <= 0) {
+        return $data;
+    }
+
+    // An end before the start is the next day's; a length may run past midnight.
+    $ends = ($end_time !== '') ? strtotime($when['date'] . ' ' . $end_time . ':00') : $when['at'] + $minutes * 60;
+
+    if ($ends <= $when['at']) {
+        $ends = strtotime('+1 day', $ends);
+    }
+
+    return array_merge($data, array(
+        'start'      => $when['date'],
+        'start_time' => $when['time'],
+        'end'        => date('Y-m-d', $ends),
+        'end_time'   => date('H:i', $ends),
+    ));
+}
+
+/**
+ * The writer is on a meeting they call, with the people they tag.
+ *
+ * @param array $viewer
+ * @param array $data ws_command_meeting_data()
+ * @return array
+ */
+function ws_command_meeting_people($viewer, $data)
+{
+    if ($data['kind'] === 'meeting') {
+        $data['people'] = array_values(array_unique(array_merge(array((int) $viewer['id']), $data['people'])));
+    }
+
+    return $data;
+}
+
+/**
+ * /away: the writer's leave on the plan through ws_event_save(); only the
+ * writer is told.
+ *
+ * @param array  $viewer
+ * @param string $text the line after the command's name
+ * @return array
+ */
+function ws_command_away($viewer, $text)
+{
+    $data = ws_command_away_data($text);
+
+    if ($data['start'] === '') {
+        return array('type' => 'error', 'error' => lang('Say the first day of your leave: a day, a date or +2d.'));
+    }
+
+    $result = ws_event_save($viewer, $data);
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    return array('type' => 'ephemeral', 'html' => h(lang(array('string' => 'Leave written on the plan: {var:1}.', 'vars' => ws_command_event_span($data)))));
+}
+
+/**
+ * /meeting: a meeting on the plan through ws_event_save(), and a line in
+ * the channel naming it and its people.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text the line after the command's name
+ * @return array
+ */
+function ws_command_meeting($viewer, $channel, $text)
+{
+    $data = ws_command_meeting_people($viewer, ws_command_meeting_data($text));
+
+    if ($data['start'] === '') {
+        return array('type' => 'error', 'error' => lang('Say when the meeting starts: a day and a time such as 14:00.'));
+    }
+
+    if ($data['title'] === '') {
+        return array('type' => 'error', 'error' => lang('Write what the meeting is about.'));
+    }
+
+    $result = ws_event_save($viewer, $data);
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    ws_message_system($channel['id'], lang(array(
+        'string' => '{var:1} planned a meeting: {var:2}, {var:3} with {var:4}',
+        'vars'   => array('<@user:' . (int) $viewer['id'] . '>', $data['title'], ws_command_event_span($data), implode(', ', array_map(function ($id) {
+            return '<@user:' . (int) $id . '>';
+        }, $data['people']))),
+    )));
+
+    return array('type' => 'done');
+}
+
+/**
+ * When a plan item from /away or /meeting runs: its days, or its day and
+ * hours.
+ *
+ * @param array $data ws_command_away_data() or ws_command_meeting_data()
+ * @return string
+ */
+function ws_command_event_span($data)
+{
+    if ($data['kind'] === 'leave') {
+        return ws_day_label($data['start']) . (($data['end'] !== $data['start']) ? ' – ' . ws_day_label($data['end']) : '');
+    }
+
+    return ws_day_label($data['start']) . ' ' . $data['start_time'] . '–' . $data['end_time']
+        . (($data['end'] !== $data['start']) ? ' (' . ws_day_label($data['end']) . ')' : '');
+}
+
+/**
+ * The live line under /away and /meeting: the plan item ws_event_save()
+ * would write, with the refusals of ws_event_save_check().
+ *
+ * @param array $viewer
+ * @param array $data ws_command_away_data() or ws_command_meeting_data()
+ * @return array line, warnings
+ */
+function ws_command_event_suggest($viewer, $data)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if ($data['start'] === '') {
+        return $out;
+    }
+
+    $data = ws_command_meeting_people($viewer, $data);
+    $parts = array(ws_command_event_span($data));
+
+    if ($data['title'] !== '') {
+        $parts[] = '“' . $data['title'] . '”';
+    }
+
+    if ($data['kind'] === 'meeting') {
+        $names = array();
+
+        foreach (ws_people($data['people']) as $person) {
+            $names[] = $person['name'];
+        }
+
+        $parts[] = implode(', ', $names);
+    }
+
+    $said = implode(' · ', array_filter($parts, 'strlen'));
+    $out['line'] = ($data['kind'] === 'leave')
+        ? lang(array('string' => 'Will write leave: {var:1}', 'vars' => $said))
+        : lang(array('string' => 'Will plan: {var:1}', 'vars' => $said));
+
+    if (($data['kind'] === 'meeting') && ($data['title'] === '')) {
+        $out['warnings'][] = lang('Write what the meeting is about.');
+    }
+
+    $check = ws_event_save_check($viewer, $data);
+
+    if (!$check['ok']) {
+        $out['warnings'][] = $check['error'];
     }
 
     return $out;

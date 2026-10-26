@@ -4,7 +4,7 @@ description: One registry (ws_commands()) for the / picker, /help, palette and t
 ---
 
 ## What does ws_commands($viewer) hold?
-- includes/workspace/commands.php, one entry per command in picker order: `key` (task, assign, done, postpone, status, schedule, decision, note, plan, poll, price, stock, product, claude, ai, help), `names` (every `ws_command_table()` key, with its slash; `/claude`, `/ai`), `name` (Turkish on a Turkish screen: `ws_command_turkish()`), `label` ("/task · /görev"), `description`, `usage` ("/görev <başlık> [@kişiler] …", built from the args), `example`, `args`, `live` (workspace-command-live-line.md). Per command: workspace-command-status.md, -schedule.md.
+- includes/workspace/commands.php, one entry per command in picker order: `key` (a `ws_command_table()` value, or claude, ai), `names` (every `ws_command_table()` key, with its slash; `/claude`, `/ai`), `name` (Turkish on a Turkish screen: `ws_command_turkish()`), `label` ("/task · /görev"), `description`, `usage` ("/görev <başlık> [@kişiler] …", built from the args), `example`, `args`, `live` (workspace-command-live-line.md). Per command: workspace-command-status, -schedule, -plan-items.
 - An arg: `name`, `kind` (`ws_command_argument_kinds()`: person people department task record date time estimate priority status amount quantity text options), `label`, `optional`, `suggest` (people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, ''), `multiple`, `anywhere` (/task's people, day, estimate, priority, records: read anywhere).
 - Gate: `ws_command_offered()`. /price, /stock, /product (workspace-quick-create.md): the product rights. /claude, /ai: only with a person, once set up (`ws_command_assistant_ready()`, the test of `ws_claude_command_body()` / `ws_ai_command_body()`); without a person nothing touches the database.
 - `ws_command_help()`: command, names, example, description, key, name, usage, args, live for `/help` (with usage), `BOOT.commands`, `ws_palette_commands()` (unfiltered: `name`). `BOOT.command_values` = `ws_command_suggestions()`: days, estimates, priorities, statuses in the screen's language, each read by the parser; five days are `top`.
@@ -20,4 +20,4 @@ description: One registry (ws_commands()) for the / picker, /help, palette and t
 - "//word …" posts "/word …" (`ws_command_unescape()` in `ws_send`); "// TODO", "///x", "//claude" stay as typed. Scheduled messages and the API do not unescape.
 
 ## Tests and checks?
-- tests/workspace_commands_test.php (registry, unknown, closest, "//", suggestions parsed). Composer once run in headless Chromium.
+- tests/workspace_commands_test.php (registry, unknown, closest, "//", suggestions parsed). Composer run once in Chromium.
