@@ -14,7 +14,7 @@ description: W8, entity values a system widget may show (owner allow-list 2026-1
 - Product group card (catalog listing): `__description` held `''` before; now the group's long description, with `__details`, `__keywords` and its own `__featured` / `__is_new` (`pg_sw_catalog_is_new()`, the products' 30-day rule).
 - Calendar event (#1828), in the event view and the calendar view's event loop: `__event_spots_left` (only when places are limited; `0` shows), `__event_updated_date` (typed in the event view), `__event_reservation_price`, `__event_recurrence` (words); yes/no `__event_reservations_open`, `__event_spots_limited`, `__event_is_recurring`. Read from `get_calendar_event()` plus `pg_sw_entity_event_read()` (one query), only when the tree names one (`pg_sw_entity_wanted()`). The month grid's event lists do not carry them.
 - Form record (#1847), in the form item view only (a list would show other people's scores): `__quiz_score` (percent, `0` shows), only on a quiz form (`custom_form_pages.quiz`).
-- Order (#PR), in the order view and its receipt e-mail: [[widget-entity-fields-order]].
+- Order (#1873), in the order view and its receipt e-mail: [[widget-entity-fields-order]].
 - Keywords of products and groups, and group details, are extracted for the site translation (`pg_tr_extract_catalog()`).
 
 ## What is still to build?
