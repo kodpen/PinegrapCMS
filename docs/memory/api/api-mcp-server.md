@@ -16,7 +16,7 @@ description: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tool
 - So a handler never reads `$_SERVER`, `$_GET` or `php://input` itself: it uses `api_request_input()` and `api_header()`, which the MCP endpoint fills through their setters (`X-Dry-Run` included), and `$_FILES` only while `api_send_hook() === null`.
 
 ## What besides tools?
-- Resources (my-day, channel context, record refs) and prompts (channel_summary, weekly_report), answered by GET routes through that runner: a route that is no tool for the caller is no resource either (`mcp-resources-prompts.md`).
+- Resources (my-day, channel context, channel customer, record refs) and prompts (channel_summary, weekly_report), answered by GET routes through that runner: a route that is no tool for the caller is no resource either (`mcp-resources-prompts.md`).
 
 ## Which address, and who may call?
 - Given out at the site root, `site.com/mcp.php` (`router.php` hands it to `pinegrap/mcp.php`); the file in the software folder answers too. Both are in `pg_oauth_resource_addresses()['mcp']`, each with its own protected-resource document: a client compares its `resource` with the address it connected to. Compare resources with `pg_oauth_resource_key()`.

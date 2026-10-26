@@ -14,6 +14,7 @@
  *
  *   pinegrap://workspace/my-day                  GET /workspace/my-day
  *   pinegrap://workspace/channels/{id}/context   GET /workspace/channels/{id}/context
+ *   pinegrap://workspace/channels/{id}/customer  GET /workspace/channels/{id}/customer
  *   pinegrap://workspace/refs/{type}/{id}        GET /workspace/refs?type=&id=
  *
  * @author      Erdal Güral (Kodpen)
@@ -48,6 +49,14 @@ function pg_mcp_resource_kinds() {
 			'name'         => 'workspace_channel_context',
 			'title'        => 'Channel context',
 			'description'  => 'What a Workspace channel or discussion is about, in one read: its summary, latest decisions and notes, latest messages (oldest first) and open tasks. id is the channel\'s id; only channels the person may read.'
+		),
+
+		'channel_customer' => array(
+			'uri_template' => 'pinegrap://workspace/channels/{id}/customer',
+			'route'        => 'workspace.channels.customer',
+			'name'         => 'workspace_channel_customer',
+			'title'        => 'Channel customer',
+			'description'  => 'Who a Workspace channel\'s customer is - the contact, user or current account chosen for the channel - and where they stand: how many orders they placed and the latest five, each current account tied to them with its balance, their open sales quotes and the latest forms their contact submitted. A section is null where the person holds no right to it or the key not the scope for it, or where it holds nothing; customer is null for a channel about nobody. id is the channel\'s id; only channels the person may read.'
 		),
 
 		'record_refs' => array(
