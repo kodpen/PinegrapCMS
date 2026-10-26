@@ -68878,16 +68878,10 @@ const StyleDesigner = (function () {
     // safety), like choices, files and buttons.
     var _SD_ENTRY_NOT_TYPED = ['hidden', 'password', 'submit', 'button', 'reset', 'image', 'checkbox', 'radio', 'file', 'range', 'color'];
 
-    // Asked twice by the software itself: the registration and membership
-    // forms post to pg_member_register() / pg_member_activate(), which
-    // require the address again; a design cannot drop the field.
-    var _SD_ENTRY_SOFTWARE_TWICE = ['email_verify', 'email_address_verify'];
-
     // What a field asks for: its autocomplete purpose, or its name without a
     // "confirm" / "repeat" / "tekrar" part. '' when it says nothing usable.
     function _sdEntryPurpose(el) {
         var name = String(el.getAttribute('name') || '').toLowerCase().replace(/\[\]$/, '');
-        if (_SD_ENTRY_SOFTWARE_TWICE.indexOf(name) !== -1) return '';
         var ac = String(el.getAttribute('autocomplete') || '').toLowerCase().replace(/\s+/g, ' ').trim();
         if (ac && ac !== 'on' && ac !== 'off') return 'ac:' + ac;
         name = name.replace(/(^|[_\-.])(confirm|confirmation|repeat|again|verify|retype|tekrar|dogrula|dogrulama|onay)(?=$|[_\-.])/g, '$1')
