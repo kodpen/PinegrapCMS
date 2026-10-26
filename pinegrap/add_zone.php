@@ -124,7 +124,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 my-1">
                                             <label for="allowed_countries" class="form-label">' . lang('Allowed Countries') . '</label>
-                                            <select style="width:100%" class="select2 form-select" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $output_disallowed_countries . '</select>
+                                            <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $output_disallowed_countries . '</select>' . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
@@ -139,7 +139,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 my-1">
                                             <label for="allowed_states" class="form-label">' . lang('Allowed States') . '</label>
-                                            <select style="width:100%" class="select2 form-select" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $output_disallowed_states . '</select>
+                                            <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $output_disallowed_states . '</select>' . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>

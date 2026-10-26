@@ -176,12 +176,9 @@ if (!$_POST) {
                         <div class="row">
                             <div class="col-12 col-md-6 col-lg-4 my-2">
                                 <label class="form-label" for="start_time">' . lang('Send at this Date & Time') . '</label>
-                                <input value="" type="text" maxlength="19" class="form-control" id="start_time" name="start_time" />
+                                <input value="" type="text" maxlength="19" class="form-control" id="start_time" name="start_time" data-pg-datetime />
                                 <div class="text-end form-text">' . lang('Leave blank to send as soon as possible.') . '</div>
-                                ' . get_date_time_picker_format() . '
-                                <script>
-                                    $("#start_time").datetimepicker(datetimepicker_options);
-                                </script>
+                                ' . get_date_time_picker_format() . pg_fields_script() . '
                             </div>
                         </div>
                     </div>

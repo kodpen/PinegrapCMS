@@ -4131,7 +4131,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         $output_parent_group_field =
             '<div class="col-12 col-lg-8 my-2 pg-pb-group-only d-none">
                 <label for="parent_group_id" class="form-label">' . lang('Parent Product Group') . '</label>
-                <select style="width:100%" class="select2 form-select" id="parent_group_id" name="parent_group_id" data-placeholder="' . lang('Select Parent Group') . '">
+                <select style="width:100%" data-pg-combobox class="form-select" id="parent_group_id" name="parent_group_id" data-placeholder="' . lang('Select Parent Group') . '">
                     <option value="0">-' . lang('None') . '-</option>
                     ' . get_product_group_options(0, 0, 0, 0, array(), FALSE, 'text', false, true, false) . '
                 </select>
@@ -4141,7 +4141,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         $output_catalog_group_field =
             '<div class="col-12 col-lg-8 my-2 pg-pb-single-only">
                 <label for="catalog_group_ids" class="form-label">' . lang('Include product in to selected groups') . '</label>
-                <select style="width:100%" class="select2 form-select" id="catalog_group_ids" name="catalog_group_ids[]" multiple="multiple" data-placeholder="' . lang('Include product in to selected groups') . '">
+                <select style="width:100%" data-pg-combobox class="form-select" id="catalog_group_ids" name="catalog_group_ids[]" multiple="multiple" data-placeholder="' . lang('Include product in to selected groups') . '">
                     ' . pg_pb_mark_selected(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'text', false, true, false, $v('catalog_group_ids', array())), $v('catalog_group_ids', array())) . '
                 </select>
                 <div class="form-text">' . lang('A single product can sit in several groups.') . '</div>
@@ -4168,7 +4168,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         $output_zones_field =
             '<div class="col-12 my-2">
                 <label for="allowed_zones" class="form-label">' . lang('Allowed Zones') . '</label>
-                <select style="width:100%" class="select2 form-select" data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $output_zone_options . '</select>
+                <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $output_zone_options . '</select>
             </div>';
     }
 
@@ -5075,12 +5075,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                          input because it is a list, not a sentence. -->
                                     <div class="col-12 my-2">
                                         <label for="keywords" class="form-label">' . lang('Search Keywords') . '</label>
-                                        <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '" maxlength="255" value="' . h($v('keywords')) . '" />
-                                        <script>
-                                            if (document.body.contains(document.querySelector("input#keywords"))) {
-                                                tagin(document.querySelector("#keywords"));
-                                            }
-                                        </script>
+                                        <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '" maxlength="255" value="' . h($v('keywords')) . '" />' . pg_fields_script() . '
                                         <div class="form-text">' . lang('Used by the search on your own site, not by search engines.') . '</div>
                                     </div>
 

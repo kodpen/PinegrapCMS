@@ -167,12 +167,9 @@ if (!$_POST) {
         $output_from_email_address = '<input value="' . h($from_email_address) . '" type="text" class="form-control text-end" id="from_email_address" name="from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>';
         $output_reply_email_address = '<input value="' . h($reply_email_address) . '" type="text" class="form-control text-end" id="reply_email_address" name="reply_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>';
         $output_start_time =
-            '<input value="' . prepare_form_data_for_output($start_time, 'date and time') . '" type="text" maxlength="19" class="form-control" id="start_time" name="start_time" />
+            '<input value="' . prepare_form_data_for_output($start_time, 'date and time') . '" type="text" maxlength="19" class="form-control" id="start_time" name="start_time" data-pg-datetime />
             <div class="text-end form-text">' . lang('Leave blank to send as soon as possible.') . '</div>
-            ' . get_date_time_picker_format() . '
-            <script>
-                $("#start_time").datetimepicker(datetimepicker_options);
-            </script>';
+            ' . get_date_time_picker_format() . pg_fields_script();
 
         if ($purpose == 'commercial') {
             $purpose_commercial_checked = 'checked="checked"';
