@@ -48,10 +48,11 @@ if ($_POST) {
 	validate_token_field();
 
 	// Every field here holds one value, except the category attributes
-	// (attribute[id]). One posted as a list (provider[]=x) stopped the request
+	// (attribute[id]) and the matched products ticked for a listing update
+	// (map_ids[]). One posted as a list (provider[]=x) stopped the request
 	// in trim(), and account_id[]=x or group_id[]=x was read as record 1.
 	// Nothing is written, so every account and match stays as it was.
-	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1));
+	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1, 'map_ids' => 1));
 
 	if ($mp_settings_lists) {
 
@@ -689,6 +690,143 @@ if ($_POST) {
 
 	}
 
+	// Send the shop's title, description and pictures over the ticked listings
+	// the marketplace has approved. Queued for this account only, not through
+	// mp_enqueue(), which queues stock for every account; the job sends them
+	// on its next pass (mp_sync_send_listing_updates()). A product already
+	// waiting for an update is not queued twice.
+	if ($action === 'listing_update' && $account) {
+
+		$map_ids = array();
+
+		foreach ((array)(isset($_POST['map_ids']) ? $_POST['map_ids'] : array()) as $value) {
+
+			if (is_scalar($value) && (int)$value > 0) {
+
+				$map_ids[(int)$value] = (int)$value;
+
+			}
+
+		}
+
+		$product_ids = $map_ids ? array_map('intval', (array) db_values("SELECT product_id FROM marketplace_product_map
+			WHERE (account_id = '" . e($account_id) . "') AND (remote_id <> '')
+			  AND (id IN (" . implode(',', $map_ids) . "))")) : array();
+
+		if (!mp_can($account['provider'], 'update_listings')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} elseif (!$product_ids) {
+
+			$liveform->add_warning(lang('Tick at least one product whose listing is approved.'));
+
+		} else {
+
+			foreach ($product_ids as $product_id) {
+
+				db("INSERT INTO marketplace_sync_queue
+					(account_id, product_id, operation, status, priority, attempts, run_after, created_timestamp, updated_timestamp)
+					SELECT '" . e($account_id) . "', '" . e($product_id) . "', 'listing_update', 'waiting', 3, 0, 0,
+						UNIX_TIMESTAMP(), UNIX_TIMESTAMP()
+					FROM DUAL
+					WHERE NOT EXISTS (SELECT 1 FROM marketplace_sync_queue
+						WHERE (account_id = '" . e($account_id) . "') AND (product_id = '" . e($product_id) . "')
+						  AND (operation = 'listing_update') AND (status = 'waiting'))");
+
+			}
+
+			$liveform->add_notice(lang(array(
+				'string' => 'The changes of {var:1} listing(s) will be sent on the next run.',
+				'vars'   => array(count($product_ids))
+			)));
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-map');
+
+		exit();
+
+	}
+
+	// The link of an imported package's invoice, typed by the operator. The
+	// e-document PDF is served only behind the panel login, so no job can hand
+	// the marketplace a link of its own; the operator gives the address the
+	// buyer can open (an e-Archive portal, a shared PDF). A refusal is shown
+	// here and not kept in last_error, which takes the package out of the
+	// own-carrier shipping pass.
+	if ($action === 'invoice_link' && $account) {
+
+		$map_id = isset($_POST['map_id']) ? (int)$_POST['map_id'] : 0;
+
+		$invoice_url = isset($_POST['invoice_url']) ? trim((string)$_POST['invoice_url']) : '';
+
+		$package = $map_id ? db_item("SELECT * FROM marketplace_order_map
+			WHERE (id = '" . e($map_id) . "') AND (account_id = '" . e($account_id) . "')
+			  AND (status = 'imported') AND (order_id > 0)") : null;
+
+		if (!mp_can($account['provider'], 'send_invoice_link')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} elseif (!mp_invoice_sent_ready()) {
+
+			$liveform->add_warning(lang('The database has not been upgraded yet. Run the software update first.'));
+
+		} elseif (!$package) {
+
+			$liveform->add_warning(lang('That order is no longer in the imported orders.'));
+
+		} elseif (!empty($package['invoice_sent'])) {
+
+			$liveform->add_notice(lang(array(
+				'string' => 'The invoice link of order {var:1} was sent already.',
+				'vars'   => array(h((string)$package['remote_order_id']))
+			)));
+
+		} else {
+
+			$sent = mp_call($account['provider'], 'send_invoice_link', array($account, $package, $invoice_url));
+
+			if ($sent['ok']) {
+
+				db("UPDATE marketplace_order_map
+					SET invoice_sent = UNIX_TIMESTAMP(), updated_timestamp = UNIX_TIMESTAMP()
+					WHERE (id = '" . e($map_id) . "') AND (invoice_sent = 0)");
+
+				log_activity(lang(array(
+					'string' => 'The invoice link of order {var:1} was sent to {var:2}: {var:3}',
+					'vars'   => array((string)$package['remote_order_id'], mp_provider_name($account['provider']), $invoice_url)
+				)), 'system');
+
+				$liveform->add_notice(lang(array(
+					'string' => 'The invoice link of order {var:1} was sent to {var:2}.',
+					'vars'   => array(h((string)$package['remote_order_id']), h(mp_provider_name($account['provider'])))
+				)));
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'The invoice link of order {var:1} was not sent: {var:2}',
+					'vars'   => array(h((string)$package['remote_order_id']), h($sent['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-orders');
+
+		exit();
+
+	}
+
 	// The webhook: the marketplace posts each order package to this site as it
 	// changes, instead of waiting for the next pull. The key is made here, kept
 	// in the account's encrypted credentials and never shown; the marketplace
@@ -862,6 +1000,34 @@ if ($_POST) {
 			exit();
 
 	}
+
+}
+
+// The "Send invoice link" form under one imported order, folded until opened.
+// The operator types the address the buyer can open; the screen cannot offer
+// one of its own (see the invoice_link action).
+function mp_settings_invoice_form($account_id, $row) {
+
+	$map_id = (int)$row['id'];
+
+	return '
+				<details class="small" style="grid-column:1/-1">
+					<summary class="link-secondary">' . lang('Send invoice link') . '</summary>
+					<form method="post" action="marketplace_settings.php" class="d-flex gap-2 flex-wrap mt-2"
+						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
+						' . get_token_field() . '
+						<input type="hidden" name="mp_action" value="invoice_link">
+						<input type="hidden" name="account_id" value="' . (int)$account_id . '">
+						<input type="hidden" name="map_id" value="' . $map_id . '">
+						<label class="visually-hidden" for="invoice_url_' . $map_id . '">' . lang('Invoice link') . '</label>
+						<input type="url" class="form-control form-control-sm" id="invoice_url_' . $map_id . '"
+							name="invoice_url" maxlength="1000" required style="max-width:520px"
+							placeholder="https://">
+						<button type="submit" class="btn btn-sm btn-outline-secondary">' . lang('Send') . '</button>
+					</form>
+					<div class="form-text">'
+						. lang('The address of the e-Archive or e-Invoice PDF that the buyer can open without signing in. The marketplace keeps it with the order and it has to stay reachable for ten years. A link once sent cannot be changed from here.') . '</div>
+				</details>';
 
 }
 
@@ -1348,6 +1514,10 @@ if ($selected) {
 	// each matched product's listing stands.
 	$can_listing_status = mp_can($selected['provider'], 'listing_status');
 
+	// One whose connector updates approved listings gets a tick box on each
+	// of them and a button that queues the ticked ones.
+	$can_update_listings = mp_can($selected['provider'], 'update_listings');
+
 	// Orders come in only from a marketplace whose connector reads them, and
 	// are accepted only by one that can accept them. The job skips the rest
 	// without a word, so their switches and the orders card are not drawn: a
@@ -1356,6 +1526,10 @@ if ($selected) {
 	$can_orders = mp_can($selected['provider'], 'pull_orders');
 
 	$can_approve = $can_orders && mp_can($selected['provider'], 'approve_lines');
+
+	// The invoice link form needs the column its success is written to; a site
+	// whose files are newer than its database draws no form.
+	$can_invoice = $can_orders && mp_can($selected['provider'], 'send_invoice_link') && mp_invoice_sent_ready();
 
 	$provider_fields = isset($providers[$selected['provider']]['fields'])
 		? $providers[$selected['provider']]['fields']
@@ -1422,7 +1596,20 @@ if ($selected) {
 			<i class="bi bi-link-45deg me-1"></i><b>' . lang('Matched products') . '</b>
 			<span class="small opacity-75 d-none d-lg-inline">'
 				. lang('The code on the left is this shop\'s; the code on the right is what the marketplace calls it.') . '</span>
-			<div class="ms-auto d-flex gap-2">
+			<div class="ms-auto d-flex gap-2">'
+				. ($can_update_listings ? '
+				<form method="post" action="marketplace_settings.php" class="d-inline" id="mp_update_form">
+					' . get_token_field() . '
+					<input type="hidden" name="mp_action" value="listing_update">
+					<input type="hidden" name="account_id" value="' . $selected_id . '">
+					<button type="submit" class="btn btn-sm btn-outline-secondary"'
+						. ($maps ? '' : ' disabled') . ' title="'
+						. h(lang('Sends the title, description and pictures of the ticked approved listings. Price and stock go on their own.')) . '">
+						<i class="bi bi-cloud-upload me-1"></i>' . h(lang(array(
+							'string' => 'Send changes to {var:1}',
+							'vars'   => array(mp_provider_name($selected['provider']))
+						))) . '</button>
+				</form>' : '') . '
 				<form method="post" action="marketplace_settings.php" class="d-inline">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="push_all">
@@ -1502,10 +1689,29 @@ if ($selected) {
 
 			}
 
+			// The commission the marketplace takes, read with the approval
+			// (NULL until then; the key is missing before the upgrade step).
+			if (isset($map['commission']) && is_numeric($map['commission'])) {
+
+				$map_state .= ' <span class="small opacity-75">' . h(lang(array(
+					'string' => 'Commission {var:1} %',
+					'vars'   => array(pg_format_number((float)$map['commission'], 2))
+				))) . '</span>';
+
+			}
+
+			// The tick box belongs to the form in the card header (form
+			// attribute): the row already holds the remove form, and forms
+			// do not nest.
+			$map_tick = ($can_update_listings && (string)$map['remote_id'] !== '')
+				? '<input type="checkbox" class="form-check-input me-1" form="mp_update_form" name="map_ids[]" value="'
+					. (int)$map['id'] . '" aria-label="' . h(lang('Send changes')) . '">'
+				: '';
+
 			echo '
 			<div class="mp-row">
 				<span>
-					<b>' . h((string)$map['product_name']) . '</b>
+					<b>' . $map_tick . h((string)$map['product_name']) . '</b>
 					<code>' . h(mb_substr((string)$map['title'], 0, 46)) . '</code>
 				</span>
 				<span><code>' . h($map['remote_code']) . '</code>' . $map_state
@@ -1787,14 +1993,20 @@ if ($selected) {
 						? '<span class="mp-pill on">' . h((string)$row['remote_status']) . '</span>'
 						: '<span class="mp-pill bad">' . h(lang('Failed')) . '</span>')
 					. (!empty($row['approved'])
-						? ' <span class="mp-pill on">' . lang('Accepted') . '</span>' : '') . '
+						? ' <span class="mp-pill on">' . lang('Accepted') . '</span>' : '')
+					. (!empty($row['invoice_sent'])
+						? ' <span class="mp-pill on" title="' . h(mp_settings_ago((int)$row['invoice_sent'])) . '">'
+							. lang('Invoice sent') . '</span>' : '') . '
 					' . ($row['last_error'] !== ''
 						? '<div class="mp-err">' . h(mb_substr((string)$row['last_error'], 0, 120)) . '</div>' : '') . '</span>
 				<span class="small opacity-75">' . h(mp_settings_ago((int)$row['imported_timestamp'])) . '</span>
 				<span>' . ($row['order_id']
 					? '<a class="btn btn-sm btn-link p-0" href="view_order.php?id=' . (int)$row['order_id'] . '" title="'
 						. lang('View Order') . '"><i class="bi bi-box-arrow-up-right"></i></a>'
-					: '') . '</span>
+					: '') . '</span>'
+				. (($can_invoice && ($row['status'] === 'imported') && $row['order_id'] && empty($row['invoice_sent'])
+					&& (mp_order_stage($selected, $row) !== 'cancelled'))
+					? mp_settings_invoice_form($selected_id, $row) : '') . '
 			</div>';
 
 			}
@@ -1855,7 +2067,9 @@ if ($selected) {
 
 			echo '
 			<div class="d-flex gap-3 py-2 border-top align-items-start">
-				<div style="min-width:150px"><b class="small">' . h((string)$row['product_name']) . '</b></div>
+				<div style="min-width:150px"><b class="small">' . h((string)$row['product_name']) . '</b>'
+					. (((string)$row['operation'] === 'listing_update')
+						? '<div class="small opacity-75">' . lang('Listing changes') . '</div>' : '') . '</div>
 				<div class="flex-grow-1 mp-err">' . h((string)$row['last_error']) . '</div>
 				<div class="small opacity-50 text-nowrap">' . h(mp_settings_ago((int)$row['updated_timestamp'])) . '</div>
 			</div>';

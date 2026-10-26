@@ -85,16 +85,17 @@ function pg_sw_list_sources()
                 array('__file_ext', lang('File type')),
             ),
         ),
-    ) + pg_sw_list_calendar_sources();
+    ) + pg_sw_list_product_sources() + pg_sw_list_calendar_sources();
 }
 
 // The sources a widget kind offers (source => descriptor): the form record
-// sources in the two form views, the calendar grid sources in the calendar
-// view (widgets_lists_calendar.php), each kind publishing their data; none
-// in any other kind.
+// sources in the two form views, the product sources in the catalog detail
+// view (widgets_lists_product.php), the calendar grid sources in the
+// calendar view (widgets_lists_calendar.php), each kind publishing its
+// data; none in any other kind.
 function pg_sw_kind_lists($kind)
 {
-    $families = array('form_list_view' => 'form_record', 'form_item_view' => 'form_record', 'calendar_view' => 'calendar');
+    $families = array('form_list_view' => 'form_record', 'form_item_view' => 'form_record', 'catalog_item_view' => 'product', 'calendar_view' => 'calendar');
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();
     $out = array();
@@ -267,6 +268,25 @@ function pg_sw_list_span($node, $indent = 0, $depth = 0)
     return $html . '<!--/pg-list:' . $nonce . ':' . $n . '-->';
 }
 
+// The sources of $family the open widget drew a list of (source => true):
+// empty outside a scope. A renderer that reads its rows itself asks first,
+// so a tree without lists reads nothing.
+function pg_sw_list_wanted($family)
+{
+    $scope = pg_sw_finish_scope();
+    if ($scope === null) return array();
+    $sid     = (int)$scope['sid'];
+    $sources = pg_sw_list_sources();
+    $out     = array();
+    foreach (_pg_sw_list_templates() as $template) {
+        $source = $template['spec']['source'];
+        if ($template['sid'] === $sid && isset($sources[$source]) && $sources[$source]['family'] === $family) {
+            $out[$source] = true;
+        }
+    }
+    return $out;
+}
+
 // The publish half: a renderer files the rows it read for the records it
 // shows, under the open widget's scope, replacing what the widget held for
 // $family. Nothing is kept outside a scope or when the widget drew no list
@@ -274,26 +294,18 @@ function pg_sw_list_span($node, $indent = 0, $depth = 0)
 // 'form_record': $data_rows as the form views read form_data (data_id and
 // field_office_use included); $options: 'translate' (the widget includes
 // its records in the translation).
+// 'product': $data_rows = source => product id => rows, as
+// pg_sw_list_product_read() builds them.
 // 'calendar': $data_rows = source => key => rows, as
 // pg_sw_list_calendar_rows() builds them.
 function pg_sw_list_publish($family, $data_rows, $options = array())
 {
     $scope = pg_sw_finish_scope();
-    if ($scope === null) return;
-    $sid     = (int)$scope['sid'];
-    $sources = pg_sw_list_sources();
-    $wanted  = false;
-    foreach (_pg_sw_list_templates() as $template) {
-        if ($template['sid'] === $sid && isset($sources[$template['spec']['source']])
-            && $sources[$template['spec']['source']]['family'] === $family) {
-            $wanted = true;
-            break;
-        }
-    }
-    if (!$wanted) return;
+    if ($scope === null || !pg_sw_list_wanted($family)) return;
+    $sid = (int)$scope['sid'];
 
     $published = &_pg_sw_list_published();
-    if ($family === 'calendar') {
+    if ($family === 'product' || $family === 'calendar') {
         $published[$sid][$family] = array('rows' => is_array($data_rows) ? $data_rows : array());
     } elseif ($family === 'form_record') {
         $published[$sid][$family] = array(
@@ -465,8 +477,8 @@ function pg_sw_list_file_rows($records, $arg)
 // asks for: $wanted = key => arg => true; returns key => arg => rows. One
 // call per source per level, so a provider that reads the database later
 // asks once for all of them. The form record providers read what the
-// renderer published; a calendar list its rows as published, whatever the
-// arg.
+// renderer published; a product or calendar list its rows as published,
+// whatever the arg.
 function pg_sw_list_source_rows($source, $wanted, $published)
 {
     $sources = pg_sw_list_sources();
@@ -476,7 +488,7 @@ function pg_sw_list_source_rows($source, $wanted, $published)
     if ($data === null) return array();
 
     $out = array();
-    if ($family === 'calendar') {
+    if ($family === 'product' || $family === 'calendar') {
         $rows = (isset($data['rows'][$source]) && is_array($data['rows'][$source])) ? $data['rows'][$source] : array();
         foreach ($wanted as $key => $args) {
             foreach (array_keys((array)$args) as $arg) {

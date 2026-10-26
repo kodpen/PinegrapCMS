@@ -3879,7 +3879,7 @@ function update_sitemap_and_ping()
                     log_activity(lang('IndexNow ping sent successfully.'), '');
                 }
 
-                curl_close($ch);
+                unset($ch);
             } else {
                 log_activity(lang('IndexNow skipped: INDEXNOW_KEY not defined or empty.'), '');
             }

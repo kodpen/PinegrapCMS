@@ -2900,7 +2900,9 @@ function get_column_heading($column, $sort, $order, $extras = '', $key = null)
 }
 function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $user_id = '')
 {
-    $output = '';
+    // The view tree's expiry fields are drawn by pgDatePicker
+    // (pg_fields.js), bound by backend.src.js when a box opens.
+    $output = ($type == 'view' && $level == 0) ? pg_fields_script() : '';
     // if this is the first time this function has run, then get folders
     if ($parent_folder_id == 0) {
         // get all folders
@@ -2962,7 +2964,6 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
                 $output_expiration_date_container_style = ' style="display: none"';
                 $output_expiration_date = '';
                 $output_expiration_date_style = '';
-                $output_expiration_date_picker = '';
                 // If the check box is checked, then show expiration date field and get expiration date if one exists.
                 if ($checked != '') {
                     $output_expiration_date_container_style = '';
@@ -2986,11 +2987,6 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
                             $output_expiration_date_style = '; color: red';
                         }
                     }
-                    $output_expiration_date_picker = '<script>
-
-                            $("#view_' . $folder['id'] . '_expiration_date").datepicker(datetimepicker_options);
-
-                        </script>';
                 }
                 // Own line under the folder it belongs to, rather than trailing
                 // the label: the label is as wide as the folder name plus its
@@ -3012,7 +3008,7 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
                         . '<input type="text" class="form-control form-control-sm pg-acl-expiry-input" id="view_' . $folder['id'] . '_expiration_date" name="view_' . $folder['id'] . '_expiration_date" value="' . $output_expiration_date . '" maxlength="10"' . (($output_expiration_date_style != '') ? ' style="color: red"' : '') . ' onfocus="this.style.color = \'\'" />'
                         . '<button type="button" class="pg-acl-expiry-clear" title="' . h(lang('Remove the expiry')) . '"><i class="bi bi-x-lg"></i></button>'
                     . '</span>'
-                    . $output_expiration_date_picker . '</span>';
+                    . '</span>';
             }
             $output .= '<div class="form-check"><input type="checkbox" name="' . $type . '_' . $folder['id'] . '" id="' . $type . '_' . $folder['id'] . '" value="1" class="form-check-input  multiselect-checkbox"' . $checked . $output_onclick . ' /><label class="form-check-label" for="' . $type . '_' . $folder['id'] . '">' . $indentation . h($folder['name']) . '</label>' . $output_expiration_date_container . '</div>';
         }

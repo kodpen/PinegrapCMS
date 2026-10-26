@@ -1523,7 +1523,7 @@ function import_design_fetch_once($url, $head_only)
 
     $content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
     $location = curl_getinfo($ch, CURLINFO_REDIRECT_URL);
-    curl_close($ch);
+    unset($ch);
 
     if (($content === false) && !$head_only) {
         return false;

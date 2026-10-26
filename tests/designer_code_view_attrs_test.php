@@ -37,6 +37,8 @@ function designer_code_view_attrs_test_run($steps)
 		array('function _sdCodeSetAttr(', "// Where a plain element's single text sits"),
 		array('function _sdInlineStyleProps(', 'function _toggleInlineDecl('),
 		array('function _sdUniqueClasses(', '// Children written into a component'),
+		array('function _sdContentSizingNode(', '// The props a content node'),
+		array('function _sdSizingValue(', '// Set of all sizing-managed'),
 	);
 	$script = 'function esc(s) { if (!s) return ""; return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }'
 		. 'function _sdCodeApplyBoundValue() { return false; } function _sdRetargetLabels() {}';
@@ -53,8 +55,9 @@ function designer_code_view_attrs_test_run($steps)
 		$script .= substr($source, $from, $to - $from);
 	}
 
-	// What the emitter prints for a node's style and its title attributes.
-	$script .= 'function printed(n) { return { style: _sdNodeStyle(n.props, "", ""), attrs: _sdNodeExtraAttrs(n.props, n.props._attrs, []) }; }'
+	// What the emitter prints for a node's style (with the Display & Sizing
+	// style, as _sdGridOpenTag() writes it) and its title attributes.
+	$script .= 'function printed(n) { return { style: _sdNodeStyle(n.props, "", getNodeExtraStyle(n)), attrs: _sdNodeExtraAttrs(n.props, n.props._attrs, []) }; }'
 		. $steps;
 
 	$file = tempnam(sys_get_temp_dir(), 'pgcodeattrs');
@@ -127,4 +130,42 @@ function test_designer_code_view_title_and_tooltip()
 	pg_assert_same('', $answer[6]);
 	pg_assert_same('Plain', $answer[7], 'the typed entry is the list\'s');
 	pg_assert_same('Changed', $answer[8]);
+}
+
+// The Display & Sizing style the emitter printed goes back to the sizing
+// props: kept as it is, it is printed once (no copy in the Attributes
+// panel's style); changed, the prop follows; deleted, the prop is cleared.
+// A width typed where none was printed is the Attributes panel's, and an
+// image keeps its width in its own prop.
+function test_designer_code_view_style_keeps_sizing()
+{
+	$answer = designer_code_view_attrs_test_run(
+		'var n = { type: "col", props: { width: "50%", maxWidth: "600", overflow: "hidden", zIndex: "2", _attrs: [{ name: "style", value: "color:red" }] } };'
+		. 'var was = printed(n).style;'
+		. '_sdCodeSetAttr(n, "style", was, "z-index:2;width:50%;max-width:600px;overflow:hidden;color:red;margin:0", {});'
+		. 'var kept = [printed(n).style, n.props._attrs[0].value];'
+		. '_sdCodeSetAttr(n, "style", printed(n).style, "z-index:3;width:40%;color:red;margin:0", {});'
+		. 'var changed = [n.props.zIndex, n.props.width, n.props.maxWidth, n.props.overflow, printed(n).style];'
+		. 'var m = { type: "semantic", props: { tag: "div" } };'
+		. '_sdCodeSetAttr(m, "style", printed(m).style, "width:10rem", {});'
+		. 'var img = { type: "content", props: { contentType: "image", width: "50%", minHeight: "20px" } };'
+		. 'var iw = _sdNodeStyle(img.props, "", getNodeExtraStyle(_sdContentSizingNode(img)));'
+		. '_sdCodeSetAttr(img, "style", iw, "width:60%;min-height:20px;color:red", {});'
+		. 'console.log(JSON.stringify([was, kept, changed, m.props.width || "", printed(m).style, iw, img.props.width, img.props.minHeight, img.props._attrs]));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same('z-index:2;width:50%;max-width:600px;overflow:hidden;color:red', $answer[0], 'what the emitter printed');
+	pg_assert_same('z-index:2;width:50%;max-width:600px;overflow:hidden;color: red; margin: 0', $answer[1][0], 'the sizing is printed once');
+	pg_assert_same('color: red; margin: 0', $answer[1][1], 'no copy of the sizing in the panel\'s style');
+	pg_assert_same(array('3', '40%', '', '', 'z-index:3;width:40%;color: red; margin: 0'), $answer[2], 'changed and deleted sizing');
+	pg_assert_same('', $answer[3], 'a width typed where none was printed');
+	pg_assert_same('width: 10rem', $answer[4]);
+	pg_assert_same('width:50%;min-height:20px', $answer[5], 'what the emitter printed for the image');
+	pg_assert_same('60%', $answer[6], 'the image width stays its own prop');
+	pg_assert_same('20px', $answer[7]);
+	pg_assert_same(array(array('name' => 'style', 'value' => 'color: red')), $answer[8]);
 }

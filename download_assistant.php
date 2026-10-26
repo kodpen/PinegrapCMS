@@ -108,7 +108,7 @@ function da_download($url, $destination)
 
         $body = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch);
 
         if ($body !== false && $status === 200) {
             $bytes = $body;
@@ -426,7 +426,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         $response = curl_exec($ch);
         $curl_errno = curl_errno($ch);
         $curl_error = curl_error($ch);
-        curl_close($ch);
+        unset($ch);
 
         if ($response === false) {
             $_SESSION['software']['download_assistant']['message'] =
@@ -481,7 +481,7 @@ function output_download_assistant_html_content(
     $extra_message = '';
     if (isset($_SESSION['software']['download_assistant']['message'])) {
         $extra_message = '<div class="alert alert-primary mt-3">' 
-            . htmlspecialchars($_SESSION['software']['download_assistant']['message']) 
+            . htmlspecialchars($_SESSION['software']['download_assistant']['message'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) 
             . '</div>';
         unset($_SESSION['software']['download_assistant']['message']);
     }
@@ -559,8 +559,8 @@ function output_download_assistant_html_content(
                 <div class="card shadow-sm" style="--bs-card-border-radius: var(--bs-border-radius-xxl);">
                     <div class="card-body text-center">
                         ' . $extra_message . '
-                        ' . ($message ? '<p>' . htmlspecialchars($message) . '</p>' : '') . '
-                        ' . ($version ? '<p class="text-muted">' . htmlspecialchars($version) . '</p>' : '') . '
+                        ' . ($message ? '<p>' . htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '</p>' : '') . '
+                        ' . ($version ? '<p class="text-muted">' . htmlspecialchars($version, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '</p>' : '') . '
 
                         <form method="post">
                             ' . (function_exists('get_token_field') ? get_token_field() : '') . '

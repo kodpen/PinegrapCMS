@@ -119,6 +119,10 @@ function mp_sync_push($deadline, &$summary) {
 		// stock before the listing exists is a call that can only be refused.
 		mp_sync_send_listings($account, $summary);
 
+		// Then changes to listings already approved, which carry no stock or
+		// price and do not wait on anything.
+		mp_sync_send_listing_updates($account, $summary);
+
 		if (!mp_sync_send_batch($account, $summary)) {
 
 			return;
@@ -510,6 +514,191 @@ function mp_sync_send_listings($account, &$summary) {
 
 }
 
+/* -------------------------------------------------------- listing updates */
+
+// Send the title, description and pictures of approved listings the operator
+// asked to update (operation listing_update, queued from the account screen).
+//
+// Every due line is either leased with the call or closed here, so nothing is
+// left for mp_sync_close_unmapped(), which would close it as no longer
+// matched. A line whose mapping lost its content id (matched again under
+// another code) or whose product is gone is closed with the reason. The
+// result is read like any batch, by content id, and never writes the mapping
+// row: a refused update leaves the listing as it was over there, and its
+// stock still goes.
+function mp_sync_send_listing_updates($account, &$summary) {
+
+	$account_id = (int) $account['id'];
+
+	$rows = (array) db_items("SELECT marketplace_sync_queue.id, marketplace_sync_queue.product_id,
+			marketplace_product_map.remote_id,
+			products.id AS found_id, products.name, products.title, products.short_description,
+			products.full_description, products.image_name,
+			product_groups.title AS group_title, product_groups.full_description AS group_description
+		FROM marketplace_sync_queue
+		LEFT JOIN marketplace_product_map
+			ON  (marketplace_product_map.account_id = marketplace_sync_queue.account_id)
+			AND (marketplace_product_map.product_id = marketplace_sync_queue.product_id)
+		LEFT JOIN products ON products.id = marketplace_sync_queue.product_id
+		LEFT JOIN product_groups ON product_groups.id = (SELECT MIN(products_groups_xref.product_group)
+			FROM products_groups_xref WHERE products_groups_xref.product = marketplace_sync_queue.product_id)
+		WHERE (marketplace_sync_queue.account_id = '" . e($account_id) . "')
+		  AND (marketplace_sync_queue.operation = 'listing_update')
+		  AND (marketplace_sync_queue.status = 'waiting')
+		  AND (marketplace_sync_queue.run_after <= UNIX_TIMESTAMP())
+		ORDER BY marketplace_sync_queue.priority ASC, marketplace_sync_queue.id ASC
+		LIMIT " . (int)mp_listing_update_batch_size());
+
+	if (!$rows) {
+
+		return;
+
+	}
+
+	if (!mp_can($account['provider'], 'update_listings')) {
+
+		foreach ($rows as $row) {
+
+			mp_sync_finish_row((int)$row['id'], 'failed', lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(mp_provider_name($account['provider']))
+			)));
+
+			$summary['failed']++;
+
+		}
+
+		return;
+
+	}
+
+	$items = array();
+
+	$by_content = array();
+
+	foreach ($rows as $row) {
+
+		$content_id = (string) $row['remote_id'];
+
+		if (empty($row['found_id'])) {
+
+			mp_sync_finish_row((int)$row['id'], 'failed', lang('The product no longer exists.'));
+
+			$summary['failed']++;
+
+			continue;
+
+		}
+
+		if ($content_id === '') {
+
+			mp_sync_finish_row((int)$row['id'], 'failed', lang(array(
+				'string' => '{var:1} is not approved on {var:2} yet, so there is no listing to update.',
+				'vars'   => array((string)$row['name'], mp_provider_name($account['provider']))
+			)));
+
+			$summary['failed']++;
+
+			continue;
+
+		}
+
+		$by_content[$content_id][] = (int) $row['id'];
+
+		$items[] = mp_listing_update_item($row, mp_listing_images((int)$row['product_id'], $row['image_name']));
+
+	}
+
+	if (!$items) {
+
+		return;
+
+	}
+
+	$ids = array();
+
+	foreach ($by_content as $queue_ids) {
+
+		$ids = array_merge($ids, $queue_ids);
+
+	}
+
+	// Leased before the call, the same as the stock batch.
+	db("UPDATE marketplace_sync_queue
+		SET run_after = UNIX_TIMESTAMP() + 300, updated_timestamp = UNIX_TIMESTAMP()
+		WHERE id IN (" . implode(',', $ids) . ")");
+
+	$result = mp_call($account['provider'], 'update_listings', array($account, $items));
+
+	$summary['batches']++;
+
+	if (!$result['ok']) {
+
+		mp_sync_batch_failed($ids, $result, $summary);
+
+		mp_log($account_id, 'listing_update', false, $result['error'], count($items));
+
+		return;
+
+	}
+
+	// Listings the connector left out (no title, a picture on http) fail on
+	// their own reason; the rest went.
+	$refused = (isset($result['data']['refused']) && is_array($result['data']['refused']))
+		? $result['data']['refused'] : array();
+
+	$sent = array();
+
+	foreach ($by_content as $content_id => $queue_ids) {
+
+		if (isset($refused[(string)$content_id])) {
+
+			foreach ($queue_ids as $queue_id) {
+
+				mp_sync_finish_row($queue_id, 'failed', (string)$refused[(string)$content_id]);
+
+				$summary['failed']++;
+
+			}
+
+			continue;
+
+		}
+
+		$sent = array_merge($sent, $queue_ids);
+
+	}
+
+	$task_id = isset($result['data']['task_id']) ? (string)$result['data']['task_id'] : '';
+
+	if (!$sent || $task_id === '') {
+
+		return;
+
+	}
+
+	$summary['pushed'] += isset($result['data']['sent']) ? (int)$result['data']['sent'] : count($sent);
+
+	db("UPDATE marketplace_sync_queue
+		SET status = 'sent',
+			remote_task_id = '" . e($task_id) . "',
+			last_error = '',
+			run_after = UNIX_TIMESTAMP() + 30,
+			updated_timestamp = UNIX_TIMESTAMP()
+		WHERE id IN (" . implode(',', $sent) . ") AND status = 'waiting'");
+
+	mp_account_outcome($account_id, true);
+
+}
+
+// How many update lines one pass reads for an account: the content update's
+// own ceiling is a thousand listings.
+function mp_listing_update_batch_size() {
+
+	return 1000;
+
+}
+
 /* --------------------------------------------------------------- polling */
 
 function mp_sync_poll($deadline, &$summary) {
@@ -645,7 +834,9 @@ function mp_sync_task_unreadable($task_id, $result, &$summary) {
 function mp_sync_apply_results($account, $task_id, $results, &$summary) {
 
 	$rows = (array) db_items("SELECT marketplace_sync_queue.id, marketplace_sync_queue.product_id,
-			marketplace_product_map.id AS map_id, marketplace_product_map.remote_code
+			marketplace_sync_queue.operation,
+			marketplace_product_map.id AS map_id, marketplace_product_map.remote_code,
+			marketplace_product_map.remote_id
 		FROM marketplace_sync_queue
 		LEFT JOIN marketplace_product_map
 			ON  (marketplace_product_map.account_id = marketplace_sync_queue.account_id)
@@ -655,9 +846,26 @@ function mp_sync_apply_results($account, $task_id, $results, &$summary) {
 
 	foreach ($rows as $row) {
 
-		$code = (string) $row['remote_code'];
+		// A listing update is named by the listing's content id, and its
+		// verdict is about the listing's text and pictures, not about whether
+		// the product can be sold there: it closes the line and leaves the
+		// mapping alone.
+		$is_update = ((string)$row['operation'] === 'listing_update');
+
+		$code = $is_update ? (string) $row['remote_id'] : (string) $row['remote_code'];
 
 		$verdict = isset($results[$code]) ? $results[$code] : array('ok' => true, 'error' => '');
+
+		if ($is_update) {
+
+			mp_sync_finish_row((int)$row['id'], !empty($verdict['ok']) ? 'done' : 'failed',
+				!empty($verdict['ok']) ? '' : (isset($verdict['error']) ? (string)$verdict['error'] : ''));
+
+			$summary[!empty($verdict['ok']) ? 'done' : 'failed']++;
+
+			continue;
+
+		}
 
 		if (!empty($verdict['ok'])) {
 
@@ -774,7 +982,10 @@ function mp_sync_listing_states_account($account, $deadline, &$summary) {
 
 	}
 
-	$rows = (array) db_items("SELECT id, product_id, remote_code, remote_id, status, last_error
+	// The commission column is read, and so written, only once the database
+	// has it (mp_sync_listing_row_update() writes what the row carries).
+	$rows = (array) db_items("SELECT id, product_id, remote_code, remote_id, status, last_error"
+			. (mp_commission_ready() ? ', commission' : '') . "
 		FROM marketplace_product_map
 		WHERE id IN (" . implode(',', $ids) . ")
 		ORDER BY id ASC");
@@ -859,7 +1070,8 @@ function mp_sync_listing_states_account($account, $deadline, &$summary) {
 //   goes back to active - its stock line was refused while the listing
 //   waited - while a paused row stays paused. last_error is cleared, or
 //   carries a note when the listing is blacklisted, locked or archived over
-//   there (information: the status is not changed for it).
+//   there (information: the status is not changed for it). The commission
+//   rate is written when the row was read with that column.
 //
 //   rejected: the row goes to error with the reasons, under a prefix
 //   (mp_listing_rejected_prefix()) the screen knows it by.
@@ -920,6 +1132,17 @@ function mp_sync_listing_row_update($row, $state, $provider_name) {
 		}
 
 		$want['remote_id'] = mb_substr($content_id, 0, 64);
+
+		// The rate the marketplace takes on it, shown beside the listing. Only
+		// a figure the column can hold (DECIMAL(6,2)), and only on a row read
+		// with the column.
+		$commission = isset($state['commission']) && is_numeric($state['commission']) ? (float)$state['commission'] : null;
+
+		if (array_key_exists('commission', $row) && $commission !== null && $commission >= 0 && $commission < 10000) {
+
+			$want['commission'] = number_format($commission, 2, '.', '');
+
+		}
 
 		if ((string)$row['status'] === 'error') {
 

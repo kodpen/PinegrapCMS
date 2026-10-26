@@ -6710,7 +6710,7 @@ function send_givex_request($type, $gift_card_code, $amount = 0)
     $response_data = curl_exec($ch);
     $curl_errno = curl_errno($ch);
     $curl_error = curl_error($ch);
-    curl_close($ch);
+    unset($ch);
     // if there was a cURL error, then send the same request to the secondary Givex server
     if ($curl_errno != 0) {
         // initialize cURL
@@ -6736,7 +6736,7 @@ function send_givex_request($type, $gift_card_code, $amount = 0)
         $response_data = curl_exec($ch);
         $curl_errno = curl_errno($ch);
         $curl_error = curl_error($ch);
-        curl_close($ch);
+        unset($ch);
         // if there was also a cURL error for the secondary Givex server, then return error
         if ($curl_errno != 0) {
             $result['curl_errno'] = $curl_errno;

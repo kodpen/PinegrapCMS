@@ -989,18 +989,19 @@ function pg_seo_source_label($source)
 // $scope says which family of codes this call owns. The markup pass and the
 // link-graph pass both write findings for the same record and run at
 // different times, so a blanket delete would mean whichever ran last erased
-// the other's work.
+// the other's work. The accessibility pass ('a11y') owns the codes starting
+// with a11y_ and the other scopes leave them alone.
 function pg_seo_store_issues($type, $id, $findings, $scope = 'structure')
 {
-    $sql_scope = '';
+    $sql_scope = ($scope === 'a11y') ? " AND (LEFT(code, 5) = 'a11y_')" : " AND (LEFT(code, 5) <> 'a11y_')";
 
-    if (function_exists('pg_seo_link_codes')) {
+    if (($scope !== 'a11y') && function_exists('pg_seo_link_codes')) {
         if ($scope === 'graph') {
-            $sql_scope = " AND (code IN ('" . implode("','", pg_seo_graph_codes()) . "'))";
+            $sql_scope .= " AND (code IN ('" . implode("','", pg_seo_graph_codes()) . "'))";
         } elseif ($scope === 'links') {
-            $sql_scope = " AND (code IN ('" . implode("','", pg_seo_page_link_codes()) . "'))";
+            $sql_scope .= " AND (code IN ('" . implode("','", pg_seo_page_link_codes()) . "'))";
         } else {
-            $sql_scope = " AND (code NOT IN ('" . implode("','", pg_seo_link_codes()) . "'))";
+            $sql_scope .= " AND (code NOT IN ('" . implode("','", pg_seo_link_codes()) . "'))";
         }
     }
 
@@ -1367,6 +1368,29 @@ function pg_seo_analyze_page($page_id)
         'expect_jsonld' => in_array($page_row['page_type'], array('catalog', 'catalog detail', 'order form', 'express order')),
     );
 
+    $render = pg_seo_render_page($page_id, $page_row);
+
+    if ($render === NULL) {
+        pg_seo_forget_findings('page', $page_id);
+        return NULL;
+    }
+
+    return pg_seo_analyze_rendered_page($page_id, $page_row, $context, $render['html'], $render['error']);
+}
+
+// Render a page in process the way a signed-out visitor sees it.
+//
+// Shared by the structure pass and the accessibility pass (includes/fn/a11y.php),
+// which read the same markup for different questions. $page_row needs
+// page_name and page_type.
+//
+// Returns NULL when the page type cannot be rendered without a request behind
+// it, otherwise array('html' => ..., 'error' => ...): a failed render carries
+// the exception's message.
+function pg_seo_render_page($page_id, $page_row)
+{
+    require_once(dirname(__FILE__) . '/get_page_content.php');
+
     // Page types that cannot be built without a request behind them are not
     // rendered at all. Chasing them one at a time meant the cron run died on
     // whichever one happened to come first in id order.
@@ -1378,7 +1402,6 @@ function pg_seo_analyze_page($page_id)
         : FALSE;
 
     if ($render_context === FALSE) {
-        pg_seo_forget_findings('page', $page_id);
         return NULL;
     }
 
@@ -1466,6 +1489,13 @@ function pg_seo_analyze_page($page_id)
         }
     }
 
+    return array('html' => (string) $html, 'error' => $render_error);
+}
+
+// The structure findings of a page pg_seo_render_page() rendered, stored, and
+// the page's structure score returned.
+function pg_seo_analyze_rendered_page($page_id, $page_row, $context, $html, $render_error)
+{
     // Recorded rather than silently skipped, so the detail panel says why a
     // page has no structure score instead of leaving the operator to guess.
     if ($render_error !== '') {

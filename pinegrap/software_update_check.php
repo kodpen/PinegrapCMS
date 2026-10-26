@@ -102,7 +102,7 @@ function software_update_check($return_details = false)
     $response = curl_exec($ch);
     $curl_errno = curl_errno($ch);
     $curl_error = curl_error($ch);
-    curl_close($ch);
+    unset($ch);
 
     if ($response === false) {
 

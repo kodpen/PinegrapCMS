@@ -3648,6 +3648,14 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 .sd-class-ac-item:hover,
 .sd-class-ac-item.active { background: #2563eb; color: #fff; }
+.sd-class-ac-item { display: flex; gap: 12px; align-items: baseline; }
+.sd-class-ac-hint {
+    margin-left: auto; font-family: system-ui, sans-serif; font-size: .7rem;
+    color: #9ca3af;
+}
+.sd-class-ac-item:hover .sd-class-ac-hint,
+.sd-class-ac-item.active .sd-class-ac-hint { color: #dbeafe; }
+.sd-class-ac-muted .sd-class-ac-label { opacity: .6; }
 
 /* ========================= SHARED USAGE BADGE ========================= */
 .sd-shared-usage-badge {

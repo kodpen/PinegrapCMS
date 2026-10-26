@@ -144,6 +144,10 @@ $file_list = array(
     'assets/chat_backend.src.js',
     'assets/ckeditor_4_20',
     'assets/class_suggestions.js',
+    // The designer's fixed list of Bootstrap classes, replaced by the smart
+    // completion (assets/js/pg_style_suggest.js with the predictor and the
+    // generated vocabulary). Dropped from the package with 2026.11.0.
+    'assets/js/class_suggestions.js',
     'assets/codemirror',
     'assets/codemirror-5.65.9',
     'assets/codemirror_modal.js',

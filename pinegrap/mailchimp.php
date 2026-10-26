@@ -1194,7 +1194,7 @@ function mailchimp_request($request) {
 
     $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-    curl_close($ch);
+    unset($ch);
 
     // If there was a cURL problem, then log and return error.
     if ($curl_errno) {
