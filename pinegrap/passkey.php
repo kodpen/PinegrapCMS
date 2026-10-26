@@ -21,7 +21,9 @@
  *                     checked and kept: {"ok": true, "passkey": {...}}
  *   signin_options    request options for the account whose sign-in waits for
  *                     its second step; the answer goes to mfa.php, which
- *                     completes the sign-in
+ *                     completes the sign-in. With passwordless=1, options
+ *                     for a sign-in with a passkey alone (when the site
+ *                     offers it); the answer goes to index.php
  *
  * A refusal is {"ok": false, "error": <code>, "message": <one sentence for
  * the visitor>} with its status. The codes of a refused credential stay in
@@ -171,8 +173,31 @@ switch ($action) {
 
     case 'signin_options':
 
+        // A sign-in with a passkey alone (the sign-in screens' button, when
+        // the site offers it): no account is known, the browser offers
+        // whatever passkey it holds for the site, and the answer goes to
+        // index.php.
+        if (isset($_POST['passwordless']) && ((string) $_POST['passwordless'] === '1')) {
+
+            if (pg_session_signed_in()) {
+                passkey_answer(array('ok' => false, 'error' => 'session', 'message' => lang('You are signed in already.')), 403);
+            }
+
+            if (!pg_passkey_passwordless_enabled()) {
+                passkey_answer(array('ok' => false, 'error' => 'passwordless_off', 'message' => pg_passkey_refusal('passwordless_off', 'signin')), 403);
+            }
+
+            $result = pg_passkey_signin_begin(0);
+
+            if (!$result['ok']) {
+                passkey_refuse($result['error'], 'signin');
+            }
+
+            passkey_answer(array('ok' => true, 'options' => $result['options']));
+        }
+
         // The second step of a sign-in whose password was accepted
-        // (pg_mfa_gate()); a sign-in with a passkey alone is not offered.
+        // (pg_mfa_gate()).
         $pending = pg_mfa_pending();
 
         if (($pending === null) || ($pending['mode'] !== 'verify') || pg_session_signed_in()) {

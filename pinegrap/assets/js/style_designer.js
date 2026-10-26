@@ -12214,6 +12214,12 @@ const StyleDesigner = (function () {
         ],
         'security.passkeys': [
             { __passkey_id: '2', __passkey_name: _sdT('My laptop'), __passkey_last_used: _sdT('Never'), __passkey_is_synced: '' }
+        ],
+        'paging.pages': [
+            { __pager_number: '2', __pager_url: '', __pager_is_current: '1' },
+            { __pager_number: '3' },
+            { __pager_number: '', __pager_url: '', __pager_is_gap: '1' },
+            { __pager_number: '9' }
         ]
     };
 
@@ -22389,7 +22395,8 @@ const StyleDesigner = (function () {
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } },
-                { label: _sdT('Passkeys of the member'), type: 'loop_area', icon: 'bi-fingerprint', extra: { listSource: 'security.passkeys' } }
+                { label: _sdT('Passkeys of the member'), type: 'loop_area', icon: 'bi-fingerprint', extra: { listSource: 'security.passkeys' } },
+                { label: _sdT('Page links'), type: 'loop_area', icon: 'bi-three-dots', extra: { listSource: 'paging.pages' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
@@ -32473,7 +32480,8 @@ const StyleDesigner = (function () {
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
-            'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.')
+            'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.'),
+            'paging.pages':       _sdT('One row for every page link the list shows: the first and the last page, two pages either side of the page shown, a gap between them. With this list in the widget its built-in pagination is not added. Conditions on "Page address" and "The page shown" tell a link, the current page and a gap apart.')
         };
         if (about[p.source]) html += note(about[p.source], false);
         html += note(_sdT('A list without rows draws nothing. The canvas shows its row once.'), false);
@@ -54201,6 +54209,19 @@ const StyleDesigner = (function () {
                 ['__passkey_last_used', _sdT('Last used (relative time, else "Never")')],
                 ['__passkey_is_synced', _sdT('Synced to the member\'s other devices (1 or empty)')]
             ]
+        },
+        // The page links of the form list (pg_sw_list_paging_sources()),
+        // keyed by the page shown: anywhere in the widget.
+        'paging.pages': {
+            label: _sdT('Page links'),
+            arg: '', argRequired: false,
+            kinds: ['form_list_view'],
+            rows: [
+                ['__pager_number',     _sdT('Page number (empty for a gap)')],
+                ['__pager_url',        _sdT('Page address (empty for a gap and the page shown)')],
+                ['__pager_is_current', _sdT('The page shown (1 or empty)')],
+                ['__pager_is_gap',     _sdT('A gap between page numbers (1 or empty)')]
+            ]
         }
     };
 
@@ -54252,7 +54273,11 @@ const StyleDesigner = (function () {
         __passkey_name:      _sdT('My phone'),
         __passkey_added:     '20.10.2026',
         __passkey_last_used: _sdT('2 days ago'),
-        __passkey_is_synced: '1'
+        __passkey_is_synced: '1',
+        __pager_number:      '1',
+        __pager_url:         '#',
+        __pager_is_current:  '',
+        __pager_is_gap:      ''
     };
 
     // The orders a list's rows take (props.order).
@@ -54385,6 +54410,7 @@ const StyleDesigner = (function () {
                 ])
             ]);
         }
+        if (source === 'paging.pages') return _sdPagingListStarter(bs);
         if (source === 'security.passkeys') {
             return createNode('loop_area', { source: source }, [
                 createNode('semantic', { tag: 'div', cssClass: bs ? 'list-group-item d-flex flex-wrap align-items-center gap-2' : '', customName: _sdT('Passkey') }, [
@@ -54555,6 +54581,44 @@ const StyleDesigner = (function () {
     // (dimmed on a day of another month), a "Today" badge and its events as
     // links. The others: a list of their own rows, the days list with its
     // events. Every word is the designer's to restyle or translate.
+    // A new list of the page links: a Bootstrap pagination whose previous
+    // and next items show only when there is such a page (the widget's
+    // flags), around the list's row: a link, the page shown, or a gap, each
+    // picked by a condition on the row (pg_sw_list_paging_rows()).
+    /* @pg-site-output */
+    function _sdPagingListStarter(bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var when = function (token, op) {
+            return { _bindings: { show_if: token }, _bindParams: { show_if: { op: op } } };
+        };
+        var step = function (flag, token, text, name) {
+            return sem('li', 'page-item', name, { _bindings: { eo_visible_if: flag } }, [
+                sem('a', 'page-link', name, { text: text, href: '#', _attrs: [{ name: 'aria-label', value: name }], _bindings: { href: token } })
+            ]);
+        };
+        return sem('nav', 'mt-3', _sdT('Page links'), { _attrs: [{ name: 'aria-label', value: _sdT('Page navigation') }] }, [
+            sem('ul', 'pagination pagination-sm justify-content-center mb-0', _sdT('Page links'), {}, [
+                step('has_prev_page', '__prev_page_url', '\u00ab', _sdT('Previous')),
+                createNode('loop_area', { source: 'paging.pages' }, [
+                    sem('li', 'page-item', _sdT('Page link'), when('__pager_url', 'not_empty'), [
+                        sem('a', 'page-link', _sdT('Page link'), { text: '1', href: '#', _bindings: { href: '__pager_url', text: '__pager_number' } })
+                    ]),
+                    sem('li', 'page-item active', _sdT('The page shown'), when('__pager_is_current', 'not_empty'), [
+                        sem('span', 'page-link', _sdT('The page shown'), { text: '2', _attrs: [{ name: 'aria-current', value: 'page' }], _bindings: { text: '__pager_number' } })
+                    ]),
+                    sem('li', 'page-item disabled', _sdT('Gap'), when('__pager_is_gap', 'not_empty'), [
+                        sem('span', 'page-link', _sdT('Gap'), { text: '\u2026' })
+                    ])
+                ]),
+                step('has_next_page', '__next_page_url', '\u00bb', _sdT('Next'))
+            ])
+        ]);
+    }
+
     /* @pg-site-output */
     function _sdCalendarListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
@@ -54683,7 +54747,9 @@ const StyleDesigner = (function () {
 
     // Whether a list in a widget of `kind` must sit in the main loop: in a
     // list of records only the record template fills it.
-    function _sdListNeedsMainLoop(kind) {
+    // The page links read the list, not a record: anywhere in the widget.
+    function _sdListNeedsMainLoop(kind, source) {
+        if (source === 'paging.pages') return false;
         return kind === 'form_list_view' || kind === 'catalog_listing';
     }
 
@@ -54731,7 +54797,7 @@ const StyleDesigner = (function () {
         var kind = _sdListWidgetKind(sid);
         if (!kind) return false;
         if (_sdKindLists(kind).indexOf(source) === -1 && !(list && _isInsideSystemWidget(list) === sid)) return false;
-        if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(target)) return false;
+        if (_sdListNeedsMainLoop(kind, source) && !_sdInMainLoopAt(target)) return false;
         // The calendar's grid lists read the calendar, not an event: never
         // in the event loop.
         if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
@@ -54823,7 +54889,7 @@ const StyleDesigner = (function () {
         }
         var kind = _sdListWidgetKind(_isInsideSystemWidget(node));
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
-        if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
+        if (_sdListNeedsMainLoop(kind, spec.source) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
         if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(node) && !_sdOrderItemListKey(spec.source)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
         if (_sdOrderListKeyless(spec.source, node)) {
@@ -60783,8 +60849,71 @@ const StyleDesigner = (function () {
         return out;
     }
 
-    // The id, the title and tooltip, then the Attributes panel's entries
-    // (`list`, the node's _attrs) of a content, semantic or grid node.
+    // A node's interaction (props._fx) with every field known and in
+    // range, or null without one. Twin of pg_fx_normalize()
+    // (includes/fn/designer_fx.php): the same fields, ranges and defaults.
+    // The lists are first-is-default; a number is [min, max, default].
+    function _sdFxSpec() {
+        return {
+            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax'],
+            triggers: ['view', 'load', 'hover', 'click'],
+            easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
+            numbers: {
+                duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0],
+                distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20]
+            }
+        };
+    }
+    function _sdFxNormalize(fx) {
+        if (!fx || typeof fx !== 'object' || typeof fx.effect !== 'string') return null;
+        var spec = _sdFxSpec(), effect = fx.effect.toLowerCase();
+        if (spec.effects.indexOf(effect) === -1) return null;
+        var num = function (name) {
+            var r = spec.numbers[name], v = fx[name];
+            if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '' || !isFinite(Number(v))) return r[2];
+            // PHP's round() rounds halves away from zero.
+            v = Number(v);
+            v = v < 0 ? -Math.round(-v) : Math.round(v);
+            return Math.max(r[0], Math.min(r[1], v));
+        };
+        var out = { effect: effect };
+        if (effect === 'sticky') { out.offset = num('offset'); return out; }
+        if (effect === 'parallax') { out.speed = num('speed'); return out; }
+        var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
+        var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
+        out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
+        out.duration = num('duration');
+        out.delay = num('delay');
+        out.easing = spec.easings.indexOf(easing) !== -1 ? easing : spec.easings[0];
+        if (effect !== 'fade') out.distance = num('distance');
+        if (out.trigger === 'load' || out.trigger === 'view') out.stagger = num('stagger');
+        if (out.trigger === 'view') out.repeat = !!fx.repeat;
+        return out;
+    }
+
+    // The data-pg-fx-* attributes of a node's interaction, '' without one:
+    // the effect, its trigger, then only the values that differ from
+    // pg_fx.src.js's defaults. Twin of pg_fx_attrs().
+    function _sdFxAttrs(p) {
+        var fx = _sdFxNormalize(p ? p._fx : null), spec = _sdFxSpec();
+        if (!fx) return '';
+        var out = ' data-pg-fx="' + fx.effect + '"';
+        if (fx.trigger) out += ' data-pg-fx-trigger="' + fx.trigger + '"';
+        ['duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed'].forEach(function (name) {
+            if (fx[name] === undefined) return;
+            if (name === 'easing') {
+                if (fx.easing !== spec.easings[0]) out += ' data-pg-fx-easing="' + fx.easing + '"';
+                return;
+            }
+            if (fx[name] !== spec.numbers[name][2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
+        });
+        if (fx.repeat) out += ' data-pg-fx-repeat';
+        return out;
+    }
+
+    // The id, the title and tooltip, the interaction, then the Attributes
+    // panel's entries (`list`, the node's _attrs) of a content, semantic or
+    // grid node.
     // `skip`: lower-case names the caller wrote itself; 'id' in it leaves
     // the id out. class, style and id are never written from the list.
     // Twin of _render_extra_attrs($props, $skip, true), less the search
@@ -60793,11 +60922,13 @@ const StyleDesigner = (function () {
     function _sdNodeExtraAttrs(p, list, skip) {
         var out = '';
         if (skip.indexOf('id') === -1 && p.id) out += ' id="' + esc(p.id) + '"';
-        out += _sdNodeTitleAttrs(p, list);
+        var fx = _sdFxAttrs(p);
+        out += _sdNodeTitleAttrs(p, list) + fx;
         (Array.isArray(list) ? list : []).forEach(function (a) {
             if (!a || !a.name) return;
             var name = String(a.name), lname = name.toLowerCase();
             if (lname === 'class' || lname === 'style' || lname === 'id' || skip.indexOf(lname) !== -1) return;
+            if (fx && (lname === 'data-pg-fx' || lname.indexOf('data-pg-fx-') === 0)) return;
             if (lname === 'data-pg-search-section' && p.id && p.searchSection) return;
             var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
             out += ' ' + esc(name) + '="' + esc(val) + '"';
@@ -61600,12 +61731,14 @@ const StyleDesigner = (function () {
     // Platform scripts a visitor page gets when its markup holds their
     // marker. The server's twins add the same file to the published page:
     // pg_theme_switcher_inject(), pg_bs_tips_inject() (its expression is
-    // pg_bs_tips_pattern()) and pg_scroller_inject() (pg_scroller_pattern()).
+    // pg_bs_tips_pattern()), pg_scroller_inject() (pg_scroller_pattern())
+    // and pg_fx_inject() (pg_fx_pattern()).
     // A new row here needs its server step too.
     var _SD_PAGE_SCRIPTS = [
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover)\b/i, file: 'assets/js/pg_bs_tips.js' },
-        { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' }
+        { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
+        { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the

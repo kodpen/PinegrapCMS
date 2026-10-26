@@ -773,51 +773,29 @@ function erp_edoc_session_save($code, $session)
 function erp_edoc_http($method, $url, $headers = array(), $body = null, $timeout = 40)
 {
     $started = microtime(true);
-    $ch = curl_init($url);
-
-    // Sent with no User-Agent a request looks anonymous to the far side's
-    // firewall (see _parasut_request()).
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
+    $options = array('timeout' => (int) $timeout, 'connect_timeout' => 15);
 
     if ($body !== null) {
         $payload = is_array($body) ? json_encode($body, JSON_UNESCAPED_UNICODE) : (string) $body;
         $headers[] = 'Content-Length: ' . strlen($payload);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        $options['body'] = $payload;
     }
 
-    curl_setopt_array($ch, array(
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CUSTOMREQUEST => strtoupper((string) $method),
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_TIMEOUT => (int) $timeout,
-        CURLOPT_CONNECTTIMEOUT => 15,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_SSL_VERIFYHOST => 2,
-        CURLOPT_FOLLOWLOCATION => false,
-    ));
+    $options['headers'] = $headers;
 
     // The certificate is verified against the bundle the rest of the
     // software uses (CURL_CA_BUNDLE in data/config.php, the update channel's
-    // setting); pg_curl_tls() applies it and the operator's last-resort
+    // setting); pg_curl_run() applies it and the operator's last-resort
     // switch alike. No silent insecure fallback: what goes out here carries
     // tax numbers and the store's İşbaşı password.
-    if (function_exists('pg_curl_tls')) {
-        pg_curl_tls($ch);
-    } elseif (defined('CURL_CA_BUNDLE') && (CURL_CA_BUNDLE !== '') && is_file(CURL_CA_BUNDLE)) {
-        curl_setopt($ch, CURLOPT_CAINFO, CURL_CA_BUNDLE);
+    $answer = pg_curl_run($method, $url, $options);
+    $raw = $answer['body'];
+    $http_code = $answer['status'];
+    $curl_error = $answer['error'];
+
+    if ($curl_error !== '') {
+        $curl_error .= pg_curl_tls_hint($answer['errno']);
     }
-
-    $raw = curl_exec($ch);
-    $http_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_error = curl_error($ch);
-    $curl_errno = curl_errno($ch);
-    unset($ch);
-
-    if (($curl_error !== '') && function_exists('pg_curl_tls_hint')) {
-        $curl_error .= pg_curl_tls_hint($curl_errno);
-    }
-
-    $raw = is_string($raw) ? $raw : '';
     $decoded = ($raw === '') ? null : json_decode($raw, true);
 
     return array(

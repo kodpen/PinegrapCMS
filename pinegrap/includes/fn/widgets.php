@@ -2220,7 +2220,14 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     }
 
     // 4. Pagination (Bootstrap 5 nav) — only when there is more than one page.
-    $pagination_html = pg_sw_pagination_html($page_param, $current_page, $total_pages);
+    //    A design holding a list of the page links draws them itself: its
+    //    rows are published and the built-in pagination is left out.
+    if (pg_sw_list_wanted('paging')) {
+        pg_sw_list_publish('paging', pg_sw_list_paging_rows($page_param, $current_page, $total_pages));
+        $pagination_html = '';
+    } else {
+        $pagination_html = pg_sw_pagination_html($page_param, $current_page, $total_pages);
+    }
 
     // 5. Stitch search + loop output + pagination into the static surround
     //    (legacy widgets with no loop_area: the records with their controls).

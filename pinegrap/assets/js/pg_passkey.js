@@ -9,8 +9,11 @@
  * WebAuthn do not all have yet.
  *
  *   PgPasskey.supported()            whether this browser can use passkeys
- *   PgPasskey.signIn({url, token})   the second step of a sign-in: resolves
- *                                    with the credential JSON to post
+ *   PgPasskey.signIn({url, token, passwordless})
+ *                                    the second step of a sign-in, or with
+ *                                    passwordless a sign-in with the passkey
+ *                                    alone: resolves with the credential
+ *                                    JSON to post
  *   PgPasskey.register({url, token, name, currentPassword, code})
  *                                    adds a passkey to the signed-in account:
  *                                    the current password (when the account
@@ -177,7 +180,13 @@
     }
 
     function signIn(settings) {
-        return post(settings.url, { action: 'signin_options', token: settings.token }).then(function (answer) {
+        var fields = { action: 'signin_options', token: settings.token };
+
+        if (settings.passwordless) {
+            fields.passwordless = '1';
+        }
+
+        return post(settings.url, fields).then(function (answer) {
             return window.navigator.credentials.get({ publicKey: requestOptions(answer.options) }).catch(browserFailure);
         }).then(function (credential) {
             if (!credential) {
@@ -212,9 +221,90 @@
         });
     }
 
+    // The "Sign in with a passkey" buttons (pg_passkey_signin_button()): shown
+    // when the browser can use a passkey; the answer is posted to index.php
+    // in a form built here, because the button usually sits inside the
+    // password form.
+    function bindSignInButtons() {
+        if (!supported()) {
+            return;
+        }
+
+        var buttons = window.document.querySelectorAll('button[data-pg-passkey-signin]');
+
+        Array.prototype.forEach.call(buttons, function (button) {
+            if (button.getAttribute('data-pg-passkey-bound')) {
+                return;
+            }
+
+            button.setAttribute('data-pg-passkey-bound', '1');
+
+            var box = button.parentNode;
+            var notice = box.querySelector('.pg-passkey-signin-error');
+            var texts = {};
+
+            try {
+                texts = JSON.parse(button.getAttribute('data-texts') || '{}');
+            } catch (ignore) {
+                texts = {};
+            }
+
+            box.hidden = false;
+
+            button.addEventListener('click', function () {
+                button.disabled = true;
+                notice.hidden = true;
+
+                signIn({
+                    url: button.getAttribute('data-options-url'),
+                    token: button.getAttribute('data-token'),
+                    passwordless: true
+                }).then(function (credential) {
+                    var outer = button.form;
+                    var remember = outer && outer.elements.remember_me;
+                    var form = window.document.createElement('form');
+                    var fields = {
+                        token: button.getAttribute('data-token'),
+                        pg_passkey_signin: '1',
+                        credential: JSON.stringify(credential),
+                        send_to: button.getAttribute('data-send-to') || '',
+                        return_to: button.getAttribute('data-return-to') || '',
+                        remember_me: (remember && remember.checked) ? '1' : ''
+                    };
+
+                    form.method = 'post';
+                    form.action = button.getAttribute('data-action');
+                    form.style.display = 'none';
+
+                    Object.keys(fields).forEach(function (key) {
+                        var input = window.document.createElement('input');
+
+                        input.type = 'hidden';
+                        input.name = key;
+                        input.value = fields[key];
+                        form.appendChild(input);
+                    });
+
+                    window.document.body.appendChild(form);
+                    form.submit();
+                }).catch(function (error) {
+                    button.disabled = false;
+                    notice.textContent = error.message || ((error.code === 'NotAllowedError' || error.code === 'AbortError') ? texts.cancelled : texts.failed) || '';
+                    notice.hidden = false;
+                });
+            });
+        });
+    }
+
     window.PgPasskey = {
         supported: supported,
         signIn: signIn,
         register: register
     };
+
+    if (window.document.readyState === 'loading') {
+        window.document.addEventListener('DOMContentLoaded', bindSignInButtons);
+    } else {
+        bindSignInButtons();
+    }
 })(window);

@@ -1598,6 +1598,22 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'customers.consents',
+			'method'  => 'GET',
+			'path'    => '/customers/{id}/consents',
+			'scope'   => 'customers:read',
+			'handler' => 'api_customers_consents',
+			'returns' => array('list' => 'Consent'),
+			'summary' => 'A customer\'s consent record',
+			'description' => 'Every consent answer recorded for this customer record or the site accounts linked to it, newest first: the channel (email, sms, call, contract), the purpose (marketing, group:<id> for a contact group\'s e-mail, or the contract text accepted), granted, refused or pending, and where it was given (signup, checkout, account, unsubscribe, form, iys and the rest). The latest row of a channel and purpose is the answer that stands. Cookie notice answers are not listed. The IP address and browser of a row are kept on the site and not given here. Cursor paged. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. A site without the consent log answers an empty list. Changes are announced as customer.consent_changed.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
 			'id'      => 'customers.create',
 			'method'  => 'POST',
 			'path'    => '/customers',

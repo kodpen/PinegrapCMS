@@ -1370,7 +1370,7 @@ function pg_page_cache_request_dirties($method, $script, $signed_in, $api_client
 
     $script = strtolower(basename(str_replace('\\', '/', (string) $script)));
 
-    if (in_array($script, array('page_view.php', 'api.php', 'chat.php', 'software_update_check.php', 'wishlist.php', 'stock_notify.php'), true)
+    if (in_array($script, array('page_view.php', 'api.php', 'chat.php', 'software_update_check.php', 'wishlist.php', 'stock_notify.php', 'consent_answer.php'), true)
         || (strpos($script, 'workspace') === 0)) {
         return false;
     }

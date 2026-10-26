@@ -441,9 +441,9 @@ function pg_sms_sender_match($sender, $senders, $user = '')
 
 /**
  * A driver's HTTP call. The provider's address is fixed in its driver, never
- * typed by anyone, so this is a plain cURL call with the certificate checks
- * the carriers and the update channel use (pg_curl_tls()); a redirect is not
- * followed. The cURL error number, a proxy's answer to the tunnel and the
+ * typed by anyone, so this is a fixed-host call (pg_curl_run()) with the
+ * certificate checks the carriers and the update channel use; a redirect is
+ * not followed. The cURL error number, a proxy's answer to the tunnel and the
  * bytes of the request that went out tell a caller whether the request can
  * have reached the provider (pg_sms_http_never_sent()).
  *
@@ -464,44 +464,31 @@ function pg_sms_http($method, $request)
         return array('status' => 0, 'body' => '', 'error' => lang('cURL is not available on this server.'), 'errno' => 2, 'connect' => 0, 'request_size' => 0);
     }
 
-    $handle = curl_init((string) $request['url']);
-
-    curl_setopt($handle, CURLOPT_CUSTOMREQUEST, (string) $method);
-    curl_setopt($handle, CURLOPT_HTTPHEADER, (array) $request['headers']);
-    curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($handle, CURLOPT_FOLLOWLOCATION, false);
-    curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($handle, CURLOPT_TIMEOUT, 20);
-    curl_setopt($handle, CURLOPT_USERAGENT, 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (+sms)');
-    pg_curl_tls($handle);
+    $options = array(
+        'headers'         => (array) $request['headers'],
+        'timeout'         => 20,
+        'connect_timeout' => 10,
+        'user_agent'      => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (+sms)',
+    );
 
     if (isset($request['body']) && ((string) $request['body'] !== '')) {
-        curl_setopt($handle, CURLOPT_POSTFIELDS, (string) $request['body']);
+        $options['body'] = (string) $request['body'];
     }
 
-    $body = curl_exec($handle);
-    $errno = (int) curl_errno($handle);
-    $error = curl_error($handle);
-    $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
-    $connect = (int) curl_getinfo($handle, CURLINFO_HTTP_CONNECTCODE);
-    $request_size = (int) curl_getinfo($handle, CURLINFO_REQUEST_SIZE);
+    $answer = pg_curl_run((string) $method, (string) $request['url'], $options);
 
-    // The handle is freed with the variable; curl_close() does nothing since
-    // PHP 8.0 and is deprecated in 8.5.
-    unset($handle);
-
-    if ($errno !== 0) {
+    if ($answer['errno'] !== 0) {
         return array(
             'status'  => 0,
             'body'    => '',
-            'error'   => trim($error . pg_curl_tls_hint($errno)),
-            'errno'   => $errno,
-            'connect' => $connect,
-            'request_size' => $request_size,
+            'error'   => trim($answer['error'] . pg_curl_tls_hint($answer['errno'])),
+            'errno'   => $answer['errno'],
+            'connect' => $answer['connect'],
+            'request_size' => $answer['request_size'],
         );
     }
 
-    return array('status' => $status, 'body' => (string) $body, 'error' => '', 'errno' => 0, 'connect' => $connect, 'request_size' => $request_size);
+    return array('status' => $answer['status'], 'body' => $answer['body'], 'error' => '', 'errno' => 0, 'connect' => $answer['connect'], 'request_size' => $answer['request_size']);
 }
 
 /**

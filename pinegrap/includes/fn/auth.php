@@ -3378,23 +3378,12 @@ function pg_form_spam_ip_listed($ip)
         return false;
     }
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://api.stopforumspam.org/api?ip=' . urlencode($ip) . '&json');
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 4);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    pg_curl_tls($ch);
+    $answer = pg_curl_run('GET', 'https://api.stopforumspam.org/api?ip=' . urlencode($ip) . '&json', array(
+        'timeout'         => 4,
+        'connect_timeout' => 4,
+    ));
 
-    $body = curl_exec($ch);
-
-    // A no-op since PHP 8.0 and deprecated in 8.5.
-    if (PHP_VERSION_ID < 80000) {
-        curl_close($ch); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated -- guarded by PHP_VERSION_ID above
-    }
-
-    $response = is_string($body) ? json_decode($body, true) : null;
+    $response = json_decode($answer['body'], true);
 
     if (!is_array($response) || empty($response['success'])) {
         $error = '';
