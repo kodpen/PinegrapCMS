@@ -510,6 +510,7 @@
     "A page blocked in robots.txt is not crawled, so the noindex tag on it is never read. Use this before a page reaches the results; a page that is already listed can take a while to drop out.": "robots.txt ile engellenen bir sayfa taranmaz, dolayısıyla üzerindeki noindex etiketi hiç okunmaz. Bunu sayfa sonuçlara girmeden önce kullanın; zaten listelenmiş bir sayfanın düşmesi zaman alabilir.",
     "A page carrying a registration widget, or the legacy registration page.": "Kayıt widget'ı taşıyan bir sayfa ya da legacy kayıt sayfası.",
     "A page carrying a registration widget, or the legacy registration page. Token: ^^__register_url^^": "Kayıt widget'ı taşıyan bir sayfa ya da legacy kayıt sayfası. Token: ^^__register_url^^",
+    "A page comes before the one shown": "Gösterilen sayfadan önce bir sayfa var",
     "A page drawn and sent to the billing e-mail address when the order is placed.": "Sipariş verildiğinde çizilip fatura e-posta adresine gönderilen sayfa.",
     "A page name cannot contain ? # % \\ < > \" or control characters.": "Sayfa adında ? # % \\ < > \" ya da denetim karakteri olamaz.",
     "A page of type {var:1} cannot be included in the site map.": "{var:1} tipindeki bir sayfa site haritasına eklenemez.",

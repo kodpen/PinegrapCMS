@@ -868,6 +868,7 @@
     "menu item ({var:1}) on menu ({var:2}) was modified": " menüdeki ({var:2}) menü öğesi ({var:1}) düzenlendi",
     "menu item and all menu items underneath it": "menü öğesi ve altındaki tüm menü öğeleri",
     "menu was duplicated ({var:1} -> {var:2})": "menü kopyalandı ({var:1} -> {var:2})",
+    "menu-sequence": "menu-sirasi",
     "menus": "menü",
     "messages": "mesaj",
     "methods:": "yöntemler:",
