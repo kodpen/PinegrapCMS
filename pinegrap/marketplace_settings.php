@@ -48,10 +48,11 @@ if ($_POST) {
 	validate_token_field();
 
 	// Every field here holds one value, except the category attributes
-	// (attribute[id]). One posted as a list (provider[]=x) stopped the request
+	// (attribute[id]) and the matched products ticked for a listing update
+	// (map_ids[]). One posted as a list (provider[]=x) stopped the request
 	// in trim(), and account_id[]=x or group_id[]=x was read as record 1.
 	// Nothing is written, so every account and match stays as it was.
-	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1));
+	$mp_settings_lists = pg_request_unexpected_lists($_POST, array('attribute' => 1, 'map_ids' => 1));
 
 	if ($mp_settings_lists) {
 
@@ -684,6 +685,68 @@ if ($_POST) {
 		$liveform->add_notice(lang('The orders that failed will be read from the marketplace again on the next run.'));
 
 		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-orders');
+
+		exit();
+
+	}
+
+	// Send the shop's title, description and pictures over the ticked listings
+	// the marketplace has approved. Queued for this account only, not through
+	// mp_enqueue(), which queues stock for every account; the job sends them
+	// on its next pass (mp_sync_send_listing_updates()). A product already
+	// waiting for an update is not queued twice.
+	if ($action === 'listing_update' && $account) {
+
+		$map_ids = array();
+
+		foreach ((array)(isset($_POST['map_ids']) ? $_POST['map_ids'] : array()) as $value) {
+
+			if (is_scalar($value) && (int)$value > 0) {
+
+				$map_ids[(int)$value] = (int)$value;
+
+			}
+
+		}
+
+		$product_ids = $map_ids ? array_map('intval', (array) db_values("SELECT product_id FROM marketplace_product_map
+			WHERE (account_id = '" . e($account_id) . "') AND (remote_id <> '')
+			  AND (id IN (" . implode(',', $map_ids) . "))")) : array();
+
+		if (!mp_can($account['provider'], 'update_listings')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} elseif (!$product_ids) {
+
+			$liveform->add_warning(lang('Tick at least one product whose listing is approved.'));
+
+		} else {
+
+			foreach ($product_ids as $product_id) {
+
+				db("INSERT INTO marketplace_sync_queue
+					(account_id, product_id, operation, status, priority, attempts, run_after, created_timestamp, updated_timestamp)
+					SELECT '" . e($account_id) . "', '" . e($product_id) . "', 'listing_update', 'waiting', 3, 0, 0,
+						UNIX_TIMESTAMP(), UNIX_TIMESTAMP()
+					FROM DUAL
+					WHERE NOT EXISTS (SELECT 1 FROM marketplace_sync_queue
+						WHERE (account_id = '" . e($account_id) . "') AND (product_id = '" . e($product_id) . "')
+						  AND (operation = 'listing_update') AND (status = 'waiting'))");
+
+			}
+
+			$liveform->add_notice(lang(array(
+				'string' => 'The changes of {var:1} listing(s) will be sent on the next run.',
+				'vars'   => array(count($product_ids))
+			)));
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-map');
 
 		exit();
 
@@ -1451,6 +1514,10 @@ if ($selected) {
 	// each matched product's listing stands.
 	$can_listing_status = mp_can($selected['provider'], 'listing_status');
 
+	// One whose connector updates approved listings gets a tick box on each
+	// of them and a button that queues the ticked ones.
+	$can_update_listings = mp_can($selected['provider'], 'update_listings');
+
 	// Orders come in only from a marketplace whose connector reads them, and
 	// are accepted only by one that can accept them. The job skips the rest
 	// without a word, so their switches and the orders card are not drawn: a
@@ -1529,7 +1596,20 @@ if ($selected) {
 			<i class="bi bi-link-45deg me-1"></i><b>' . lang('Matched products') . '</b>
 			<span class="small opacity-75 d-none d-lg-inline">'
 				. lang('The code on the left is this shop\'s; the code on the right is what the marketplace calls it.') . '</span>
-			<div class="ms-auto d-flex gap-2">
+			<div class="ms-auto d-flex gap-2">'
+				. ($can_update_listings ? '
+				<form method="post" action="marketplace_settings.php" class="d-inline" id="mp_update_form">
+					' . get_token_field() . '
+					<input type="hidden" name="mp_action" value="listing_update">
+					<input type="hidden" name="account_id" value="' . $selected_id . '">
+					<button type="submit" class="btn btn-sm btn-outline-secondary"'
+						. ($maps ? '' : ' disabled') . ' title="'
+						. h(lang('Sends the title, description and pictures of the ticked approved listings. Price and stock go on their own.')) . '">
+						<i class="bi bi-cloud-upload me-1"></i>' . h(lang(array(
+							'string' => 'Send changes to {var:1}',
+							'vars'   => array(mp_provider_name($selected['provider']))
+						))) . '</button>
+				</form>' : '') . '
 				<form method="post" action="marketplace_settings.php" class="d-inline">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="push_all">
@@ -1609,10 +1689,29 @@ if ($selected) {
 
 			}
 
+			// The commission the marketplace takes, read with the approval
+			// (NULL until then; the key is missing before the upgrade step).
+			if (isset($map['commission']) && is_numeric($map['commission'])) {
+
+				$map_state .= ' <span class="small opacity-75">' . h(lang(array(
+					'string' => 'Commission {var:1} %',
+					'vars'   => array(pg_format_number((float)$map['commission'], 2))
+				))) . '</span>';
+
+			}
+
+			// The tick box belongs to the form in the card header (form
+			// attribute): the row already holds the remove form, and forms
+			// do not nest.
+			$map_tick = ($can_update_listings && (string)$map['remote_id'] !== '')
+				? '<input type="checkbox" class="form-check-input me-1" form="mp_update_form" name="map_ids[]" value="'
+					. (int)$map['id'] . '" aria-label="' . h(lang('Send changes')) . '">'
+				: '';
+
 			echo '
 			<div class="mp-row">
 				<span>
-					<b>' . h((string)$map['product_name']) . '</b>
+					<b>' . $map_tick . h((string)$map['product_name']) . '</b>
 					<code>' . h(mb_substr((string)$map['title'], 0, 46)) . '</code>
 				</span>
 				<span><code>' . h($map['remote_code']) . '</code>' . $map_state
@@ -1968,7 +2067,9 @@ if ($selected) {
 
 			echo '
 			<div class="d-flex gap-3 py-2 border-top align-items-start">
-				<div style="min-width:150px"><b class="small">' . h((string)$row['product_name']) . '</b></div>
+				<div style="min-width:150px"><b class="small">' . h((string)$row['product_name']) . '</b>'
+					. (((string)$row['operation'] === 'listing_update')
+						? '<div class="small opacity-75">' . lang('Listing changes') . '</div>' : '') . '</div>
 				<div class="flex-grow-1 mp-err">' . h((string)$row['last_error']) . '</div>
 				<div class="small opacity-50 text-nowrap">' . h(mp_settings_ago((int)$row['updated_timestamp'])) . '</div>
 			</div>';

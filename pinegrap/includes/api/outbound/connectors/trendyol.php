@@ -18,7 +18,8 @@
 //
 // What this connector does so far: prove the credentials, read the category
 // tree and what a category demands, open listings and read whether they were
-// approved, send stock and price, read the result of a batch, read order
+// approved, send the title, description and pictures over approved ones, send
+// stock and price, read the result of a batch, read order
 // packages (pulled, or delivered by their webhook), accept one (Picking),
 // report one shipped with the seller's own carrier, send the link of a
 // package's invoice, and register or remove that webhook. What it does not
@@ -69,6 +70,7 @@ function mp_trendyol_connector() {
 		'category_tree'       => 'mp_trendyol_category_tree',
 		'category_attributes' => 'mp_trendyol_category_attributes',
 		'create_listings'     => 'mp_trendyol_create_listings',
+		'update_listings'     => 'mp_trendyol_update_listings',
 		'push_stock_price'    => 'mp_trendyol_push_stock_price',
 		'read_task'           => 'mp_trendyol_read_task',
 		'listing_status'      => 'mp_trendyol_listing_status',
@@ -1192,6 +1194,175 @@ function mp_trendyol_brand_match($answer, $name) {
 
 }
 
+/* ------------------------------------------------------- listing updates */
+
+// Send the shop's title, description and pictures over listings Trendyol has
+// approved.
+//
+// An approved listing is changed through its content id (the mapping's
+// remote_id, read by the approval read), not its barcode: their content update
+// takes contentId and only the fields it is given, so price, stock, brand,
+// category and attributes stay as they are over there. Attributes are left out
+// on purpose: a content update that names one has to name all of them, and
+// the variant attributes cannot be changed at all.
+//
+// $items is what mp_listing_update_items() assembled. An item the body cannot
+// carry (no title, a picture on http) is left out and named in
+// data['refused'] (content id => reason), so one product's fault does not hold
+// back the rest. Answers the batch id in data['task_id'], '' when nothing was
+// left to send; their batch result is read with read_task() and names each
+// verdict by content id.
+function mp_trendyol_update_listings($account, $items, $transport = null) {
+
+	$built = mp_trendyol_update_body(array_slice((array)$items, 0, mp_trendyol_listing_batch_size()));
+
+	if (!$built['items']) {
+
+		return mp_ok(array('task_id' => '', 'sent' => 0, 'refused' => $built['refused']));
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/product/sellers/' . mp_trendyol_seller_id($account) . '/products/content-bulk-update',
+		65536, $transport, array('items' => $built['items']));
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	$task_id = isset($result['data']['batchRequestId']) ? trim((string)$result['data']['batchRequestId']) : '';
+
+	if ($task_id === '') {
+
+		return mp_error(lang('Trendyol accepted the listing changes but did not return a batch id.'), true);
+
+	}
+
+	return mp_ok(array('task_id' => $task_id, 'sent' => count($built['items']), 'refused' => $built['refused']));
+
+}
+
+// The content update's items and what was left out of them, as
+// array('items' => [...], 'refused' => array(content id => reason)).
+//
+// One item per content id: the variants of one listing share it, and the
+// first product given for it speaks for the listing. The same limits as
+// opening a listing: a title (cut at 100), a description (refused over 30,000
+// rather than cut, which would break its HTML), one to eight pictures on
+// https. The content id goes as a JSON number, so one that does not fit in 64
+// bits is refused rather than rounded.
+function mp_trendyol_update_body($items) {
+
+	$out = array();
+
+	$refused = array();
+
+	foreach ((array)$items as $item) {
+
+		$content_id = isset($item['content_id']) ? trim((string)$item['content_id']) : '';
+
+		$name = isset($item['name']) ? (string)$item['name'] : $content_id;
+
+		if (isset($out[$content_id]) || isset($refused[$content_id])) {
+
+			continue;
+
+		}
+
+		if (!mp_trendyol_id_fits($content_id)) {
+
+			$refused[$content_id] = lang(array(
+				'string' => '{var:1} has no Trendyol content number to update. Wait until the listing is approved.',
+				'vars'   => array($name)
+			));
+
+			continue;
+
+		}
+
+		$title = isset($item['title']) ? trim((string)$item['title']) : '';
+
+		$description = isset($item['description']) ? trim((string)$item['description']) : '';
+
+		$problem = '';
+
+		if ($title === '') {
+
+			$problem = lang(array('string' => '{var:1} has no title.', 'vars' => array($name)));
+
+		} elseif ($description === '') {
+
+			$problem = lang(array(
+				'string' => '{var:1} has no description, and Trendyol will not list a product without one.',
+				'vars'   => array($name)
+			));
+
+		} elseif (mb_strlen($description) > 30000) {
+
+			$problem = lang(array(
+				'string' => 'The description of {var:1} is longer than the 30,000 characters Trendyol takes.',
+				'vars'   => array($name)
+			));
+
+		}
+
+		$images = array();
+
+		foreach ((array)(isset($item['images']) ? $item['images'] : array()) as $url) {
+
+			if ($problem !== '') {
+
+				break;
+
+			}
+
+			if (stripos((string)$url, 'https://') !== 0) {
+
+				$problem = lang(array(
+					'string' => 'Trendyol only fetches pictures over https, and the pictures of {var:1} are not. Set the site address to https first.',
+					'vars'   => array($name)
+				));
+
+			} elseif (count($images) < 8) {
+
+				$images[] = array('url' => (string)$url);
+
+			}
+
+		}
+
+		if ($problem === '' && !$images) {
+
+			$problem = lang(array(
+				'string' => '{var:1} has no picture. The marketplace will not list a product without one.',
+				'vars'   => array($name)
+			));
+
+		}
+
+		if ($problem !== '') {
+
+			$refused[$content_id] = $problem;
+
+			continue;
+
+		}
+
+		$out[$content_id] = array(
+			'contentId'   => (int)$content_id,
+			'title'       => mb_substr($title, 0, 100),
+			'description' => $description,
+			'images'      => $images
+		);
+
+	}
+
+	return array('items' => array_values($out), 'refused' => $refused);
+
+}
+
 /* --------------------------------------------------------- stock and price */
 
 // Their ceiling for one stock and price request.
@@ -1497,6 +1668,14 @@ function mp_trendyol_batch_results($decoded) {
 		if ($barcode === '' && isset($request['product']['barcode'])) {
 
 			$barcode = trim((string)$request['product']['barcode']);
+
+		}
+
+		// A content update names its lines by content id instead (assumed from
+		// the request they echo: the documentation shows no such result).
+		if ($barcode === '' && isset($request['contentId']) && is_scalar($request['contentId'])) {
+
+			$barcode = trim((string)$request['contentId']);
 
 		}
 
