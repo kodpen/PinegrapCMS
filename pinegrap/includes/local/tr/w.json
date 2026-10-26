@@ -846,6 +846,7 @@
     "Write a topic people can answer": "Yanıtlanabilecek bir konu yazın",
     "Write a valid e-mail address for every customer asked.": "Sorulan her müşteri için geçerli bir e-posta adresi yazın.",
     "Write a whole number: -1 for no limit, 0 for no text snippet, or at most {var} characters.": "Bir tam sayı yazın: sınırsız için -1, metin özeti olmaması için 0 ya da en çok {var} karakter.",
+    "Write an answer of at least 10 characters.": "En az 10 karakterlik bir yanıt yazın.",
     "Write an article": "Haber yaz",
     "Write an entry; it appears in the journal as soon as you send it.": "Bir yazı yazın; gönderdiğiniz anda güncede görünür.",
     "Write blog posts, keep the staff directory up to date and answer every hello. Everything else lives in the control panel.": "Blog yazıları yazın, personel rehberini güncel tutun ve her merhabayı yanıtlayın. Geri kalan her şey kontrol panelinde.",
