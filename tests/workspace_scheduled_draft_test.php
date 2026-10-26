@@ -306,3 +306,238 @@ function test_workspace_scheduled_draft_tidy_task_digest_missed()
 	pg_assert_same(0, $tidy['data']['action']['missed'], 'not asked for');
 	pg_assert_same(0, $tidy['data']['action']['ai'], 'no summary without what was missed');
 }
+
+// A scheduled action an application proposes: the body POST
+// /workspace/scheduled-actions takes, in data. The form's four parts are
+// kept, the channel left out is the one it is proposed in, the reason is
+// the note above the form, and anything but a draft or an object refused.
+function test_workspace_scheduled_draft_proposal_input()
+{
+	$data = array(
+		'name'   => 'Monday digest',
+		'rules'  => array(array('type' => 'at', 'date' => '2026-10-19', 'time' => '09:00', 'repeat' => 'weekly', 'days' => array(1))),
+		'action' => array('type' => 'post', 'channel_id' => 3, 'body' => 'Good morning'),
+		'follow' => array(),
+		'extra'  => 'dropped',
+	);
+
+	$in = ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'action' => 'draft', 'data' => $data, 'reason' => "  Every\n Monday  "), 3);
+	pg_assert_true($in['ok'], 'taken');
+	pg_assert_same(array('name', 'rules', 'action', 'follow'), array_keys($in['data']), 'the form\'s parts only');
+	pg_assert_same(3, $in['channel_id'], 'the channel it is proposed in when left out');
+	pg_assert_same(array('Every Monday'), $in['notes'], 'the reason on one line, above the form');
+
+	$elsewhere = ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'data' => $data + array('channel_id' => 5)), 3);
+	pg_assert_true($elsewhere['ok'], 'draft is the action left out');
+	pg_assert_same(5, $elsewhere['channel_id'], 'a channel named in data');
+	pg_assert_same(array(), $elsewhere['notes'], 'no reason, no note');
+
+	pg_assert_false(ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'action' => 'update', 'data' => $data), 3)['ok'], 'only a draft');
+	pg_assert_false(ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'action' => 'draft'), 3)['ok'], 'no data');
+	pg_assert_false(ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'data' => array($data)), 3)['ok'], 'a list is no object');
+	pg_assert_false(ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'data' => array('action' => array(array('type' => 'post'))) + $data), 3)['ok'], 'a step that is a list');
+	pg_assert_false(ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'data' => array('rules' => 'daily') + $data), 3)['ok'], 'rules that are no list');
+}
+
+// The form a draft opens in is in the channel its snapshot names, else the
+// channel of its card.
+function test_workspace_scheduled_draft_home()
+{
+	pg_assert_same(5, ws_scheduled_draft_home(array('channel_id' => 3), array('channel_id' => 5)), 'the channel the proposal named');
+	pg_assert_same(3, ws_scheduled_draft_home(array('channel_id' => 3), array('sentence' => 'x')), 'Pinegrap AI\'s draft: its card\'s');
+}
+
+// A proposed draft is rehearsed with the save's own check, for the person
+// it is proposed to, and kept as Pinegrap AI's drafts are.
+function test_workspace_scheduled_draft_proposal_row_rehearses_the_save()
+{
+	require_once(__DIR__ . '/helpers/source_reader.php');
+
+	$code = '';
+
+	foreach (pg_test_source_tokens(pg_test_function_source('ws_scheduled_draft_proposal_row')) as $token) {
+		$code .= pg_test_source_text($token);
+	}
+
+	pg_assert_contains('ws_scheduled_draft_proposal_input(', $code, 'the body read first');
+	pg_assert_contains('ws_scheduled_save_check(', $code, 'the save rehearsed');
+	pg_assert_false(strpos($code, 'ws_scheduled_save(') !== false, 'nothing saved');
+	pg_assert_contains("'scheduled'", $code, 'kept as a scheduled draft');
+}
+
+// The code of a loaded function without its comments and with its runs of
+// whitespace made one space, so a check of what it calls is misled neither
+// by a comment nor by the indentation.
+function workspace_scheduled_draft_test_code($function)
+{
+	require_once(__DIR__ . '/helpers/source_reader.php');
+
+	$code = '';
+
+	foreach (pg_test_source_tokens(pg_test_function_source($function)) as $token) {
+		$code .= pg_test_source_text($token);
+	}
+
+	return preg_replace('/\s+/', ' ', $code);
+}
+
+/**
+ * An application's proposed draft read, checked and kept in a PHP process of
+ * its own, the way ws_scheduled_draft_proposal_row() does it: its reading of
+ * the body (ws_scheduled_draft_proposal_input()), the save's reading of the
+ * action (ws_scheduled_input(), whose row ws_scheduled_save_check() gives),
+ * and the shape the form opens a saved action in (ws_scheduled_form_data()).
+ * Stand-ins for the kinds of change: a product, product 42 named "Best
+ * seller", the right to change it. Shop counts are on.
+ *
+ * @param array $change the change, as an application sends it
+ * @return array|null input (ok), checked ('' or the refusal), kept; null
+ *                    where PHP cannot be started
+ */
+function workspace_scheduled_draft_test_kept_alone($change)
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgdraftkept');
+
+	if ($file === false) {
+		return null;
+	}
+
+	$script = <<<'PHP'
+<?php
+require FUNCTIONS_FILE;
+
+if (!class_exists('db')) {
+	class db
+	{
+		public static $con;
+	}
+}
+
+pg_error_throws(true);
+define('ECOMMERCE', true);
+
+function ws_change_types()
+{
+	return array(
+		'product' => array(
+			'label'   => 'Product',
+			'right'   => 'ecommerce',
+			'tag'     => 'product',
+			'actions' => array('update', 'create', 'delete'),
+			'names'   => array('name'),
+			'fields'  => array('name' => array('text', 255, 'Name', 'name')),
+		),
+	);
+}
+
+function ws_change_allowed($viewer, $type, $record_id = 0)
+{
+	return ($type === 'product') && !empty($viewer['ecommerce']);
+}
+
+function ws_change_record($type, $id)
+{
+	return (($type === 'product') && ((int) $id === 42)) ? array('id' => 42, 'name' => 'Best seller') : null;
+}
+
+function ws_change_record_name($type, $row)
+{
+	return (string) $row['name'];
+}
+
+require SCHEDULED_FILE;
+require DRAFT_FILE;
+date_default_timezone_set('Europe/Istanbul');
+
+$viewer = array('id' => 5, 'role' => 0, 'member' => true, 'ecommerce' => true);
+$input = ws_scheduled_draft_proposal_input(CHANGE, 7);
+$checked = ws_scheduled_input($viewer, $input['data'] + array('id' => 0, 'channel_id' => $input['channel_id'], 'note_id' => 0));
+
+echo json_encode(array(
+	'input'   => $input['ok'],
+	'checked' => $checked['ok'] ? '' : $checked['error'],
+	'kept'    => $checked['ok'] ? ws_scheduled_form_data($viewer, $checked['row']) : null,
+));
+PHP;
+
+	file_put_contents($file, strtr($script, array(
+		'FUNCTIONS_FILE' => var_export(PG_FUNCTIONS_DIR . '/functions.php', true),
+		'SCHEDULED_FILE' => var_export(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php', true),
+		'DRAFT_FILE'     => var_export(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled_draft.php', true),
+		'CHANGE'         => var_export($change, true),
+	)));
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' -d display_errors=stderr -d error_reporting=-1 ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	$result = json_decode(implode("\n", $out), true);
+
+	if (($code !== 0) || !is_array($result) || !array_key_exists('kept', $result)) {
+		throw new RuntimeException('The run of the proposed draft did not answer in JSON: ' . implode("\n", $out));
+	}
+
+	return $result;
+}
+
+// What the card of an application's draft keeps is what the save's check read,
+// in the shape the form opens a saved action in: the form reads the draft as
+// it reads a saved one, so the body as it was sent showed a record name the
+// application made up beside another record's id, opened a count in money at
+// a hundredth of its value, and could not open an e-mail whose addresses came
+// as one line. Anything else the application sent is left out.
+function test_workspace_scheduled_draft_proposal_keeps_the_checked_form_data()
+{
+	$code = workspace_scheduled_draft_test_code('ws_scheduled_draft_proposal_row');
+
+	pg_assert_contains("'data' => ws_scheduled_form_data(\$viewer, \$checked['row'])", $code, 'the card keeps the checked action as the form opens a saved one');
+	pg_assert_false(strpos($code, "'data' => \$input['data']") !== false, 'not the body as it was sent');
+
+	$result = workspace_scheduled_draft_test_kept_alone(array(
+		'type'   => 'scheduled',
+		'action' => 'draft',
+		'reason' => 'Clean up after the sale',
+		'data'   => array(
+			'name'   => 'Big day',
+			'rules'  => array(
+				array('type' => 'at', 'date' => '2026-12-01', 'time' => '18:00', 'repeat' => 'daily'),
+				array('type' => 'metric', 'metric' => 'sales_today', 'op' => 'gt', 'value' => 5000, 'note' => 'the application\'s own'),
+			),
+			'action' => array('type' => 'change', 'record' => 'product', 'action' => 'delete', 'id' => 42, 'label' => 'Old test copy'),
+			'follow' => array(array('on' => 'done', 'do' => array('type' => 'email', 'to' => 'a@example.com, B@example.com', 'subject' => 'Done', 'body' => 'It ran.'))),
+		),
+	));
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true($result['input'], 'the body is read');
+	pg_assert_same('', $result['checked'], 'and passes the save\'s check');
+	pg_assert_same(array(
+		'name'   => 'Big day',
+		'rules'  => array(
+			array('type' => 'at', 'date' => '2026-12-01', 'time' => '18:00', 'repeat' => 'daily', 'every' => 1),
+			array('type' => 'metric', 'metric' => 'sales_today', 'param' => 0, 'op' => 'gt', 'value' => 500000),
+		),
+		'action' => array('type' => 'change', 'record' => 'product', 'action' => 'delete', 'id' => 42, 'fields' => array(), 'label' => 'Best seller'),
+		'follow' => array(array('on' => 'done', 'do' => array('type' => 'email', 'to' => array('a@example.com', 'b@example.com'), 'subject' => 'Done', 'page_id' => 0, 'body' => 'It ran.'))),
+	), $result['kept'], 'the record named by its own name, money in minor units as the form reads it, the addresses as a list, nothing else');
+}
+
+// A draft keeps money in minor units, as the form reads it, while the words
+// on its card are the preview's, which reads the rules as the form sends
+// them: the outline turns them back first (ws_scheduled_rules_as_sent()), or
+// a count of 5,000.00 reads 500,000.00 on the card of an application's draft
+// and of one Pinegrap AI made.
+function test_workspace_scheduled_draft_outline_reads_money_as_sent()
+{
+	$code = workspace_scheduled_draft_test_code('ws_scheduled_draft_outline');
+
+	pg_assert_contains("'rules' => ws_scheduled_rules_as_sent((array) (\$data['rules'] ?? array()), ws_scheduled_money_metrics())", $code, 'the rules go to the preview as the form sends them');
+}

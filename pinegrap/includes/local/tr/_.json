@@ -693,6 +693,7 @@
     "{var:1} is a day off: {var:2}.": "{var:1} tatil: {var:2}.",
     "{var:1} is a free item that you have requested to ship with no non-free items. Free items must be shipped with at least one non-free item. You may update your order so that the item is shipped with at least one non-free item or you may remove the item.": "{var:1}, ücretsiz bir üründür ve ücretsiz olmayan başka bir ürünle birlikte gönderilmesini istememişsiniz. Ücretsiz ürünler, en az bir ücretsiz olmayan ürünle birlikte gönderilmelidir. Siparişinizi bu ürünün en az bir ücretsiz olmayan ürünle birlikte gönderileceği şekilde güncelleyebilir veya ürünü kaldırabilirsiniz.",
     "{var:1} is a list of variant objects.": "{var:1} bir varyant nesneleri listesidir.",
+    "{var:1} is a list.": "{var:1} bir listedir.",
     "{var:1} is above the largest accepted value.": "{var:1} kabul edilen en büyük değerin üzerinde.",
     "{var:1} is accepted as well": "{var:1} de kabul edilir",
     "{var:1} is already InnoDB": "{var:1} zaten InnoDB",
