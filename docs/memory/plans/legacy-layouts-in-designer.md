@@ -29,4 +29,4 @@ description: Plan (2026-10-19, Y1 done): how a classic page's custom layout (lay
 - The master-frame question (one tree per page vs one shared component) is in `legacy-page-designer-retirement.md`; it decides L1, not the layouts.
 
 ## Where to start?
-- Y1 done; Y2a in progress, Y2b after it. Y3 builds on the code editor's file tabs (#522). Y2-Y3 before L4; Y5 after `system-widget-missing-types.md`.
+- Y1 done. Y3 builds on the code editor's file tabs (#522). Y2-Y3 before L4; Y5 after `system-widget-missing-types.md`.
