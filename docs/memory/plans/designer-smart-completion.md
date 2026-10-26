@@ -21,7 +21,7 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 ## Which decisions are made?
 - Owner (2026-10-24): deterministic first, AI decided later, never per keystroke; the custom style field is a growing textarea with the light dropdown (no CM6 in panel inputs); off inside shared components and system widgets, reason shown; fixes F1-F4 and the predictor base (F6, 1, 3) run side by side.
 - Defaults (owner may change): class `pgs-` + 6 characters; a copied element shares the rule ("N elements use it" + Split); base rule first; theme-breaking classes last, with the replacement; `class_suggestions.js` replaced; inline hint off by default; Export keeps `pgs-` rules; `!important` allowed with a warning.
-- The facade primes the lezer cache (`resolveInner(0, 0)`) from a `Prec.highest` css/js source.
+- The facade resets the lezer cache (`resolveInner(0, 0)`) before every completion source (#1702).
 - The vocabulary is generated from the local Bootstrap 5.3.8 and kept by a regenerate-and-compare test.
 
 ## What is open (owner)?
@@ -33,8 +33,8 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 - F3 Bracket and quote-aware `_parseInlineStyle`: tests/designer_image_size_test.php.
 - F4 Code view style apply drops printed sizing (`_sdCodeSetAttr`): tests/designer_code_view_attrs_test.php.
 - F5 Attributes and Styles read-only at content level (builds on #1479, merged).
-- F6 Facade: primer, `addCompletionRanker`, css/js sources inside HTML, swatches: pg_code_editor.js, tests/code_editor_completion_test.php. Done #1702.
-- 1 Vocabulary: includes/fn/designer_vocab.php, tools/build_designer_vocab.php, assets/js/designer_vocab/bootstrap5.json, tests/designer_vocab_test.php.
+- F6 done #1702: facade primer, `addCompletionRanker`, css/js sources inside HTML, swatches ([[code-editor-completion]]).
+- 1 done #1704: vocabulary from tools/build_designer_vocab.php ([[designer-bootstrap-vocabulary]]).
 - 2 Breakpoint-aware class dedupe (~23686, ~41142).
 - 3 Predictor core: pg_style_predict.js, tests/style_predict_test.php.
 - 4 Loader and class field; `class_suggestions.js` removed (clean_up.php).
