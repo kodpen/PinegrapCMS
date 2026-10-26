@@ -58,6 +58,15 @@ function test_workspace_notes_page_filters_are_in_the_query()
 	pg_assert_same('', ws_notes_filter_sql('   ', 0), 'spaces are nothing');
 	pg_assert_same(" AND n.updated_at >= '1800000000'", ws_notes_filter_sql('', 1800000000), 'changed since');
 	pg_assert_same('', ws_notes_filter_sql('', -5), 'no moment before the epoch');
+	pg_assert_same(" AND (n.updated_at >= '1800000000' OR s.created_at >= '1800000000')", ws_notes_filter_sql('', 1800000000, 's.created_at'), 'a note shared since counts as changed');
+	pg_assert_same('', ws_notes_filter_sql('', 0, 's.created_at'), 'no share time without a moment');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/notes.php');
+	$start = strpos($source, 'function ws_notes_page_rows(');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains("(int) (\$options['updated_since'] ?? 0), 's.created_at')", $body, 'the shared notes take the share time');
+	pg_assert_contains('ORDER BY n.updated_at DESC, n.id DESC', $body, 'the order stays on the change time');
 }
 
 function test_workspace_notes_page_after_keeps_the_rest_of_the_order()
