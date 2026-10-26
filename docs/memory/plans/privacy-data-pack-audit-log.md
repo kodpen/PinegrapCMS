@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; steps 1-5b and 5d done, last #1844 and #PR; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+description: Plan (approved 2026-10-19; steps 1-5b and 5d done, last #1844 and #1919; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -21,7 +21,7 @@ description: Plan (approved 2026-10-19; steps 1-5b and 5d done, last #1844 and #
 4b. Done (#1792): feed tokens in clear in early SEO settings lines masked in place, step 11.0.38 (`core/audit-trail-stored-values.md`).
 5a. Done (#1821): `view_audit_log.php`, filters, CSV export; `core/audit-trail-screen.md`.
 5b. Done (#1844): `GET /audit-log`, scope `system:read`; `core/audit-trail-screen.md`.
-5d. Done (#PR): the cookie notice's answers into `consent_log`, `consent_answer.php`; `core/consent-log-cookie-notice.md`.
+5d. Done (#1919): the cookie notice's answers into `consent_log`, `consent_answer.php`; `core/consent-log-cookie-notice.md`.
 5c. Retention: a setting (default 2 years) and the general job trimming `audit_log` past it; the consent log's 3 years from the same job. A new config column is a schema step: ask the owner first.
 
 ## Open questions?
