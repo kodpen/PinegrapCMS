@@ -4,7 +4,7 @@ description: Where an imported note came from (ws_note_sources, schema 11.0.86):
 ---
 
 ## What does ws_note_sources keep?
-- One row a note file a person brought in (2026.11.0, step `upgrade_2026_11_0_workspace_note_sources()`, label 11.0.86; owner approved 2026-10-25): `user_id`, `provider` (keep, enex, markdown, html), `external_id` (VARCHAR(191)), `hash` (sha1 of the file's title and text, `ws_note_source_hash()`), `note_id`. Unique key user_id+provider+external_id; key on note_id. In `get_tables()`.
+- One row a note file a person brought in (2026.11.0, step `upgrade_2026_11_0_workspace_note_sources()`, label 11.0.86; owner approved 2026-10-25): `user_id`, `provider` (keep, enex, markdown, html), `external_id` (VARCHAR(191), `utf8mb4_bin`: a case- or accent-blind match made "Günlük.md" and "Gunluk.md" one source, the second overwriting the first's note), `hash` (sha1 of the file's title and text, `ws_note_source_hash()`), `note_id`. Unique key user_id+provider+external_id; key on note_id. In `get_tables()`.
 - Probe `ws_note_sources_ready()` (`pg_schema_has()`): before the step runs nothing is read or written and the import behaves as before.
 
 ## Which id is a note known by?

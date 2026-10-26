@@ -114,6 +114,7 @@ function test_workspace_notes_sources_schema_step_and_table_list()
 	pg_assert_contains('upgrade_2026_11_0_workspace_note_sources(); // 11.0.86', $migration, 'the step is called');
 	pg_assert_contains("install_create_table('ws_note_sources'", $migration, 'it creates the table');
 	pg_assert_contains('UNIQUE KEY idx_source (user_id, provider, external_id)', $migration, 'one row a file a person brought in');
+	pg_assert_contains('external_id VARCHAR(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin', $migration, '"Günlük.md" and "Gunluk.md" are two sources');
 	pg_assert_contains("'ws_note_sources',", workspace_notes_sources_test_source('install/index.php'), 'a reinstall drops it with the other tables (get_tables())');
 	pg_assert_contains("pg_schema_has('ws_note_sources')", workspace_notes_sources_test_body('includes/workspace/notes.php', 'ws_note_sources_ready'), 'the code runs without the table');
 }

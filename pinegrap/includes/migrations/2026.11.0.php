@@ -1744,14 +1744,16 @@ function upgrade_2026_11_0_workspace_note_deletions() {
 // front matter id or path, a web page's address or file name), what the file
 // held (hash) and the note it became. The same file brought in again shows
 // as "same", or updates that note, instead of adding it once more. A deleted
-// note drops its rows.
+// note drops its rows. external_id compares byte for byte: under the table's
+// case- and accent-blind collation "Günlük.md" and "Gunluk.md" in one vault
+// were one source, and the second file overwrote the first file's note.
 function upgrade_2026_11_0_workspace_note_sources() {
 
 	install_create_table('ws_note_sources', "CREATE TABLE ws_note_sources (
 		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
 		user_id INT UNSIGNED NOT NULL DEFAULT 0,
 		provider VARCHAR(16) NOT NULL DEFAULT '',
-		external_id VARCHAR(191) NOT NULL DEFAULT '',
+		external_id VARCHAR(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
 		hash CHAR(40) NOT NULL DEFAULT '',
 		note_id INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
