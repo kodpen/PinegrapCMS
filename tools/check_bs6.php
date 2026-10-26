@@ -108,7 +108,7 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 			}
 		}
 	} else {
-		$result = bs6_convert_source($source);
+		$result = bs6_convert_source($source, null, bs6_reads_class_strings($path));
 
 		if ($result['changed'] > 0) {
 			$check = 'classes the codemod rewrites';
