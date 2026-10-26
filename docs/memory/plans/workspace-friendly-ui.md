@@ -19,7 +19,7 @@ description: Plan (2026-10-19) for a friendlier Workspace look: token scale, cha
 - U1 Tokens and shape — done (PR #531, memory docs/memory/workspace/workspace-ui-scale.md): the token scale, every radius on it, keyboard-only focus rings, rounder drawers, home cards and context menus, the composer's shadows, dark nav tones. The accent RGB stays typed beside the hex (CSS cannot derive it); the two sit together.
 - U2 Avatar component: moved to the Bootstrap 6 panel plan (owner decision 2026-10-25), step B9j after the switch: v6 Avatar with text initials, theme colours and a presence dot (`bootstrap-6-components.md`). Claim it as `[plan:bootstrap-6-panel] B9j`, not here.
 - U3 Channel identity: the channel colour on the header icon and a thin colour stripe; group colour chips in the sidebar section titles.
-- U4 Empty states and loading: friendly one-line copy plus a small SVG from the tour kit for "no channels", "no tasks", "inbox zero", "no notes"; skeleton rows instead of "Loading…"; the first "Loading…" and the start-up error span the grid (`grid-column: 1 / -1`), today they sit in the sidebar column.
+- U4 Empty states and loading — done (PR #2027, memory docs/memory/workspace/workspace-empty-states.md): friendly one-line copy plus a small SVG from the tour kit for "no channels", "no tasks", "inbox zero", "no notes"; skeleton rows instead of "Loading…"; the first "Loading…" and the start-up error span the grid (`grid-column: 1 / -1`), today they sit in the sidebar column.
 - U5 Motion: send-button pop, reaction bounce, new-message slide-in, all inside `@media (prefers-reduced-motion: no-preference)`.
 - U6 Density switch (comfortable / compact) kept in localStorage like `ws-side-closed`; no `ws_profiles` column.
 
@@ -29,4 +29,4 @@ description: Plan (2026-10-19) for a friendlier Workspace look: token scale, cha
 3. Whether the owner wants a screenshot round on dev.pinegrap.com after U1 before U3-U5 start (recommended: yes, U1 sets the tone).
 
 ## Where to start?
-- U4 next (it uses the tokens), then U3, U5, U6 in any order; U2 waits for B9j of the Bootstrap 6 plan. Check on dev in light and dark, phone width (`14027-14160` phone block), and with `prefers-reduced-motion`.
+- U3, U5, U6 in any order; U2 waits for B9j of the Bootstrap 6 plan. Check on dev in light and dark, phone width (`14027-14160` phone block), and with `prefers-reduced-motion`.

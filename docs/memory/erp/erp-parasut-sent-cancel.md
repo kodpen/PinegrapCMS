@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-sent-cancel
-description: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from the row, the way out, what the deleted-record 404 can free wrongly after a company switch, and what is still open
+description: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from the row, the way out, the company guard on the deleted-record 404, and what is still open
 ---
 
 ## What does Cancel do for a `sent` e-Fatura?
@@ -13,7 +13,13 @@ description: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from t
   - The order card would show its Cancel action instead of the return invoice for every unread e-Fatura; for one GİB holds, that Cancel fails on every click (`cancel_invoice()` refuses an `e_invoices` document).
 
 ## What can the deleted-record 404 free wrongly?
-- `erp_edoc_parasut_gone_answer()` judges the row as the ERP knows it (#1626). After a company switch on the settings card, a `created` or `error` row may still stand for an e-document in the earlier company: one issued on Paraşüt's own screen, or by a hand-over whose answer was lost (`submit_invoice()` keeps no unsure mark; a failed hand-over leaves `created`). The status question frees it, and Send would issue the sale at GİB a second time; before #1626 it stayed held. A guard would first check that the connected company holds the row's other records (for example the linked contact).
+- After a company switch on the settings card, a `created` or `error` row may still stand for an e-document in the earlier company (issued on Paraşüt's own screen, or by a hand-over whose answer was lost). Freeing it would let Send issue the sale at GİB a second time.
+- Guard (#2025): `erp_edoc_parasut_gone_answer()` first reads another record the row names (`erp_edoc_parasut_gone_witnesses()`: the unsure mark's contact, the account's linked card, the lines' product cards; three at most). The first that answers as itself frees the row.
+  - All answer 404: another company is taken to be connected. The row stays as it was (no forget, no `gone`), with a warning: connect the earlier company and ask again; if it has no e-document either, cancel the invoice and raise it again.
+  - None named: held too, with the same way out (cancel deletes a 404 record as gone).
+  - Any other answer (no token, timeout, 5xx, another id): nothing written.
+  - A conversion job this question read as failed is the company's own record: freed without another read.
+- Still open: a card re-linked or a product re-synced after the switch lives in the new company and frees the row. Never run live (demo key expired 2026-10-25).
 
 ## What is still open?
 - A safe version reads the document's state (`active_e_document`, the job) before any cancel and keeps the card's return step for an e-Fatura GİB holds. Candidates: the refusal's reason points to the status question while no status question has read the row; `cancel_invoice()` refuses a 404 on a row that may stand for a GİB document (`sent`, `accepted`, `cancelled`).

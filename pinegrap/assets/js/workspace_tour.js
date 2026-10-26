@@ -17,7 +17,9 @@
  *
  * The drawings are plain shapes, no words, coloured by the panel's theme
  * (.pg-tour-art in assets/css/pg_tour.css), so they read the same in every
- * language and in the light and the dark appearance alike.
+ * language and in the light and the dark appearance alike. The shapes come
+ * from the kit in workspace.js (window.PGWsArt), shared with the drawings of
+ * the workspace's empty lists.
  *
  * Served minified as assets/js/workspace_tour.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -48,39 +50,24 @@
 
     // ── Drawing helpers ─────────────────────────────────────────────────
 
-    function rect(x, y, w, h, r, cls) {
-        return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + r + '" class="' + cls + '"/>';
+    // The kit is workspace.js's (window.PGWsArt), which the empty lists draw
+    // with too; this file is served after it.
+    var KIT = window.PGWsArt;
+
+    if (!KIT) {
+        return;
     }
 
-    function circle(cx, cy, r, cls) {
-        return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" class="' + cls + '"/>';
-    }
-
-    function path(d, cls) {
-        return '<path d="' + d + '" class="' + cls + '"/>';
-    }
-
-    // A line of text, as a rounded bar.
-    function bar(x, y, w, cls) {
-        return rect(x, y, w, 5, 2.5, cls || 'a-line');
-    }
-
-    // A "#" sign.
-    function hash(x, y, cls) {
-        return path('M' + (x + 2) + ' ' + y + 'l-1 8M' + (x + 6) + ' ' + y + 'l-1 8M' + x + ' ' + (y + 2.5) + 'h8M' + (x - 1) + ' ' + (y + 5.5) + 'h8', cls || 'a-stroke');
-    }
-
-    // A padlock.
-    function lock(x, y, cls) {
-        return path('M' + (x + 1.5) + ' ' + (y + 4) + 'v-1.5a2.5 2.5 0 0 1 5 0v1.5', cls || 'a-stroke') + rect(x, y + 4, 8, 5.5, 1.2, 'a-ink');
-    }
-
-    function face(cx, cy, r, cls) {
-        return circle(cx, cy, r, cls || 'a-acc-soft') + circle(cx, cy - r * 0.25, r * 0.38, 'a-ink') + path('M' + (cx - r * 0.6) + ' ' + (cy + r * 0.72) + 'a' + (r * 0.6) + ' ' + (r * 0.5) + ' 0 0 1 ' + (r * 1.2) + ' 0', 'a-ink');
-    }
+    var rect = KIT.rect;
+    var circle = KIT.circle;
+    var path = KIT.path;
+    var bar = KIT.bar;
+    var hash = KIT.hash;
+    var lock = KIT.lock;
+    var face = KIT.face;
 
     function svg(body) {
-        return '<svg class="pg-tour-art" viewBox="0 0 300 120" role="img" aria-hidden="true" focusable="false">' + body + '</svg>';
+        return KIT.svg(body);
     }
 
     // The screen in miniature: the list of channels on the left, a

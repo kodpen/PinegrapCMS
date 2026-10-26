@@ -117,7 +117,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-product-card-opening-stock.md: The stock a tracked Paraşüt product card opens with: Pinegrap's count plus the units the documented sale already took out of it (#1630); what each caller adds, and the orders still counted out twice
 - erp-parasut-product-card.md: The Paraşüt product card of a Pinegrap product (parasut_sync_product()): who opens it, what the create sends, the price's currency (#1631), why no stock_updates follows (#1517)
 - erp-parasut-send-failures.md: What the ERP does when a Paraşüt send step goes wrong (no answer, a record not deleted, a failed job, a record deleted there) so no second sales invoice is opened
-- erp-parasut-sent-cancel.md: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from the row, the way out, what the deleted-record 404 can free wrongly after a company switch, and what is still open
+- erp-parasut-sent-cancel.md: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from the row, the way out, the company guard on the deleted-record 404, and what is still open
 - erp-parasut-shipped-order.md: The ERP driver's sales invoice for an order the legacy E-Shipment already shipped: sent without shipment and naming the shipment document, so Paraşüt counts the goods out once (#1530)
 - erp-parasut-stale-kept-ids.md: Paraşüt ids Pinegrap sends without a read (product card, default warehouse, buyer card, the driver's shipment document): a create answered 404 naming one forgets it and is sent once more (#1627)
 - erp-period-lock.md: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the two checks every ledger or till write meets, which date a cancel, return or payment is judged by, who moves the lock.

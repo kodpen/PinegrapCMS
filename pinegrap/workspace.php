@@ -36,7 +36,8 @@ pg_page_shell([
     ]) . '
 <main id="content" class="container-fluid p-0">
     <div id="ws-root" class="ws-app">
-        <div class="ws-empty m-auto">' . h(lang('Loading…')) . '</div>
+        <div class="ws-skeleton ws-boot" role="status" aria-busy="true"><span class="visually-hidden">' . h(lang('Loading…')) . '</span>'
+            . str_repeat('<div class="ws-skeleton-row" aria-hidden="true"><span class="ws-skeleton-dot"></span><span class="ws-skeleton-bar"></span></div>', 5) . '</div>
     </div>
 </main>
 ' . ws_screen_assets($viewer, 'channels', array(
