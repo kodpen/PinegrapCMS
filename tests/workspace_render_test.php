@@ -9,7 +9,8 @@
  * assistant, a banner or an e-mail reads keeps them (ws_plain_text(),
  * ws_plain_line()), how a sum in an item is worked out (ws_calc_plain()),
  * and how a guest outside the team reads them (ws_guest_render(), the
- * approval mail).
+ * approval mail); a ==highlight== drawn, read as words and left as text
+ * where an old text holds equals signs.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -140,4 +141,42 @@ function test_workspace_render_guest_page_and_approval_mail()
 	pg_assert_same("Please check:\n- price\n- date\nThanks", ws_approval_guest_details_text("**Approve the offer**\nPlease check:\n- price\n- date\n\nThanks"));
 	pg_assert_same("1. Sign\n2. Send", ws_approval_guest_details_text("1. Sign\n2. Send"));
 	pg_assert_same("One\nTwo", ws_approval_guest_details_text("One\nTwo"), 'a line break is one line break');
+}
+
+function test_workspace_render_draws_a_highlight()
+{
+	pg_assert_same('a <mark>key point</mark> here', workspace_render_test_html('a ==key point== here'));
+	pg_assert_same('<mark><strong>both</strong></mark>', workspace_render_test_html('==**both**=='), 'a mark inside a highlight');
+	pg_assert_same('<code>==x==</code>', workspace_render_test_html('`==x==`'), 'code stays as written');
+	pg_assert_same('<a href="https://a.test/?q==x==" target="_blank" rel="noopener noreferrer">https://a.test/?q==x==</a>', workspace_render_test_html('https://a.test/?q==x=='), 'an address is set aside');
+	pg_assert_same('<a href="https://a.test" target="_blank" rel="noopener noreferrer"><mark>see</mark></a>', workspace_render_test_html('[==see==](https://a.test)'), 'a link\'s words');
+	pg_assert_same('<ul class="ws-list"><li><mark>milk</mark></li>' . "\n" . '<li>bread</li></ul>', workspace_render_test_html("- ==milk==\n- bread"), 'in a list item');
+
+	// Pinned: no word boundary is asked, as in the notes import, so two
+	// unspaced comparisons in one line read as one highlight.
+	pg_assert_same('a<mark>b and c</mark>d', workspace_render_test_html('a==b and c==d'));
+}
+
+// Texts stored before highlights were drawn: these shapes look as they did.
+function test_workspace_render_old_equals_signs_stay_text()
+{
+	foreach (array('a == b', 'x === y', '== Title ==', '=====', '== x', 'x ==', '==  ==', "==a\nb==", 'a ==b == c', '== a==', '===x===') as $body) {
+		pg_assert_same(ws_render_text($body, array()), workspace_render_test_html($body), 'stays text: "' . $body . '"');
+		pg_assert_same(false, strpos(workspace_render_test_html($body), '<mark>'), 'no highlight: "' . $body . '"');
+	}
+}
+
+function test_workspace_render_plain_text_drops_paired_highlights_only()
+{
+	pg_assert_same('a key point here', workspace_render_test_plain('a ==key point== here'));
+	pg_assert_same('a == b and x === y', workspace_render_test_plain('a == b and x === y'), 'a lone == stays');
+	pg_assert_same("- milk\n- bread", workspace_render_test_plain("- ==milk==\n- bread"), 'an item keeps its words');
+	pg_assert_same('Sum ==', ws_plain_line(array('id' => 1, 'role' => 0), 'Sum ==', array()), 'one line too');
+}
+
+function test_workspace_render_guest_page_draws_a_highlight()
+{
+	pg_assert_same('a <mark>key</mark> point', ws_guest_render('a ==key== point'));
+	pg_assert_same('a == b', ws_guest_render('a == b'), 'a comparison stays text');
+	pg_assert_same('<a href="https://a.test/?q==x==" target="_blank" rel="nofollow noopener noreferrer">https://a.test/?q==x==</a>', ws_guest_render('https://a.test/?q==x=='), 'an address is set aside');
 }
