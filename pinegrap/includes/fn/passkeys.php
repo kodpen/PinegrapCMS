@@ -1131,3 +1131,89 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
         })();
         </script>';
 }
+
+/**
+ * The script of the add passkey forms of the designed account security
+ * widget (form[data-pg-passkey-add], _pg_sec_apply_action_bindings()): the
+ * classic section's add flow for every such form on the page. The form posts
+ * nowhere itself: the script asks passkey.php for the options with the
+ * proofs (fields name, current_password, code), lets the browser make the
+ * passkey and sends it back, then reloads the page. A browser that cannot
+ * make passkeys gets a sentence in place of the form.
+ *
+ * @return string
+ */
+function pg_passkey_widget_script()
+{
+    $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+
+    return '<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_passkey.js') . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_passkey.js') . '"></script>
+        <script>
+        (function () {
+            var texts = ' . json_encode(array(
+                'unsupported' => lang('This browser cannot create passkeys.'),
+                'cancelled'   => lang('The passkey was not created. Please try again.'),
+                'duplicate'   => pg_passkey_refusal('duplicate', 'register'),
+                'attempts'    => pg_mfa_reauth_message('attempts'),
+                'failed'      => lang('Your browser could not use a passkey here.'),
+            ), $json) . ';
+            var url = ' . json_encode(PATH . SOFTWARE_DIRECTORY . '/passkey.php', $json | JSON_UNESCAPED_SLASHES) . ';
+            var forms = document.querySelectorAll("form[data-pg-passkey-add]");
+            Array.prototype.forEach.call(forms, function (form) {
+                if (form.getAttribute("data-pg-passkey-bound")) {
+                    return;
+                }
+                form.setAttribute("data-pg-passkey-bound", "1");
+                if (!window.PgPasskey || !window.PgPasskey.supported()) {
+                    var note = document.createElement("p");
+                    note.textContent = texts.unsupported;
+                    form.parentNode.insertBefore(note, form);
+                    form.style.display = "none";
+                    return;
+                }
+                var fields = form.elements;
+                var value = function (name) {
+                    var field = fields.namedItem(name);
+                    return field ? field.value : "";
+                };
+                var button = form.querySelector("[type=submit]");
+                var notice = form.querySelector("[data-pg-passkey-message]");
+                form.addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    if (button) {
+                        button.disabled = true;
+                    }
+                    if (notice) {
+                        notice.textContent = "";
+                    }
+                    window.PgPasskey.register({
+                        url: url,
+                        token: value("token"),
+                        name: value("name"),
+                        currentPassword: value("current_password"),
+                        code: value("code")
+                    }).then(function () {
+                        window.location.reload();
+                    }).catch(function (error) {
+                        var code = error && error.code;
+                        // A code is spent once passkey.php accepts it, so a
+                        // cancelled dialog needs the next one.
+                        if (fields.namedItem("code")) {
+                            fields.namedItem("code").value = "";
+                        }
+                        if (button) {
+                            button.disabled = false;
+                        }
+                        if (notice) {
+                            notice.textContent = (error && error.message)
+                                || (((code === "NotAllowedError") || (code === "AbortError")) ? texts.cancelled
+                                : (code === "InvalidStateError") ? texts.duplicate
+                                : (code === "attempts") ? texts.attempts
+                                : texts.failed);
+                        }
+                    });
+                });
+            });
+        })();
+        </script>';
+}

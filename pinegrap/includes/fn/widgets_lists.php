@@ -86,7 +86,31 @@ function pg_sw_list_sources()
             ),
         ),
     ) + pg_sw_list_product_sources() + pg_sw_list_calendar_sources() + pg_sw_list_order_sources()
-        + pg_sw_list_cart_sources() + pg_sw_list_menu_sources();
+        + pg_sw_list_cart_sources() + pg_sw_list_menu_sources() + pg_sw_list_security_sources();
+}
+
+// The passkeys of the signed-in member in the account security widget. The
+// widget draws this list itself, row by row like its devices, so its rows
+// take the widget's flags (_render_system_widget_account_security()); no
+// span reaches the finish pass and nothing is published. The name comes
+// first: the A to Z order compares a row's first value.
+function pg_sw_list_security_sources()
+{
+    return array(
+        'security.passkeys' => array(
+            'family'       => 'security',
+            'key'          => '__passkey_owner',
+            'label'        => lang('Passkeys of the member'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__passkey_name', lang('Passkey name')),
+                array('__passkey_id', lang('Passkey ID (numeric)')),
+                array('__passkey_added', lang('Date added')),
+                array('__passkey_last_used', lang('Last used')),
+            ),
+        ),
+    );
 }
 
 // The sources a widget kind offers (source => descriptor): the form record
@@ -97,14 +121,15 @@ function pg_sw_list_sources()
 // sources in the order view and the member's orders in the my account
 // widget (widgets_lists_order.php), the visitor's cart in the cart link and
 // the cart widget (widgets_lists_cart.php), the sub-items of a menu item in
-// the menu widget (widgets_lists_menu.php), each kind publishing its data;
-// none in any other kind.
+// the menu widget (widgets_lists_menu.php), each kind publishing its data,
+// and the member's passkeys in the account security widget, which draws
+// that list itself; none in any other kind.
 function pg_sw_kind_lists($kind)
 {
     $families = array('form_list_view' => 'form_record', 'form_item_view' => 'form_record',
                       'catalog_item_view' => 'product', 'catalog_listing' => 'product', 'calendar_view' => 'calendar',
                       'order_view' => 'order', 'my_account' => 'account', 'cart_link' => 'cart', 'shopping_cart' => 'cart',
-                      'menu_region' => 'menu');
+                      'menu_region' => 'menu', 'account_security' => 'security');
     $except   = array('catalog_listing' => array('product.related' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();

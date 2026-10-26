@@ -22270,6 +22270,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Parcels of the order'), type: 'loop_area', icon: 'bi-truck', extra: { listSource: 'order.parcels' } },
                 { label: _sdT('Steps of the order'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'order.steps' } },
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
+                { label: _sdT('Passkeys of the member'), type: 'loop_area', icon: 'bi-key', extra: { listSource: 'security.passkeys' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } }
             ]},
@@ -32146,6 +32147,7 @@ const StyleDesigner = (function () {
             'order.parcels':      _sdT('One row for every tracking number of the order; inside a list of the recipients, that recipient\'s. A parcel whose carrier is not known has no tracking link: a condition on "Shipment tracking link" shows the number without one.'),
             'order.steps':        _sdT('One row for every step of the order: created, paid, shipped, delivered, cancelled. A shipping or delivery date still to come is estimated; a condition on "Estimated" marks it.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
+            'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. A form in the row bound to the account security form carries the row\'s passkey: give it a Rename or a Remove button.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.')
         };
@@ -37664,6 +37666,11 @@ const StyleDesigner = (function () {
         { label: _sdT('Connected sign-ins'), tokens: [
             ['__signin_connect_buttons',      _sdT('Connect buttons of the sign-ins not connected yet (HTML)')]
         ]},
+        { label: _sdT('Passkeys'), tokens: [
+            ['__passkey_count',               _sdT('Number of passkeys')],
+            ['__passkey_unavailable_text',    _sdT('Why passkeys cannot be added here')],
+            ['__passkey_limit_text',          _sdT('The passkey limit sentence')]
+        ]},
         { label: _sdT('Signed Out'), tokens: [
             ['__login_url',                   _sdT('Sign-in page address (signed-out view)')],
             ['__not_logged_in',               _sdT('Signed-out message')]
@@ -39117,7 +39124,20 @@ const StyleDesigner = (function () {
             ['mfa_on',              _sdT('Two-step verification is on')],
             ['mfa_key_unreadable',  _sdT('It is on but the key cannot be read (recovery codes only)')],
             ['mfa_can_regenerate',  _sdT('New recovery codes can be made')],
-            ['mfa_required',        _sdT('The member\'s role requires two-step verification')]
+            ['mfa_required',        _sdT('The member\'s role requires two-step verification')],
+            ['passkeys_shown',      _sdT('The passkeys part has something to say')],
+            ['has_passkeys',        _sdT('The account has passkeys')],
+            ['no_passkeys',         _sdT('The account has no passkey')],
+            ['passkey_unavailable', _sdT('Passkeys cannot be added here')],
+            ['passkey_needs_mfa',   _sdT('Adding a passkey needs two-step verification on first')],
+            ['passkey_limit',       _sdT('The account keeps as many passkeys as it may')],
+            ['passkey_can_add',     _sdT('A passkey can be added')],
+            ['passkey_can_change',  _sdT('Passkeys can be renamed and removed here')],
+            ['passkey_remove_needs_password', _sdT('Removing a passkey asks for the password')],
+            ['passkey_remove_needs_code',     _sdT('Removing a passkey asks for a code')],
+            ['passkey_synced',      _sdT('Row: the passkey is synced to other devices')],
+            ['passkey_used',        _sdT('Row: the passkey has been used')],
+            ['passkey_never_used',  _sdT('Row: the passkey has never been used')]
         ],
         account_invoices: [
             ['has_documents',      _sdT('There are documents to list')],
@@ -39404,6 +39424,8 @@ const StyleDesigner = (function () {
                 aOpts.push(['mfa_codes_seen',          _sdT('Recovery codes saved')]);
                 aOpts.push(['mfa_recovery_regenerate', _sdT('New recovery codes')]);
                 aOpts.push(['mfa_disable',             _sdT('Turn off two-step verification')]);
+                aOpts.push(['passkey_rename',          _sdT('Rename the passkey (passkeys list)')]);
+                aOpts.push(['passkey_remove',          _sdT('Remove the passkey (passkeys list)')]);
             }
             // Only a button can post a list action's form; a link bound to
             // one is dropped on the page (_pg_wishlist_wire_actions()), so a
@@ -39421,7 +39443,10 @@ const StyleDesigner = (function () {
             if (region === 'shopping_cart')        fOpts.push(['coupon_form', _sdT('Offer Code Form (shopping_cart)')]);
             else if (region === 'catalog_listing') fOpts.push(['search_form', _sdT('Search Form (catalog_listing)')]);
             else if (region === 'search_results')  fOpts.push(['search_form', _sdT('Search Form')]);
-            else if (region === 'account_security') fOpts.push(['account_security_form', _sdT('Account security form')]);
+            else if (region === 'account_security') {
+                fOpts.push(['account_security_form', _sdT('Account security form')]);
+                fOpts.push(['passkey_add_form',      _sdT('Add passkey form')]);
+            }
             else if (region === 'comments') {
                 fOpts.push(['comment_form',           _sdT('Add-comment form')]);
                 fOpts.push(['comment_watch_form',     _sdT('Watch form (notify me of new comments)')]);
@@ -52866,6 +52891,19 @@ const StyleDesigner = (function () {
                 ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
                 ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
             ]
+        },
+        // The member's passkeys (pg_sw_list_security_sources()), drawn by the
+        // account security widget itself with its flags.
+        'security.passkeys': {
+            label: _sdT('Passkeys of the member'),
+            arg: '', argRequired: false,
+            kinds: ['account_security'],
+            rows: [
+                ['__passkey_name',      _sdT('Passkey name')],
+                ['__passkey_id',        _sdT('Passkey ID (numeric)')],
+                ['__passkey_added',     _sdT('Date added')],
+                ['__passkey_last_used', _sdT('Last used')]
+            ]
         }
     };
 
@@ -52906,6 +52944,10 @@ const StyleDesigner = (function () {
         __step_is_estimate: '',
         __order_is_cancelled: '',
         __order_url:       '#',
+        __passkey_name:      _sdT('My phone'),
+        __passkey_id:        '1',
+        __passkey_added:     '01.10.2026',
+        __passkey_last_used: _sdT('2 days ago'),
         __menu_item_name: _sdT('Menu item'),
         __menu_item_id: '2',
         __menu_item_url: '#',
@@ -53033,6 +53075,7 @@ const StyleDesigner = (function () {
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
+        if (source === 'security.passkeys') return _sdPasskeyListStarter(bs, 'f_' + Math.random().toString(36).slice(2, 7));
         if (source === 'menu.children') {
             return createNode('semantic', { tag: 'ul', cssClass: bs ? 'list-unstyled ps-3' : '', customName: _sdT('Sub-items of a menu item') }, [
                 createNode('loop_area', { source: source }, [
@@ -53049,6 +53092,72 @@ const StyleDesigner = (function () {
             : createNode('semantic', { tag: 'span', cssClass: bs ? 'badge text-bg-light border me-1' : '', text: _sdT('Value'),
                 customName: _sdT('List row'), _bindings: { text: '__value_text' } }, []);
         return createNode('loop_area', { source: source }, [row]);
+    }
+
+    // The member's passkeys in the account security widget: a list group,
+    // each row the name, a "Synced" badge, when it was added and last used,
+    // and two folded forms bound to the account security form (the site
+    // adds the row's passkey to each): Rename, and Remove with the proofs
+    // the account has. `id` keeps the field ids apart; the site numbers
+    // them per row. Mirrors _render_system_widget_account_security().
+    function _sdPasskeyListStarter(bs, id) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var form = function (name, kids) {
+            return sem('form', 'mt-2', name, { _bindings: { action: 'account_security_form' } }, kids);
+        };
+        var button = function (text, action, cls, name) {
+            return sem('button', cls, name, { text: text, _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: action } });
+        };
+        return sem('div', 'list-group mb-3', _sdT('Passkey List'), {}, [createNode('loop_area', { source: 'security.passkeys' }, [
+            sem('div', 'list-group-item', _sdT('Passkey'), {}, [
+                sem('div', 'd-flex flex-wrap align-items-center gap-2', _sdT('Passkey name'), {}, [
+                    sem('span', 'fw-semibold', _sdT('Passkey name'), { text: _sdT('My phone'), _bindings: { text: '__passkey_name' } }),
+                    sem('span', 'badge text-bg-secondary fw-normal', _sdT('Synced'), { text: _sdT('Synced'),
+                        _attrs: [{ name: 'title', value: _sdT('Kept in a password manager or cloud account, so your other devices can use it too.') }],
+                        _bindings: { eo_visible_if: 'passkey_synced' } })
+                ]),
+                sem('div', 'small text-muted d-flex flex-wrap gap-3', _sdT('Dates'), {}, [
+                    sem('span', '', _sdT('Added'), {}, [
+                        sem('span', 'me-1', _sdT('Label'), { text: _sdT('Added') }),
+                        sem('span', '', _sdT('Date added'), { text: '01.10.2026', _bindings: { text: '__passkey_added' } })
+                    ]),
+                    sem('span', '', _sdT('Last used'), { _bindings: { eo_visible_if: 'passkey_used' } }, [
+                        sem('span', 'me-1', _sdT('Label'), { text: _sdT('Last used') }),
+                        sem('span', '', _sdT('Last used'), { text: _sdT('2 days ago'), _bindings: { text: '__passkey_last_used' } })
+                    ]),
+                    sem('span', '', _sdT('Never used'), { text: _sdT('Never used'), _bindings: { eo_visible_if: 'passkey_never_used' } })
+                ]),
+                sem('div', 'd-flex flex-wrap gap-4 mt-2', _sdT('Passkey Actions'), { _bindings: { eo_visible_if: 'passkey_can_change' } }, [
+                    sem('details', '', _sdT('Rename'), {}, [
+                        sem('summary', 'small link-secondary', _sdT('Rename'), { text: _sdT('Rename') }),
+                        form(_sdT('Rename Form'), [
+                            _swAcctField(_sdT('Name'), id + '_pk_name', 'text', 'name',
+                                { attrs: [{ name: 'maxlength', value: '100' }, { name: 'value', value: '^^__passkey_name^^' }] }),
+                            button(_sdT('Save'), 'passkey_rename', 'btn btn-sm btn-primary', _sdT('Save Button'))
+                        ])
+                    ]),
+                    sem('details', '', _sdT('Remove'), {}, [
+                        sem('summary', 'small link-secondary', _sdT('Remove'), { text: _sdT('Remove') }),
+                        form(_sdT('Remove Form'), [
+                            sem('p', 'small mb-2', _sdT('Note'), { text: _sdT('After removing it here, delete it from your device or password manager as well.') }),
+                            sem('div', '', _sdT('Current password'), { _bindings: { eo_visible_if: 'passkey_remove_needs_password' } }, [
+                                _swAcctField(_sdT('Current password'), id + '_pk_password', 'password', 'current_password',
+                                    { required: true, autocomplete: 'current-password' })
+                            ]),
+                            sem('div', '', _sdT('Code'), { _bindings: { eo_visible_if: 'passkey_remove_needs_code' } }, [
+                                _swAcctField(_sdT('Code from your authenticator app or a recovery code'), id + '_pk_code', 'text', 'code',
+                                    { required: true, autocomplete: 'one-time-code', attrs: [{ name: 'maxlength', value: '20' }, { name: 'spellcheck', value: 'false' }] })
+                            ]),
+                            button(_sdT('Remove'), 'passkey_remove', 'btn btn-sm btn-outline-danger', _sdT('Remove Button'))
+                        ])
+                    ])
+                ])
+            ])
+        ])]);
     }
 
     // How many lists deep a new list of `source` lands (_sdListStarter()):
@@ -53368,6 +53477,9 @@ const StyleDesigner = (function () {
         // The order and cart lists read the order or the cart, not an item
         // row: never in the items loop.
         if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(target)) return false;
+        // The passkeys are the member's, not a device's: never in the
+        // devices loop.
+        if (kind === 'account_security' && _sdInMainLoopAt(target)) return false;
         var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : _sdListStarterDepth(source));
         return depth <= SW_LIST_MAX_DEPTH;
     }
@@ -57144,6 +57256,42 @@ const StyleDesigner = (function () {
                                     asCode(_sdT('Code from your authenticator app or a recovery code'), '_off'),
                                     asButton(_sdT('Turn off'), 'mfa_disable', 'btn btn-outline-danger', _sdT('Turn Off Button'))
                                 ])
+                            ])
+                        ]),
+                        // Passkeys: the list with rename and remove in each
+                        // row, then the add form, which its script sends to
+                        // passkey.php (pg_passkey_widget_script()).
+                        createNode('semantic', { tag: 'div', cssClass: 'border-top pt-4 mt-4', customName: _sdT('Passkeys'),
+                            _bindings: { eo_visible_if: 'passkeys_shown' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Passkeys'), cssClass: 'mb-2' }),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-3',
+                                text: _sdT('A passkey lets your fingerprint, face or screen lock, or a security key, stand in for the code from your authenticator app when you sign in.') }),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'text-muted', text: _sdT('This account has no passkey.'),
+                                _bindings: { eo_visible_if: 'no_passkeys' } }),
+                            createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Passkey List'),
+                                _bindings: { eo_visible_if: 'has_passkeys' } }, [_sdPasskeyListStarter(true, asId)]),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'text-muted', text: _sdT('This browser cannot create passkeys.'),
+                                _bindings: { text: '__passkey_unavailable_text', eo_visible_if: 'passkey_unavailable' } }),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'text-muted',
+                                text: _sdT('Turn on two-step verification first; a passkey then stands in for its code.'),
+                                _bindings: { eo_visible_if: 'passkey_needs_mfa' } }),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'text-muted',
+                                text: _sdT('An account can keep at most 20 passkeys. Remove one first.'),
+                                _bindings: { text: '__passkey_limit_text', eo_visible_if: 'passkey_limit' } }),
+                            createNode('semantic', { tag: 'form', cssClass: '', customName: _sdT('Add Passkey Form'),
+                                _bindings: { action: 'passkey_add_form', eo_visible_if: 'passkey_can_add' } }, [
+                                createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Add a passkey'), cssClass: 'mb-2' }),
+                                _swAcctField(_sdT('Name'), asId + '_pk_add_name', 'text', 'name',
+                                    { attrs: [{ name: 'maxlength', value: '100' }, { name: 'placeholder', value: _sdT('My phone') }] }),
+                                createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Current password'),
+                                    _bindings: { eo_visible_if: 'has_password' } }, [
+                                    _swAcctField(_sdT('Current password'), asId + '_pk_add_password', 'password', 'current_password',
+                                        { required: true, autocomplete: 'current-password' })
+                                ]),
+                                _swAcctField(_sdT('Code from your authenticator app or a recovery code'), asId + '_pk_add_code', 'text', 'code',
+                                    { required: true, autocomplete: 'one-time-code', attrs: [{ name: 'maxlength', value: '20' }, { name: 'spellcheck', value: 'false' }] }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Add a passkey'), customName: _sdT('Add Button'),
+                                    _attrs: [{ name: 'type', value: 'submit' }] })
                             ])
                         ])
                     ]),
