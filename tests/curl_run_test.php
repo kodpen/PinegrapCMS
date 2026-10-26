@@ -148,3 +148,35 @@ function test_curl_run_pin_line()
 	pg_assert_same('example.com:80:1.2.3.4', pg_curl_run_pin('http://example.com/', '1.2.3.4'));
 	pg_assert_same('', pg_curl_run_pin('not a url', '1.2.3.4'));
 }
+
+function test_curl_run_basic_credentials_only_when_given()
+{
+	$options = pg_curl_run_options('POST', 'https://example.com/oauth/token', array(
+		'body'    => 'grant_type=password',
+		'userpwd' => 'id:secret',
+	), curl_run_test_env());
+
+	pg_assert_same('id:secret', $options['CURLOPT_USERPWD']);
+
+	$options = pg_curl_run_options('GET', 'https://example.com/', array('userpwd' => ''), curl_run_test_env());
+
+	pg_assert_false(isset($options['CURLOPT_USERPWD']), 'no credentials option when none given');
+}
+
+// A POST without a body goes out as a bare POST (no Content-Length, no
+// body): CURLOPT_POST without fields makes libcurl send an empty chunked
+// body with Expect: 100-continue, which the e-document hand-over to GİB
+// (İşbaşı eInvoiceWithJson) was never tested with.
+function test_curl_run_post_without_body_is_bare()
+{
+	$options = pg_curl_run_options('POST', 'https://example.com/send?id=1', array(), curl_run_test_env());
+
+	pg_assert_same('POST', $options['CURLOPT_CUSTOMREQUEST']);
+	pg_assert_false(isset($options['CURLOPT_POST']), 'no CURLOPT_POST without a body');
+	pg_assert_false(isset($options['CURLOPT_POSTFIELDS']), 'no POSTFIELDS without a body');
+
+	$options = pg_curl_run_options('POST', 'https://example.com/send', array('body' => ''), curl_run_test_env());
+
+	pg_assert_same(true, $options['CURLOPT_POST']);
+	pg_assert_same('', $options['CURLOPT_POSTFIELDS']);
+}
