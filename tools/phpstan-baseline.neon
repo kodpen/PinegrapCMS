@@ -37,12 +37,6 @@ parameters:
 			path: ../pinegrap/includes/fn/core.php
 
 		-
-			message: '#^Array has 2 duplicate keys with value ''å'' \(''å'', ''å''\)\.$#'
-			identifier: array.duplicateKey
-			count: 1
-			path: ../pinegrap/includes/fn/files.php
-
-		-
 			message: '#^Function mysql_query not found\.$#'
 			identifier: function.notFound
 			count: 1

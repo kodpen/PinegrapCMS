@@ -44,3 +44,12 @@ function test_file_names_drop_a_trailing_dot_left_by_the_length_limit()
 
 	pg_assert_same(str_repeat('a', 99), prepare_file_name($long), 'cut at the dot');
 }
+
+// Each letter of the transliteration map appears once; a ring above still
+// becomes a plain a.
+function test_file_names_ascii_map_keeps_the_ring_a()
+{
+	pg_assert_same('malmo.jpg', pg_ascii_file_name('malmö.jpg'), 'o with diaeresis');
+	pg_assert_same('aland.jpg', pg_ascii_file_name('åland.jpg'), 'small a with ring above');
+	pg_assert_same('Angstrom.png', pg_ascii_file_name('Ångström.png'), 'capital A with ring above');
+}
