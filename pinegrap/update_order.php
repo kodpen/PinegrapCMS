@@ -45,7 +45,9 @@ function update_order($request) {
 
     // A marketplace sold order's address is the marketplace's relay for its
     // buyer, who hears about the shipment from the marketplace: the shop's
-    // shipped and delivered e-mails stay back, whatever the caller asked.
+    // shipped and delivered e-mails, text message and review request stay
+    // back, whatever the caller asked. The shipment itself still counts (the
+    // events, the invoice on shipment).
     $mails_customer = pg_order_cancellation_mails_customer($order);
 
     if (!is_array($request['order']['recipients'])) {
@@ -74,10 +76,6 @@ function update_order($request) {
         // recipient was just shipped, so we know if we should send email or not.
         if (isset($recipient_request['shipped'])) {
             $recipient['shipped'] = $recipient_request['shipped'];
-        }
-
-        if (!$mails_customer) {
-            $recipient['shipped'] = false;
         }
 
         // If there is a ship date or delivery date in the request, then update recipient.
@@ -268,13 +266,13 @@ function update_order($request) {
 
         // The customer's text message, held back like the e-mail when the
         // caller says the customer is not to be told.
-        if (!empty($shipped_recipient['shipped']) && !empty($shipped_recipient['tracking_numbers'])) {
+        if ($mails_customer && !empty($shipped_recipient['shipped']) && !empty($shipped_recipient['tracking_numbers'])) {
             pg_sms_order_shipped((int) $order['id'], (int) $shipped_recipient['id'], $shipped_recipient['tracking_numbers']);
         }
     }
 
     // If at least one recipient was just shipped, then check if email needs to be sent to customer.
-    if (!empty($order['shipped'])) {
+    if (!empty($order['shipped']) && $mails_customer) {
 
         // Allow mail-merge fields, like ^^order_number^^ to be put in the subject or body of email.
 

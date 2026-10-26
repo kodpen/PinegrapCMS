@@ -179,16 +179,17 @@ function test_shipping_bulk_mark_skip()
 	pg_assert_same('shipped_in_full', pg_shipping_bulk_mark_skip('complete', 1, false, false));
 }
 
-// update_order() keeps the shop's shipped and delivered mails from a
-// marketplace order's buyer whatever the caller asks: the bulk paths send
-// 'shipped' true. Pinned in the source, since the function needs a database.
+// update_order() keeps the shop's shipped and delivered mails, text message
+// and review request from a marketplace order's buyer whatever the caller
+// asks: the bulk paths send 'shipped' true. Pinned in the source, since the function needs a database.
 function test_update_order_does_not_mail_marketplace_buyer()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/update_order.php');
 
 	pg_assert_contains("'type'", $source);
 	pg_assert_contains('$mails_customer = pg_order_cancellation_mails_customer($order);', $source);
-	pg_assert_contains("if (!\$mails_customer) {\n            \$recipient['shipped'] = false;", $source);
+	pg_assert_contains("if (!empty(\$order['shipped']) && \$mails_customer) {", $source);
+	pg_assert_contains("if (\$mails_customer && !empty(\$shipped_recipient['shipped'])", $source);
 	pg_assert_contains("'notify' => \$mails_customer && ", $source);
 	pg_assert_false(pg_order_cancellation_mails_customer(array('type' => 'marketplace')));
 	pg_assert_true(pg_order_cancellation_mails_customer(array('type' => 'online')));
