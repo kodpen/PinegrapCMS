@@ -19,7 +19,7 @@ description: W16 placed beats pushed: the one placement rule (pg_sw_placed()), d
 ## How does the owner's "not byte-identical" read? (2026-10-26, option B)
 - Same words in the site's language, same classes in the same order, forms keep names, ids and markers; hidden details may change. The test compares the old block with the new output by visible text and class order, and checks the e-mail output.
 
-## What is left after #1808, #1824, #1863, #1908, #1945 and #XSELL?
+## What is left after #1808, #1824, #1863, #1908, #1945 and #1973?
 - Form blocks: the cart rows' editable `__item_form_data_html`, `__item_gift_card_html` (placed by `pg_sw_placed()` since #1863; parts with controls are an open owner question), `__returns`/`__return_form` (still server-built inside the returns card), `__cancel_form`. The order view's item blocks: [[widget-default-parts-order-items]].
 - Express order offers; cart row form data; catalog listing body; variant picker auto-inject; filters (`__filter_chips` …). Each check moves to `pg_sw_placed()`; a token freed from a rendered-template `strpos()` leaves `pg_sw_cond_denied_tokens()`. Then the raw keys in `pg_sw_raw_token_keys()` shrink.
 - Canvas: the band's state chips draw one status badge at a time ([[widget-condition-canvas]]); the timeline's card draws `created`, its sample rows paid, shipped and delivered.

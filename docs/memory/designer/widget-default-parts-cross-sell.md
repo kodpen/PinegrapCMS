@@ -1,6 +1,6 @@
 ---
 name: widget-default-parts-cross-sell
-description: The catalog detail view's cross-sell default part (W16, #XSELL): the product.related cards that replaced __cross_sell_html, __has_related, where it is added, the variant script's server redraw
+description: The catalog detail view's cross-sell default part (W16, #1973): the product.related cards that replaced __cross_sell_html, __has_related, where it is added, the variant script's server redraw
 ---
 
 ## What does the part draw?
