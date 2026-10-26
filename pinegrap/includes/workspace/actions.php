@@ -2685,6 +2685,15 @@ function ws_handle_action($action, $request)
                 'done_all'  => !empty($request['done_all']),
             )));
 
+        case 'ws_command_suggest':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            return ws_action_ok(ws_command_suggest($viewer, $channel, (string) ($request['body'] ?? '')));
+
         case 'ws_ref_search':
             $only = is_array($request['types'] ?? null) ? array_values(array_map('strval', $request['types'])) : null;
 

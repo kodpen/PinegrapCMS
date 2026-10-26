@@ -4462,6 +4462,7 @@
     "Too Many Requests": "Çok Fazla İstek",
     "Too big to upload — this server accepts at most {limit} per file: {files}": "Yüklenemeyecek kadar büyük — bu sunucu dosya başına en fazla {limit} kabul eder: {files}",
     "Too few keywords": "Anahtar kelime sayısı az",
+    "Too large to keep": "Saklanamayacak kadar büyük",
     "Too little of the file is free for a rebuild to be worth it.": "Dosyanın boş kısmı yeniden kurmaya değmeyecek kadar az.",
     "Too long: the address can be at most 2000 characters.": "Çok uzun: adres en çok 2000 karakter olabilir.",
     "Too long: the block can be at most 64 KB.": "Çok uzun: blok en çok 64 KB olabilir.",
