@@ -1,6 +1,6 @@
 ---
 name: widget-default-parts-breadcrumb
-description: The catalog breadcrumb default part (W16): the catalog.crumbs list, its rows and key, the four placements it replaces, the listing's lead part, what changed for running sites
+description: The catalog breadcrumb default part (W16, #1945): the catalog.crumbs list, its rows and key, the four placements it replaces, the listing's lead part, what changed for running sites
 ---
 
 ## What does the part draw?
