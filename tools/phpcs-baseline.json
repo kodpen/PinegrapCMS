@@ -77,7 +77,6 @@
     },
     "pinegrap/submit_order.php": {
         "PHPCompatibility.Extensions.RemovedExtensions.pfpro_Removed": 2,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 17,
         "PHPCompatibility.FunctionUse.RemovedFunctions.pfpro_processRemoved": 2
     }
 }

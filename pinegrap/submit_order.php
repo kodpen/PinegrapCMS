@@ -2066,7 +2066,7 @@ function submit_order($type) {
                         $curl_errno = curl_errno($ch);
                         $curl_error = curl_error($ch);
                         
-                        curl_close($ch);
+                        unset($ch);
                         
                         $response = explode(',', $response_data);
                         
@@ -2192,7 +2192,7 @@ function submit_order($type) {
                         $curl_errno = curl_errno($ch);
                         $curl_error = curl_error($ch);
                         
-                        curl_close($ch);
+                        unset($ch);
                         
                         // get CcErrCode
                         preg_match('/<CcErrCode DataType="S32">(.*?)<\/CcErrCode>/', $response_data, $matches);
@@ -2319,7 +2319,7 @@ function submit_order($type) {
                         $curl_errno = curl_errno($ch);
                         $curl_error = curl_error($ch);
                         
-                        curl_close($ch);
+                        unset($ch);
 
                         // get r_approved
                         preg_match('/<r_approved>(.*?)<\/r_approved>/', $response_data, $matches);
@@ -2454,7 +2454,7 @@ function submit_order($type) {
                                 $curl_errno = curl_errno($ch);
                                 $curl_error = curl_error($ch);
                                 
-                                curl_close($ch);
+                                unset($ch);
                                 
                                 parse_str($response_data, $response);
                                     
@@ -2690,7 +2690,7 @@ function submit_order($type) {
                         $curl_errno = curl_errno($ch);
                         $curl_error = curl_error($ch);
                         
-                        curl_close($ch);
+                        unset($ch);
                         
                         parse_str($response_data, $response);
                         
@@ -2845,7 +2845,7 @@ function submit_order($type) {
                         $curl_errno = curl_errno($ch);
                         $curl_error = curl_error($ch);
                         
-                        curl_close($ch);
+                        unset($ch);
                         
                         // if there was not a response, then there was a communication problem, so prepare error and send user back to previous screen
                         if ($response_data === FALSE) {
@@ -3664,7 +3664,7 @@ function submit_order($type) {
                 $curl_errno = curl_errno($ch);
                 $curl_error = curl_error($ch);
                 
-                curl_close($ch);
+                unset($ch);
                 
                 parse_str($response_data, $response);
                 
@@ -4903,7 +4903,7 @@ function submit_order($type) {
                     }
                     
                     $response_data = curl_exec($ch);
-                    curl_close($ch);
+                    unset($ch);
                     
                     break;
                     
@@ -5027,7 +5027,7 @@ function submit_order($type) {
                     }
                     
                     $response_data = curl_exec($ch);
-                    curl_close($ch);
+                    unset($ch);
                     
                     break;
                     
@@ -5139,7 +5139,7 @@ function submit_order($type) {
                     }
                     
                     $response_data = curl_exec($ch);
-                    curl_close($ch);
+                    unset($ch);
 
                     break;
                     
@@ -5254,7 +5254,7 @@ function submit_order($type) {
                             }
                             
                             $response_data = curl_exec($ch);
-                            curl_close($ch);
+                            unset($ch);
                             
                             break;
                             
@@ -5394,7 +5394,7 @@ function submit_order($type) {
                     }
                     
                     $response_data = curl_exec($ch);
-                    curl_close($ch);
+                    unset($ch);
                     
                     // parse response
                     parse_str($response_data, $response);
@@ -5524,7 +5524,7 @@ function submit_order($type) {
                     $curl_errno = curl_errno($ch);
                     $curl_error = curl_error($ch);
                     
-                    curl_close($ch);
+                    unset($ch);
                     
                     // if there was an error then prepare error message
                     if (($response_data === FALSE) || (mb_strpos($response_data, '<CUSTOMER_ID>') === FALSE)) {
@@ -5591,7 +5591,7 @@ function submit_order($type) {
                             $curl_errno = curl_errno($ch);
                             $curl_error = curl_error($ch);
                             
-                            curl_close($ch);
+                            unset($ch);
                             
                             // if there was an error then prepare error message
                             if (($response_data === FALSE) || (mb_strpos($response_data, '<GROUP_ID>') === FALSE)) {
@@ -5693,7 +5693,7 @@ function submit_order($type) {
                                     $curl_errno = curl_errno($ch);
                                     $curl_error = curl_error($ch);
                                     
-                                    curl_close($ch);
+                                    unset($ch);
                                     
                                     // if there was an error then prepare error message
                                     if (($response_data === FALSE) || (mb_strpos($response_data, '<SCHEDULE_ID>') === FALSE)) {
@@ -5786,7 +5786,7 @@ function submit_order($type) {
                                     $curl_errno = curl_errno($ch);
                                     $curl_error = curl_error($ch);
                                     
-                                    curl_close($ch);
+                                    unset($ch);
                                     
                                     // if there was an error then prepare error message
                                     if (($response_data === FALSE) || (mb_strpos($response_data, '<SCHEDULE_ID>') === FALSE)) {
@@ -5891,7 +5891,7 @@ function submit_order($type) {
                                 $curl_errno = curl_errno($ch);
                                 $curl_error = curl_error($ch);
                                 
-                                curl_close($ch);
+                                unset($ch);
                                 
                                 // if there was an error then prepare error message
                                 if (($response_data === FALSE) || (mb_strpos($response_data, '<RECURRING_ID>') === FALSE)) {
