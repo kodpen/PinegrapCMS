@@ -38,7 +38,8 @@
  *            to --bs-menu-*, offcanvas to drawer, modal to dialog)
  *   shell    the v5 look the panel keeps: flush drawers, the menu caret, the
  *            menu wrapper's positioning (bs6_switch_shell_rules())
- *   links    v5 link colour helpers to the panel's own pg-link-* classes
+ *   own      v5 link colour helpers and print utilities to the panel's own
+ *            pg-link-* and pg-print-* classes
  *   breakpoints  own media queries at v5's lg/xl/xxl widths (992, 1200,
  *            1400) move to v6's (1024, 1280, 1536)
  *   texts    hand fixes found by their exact text (bs6_switch_texts())
@@ -108,8 +109,8 @@ function bs6_switch_plan($root)
 
 	$plan[] = array('assets/css/backend.src.css', 'shell', 'bs6_switch_shell_rules');
 
-	foreach (bs6_switch_link_files($root) as $path) {
-		$plan[] = array($path, 'links', 'bs6_switch_links');
+	foreach (bs6_switch_own_class_files($root) as $path) {
+		$plan[] = array($path, 'own', 'bs6_switch_own_classes');
 	}
 
 	foreach (bs6_switch_breakpoint_files($root) as $path) {
@@ -189,22 +190,27 @@ function bs6_switch_shell_files($root)
 	return $paths;
 }
 
-// Files the codemod converts and panel stylesheets that name a v5 link
-// colour helper, sorted; the editor's script is left out (its canvas code
-// names the site's Bootstrap 5 classes).
-function bs6_switch_link_files($root)
+// Files the codemod converts and panel stylesheets that name a v5 class the
+// panel keeps as its own (bs6_shell_own_class_renames()), sorted; the
+// editor's script is left out (its canvas code names the site's Bootstrap 5
+// classes).
+function bs6_switch_own_class_files($root)
 {
 	$paths = array();
+	$sheets = bs6_switch_stylesheets($root);
 
 	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
-		$sheet = in_array($path, bs6_switch_stylesheets($root), true);
-
-		if ((!$sheet && !bs6_codemod_converts($path)) || $path === 'assets/js/style_designer.js' || !preg_match('/\.(php|js|css)$/', $path)) {
+		if ((!in_array($path, $sheets, true) && !bs6_codemod_converts($path)) || $path === 'assets/js/style_designer.js' || !preg_match('/\.(php|js|css)$/', $path)) {
 			continue;
 		}
 
-		if (preg_match('/(?<![\w-])link-(primary|secondary|success|danger|warning|info|body-emphasis)(?![\w-])/', (string) file_get_contents(rtrim($root, '/') . '/' . $path))) {
-			$paths[] = $path;
+		$source = (string) file_get_contents(rtrim($root, '/') . '/' . $path);
+
+		foreach (array_keys(bs6_shell_own_class_renames()) as $pattern) {
+			if (preg_match($pattern, $source)) {
+				$paths[] = $path;
+				break;
+			}
 		}
 	}
 
@@ -799,7 +805,8 @@ const BS6_SWITCH_SHELL_NOTE = '/* Bootstrap 6 shell: what the panel keeps of Boo
 // square (v6 floats them with an inset and a radius), the caret v6 no
 // longer draws on a menu toggle, the wrapper a menu used to position
 // against, the scrim of a dialog printed open (bs6_shell_open_sheet()), and
-// v5's link-body-emphasis as the panel's pg-link-body-emphasis.
+// v5's link-body-emphasis and print display utilities as the panel's
+// pg-link-body-emphasis and pg-print-*.
 function bs6_switch_shell_rules($source)
 {
 	if (strpos($source, BS6_SWITCH_SHELL_NOTE) !== false) {
@@ -823,7 +830,14 @@ function bs6_switch_shell_rules($source)
 		. ".pg-link-body-emphasis {\n  color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-opacity, 1) * 100%), transparent) !important;\n"
 		. "  text-decoration-color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-underline-opacity, 1) * 100%), transparent) !important;\n}\n"
 		. ".pg-link-body-emphasis:hover,\n.pg-link-body-emphasis:focus {\n  color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-opacity, 0.75) * 100%), transparent) !important;\n"
-		. "  text-decoration-color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-underline-opacity, 0.75) * 100%), transparent) !important;\n}\n\n";
+		. "  text-decoration-color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-underline-opacity, 0.75) * 100%), transparent) !important;\n}\n"
+		. "@media print {\n";
+
+	foreach (array('none', 'inline', 'inline-block', 'block', 'grid', 'inline-grid', 'table', 'table-row', 'table-cell', 'flex', 'inline-flex') as $display) {
+		$rules .= "  .pg-print-" . $display . " {\n    display: " . $display . " !important;\n  }\n";
+	}
+
+	$rules .= "}\n\n";
 
 	return bs6_switch_result(str_replace($open, $open . $rules, $source), 'applied');
 }
