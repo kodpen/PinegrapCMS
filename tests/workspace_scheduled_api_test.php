@@ -172,4 +172,8 @@ function test_workspace_scheduled_api_object_parameter()
 
 	pg_assert_contains('is_array($raw)', $case);
 	pg_assert_contains('array_values($raw) === $raw', $case, 'a list is no object');
+
+	$openapi = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/openapi.php');
+
+	pg_assert_contains("case 'object':\n\n\t\t\treturn array('type' => 'object');", $openapi, 'the document calls it an object');
 }

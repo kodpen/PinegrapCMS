@@ -459,6 +459,10 @@ function api_openapi_type($param) {
 
 			return array('type' => 'string', 'description' => 'ISO-8601, YYYY-MM-DD, or a unix timestamp.');
 
+		case 'object':
+
+			return array('type' => 'object');
+
 		case 'list':
 
 			// 'of' names what the list holds, in the spelling of the field
