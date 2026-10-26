@@ -4503,6 +4503,8 @@ const StyleDesigner = (function () {
     var SAVE_STATE_RUN_MS = 700;
 
     function saveState(coalesceKey) {
+        // Editing a tried layout keeps it first (_sdLgKeep()).
+        if (_sdLgState && !_sdLgDrawing) _sdLgKeep();
         var key = (typeof coalesceKey === 'string' && coalesceKey !== '') ? coalesceKey : null;
         var now = Date.now();
 
@@ -4546,6 +4548,8 @@ const StyleDesigner = (function () {
     }
 
     function undo() {
+        // A tried layout is not in the history: undo takes it off.
+        if (_sdLgCancel()) return;
         if (!undoStack.length) return;
         redoStack.push({
             tree:   JSON.stringify(tree),
@@ -4566,6 +4570,7 @@ const StyleDesigner = (function () {
     }
 
     function redo() {
+        if (_sdLgCancel()) return;
         if (!redoStack.length) return;
         undoStack.push({
             tree:   JSON.stringify(tree),
@@ -32772,25 +32777,12 @@ const StyleDesigner = (function () {
                     '</div>'
                 );
 
-            // ── Universal "Load the Default Layout" card ────────────────
-            // Every system widget type has a `_buildStarterTree(regionType)`
-            // implementation. Surface it here as a one-click reset so the
-            // operator can recover a sane layout after destructive edits
-            // (or after switching regionType to a new kind). The EO panel
-            // also exposes its own version further below — for backward
-            // compat the EO-specific button stays; this universal one is
-            // primarily for widget types that lacked a reset before.
-            if (_regionType !== '') {
+            // ── Layout gallery: the default layout and the other widgets'
+            // of this kind, tried on the canvas before one is kept
+            // (_sdLgSectionHtml()). Widgets never open to content editors.
+            if (_regionType !== '' && _collab.mayEdit && !_sdIsContentLevel()) {
                 systemSection += sect('bi-magic', _sdT('Layout Template'),
-                    row('',
-                        '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-load-default" ' +
-                            'data-sw-id="' + sid + '" data-region-type="' + esc(_regionType) + '">' +
-                            '<i class="bi bi-arrow-clockwise me-1"></i>' + esc(_sdT('Load the Default Layout')) + '' +
-                        '</button>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:6px">' +
-                            _sdT('<strong>Replaces</strong> the current canvas design with the standard layout prepared for <strong>{var}</strong>. Undo (Ctrl+Z) brings it back.', esc(_regionType)) +
-                        '</div>'
-                    )
+                    row('', _sdLgSectionHtml(sid, _swKindOf(_sdLgCfg(sid)) || _regionType))
                 );
             }
 
@@ -36684,59 +36676,6 @@ const StyleDesigner = (function () {
         // removed — the section-binding picker now lives on the per-element
         // properties panel (context-aware). The widget-level dropdown was a
         // second control writing the same setting.
-
-        // ── Universal "Load the Default Layout" handler ───────────────────
-        // Works for every system widget type that has a _buildStarterTree
-        // entry (form_list_view, catalog_*, my_account, login_form,
-        // forgot_password, search_results, registration, shopping_cart,
-        // order_view, express_order, membership, custom_form, calendar_view).
-        // Uses the LOCAL builder — no API round-trip needed since the
-        // starter tree is fully constructed in JS.
-        var loadDefEl = document.getElementById('sd-sw-load-default');
-        if (loadDefEl) {
-            loadDefEl.addEventListener('click', function () {
-                var sid = parseInt(this.dataset.swId, 10);
-                if (!sid) return;
-                var rt = (this.getAttribute('data-region-type') || '').trim();
-                if (!rt) { sdToast(_sdT('Choose the content type first.'), 'warning'); return; }
-                if (!_sharedCache[sid]) {
-                    sdToast(_sdT('The widget is not in the cache. Refresh the page and try again.'), 'error');
-                    return;
-                }
-                if (typeof _buildStarterTree !== 'function') {
-                    sdToast(_sdT('The layout template builder function was not found.'), 'error');
-                    return;
-                }
-                if (!window.confirm(_sdT('The current canvas design will be replaced completely. Continue? (Ctrl+Z undoes it.)'))) return;
-                // A form view with a form chosen starts from that form's
-                // fields — the same layout picking the form produces.
-                var _fv = _swFormViewConfig(sid);
-                if ((rt === 'form_list_view' || rt === 'form_item_view') && _fv.formId) {
-                    _fetchFormFields(_fv.formId, function (fields) { _swApplyFormLayout(sid, rt, fields); }, true);
-                    return;
-                }
-                var newTree = _buildStarterTree(rt);
-                if (!newTree) {
-                    sdToast(_sdT('There is no default layout for this widget type.'), 'warning');
-                    return;
-                }
-                // Re-id every node so the canvas doesn\'t end up with stale
-                // duplicates of pre-existing _id values.
-                (function reId(nd) {
-                    nd._id = (typeof gid === 'function') ? gid() : ('n' + Math.random().toString(36).slice(2, 10));
-                    if (Array.isArray(nd.children)) nd.children.forEach(reId);
-                })(newTree);
-                if (typeof saveState === 'function') saveState();
-                _sharedCache[sid].tree = newTree;
-                _sharedDirty[sid] = true;
-                // A custom form's starter controls are its fields from this
-                // moment: named the way a drop would name them.
-                if (typeof _cfEnsureNames === 'function' && rt === 'custom_form') _cfEnsureNames(newTree, sid);
-                if (typeof render === 'function') render();
-                if (typeof renderProperties === 'function') renderProperties();
-                sdToast(_sdT('The default layout was loaded.'), 'success');
-            });
-        }
 
         // ── order_view settings ───────────────────────────────────────────────
 
@@ -59264,6 +59203,301 @@ const StyleDesigner = (function () {
         };
     }
 
+    // ── Layout gallery ────────────────────────────────────────────────────
+    // The layouts a system widget can take: the default one and those of
+    // the other widgets of the same kind on this site. Try puts a copy on
+    // the canvas without marking anything unsaved; Keep makes it the
+    // widget's layout as one undo step; Cancel puts the old one back. A
+    // layout from another widget is copied with fresh node ids, never
+    // linked, and the widget's settings stay as they are.
+    var _sdLgState = null;   // { sid, original: json, label, key } while a layout is tried
+    var _sdLgSite  = {};     // sid → { kind, loading, items: [{ id, name, tree }] }
+    var _sdLgDrawing = false; // the gallery's own redraw is not an edit
+
+    function _sdLgApi(body, cb) {
+        var apiBase = (typeof path !== 'undefined' ? path : '') +
+                      (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
+        body.token = (typeof software_token !== 'undefined') ? software_token : '';
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', apiBase, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            var resp = null;
+            try { resp = JSON.parse(xhr.responseText); } catch (e) {}
+            cb(resp && resp.status === 'success' ? resp : null);
+        };
+        xhr.send(JSON.stringify(body));
+    }
+
+    function _sdLgCfg(sid) {
+        var cfg = null;
+        try { cfg = JSON.parse((_sharedCache[sid] && _sharedCache[sid].system_region_config) || 'null'); } catch (e) {}
+        return (cfg && typeof cfg === 'object') ? cfg : {};
+    }
+
+    function _sdLgFormId(cfg) {
+        return parseInt(cfg.custom_form_page_id || cfg.form_page_id || 0, 10) || 0;
+    }
+
+    // The sorted field names of a form, or of a custom form's controls.
+    function _sdLgNames(list) {
+        var out = [];
+        (list || []).forEach(function (f) { if (f && f.name) out.push(String(f.name).toLowerCase()); });
+        out.sort();
+        return out.filter(function (n, i) { return n !== out[i - 1]; }).join('|');
+    }
+
+    function _sdLgReId(nd) {
+        nd._id = gid();
+        if (Array.isArray(nd.children)) nd.children.forEach(_sdLgReId);
+        return nd;
+    }
+
+    // A stored tree read the way prefetchShared() reads one, so the copy
+    // matches what the canvas would draw for the other widget.
+    function _sdLgPrepare(json, kind, cfg) {
+        var t = null;
+        try { t = JSON.parse(json); } catch (e) {}
+        if (!t || typeof t !== 'object') return null;
+        _sdTreeObjects(t);
+        _normalizeToggleableShowState(t);
+        _sdMigrateStructuralBindings(t);
+        _cfMigrateWidgetTree(t, null);
+        if (_SW_NO_MESSAGES[kind]) _sdDropMessagesNodes(t);
+        _sdDefaultParts(t, kind, cfg);
+        return t;
+    }
+
+    // Reads the other widgets of this kind once per widget. Form views keep
+    // only widgets whose form has the same field names as this one's.
+    function _sdLgLoadSite(sid, kind) {
+        var have = _sdLgSite[sid];
+        if (have && have.kind === kind) return;
+        var entry = _sdLgSite[sid] = { kind: kind, loading: true, items: [] };
+        var done = function () {
+            entry.loading = false;
+            if (_sdLgSite[sid] !== entry || typeof renderProperties !== 'function') return;
+            _sdLgDrawing = true;
+            try { renderProperties(); } finally { _sdLgDrawing = false; }
+        };
+        _sdLgApi({ action: 'shared_component', sub_action: 'list' }, function (resp) {
+            var cands = [];
+            ((resp && resp.items) || []).forEach(function (it) {
+                var id = parseInt(it.id, 10);
+                if (!id || id === sid || !it.system_region_config) return;
+                var cfg = null;
+                try { cfg = JSON.parse(it.system_region_config); } catch (e) {}
+                if (_swKindOf(cfg) === kind) cands.push({ id: id, name: it.name || '', cfg: cfg });
+            });
+            cands = cands.slice(0, 40);
+            if (!cands.length) { done(); return; }
+            _sdLgApi({ action: 'shared_component', sub_action: 'prefetch',
+                       ids: cands.map(function (c) { return c.id; }) }, function (pre) {
+                var trees = {};
+                ((pre && pre.items) || []).forEach(function (it) { trees[parseInt(it.id, 10)] = it.tree_json; });
+                cands.forEach(function (c) {
+                    var t = trees[c.id] ? _sdLgPrepare(trees[c.id], kind, c.cfg) : null;
+                    if (!t || _isDefaultEmptyTree(t) || _swIsTemplatePlaceholder(t)) return;
+                    entry.items.push({ id: c.id, name: c.name, tree: t, formId: _sdLgFormId(c.cfg) });
+                });
+                if (kind !== 'form_list_view' && kind !== 'form_item_view') { done(); return; }
+                // Same field names, or the layout's bindings point nowhere.
+                var ids = [_sdLgFormId(_sdLgCfg(sid))];
+                entry.items.forEach(function (it) { if (ids.indexOf(it.formId) === -1) ids.push(it.formId); });
+                var left = ids.length;
+                ids.forEach(function (fid) {
+                    _fetchFormFields(fid, function () {
+                        if (--left) return;
+                        var mine = _sdLgNames(_formFieldsCache[ids[0]]);
+                        entry.items = entry.items.filter(function (it) {
+                            return it.formId > 0 && ids[0] > 0 && _sdLgNames(_formFieldsCache[it.formId]) === mine;
+                        });
+                        done();
+                    });
+                });
+            });
+        });
+    }
+
+    // The site layouts that fit this widget now: a custom form's controls
+    // are its fields, so only a layout with the same control names; never
+    // one equal to the widget's own, and each distinct layout once.
+    function _sdLgSiteItems(sid, kind) {
+        var entry = _sdLgSite[sid];
+        if (!entry || entry.kind !== kind) return [];
+        var cur = _sharedCache[sid] && _sharedCache[sid].tree;
+        if (_sdLgState && _sdLgState.sid === sid) {
+            try { cur = JSON.parse(_sdLgState.original); } catch (e) {}
+        }
+        var seen = {};
+        if (cur) seen[_sdSharedTreeJSON(_sdLgStrip(cur))] = true;
+        var mineNames = (kind === 'custom_form' && cur) ? _sdLgNames(_cfControls(cur)) : null;
+        return entry.items.filter(function (it) {
+            if (mineNames !== null && _sdLgNames(_cfControls(it.tree)) !== mineNames) return false;
+            var key = _sdSharedTreeJSON(_sdLgStrip(it.tree));
+            if (seen[key]) return false;
+            seen[key] = true;
+            return true;
+        });
+    }
+
+    // A tree without its node ids, for comparing two layouts.
+    function _sdLgStrip(t) {
+        return JSON.parse(JSON.stringify(t, function (k, v) { return k === '_id' ? undefined : v; }));
+    }
+
+    // The section of the widget panel.
+    function _sdLgSectionHtml(sid, kind) {
+        _sdLgLoadSite(sid, kind);
+        var trying = (_sdLgState && _sdLgState.sid === sid) ? _sdLgState.key : '';
+        var rowHtml = function (key, name, icon) {
+            var on = (trying === key);
+            return '<div class="d-flex align-items-center gap-2 py-1 border-bottom">' +
+                       '<span class="bi ' + icon + ' text-muted"></span>' +
+                       '<span class="flex-grow-1 text-truncate" style="font-size:.78rem">' + esc(name) + '</span>' +
+                       (on
+                           ? '<span class="badge text-bg-primary">' + esc(_sdT('On the canvas')) + '</span>'
+                           : '<button type="button" class="btn btn-sm btn-outline-primary py-0" data-lg-try="' + esc(key) + '" data-sw-id="' + sid + '">' + esc(_sdT('Try')) + '</button>') +
+                   '</div>';
+        };
+        var head = function (text) {
+            return '<div class="text-uppercase text-muted mt-2 mb-1" style="font-size:.62rem;letter-spacing:.04em">' + esc(text) + '</div>';
+        };
+        var h = head(_sdT('Default')) + rowHtml('default', _sdT('Default layout'), 'bi-stars');
+        h += head(_sdT('On this site'));
+        var entry = _sdLgSite[sid];
+        if (!entry || entry.loading) {
+            h += '<div class="text-muted py-1" style="font-size:.72rem">' + esc(_sdT('Loading…')) + '</div>';
+        } else {
+            var items = _sdLgSiteItems(sid, kind);
+            if (!items.length) h += '<div class="text-muted py-1" style="font-size:.72rem">' + esc(_sdT('No other widget of this kind has a layout that fits this one.')) + '</div>';
+            items.forEach(function (it) { h += rowHtml('site:' + it.id, it.name || ('#' + it.id), 'bi-window-stack'); });
+        }
+        h += '<div style="font-size:.66rem;color:#888;margin-top:6px">' +
+                 esc(_sdT('Try shows a layout on the canvas; nothing changes until you keep it. A layout from another widget is copied, and this widget\'s settings stay. Undo (Ctrl+Z) brings the previous layout back.')) +
+             '</div>';
+        return h;
+    }
+
+    // The bar at the foot of the window while a layout is tried.
+    function _sdLgBar() {
+        var bar = document.getElementById('sd-lg-bar');
+        if (!_sdLgState) { if (bar) bar.remove(); return; }
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'sd-lg-bar';
+            bar.setAttribute('role', 'status');
+            bar.className = 'd-flex align-items-center gap-2 px-3 py-2 rounded shadow bg-dark text-white';
+            bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:1080;max-width:calc(100vw - 32px);font-size:.82rem';
+            document.body.appendChild(bar);
+        }
+        bar.innerHTML = '<span class="bi bi-eye"></span>' +
+            '<span class="text-truncate">' + esc(_sdT('Trying the layout: {var}', _sdLgState.label)) + '</span>' +
+            '<button type="button" class="btn btn-sm btn-primary" data-lg-act="keep">' + esc(_sdT('Keep')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-light" data-lg-act="cancel">' + esc(_sdT('Cancel')) + '</button>';
+    }
+
+    function _sdLgRedraw() {
+        _sdLgBar();
+        _sdLgDrawing = true;
+        try {
+            if (typeof render === 'function') render();
+            if (typeof renderProperties === 'function') renderProperties();
+        } finally { _sdLgDrawing = false; }
+    }
+
+    function _sdLgShow(sid, key, label, newTree) {
+        var c = _sharedCache[sid];
+        if (!c || !newTree) return;
+        if (_sdLgState && _sdLgState.sid !== sid) _sdLgCancel(true);
+        if (!_sdLgState) _sdLgState = { sid: sid, original: JSON.stringify(c.tree) };
+        _sdLgState.key = key;
+        _sdLgState.label = label;
+        _sdLgReId(newTree);
+        if (_swKindOf(_sdLgCfg(sid)) === 'custom_form') _cfEnsureNames(newTree, null);
+        c.tree = newTree;
+        _sdLgRedraw();
+    }
+
+    function _sdLgTry(sid, key) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (_sdIsContentLevel()) { _sdContentNudge('shared'); return; }
+        if (!_sharedCache[sid]) {
+            sdToast(_sdT('The widget is not in the cache. Refresh the page and try again.'), 'error');
+            return;
+        }
+        var cfg = _sdLgCfg(sid), kind = _swKindOf(cfg);
+        if (key === 'default') {
+            var label = _sdT('Default layout');
+            var fid = _sdLgFormId(cfg);
+            // A form view with a form chosen starts from that form's fields.
+            if ((kind === 'form_list_view' || kind === 'form_item_view') && fid) {
+                _fetchFormFields(fid, function (fields) {
+                    _sdLgShow(sid, key, label, _buildStarterTree(kind, { formFields: fields || [] }));
+                });
+                return;
+            }
+            var t = _buildStarterTree(cfg.regionType || kind);
+            if (!t) { sdToast(_sdT('There is no default layout for this widget type.'), 'warning'); return; }
+            _sdLgShow(sid, key, label, t);
+            return;
+        }
+        var id = parseInt(String(key).replace('site:', ''), 10);
+        var it = _sdLgSiteItems(sid, kind).filter(function (x) { return x.id === id; })[0];
+        if (!it) return;
+        _sdLgShow(sid, key, it.name || ('#' + it.id), JSON.parse(JSON.stringify(it.tree)));
+    }
+
+    // Keep: the old layout goes into the undo history, the tried one stays.
+    function _sdLgKeep() {
+        var st = _sdLgState;
+        if (!st) return;
+        _sdLgState = null;
+        var c = _sharedCache[st.sid];
+        if (c) {
+            var tried = c.tree;
+            c.tree = JSON.parse(st.original);
+            saveState();
+            c.tree = tried;
+            _sharedDirty[st.sid] = true;
+            if (_swKindOf(_sdLgCfg(st.sid)) === 'custom_form') _cfEnsureNames(tried, st.sid);
+        }
+        _sdLgBar();
+    }
+
+    function _sdLgCancel(quiet) {
+        var st = _sdLgState;
+        if (!st) return false;
+        _sdLgState = null;
+        var c = _sharedCache[st.sid];
+        if (c) {
+            c.tree = JSON.parse(st.original);
+            var max = reindex(c.tree);
+            if (max > nodeIdCounter) nodeIdCounter = max;
+        }
+        if (quiet) _sdLgBar(); else _sdLgRedraw();
+        return true;
+    }
+
+    document.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest ? e.target.closest('[data-lg-try],[data-lg-act]') : null;
+        if (!t) return;
+        e.preventDefault();
+        if (t.hasAttribute('data-lg-try')) {
+            _sdLgTry(parseInt(t.getAttribute('data-sw-id'), 10), t.getAttribute('data-lg-try'));
+            return;
+        }
+        if (t.getAttribute('data-lg-act') === 'keep') {
+            var sid = _sdLgState && _sdLgState.sid;
+            _sdLgKeep();
+            if (typeof renderProperties === 'function') renderProperties();
+            if (sid) sdToast(_sdT('The layout was kept. Undo (Ctrl+Z) brings the previous one back.'), 'success');
+        } else {
+            _sdLgCancel();
+        }
+    });
+
     // Returns true when the cached tree has never been edited: just the bare
     // root → lone empty loop_area that _createSystemWidgetNode creates.
     // Used by _offerStarterTree to decide whether to auto-apply or to confirm.
@@ -61994,6 +62228,8 @@ const StyleDesigner = (function () {
     // Returns false if validation found hard errors (caller should cancel form submit).
     // Returns true (or undefined) on success.
     function prepareFormData() {
+        // A tried layout is never saved: only Keep makes it the widget's.
+        _sdLgCancel(true);
         // D4 / D6: Validate + clean tree before serialising
         var vr = _validateTree(tree);
 
@@ -62213,6 +62449,7 @@ const StyleDesigner = (function () {
         // as the legacy submit handler. A `false` return means a hard error
         // already surfaced its own toast — bail out quietly.
         var _abandon = function () { if (typeof opts.onError === 'function') opts.onError(); };
+        _sdLgCancel(true);
         // Saving a draft is not publishing it, and the reply says which it
         // was. Read before the save serialises and flushes: one save writes
         // the whole design, so a change waiting on a page on the site (or in
