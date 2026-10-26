@@ -94,6 +94,7 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 
 	$source = (string) file_get_contents($product . '/' . $path);
 	$ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+	bs6_current_path($path);
 	$site_output = bs6_site_output_ranges($source);
 
 	if ($ext === 'css') {
@@ -142,6 +143,8 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 		}
 	}
 }
+
+bs6_current_path(false);
 
 ksort($stats);
 $panel_total = 0;

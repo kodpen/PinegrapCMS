@@ -156,3 +156,73 @@ function test_bs6_site_output_node_builders_marked()
 		);
 	}
 }
+
+// A function of a panel file that a site renderer calls (directly or through
+// another such function) prints into site pages: when the codemod would
+// change a class in it, it must be listed in bs6_site_functions(), or a site
+// page would get Bootstrap 6 classes.
+function test_bs6_site_called_functions_are_listed()
+{
+	$root = PG_FUNCTIONS_DIR;
+	$called = array();
+	$bodies = array();
+
+	foreach (bs6_scope_files($root) as $path => $kind) {
+		if (!preg_match('/\.(php|js)$/', $path)) {
+			continue;
+		}
+
+		$source = (string) file_get_contents($root . '/' . $path);
+
+		if ($kind === 'site') {
+			preg_match_all('/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/', $source, $m);
+			$called += array_fill_keys($m[1], true);
+		} elseif ($kind === 'panel' && preg_match('#^includes/.*\.php$#', $path)) {
+			preg_match_all('/^function ([A-Za-z_][A-Za-z0-9_]*)\s*\(/m', $source, $m);
+			foreach ($m[1] as $name) {
+				$range = bs6_function_ranges($source, array($name));
+				if ($range) {
+					$bodies[$name] = array($path, substr($source, $range[0][0], $range[0][1] - $range[0][0]));
+				}
+			}
+		}
+	}
+
+	$used = array();
+	do {
+		$grew = false;
+		foreach ($bodies as $name => $body) {
+			if (!isset($used[$name]) && isset($called[$name])) {
+				$used[$name] = true;
+				preg_match_all('/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/', $body[1], $m);
+				$called += array_fill_keys($m[1], true);
+				$grew = true;
+			}
+		}
+	} while ($grew);
+
+	$listed = bs6_site_functions();
+	$missing = array();
+
+	// After the switch a class Bootstrap 6 defines is not a v5 one.
+	if (bs6_panel_head_is_v6($root)) {
+		bs6_converted_tree_classes(bs6_dist_classes((string) file_get_contents($root . '/assets/lib/bootstrap-6/css/bootstrap.css')));
+	}
+
+	foreach (array_keys($used) as $name) {
+		list($path, $body) = $bodies[$name];
+
+		if (strpos($path, 'includes/oauth/') === 0 || (isset($listed[$path]) && in_array($name, $listed[$path], true))) {
+			continue;
+		}
+
+		$result = bs6_convert_source($body, null, true);
+
+		if ($result['changed'] > 0) {
+			$missing[] = $path . ' ' . $name;
+		}
+	}
+
+	bs6_converted_tree_classes(false);
+	pg_assert_same(array(), $missing, 'site-called functions with Bootstrap classes');
+}
