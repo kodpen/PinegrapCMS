@@ -4,7 +4,13 @@
 
 Unfinished and shelved plans: remaining work, decisions made, open questions, where to start.
 
+## Key rules
+
 <!-- key-rules:start -->
+- A plan lists its steps one per line, with an empty line between two steps. Git merges two edits only when an unchanged line stands between them, so two steps of one plan in the same train merge without a conflict.
+- A step's PR changes only its own step line (done, its PR number, its topic file) and the open questions it answers.
+- The frontmatter `description` says what the plan is, never which steps are done: every step would edit that one line, and the generated index with it.
+- A plan in an older form takes this form when it is next written as a whole, or when the merging session settles a conflict in it.
 <!-- key-rules:end -->
 
 ## Files
