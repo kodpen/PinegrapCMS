@@ -609,40 +609,16 @@ function pg_consent_log_checkout($email, $user_id, $contact_id, $opt_in_displaye
  *            is. An empty comment name is shown as "Anonymous".
  *
  * A column not listed is kept: amounts, dates, statuses, products, payment
- * and carrier references, the country (tax reports read it).
+ * and carrier references, the country (tax reports read it). An entry keyed
+ * otherwise than its table names it in 'table'.
  *
- * @return array  table => find, action, fields
+ * @return array  key => find, action, fields, and table when it is not the key
  */
 function pg_privacy_erase_tables()
 {
     $user = array('user_id' => 'user_ids');
 
     return array(
-        'orders' => array('find' => array('id' => 'order_ids'), 'action' => 'anonymise', 'fields' => array(
-            'billing_salutation'       => '',
-            'billing_first_name'       => '{name}',
-            'billing_last_name'        => '',
-            'billing_company'          => '',
-            'billing_address_1'        => '',
-            'billing_address_2'        => '',
-            'billing_city'             => '',
-            'billing_state'            => '',
-            'billing_zip_code'         => '',
-            'billing_phone_number'     => '',
-            'billing_fax_number'       => '',
-            'billing_email_address'    => '{token}',
-            'cardholder'               => '',
-            'card_number'              => '',
-            'expiration_month'         => '',
-            'expiration_year'          => '',
-            'card_verification_number' => '',
-            'custom_field_1'           => '',
-            'custom_field_2'           => '',
-            'http_referer'             => '',
-            'ip_address'               => 0,
-            'user_id'                  => 0,
-            'contact_id'               => 0,
-        )),
         'ship_tos' => array('find' => array('order_id' => 'order_ids'), 'action' => 'anonymise', 'fields' => array(
             'ship_to_name' => '',
             'salutation'   => '',
@@ -732,8 +708,11 @@ function pg_privacy_erase_tables()
             'label' => '',
         )),
         'files'                        => array('find' => array('id' => 'file_ids'), 'action' => 'delete', 'fields' => array()),
+        // A field of somebody else's record that holds the person's address
+        // (a colleague's e-mail, a gift recipient) loses only that value.
+        'form_data_cells'              => array('table' => 'form_data', 'find' => array('id' => 'cell_ids'), 'action' => 'anonymise', 'fields' => array('data' => '')),
         'form_data'                    => array('find' => array('form_id' => 'form_ids', 'order_id' => 'order_ids'), 'action' => 'delete', 'fields' => array()),
-        'form_signatures'              => array('find' => array('form_id' => 'form_ids', 'user_id' => 'user_ids'), 'action' => 'delete', 'fields' => array()),
+        'form_signatures'              => array('find' => array('form_id' => 'form_ids'), 'action' => 'delete', 'fields' => array()),
         'forms'                        => array('find' => array('id' => 'form_ids'), 'action' => 'delete', 'fields' => array()),
         'watchers'                     => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'wishlist_items'               => array('find' => $user, 'action' => 'delete', 'fields' => array()),
@@ -752,6 +731,33 @@ function pg_privacy_erase_tables()
         'auth_tokens'                  => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'opt_in'                       => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
         'contacts_contact_groups_xref' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
+        // Orders go late: the person's other records are found through them,
+        // so a run stopped half-way still reaches those records.
+        'orders' => array('find' => array('id' => 'order_ids'), 'action' => 'anonymise', 'fields' => array(
+            'billing_salutation'       => '',
+            'billing_first_name'       => '{name}',
+            'billing_last_name'        => '',
+            'billing_company'          => '',
+            'billing_address_1'        => '',
+            'billing_address_2'        => '',
+            'billing_city'             => '',
+            'billing_state'            => '',
+            'billing_zip_code'         => '',
+            'billing_phone_number'     => '',
+            'billing_fax_number'       => '',
+            'billing_email_address'    => '{token}',
+            'cardholder'               => '',
+            'card_number'              => '',
+            'expiration_month'         => '',
+            'expiration_year'          => '',
+            'card_verification_number' => '',
+            'custom_field_1'           => '',
+            'custom_field_2'           => '',
+            'http_referer'             => '',
+            'ip_address'               => 0,
+            'user_id'                  => 0,
+            'contact_id'               => 0,
+        )),
         'contacts'                     => array('find' => array('id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
         'user'                         => array('find' => $user, 'action' => 'delete', 'fields' => array()),
     );
@@ -765,7 +771,6 @@ function pg_privacy_erase_tables()
 function pg_privacy_erase_labels()
 {
     return array(
-        'orders'                       => lang('Orders'),
         'ship_tos'                     => lang('Shipping addresses'),
         'order_documents'              => lang('Accepted documents'),
         'order_returns'                => lang('Returns'),
@@ -779,6 +784,7 @@ function pg_privacy_erase_labels()
         'ws_approval_guests'           => lang('Workspace approvals'),
         'audit_log'                    => lang('Audit trail'),
         'files'                        => lang('Uploaded files'),
+        'form_data_cells'              => lang('Form answers holding the address'),
         'form_data'                    => lang('Form answers'),
         'form_signatures'              => lang('Signatures'),
         'forms'                        => lang('Form submissions'),
@@ -799,6 +805,7 @@ function pg_privacy_erase_labels()
         'auth_tokens'                  => lang('Sign-in sessions'),
         'opt_in'                       => lang('Opt-in answers'),
         'contacts_contact_groups_xref' => lang('Contact groups'),
+        'orders'                       => lang('Orders'),
         'contacts'                     => lang('Contact'),
         'user'                         => lang('User account'),
     );
@@ -877,7 +884,7 @@ function pg_privacy_erase_set(array $fields, $name, $token)
  * @param array $found  see pg_privacy_export_find()
  * @return array  user_ids, contact_ids, emails, tokens, phones, order_ids,
  *                form_ids, account_ids, conversation_ids, file_ids,
- *                return_ids, audit_ids
+ *                return_ids, audit_ids, cell_ids
  */
 function pg_privacy_erase_scope(array $found)
 {
@@ -896,34 +903,65 @@ function pg_privacy_erase_scope(array $found)
         'file_ids'         => array(),
         'return_ids'       => array(),
         'audit_ids'        => array(),
+        'cell_ids'         => array(),
     );
 
-    $where = pg_privacy_erase_where(array('user_id' => 'user_ids', 'contact_id' => 'contact_ids', 'billing_email_address' => 'emails'), $scope);
+    // A counter sale keeps the cashier in user_id and its buyer in contact_id,
+    // so the person's account finds only the orders it placed itself.
+    $mine = pg_privacy_erase_where(array('contact_id' => 'contact_ids', 'billing_email_address' => 'emails'), $scope);
+    $by_user = _pg_privacy_export_in('user_id', $scope['user_ids']);
+
+    if (($by_user !== '') && pg_schema_has('orders', 'type')) {
+        $by_user = "(" . $by_user . " AND (type <> 'local'))";
+    }
+
+    $where = _pg_privacy_export_any(array($mine, $by_user));
 
     if ($where !== '') {
         $scope['order_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM orders WHERE " . $where));
     }
 
-    // Form submissions: the person's own and those naming their address in a
-    // field, as the export finds them.
-    $named = $scope['emails'] ? db_values("SELECT DISTINCT form_id FROM form_data WHERE (form_id > 0) AND " . _pg_privacy_export_in('data', $scope['emails'])) : array();
-    $where = _pg_privacy_export_any(array(pg_privacy_erase_where(array('user_id' => 'user_ids', 'contact_id' => 'contact_ids'), $scope), _pg_privacy_export_in('id', _pg_privacy_export_ids($named))));
+    // Form submissions are the person's by their contact, or when their
+    // account sent them from the site for nobody else: a record entered in
+    // the panel or imported keeps the staff member in user_id and records no
+    // visitor address, and one filled in for somebody else names that
+    // person's contact.
+    $by_user = _pg_privacy_export_in('user_id', $scope['user_ids']);
+    $where = _pg_privacy_export_any(array(
+        _pg_privacy_export_in('contact_id', $scope['contact_ids']),
+        ($by_user !== '') ? "(" . $by_user . " AND (contact_id = 0) AND (ip_address <> 0))" : '',
+    ));
 
     if ($where !== '') {
         $scope['form_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM forms WHERE " . $where));
     }
 
+    // Fields of other records that hold the person's address.
+    if ($scope['emails']) {
+        $not_own = '';
+
+        foreach (array('form_id' => 'form_ids', 'order_id' => 'order_ids') as $column => $key) {
+            $not_own .= $scope[$key] ? " AND NOT (" . _pg_privacy_export_in($column, $scope[$key]) . ")" : '';
+        }
+
+        $scope['cell_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM form_data WHERE " . _pg_privacy_export_in('data', $scope['emails']) . $not_own));
+    }
+
+    // ERP accounts: the contacts', the person's orders' (not a counter sale
+    // rung up by them), and those naming the contact or the address; never
+    // the shared walk-in account of counter sales.
     if (pg_schema_has('erp_accounts', 'is_person')) {
         $linked = _pg_privacy_export_column(array_values($found['contacts']), 'erp_account_id');
 
-        if ($scope['order_ids'] && pg_schema_has('orders', 'erp_account_id')) {
-            $linked = array_merge($linked, db_values("SELECT DISTINCT erp_account_id FROM orders WHERE " . _pg_privacy_export_in('id', $scope['order_ids'])));
+        if ($scope['order_ids'] && ($mine !== '') && pg_schema_has('orders', 'erp_account_id')) {
+            $linked = array_merge($linked, db_values("SELECT DISTINCT erp_account_id FROM orders WHERE " . _pg_privacy_export_in('id', $scope['order_ids']) . " AND " . $mine));
         }
 
         $where = _pg_privacy_export_any(array(_pg_privacy_export_in('id', _pg_privacy_export_ids($linked)), pg_privacy_erase_where(array('contact_id' => 'contact_ids', 'email' => 'emails'), $scope)));
+        $walkin = defined('ERP_WALKIN_ACCOUNT_ID') ? (int) ERP_WALKIN_ACCOUNT_ID : 0;
 
         if ($where !== '') {
-            $scope['account_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM erp_accounts WHERE (is_person = 1) AND " . $where));
+            $scope['account_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM erp_accounts WHERE (is_person = 1) AND (id <> '" . $walkin . "') AND " . $where));
         }
     }
 
@@ -947,10 +985,8 @@ function pg_privacy_erase_scope(array $found)
         $files = db_values("SELECT file_id FROM form_data WHERE (file_id > 0) AND " . $where);
     }
 
-    $where = pg_privacy_erase_where(array('form_id' => 'form_ids', 'user_id' => 'user_ids'), $scope);
-
-    if (($where !== '') && pg_schema_has('form_signatures', 'file_id')) {
-        $files = array_merge($files, db_values("SELECT file_id FROM form_signatures WHERE (file_id > 0) AND " . $where));
+    if ($scope['form_ids'] && pg_schema_has('form_signatures', 'file_id')) {
+        $files = array_merge($files, db_values("SELECT file_id FROM form_signatures WHERE (file_id > 0) AND " . _pg_privacy_export_in('form_id', $scope['form_ids'])));
     }
 
     if ($scope['conversation_ids'] && pg_schema_has('chat_messages', 'attachment_file_id')) {
@@ -959,20 +995,12 @@ function pg_privacy_erase_scope(array $found)
 
     $scope['file_ids'] = _pg_privacy_export_ids($files);
 
-    // Mobile numbers, for the text messages sent to them.
+    // Mobile numbers, for the text messages sent to them: the person's own,
+    // not an address book's or a shipment's, which may be a recipient's.
     $rows = array_values($found['contacts']);
-    $where = pg_privacy_erase_where(array('user' => 'user_ids'), $scope);
-
-    if ($where !== '') {
-        $rows = array_merge($rows, db_items("SELECT phone_number FROM address_book WHERE " . $where));
-    }
 
     if ($scope['order_ids']) {
-        $rows = array_merge(
-            $rows,
-            db_items("SELECT billing_phone_number FROM orders WHERE " . _pg_privacy_export_in('id', $scope['order_ids'])),
-            db_items("SELECT phone_number FROM ship_tos WHERE " . _pg_privacy_export_in('order_id', $scope['order_ids']))
-        );
+        $rows = array_merge($rows, db_items("SELECT billing_phone_number FROM orders WHERE " . _pg_privacy_export_in('id', $scope['order_ids'])));
     }
 
     $scope['phones'] = pg_privacy_export_phones($rows);
@@ -1095,7 +1123,7 @@ function pg_privacy_erase_audit_row(array $row, $name, $key = null)
  *
  * @param array $scope  see pg_privacy_erase_scope()
  * @param bool  $apply  false for the dry run
- * @return array  table => action, rows (the rows found), for the tables
+ * @return array  key => action, rows (the rows found), for the entries
  *                with rows only
  */
 function pg_privacy_erase_run(array $scope, $apply)
@@ -1103,7 +1131,9 @@ function pg_privacy_erase_run(array $scope, $apply)
     $name = lang('Deleted customer');
     $result = array();
 
-    foreach (pg_privacy_erase_tables() as $table => $spec) {
+    foreach (pg_privacy_erase_tables() as $key => $spec) {
+        $table = isset($spec['table']) ? $spec['table'] : $key;
+
         if (!pg_schema_has($table)) {
             continue;
         }
@@ -1128,10 +1158,10 @@ function pg_privacy_erase_run(array $scope, $apply)
             continue;
         }
 
-        $result[$table] = array('action' => $spec['action'], 'rows' => $rows);
+        $result[$key] = array('action' => $spec['action'], 'rows' => $rows);
 
         if ($apply) {
-            $hook = '_pg_privacy_erase_apply_' . $table;
+            $hook = '_pg_privacy_erase_apply_' . $key;
 
             if (function_exists($hook)) {
                 $hook($where, $spec['fields'], $scope, $name);
@@ -1162,11 +1192,21 @@ function pg_privacy_erase(array $input, array $operator, $apply = false)
     $found = pg_privacy_export_find($input);
     $result = array('status' => 'ok', 'found' => $found, 'tables' => array());
 
+    // The checks also cover the accounts that hold one of the person's
+    // addresses without being tied to them (a contact opened by id that has an
+    // administrator's address): their orders, consents and mail would go.
+    // Those accounts are checked, not erased.
+    $users = $found['users'];
+
+    if ($found['person']['emails']) {
+        $users += _pg_privacy_export_users(_pg_privacy_export_in('user_email', $found['person']['emails']));
+    }
+
     if (pg_privacy_export_is_empty($found['person'])) {
         $result['status'] = 'empty';
-    } elseif (!pg_privacy_export_allowed($operator['role'] ?? 3, $operator['id'] ?? 0, $found['users'])) {
+    } elseif (!pg_privacy_export_allowed($operator['role'] ?? 3, $operator['id'] ?? 0, $users)) {
         $result['status'] = 'refused';
-    } elseif (in_array((int) ($operator['id'] ?? 0), $found['person']['user_ids'], true)) {
+    } elseif (isset($users[(int) ($operator['id'] ?? 0)])) {
         $result['status'] = 'self';
     }
 

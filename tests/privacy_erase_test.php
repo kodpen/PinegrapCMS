@@ -47,6 +47,7 @@ function privacy_erase_test_scope()
 		'file_ids'         => array(70),
 		'return_ids'       => array(80),
 		'audit_ids'        => array(90),
+		'cell_ids'         => array(95),
 	);
 }
 
@@ -68,25 +69,25 @@ function test_privacy_erase_tables_are_pinned()
 
 	pg_assert_same(
 		array(
-			'orders' => 'anonymise', 'ship_tos' => 'anonymise', 'order_documents' => 'anonymise',
+			'ship_tos' => 'anonymise', 'order_documents' => 'anonymise',
 			'order_returns' => 'anonymise', 'gift_cards' => 'anonymise', 'erp_accounts' => 'anonymise',
 			'erp_invoices' => 'anonymise', 'erp_quotes' => 'anonymise', 'erp_waybills' => 'anonymise',
 			'comments' => 'anonymise', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise',
-			'audit_log' => 'anonymise', 'files' => 'delete', 'form_data' => 'delete', 'form_signatures' => 'delete', 'forms' => 'delete',
+			'audit_log' => 'anonymise', 'files' => 'delete', 'form_data_cells' => 'anonymise',
+			'form_data' => 'delete', 'form_signatures' => 'delete', 'forms' => 'delete',
 			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete',
 			'email_recipients' => 'delete', 'mail_outbox' => 'delete', 'sms_outbox' => 'delete',
 			'chat_messages' => 'delete', 'chat_conversations' => 'delete', 'address_book' => 'delete',
 			'push_subscriptions' => 'delete', 'user_passkeys' => 'delete', 'user_identities' => 'delete',
 			'user_mfa_recovery' => 'delete', 'user_mfa' => 'delete', 'auth_tokens' => 'delete',
-			'opt_in' => 'delete', 'contacts_contact_groups_xref' => 'delete', 'contacts' => 'delete',
+			'opt_in' => 'delete', 'contacts_contact_groups_xref' => 'delete', 'orders' => 'anonymise', 'contacts' => 'delete',
 			'user' => 'delete',
 		),
 		$actions,
 		'tables, actions and order'
 	);
 
-	pg_assert_same(
-		array(
+	$expected = array(
 			'orders' => array(
 				'billing_salutation' => '', 'billing_first_name' => '{name}', 'billing_last_name' => '',
 				'billing_company' => '', 'billing_address_1' => '', 'billing_address_2' => '',
@@ -124,10 +125,12 @@ function test_privacy_erase_tables_are_pinned()
 			'consent_log' => array('user_id' => 0, 'contact_id' => 0, 'ip' => '', 'user_agent' => ''),
 			'ws_approval_guests' => array('name' => '', 'email' => '{token}', 'decided_ip' => '', 'decided_agent' => ''),
 			'audit_log' => array('label' => ''),
-		),
-		$fields,
-		'replaced columns'
+			'form_data_cells' => array('data' => ''),
 	);
+
+	ksort($expected);
+	ksort($fields);
+	pg_assert_same($expected, $fields, 'replaced columns');
 }
 
 // How each table's rows are found; a find column changed is a different set
@@ -142,8 +145,7 @@ function test_privacy_erase_find_columns_are_pinned()
 
 	$user = array('user_id' => 'user_ids');
 
-	pg_assert_same(
-		array(
+	$expected = array(
 			'orders' => array('id' => 'order_ids'),
 			'ship_tos' => array('order_id' => 'order_ids'),
 			'order_documents' => array('order_id' => 'order_ids'),
@@ -158,8 +160,9 @@ function test_privacy_erase_find_columns_are_pinned()
 			'ws_approval_guests' => array('email' => 'emails'),
 			'audit_log' => array('id' => 'audit_ids'),
 			'files' => array('id' => 'file_ids'),
+			'form_data_cells' => array('id' => 'cell_ids'),
 			'form_data' => array('form_id' => 'form_ids', 'order_id' => 'order_ids'),
-			'form_signatures' => array('form_id' => 'form_ids', 'user_id' => 'user_ids'),
+			'form_signatures' => array('form_id' => 'form_ids'),
 			'forms' => array('id' => 'form_ids'),
 			'watchers' => array('user_id' => 'user_ids', 'email_address' => 'emails'),
 			'wishlist_items' => $user,
@@ -180,10 +183,11 @@ function test_privacy_erase_find_columns_are_pinned()
 			'contacts_contact_groups_xref' => array('contact_id' => 'contact_ids'),
 			'contacts' => array('id' => 'contact_ids'),
 			'user' => $user,
-		),
-		$find,
-		'find columns'
 	);
+
+	ksort($expected);
+	ksort($find);
+	pg_assert_same($expected, $find, 'find columns');
 }
 
 // What the runner and the writer rely on: every scope list named exists, an
@@ -207,9 +211,14 @@ function test_privacy_erase_tables_are_consistent()
 	pg_assert_same(array_keys(pg_privacy_erase_tables()), array_keys($labels), 'a label for each table, in order');
 
 	// The account and the contact go last, so an erasure stopped half-way
-	// still finds the person when it is run again.
+	// still finds the person when it is run again; orders just before them,
+	// since the person's other records are found through the orders.
 	$order = array_keys(pg_privacy_erase_tables());
-	pg_assert_same(array('contacts', 'user'), array_slice($order, -2), 'contact and account last');
+	pg_assert_same(array('orders', 'contacts', 'user'), array_slice($order, -3), 'orders, contact and account last');
+
+	foreach (pg_privacy_erase_tables() as $key => $spec) {
+		pg_assert_true(!isset($spec['table']) || (is_string($spec['table']) && ($spec['table'] !== $key)), $key . ' table');
+	}
 }
 
 // Nothing to match is no condition at all, never one that matches every row.
@@ -398,4 +407,34 @@ function test_privacy_erase_audit_row()
 
 	pg_assert_same(array(), pg_privacy_erase_audit_row(array('entity_type' => 'product', 'label' => 'Shoe', 'before_json' => '{"name":"Shoe"}'), 'x', 'k1'), 'another type');
 	pg_assert_same(array(), pg_privacy_erase_audit_row(array('entity_type' => 'order', 'label' => '1', 'before_json' => 'not json', 'after_json' => '[]'), 'x', 'k1'), 'nothing to read');
+}
+
+// Whose records the scope takes: a counter sale is the buyer's, not the
+// cashier's; a submission is the person's by contact or when their account
+// sent it from the site for nobody else, and only the address is cleared from
+// somebody else's; the shared walk-in account is never the person's; text
+// messages go by the person's own numbers.
+function test_privacy_erase_scope_takes_only_the_persons_records()
+{
+	$scope = pg_test_function_source('pg_privacy_erase_scope');
+
+	pg_assert_contains("\$by_user = \"(\" . \$by_user . \" AND (type <> 'local'))\";", $scope, 'orders by account leave counter sales out');
+	pg_assert_contains(" AND (contact_id = 0) AND (ip_address <> 0))", $scope, 'submissions by account: sent from the site for nobody else');
+	pg_assert_false(strpos($scope, "_pg_privacy_export_in('id', _pg_privacy_export_ids(\$named))") !== false, 'no submission taken whole for a field value');
+	pg_assert_contains("SELECT id FROM form_data WHERE \" . _pg_privacy_export_in('data', \$scope['emails'])", $scope, 'fields holding the address');
+	pg_assert_contains("(id <> '\" . \$walkin . \"')", $scope, 'walk-in account left out');
+	pg_assert_contains("_pg_privacy_export_in('id', \$scope['order_ids']) . \" AND \" . \$mine", $scope, 'an order names an ERP account only when it is the person\'s by contact or address');
+	pg_assert_false(strpos($scope, 'FROM address_book') !== false, 'no address book numbers');
+	pg_assert_false(strpos($scope, 'FROM ship_tos') !== false, 'no shipment numbers');
+}
+
+// The role and self checks also cover accounts holding the person's address
+// that are not tied to them.
+function test_privacy_erase_checks_accounts_holding_the_address()
+{
+	$erase = pg_test_function_source('pg_privacy_erase');
+
+	pg_assert_contains("_pg_privacy_export_users(_pg_privacy_export_in('user_email', \$found['person']['emails']))", $erase, 'accounts by address');
+	pg_assert_contains("pg_privacy_export_allowed(\$operator['role'] ?? 3, \$operator['id'] ?? 0, \$users)", $erase, 'role check over them');
+	pg_assert_contains("isset(\$users[(int) (\$operator['id'] ?? 0)])", $erase, 'self check over them');
 }
