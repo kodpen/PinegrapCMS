@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-scheduled-merge
-description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, answers 1-3): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes for every part, opt-in convert
+description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, slice 2 #1810, answers 1-3): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes, opt-in convert
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -20,7 +20,7 @@ description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, ans
 ## Slices (one PR each)
 0. #1590: tests/workspace_flows_parity_test.php maps each parity key to its slice and box, or `form` and why; tests/workspace_scheduled_test.php pins `ws_scheduled_next_run()`, `ws_scheduled_hours_hold()` (past midnight, the site's zone).
 1. Done (#1707). One screen, no schema: a Scheduled actions section in Flows (today's list, `scheduledCard()`, `scheduledForm()` via `shareKit()`); staff get one Flows rail entry; ?view=scheduled keeps their Messages tab (the scheduled_message line opens it); other links, the tour step land in Flows; composer, note, @ai draft open the form; without 11.0.80 the old entry stays.
-2. "Show on canvas": a pure `ws_scheduled_graph()` draws an action read-only (when, condition, step, follow-ups; starters, started actions, self-retry as chips); edits stay in the form.
+2. Done (#1810). "Show on canvas": pure `ws_scheduled_graph()` from the staff card, `ws_scheduled_get` answers it, `showAction()` draws it read-only; edits stay in the form.
 3. Parity boxes (F4, F5), one per parity row: schedule, by hand or chain only, join, event triggers on the anchor; condition (no = skipped, reason kept); steps from steps.php (engine plan), every option; task without waiting; approval; outcomes; delay; retry; start a flow; depth.
 4. New rules on the canvas; the form stays for keys still `form`; templates become starters, AI drafts (F8).
 5. "Convert to flow" (answer 2): the row becomes a converted anchor, its id and every parity row kept. Schema (a mark for the two anchors): ask first.
@@ -34,4 +34,4 @@ description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, ans
 6. Slice 1 before F4 → yes (#1555 is in).
 
 ## Where to start?
-- Date fix done (#1798). Next: slice 2; read workspace/README.md and workspace/workspace-flows-canvas.md.
+- Date fix (#1798) and slice 2 (#1810) done. Next: slice 3; read workspace/README.md.
