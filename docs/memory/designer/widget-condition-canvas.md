@@ -26,3 +26,6 @@ description: The canvas state preview of value conditions (W19, #1904): band chi
 
 ## Which main loops get sample rows? (#1928)
 - The widget's first loop without a source (`_sdFirstLoopArea()`), two rows of the card's values, in a kind that repeats it and has neither server ghosts (`_SD_GHOST_TYPES`, [[designer-widget-ghosts-and-edit-chips]]) nor sample comments: the cart, the order view's items, an account's order list. None in a single-record kind (`_sdLoopIsSingle()`, the rule that also hides the loop's band), inside a sample row or sample comment.
+
+## What does the owner still answer?
+- The default state: the sample (as the page looks) or "All elements" (as before). Built as the sample.

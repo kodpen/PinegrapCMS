@@ -4,7 +4,13 @@
 
 Unfinished and shelved plans: remaining work, decisions made, open questions, where to start.
 
+## Key rules
+
 <!-- key-rules:start -->
+- A plan lists its steps one per line, with an empty line between two steps. Git merges two edits only when an unchanged line stands between them, so two steps of one plan in the same train merge without a conflict.
+- A step's PR changes only its own step line (done, its PR number, its topic file) and the open questions it answers.
+- The frontmatter `description` says what the plan is, never which steps are done: every step would edit that one line, and the generated index with it.
+- A plan in an older form takes this form when it is next written as a whole, or when the merging session settles a conflict in it.
 <!-- key-rules:end -->
 
 ## Files
@@ -38,6 +44,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-layouts-in-designer.md: Plan (2026-10-19; Y1-Y4, Y6 done): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
+- legacy-page-designer-l5-list.md: What step L5 (retire page_designer.php) reroutes or removes beyond the three files: Edit Layout links, help row, menu case, panel actions used only by page_designer.js
+- legacy-page-designer-parity.md: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, with a build-or-drop proposal and files per item; waits for the owner
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
 - legacy-retirement-prerequisites.md: Plan (2026-10-19, not started): regions editable in the visual designer before classic pages move: common/designer regions as shared components with content rights, dynamic, page, menu
 - marketplace-product-matching.md: Plan (approved 2026-10-26): match a shop's products to its marketplace catalogue in bulk, with pictures, on a new Marketplace products screen; step 1 done (#1880), step 2 next
@@ -48,7 +56,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - passkeys.md: Plan (approved 2026-10-19; steps 1-3b and 4a done, 4b-4c left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
 - payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 4a, 5 done; 3b, 4b, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 - payment-driver-paypal.md: Step 4b (PayPal Checkout v2) hand-over: branch feature/payment-4b-paypal-v2 (closed PR #1827), what is missing before it lands, the open PENDING-capture question
-- php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1450, #1669, #1744, #1757
+- php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows, retention, window function done): automatic "price before discount" (TR 10/30-day, EU 30-day rules)
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1-5b done, last #1821 and #1844; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
