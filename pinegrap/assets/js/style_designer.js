@@ -898,7 +898,10 @@ const StyleDesigner = (function () {
                                 // the part; the site draws the same.
                                 if (mcfg) _sdDefaultParts(parsed, _swKindOf(mcfg), mcfg);
                                 // Never on a template's placeholder (below).
-                                if (mcfg && !_swIsTemplatePlaceholder(parsed)) _sdDefaultTails(parsed, _swKindOf(mcfg), mcfg);
+                                if (mcfg && !_swIsTemplatePlaceholder(parsed)) {
+                                    _sdDefaultLoopTails(parsed, _swKindOf(mcfg), mcfg);
+                                    _sdDefaultTails(parsed, _swKindOf(mcfg), mcfg);
+                                }
                             }
                             // A template's widget whose layout was never written
                             // (the loss above): it still holds the placeholder and
@@ -11123,6 +11126,7 @@ const StyleDesigner = (function () {
                     menu_region:          _sdT('Menu'),
                     menu_sequence_region: _sdT('Menu Sequence'),
                     ad_region:            _sdT('Ad Region'),
+                    tag_cloud_region:     _sdT('Tag Cloud'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -13864,8 +13868,9 @@ const StyleDesigner = (function () {
                    '<div class="alert alert-info small py-2 my-2">' + esc(_sdT('Your return was approved. You can send the goods back now.')) + '</div>' +
                    '</div></div>';
         },
-        // Mirrors _pg_render_order_item_form_data_readonly() — fieldset +
-        // legend + stacked label/value pairs.
+        // A product form's answers: fieldset, legend and stacked
+        // label/value pairs (the order view draws them with the item form
+        // part, pg_sw_part_order_item_form()).
         '__item_form_data_html': function () {
             return '<div class="pg-ov-item-form mt-2">' +
                    '<fieldset class="pg-ov-item-form-block border rounded p-3 mt-2">' +
@@ -13936,7 +13941,8 @@ const StyleDesigner = (function () {
                    '<div><button type="button" class="btn btn-primary btn-sm" disabled>' + esc(_sdT('Add')) + '</button></div>' +
                    '</div></div>';
         },
-        // Mirrors _pg_render_order_item_gift_card_readonly().
+        // A gift card's details (the order view's gift card part,
+        // pg_sw_part_order_item_gift_card()).
         '__item_gift_card_html': function () {
             return '<div class="pg-ov-item-gift-card mt-2">' +
                    '<fieldset class="pg-ov-item-gift-card-block border rounded p-3 mt-2">' +
@@ -32376,6 +32382,9 @@ const StyleDesigner = (function () {
             'order.items':        _sdT('One row for every item of the order; inside a list of the recipients, that recipient\'s items. The receipt e-mail draws it too.'),
             'order.parcels':      _sdT('One row for every tracking number of the order; inside a list of the recipients, that recipient\'s. A parcel whose carrier is not known has no tracking link: a condition on "Shipment tracking link" shows the number without one.'),
             'order.steps':        _sdT('One row for every step of the order: created, paid, shipped, delivered, cancelled. A shipping or delivery date still to come is estimated; a condition on "Estimated" marks it.'),
+            'order.item_forms':   _sdT('One row for every product form of the item the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
+            'order.item_form_fields': _sdT('One row for every field of the product form the row stands in, with the buyer\'s answer; an information field gives its text. A condition on "Information field" tells them apart.'),
+            'order.item_gift_cards': _sdT('One row for every gift card of the item the row stands in that was filled in: its amount, recipient, sender, message and delivery date.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
@@ -32563,6 +32572,7 @@ const StyleDesigner = (function () {
             var _isMenuRegion      = (_regionType === 'menu_region');
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
             var _isAdRegion        = (_regionType === 'ad_region');
+            var _isTagCloud        = (_regionType === 'tag_cloud_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -32613,6 +32623,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isOrderPreview) {
                 _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
+            } else if (_isTagCloud) {
+                _sourceInfoHtml = _sdT('The 25 keywords used most by what a search results page searches (its catalog items, or the site\'s pages), in alphabetical order, each a link to that page searching for it. The keywords are written on the products and pages; the more often a keyword is used, the higher its weight (1 to 5), which the design shows by its size.');
             } else if (_isAdRegion) {
                 _sourceInfoHtml = _sdT('The ads of an ad region, read on every visit: they are written, ordered and given captions under Ads, by the users who may edit that region. A static region shows one ad picked at random; a dynamic one every ad, in its order, turning by the region\'s slideshow settings. Nothing is drawn while ads are switched off.');
             } else if (_isMenuSequence) {
@@ -33751,6 +33763,25 @@ const StyleDesigner = (function () {
                     row(_sdT('Menu'),
                         '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The items are added, ordered and linked under Menus; without a menu the widget draws no items.')) + '</div>'
+                    )
+                );
+            }
+
+            // ── tag_cloud_region settings ────────────────────────────────────
+            if (_isTagCloud) {
+                var _tcNames = (regionData && regionData.tag_cloud_regions) || [];
+                var _tcName = typeof _cfg.search_page_name === 'string' ? _cfg.search_page_name : '';
+                var _tcOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
+                _tcNames.forEach(function (nm) {
+                    _tcOpts += '<option value="' + esc(nm) + '"' + (nm === _tcName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                });
+                if (_tcName !== '' && _tcNames.indexOf(_tcName) === -1) {
+                    _tcOpts += '<option value="' + esc(_tcName) + '" selected>' + esc(_sdT('{var} (not found)', _tcName)) + '</option>';
+                }
+                systemSection += sect('bi-tags', _sdT('Tag Cloud Settings'),
+                    row(_sdT('Search Results Page'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="search_page_name">' + _tcOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Each keyword links to this page searching for it; without a page the widget draws no keyword.')) + '</div>'
                     )
                 );
             }
@@ -37183,7 +37214,8 @@ const StyleDesigner = (function () {
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
-        order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1
+        order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
+        tag_cloud_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37333,6 +37365,7 @@ const StyleDesigner = (function () {
         '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
         '__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html',
+        '__field_value_html', '__field_info_html', '__gift_card_message_html',
         '__ad_content_html', '__ad_caption_html'
     ];
     // Twin of pg_sw_attr_name_ok().
@@ -38328,6 +38361,23 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // tag_cloud_region token palette — has loop_area (one row per keyword).
+    // Mirrors _render_system_widget_tag_cloud_region() in widgets_tag_cloud.php.
+    var SW_TAG_CLOUD_TOKEN_GROUPS = [
+        { label: _sdT('Tag Cloud'), tokens: [
+            ['__search_page_name', _sdT('Search results page name')],
+            ['__tag_total',        _sdT('Number of keywords shown')]
+        ]},
+        { label: _sdT('Keyword (loop_area)'), tokens: [
+            ['__tag_name',         _sdT('Keyword')],
+            ['__tag_keyword',      _sdT('Keyword as stored (untranslated)')],
+            ['__tag_url',          _sdT('Search link of the keyword')],
+            ['__tag_count',        _sdT('Number of items with the keyword')],
+            ['__tag_size',         _sdT('Font size in percent (100 to 200)')],
+            ['__tag_weight',       _sdT('Weight from 1 (used least) to 5 (used most)')]
+        ]}
+    ];
+
     // ad_region token palette — has loop_area (one row per ad shown).
     // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
     var SW_AD_REGION_TOKEN_GROUPS = [
@@ -38382,7 +38432,8 @@ const StyleDesigner = (function () {
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
         menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
-        ad_region:         SW_AD_REGION_TOKEN_GROUPS
+        ad_region:         SW_AD_REGION_TOKEN_GROUPS,
+        tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -38652,12 +38703,10 @@ const StyleDesigner = (function () {
             ['__item_image_alt',         _sdT('Image alt text')],
             ['__item_url',               _sdT('Product detail page URL')],
             ['__item_ship_to',           _sdT('This item\'s shipping address')],
-            // Read-only output blocks — the visitor's checkout answers. The
-            // server auto-appends these to the row when the designer hasn't
-            // placed the token, so binding is only needed to control WHERE
-            // they land.
-            ['__item_form_data_html',    _sdT('Product form answers (read-only HTML)')],
-            ['__item_gift_card_html',    _sdT('Gift card details (read-only HTML)')],
+            // The item form and gift card parts' boxes show by these; their
+            // rows are the order.item_forms and order.item_gift_cards lists.
+            ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],
+            ['__item_has_gift_card',     _sdT('Has gift cards (1 or empty)')],
             ['__tracking_codes',         _sdT('Every parcel\'s tracking code (HTML)')]
         ]}
     ];
@@ -38998,7 +39047,9 @@ const StyleDesigner = (function () {
     var SW_DEFAULT_PARTS = {
         order_view: {
             '__timeline':           function (cfg) { return _sdPartOrderTimeline(cfg); },
-            '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); }
+            '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); },
+            '__item_form_data_html': function (cfg) { return _sdPartOrderItemForm(); },
+            '__item_gift_card_html': function (cfg) { return _sdPartOrderItemGiftCard(); }
         }
     };
 
@@ -39174,6 +39225,122 @@ const StyleDesigner = (function () {
         tree.children = tree.children || [];
         due.forEach(function (t) { tree.children = tree.children.concat(t[1](cfg || null, placed)); });
         return due.length > 0;
+    }
+
+    // The blocks the server added after each row of the main loop whose row
+    // placed none of their tokens, now parts added to the end of the main
+    // loop once (pg_sw_default_loop_tail_parts()): kind => [tokens that
+    // place it, part].
+    var SW_DEFAULT_LOOP_TAILS = {
+        order_view: [
+            [['__item_form_data_html', 'order.item_forms'], function () { return _sdPartOrderItemForm(); }],
+            [['__item_gift_card_html', 'order.item_gift_cards'], function () { return _sdPartOrderItemGiftCard(); }]
+        ]
+    };
+
+    // The main loop of a widget tree (pg_sw_main_loop_ref()): its first
+    // loop_area without a source, lists not searched. null for none.
+    function _sdMainLoop(node) {
+        if (!node || typeof node !== 'object' || _sdListIsSourced(node)) return null;
+        if (node.type === 'loop_area') return node;
+        var kids = node.children || [];
+        for (var i = 0; i < kids.length; i++) {
+            var found = _sdMainLoop(kids[i]);
+            if (found) return found;
+        }
+        return null;
+    }
+
+    // Adds to the end of the main loop of `tree` each row block of `kind`
+    // its row does not place (pg_sw_default_loop_tails()). Returns whether
+    // anything was added.
+    function _sdDefaultLoopTails(tree, kind, cfg) {
+        var tails = SW_DEFAULT_LOOP_TAILS[kind];
+        var loop = tails ? _sdMainLoop(tree) : null;
+        if (!loop) return false;
+        var row = { type: 'root', children: loop.children || [] };
+        var due = tails.filter(function (t) { return !_sdPartPlaced(row, t[0]); });
+        loop.children = loop.children || [];
+        due.forEach(function (t) { loop.children = loop.children.concat(t[1](cfg || null)); });
+        return due.length > 0;
+    }
+
+    // The props of an element showing `token`, `sample` on the canvas,
+    // drawn only when `token` passes `op` when one is given
+    // (pg_sw_part_value()).
+    function _sdPartValue(token, sample, op) {
+        var p = { text: sample, _bindings: { text: token } };
+        if (op) {
+            p._bindings.show_if = token;
+            p._bindParams = { show_if: { op: op } };
+        }
+        return p;
+    }
+
+    // The heading of an item's form or gift card (pg_sw_part_order_item_legend()).
+    /* @pg-site-output */
+    function _sdPartItemLegend(props, name, number, count) {
+        var num = _sdPartWhen(count, 'gt', '1');
+        num.text = ' (^^' + number + '^^ / ^^' + count + '^^)';
+        return _sdPartEl('legend', 'float-none w-auto px-2 fs-6 fw-semibold', _sdT('Heading'), props, [
+            _sdPartEl('span', '', _sdT('Name'), name),
+            _sdPartEl('span', '', _sdT('Number'), num)
+        ]);
+    }
+
+    // One label above its value (pg_sw_part_order_item_line()).
+    /* @pg-site-output */
+    function _sdPartItemLine(label, props, children) {
+        return _sdPartEl('div', 'mb-2', label, {}, [
+            _sdPartEl('div', 'form-label mb-0 fw-semibold', _sdT('Label'), { text: label }),
+            _sdPartEl('div', 'pg-ov-form-value', label, props, children || [])
+        ]);
+    }
+
+    // The answers of an item's product form (pg_sw_part_order_item_form()).
+    /* @pg-site-output */
+    function _sdPartOrderItemForm() {
+        var box = _sdPartWhen('__item_has_form_data', 'not_empty');
+        box._attrs = [{ name: 'data-pg-ov-item-form', value: '{{__item_id}}' }];
+        return [_sdPartEl('div', 'pg-ov-item-form mt-2', _sdT('Product Form Answers'), box, [
+            createNode('loop_area', { source: 'order.item_forms' }, [
+                _sdPartEl('fieldset', 'pg-ov-item-form-block border rounded p-3 mt-2', _sdT('Form'), {}, [
+                    _sdPartItemLegend(_sdPartWhen('__form_has_legend', 'not_empty'),
+                        _sdPartValue('__form_name', _sdT('Order Form')), '__form_number', '__form_count'),
+                    createNode('loop_area', { source: 'order.item_form_fields' }, [
+                        _sdPartEl('div', 'mb-2', _sdT('Field'), _sdPartWhen('__field_is_info', 'empty'), [
+                            _sdPartEl('div', 'form-label mb-0 fw-semibold', _sdT('Label'), _sdPartValue('__field_label', _sdT('Label'))),
+                            _sdPartEl('div', 'pg-ov-form-value', _sdT('Answer'), _sdPartValue('__field_value_html', _sdT('Answer')))
+                        ]),
+                        _sdPartEl('div', 'mb-2 small', _sdT('Information'), _sdPartWhen('__field_is_info', 'not_empty'), [
+                            _sdPartEl('div', 'fw-semibold', _sdT('Label'), _sdPartValue('__field_label', _sdT('Label'), 'not_empty')),
+                            _sdPartEl('div', 'text-muted', _sdT('Information'), _sdPartValue('__field_info_html', ''))
+                        ])
+                    ])
+                ])
+            ])
+        ])];
+    }
+
+    // An item's gift cards (pg_sw_part_order_item_gift_card()).
+    /* @pg-site-output */
+    function _sdPartOrderItemGiftCard() {
+        var box = _sdPartWhen('__item_has_gift_card', 'not_empty');
+        box._attrs = [{ name: 'data-pg-ov-item-gift-card', value: '{{__item_id}}' }];
+        return [_sdPartEl('div', 'pg-ov-item-gift-card mt-2', _sdT('Gift Card Details'), box, [
+            createNode('loop_area', { source: 'order.item_gift_cards' }, [
+                _sdPartEl('fieldset', 'pg-ov-item-gift-card-block border rounded p-3 mt-2', _sdT('Gift card'), {}, [
+                    _sdPartItemLegend({}, { text: _sdT('Gift card') }, '__gift_card_number', '__gift_card_count'),
+                    _sdPartItemLine(_sdT('Amount'), {}, [
+                        _sdPartEl('strong', '', _sdT('Amount'), _sdPartValue('__gift_card_amount', _sdMoney(100)))
+                    ]),
+                    _sdPartItemLine(_sdT('Recipient Email'), _sdPartValue('__gift_card_email', 'name@example.com')),
+                    _sdPartItemLine(_sdT('Your Name'), _sdPartValue('__gift_card_from_name', _sdT('Name'))),
+                    _sdPartItemLine(_sdT('Message'), _sdPartValue('__gift_card_message_html', _sdT('Message'))),
+                    _sdPartItemLine(_sdT('Delivery Date'), _sdPartValue('__gift_card_delivery', _sdDateSample(false)))
+                ])
+            ])
+        ])];
     }
 
     // A card added after the order view (pg_sw_part_order_card()).
@@ -39554,6 +39721,10 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        tag_cloud_region: [
+            ['has_tags',        _sdT('The search results page has a keyword to show')],
+            ['no_tags',         _sdT('No page is chosen, or it has no keyword')]
         ],
         ad_region: [
             ['has_ads',         _sdT('The region has an ad to show')],
@@ -52116,7 +52287,8 @@ const StyleDesigner = (function () {
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
         { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
-        { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' }
+        { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
+        { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -52295,6 +52467,9 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
+        } else if (newType === 'tag_cloud_region') {
+            // The site's first search results page, so a new widget shows keywords at once.
+            if (cfg.search_page_name === undefined) cfg.search_page_name = ((regionData && regionData.tag_cloud_regions) || [])[0] || '';
         } else if (newType === 'ad_region') {
             // The site's first ad region, so a new widget shows ads at once.
             if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
@@ -53417,7 +53592,9 @@ const StyleDesigner = (function () {
                 ['__item_image',             _sdT('Image URL')],
                 ['__item_image_alt',         _sdT('Image alt text')],
                 ['__item_url',               _sdT('Product detail page URL')],
-                ['__item_ship_to',           _sdT('This item\'s shipping address')]
+                ['__item_ship_to',           _sdT('This item\'s shipping address')],
+                ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],
+                ['__item_has_gift_card',     _sdT('Has gift cards (1 or empty)')]
             ]
         },
         'order.parcels': {
@@ -53440,6 +53617,43 @@ const StyleDesigner = (function () {
                 ['__step_kind',        _sdT('Kind of step (created, paid, shipped, delivered, cancelled)')],
                 ['__step_note',        _sdT('Note (the reason of a cancellation)')],
                 ['__step_is_estimate', _sdT('Estimated (1 or empty)')]
+            ]
+        },
+        'order.item_forms': {
+            label: _sdT('Product forms of the item'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__form_key',        _sdT('Form in the order')],
+                ['__form_name',       _sdT('Form name')],
+                ['__form_number',     _sdT('Number of the form')],
+                ['__form_count',      _sdT('Number of forms')],
+                ['__form_has_legend', _sdT('Has a heading (1 or empty)')]
+            ]
+        },
+        'order.item_form_fields': {
+            label: _sdT('Fields of the product form'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__field_label',      _sdT('Label')],
+                ['__field_value_html', _sdT('Answer (HTML)')],
+                ['__field_info_html',  _sdT('Information (HTML)')],
+                ['__field_is_info',    _sdT('Information field (1 or empty)')]
+            ]
+        },
+        'order.item_gift_cards': {
+            label: _sdT('Gift cards of the item'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__gift_card_number',       _sdT('Number of the gift card')],
+                ['__gift_card_count',        _sdT('Number of gift cards')],
+                ['__gift_card_amount',       _sdT('Amount')],
+                ['__gift_card_email',        _sdT('Recipient Email')],
+                ['__gift_card_from_name',    _sdT('Your Name')],
+                ['__gift_card_message_html', _sdT('Message (HTML)')],
+                ['__gift_card_delivery',     _sdT('Delivery Date')]
             ]
         },
         'account.orders': {
@@ -53829,8 +54043,23 @@ const StyleDesigner = (function () {
     // its key: a list of the recipients or the steps inside a list of the
     // recipients (they list the whole order alone).
     function _sdOrderListKeyless(source, node) {
+        var key = _sdOrderItemListKey(source);
+        if (key) {
+            // An item's lists read the item they stand in: the items loop's
+            // row or a list of the items (the fields, a form's row).
+            return !_sdListsAbove(node).some(function (l) { return l.props.source === key; })
+                && (key !== 'order.items' || !_sdInMainLoopAt(node));
+        }
         if (source !== 'order.shipments' && source !== 'order.steps') return false;
         return _sdListsAbove(node).some(function (l) { return l.props.source === 'order.shipments'; });
+    }
+
+    // For a list of an order item, the list whose row gives its key
+    // (order.items: the item, as the items loop's row does); '' for any
+    // other source.
+    function _sdOrderItemListKey(source) {
+        var keys = { 'order.item_forms': 'order.items', 'order.item_gift_cards': 'order.items', 'order.item_form_fields': 'order.item_forms' };
+        return keys.hasOwnProperty(source) ? keys[source] : '';
     }
 
     // A new calendar list. The month grid: a table, its heads from the days
@@ -54019,8 +54248,8 @@ const StyleDesigner = (function () {
         // in the event loop.
         if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
         // The order and cart lists read the order or the cart, not an item
-        // row: never in the items loop.
-        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(target)) return false;
+        // row: never in the items loop, but for the lists of an item.
+        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(target) && !_sdOrderItemListKey(source)) return false;
         // The passkeys are the account's, not a device row's.
         if (kind === 'account_security' && _sdInMainLoopAt(target)) return false;
         var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : _sdListStarterDepth(source));
@@ -54108,8 +54337,12 @@ const StyleDesigner = (function () {
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
         if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
-        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
-        if (_sdOrderListKeyless(spec.source, node)) return { off: true, text: _sdT('{var}: inside a list of the recipients, nothing is drawn', src.label) };
+        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(node) && !_sdOrderItemListKey(spec.source)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
+        if (_sdOrderListKeyless(spec.source, node)) {
+            return { off: true, text: _sdOrderItemListKey(spec.source)
+                ? _sdT('{var}: outside an item of the order, nothing is drawn', src.label)
+                : _sdT('{var}: inside a list of the recipients, nothing is drawn', src.label) };
+        }
         if (spec.source === 'calendar.events' && !_sdListsAbove(node).some(function (l) { return l.props.source === 'calendar.days'; })) {
             return { off: true, text: _sdT('{var}: outside a list of days, nothing is drawn', src.label) };
         }
@@ -56692,27 +56925,12 @@ const StyleDesigner = (function () {
                                     text: _sdMoney(0), cssClass: 'fw-semibold mb-0',
                                     _bindings: { text: '__item_total' } })
                             ])
-                        ]),
-                        // What the visitor filled in at checkout — printed, not
-                        // editable. Empty (and therefore invisible) on ordinary
-                        // products; the server only fills these for rows whose
-                        // product carries an order form / is a gift card.
-                        // Sits OUTSIDE the flex strip on purpose: inside it the
-                        // block would become a flex item and squeeze the columns.
-                        //
-                        // Bound to a <div>, NOT a paragraph: the server emits a
-                        // <fieldset> here and a block element inside <p> makes
-                        // the browser close the <p> early — the designer's
-                        // classes stay on an empty shell while the content
-                        // orphans out beside it. Same pattern the express order
-                        // tree uses for __item_form_html.
-                        createNode('semantic', { tag: 'div', cssClass: '',
-                            customName: _sdT('Product Form Answers'),
-                            _bindings: { text: '__item_form_data_html' } }),
-                        createNode('semantic', { tag: 'div', cssClass: '',
-                            customName: _sdT('Gift Card Details'),
-                            _bindings: { text: '__item_gift_card_html' } })
-                    ])
+                        ])
+                        // What the visitor filled in at checkout and a gift
+                        // card's details, printed: the item form and gift card
+                        // parts, outside the flex strip so they do not squeeze
+                        // its columns.
+                    ].concat(_sdPartOrderItemForm(), _sdPartOrderItemGiftCard()))
                 ]);
 
                 // Totals breakdown row helper — label left, amount right.
@@ -58266,6 +58484,29 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'tag_cloud_region': {
+                // The keywords of a search results page as a row of links:
+                // the loop repeats the keywords in alphabetical order, each
+                // drawn by the link of its weight (1 used least, 5 used
+                // most), larger as the weight grows, as the classic cloud
+                // sizes them. Mirrors _render_system_widget_tag_cloud_region().
+                var tcSizes = ['fs-6', 'fs-5', 'fs-4', 'fs-3', 'fs-2'];
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'nav', cssClass: 'd-flex flex-wrap align-items-baseline column-gap-3 row-gap-1', customName: _sdT('Tag Cloud'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Tag Cloud') }],
+                        _bindings: { eo_visible_if: 'has_tags' } }, [
+                        createNode('loop_area', {}, [
+                            createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Keyword') }, tcSizes.map(function (cls, i) {
+                                return createNode('semantic', { tag: 'a', cssClass: cls + ' text-decoration-none', text: _sdT('Keyword'), href: '#',
+                                    customName: _sdT('Weight {var}', String(i + 1)),
+                                    _bindings: { href: '__tag_url', text: '__tag_name', show_if: '__tag_weight' },
+                                    _bindParams: { show_if: { op: 'eq', value: String(i + 1) } } });
+                            }))
+                        ])
+                    ])
+                ]);
+            }
+
             case 'ad_region': {
                 // The ads of a region as a Bootstrap carousel: the loop
                 // repeats the ads (the server marks the first one active),
@@ -58973,7 +59214,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
@@ -66333,6 +66574,20 @@ const StyleDesigner = (function () {
         }
         if (design && design.startAction) {
             setTimeout(function () { _pgStartAction(design.startAction); }, 400);
+        }
+        // Ctrl+G on a page that draws a custom layout (?layout=1): its layout
+        // tab, where the classic page designer used to open. The parameter
+        // leaves the address so a reload opens the canvas.
+        if (design && design.openLayout) {
+            setTimeout(function () {
+                try {
+                    var u = new URL(window.location.href);
+                    u.searchParams.delete('layout');
+                    history.replaceState(null, '', u.toString());
+                } catch (e) {}
+                var lp = _pgActivePage();
+                if (lp && lp.page_id === design.openLayout) _sdLayoutCodeOpen(lp, false);
+            }, 400);
         }
         if (design && design.autoPasteHtml) {
             setTimeout(function () { if (typeof _pgPasteHtmlOpen === 'function') _pgPasteHtmlOpen(''); }, 400);

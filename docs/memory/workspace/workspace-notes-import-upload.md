@@ -4,14 +4,14 @@ description: The notes import's upload: picked list, checks, unreadable files, X
 ---
 
 ## What does the person see from picking to the preview?
-- Picking or dropping only lists the files (PR #1570) (`drawPick()` in `openImport()`, workspace.js), file manager style: name, size, a count heading, rows that will not go dimmed with "not allowed here", "unreadable" or their size in red. "Upload" sends, "Clear" empties; a refused upload comes back to the list with its message (`role="alert"`).
-- Each file is a note: two different todo.md are two rows, the same file (name, size, time) one. A file changed on disk since fails every request (ERR_UPLOAD_FILE_CHANGED); `probe()` tells by its first byte. Only that row gives way to a new pick of its name; a failed request probes the files sent, names the unreadable, leaves them out.
-- Sending: "Uploading… 42%", the shared `progressBar()`, "1.4 MB of 6.0 MB", "Cancel upload". Last byte sent: "Reading the files…" with a striped, moving bar, then the preview. `.ws-progress` sets only `background-color`: the shorthand hid the stripes.
+- Picking or dropping only lists the files (PR #1570) (`drawPick()` in `openImport()`, workspace.js), file manager style: name, size, a count heading (over the limit, other kind, unreadable), rows that will not go dimmed with "not allowed here", "unreadable" or their size in red. "Upload" sends, "Clear" empties; a refused upload comes back to the list with its message (`role="alert"`).
+- Each file is a note: two different todo.md are two rows, the same file (name, size, time and bytes) one. `sameBytes()` compares copies of one name, size and time (unreadable: the same). A file changed on disk since fails every request (ERR_UPLOAD_FILE_CHANGED); `probe()` tells by its first byte. Only that row gives way to a new pick of its name; a failed request probes the files sent, names the unreadable, leaves them out.
+- Sending: "Uploading… 42%", the shared `progressBar()`, "1.4 MB of 6.0 MB", "Cancel upload". Last byte sent: "Reading the files…" with a striped, moving bar, then the preview. `.ws-progress` sets only `background-color` (the shorthand hid the stripes).
 
 ## Why XMLHttpRequest for the upload step only?
-- fetch() reports no upload progress; the JSON steps keep `send()`. A lost connection: "The request failed. Please try again."
+- fetch() reports no upload progress; the JSON steps keep `send()`.
 - An HTML 413/404 (nginx, IIS 404.13): larger than the server takes in one request; other HTML (504): the generic text.
-- Upload events after a cancel or the answer are ignored (`phase === 'send'`).
+- Upload events after a cancel or the answer are ignored.
 
 ## What does the browser check, and from which list?
 - The kinds: `CFG.notes_import.types` = `ws_note_import_extensions()`, the stage's list; no copy in JS.
@@ -32,5 +32,5 @@ description: The notes import's upload: picked list, checks, unreadable files, X
 - `ws_note_import_upload_error($name, $error, $file_max)`: add_file.php's sentences naming the file. No Site Log line; PARTIAL (a cancel) or a size code is not logged; codes 6-8 and a non-upload temp file go to `ws_note_import_log_failure()`. UPLOAD_ERR_NO_FILE reads as an empty upload, unlogged.
 
 ## Why is the session closed before staging?
-- Staging .enex or a zip can pass 30 s; the session lock held the person's other requests. The endpoint makes the token, keeps it in the session, `session_write_close()`, raises the time limit (guarded), then stages with it. A failed stage leaves a name with no folder: later steps say "The upload has expired. Start again."
-- Two uploads at once in one session: the newer removes the older's folder; the older fails ("The file could not be saved.", logged) or expires, its stage left to the 24 h sweep.
+- Staging .enex or a zip can pass 30 s; the session lock held the person's other requests. The endpoint makes the token, keeps it in the session, `session_write_close()`, raises the time limit (guarded), then stages with it. A failed stage: later steps say "The upload has expired. Start again."
+- Two uploads at once in one session: the newer removes the older's folder; the older fails or expires; the 24 h sweep takes its stage.

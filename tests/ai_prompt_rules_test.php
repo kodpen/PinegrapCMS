@@ -68,7 +68,7 @@ function test_ai_prompt_rules_profiles()
 	$all = implode("\n", $assistant);
 
 	pg_assert_same(4, count($writer), 'a writer: four rules');
-	pg_assert_same(7, count($assistant), 'an assistant: three more');
+	pg_assert_same(8, count($assistant), 'an assistant: four more');
 	pg_assert_same(array_slice($writer, 1, 3), array_slice($assistant, 1, 3), 'the same three shared lines after the first');
 	pg_assert_same($writer, pg_ai_prompt_rules(), 'a writer when nothing is said');
 	pg_assert_same($writer, pg_ai_prompt_rules('anything else'), 'a writer for an unknown profile');

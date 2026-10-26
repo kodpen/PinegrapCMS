@@ -160,6 +160,7 @@
     "Each item of {var:1} must be a user id.": "{var:1} listesindeki her öğe bir kullanıcı kimliği olmalıdır.",
     "Each item of {var:1} must be the id of one of the poll's options.": "{var:1} içindeki her öğe oylamanın seçeneklerinden birinin kimliği olmalı.",
     "Each item of {var:1} needs a label.": "{var:1} içindeki her öğenin bir label alanı olmalı.",
+    "Each keyword links to this page searching for it; without a page the widget draws no keyword.": "Her anahtar kelime bu sayfada kendini arayan bir bağlantıdır; sayfa seçilmezse widget hiç anahtar kelime çizmez.",
     "Each language opens this page in that language. The button names the language the visitor is reading.": "Her dil bu sayfayı o dilde açar. Düğmede ziyaretçinin okuduğu dil yazar.",
     "Each line must be an object of {line_id, quantity}.": "Her satır {line_id, quantity} biçiminde bir nesne olmalıdır.",
     "Each line must be an object.": "Her satır bir nesne olmalıdır.",
