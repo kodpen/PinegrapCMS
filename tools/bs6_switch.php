@@ -29,6 +29,16 @@
  *   checks   checkbox, radio and switch markup: the wrapper becomes
  *            .form-field, the input .check or .radio by its type, a switch's
  *            input goes into a .switch box, the label loses its class
+ *   dialogs  modal markup to <dialog class="dialog"> (bs6_switch_shell.php)
+ *   drawers  offcanvas markup to <dialog class="drawer">
+ *   menus    dropdown menus to .menu, alignment to the toggle's placement
+ *   names    the renamed components' class names, data attributes and
+ *            open-state selectors in code
+ *   variables  component variables in panel stylesheets (--bs-dropdown-*
+ *            to --bs-menu-*, offcanvas to drawer, modal to dialog)
+ *   shell    the v5 look the panel keeps: flush drawers, the menu caret, the
+ *            menu wrapper's positioning (bs6_switch_shell_rules())
+ *   texts    hand fixes found by their exact text (bs6_switch_texts())
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -37,6 +47,7 @@
  */
 
 require_once(__DIR__ . '/bs6_rules.php');
+require_once(__DIR__ . '/bs6_switch_shell.php');
 
 // Bootstrap 6's own layer order with `vendor` before `custom`. jQuery UI,
 // DataTables and select2 go into `vendor`: an unlayered sheet would beat
@@ -89,7 +100,10 @@ function bs6_switch_plan($root)
 
 	foreach (bs6_switch_stylesheets($root) as $path) {
 		$plan[] = array($path, 'selectors', 'bs6_switch_selectors');
+		$plan[] = array($path, 'variables', 'bs6_switch_component_variables');
 	}
+
+	$plan[] = array('assets/css/backend.src.css', 'shell', 'bs6_switch_shell_rules');
 
 	foreach (bs6_switch_style_files() as $path) {
 		$plan[] = array($path, 'style', 'bs6_switch_style_blocks');
@@ -99,6 +113,19 @@ function bs6_switch_plan($root)
 
 	foreach (bs6_switch_check_files($root) as $path) {
 		$plan[] = array($path, 'checks', 'bs6_switch_checks');
+	}
+
+	foreach (bs6_switch_shell_files($root) as $path) {
+		$plan[] = array($path, 'dialogs', 'bs6_switch_dialogs');
+		$plan[] = array($path, 'drawers', 'bs6_switch_drawers');
+		$plan[] = array($path, 'menus', 'bs6_switch_menus');
+		$plan[] = array($path, 'names', 'bs6_switch_component_names');
+	}
+
+	foreach (bs6_switch_texts() as $path => $pairs) {
+		$plan[] = array($path, 'texts', function ($source) use ($pairs) {
+			return bs6_switch_pins($source, $pairs);
+		});
 	}
 
 	foreach (bs6_switch_test_pins() as $path => $pairs) {
@@ -117,6 +144,29 @@ function bs6_switch_check_files($root)
 
 	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
 		if (bs6_codemod_converts($path) && strpos((string) file_get_contents(rtrim($root, '/') . '/' . $path), 'form-check') !== false) {
+			$paths[] = $path;
+		}
+	}
+
+	sort($paths);
+
+	return $paths;
+}
+
+// Scripts and pages the codemod converts that name a modal, offcanvas or
+// dropdown, sorted. The visual editor's script is left out: its chrome and
+// its canvas code (Bootstrap 5 inside the page) share members, so its
+// dialogs and menus are converted by their text (bs6_switch_texts()).
+function bs6_switch_shell_files($root)
+{
+	$paths = array();
+
+	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
+		if (!bs6_codemod_converts($path) || $path === 'assets/js/style_designer.js' || !preg_match('/\.(php|js)$/', $path)) {
+			continue;
+		}
+
+		if (preg_match('/modal|offcanvas|dropdown|dropup|dropend|dropstart/', (string) file_get_contents(rtrim($root, '/') . '/' . $path))) {
 			$paths[] = $path;
 		}
 	}
@@ -297,7 +347,7 @@ function bs6_switch_run($root, $write)
 
 		$result = $function($sources[$path]['new']);
 		$sources[$path]['new'] = $result['source'];
-		$report[] = array($path, $fix, $result['status'], null);
+		$report[] = array($path, $fix, $result['status'], !empty($result['left']) ? $result['left'] . ' left for a hand' : null);
 	}
 
 	foreach ($sources as $path => $source) {
@@ -551,6 +601,39 @@ function bs6_switch_selector_for($class)
 		return $checks[$class];
 	}
 
+	$components = array(
+		'modal' => '.dialog',
+		'offcanvas' => '.drawer',
+		'dropdown' => '.pg-menu-wrap',
+		'dropup' => '.pg-menu-wrap',
+		'dropend' => '.pg-menu-wrap',
+		'dropstart' => '.pg-menu-wrap',
+		'dropdown-menu' => '.menu',
+		'dropdown-menu-end' => '.pg-menu-end',
+		'dropdown-menu-start' => '.pg-menu-start',
+		'dropdown-item' => '.menu-item',
+		'dropdown-item-text' => '.menu-text',
+		'dropdown-item-sm' => '.pg-menu-item-sm',
+		'dropdown-divider' => '.menu-divider',
+		'dropdown-header' => '.menu-header',
+		'dropdown-toggle' => '.pg-menu-caret',
+		'form-select' => ':is(select.form-control)',
+		'form-select-sm' => ':is(select.form-control-sm)',
+		'form-select-lg' => ':is(select.form-control-lg)',
+	);
+
+	if (isset($components[$class])) {
+		return $components[$class];
+	}
+
+	if (preg_match('/^modal-(header|body|footer|title)$/', $class, $m)) {
+		return '.dialog-' . $m[1];
+	}
+
+	if (preg_match('/^offcanvas-(start|end|top|bottom|header|body|footer|title)$/', $class, $m)) {
+		return '.drawer-' . $m[1];
+	}
+
 	if (preg_match('/^(([mp][trblxyse]?|g[xy]?|gap|row-gap|column-gap)-|fs-|rounded)/', $class)) {
 		return null;
 	}
@@ -619,6 +702,9 @@ function bs6_switch_test_pins()
 		'tests/signin_test.php' => array(
 			array("'bg-warning'", "'theme-warning'"),
 		),
+		'tests/workspace_sales_quote_test.php' => array(
+			array("'\\\\.dropdown-divider'", "'\\\\.menu-divider'"),
+		),
 		'tests/widget_fill_test.php' => array(
 			array('<select class="form-select form-select-sm sd-sw-bindfilter"', '<select class="form-control form-control-sm sd-sw-bindfilter"'),
 		),
@@ -642,4 +728,57 @@ function bs6_switch_pins($source, array $pairs)
 	}
 
 	return bs6_switch_result($source, $applied ? 'applied' : 'done');
+}
+
+// The comment the shell rules start with; its presence marks them done.
+const BS6_SWITCH_SHELL_NOTE = '/* Bootstrap 6 shell: what the panel keeps of Bootstrap 5\'s look. */';
+
+// Rules at the top of backend.src.css's custom layer that keep the v5 look
+// of the converted components: drawers flush with the screen edge and
+// square (v6 floats them with an inset and a radius), the caret v6 no
+// longer draws on a menu toggle, and the wrapper a menu used to position
+// against.
+function bs6_switch_shell_rules($source)
+{
+	if (strpos($source, BS6_SWITCH_SHELL_NOTE) !== false) {
+		return bs6_switch_result($source, 'done');
+	}
+
+	$open = BS6_SWITCH_LAYER_NOTE . "\n@layer custom {\n\n";
+
+	if (strpos($source, $open) === false) {
+		return bs6_switch_result($source, 'missing');
+	}
+
+	$rules = BS6_SWITCH_SHELL_NOTE . "\n"
+		. ".drawer {\n  --bs-drawer-inset: 0;\n  --bs-drawer-border-radius: 0;\n}\n"
+		. ".pg-menu-wrap {\n  position: relative;\n}\n"
+		. ".pg-menu-caret::after {\n  display: inline-block;\n  margin-left: 0.255em;\n  vertical-align: 0.255em;\n  content: \"\";\n"
+		. "  border-top: 0.3em solid;\n  border-right: 0.3em solid transparent;\n  border-bottom: 0;\n  border-left: 0.3em solid transparent;\n}\n"
+		. ".pg-menu-caret:empty::after {\n  margin-left: 0;\n}\n\n";
+
+	return bs6_switch_result(str_replace($open, $open . $rules, $source), 'applied');
+}
+
+/**
+ * Hand fixes found by their exact text, per file (relative to pinegrap/):
+ * array(from, to) pairs applied like the test pins (bs6_switch_pins()), after
+ * every other fix. Each names a place the scripted fixes cannot reach: a
+ * selector on a dropped box (`.modal-dialog`, `.modal-content`), a box built
+ * apart from its dialog, a backdrop rule.
+ */
+function bs6_switch_texts()
+{
+	return array(
+		'assets/css/backend.src.css' => array(
+			array(".pg-keys-modal .modal-dialog {\n  max-width: 30rem;\n}", ".pg-keys-modal.dialog {\n  --bs-dialog-width: 30rem;\n}"),
+			array(".software_warning,\n.modal-content,\n", ".software_warning,\n.dialog,\n"),
+			array(".pg-settings-modal .modal-content.pg-sm", ".pg-settings-modal.pg-sm"),
+			array("#pg_settings_modal_extras .modal-content", "#pg_settings_modal_extras .dialog"),
+			array(".advanced-visuals.pg-settings-open .modal-backdrop {\n  --bs-backdrop-opacity: 0.25;\n}", ".advanced-visuals.pg-settings-open .dialog {\n  --bs-dialog-backdrop-bg: rgba(0, 0, 0, 0.25);\n}"),
+			array(".pg-settings-modal .modal-dialog {\n  max-width: min(1180px, calc(100vw - 3rem));\n}", ".pg-settings-modal.dialog {\n  --bs-dialog-width: min(1180px, calc(100vw - 3rem));\n}"),
+			array("  .pg-settings-modal .modal-dialog {\n    max-width: none;\n  }\n", ""),
+			array(".ws-palette .modal-dialog {", ".ws-palette.dialog {"),
+		),
+	);
 }
