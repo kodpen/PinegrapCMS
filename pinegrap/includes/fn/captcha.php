@@ -352,25 +352,14 @@ function pg_captcha_verify_request($provider, $site_key, $secret, $token, $ip)
         $fields['sitekey'] = $site_key;
     }
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $definition['verify']);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($fields, '', '&'));
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    pg_curl_tls($ch);
-
-    $body = curl_exec($ch);
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = ($body === false) ? curl_error($ch) : '';
-
-    // A no-op since PHP 8.0 and deprecated in 8.5.
-    if (PHP_VERSION_ID < 80000) {
-        curl_close($ch); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated -- guarded by PHP_VERSION_ID above
-    }
+    $answer = pg_curl_run('POST', $definition['verify'], array(
+        'body'            => http_build_query($fields, '', '&'),
+        'connect_timeout' => 5,
+        'timeout'         => 10,
+    ));
+    $body = $answer['body'];
+    $status = $answer['status'];
+    $error = $answer['error'];
 
     $outcome = pg_captcha_verify_outcome($status, $body);
 
