@@ -422,16 +422,32 @@ function bs6_convert_class_list($value, $one_class_each = false)
 		if (!bs6_is_literal_token($part)) {
 			if (bs6_is_dynamic_v5_stem($part)) {
 				$reviews[] = array($part, 'class built in code from a Bootstrap 5 stem');
-			} elseif (preg_match_all('/[\'"]([A-Za-z0-9][A-Za-z0-9_:-]*)|([A-Za-z0-9][A-Za-z0-9_:-]*)[\'"]/', $part, $quoted, PREG_SET_ORDER)) {
-				// A class inside the code (`? 'text-success' : ''`) is left as
-				// written and reported when the rules would change it.
-				foreach ($quoted as $q) {
-					$inner = ($q[1] !== '') ? $q[1] : $q[2];
+			} elseif (preg_match_all('/[\'"]([A-Za-z0-9][A-Za-z0-9_:-]*)|([A-Za-z0-9][A-Za-z0-9_:-]*)[\'"]/', $part, $quoted, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+				// A class quoted in the code (`? 'text-success' : ''`) is a
+				// string the code prints into the list: it is rewritten in
+				// place. One that needs a hand, or one that would split in a
+				// class API call, is reported.
+				$rewritten = $part;
+
+				foreach (array_reverse($quoted) as $q) {
+					$hit = ($q[1][0] !== '') ? $q[1] : $q[2];
+					$inner = $hit[0];
 					$mapped = bs6_map_token($inner);
-					if ($mapped['review'] !== null || $mapped['tokens'] !== array($inner)) {
-						$reviews[] = array($inner . ($mapped['review'] === null ? ' -> ' . implode(' ', $mapped['tokens']) : ''), 'class inside code: convert it by hand');
+
+					if ($mapped['review'] === null && $mapped['tokens'] === array($inner)) {
+						continue;
 					}
+
+					if ($mapped['review'] !== null || !$mapped['tokens'] || ($one_class_each && count($mapped['tokens']) !== 1)) {
+						$reviews[] = array($inner . ($mapped['review'] === null ? ' -> ' . implode(' ', $mapped['tokens']) : ''), 'class inside code: convert it by hand');
+						continue;
+					}
+
+					$rewritten = substr($rewritten, 0, $hit[1]) . implode(' ', $mapped['tokens']) . substr($rewritten, $hit[1] + strlen($inner));
+					$changed++;
 				}
+
+				$parts[$i] = $rewritten;
 			}
 			continue;
 		}
