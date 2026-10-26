@@ -37287,6 +37287,160 @@ const StyleDesigner = (function () {
         return !/^__(page_link|link_label)_\d+$/.test(t);
     }
 
+    // The test of a value condition, twin of pg_sw_cond_eval() and its
+    // helpers (includes/fn/widgets_conditions.php); the canvas decides with
+    // it what a state draws. tests/widget_condition_eval_test.php runs the
+    // vectors of tests/fixtures/widget_condition_vectors.json through both.
+
+    // White space as the server reads it (pg_sw_cond_plain()): a set written
+    // out, since JavaScript's \s is not PCRE's.
+    var SD_COND_WS = /[\t\n\x0B\f\r \u0085\u00A0\u1680\u180E\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+/g;
+
+    // Runs of white space as one space, none at either end.
+    function _sdCondPlain(s) {
+        return String(s == null ? '' : s).replace(SD_COND_WS, ' ').replace(/^ +| +$/g, '');
+    }
+
+    // What a visitor reads in a value: tags dropped, entities decoded
+    // (pg_sw_cond_text()).
+    function _sdCondText(html) {
+        var s = String(html == null ? '' : html).replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]*>/g, '');
+        if (s.indexOf('&') !== -1 && typeof document !== 'undefined') {
+            var ta = document.createElement('textarea');
+            ta.innerHTML = s;
+            s = ta.value;
+        }
+        return _sdCondPlain(s);
+    }
+
+    // Folded for comparison (pg_sw_cond_fold()): lower case, the dot of a
+    // capital İ dropped, the dotless ı read as i.
+    function _sdCondFold(s) {
+        return String(s).toLowerCase().replace(/\u0307/g, '').replace(/\u0131/g, 'i');
+    }
+
+    // Whether a figure is grouped as an amount (pg_sw_cond_figure_ok()).
+    function _sdCondFigureOk(figure) {
+        var parts = String(figure).split(/([., ])/);
+        var groups = [], seps = [];
+        parts.forEach(function (part, i) { (i % 2 ? seps : groups).push(part); });
+        var n = seps.length;
+        if (n === 0) return true;
+        var last = seps[n - 1];
+        if (last !== ' ' && seps.filter(function (s) { return s === last; }).length === 1) {
+            if (n === 1) return true;
+            seps.pop();
+            groups.pop();
+        }
+        if (seps.some(function (s) { return s !== seps[0]; }) || groups[0].length > 3) return false;
+        for (var i = 1; i < groups.length; i++) {
+            if (groups[i].length !== 3) return false;
+        }
+        return true;
+    }
+
+    // The number a figure stands for (pg_parse_amount() on digits and
+    // separators): one separator with three digits after it is the decimal
+    // point only when the site writes one so (`decimal`, its language).
+    function _sdCondFigureNumber(figure, decimal) {
+        var v = String(figure).replace(/ /g, '');
+        var dot = v.lastIndexOf('.'), comma = v.lastIndexOf(',');
+        var point = '';
+        if (dot !== -1 && comma !== -1) {
+            point = dot > comma ? '.' : ',';
+        } else if (dot !== -1 || comma !== -1) {
+            var sep = dot !== -1 ? '.' : ',';
+            if (v.split(sep).length === 2) {
+                point = (v.length - v.lastIndexOf(sep) - 1 === 3) ? (decimal === sep ? sep : '') : sep;
+            }
+        }
+        if (point === '') return parseFloat(v.replace(/[.,]/g, '')) || 0;
+        var at = v.lastIndexOf(point);
+        return parseFloat(v.slice(0, at).replace(/[.,]/g, '') + '.' + v.slice(at + 1).replace(/[.,]/g, '')) || 0;
+    }
+
+    // The amount a value shows, {number, units}, or null (pg_sw_cond_amount()).
+    function _sdCondAmount(s, decimal) {
+        s = _sdCondPlain(s);
+        if (s === '') return null;
+        var unit = '\\p{Sc}|[A-Z]{1,2}\\$|[A-Z]{3}|TL';
+        var m = new RegExp('^(-?) ?(?:(' + unit + ') ?)?([0-9]+(?:[., ][0-9]+)*) ?(' + unit + '|%)?$', 'u').exec(s);
+        if (!m || !_sdCondFigureOk(m[3])) return null;
+        var number = _sdCondFigureNumber(m[3], decimal);
+        var units = [];
+        if (m[2]) units.push(m[2]);
+        if (m[4]) units.push(m[4]);
+        return { number: m[1] === '-' ? -number : number, units: units };
+    }
+
+    // The number a value shows, or null (pg_sw_cond_number()).
+    function _sdCondNumber(s, decimal) {
+        var a = _sdCondAmount(s, decimal);
+        return a === null ? null : a.number;
+    }
+
+    // Whether eq and neq compare two amounts as numbers
+    // (pg_sw_cond_comparable()).
+    function _sdCondComparable(a, b) {
+        if (a === null || b === null) return false;
+        if (!a.units.length || !b.units.length) return true;
+        return a.units.some(function (u) { return b.units.indexOf(u) !== -1; });
+    }
+
+    // Whether a number is whole and exact (pg_sw_cond_is_whole()).
+    function _sdCondIsWhole(n) {
+        return typeof n === 'number' && isFinite(n) && Math.abs(n) < 9007199254740992 && Math.floor(n) === n;
+    }
+
+    // The test (pg_sw_cond_eval()). `decimal` is the site's decimal point;
+    // missing, the one software_money_format carries, else '.'.
+    function _sdCondEval(op, value, operand, decimal) {
+        if (decimal == null) {
+            decimal = (typeof software_money_format !== 'undefined' && software_money_format && software_money_format.decimal) || '.';
+        }
+        value = _sdCondPlain(value);
+        operand = _sdCondPlain(operand);
+        var a, b;
+        switch (String(op)) {
+            case 'not_empty':
+                return value !== '';
+            case 'empty':
+                return value === '';
+            case 'eq':
+            case 'neq':
+                a = _sdCondAmount(value, decimal);
+                b = _sdCondAmount(operand, decimal);
+                var same = _sdCondComparable(a, b)
+                    ? Math.abs(a.number - b.number) < 0.000001
+                    : _sdCondFold(value) === _sdCondFold(operand);
+                return op === 'eq' ? same : !same;
+            case 'contains':
+            case 'not_contains':
+                var found = operand === '' || _sdCondFold(value).indexOf(_sdCondFold(operand)) !== -1;
+                return op === 'contains' ? found : !found;
+            case 'starts':
+                var prefix = Array.from(_sdCondFold(operand));
+                return Array.from(_sdCondFold(value)).slice(0, prefix.length).join('') === prefix.join('');
+            case 'gt':
+            case 'gte':
+            case 'lt':
+            case 'lte':
+                a = _sdCondNumber(value, decimal);
+                b = _sdCondNumber(operand, decimal);
+                if (a === null || b === null) return false;
+                if (op === 'gt') return a > b;
+                if (op === 'gte') return a >= b;
+                if (op === 'lt') return a < b;
+                return a <= b;
+            case 'multiple_of':
+                a = _sdCondNumber(value, decimal);
+                b = _sdCondNumber(operand, decimal);
+                if (!_sdCondIsWhole(a) || !_sdCondIsWhole(b) || b <= 0) return false;
+                return a % b === 0;
+        }
+        return false;
+    }
+
     // Values of the record in an attribute ({{token}} in an Attributes
     // panel entry or a title): the attributes that never take one and the
     // tokens whose value is markup. Twins of pg_sw_attr_denied_names() and
