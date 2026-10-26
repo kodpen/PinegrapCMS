@@ -14,7 +14,7 @@ description: Plan (approved 2026-10-19, watch list, designer session): interacti
 
 ## What remains?
 - Interactions: cut into steps I1–I4 in `plans/designer-interactions-steps.md`.
-- Collections: not cut yet; a later designer session writes their slices here. Dependencies to note: `designer/page-schedule.md` (collections items want scheduling too), `designer/responsive-images.md` (image fields), translations (reference labels).
+- Collections: cut into steps C1–C7 in `plans/designer-collections-steps.md`.
 
 ## Open questions?
 - Should collection items get their own revision history like pages? Yes, through the same `page_revisions` pattern (`record_revisions`), decided when the collections slice starts.
