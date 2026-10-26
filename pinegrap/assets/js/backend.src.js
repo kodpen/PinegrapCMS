@@ -4692,13 +4692,12 @@ function show_or_hide_view_expiration_date(folder_id) {
 
         container.style.display = '';
 
-        // Bind once: datepicker() on an already-bound field is a no-op that
-        // still costs a full re-init, and a second call would drop the value
-        // the operator has just typed.
+        // pgDatePicker.init() draws a field once and leaves a drawn one
+        // alone, so a date the operator has just typed stays.
         var field = container.querySelector('input');
 
-        if (field && window.jQuery && !$(field).hasClass('hasDatepicker') && (typeof datetimepicker_options !== 'undefined')) {
-            $(field).datepicker(datetimepicker_options);
+        if (field && window.pgDatePicker) {
+            pgDatePicker.init(field);
         }
 
     } else {
@@ -4743,8 +4742,9 @@ function pgOpenAclExpiry(container, focus) {
         return;
     }
 
-    if (window.jQuery && !$(field).hasClass('hasDatepicker') && (typeof datetimepicker_options !== 'undefined')) {
-        $(field).datepicker(datetimepicker_options);
+    // The folder tree prints pg_fields.js with it (get_acl_folder_tree()).
+    if (window.pgDatePicker) {
+        pgDatePicker.init(field);
     }
 
     if (focus) {
@@ -10093,6 +10093,11 @@ function pgInitInjected(scope) {
             showMaskOnHover: false,
             showMaskOnFocus: false
         });
+    }
+
+    // Chips, combobox, date and time fields marked with a data-pg-* hook.
+    if (window.pgFields) {
+        pgFields.init($scope[0]);
     }
 
     // The timepicker addon and its wording arrive with the card that uses it,
