@@ -264,6 +264,22 @@ class liveform {
             $output_data_inputmask_extra .= ' ' . h($attribute_name) . '="' . h((string) $attribute_value) . '"';
         }
 
+        // Field widget hooks (data-pg-date, data-pg-combobox, ...) that
+        // assets/js/pg_fields.js draws; an empty value is a bare hook.
+        $output_data_pg = '';
+        foreach ($attributes as $attribute_name => $attribute_value) {
+            if (
+                !is_string($attribute_name)
+                || !preg_match('/^data-pg-[a-z0-9-]+$/', $attribute_name)
+                || $attribute_value === null
+                || !is_scalar($attribute_value)
+            ) {
+                continue;
+            }
+
+            $output_data_pg .= ' ' . $attribute_name . ((string) $attribute_value === '' ? '' : '="' . h((string) $attribute_value) . '"');
+        }
+
         $output_data_bs_target = '';
         if ($data_bs_target) {
             $output_data_bs_target = ' data-bs-target="' . h($data_bs_target) . '"';
@@ -371,7 +387,7 @@ class liveform {
                 if($size != ''){
                     $output_size = ' size="' . h($size) . '"';
                 }
-                return "<input type=\"$type\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_bs_target . ">" . $output_inline_feedback;
+                return "<input type=\"$type\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
                 break;
 
             case 'checkbox':
@@ -408,7 +424,7 @@ class liveform {
                 $output_onclick = ($onclick) ? ' onclick="' . $onclick . '"' : '';
                 $output_onfocus = ($onfocus) ? ' onfocus="' . $onfocus . '"' : '';
                 
-                return "<input type=\"checkbox\" name=\"" . h($field_name) . "\"" . $output_id_attribute . "$output_value$checked class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_required . $output_aria_invalid . $autofocus . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_bs_target . ">" . $output_inline_feedback;
+                return "<input type=\"checkbox\" name=\"" . h($field_name) . "\"" . $output_id_attribute . "$output_value$checked class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_required . $output_aria_invalid . $autofocus . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
                 break;
 
             case 'radio':
@@ -428,7 +444,7 @@ class liveform {
                 $output_onclick = ($onclick) ? ' onclick="' . $onclick . '"' : '';
                 $output_onfocus = ($onfocus) ? ' onfocus="' . $onfocus . '"' : '';
                 
-                return "<input type=\"radio\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"$checked class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_required . $output_aria_invalid . $autofocus . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_bs_target . ">" . $output_inline_feedback;
+                return "<input type=\"radio\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"$checked class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_required . $output_aria_invalid . $autofocus . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
                 break;
 
             case 'select':
@@ -454,7 +470,7 @@ class liveform {
                 $output_onclick = ($onclick) ? ' onclick="' . $onclick . '"' : '';
                 $output_onfocus = ($onfocus) ? ' onfocus="' . $onfocus . '"' : '';
                 
-                $output = "<select name=\"" . h($field_name) . "\"" . $output_id_attribute . " $multiple class=\"$class\" style=\"$style\" onchange=\"$onchange\"$output_onclick$output_onfocus" . $output_size . $output_required . $output_aria_invalid . $autocomplete . $autofocus . $output_data_bs_target . ">";
+                $output = "<select name=\"" . h($field_name) . "\"" . $output_id_attribute . " $multiple class=\"$class\" style=\"$style\" onchange=\"$onchange\"$output_onclick$output_onfocus" . $output_size . $output_required . $output_aria_invalid . $autocomplete . $autofocus . $output_data_pg . $output_data_bs_target . ">";
 
                 // If options were not directly passed into this function,
                 // then check for options in session.
@@ -548,7 +564,7 @@ class liveform {
                     $output_maxlength = ' maxlength="' . h($maxlength) . '"';
                 }
                 
-                return "<textarea name=\"" . h($field) . "\"" . $output_id_attribute . " rows=\"$rows\" cols=\"$cols\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus$output_readonly" . $output_placeholder . $output_required . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_bs_target . ">" . h($value) . "</textarea>" . $output_inline_feedback;
+                return "<textarea name=\"" . h($field) . "\"" . $output_id_attribute . " rows=\"$rows\" cols=\"$cols\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus$output_readonly" . $output_placeholder . $output_required . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . h($value) . "</textarea>" . $output_inline_feedback;
                 break;
 
             case 'password':

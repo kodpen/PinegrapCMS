@@ -788,12 +788,10 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
                             <div class="col-12 col-sm-7">
                                 <label for="snooze_until" class="form-label">' . lang('Put the reminders off until') . '</label>
                                 ' . $liveform->output_field(array(
-                                    'type' => 'text', 'id' => 'snooze_until', 'name' => 'snooze_until',
+                                    'type' => 'text', 'id' => 'snooze_until', 'data-pg-date' => '', 'name' => 'snooze_until',
                                     'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                                     'autocomplete' => 'off')) . '
-                                ' . get_date_picker_format() . '
-                                <script>$("#snooze_until").datepicker(datetimepicker_options);</script>
-                            </div>
+                                ' . get_date_picker_format() . pg_fields_script() . '                            </div>
                             <div class="col-12 col-sm-5">
                                 <button type="submit" name="submit_snooze" value="Snooze" class="btn btn-outline-secondary w-100"><i class="bi bi-bell-slash me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Put off') . '</span></button>
                             </div>
