@@ -234,19 +234,7 @@ function api_http_request($method, $url, $options = array()) {
 
 		curl_setopt($handle, CURLOPT_HEADERFUNCTION, function ($curl, $line) use (&$received) {
 
-			// A status line starts the headers over: an interim answer (100
-			// Continue) has headers of its own that are not the answer's.
-			if (stripos($line, 'HTTP/') === 0) {
-
-				$received = array();
-
-			} elseif (strpos($line, ':') !== false) {
-
-				list($name, $value) = explode(':', $line, 2);
-
-				$received[strtolower(trim($name))] = trim($value);
-
-			}
+			$received = api_http_header_line($received, $line);
 
 			return strlen($line);
 
@@ -314,6 +302,45 @@ function api_http_request($method, $url, $options = array()) {
 	$result['duration_ms'] = (int)round((microtime(true) - $started) * 1000);
 
 	return $result;
+
+}
+
+// The response headers with one more line taken in, by lower-case name. A
+// status line starts the headers over: an interim answer (100 Continue) has
+// headers of its own that are not the answer's. A challenge sent in more than
+// one WWW-Authenticate line is joined into one list (RFC 9110 5.3), so a
+// Bearer challenge after a Basic one is not lost; any other header keeps its
+// last line.
+function api_http_header_line($received, $line) {
+
+	$line = (string)$line;
+
+	if (stripos($line, 'HTTP/') === 0) {
+
+		return array();
+
+	}
+
+	if (strpos($line, ':') === false) {
+
+		return $received;
+
+	}
+
+	list($name, $value) = explode(':', $line, 2);
+
+	$name = strtolower(trim($name));
+	$value = trim($value);
+
+	if (($name === 'www-authenticate') && isset($received[$name]) && ($received[$name] !== '') && ($value !== '')) {
+
+		$value = $received[$name] . ', ' . $value;
+
+	}
+
+	$received[$name] = $value;
+
+	return $received;
 
 }
 

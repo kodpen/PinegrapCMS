@@ -27,6 +27,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-api-channel-customer.md: A channel's customer over the Workspace API and MCP (PR #1766): customer_type and customer_id on channels.create and channels.update, one half alone refused, null clears, the user role's contact rule
 - workspace-api-dry-run.md: Every Workspace write in the external API takes X-Dry-Run; the panel's *_check() functions it runs, what each rehearsal answers, and the test that keeps new writes rehearsable
 - workspace-api-endpoint-rules.md: Writing a Workspace API endpoint: Site Log lines in the owner's name (ws_api_as_owner()), bell rows, search scopes per record type, the scope ceiling, files, events, where the other rules are
+- workspace-api-forward.md: Forwarding messages over the Workspace API and MCP (POST /workspace/channels/{id}/forwards): the check shared with the panel, access, whose name it carries, why it is a tool
 - workspace-api-layout-writes.md: Workspace API layout writes the same for everybody (a channel into a group): gated like changing the channel, not ws_api_person_only(); access writes name who comes in and leaves
 - workspace-api-sync-inbox.md: Keeping a Workspace app current through the API: GET /workspace/sync cursor marks, inbox deletions and reach changes for changed_since, hidden messages and touched_at, assistants carried on
 - workspace-api-task-reminder.md: A task's due time and e-mail reminder over the Workspace API and MCP (PR #1742): due_time, remind_minutes on the task writes and answers, how null clears them, the drawer's checks they go through
@@ -67,6 +68,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-notes-import-zip-names.md: How the notes import reads zip entry names (UTF-8 flag, CP857 from Windows/7-Zip on a Turkish system, libzip's CP437 guess) and why "Toplantì notlarì" happened
 - workspace-notes-import.md: Notes brought in from other apps (workspace_notes_import.php, notes_import.php): Markdown/text or a zip staged, previewed, written in batches; how an export of ours updates its own note
 - workspace-notes-revision.md: A note's revision (ws_notes.revision, schema 11.0.84, PR #1663): which writes move it, the API's revision field and 409, why code checks for the column, base kept
+- workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
 - workspace-notes.md: Workspace notes (ws_notes): tables, limits, body format, versions, an assistant's answer under the line that asked, the paged list, what the API offers and lacks
 - workspace-office-edits.md: The cells of an Excel file or the paragraphs of a Word file posted in a channel, changed in its preview window (ws_file_office, ws_file_office_save, PR #656, #702): who may, replace or copy
 - workspace-quick-create.md: A product or group made by a person in the Workspace (ws_quick_create_*): drawer new mode, palette line, /product (/ürün), off sale unless ticked, applied ws_ai_changes row, decision

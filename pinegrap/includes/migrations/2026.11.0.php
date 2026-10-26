@@ -66,6 +66,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_comment_author_index();   // 11.0.36
 	upgrade_2026_11_0_workspace_note_revision(); // 11.0.84
 	upgrade_2026_11_0_workspace_note_deletions(); // 11.0.85
+	upgrade_2026_11_0_workspace_note_sources(); // 11.0.86
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
 	upgrade_2026_11_0_audit_feed_tokens();      // 11.0.38
 
@@ -1732,6 +1733,36 @@ function upgrade_2026_11_0_workspace_note_deletions() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a deleted note is remembered for 30 days, so an app that keeps notes in sync removes it as well.');
+
+}
+
+// Where an imported Workspace note came from (2026.11.0, 11.0.86;
+// includes/workspace/notes_import.php).
+//
+// One row a note file a person brought in: the app it came from (provider:
+// keep, enex, markdown, html), the id it is known by there (external_id:
+// Keep's JSON entry name, Evernote's guid or title and created, a Markdown
+// front matter id or path, a web page's address or file name), what the file
+// held (hash) and the note it became. The same file brought in again shows
+// as "same", or updates that note, instead of adding it once more. A deleted
+// note drops its rows. external_id compares byte for byte: under the table's
+// case- and accent-blind collation "Günlük.md" and "Gunluk.md" in one vault
+// were one source, and the second file overwrote the first file's note.
+function upgrade_2026_11_0_workspace_note_sources() {
+
+	install_create_table('ws_note_sources', "CREATE TABLE ws_note_sources (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id INT UNSIGNED NOT NULL DEFAULT 0,
+		provider VARCHAR(16) NOT NULL DEFAULT '',
+		external_id VARCHAR(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
+		hash CHAR(40) NOT NULL DEFAULT '',
+		note_id INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_source (user_id, provider, external_id),
+		KEY idx_note (note_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: notes brought in from other apps remember where they came from, so importing the same notes again updates them instead of adding them twice.');
 
 }
 

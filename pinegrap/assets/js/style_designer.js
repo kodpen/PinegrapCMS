@@ -892,6 +892,9 @@ const StyleDesigner = (function () {
                                 var mcfg = null;
                                 try { mcfg = JSON.parse(item.system_region_config); } catch (e) {}
                                 if (mcfg && _SW_NO_MESSAGES[_swKindOf(mcfg)]) _sdDropMessagesNodes(parsed);
+                                // An old token a default part now draws gets
+                                // the part; the site draws the same.
+                                if (mcfg) _sdDefaultParts(parsed, _swKindOf(mcfg), mcfg);
                             }
                             // A template's widget whose layout was never written
                             // (the loss above): it still holds the placeholder and
@@ -11100,6 +11103,7 @@ const StyleDesigner = (function () {
                     billing_information:  _sdT('Billing Information'),
                     order_preview:        _sdT('Order Preview'),
                     menu_region:          _sdT('Menu'),
+                    menu_sequence_region: _sdT('Menu Sequence'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -12838,7 +12842,7 @@ const StyleDesigner = (function () {
             // If text is bound, show a lorem-ipsum preview (canvas only — server still emits
             // the ^^token^^ at save/render time via _apply_bindings in functions.php).
             // A bound element is previewed even when it has no literal text:
-            // a <div> bound to __timeline carries only the binding, and the
+            // a <div> bound to __currency_selector carries only the binding, and the
             // server writes the value into it whatever `text` holds.
             var _semBoundText = !!(node.props._bindings && node.props._bindings.text);
             if (!_isBtnLike && node.type === 'semantic' && ((node.props.text !== undefined && node.props.text !== '') || _semBoundText)) {
@@ -13605,9 +13609,10 @@ const StyleDesigner = (function () {
     };
 
     // Order-view status badge classes, per lifecycle stage. PHP twin lives in
-    // _pg_order_status_badge_class() (functions.php) — the two MUST stay in
-    // lockstep or the canvas preview shows a different colour than the front
-    // end. Designer overrides these per widget via the settings panel.
+    // _pg_order_status_badge_class() (ecommerce.php) — the two MUST stay in
+    // lockstep. The status badge part (_sdPartOrderStatusBadge()) takes a
+    // widget's own status_class_* setting, else these; once the part is in
+    // the tree each badge's classes are the designer's.
     var SD_OV_STATUS_CLASS_DEFAULTS = {
         complete:  'badge bg-success',
         pending:   'badge bg-warning text-dark',
@@ -13754,14 +13759,6 @@ const StyleDesigner = (function () {
     // approximation from the SAME markup shapes the PHP renderer emits.
     //
     // Preview only: never saved to the tree, never sent to the server.
-    function _sdOvStatusClass(key) {
-        var cfg = _sysWidgetRenderCfg;
-        if (cfg && typeof cfg['status_class_' + key] === 'string' && cfg['status_class_' + key] !== '') {
-            return cfg['status_class_' + key];
-        }
-        return SD_OV_STATUS_CLASS_DEFAULTS[key] || SD_OV_STATUS_CLASS_DEFAULTS['default'];
-    }
-
     var _SD_HTML_PREVIEW_TOKENS = {
         // Mirrors pg_comments_stars_html(): five stars, four of them filled.
         '__comment_stars_html': function () {
@@ -13807,11 +13804,6 @@ const StyleDesigner = (function () {
                    btn('#dadce0', '#fff', '#3c4043', _sdT('Connect with Google')) +
                    btn('#8c8c8c', '#fff', '#5e5e5e', _sdT('Connect with Microsoft')) + '</div>';
         },
-        // Mirrors _pg_order_status_badge_class() — picks up the designer's own
-        // class override so the canvas shows the colour they just chose.
-        '__order_status_badge': function () {
-            return '<span class="' + esc(_sdOvStatusClass('complete')) + '">' + esc(_sdT('Completed')) + '</span>';
-        },
         // Shape mirrors _eo_render_cancel_order_form(): reason textarea +
         // destructive submit + refund warning.
         '__cancel_form': function () {
@@ -13848,21 +13840,6 @@ const StyleDesigner = (function () {
                    '<ul class="small mb-2 ps-3"><li>' + esc(_sdT('Sample Product Name')) + ' × 1</li></ul>' +
                    '<div class="alert alert-info small py-2 my-2">' + esc(_sdT('Your return was approved. You can send the goods back now.')) + '</div>' +
                    '</div></div>';
-        },
-        // Mirrors _eo_render_order_timeline() — <ul class="pg-ov-timeline">
-        // with a Bootstrap Icon + label + timestamp per event.
-        '__timeline': function () {
-            var ev = [
-                ['bi-receipt',     'primary', _sdT('Order Created'), _sdDateSample(true)],
-                ['bi-credit-card', 'success', _sdT('Payment Received'),        _sdDateSample(true)],
-                ['bi-truck',       'info',    _sdT('Shipped Out'),   _sdDateSample(false)]
-            ];
-            return '<ul class="pg-ov-timeline list-unstyled mb-0">' + ev.map(function (e) {
-                return '<li class="d-flex align-items-start gap-2 mb-2">' +
-                       '<span class="bi ' + e[0] + ' text-' + e[1] + '"></span>' +
-                       '<span><span class="fw-semibold d-block">' + e[2] + '</span>' +
-                       '<span class="text-muted small">' + e[3] + '</span></span></li>';
-            }).join('') + '</ul>';
         },
         // Mirrors _pg_render_order_item_form_data_readonly() — fieldset +
         // legend + stacked label/value pairs.
@@ -32352,6 +32329,7 @@ const StyleDesigner = (function () {
             var _isBillingInfo     = (_regionType === 'billing_information');
             var _isOrderPreview    = (_regionType === 'order_preview');
             var _isMenuRegion      = (_regionType === 'menu_region');
+            var _isMenuSequence    = (_regionType === 'menu_sequence_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -32402,6 +32380,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isOrderPreview) {
                 _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
+            } else if (_isMenuSequence) {
+                _sourceInfoHtml = _sdT('Links to the page before and after the one shown, in the order of a menu\'s pages: each item before the items under it, a page once. On the last page the next link goes back to the first; on a page the menu does not link to, the links are not drawn. The menu is edited under Menus.');
             } else if (_isMenuRegion) {
                 _sourceInfoHtml = _sdT('One of the site\'s menus, read on every visit: its items, their order, links and who may see them are edited under Menus, by the users who may edit that menu, and every page that shows the widget follows. The loop repeats the top-level items; a list of the sub-items of a menu item inside a row repeats the items under it.');
             } else if (_isBillingInfo) {
@@ -33521,8 +33501,8 @@ const StyleDesigner = (function () {
                 );
             }
 
-            // ── menu_region settings ─────────────────────────────────────────
-            if (_isMenuRegion) {
+            // ── menu_region and menu_sequence_region settings ────────────────
+            if (_isMenuRegion || _isMenuSequence) {
                 var _mrNames = (regionData && regionData.menu_regions) || [];
                 var _mrName = typeof _cfg.menu_name === 'string' ? _cfg.menu_name : '';
                 var _mrOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
@@ -34080,24 +34060,6 @@ const StyleDesigner = (function () {
                 var _ovCurrencySymbol = (typeof _cfg.currency_symbol === 'string') ? _cfg.currency_symbol : '';
                 var _ovNotFound       = (typeof _cfg.not_found_message === 'string' && _cfg.not_found_message !== '') ? _cfg.not_found_message : _sdT('The order could not be found.');
 
-                // Status badge classes — one field per lifecycle stage so the
-                // COLOUR decision belongs to the designer, not the renderer.
-                // Defaults mirror the PHP fallbacks in
-                // _render_system_widget_order_view (SD_OV_STATUS_CLASS_DEFAULTS).
-                var _ovBadgeCls = function (key) {
-                    var v = _cfg['status_class_' + key];
-                    return (typeof v === 'string' && v !== '') ? v : SD_OV_STATUS_CLASS_DEFAULTS[key];
-                };
-                var _ovBadgeRow = function (key, label, hint) {
-                    return row(label,
-                        '<input type="text" class="form-control form-control-sm sd-sw-ov-status-cls"' +
-                        ' data-sw-id="' + sid + '" data-status-key="' + key + '"' +
-                        ' value="' + esc(_ovBadgeCls(key)) + '" maxlength="120"' +
-                        ' placeholder="' + esc(SD_OV_STATUS_CLASS_DEFAULTS[key]) + '">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + hint + '</div>'
-                    );
-                };
-
                 systemSection += sect('bi-receipt', _sdT('View Order Settings'),
                     row(_sdT('Date format'),
                         '<select class="form-select form-select-sm" id="sd-sw-ov-date-format" data-sw-id="' + sid + '">' +
@@ -34115,17 +34077,6 @@ const StyleDesigner = (function () {
                     )
                 );
 
-                systemSection += sect('bi-palette', _sdT('Status Badge Classes'),
-                    '<div style="font-size:.66rem;color:#888;line-height:1.4;padding:2px 0 6px">' +
-                        esc(_sdT('The CSS classes of the badge in elements bound to "{var}". The status text comes from the order; you pick its colour here. Left empty, the default is used.', _swBindLabel('order_view', '__order_status_badge'))) +
-                    '</div>' +
-                    _ovBadgeRow('complete',  _sdT('Completed'),  'complete / exported / paid / tamamlandı') +
-                    _ovBadgeRow('pending',   _sdT('Pending'),    'incomplete / pending / bekliyor') +
-                    _ovBadgeRow('shipped',   _sdT('Shipped'),  'shipped / kargo') +
-                    _ovBadgeRow('cancelled', _sdT('Cancelled'),       'cancelled / iptal') +
-                    _ovBadgeRow('refunded',  _sdT('Refunded'),        'refund / iade') +
-                    _ovBadgeRow('default',   _sdT('Other'),       _sdT('Statuses that match none of the above'))
-                );
             }
 
             // ── membership settings ───────────────────────────────────────────
@@ -36538,22 +36489,6 @@ const StyleDesigner = (function () {
             });
         }
 
-        // status badge classes (one text input per lifecycle stage).
-        // Blank input = "use the default", stored as '' rather than the literal
-        // default string so a later change to the defaults reaches old widgets.
-        document.querySelectorAll('.sd-sw-ov-status-cls').forEach(function (el) {
-            el.addEventListener('change', function () {
-                var sid = parseInt(this.dataset.swId, 10);
-                var key = this.dataset.statusKey;
-                if (!sid || !key) return;
-                // Only class-name characters — this string lands in a class
-                // attribute server-side, so nothing that could close it.
-                var v = ('' + this.value).replace(/[^A-Za-z0-9 _-]/g, '').trim().slice(0, 120);
-                this.value = v;
-                _patchSysCfg(sid, function (cfg) { cfg['status_class_' + key] = v; });
-                if (typeof render === 'function') render();
-            });
-        });
 
         // ── membership settings ───────────────────────────────────────────────
 
@@ -36988,7 +36923,7 @@ const StyleDesigner = (function () {
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
-        order_preview: 1, menu_region: 1
+        order_preview: 1, menu_region: 1, menu_sequence_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37254,6 +37189,33 @@ const StyleDesigner = (function () {
         return row(label, html);
     }
 
+    // A product's allow-listed values, offered by the catalog card, the
+    // product detail and the favourites (pg_sw_entity_fields('product') in
+    // includes/fn/widgets_entity_fields.php; tests/widget_entity_fields_test.php
+    // keeps the two equal). An entry marked 'cond' is a yes/no value ('1' or
+    // ''): only "Show only when a value…" offers it, never a text binding.
+    var SW_PRODUCT_ENTITY_TOKENS = [
+        ['__keywords',            _sdT('Keywords')],
+        ['__length',              _sdT('Length')],
+        ['__width',               _sdT('Width')],
+        ['__height',              _sdT('Height')],
+        ['__minimum_quantity',    _sdT('Minimum order quantity')],
+        ['__maximum_quantity',    _sdT('Maximum order quantity')],
+        ['__preparation_days',    _sdT('Preparation time (days)')],
+        ['__extra_shipping_cost', _sdT('Extra shipping cost (with symbol)')],
+        ['__vat_rate',            _sdT('VAT rate (number, without the % sign)')],
+        ['__payment_period',      _sdT('Subscription payment period')],
+        ['__number_of_payments',  _sdT('Subscription number of payments')],
+        ['__is_free_shipping',    _sdT('Ships free'), 'cond'],
+        ['__is_gift_card',        _sdT('Is a gift card'), 'cond'],
+        ['__is_donation',         _sdT('Is a donation'), 'cond']
+    ];
+
+    // Whether a palette entry is offered only as a condition (yes/no).
+    function _swTokenCondOnly(t) {
+        return !!(t && t[2] === 'cond');
+    }
+
     // Catalog token palette (regionType='catalog_listing'). Grouped by purpose
     // so the binding dropdown stays scannable even with 30+ tokens. Token names
     // mirror the keys produced by _render_system_widget_catalog_listing in PHP.
@@ -37339,6 +37301,7 @@ const StyleDesigner = (function () {
             ['__filter_chips',           _sdT('Active filter chips (legacy — use the section binding)')],
             ['__clear_filters_button',   _sdT('Clear Filters button (old — use the clear_filters action)')]
         ]},
+        { label: _sdT('More product details'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Custom Fields'), tokens: [
             ['__custom_field_1', _sdT('Custom field 1')],
             ['__custom_field_2', _sdT('Custom field 2')],
@@ -37488,6 +37451,7 @@ const StyleDesigner = (function () {
             ['__has_variants',    _sdT('Whether it has variants (select type)')],
             ['__variant_count',   _sdT('Number of variants')]
         ]},
+        { label: _sdT('More product details'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Custom Fields'), tokens: [
             ['__custom_field_1', _sdT('Custom field 1')],
             ['__custom_field_2', _sdT('Custom field 2')],
@@ -37930,6 +37894,7 @@ const StyleDesigner = (function () {
             ['__out_of_stock_label',       _sdT('Out of stock label')],
             ['__added_date',               _sdT('Date saved')]
         ]},
+        { label: _sdT('More product details'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__detail_url',               _sdT('Detail URL')],
             ['__login_url',                _sdT('Sign-in page address (back to this page afterwards)')],
@@ -38059,6 +38024,22 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // menu_sequence_region token palette — no loop_area. Mirrors
+    // _render_system_widget_menu_sequence_region() in widgets_menu.php.
+    var SW_MENU_SEQUENCE_TOKEN_GROUPS = [
+        { label: _sdT('Menu'), tokens: [
+            ['__menu_name',           _sdT('Menu name')],
+            ['__sequence_position',   _sdT('Place of the page shown (from 1)')],
+            ['__sequence_count',      _sdT('Pages in the sequence')],
+            ['__previous_name',       _sdT('Previous page name')],
+            ['__next_name',           _sdT('Next page name')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__previous_url',        _sdT('Previous page address')],
+            ['__next_url',            _sdT('Next page address')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -38077,7 +38058,8 @@ const StyleDesigner = (function () {
         shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS,
         billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS,
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
-        menu_region:       SW_MENU_REGION_TOKEN_GROUPS
+        menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
+        menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -38251,7 +38233,8 @@ const StyleDesigner = (function () {
             ['__order_no',            _sdT('Order number')],
             ['__order_date',          _sdT('Order date')],
             ['__order_status',        _sdT('Status (raw text)')],
-            ['__order_status_badge',  _sdT('Status badge (colored HTML)')],
+            ['__order_status_text',   _sdT('Status as the badge shows it')],
+            ['__order_status_stage',  _sdT('Status stage (complete, pending, shipped, cancelled, refunded, default)')],
             ['__order_item_count',    _sdT('Number of distinct products')],
             ['__order_unit_count',    _sdT('Total quantity')],
             ['__order_notes',         _sdT('Order notes (when there are any)')],
@@ -38325,7 +38308,6 @@ const StyleDesigner = (function () {
             ['__tracking_company_name', _sdT('Carrier name')]
         ]},
         { label: _sdT('Order history / document'), tokens: [
-            ['__timeline',              _sdT('Order timeline (ready-made HTML)')],
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
             ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
@@ -38680,6 +38662,152 @@ const StyleDesigner = (function () {
         return SD_STRUCTURAL_TAGS.indexOf((tag || '').toLowerCase()) !== -1;
     }
 
+    // ── Default parts (widgets_parts.php) ──────────────────────────────────
+    // A token that stood for a block of markup the server built is drawn by
+    // a part made of real elements the designer can select and change. A
+    // widget's tree still binding one gets the part when it loads; the
+    // server gives a saved tree the same part where it renders, so nothing
+    // is marked unsaved and the next save stores it. kind => token => part.
+    var SW_DEFAULT_PARTS = {
+        order_view: {
+            '__timeline':           function (cfg) { return _sdPartOrderTimeline(cfg); },
+            '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); }
+        }
+    };
+
+    // Gives every node under `node` drawing a token of `kind` its part
+    // (pg_sw_default_parts_tree()). Returns whether anything changed.
+    function _sdDefaultParts(node, kind, cfg) {
+        var parts = SW_DEFAULT_PARTS[kind];
+        if (!parts || !node || typeof node !== 'object') return false;
+        var token = _sdPartTokenOf(node, Object.keys(parts));
+        if (token) {
+            _sdPartHost(node);
+            node.children = parts[token](cfg || null).concat(node.children || []);
+            return true;
+        }
+        var changed = false;
+        (node.children || []).forEach(function (child) {
+            if (_sdDefaultParts(child, kind, cfg)) changed = true;
+        });
+        return changed;
+    }
+
+    // The token of `tokens` that `node` draws: its text binding, or a text
+    // that is the token alone (^^token^^). '' for none.
+    function _sdPartTokenOf(node, tokens) {
+        var p = node.props || {};
+        if (p._bindings && tokens.indexOf(p._bindings.text) !== -1) return p._bindings.text;
+        var m = (typeof p.text === 'string') ? /^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/.exec(p.text) : null;
+        return (m && tokens.indexOf(m[1]) !== -1) ? m[1] : '';
+    }
+
+    // `node`, in place, as an element that holds a part (pg_sw_part_host()):
+    // its text and text binding go, a content node becomes the element it
+    // drew; any other node is moved into a new <div> that takes its place.
+    function _sdPartHost(node) {
+        var p = node.props || (node.props = {});
+        delete p.text;
+        ['_bindings', '_bindParams', '_bindFormats'].forEach(function (key) {
+            if (!p[key] || typeof p[key] !== 'object') return;
+            delete p[key].text;
+            if (!Object.keys(p[key]).length) delete p[key];
+        });
+        if (node.type === 'content') {
+            var ct = p.contentType || '', tag = 'div', cls = [];
+            if (ct === 'paragraph') tag = 'p';
+            else if (ct === 'span' || ct === 'text') tag = 'span';
+            else if (ct === 'heading') tag = /^h[1-6]$/i.test(p.tag || '') ? p.tag.toLowerCase() : 'h2';
+            if (p.lead && ct === 'paragraph') cls.push('lead');
+            if (p.align) cls.push('text-' + p.align);
+            if (p.cssClass) cls.push(p.cssClass);
+            delete p.contentType; delete p.lead; delete p.align;
+            p.tag = tag;
+            p.cssClass = cls.join(' ');
+            node.type = 'semantic';
+        } else if (node.type !== 'semantic') {
+            var inner = { _id: node._id, type: node.type, props: p, children: node.children || [] };
+            node._id = gid();
+            node.type = 'semantic';
+            node.props = { tag: 'div' };
+            node.children = [inner];
+        }
+        node.children = node.children || [];
+    }
+
+    // One element of a part (pg_sw_part_el()).
+    function _sdPartEl(tag, cls, name, props, children) {
+        var p = { tag: tag, cssClass: cls, customName: name };
+        Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+        return createNode('semantic', p, children || []);
+    }
+
+    // The props of an element drawn only when `token` passes `op` (`value`).
+    function _sdPartWhen(token, op, value) {
+        var param = { op: op };
+        if (value) param.value = value;
+        return { _bindings: { show_if: token }, _bindParams: { show_if: param } };
+    }
+
+    // The order timeline (pg_sw_part_order_timeline()): an order.steps list,
+    // the icon and colour by the step's kind, an estimated date greyed.
+    function _sdPartOrderTimeline() {
+        var icon = function (colour, bi, props) {
+            return _sdPartEl('span', 'pg-ov-timeline-icon bg-' + colour, _sdT('Icon'), props, [
+                _sdPartEl('i', 'bi ' + bi, _sdT('Icon'))
+            ]);
+        };
+        var kind = function (k, label, children) {
+            return _sdPartEl('span', '', _sdT('Step') + ': ' + label, _sdPartWhen('__step_kind', 'eq', k), children);
+        };
+        var dated = function (colour, bi) {
+            return [icon(colour, bi, _sdPartWhen('__step_is_estimate', 'empty')),
+                    icon('secondary', bi, _sdPartWhen('__step_is_estimate', 'not_empty'))];
+        };
+        var text = function (tag, cls, name, token, sample) {
+            return _sdPartEl(tag, cls, name, { text: sample, _bindings: { text: token } });
+        };
+        var dash = _sdPartWhen('__step_note', 'not_empty');
+        dash.text = ' — ';
+        return [_sdPartEl('ul', 'pg-ov-timeline', _sdT('Order timeline'), {}, [
+            createNode('loop_area', { source: 'order.steps' }, [
+                _sdPartEl('li', 'pg-ov-timeline-item', _sdT('Step'), {}, [
+                    kind('created', _sdT('Order Created'), [icon('primary', 'bi-receipt')]),
+                    kind('paid', _sdT('Payment Received'), [icon('success', 'bi-credit-card')]),
+                    kind('shipped', _sdT('Shipped'), dated('info', 'bi-truck')),
+                    kind('delivered', _sdT('Delivered'), dated('success', 'bi-box-seam')),
+                    kind('cancelled', _sdT('Cancelled'), [icon('danger', 'bi-x-circle')]),
+                    _sdPartEl('div', 'pg-ov-timeline-label', _sdT('Step'), {}, [
+                        text('span', '', _sdT('Step'), '__step_label', _sdT('Order Created')),
+                        _sdPartEl('span', '', _sdT('Dash'), dash),
+                        text('span', '', _sdT('Note (the reason of a cancellation)'), '__step_note', '')
+                    ]),
+                    text('div', 'pg-ov-timeline-ts', _sdT('Date'), '__step_date', _sdDateSample(true))
+                ])
+            ])
+        ])];
+    }
+
+    // The stages of the status badge (pg_sw_order_status_stages()).
+    var SD_OV_STATUS_STAGES = ['complete', 'pending', 'shipped', 'cancelled', 'refunded', 'default'];
+
+    // The order's status badge (pg_sw_part_order_status_badge()): one badge
+    // per stage, drawn at that stage, with the classes the widget's settings
+    // gave it (_pg_order_status_badge_class()).
+    function _sdPartOrderStatusBadge(cfg) {
+        var labels = { complete: _sdT('Completed'), pending: _sdT('Pending'), shipped: _sdT('Shipped'),
+                       cancelled: _sdT('Cancelled'), refunded: _sdT('Refunded'), 'default': _sdT('Other') };
+        return SD_OV_STATUS_STAGES.map(function (stage) {
+            var own = (cfg && typeof cfg['status_class_' + stage] === 'string')
+                ? cfg['status_class_' + stage].replace(/[^A-Za-z0-9 _-]/g, '').trim() : '';
+            return _sdPartEl('span', own || SD_OV_STATUS_CLASS_DEFAULTS[stage], _sdT('Status') + ': ' + labels[stage], {
+                text: labels[stage],
+                _bindings: { text: '__order_status_text', show_if: '__order_status_stage' },
+                _bindParams: { show_if: { op: 'eq', value: stage } }
+            });
+        });
+    }
+
     // One-time migration for trees saved before the "bind content, not layout"
     // rule. Walks the tree; whenever a structural tag carries a text/src/href
     // binding, the binding (and the cell's preview text) moves into a <span>
@@ -38749,7 +38877,7 @@ const StyleDesigner = (function () {
                 out.push({ prop: 'alt',  label: _sdT('Alt text'),  kind: 'text'  });
             } else if (node.props && (node.props.text || (node.props._bindings && node.props._bindings.text))) {
                 // A bound element needs no literal text of its own: a <div>
-                // bound to a ready-made HTML block (__timeline, __currency_selector)
+                // bound to a ready-made HTML block (__currency_selector)
                 // carries only the binding. Keying this on props.text alone
                 // left such a binding out of the panel entirely.
                 //
@@ -39006,6 +39134,12 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        menu_sequence_region: [
+            ['in_sequence',     _sdT('The page shown is one of the menu\'s pages')],
+            ['not_in_sequence', _sdT('The page shown is not one of the menu\'s pages')],
+            ['has_previous',    _sdT('A page comes before the one shown')],
+            ['next_wraps',      _sdT('The page shown is the last; the next link goes to the first')]
         ],
         menu_region: [
             ['has_menu_items',             _sdT('The menu has an item the visitor may see')],
@@ -39514,6 +39648,7 @@ const StyleDesigner = (function () {
                 SW_CATALOG_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -39580,6 +39715,7 @@ const StyleDesigner = (function () {
                 SW_CATALOG_ITEM_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -40118,6 +40254,7 @@ const StyleDesigner = (function () {
                 acGroups.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== current) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === current ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -51481,14 +51618,15 @@ const StyleDesigner = (function () {
         { type: 'shipping_method',   label: _sdT('Shipping Method'),   slug: _sdT('shipping-method'),   icon: 'bi-box-seam' },
         { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' },
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
-        { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' }
+        { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
+        { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
     var _SW_ACCOUNT_TYPES  = { logout: 1, change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1, account_security: 1 };
     var _SW_ACCOUNT_SINGLE = { logout: 1, change_password: 1, set_password: 1, account_profile: 1 };
     // Other widgets that show one screen and never repeat their loop_area.
-    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1, account_email: 1 };
+    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1, account_email: 1, menu_sequence_region: 1 };
     function _swTypeInfo(type) {
         for (var i = 0; i < SW_TYPES.length; i++) if (SW_TYPES[i].type === type) return SW_TYPES[i];
         return null;
@@ -51660,7 +51798,7 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
-        } else if (newType === 'menu_region') {
+        } else if (newType === 'menu_region' || newType === 'menu_sequence_region') {
             // The site's first menu, so a new widget shows items at once.
             if (cfg.menu_name === undefined) cfg.menu_name = ((regionData && regionData.menu_regions) || [])[0] || '';
         } else if (newType === 'language_switcher') {
@@ -56093,14 +56231,9 @@ const StyleDesigner = (function () {
                                     text: _sdT('Order date'), cssClass: 'text-muted small mb-0',
                                     _bindings: { text: '__order_date' } })
                             ]),
-                            // Status badge — pre-built <span class="badge …">
-                            // from __order_status_badge; a phrasing element, so
-                            // a <p> may hold it.
-                            createNode('content', { contentType: 'paragraph',
-                                text: _sdT('Status'),
-                                cssClass: 'mb-0 fs-5',
-                                customName: _sdT('Status Badge'),
-                                _bindings: { text: '__order_status_badge' } })
+                            // Status badge: one badge per stage of the status.
+                            createNode('semantic', { tag: 'p', cssClass: 'mb-0 fs-5',
+                                customName: _sdT('Status Badge') }, _sdPartOrderStatusBadge(null))
                         ]),
 
                         // ── 2-COLUMN BODY ───────────────────────────────
@@ -56308,10 +56441,7 @@ const StyleDesigner = (function () {
                                 ]),
 
                                 // ── Order History (timeline) ───────────────
-                                // Server builds the whole <ul.pg-ov-timeline>;
-                                // bound to a <div>, not a <p>, because the token
-                                // expands to a list (block inside <p> would make
-                                // the browser close the paragraph early).
+                                // A list of the order's steps.
                                 createNode('semantic', { tag: 'div',
                                     cssClass: 'card mb-3', customName: _sdT('Order History Card'),
                                     _bindings: { eo_visible_if: 'has_timeline' } }, [
@@ -56321,8 +56451,7 @@ const StyleDesigner = (function () {
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
                                         createNode('semantic', { tag: 'div',
-                                            customName: _sdT('Timeline (HTML)'),
-                                            _bindings: { text: '__timeline' } })
+                                            customName: _sdT('Order timeline') }, _sdPartOrderTimeline())
                                     ])
                                 ]),
 
@@ -57493,6 +57622,32 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'menu_sequence_region': {
+                // The pages before and after this one in a menu: two links
+                // at either end of a row, the previous one only when a page
+                // comes before. Mirrors
+                // _render_system_widget_menu_sequence_region().
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'nav', cssClass: 'd-flex justify-content-between align-items-center gap-3 my-4', customName: _sdT('Menu Sequence'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Previous and next page') }],
+                        _bindings: { eo_visible_if: 'in_sequence' } }, [
+                        createNode('semantic', { tag: 'a', cssClass: 'btn btn-outline-secondary d-inline-flex align-items-center gap-2', href: '#', customName: _sdT('Previous'),
+                            _attrs: [{ name: 'rel', value: 'prev' }],
+                            _bindings: { href: '__previous_url', eo_visible_if: 'has_previous' } }, [
+                            createNode('semantic', { tag: 'i', cssClass: 'bi bi-arrow-left', customName: _sdT('Icon'), _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+                            createNode('semantic', { tag: 'span', text: _sdT('Previous page name'), customName: _sdT('Label'), _bindings: { text: '__previous_name' } })
+                        ]),
+                        createNode('semantic', { tag: 'a', cssClass: 'btn btn-outline-secondary d-inline-flex align-items-center gap-2 ms-auto', href: '#', customName: _sdT('Next'),
+                            _attrs: [{ name: 'rel', value: 'next' }],
+                            _bindings: { href: '__next_url' } }, [
+                            createNode('semantic', { tag: 'span', text: _sdT('Next page name'), customName: _sdT('Label'), _bindings: { text: '__next_name' } }),
+                            createNode('semantic', { tag: 'i', cssClass: 'bi bi-arrow-right', customName: _sdT('Icon'), _attrs: [{ name: 'aria-hidden', value: 'true' }] })
+                        ])
+                    ]),
+                    createNode('loop_area', {}, [])
+                ]);
+            }
+
             case 'menu_region': {
                 // One of the site's menus as a Bootstrap navbar: the loop
                 // repeats the top-level items, an item with sub-items opens
@@ -58136,7 +58291,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {

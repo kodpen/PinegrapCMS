@@ -34,6 +34,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 define('WS_NOTE_EXPORT_NAME_MAX', 80);
 
 /**
+ * The longest id a note's source is kept under (ws_note_sources.external_id),
+ * in characters.
+ */
+define('WS_NOTE_SOURCE_ID_MAX', 191);
+
+/**
  * A value as a YAML double-quoted scalar: backslashes, quotes and control
  * characters escaped, so a title with a colon or a hash reads back whole.
  *
@@ -694,7 +700,8 @@ function ws_note_import_untag($body)
  * @param int    $mtime when the file says it was last changed, 0 if unknown
  * @return array title, body, created, updated, origin (a note id, 0 if
  *               none), origin_created (the created time it was exported
- *               with), named (the title is the file's name)
+ *               with), named (the title is the file's name), source (the id
+ *               in its front matter, '' if none)
  */
 function ws_note_import_parse($text, $path, $mtime = 0)
 {
@@ -767,6 +774,7 @@ function ws_note_import_parse($text, $path, $mtime = 0)
         'origin'         => $origin,
         'origin_created' => ($origin > 0) ? ws_note_import_time($meta['created'] ?? '') : 0,
         'named'          => $named,
+        'source'         => $pick(array('id')),
     );
 }
 
@@ -1092,4 +1100,101 @@ function ws_note_import_visible($path)
 function ws_note_import_is_note($path)
 {
     return ws_note_import_visible($path) && (bool) preg_match('/\.(md|markdown|txt)$/i', (string) $path);
+}
+
+/* ---------------------------------------------------------------------------
+   Where a note came from (ws_note_sources).
+   --------------------------------------------------------------------------- */
+
+/**
+ * The id a note file is known by in the app it came from, so the same note
+ * brought in again finds the note it became. Keep: the JSON entry name in
+ * the Takeout zip. Evernote: its guid when the export carries one, else its
+ * title and the moment it was made. Markdown: the id in its front matter,
+ * else its path in the upload. A web page: its canonical address, else its
+ * file name. Control characters become spaces; an id longer than the column
+ * keeps its start and a hash of the whole.
+ *
+ * @param string $provider keep | enex | markdown | html
+ * @param array  $facts    keep: entry; enex: guid, title, created; markdown:
+ *                         id, path; html: address, name
+ * @return string '' when there is nothing to know the note by
+ */
+function ws_note_source_id($provider, $facts)
+{
+    $fact = function ($key) use ($facts) {
+        return trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string) ($facts[$key] ?? '')));
+    };
+
+    switch ((string) $provider) {
+        case 'keep':
+            $id = $fact('entry');
+            break;
+
+        case 'enex':
+            $id = $fact('guid');
+
+            if ($id === '') {
+                $created = (int) ($facts['created'] ?? 0);
+                $id = trim($fact('title') . (($created > 0) ? ' ' . gmdate('Y-m-d\TH:i:s\Z', $created) : ''));
+            }
+            break;
+
+        case 'markdown':
+            $id = $fact('id');
+            $id = ($id !== '') ? $id : $fact('path');
+            break;
+
+        case 'html':
+            $id = $fact('address');
+            $name = str_replace('\\', '/', $fact('name'));
+            $id = ($id !== '') ? $id : trim((string) substr($name, (int) strrpos('/' . $name, '/')));
+            break;
+
+        default:
+            $id = '';
+    }
+
+    if (mb_strlen($id) > WS_NOTE_SOURCE_ID_MAX) {
+        $id = mb_substr($id, 0, WS_NOTE_SOURCE_ID_MAX - 41) . '#' . sha1($id);
+    }
+
+    return $id;
+}
+
+/**
+ * What a note file held when it was brought in, to tell a file changed
+ * since from the same file again.
+ *
+ * @param string $title
+ * @param string $body
+ * @return string 40 hex characters
+ */
+function ws_note_source_hash($title, $body)
+{
+    return sha1((string) $title . "\n" . str_replace("\r\n", "\n", (string) $body));
+}
+
+/**
+ * What the import does with a file it brought in before: the same file again
+ * is "same", a changed one brings its note up to date when the person may
+ * edit it, and is a new note otherwise (also when its note is gone or no
+ * longer theirs to read).
+ *
+ * @param string $stored the hash kept with the source
+ * @param string $hash   the file's, ws_note_source_hash()
+ * @param string $access the person's on the note: owner, edit, view, '' (none)
+ * @return string same | update | new
+ */
+function ws_note_import_source_kind($stored, $hash, $access)
+{
+    if ($access === '') {
+        return 'new';
+    }
+
+    if ((string) $stored === (string) $hash) {
+        return 'same';
+    }
+
+    return in_array($access, array('owner', 'edit'), true) ? 'update' : 'new';
 }

@@ -27,7 +27,7 @@ description: Value conditions on system widget nodes (show_if): operators, how a
 ## Which tokens cannot be conditions, and why?
 - A carrier repeats the token in the rendered template, so a token a renderer looks for there would count as placed and its block would go.
 - Refused (`pg_sw_cond_denied_tokens()` and `*_html`): `__edit_url`, `__comment_edit_url`, `__empty_message`, `__variant_picker`; the catalog filter blocks (`__filter_chips`, `__filters_button`, `__filters_offcanvas`, `__clear_filters_button`); the sentinels `__page_link`, `__link_label` and their `_N` forms. A new `strpos()` of a token in a rendered template adds it here.
-- A renderer that looks in the saved tree (order view: legal links, `__withdrawal_deadline`, `__return_form`, `__returns`, `__not_found_message`; cart `has_items`; account `not_logged_in`) reads it through `pg_sw_cond_tree_json()`, which drops every `show_if`, so those tokens stay allowed. A new check of that kind uses it too; the calendar's detail probe reads the raw tree on purpose, so a condition on `__event_location` loads it.
+- A renderer that looks in the saved tree (`pg_sw_placed()`, [[widget-default-parts]]; order view `__not_found_message`; cart `has_items`; account `not_logged_in`) reads it through `pg_sw_cond_tree_json()`, which drops every `show_if`, so those tokens stay allowed. A new check of that kind uses it too; the calendar's detail probe reads the raw tree on purpose, so a condition on `__event_location` loads it.
 - A plain list: `tools/check_bindings.php` reads quoted `'__token' =>` keys in `includes/fn/widgets*.php` as filled tokens.
 
 ## What happens when a condition is invalid?

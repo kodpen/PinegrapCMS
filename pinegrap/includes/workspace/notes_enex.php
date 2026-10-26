@@ -934,9 +934,10 @@ function ws_note_enex_tidy($lines)
 
 /**
  * The Markdown file a note becomes: title, dates and tags in the front
- * matter, as an export of ours writes them, then the text.
+ * matter, as an export of ours writes them, and the id the note is known by
+ * in the app it came from (ws_note_source_id()), then the text.
  *
- * @param array  $note title, created, updated, tags
+ * @param array  $note title, created, updated, tags, id (optional)
  * @param string $body
  * @return string
  */
@@ -952,6 +953,10 @@ function ws_note_enex_file($note, $body)
         if ((int) ($note[$key] ?? 0) > 0) {
             $front[] = $key . ': ' . gmdate('Y-m-d\TH:i:s\Z', (int) $note[$key]);
         }
+    }
+
+    if (trim((string) ($note['id'] ?? '')) !== '') {
+        $front[] = 'id: ' . ws_note_export_yaml(trim((string) $note['id']));
     }
 
     $tags = array_values(array_filter(array_map('trim', (array) ($note['tags'] ?? array())), 'strlen'));
@@ -1091,7 +1096,7 @@ function ws_note_enex_read($path, &$context)
         }
 
         if (($name === 'note') && ($parent === 'en-export')) {
-            $note = array('title' => '', 'created' => 0, 'updated' => 0, 'tags' => array(), 'content' => '', 'long' => false, 'files' => array(), 'tasks' => array());
+            $note = array('title' => '', 'guid' => '', 'created' => 0, 'updated' => 0, 'tags' => array(), 'content' => '', 'long' => false, 'files' => array(), 'tasks' => array());
         } elseif (($name === 'resource') && ($parent === 'note') && ($note !== null)) {
             // The limit ws_note_enex_add() applies at </note> (this note's
             // row and this file counted), checked before a file is opened, so
@@ -1183,6 +1188,8 @@ function ws_note_enex_read($path, &$context)
                 $note[$name] = ws_note_enex_time($value);
             } elseif (($name === 'tag') && ($value !== '')) {
                 $note['tags'][] = mb_substr($value, 0, 100);
+            } elseif ($name === 'guid') {
+                $note['guid'] = mb_substr($value, 0, 100);
             }
         }
 
@@ -1353,6 +1360,7 @@ function ws_note_enex_add($note, &$context)
         $body = rtrim($body . "\n\n" . implode("\n", $rest));
     }
 
+    $note['id'] = ws_note_source_id('enex', $note);
     $text = ws_note_enex_file($note, $body);
     $file_number = $context['next']++;
 
