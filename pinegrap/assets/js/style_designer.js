@@ -900,6 +900,7 @@ const StyleDesigner = (function () {
                                 // Never on a template's placeholder (below).
                                 if (mcfg && !_swIsTemplatePlaceholder(parsed)) {
                                     _sdDefaultLoopTails(parsed, _swKindOf(mcfg), mcfg);
+                                    _sdDefaultLeads(parsed, _swKindOf(mcfg), mcfg);
                                     _sdDefaultTails(parsed, _swKindOf(mcfg), mcfg);
                                 }
                             }
@@ -12212,6 +12213,10 @@ const StyleDesigner = (function () {
         'product.attributes': [
             { __attr_name: _sdT('Size'), __attr_value: 'M' }
         ],
+        'catalog.crumbs': [
+            { __crumb_label: _sdT('Example group'), __crumb_url: '#', __crumb_kind: 'link' },
+            { __crumb_label: _sdT('Example product'), __crumb_url: '', __crumb_kind: 'active' }
+        ],
         'security.passkeys': [
             { __passkey_id: '2', __passkey_name: _sdT('My laptop'), __passkey_last_used: _sdT('Never'), __passkey_is_synced: '' }
         ]
@@ -12991,7 +12996,7 @@ const StyleDesigner = (function () {
                 innerEl.appendChild(dz);
             }
             // Section-binding placeholder — when a semantic node is bound to
-            // a system widget section (breadcrumb, group_tree, filter_chips,
+            // a system widget section (group_tree, filter_chips,
             // filters_offcanvas …), show a friendly hint in the canvas so
             // the designer sees what content the backend will inject at
             // render time. Hint is canvas-only — never saved or sent to
@@ -13004,7 +13009,6 @@ const StyleDesigner = (function () {
             if (node.type === 'semantic'
                 && node.props && node.props._bindings && node.props._bindings.section) {
                 var _sectionLabels = {
-                    breadcrumb:        _sdT('Breadcrumb (category path — filled in by the backend)'),
                     group_tree:        _sdT('Category Tree (nested list — filled by the backend)'),
                     filter_chips:      _sdT('Active Filter Chips (filled in by the backend)'),
                     filters_offcanvas: _sdT('Filter Offcanvas (filled in by the backend — Bootstrap offcanvas)'),
@@ -22378,6 +22382,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Images of the product'), type: 'loop_area', icon: 'bi-images', extra: { listSource: 'product.images' } },
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
+                { label: _sdT('Crumbs of the catalog path'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'catalog.crumbs' } },
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
                 { label: _sdT('Days of the week'), type: 'loop_area', icon: 'bi-calendar-week', extra: { listSource: 'calendar.weekdays' } },
                 { label: _sdT('Days of the calendar'), type: 'loop_area', icon: 'bi-calendar-day', extra: { listSource: 'calendar.days' } },
@@ -32459,6 +32464,7 @@ const StyleDesigner = (function () {
             'product.images':     _sdT('One row for every image of the product, its main image first. Bind a picture to "Image address" in Bind Data. A variant picked on the page does not change the list.'),
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
+            'catalog.crumbs':     _sdT('One row for every crumb of the path to what the page shows: the catalog, its groups, then the group or product itself. A condition on "Kind of crumb" draws a link, words, or where the visitor is.'),
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
             'calendar.weeks':     _sdT('One row for every week the monthly or weekly view shows. Put a list of the days of the calendar inside the row: it lists that week\'s days.'),
             'calendar.days':      _sdT('One row for every day: inside a list of weeks that week\'s days, else every day the view shows. Days of the next or previous month hold no events; a condition on "Day of another month" or "Today" styles them.'),
@@ -37550,7 +37556,7 @@ const StyleDesigner = (function () {
     ];
     var SW_ATTR_MARKUP = [
         '__description', '__details', '__out_of_stock_message', '__price_formatted', '__price_block_html',
-        '__price_range', '__breadcrumb_html', '__breadcrumb_inner_html', '__cross_sell_html', '__variant_picker',
+        '__price_range', '__cross_sell_html', '__variant_picker',
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
@@ -37988,7 +37994,8 @@ const StyleDesigner = (function () {
         { label: _sdT('Drill-down / Page'), tokens: [
             ['__active_cat_id',   _sdT('Active category ID')],
             ['__active_cat_name', _sdT('Active category name')],
-            ['__has_children',    _sdT('Whether there is a subgroup (0/1)')]
+            ['__has_children',    _sdT('Whether there is a subgroup (0/1)')],
+            ['__has_breadcrumb',  _sdT('Whether a breadcrumb is drawn (1 or empty)')]
         ]},
         // Legacy HTML tokens — kept for backward compatibility with widgets
         // built before the section-binding system. New designs should use
@@ -37996,7 +38003,6 @@ const StyleDesigner = (function () {
         // instead — designer's wrapper is preserved and only the inner
         // markup comes from the backend.
         { label: _sdT('Old HTML Tokens (legacy)'), tokens: [
-            ['__breadcrumb_html',        _sdT('Breadcrumb HTML (legacy — use the section binding)')],
             ['__group_tree_html',        _sdT('Category tree HTML (old — use a section binding)')],
             ['__filters_button',         _sdT('Filters button (old — use the open_filters action)')],
             ['__filters_offcanvas',      _sdT('Filter offcanvas (legacy — use the section binding)')],
@@ -38187,8 +38193,7 @@ const StyleDesigner = (function () {
             ['__cross_sell_html', _sdT('Frequently bought together (HTML — a row of cards)')]
         ]},
         { label: _sdT('Breadcrumb / Page Path'), tokens: [
-            ['__breadcrumb_html',       _sdT('Breadcrumb (HTML — Catalog → Group → Product)')],
-            ['__breadcrumb_inner_html', _sdT('Breadcrumb inner HTML (only <ol> — for a section binding)')]
+            ['__has_breadcrumb', _sdT('Whether a breadcrumb is drawn (1 or empty)')]
         ]}
     ];
 
@@ -39443,6 +39448,20 @@ const StyleDesigner = (function () {
         // A list of recent comments is a comments widget on the server.
         comments_recent: {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
+        },
+        // A section binding and a content type are read as the tokens
+        // 'section:<name>' and 'content:<type>' (_sdPartTokenOf()).
+        catalog_listing: {
+            '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); },
+            '__breadcrumb_inner_html': function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'section:breadcrumb':      function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); }
+        },
+        catalog_item_view: {
+            '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); },
+            '__breadcrumb_inner_html': function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'section:breadcrumb':      function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); }
         }
     };
 
@@ -39452,6 +39471,23 @@ const StyleDesigner = (function () {
         var parts = SW_DEFAULT_PARTS[kind];
         if (!parts || !node || typeof node !== 'object') return false;
         var token = _sdPartTokenOf(node, Object.keys(parts));
+        if (token.indexOf('content:') === 0) {
+            // The content node stood for the whole block: the part takes
+            // its place, the node's id kept.
+            var built = parts[token](cfg || null)[0];
+            node.type = built.type;
+            node.props = built.props;
+            node.children = built.children;
+            return true;
+        }
+        if (token.indexOf('section:') === 0) {
+            // The bound element keeps its tag, classes and attributes; the
+            // part replaces what it held.
+            delete node.props._bindings.section;
+            if (!Object.keys(node.props._bindings).length) delete node.props._bindings;
+            node.children = parts[token](cfg || null);
+            return true;
+        }
         if (token) {
             _sdPartHost(node);
             node.children = parts[token](cfg || null).concat(node.children || []);
@@ -39465,11 +39501,16 @@ const StyleDesigner = (function () {
     }
 
     // The token of `tokens` that `node` draws: its text binding, or a text
-    // that is the token alone (^^token^^). '' for none.
+    // that is the token alone (^^token^^); its section binding as
+    // 'section:<name>', a content node as 'content:<type>'. '' for none.
     function _sdPartTokenOf(node, tokens) {
         var p = node.props || {};
+        if (p._bindings && typeof p._bindings.section === 'string' && tokens.indexOf('section:' + p._bindings.section) !== -1) return 'section:' + p._bindings.section;
+        if (node.type === 'content' && typeof p.contentType === 'string' && tokens.indexOf('content:' + p.contentType) !== -1) return 'content:' + p.contentType;
         if (p._bindings && tokens.indexOf(p._bindings.text) !== -1) return p._bindings.text;
-        var m = (typeof p.text === 'string') ? /^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/.exec(p.text) : null;
+        // A custom HTML node holding the token alone counts as its text.
+        var text = (p.contentType === 'custom_html') ? p.html : p.text;
+        var m = (typeof text === 'string') ? /^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/.exec(text) : null;
         return (m && tokens.indexOf(m[1]) !== -1) ? m[1] : '';
     }
 
@@ -39492,7 +39533,7 @@ const StyleDesigner = (function () {
             if (p.lead && ct === 'paragraph') cls.push('lead');
             if (p.align) cls.push('text-' + p.align);
             if (p.cssClass) cls.push(p.cssClass);
-            delete p.contentType; delete p.lead; delete p.align;
+            delete p.contentType; delete p.lead; delete p.align; delete p.html;
             p.tag = tag;
             p.cssClass = cls.join(' ');
             node.type = 'semantic';
@@ -39607,6 +39648,78 @@ const StyleDesigner = (function () {
         p.html = svg;
         p.customName = filled ? _sdT('Filled star') : _sdT('Empty star');
         return createNode('content', p, []);
+    }
+
+    // The crumbs of the catalog path (pg_sw_part_catalog_crumbs()): an
+    // ol.breadcrumb of one item per crumb (catalog.crumbs), a link, words,
+    // or where the visitor is, by the crumb's kind; drawn only when the
+    // widget draws a path, unless `when` is false (the nav around it asks).
+    /* @pg-site-output */
+    function _sdPartCatalogCrumbs(when) {
+        var crumb = function (tag, cls, name, kind, props) {
+            var p = props || {};
+            p.text = '';
+            p._bindings = p._bindings || {};
+            p._bindings.text = '__crumb_label';
+            p._bindings.show_if = '__crumb_kind';
+            p._bindParams = { show_if: { op: 'eq', value: kind } };
+            return _sdPartEl(tag, cls, name, p);
+        };
+        return [_sdPartEl('ol', 'breadcrumb mb-0', _sdT('Breadcrumb List'), when ? _sdPartWhen('__has_breadcrumb', 'not_empty') : {}, [
+            createNode('loop_area', { source: 'catalog.crumbs' }, [
+                _sdPartEl('li', 'breadcrumb-item', _sdT('Crumb'), {}, [
+                    crumb('a', '', _sdT('Link'), 'link', { href: '#', _bindings: { href: '__crumb_url' } }),
+                    crumb('span', 'active', _sdT('Where the visitor is'), 'active'),
+                    crumb('span', '', _sdT('Words'), 'text')
+                ])
+            ])
+        ])];
+    }
+
+    // A catalog widget's breadcrumb (pg_sw_part_catalog_breadcrumb()): a nav
+    // of `cls` said as "breadcrumb" around the crumbs.
+    /* @pg-site-output */
+    function _sdPartCatalogBreadcrumb(cls) {
+        var p = _sdPartWhen('__has_breadcrumb', 'not_empty');
+        p._attrs = [{ name: 'aria-label', value: 'breadcrumb' }];
+        return [_sdPartEl('nav', cls, _sdT('Breadcrumb'), p, _sdPartCatalogCrumbs(false))];
+    }
+
+    // The blocks the server put before the main loop of a widget whose
+    // layout placed none of their tokens, now parts added just before the
+    // main loop once (pg_sw_default_lead_parts()): kind => [tokens that
+    // place it, part].
+    var SW_DEFAULT_LEADS = {
+        catalog_listing: [
+            [['__breadcrumb_html', '__breadcrumb_inner_html', 'catalog.crumbs'], function () { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); }]
+        ]
+    };
+
+    // Puts `nodes` just before the main loop under `node`
+    // (pg_sw_insert_before_main_loop()). Returns whether there was one.
+    function _sdInsertBeforeMainLoop(node, nodes) {
+        if (!node || typeof node !== 'object' || _sdListIsSourced(node) || !node.children) return false;
+        for (var i = 0; i < node.children.length; i++) {
+            var c = node.children[i];
+            if (c && c.type === 'loop_area' && !_sdListIsSourced(c)) {
+                Array.prototype.splice.apply(node.children, [i, 0].concat(nodes));
+                return true;
+            }
+            if (_sdInsertBeforeMainLoop(c, nodes)) return true;
+        }
+        return false;
+    }
+
+    // Adds before the main loop of `tree` each lead block of `kind` it does
+    // not place. Returns whether anything was added.
+    function _sdDefaultLeads(tree, kind, cfg) {
+        var leads = SW_DEFAULT_LEADS[kind];
+        if (!leads || !tree || typeof tree !== 'object') return false;
+        var added = false;
+        leads.forEach(function (l) {
+            if (!_sdPartPlaced(tree, l[0]) && _sdInsertBeforeMainLoop(tree, l[1](cfg || null))) added = true;
+        });
+        return added;
     }
 
     var SW_DEFAULT_TAILS = {
@@ -42636,7 +42749,6 @@ const StyleDesigner = (function () {
             var _curSection = (n.props._bindings && n.props._bindings.section) || '';
             var _sectionOpts = [['', _sdT('None')]];
             if (_semSwRegion === 'catalog_listing') {
-                _sectionOpts.push(['breadcrumb',        _sdT('Breadcrumb (category path)')]);
                 _sectionOpts.push(['group_tree',        _sdT('Category Tree (nested list)')]);
                 _sectionOpts.push(['filter_chips',      _sdT('Active Filter Chips')]);
                 _sectionOpts.push(['filters_offcanvas', _sdT('Filter Offcanvas')]);
@@ -42650,7 +42762,6 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['quick_add',         _sdT('Quick Add Box (its own form)')]);
                 _sectionOpts.push(['pending_offers',    _sdT('Campaign Gifts (with an Add button — its own form)')]);
             } else if (_semSwRegion === 'catalog_item_view') {
-                _sectionOpts.push(['breadcrumb',        _sdT('Breadcrumb (Catalog → Group → Product)')]);
                 _sectionOpts.push(['recipient_picker',  _sdT('Recipient Picker (hidden on a product that is not shipped)')]);
             } else if (_semSwRegion === 'custom_form') {
                 // Site-wide CAPTCHA (Settings → CAPTCHA). Absent for a signed-in
@@ -53983,6 +54094,18 @@ const StyleDesigner = (function () {
                 ['__related_original_price',    _sdT('Price before the discount')]
             ]
         },
+        // The crumbs of the catalog path (pg_sw_list_crumb_sources()): the
+        // page's, so a list of them stands anywhere in either widget.
+        'catalog.crumbs': {
+            label: _sdT('Crumbs of the catalog path'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view', 'catalog_listing'],
+            rows: [
+                ['__crumb_label', _sdT('Crumb')],
+                ['__crumb_url',   _sdT('Crumb address')],
+                ['__crumb_kind',  _sdT('Kind of crumb (link, text, active)')]
+            ]
+        },
         // The calendar grid sources (pg_sw_list_calendar_sources()): the
         // monthly and weekly views' heads, weeks, days and a day's events;
         // none takes a field.
@@ -54221,6 +54344,9 @@ const StyleDesigner = (function () {
         __related_image_url: '',
         __related_price: '99.90',
         __related_original_price: '',
+        __crumb_label:   _sdT('Main Catalog'),
+        __crumb_url:     '#',
+        __crumb_kind:    'link',
         __weekday_name:  _sdT('Monday'),
         __weekday_short: _sdT('Mon'),
         __week_key:      '1',
@@ -54373,6 +54499,7 @@ const StyleDesigner = (function () {
     function _sdListStarter(source) {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
+        if (source === 'catalog.crumbs') return _sdPartCatalogCrumbs(false)[0];
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source === 'menu.children') {
@@ -54681,10 +54808,11 @@ const StyleDesigner = (function () {
         return (kind === 'submitted_forms_list' || kind === 'form_list' || kind === 'blog_list') ? 'form_list_view' : kind;
     }
 
-    // Whether a list in a widget of `kind` must sit in the main loop: in a
-    // list of records only the record template fills it.
-    function _sdListNeedsMainLoop(kind) {
-        return kind === 'form_list_view' || kind === 'catalog_listing';
+    // Whether a list of `source` in a widget of `kind` must sit in the main
+    // loop: in a list of records only the record template fills it. The
+    // crumbs are the page's, filled anywhere.
+    function _sdListNeedsMainLoop(kind, source) {
+        return (kind === 'form_list_view' || kind === 'catalog_listing') && source !== 'catalog.crumbs';
     }
 
     // Whether `node` is the widget's main loop or inside it.
@@ -54731,7 +54859,7 @@ const StyleDesigner = (function () {
         var kind = _sdListWidgetKind(sid);
         if (!kind) return false;
         if (_sdKindLists(kind).indexOf(source) === -1 && !(list && _isInsideSystemWidget(list) === sid)) return false;
-        if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(target)) return false;
+        if (_sdListNeedsMainLoop(kind, source) && !_sdInMainLoopAt(target)) return false;
         // The calendar's grid lists read the calendar, not an event: never
         // in the event loop.
         if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
@@ -54823,7 +54951,7 @@ const StyleDesigner = (function () {
         }
         var kind = _sdListWidgetKind(_isInsideSystemWidget(node));
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
-        if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
+        if (_sdListNeedsMainLoop(kind, spec.source) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
         if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(node) && !_sdOrderItemListKey(spec.source)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
         if (_sdOrderListKeyless(spec.source, node)) {
@@ -56295,13 +56423,9 @@ const StyleDesigner = (function () {
                 // py-4, as for the form list: room under the pagination.
                 return createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [
-                        // Breadcrumb — semantic <nav> bound to section=breadcrumb.
-                        // Backend keeps the wrapper, replaces children with the
-                        // breadcrumb HTML at render time. Designer can re-style
-                        // the wrapper freely.
-                        createNode('semantic', { tag: 'nav', cssClass: 'pg-sw-breadcrumb mb-3',
-                            customName: 'Breadcrumb',
-                            _bindings: { section: 'breadcrumb' } }),
+                        // Breadcrumb — a nav around the crumbs of the catalog
+                        // path (catalog.crumbs), each element designable.
+                        _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3')[0],
                         // Toolbar — Filters button + search form + Clear.
                         // Each piece is a real component bound to its action /
                         // value so the designer can re-style them individually.
@@ -56647,14 +56771,10 @@ const StyleDesigner = (function () {
                     ])
                 ]);
                 var loopArea = createNode('loop_area', {}, []);
-                // Breadcrumb at the top — designer can move/style/remove.
-                // Backend (catalog_item_view render) substitutes the
-                // <!--pg-breadcrumb-placeholder--> marker with the live
-                // "Ana Katalog → Group → Subgroup → Product" trail.
-                var breadcrumbNode = createNode('content', {
-                    contentType: 'breadcrumb',
-                    cssClass: 'mb-3'
-                });
+                // Breadcrumb at the top — designer can move/style/remove:
+                // "Main Catalog → Group → Subgroup → Product", drawn by the
+                // catalog.crumbs list.
+                var breadcrumbNode = _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3')[0];
                 return createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [breadcrumbNode, starterRow, tabsSection, loopArea])
                 ]);
