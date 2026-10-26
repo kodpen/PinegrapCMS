@@ -62,7 +62,8 @@
 
     // The declarations of a style list with their offsets. Semicolons and
     // colons inside brackets or quotes (a data: URL, a font name) belong to
-    // the value; while a bracket is still open ("var(--bs-bor"), brackets
+    // the value, and a new line ends a declaration too (the custom style
+    // field holds one per line); while a bracket is still open ("var(--bs-bor"), brackets
     // are not counted, or the declarations after it would join the value.
     function splitDecls(text, brackets) {
         if (brackets === undefined) brackets = true;
@@ -78,7 +79,7 @@
             else if (brackets && ch === '(') depth++;
             else if (brackets && ch === ')') { if (depth) depth--; }
             else if (depth === 0 && ch === ':' && colon < 0) colon = i;
-            else if (depth === 0 && ch === ';') { out.push({ start: start, end: i, colon: colon }); start = i + 1; colon = -1; }
+            else if (depth === 0 && (ch === ';' || ch === '\n')) { out.push({ start: start, end: i, colon: colon }); start = i + 1; colon = -1; }
         }
         if (brackets && depth > 0) return splitDecls(text, false);
         out.push({ start: start, end: text.length, colon: colon });
