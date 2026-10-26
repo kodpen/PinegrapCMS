@@ -8,12 +8,13 @@
  * light suggestion dropdown under a panel input. The designer page itself
  * carries only this file.
  *
- *   PgStyleSuggest.configure({ predictor: url, vocab: url });
+ *   PgStyleSuggest.configure({ predictor: url, vocab: url, complete: url });
  *   PgStyleSuggest.load(function (p) { ... });   // p is null on failure
  *   PgStyleSuggest.get();                         // the predictor or null
  *   PgStyleSuggest.elementContext(el, opts);      // { tag, classes, attrs, parents }
  *   PgStyleSuggest.designClasses(lists);          // { name: count }
  *   PgStyleSuggest.dropdown(input, opts);         // the light dropdown
+ *   PgStyleSuggest.installCode(PgCodeEditor, opts); // code editor completion
  *
  * window.PgStyleSuggest in a browser; module.exports under Node (the pure
  * helpers only need plain objects there). Plain ES5.
@@ -27,7 +28,7 @@
 (function (root) {
     'use strict';
 
-    var urls = { predictor: '', vocab: '' };
+    var urls = { predictor: '', vocab: '', complete: '' };
     var state = 'idle';     // idle | loading | ready | failed
     var predictor = null;
     var waiting = [];
@@ -36,6 +37,7 @@
         opts = opts || {};
         if (opts.predictor) urls.predictor = String(opts.predictor);
         if (opts.vocab) urls.vocab = String(opts.vocab);
+        if (opts.complete) urls.complete = String(opts.complete);
     }
 
     function settle(p) {
@@ -60,6 +62,15 @@
         state = 'loading';
         var doc = root.document;
         if (!doc || !urls.vocab || typeof root.fetch !== 'function') { settle(null); return; }
+
+        // The code editor's sources (pg_style_complete.js) come with the
+        // predictor; without them the editors keep the engine's own list.
+        if (urls.complete && !root.PgStyleComplete) {
+            var c = doc.createElement('script');
+            c.src = urls.complete;
+            c.async = true;
+            doc.head.appendChild(c);
+        }
 
         var vocab = null, script = !!root.PgStylePredict, failed = false;
         var done = function () {
@@ -227,8 +238,30 @@
         return input._pgSuggestBound;
     }
 
+    // Registers the smart completion with the code editor facade: attribute
+    // names and values in HTML, values and var(--…) tokens in CSS, and the
+    // rankers that order the engine's own attributes, properties and
+    // keywords by the element's context. Each delegate answers nothing
+    // (and starts the load) until the predictor and pg_style_complete.js
+    // are there. opts.design(state) gives the design's part of the context.
+    function installCode(editor, opts) {
+        if (!editor || typeof editor.addCompletionSource !== 'function') return;
+        var call = function (name, none) {
+            return function (a, b, c) {
+                var C = root.PgStyleComplete;
+                if (!predictor || !C) { load(); return none; }
+                return C[name](predictor, opts || {}, a, b, c);
+            };
+        };
+        editor.addCompletionSource('html', call('html', null));
+        editor.addCompletionSource('css', call('css', null));
+        editor.addCompletionRanker('html', call('htmlRank', 0));
+        editor.addCompletionRanker('css', call('cssRank', 0));
+    }
+
     var api = {
         configure: configure,
+        installCode: installCode,
         load: load,
         get: get,
         elementContext: elementContext,

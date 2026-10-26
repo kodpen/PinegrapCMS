@@ -566,7 +566,7 @@ function pg_designer_screen_render($ctx)
         <!-- Smart completion: the predictor and the Bootstrap vocabulary are
              fetched the first time a class input or the code view asks. -->
         <script src="assets/js/pg_style_suggest.js?v=' . pg_designer_asset_stamp('assets/js/pg_style_suggest.js') . '"></script>
-        <script>PgStyleSuggest.configure({ predictor: "assets/js/pg_style_predict.js?v=' . h(pg_designer_asset_stamp('assets/js/pg_style_predict.js')) . '", vocab: "assets/js/designer_vocab/bootstrap5.json?v=' . h(pg_designer_asset_stamp('assets/js/designer_vocab/bootstrap5.json')) . '" });</script>
+        <script>PgStyleSuggest.configure({ predictor: "assets/js/pg_style_predict.js?v=' . h(pg_designer_asset_stamp('assets/js/pg_style_predict.js')) . '", vocab: "assets/js/designer_vocab/bootstrap5.json?v=' . h(pg_designer_asset_stamp('assets/js/designer_vocab/bootstrap5.json')) . '", complete: "assets/js/pg_style_complete.js?v=' . h(pg_designer_asset_stamp('assets/js/pg_style_complete.js')) . '" });</script>
         <!-- The code editor facade is small; its engine (the CodeMirror 6
              bundle) is fetched the first time a code view opens, so the
              designer page does not carry it on every load. -->

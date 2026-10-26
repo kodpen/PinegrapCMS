@@ -199,3 +199,36 @@ function test_style_suggest_class_hint()
 		'none' => '',
 	), $r);
 }
+
+// The code editor delegates: two sources and two rankers registered; they
+// answer nothing and start the load until the predictor and the completion
+// module are there, then pass the predictor and the options on. The module
+// is fetched with the predictor.
+function test_style_suggest_install_code()
+{
+	$prelude = 'var log = [];'
+		. 'global.window = { document: { head: { appendChild: function (s) { log.push("script " + s.src);'
+		. '  if (s.src === "c.js") { global.window.PgStyleComplete = { html: function (P, o, c, s) { return [P.v, o.design(), c, s]; }, css: function () { return "css"; }, htmlRank: function () { return 3; }, cssRank: function () { return 4; } }; return; }'
+		. '  setTimeout(function () { global.window.PgStylePredict = { create: function (v) { return { v: v.version }; } }; s.onload(); }, 5); } },'
+		. '  createElement: function () { return {}; } },'
+		. '  fetch: function (u) { log.push("fetch " + u); return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ version: "5.3.8" }); } }); } };';
+
+	$r = style_suggest_test_run(
+		'S.configure({ predictor: "p.js", vocab: "v.json", complete: "c.js" });'
+		. 'var reg = { html: [], css: [], rank: {} };'
+		. 'S.installCode({ addCompletionSource: function (l, f) { reg[l].push(f); }, addCompletionRanker: function (l, f) { reg.rank[l] = f; } }, { design: function () { return "d"; } });'
+		. 'var before = [reg.html[0]("ctx", "syn"), reg.rank.css("o")];'
+		. 'setTimeout(function () { console.log(JSON.stringify({ before: before, log: log, html: reg.html[0]("ctx", "syn"), css: reg.css[0](), ranks: [reg.rank.html(), reg.rank.css()] })); }, 30);',
+		$prelude
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(array(null, 0), $r['before'], 'nothing before the load');
+	pg_assert_same(array('script c.js', 'script p.js', 'fetch v.json'), $r['log'], 'the module comes with the predictor');
+	pg_assert_same(array('5.3.8', 'd', 'ctx', 'syn'), $r['html']);
+	pg_assert_same('css', $r['css']);
+	pg_assert_same(array(3, 4), $r['ranks']);
+}
