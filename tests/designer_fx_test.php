@@ -219,3 +219,71 @@ function test_designer_fx_script_reads_the_page()
 	pg_assert_same(array(0, 175, 70), $got["_parallax"], "parallax offsets");
 	pg_assert_same(null, $got['_unknown'], 'an unknown effect is not read');
 }
+
+// The Interactions section: offered where the page writes the attributes,
+// its rows follow the effect and the trigger, a field change keeps the
+// rest and drops what no longer applies, and the panel wires it up.
+function test_designer_fx_panel()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$twins = strpos($js, '    // The lists are first-is-default');
+	$twins_end = strpos($js, '    // The id, the title and tooltip, the interaction');
+	$panel = strpos($js, '    var _SD_FX_CONTENT');
+	$panel_end = strpos($js, "    // The Interactions section's fields write");
+	pg_assert_true($twins !== false && $twins_end !== false && $panel !== false && $panel_end !== false, 'the panel code is found');
+
+	$script = 'function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }'
+		. 'function _sdT(s) { return s; }'
+		. 'function row(l, c) { return "<row " + l + ">" + c + "</row>"; }'
+		. 'function sect(i, t, b) { return "<sect " + t + ">" + b + "</sect>"; }'
+		. 'function swAttr(a, on) { return "<sw " + a + (on ? " on" : "") + ">"; }'
+		. substr($js, $twins, $twins_end - $twins) . substr($js, $panel, $panel_end - $panel)
+		. 'function rows(h) { return (h.match(/<row [^>]+>/g) || []).map(function (r) { return r.slice(5, -1); }); }'
+		. 'var c = function (t, p) { return { type: t, props: p }; };'
+		. 'var out = {'
+		. ' takes: [c("content", { contentType: "heading" }), c("content", { contentType: "custom_html" }), c("semantic", {}), c("row", {}), c("component", {}), c("shared_ref", {})].map(_sdFxTakes),'
+		. ' none: rows(propsInteractions(c("semantic", {}))),'
+		. ' slide: rows(propsInteractions(c("semantic", { _fx: { effect: "slide-up", trigger: "view" } }))),'
+		. ' hover: rows(propsInteractions(c("semantic", { _fx: { effect: "fade", trigger: "hover" } }))),'
+		. ' sticky: rows(propsInteractions(c("semantic", { _fx: { effect: "sticky", offset: 8 } }))),'
+		. ' parallax: rows(propsInteractions(c("semantic", { _fx: { effect: "parallax" } }))),'
+		. ' other: propsInteractions(c("component", { _fx: { effect: "fade" } })),'
+		. ' slideHtml: propsInteractions(c("semantic", { _fx: { effect: "slide-left", trigger: "hover" } })),'
+		. ' set: ['
+		. '  _sdFxSet(null, "effect", "fade"),'
+		. '  _sdFxSet({ effect: "fade", duration: 900 }, "effect", "slide-up"),'
+		. '  _sdFxSet({ effect: "slide-up", stagger: 80, repeat: true }, "trigger", "hover"),'
+		. '  _sdFxSet({ effect: "fade", delay: 100 }, "effect", "sticky"),'
+		. '  _sdFxSet({ effect: "fade" }, "effect", ""),'
+		. '  _sdFxSet({ effect: "fade" }, "duration", "99999"),'
+		. '  _sdFxSet({ effect: "fade" }, "repeat", true)'
+		. ' ]'
+		. '};'
+		. 'console.log(JSON.stringify(out));';
+	$got = _test_fx_node($script);
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, false, true, true, false, false), $got['takes'], 'where the section is offered');
+	pg_assert_same(array('Effect'), $got['none'], 'no interaction: the effect alone');
+	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing', 'Distance', 'Stagger children', 'Every time'), $got['slide'], 'a slide that enters on view');
+	pg_assert_same(array('Effect', 'Trigger', 'Duration', 'Delay', 'Easing'), $got['hover'], 'a hover fade');
+	pg_assert_same(array('Effect', 'Top offset'), $got['sticky']);
+	pg_assert_same(array('Effect', 'Speed'), $got['parallax']);
+	pg_assert_same('', $got['other'], 'not on a component');
+	pg_assert_contains('data-fx="distance" min="0" max="400" step="1" value="" placeholder="6"', $got['slideHtml'], 'the script\'s own distance as the placeholder');
+	pg_assert_contains('<option value="slide-left" selected>Slide left</option>', $got['slideHtml']);
+
+	pg_assert_same(pg_fx_normalize(array('effect' => 'fade')), $got['set'][0], 'a new effect with the defaults');
+	pg_assert_same(900, $got['set'][1]['duration'], 'switching the effect keeps the timing');
+	pg_assert_same(pg_fx_normalize(array('effect' => 'slide-up', 'trigger' => 'hover')), $got['set'][2], 'hover drops stagger and repeat');
+	pg_assert_same(array('effect' => 'sticky', 'offset' => 0), $got['set'][3]);
+	pg_assert_same(null, $got['set'][4], 'cleared');
+	pg_assert_same(5000, $got['set'][5]['duration'], 'clamped');
+	pg_assert_same(true, $got['set'][6]['repeat']);
+
+	pg_assert_contains("optHtml += propsInteractions(selectedNode);", $js, 'the panel shows the section');
+	pg_assert_contains("_sdFxBind(selectedNode);", $js, 'and binds it');
+	pg_assert_contains("if (_sdCodeSetFxAttr(node, name, now)) return;", $js, 'the code view hands the attributes back');
+}

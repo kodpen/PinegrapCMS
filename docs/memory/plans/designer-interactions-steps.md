@@ -15,7 +15,7 @@ description: Plan (designer session): interaction builder for designer nodes cut
 - Each step updates `designer/designer-interactions.md`.
 
 ## What remains?
-- I1 done (#1922); I2 in progress; then I3, I4 in order; each waits for the previous merge.
+- I1 done (#1922), I2 done (#1961); then I3, I4 in order; each waits for the previous merge.
 
 ## Where to start?
 - `includes/fn/designer_fx.php`, `assets/js/pg_fx.src.js`, `_sdFxAttrs()` beside `_sdNodeExtraAttrs()` in `assets/js/style_designer.js`, `tests/designer_fx_test.php`.

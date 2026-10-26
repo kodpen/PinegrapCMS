@@ -9,6 +9,9 @@ description: Interactions of designer nodes: props._fx, the data-pg-fx-* attribu
 ## What does the page write?
 - `pg_fx_attrs()` / `_sdFxAttrs()`: `data-pg-fx="<effect>"`, `data-pg-fx-trigger`, then only values that differ from the defaults (duration 600, delay 0, easing ease-out, stagger 0, distance 0 = the script's own, offset 0, speed 20), then `data-pg-fx-repeat`. Written by `_render_extra_attrs(..., true)` after the title, so on content, semantic and grid nodes only; a `data-pg-fx*` entry typed into the Attributes panel is left out on a node that has an interaction.
 
+## Where does the operator set it?
+- In the Interactions section of the properties panel: `designer/designer-interactions-panel.md`.
+
 ## How does the page get the script?
 - `pg_fx_inject()` in `get_page_content.php` (not in an e-mail), once everything is drawn in, for a page matching `pg_fx_pattern()`: a `<style id="pg-fx-css">` before `</head>` and the `pg_fx.min.js` bundle (`pg_js_bundle_urls()`, sources in src mode) before the last `</body>`. The Preview's `_SD_PAGE_SCRIPTS` row uses the same expression.
 - The head style hides load/view nodes until the script adds `pg-fx-armed`, only under `prefers-reduced-motion: no-preference` and `scripting: enabled`; a 3 s `pg-fx-failsafe` animation shows them if the script never runs. It also makes sticky nodes `position: sticky`.
@@ -18,6 +21,6 @@ description: Interactions of designer nodes: props._fx, the data-pg-fx-* attribu
 - The node's own opacity, transform and transition are kept (`pgFxBase`) and composed with. Reduced motion: nothing moves; switched on while open, every node is put back. `window.pgFxBind(root)` binds unbound nodes; `window.pgFx` holds the pure helpers.
 
 ## How is it tested?
-- `tests/designer_fx_test.php`: normalizer, attributes, render on nodes, inject, Preview expression, editor twins and the script's reading of the page under Node; the twin cases also in `tests/designer_node_attrs_test.php`.
+- `tests/designer_fx_test.php`: normalizer, attributes, render on nodes, inject, Preview expression, editor twins and the script's reading of the page under Node; the panel under Node; the twin cases also in `tests/designer_node_attrs_test.php`, the code view in `tests/designer_code_view_attrs_test.php`.
 
 Related: docs/memory/plans/designer-interactions-steps.md, docs/memory/designer/designer-block-motion.md
