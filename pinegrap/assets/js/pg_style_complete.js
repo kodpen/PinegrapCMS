@@ -11,6 +11,7 @@
  *   css(P, opts, context, syntax)        values the engine lacks, var(--…)
  *   htmlRank(P, opts, option, context, info)   attribute names by context
  *   cssRank(P, opts, option, context, info)    properties and values
+ *   js(P, opts, context, syntax)         the Bootstrap JavaScript API
  *   tagContext(state, node)              { tag, classes, attrs, styles, parents }
  *   docTokens(text)                      { '--name': value }
  *
@@ -297,7 +298,68 @@
         return (map.map && map.map[option.label]) || 0;
     }
 
+    // ── JavaScript ───────────────────────────────────────────────────────
+    // The Bootstrap API where a script or an on…="" handler uses it, read
+    // from the text before the cursor (at most JS_WINDOW characters):
+    //   bootstrap.Mo|                         the component classes
+    //   bootstrap.Modal.get|                  their static members
+    //   new bootstrap.Modal(el).|, x.|        an instance's members, x
+    //                                         being set from one of those
+    //   addEventListener('sh| / .on('sh|      the components' events
+    // In a handler the element ranks them (a button in a modal: Modal
+    // first); in a <script> nothing does.
+    var JS_WINDOW = 20000;
+
+    function jsSpot(text) {
+        var m = /\bbootstrap\.([A-Za-z]+)\.([A-Za-z]*)$/.exec(text);
+        if (m) return { kind: 'static', cls: m[1], q: m[2] };
+        m = /\bbootstrap\.([A-Za-z]*)$/.exec(text);
+        if (m) return { kind: 'class', q: m[1], back: 'bootstrap.'.length };
+        m = /(?:\bnew\s+bootstrap\.([A-Za-z]+)|\bbootstrap\.([A-Za-z]+)\.get(?:OrCreate)?Instance)\((?:[^()]|\([^()]*\))*\)\s*\.([A-Za-z]*)$/.exec(text);
+        if (m) return { kind: 'member', cls: m[1] || m[2], q: m[3] };
+        m = /(?:addEventListener|\.on|\.one|\.off)\(\s*(['"`])([A-Za-z.]*)$/.exec(text);
+        if (m) return { kind: 'event', q: m[2] };
+        m = /\b([A-Za-z_$][\w$]*)\.([A-Za-z]*)$/.exec(text);
+        if (m && m[1] !== 'bootstrap') {
+            // The last assignment of that name from a Bootstrap instance.
+            var re = new RegExp('\\b' + m[1].replace(/\$/g, '\\$') + '\\s*=\\s*(?:new\\s+bootstrap\\.([A-Za-z]+)|bootstrap\\.([A-Za-z]+)\\.get(?:OrCreate)?Instance)\\(', 'g');
+            var hit = null, a;
+            while ((a = re.exec(text)) !== null) hit = a;
+            if (hit) return { kind: 'member', cls: hit[1] || hit[2], q: m[2] };
+        }
+        return null;
+    }
+
+    function js(P, opts, context, syntax) {
+        if (!P) return null;
+        var pos = context.pos;
+        var spot = jsSpot(slice(context.state, Math.max(0, pos - JS_WINDOW), pos));
+        if (!spot) return null;
+        var tag = tagOf(syntax.node);
+        var ctx = tag ? withDesign(context.state, opts, tagContext(context.state, tag)) : {};
+        ctx.limit = 60;
+        var out = [], from = pos - spot.q.length;
+        var add = function (label, type, i) {
+            if (label !== spot.q) out.push({ label: label, type: type, boost: Math.max(0, RANKED - i) });
+        };
+        if (spot.kind === 'class') {
+            // The class is offered whole ('bootstrap.Modal'), from the
+            // start of 'bootstrap.'.
+            from -= spot.back;
+            P.jsClasses(spot.q, ctx).forEach(function (it, i) { if (it.label !== 'bootstrap.' + spot.q) out.push({ label: it.label, type: 'class', boost: Math.max(0, RANKED - i) }); });
+            return out.length ? { from: from, options: out, validFor: /^bootstrap\.[A-Za-z]*$/ } : null;
+        }
+        if (spot.kind === 'static' || spot.kind === 'member') {
+            P.jsMembers(spot.cls, spot.q, spot.kind === 'static').forEach(function (it, i) { add(it.label, 'method', i); });
+        } else {
+            P.jsEvents(spot.q, ctx).forEach(function (it, i) { add(it.label, 'constant', i); });
+        }
+        return out.length ? { from: from, options: out, validFor: /^[A-Za-z.]*$/ } : null;
+    }
+
     var api = {
+        js: js,
+        jsSpot: jsSpot,
         html: html,
         css: css,
         htmlRank: htmlRank,

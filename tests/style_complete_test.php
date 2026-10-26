@@ -60,7 +60,7 @@ function style_complete_node($script)
 		. 'var P = require(' . json_encode($dir . 'pg_style_predict.js') . ').create(JSON.parse(require("fs").readFileSync(' . json_encode($dir . 'designer_vocab/bootstrap5.json') . ', "utf8")));' . "\n"
 		. 'var C = require(' . json_encode($dir . 'pg_style_complete.js') . ');' . "\n"
 		. 'var opts = { design: function () { return { classes: {}, tokens: { "--theme": "#123456" } }; } };' . "\n"
-		. '_completions = { html: [function (c, s) { return C.html(P, opts, c, s); }], css: [function (c, s) { return C.css(P, opts, c, s); }] };' . "\n"
+		. '_completions = { html: [function (c, s) { return C.html(P, opts, c, s); }], css: [function (c, s) { return C.css(P, opts, c, s); }], javascript: [function (c, s) { return C.js(P, opts, c, s); }] };' . "\n"
 		. '_rankers = { html: [function (o, c, i) { return C.htmlRank(P, opts, o, c, i); }], css: [function (o, c, i) { return C.cssRank(P, opts, o, c, i); }] };' . "\n"
 		. 'function ask(doc, explicit) {' . "\n"
 		. '    var pos = doc.indexOf("|"); doc = doc.replace("|", "");' . "\n"
@@ -194,4 +194,40 @@ function test_style_complete_context()
 		'parents' => array(array('tag' => 'section', 'classes' => array('row', 'g-2'))),
 	), $result['ctx']);
 	pg_assert_same(array('--a' => '2px', '--b' => '#fff'), $result['tokens']);
+}
+
+// JavaScript: the component classes after bootstrap., ranked by the
+// element of an on…="" handler; static and instance members; the events
+// in addEventListener() and .on().
+function test_style_complete_javascript()
+{
+	$result = style_complete_node(
+		'var cls = ask("<script>bootstrap.Mo|</script>", false);' . "\n"
+		. 'var handler = ask("<div class=\\"modal\\"><button class=\\"btn\\" onclick=\\"bootstrap.|\\"></button></div>");' . "\n"
+		. 'var stat = ask("<script>bootstrap.Modal.get|</script>", false);' . "\n"
+		. 'var inst = ask("<script>var m = bootstrap.Modal.getOrCreateInstance(el);\\nm.to|</script>", false);' . "\n"
+		. 'var chain = ask("<script>bootstrap.Modal.getInstance(document.querySelector(\\"#a\\")).h|</script>", false);' . "\n"
+		. 'var ev = ask("<script>el.addEventListener(\\"shown|</script>", false);' . "\n"
+		. 'var other = ask("<script>foo.ba|</script>", false);' . "\n"
+		. 'console.log(JSON.stringify({' . "\n"
+		. '    cls: has(cls, "bootstrap.Modal"), from: cls.options["bootstrap.Modal"] ? 1 : 0,' . "\n"
+		. '    handlerFirst: boost(handler, "bootstrap.Modal"), handlerAlert: boost(handler, "bootstrap.Alert"),' . "\n"
+		. '    stat: has(stat, "getOrCreateInstance"), inst: has(inst, "toggle"), chain: has(chain, "hide"),' . "\n"
+		. '    ev: has(ev, "shown.bs.modal"), other: other.labels.filter(function (l) { return /^(show|hide|toggle)$/.test(l); }).length' . "\n"
+		. '}));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_true($result['cls'] === true, 'bootstrap.Mo offers bootstrap.Modal');
+	pg_assert_same(20, $result['handlerFirst'], 'a handler inside a modal ranks Modal first');
+	pg_assert_true($result['handlerAlert'] < 20, 'the others after it');
+	pg_assert_true($result['stat'] === true, 'static members');
+	pg_assert_true($result['inst'] === true, 'members of an instance kept in a variable');
+	pg_assert_true($result['chain'] === true, 'members of an instance asked for in place');
+	pg_assert_true($result['ev'] === true, 'event names in addEventListener()');
+	pg_assert_same(0, $result['other'], 'nothing on an unrelated object');
 }

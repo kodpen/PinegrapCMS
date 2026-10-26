@@ -239,7 +239,8 @@
     }
 
     // Registers the smart completion with the code editor facade: attribute
-    // names and values in HTML, values and var(--…) tokens in CSS, and the
+    // names and values in HTML, values and var(--…) tokens in CSS, the
+    // Bootstrap API in JavaScript, and the
     // rankers that order the engine's own attributes, properties and
     // keywords by the element's context. Each delegate answers nothing
     // (and starts the load) until the predictor and pg_style_complete.js
@@ -255,6 +256,7 @@
         };
         editor.addCompletionSource('html', call('html', null));
         editor.addCompletionSource('css', call('css', null));
+        editor.addCompletionSource('javascript', call('js', null));
         editor.addCompletionRanker('html', call('htmlRank', 0));
         editor.addCompletionRanker('css', call('cssRank', 0));
     }
