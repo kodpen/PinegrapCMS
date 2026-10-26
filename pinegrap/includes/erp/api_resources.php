@@ -480,6 +480,28 @@ function erp_api_accounts_create($params)
         $data['contact_id'] = $contact_id;
     }
 
+    if (trim($data['title']) === '') {
+        api_fail_validation(lang('Enter a name.'), 'title');
+    }
+
+    // The opening entry is refused in a locked period; asked before the card
+    // is written, so a refused opening leaves no card behind.
+    $opening = (int) ($params['opening_balance'] ?? 0);
+    $opening_date = isset($params['opening_date']) ? erp_api_day($params['opening_date']) : date('Y-m-d');
+
+    if (($opening !== 0) && (($refusal = erp_lock_refusal($opening_date)) !== '')) {
+        api_fail_validation($refusal, 'opening_date');
+    }
+
+    api_dry_run_stop('created', 'erp_account', array(
+        'title' => $data['title'],
+        'kind' => $data['kind'],
+        'currency' => $currency,
+        'contact_id' => ($contact_id > 0) ? $contact_id : null,
+        'opening_balance' => $opening,
+        'opening_date' => ($opening !== 0) ? $opening_date : null,
+    ));
+
     $saved = erp_account_save($data);
 
     if (empty($saved['success'])) {
@@ -493,13 +515,11 @@ function erp_api_accounts_create($params)
         erp_account_link_contact($account_id, $contact_id);
     }
 
-    $opening = (int) ($params['opening_balance'] ?? 0);
-
     if ($opening !== 0) {
         $opened = erp_account_open(array(
             'account_id' => $account_id,
             'amount' => $opening,
-            'doc_date' => isset($params['opening_date']) ? erp_api_day($params['opening_date']) : date('Y-m-d'),
+            'doc_date' => $opening_date,
             'currency' => $currency,
             'exchange_rate' => 1,
             'created_by' => $owner['id'],
@@ -693,6 +713,11 @@ function erp_api_accounts_update($params)
             )), 'contact_id');
         }
     }
+
+    api_dry_run_stop('updated', 'erp_account', array(
+        'id' => $account_id,
+        'changed' => $changed,
+    ));
 
     // The link first, so a refused link changes nothing on the card.
     if ($links_contact && ($contact_id !== (int) $account['contact_id'])) {

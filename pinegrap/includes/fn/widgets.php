@@ -83,6 +83,7 @@ function pg_sw_type_labels()
         'order_preview'       => lang('Order Preview'),
         'menu_region'         => lang('Menu'),
         'menu_sequence_region' => lang('Menu Sequence'),
+        'ad_region'           => lang('Ad Region'),
     );
 }
 
@@ -801,6 +802,9 @@ function pg_sw_raw_token_keys()
         '__comment_message_html',
         '__comment_stars_html',
         '__comment_seller_reply_html',
+        // Ad Region widget: the ad's own markup.
+        '__ad_content_html',
+        '__ad_caption_html',
     ));
 
     return $keys;
@@ -3229,7 +3233,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         $form_row = db_item(
             "SELECT forms.id, forms.page_id, forms.user_id, forms.form_editor_user_id,
                     forms.reference_code, forms.submitted_timestamp, forms.address_name,
-                    forms.tracking_code, forms.complete
+                    forms.tracking_code, forms.complete, forms.quiz_score
                     {$standard_sql['select']}
              FROM forms
              {$standard_sql['join']}
@@ -3241,7 +3245,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         $form_row = db_item(
             "SELECT forms.id, forms.page_id, forms.user_id, forms.form_editor_user_id,
                     forms.reference_code, forms.submitted_timestamp, forms.address_name,
-                    forms.tracking_code, forms.complete
+                    forms.tracking_code, forms.complete, forms.quiz_score
                     {$standard_sql['select']}
              FROM forms
              {$standard_sql['join']}
@@ -3355,7 +3359,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__new_account_password' => '',
             '__new_account_set_password_url' => '',
             '__edit_url'             => '',
-        );
+        ) + pg_sw_entity_values('form_record', null);
     } else {
         // Pull all form_data rows for the matched submission. Same JOIN shape
         // as form_list_view's batch fetcher (single `form_id`) — file-upload
@@ -3419,6 +3423,13 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__edit_url'             => pg_sw_can_edit_submitted_forms($custom_form_page_id)
                                             ? h(pg_sw_backend_edit_url('edit_submitted_form.php', (int)$form_row['id'])) : '',
         );
+
+        // The record's allow-listed values (widgets_entity_fields.php): the
+        // quiz score of a quiz form. This view shows one record to whoever
+        // may open it; the list view offers none of them.
+        $extra += array_map('h', pg_sw_entity_values('form_record', $form_row + array(
+            'quiz' => (int)db_value("SELECT quiz FROM custom_form_pages WHERE page_id = '" . $custom_form_page_id . "' LIMIT 1"),
+        )));
 
         // Optional label tokens: {field}__label beside the value, when toggled on.
         if ($show_field_labels && is_array($data_rows)) {

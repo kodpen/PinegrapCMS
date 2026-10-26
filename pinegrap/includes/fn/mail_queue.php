@@ -190,17 +190,10 @@ function pg_mail_clip($text, $length)
     return substr($text, 0, $length);
 }
 
-// Whether the 2026.4.8 upgrade has created mail_outbox. Asked once per
-// request. The underscore is escaped because it is a wildcard in LIKE.
+// Whether the 2026.4.8 upgrade has created mail_outbox.
 function pg_mail_queue_ready()
 {
-    static $ready = null;
-
-    if ($ready === null) {
-        $ready = (bool) db_item("SHOW TABLES LIKE 'mail\\_outbox'");
-    }
-
-    return $ready;
+    return pg_schema_has('mail_outbox');
 }
 
 // email() properties as stored in mail_outbox.properties.
@@ -301,7 +294,7 @@ function pg_mail_job_alive()
 
     $alive = false;
 
-    if (!pg_mail_queue_ready() || !db_item("SHOW TABLES LIKE 'cron\\_runs'")) {
+    if (!pg_mail_queue_ready() || !pg_schema_has('cron_runs')) {
         return $alive;
     }
 

@@ -630,11 +630,11 @@ if (!$_POST) {
                         // a link from a deleted page still counts as an
                         // incoming link when the graph decides whether another
                         // page is an orphan, so leaving them hides real ones.
-                        if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+                        if (pg_schema_has('seo_issue')) {
                             db("DELETE FROM seo_issue WHERE (entity_type = 'page') AND (entity_id = '" . (int) $page_id . "')");
                         }
 
-                        if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+                        if (pg_schema_has('seo_link')) {
                             db("DELETE FROM seo_link WHERE (from_type = 'page') AND (from_id = '" . (int) $page_id . "')");
                             db("DELETE FROM seo_link WHERE (to_type = 'page') AND (to_id = '" . (int) $page_id . "')");
                         }

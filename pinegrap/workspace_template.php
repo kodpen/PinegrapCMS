@@ -223,7 +223,7 @@ pg_page_shell([
                                 <span class="input-group-text"><i class="bi ' . h($icon) . '" id="ws_tpl_icon_preview" aria-hidden="true"></i></span>
                                 <input class="form-control" type="text" name="icon" id="ws_tpl_icon" maxlength="40" placeholder="bi-briefcase" value="' . h($template['icon']) . '">
                             </div>
-                            <div class="form-text">' . h(lang('A Bootstrap Icons class, such as bi-briefcase.')) . '</div>
+                            <div class="form-text">' . h(lang('A Bootstrap Icons class, such as bi-briefcase.')) . ' ' . h(lang('A channel made from the template takes the icon only when it is one of the channel icons.')) . '</div>
                         </div>
                         <div class="col-12 col-md-4">
                             <label class="form-label" for="ws_tpl_color">' . h(lang('Colour')) . '</label>

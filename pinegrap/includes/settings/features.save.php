@@ -34,11 +34,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $perf_monitor_old = (int) db_value("SELECT perf_monitor FROM config");
 
     if ($perf_monitor_old === 1 && $perf_monitor_new === 0) {
-        if (db_item("SHOW TABLES LIKE 'perf_stats'")) {
+        if (pg_schema_has('perf_stats')) {
             db("TRUNCATE perf_stats");
         }
 
-        if (db_item("SHOW TABLES LIKE 'perf_log'")) {
+        if (pg_schema_has('perf_log')) {
             db("TRUNCATE perf_log");
         }
 

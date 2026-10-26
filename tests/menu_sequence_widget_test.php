@@ -77,5 +77,5 @@ function test_menu_sequence_widget_registered()
 	pg_assert_contains("{ type: 'menu_sequence_region'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'menu_sequence_region': {", $js, 'has a starter tree');
 	pg_assert_contains("menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS", $js, 'has a token palette');
-	pg_assert_contains("menu_region: 1, menu_sequence_region: 1 };", $js, 'draws no Messages block');
+	pg_assert_contains("menu_region: 1, menu_sequence_region: 1,", $js, 'draws no Messages block');
 }
