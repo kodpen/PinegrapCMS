@@ -3391,6 +3391,27 @@ function waf_is_health_request($script = null)
 }
 
 /**
+ * Is this request a service's sign-in server reading the site's OAuth client
+ * metadata (connect_client.php, the client ID document an MCP server's
+ * sign-in fetches)? Asked of the running script, never the path, like
+ * waf_is_health_request(). The document is public and the same for
+ * everybody; the fetcher's name is whatever its HTTP library sends, from
+ * wherever the service runs, so the bot policy and the country restriction
+ * would refuse it. The IP list and the rate limits still apply.
+ *
+ * @param string|null $script the running script (null: this request's)
+ * @return bool
+ */
+function waf_is_client_metadata_request($script = null)
+{
+    if ($script === null) {
+        $script = waf_script_name();
+    }
+
+    return ($script === 'connect_client.php');
+}
+
+/**
  * Is this request another Pinegrap installation calling in?
  *
  * Used for visitor tracking, NOT for access control. The distinction matters:
@@ -4166,8 +4187,10 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
     // waf_path_is_always_served() — turning a crawler away from the file that
     // would have told it to go away achieves nothing. health.php likewise:
     // an uptime monitor refused here reports a working site as down
-    // (waf_is_health_request()).
-    if (waf_path_is_always_served() || waf_is_health_request()) {
+    // (waf_is_health_request()). The site's OAuth client metadata too: a
+    // sign-in server refused here cannot register the site
+    // (waf_is_client_metadata_request()).
+    if (waf_path_is_always_served() || waf_is_health_request() || waf_is_client_metadata_request()) {
         return;
     }
 
@@ -4343,6 +4366,9 @@ function waf_country_staff_signed_in()
  *   - health.php (waf_is_health_request()): uptime monitors check from
  *     wherever their provider runs, and a refused check reports the site
  *     down;
+ *   - connect_client.php (waf_is_client_metadata_request()): a service's
+ *     sign-in server reads the site's OAuth client from wherever it runs,
+ *     and a refused read stops the site registering with it;
  *   - the external API, the MCP server, the OAuth endpoints and the
  *     workspace calendar address, when the operator keeps them open: their
  *     callers present a credential, and an integration, an AI application or
@@ -4357,7 +4383,7 @@ function waf_country_staff_signed_in()
  */
 function waf_country_request_exempt()
 {
-    if (waf_path_is_always_served() || waf_is_health_request()) {
+    if (waf_path_is_always_served() || waf_is_health_request() || waf_is_client_metadata_request()) {
         return true;
     }
 
