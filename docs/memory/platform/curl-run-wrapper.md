@@ -5,7 +5,7 @@ description: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the
 
 ## What does pg_curl_run() do?
 - `pg_curl_run($method, $url, $options)` (`includes/fn/update.php`, beside `pg_curl_tls()`) makes one request to a fixed vendor host: `pinegrap_user_agent()`, timeouts (default 10 s, connect at most 10 s), https only, no redirect unless `follow` asks (then https only), `PROXY_ADDRESS` when set, and `pg_curl_tls()` applied last, so no option can undo `CURL_CA_BUNDLE` or `ALLOW_INSECURE_UPDATE_TLS`. The handle is freed with `unset()` (PHP 8.5 deprecates `curl_close()`).
-- Options: `body`, `headers`, `timeout`, `connect_timeout`, `follow`, `max_size`, `encoding`, `forbid_reuse`, `user_agent`, `userpwd` (basic auth), `check_address`. They are built by the pure `pg_curl_run_options()` by constant name (`tests/curl_run_test.php`).
+- Options: `body`, `headers`, `timeout`, `connect_timeout`, `follow`, `max_size`, `encoding`, `forbid_reuse`, `user_agent`, `userpwd` (basic auth), `check_address`. They are built by the pure `pg_curl_run_options()` by constant name (`tests/curl_run_test.php`). A POST without `body` goes out bare (`CURLOPT_CUSTOMREQUEST`, no Content-Length): `CURLOPT_POST` alone sent an empty chunked body with Expect: 100-continue, a shape the İşbaşı hand-over to GİB was never tested with (#1921).
 
 ## What does it answer?
 - Like `api_http_request()`: `ok` (2xx), `status`, `body`, `errno`, `error`, plus `connect` (a proxy's answer to the tunnel) and `request_size` (request header bytes written), which tell SMS whether a failed send can have reached the provider. `errno` is not 0 when cURL failed; the caller appends `pg_curl_tls_hint($errno)` to its own message. Without cURL it answers `ok` false with an error and errno 0.

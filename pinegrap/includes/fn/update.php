@@ -128,7 +128,10 @@ function pg_curl_run_options($method, $url, $options, $env)
         $out['CURLOPT_REDIR_PROTOCOLS'] = 'CURLPROTO_HTTPS';
     }
 
-    if ($method === 'POST') {
+    // A POST without a body is sent bare, as CURLOPT_CUSTOMREQUEST: with
+    // CURLOPT_POST and no fields libcurl sends an empty chunked body after
+    // Expect: 100-continue, which some APIs refuse.
+    if (($method === 'POST') && isset($options['body'])) {
         $out['CURLOPT_POST'] = true;
     } elseif ($method === 'HEAD') {
         $out['CURLOPT_NOBODY'] = true;
