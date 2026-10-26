@@ -1,11 +1,10 @@
 ---
 name: widget-layout-gallery
-description: W5 layout gallery of a system widget: sources (Default, On this site; From templates left), the filters, Try/Keep/Cancel, undo, saves and rights
+description: W5 layout gallery of a system widget: sources (Default, From the template, On this site), the filters, Try/Keep/Cancel, undo, saves and rights
 ---
 
 ## What does the gallery offer?
-- The widget panel's "Layout Template" section lists layouts for the widget's kind: Default (the starter tree; a form view with a form chosen gets the layout built from that form's fields) and On this site (every other widget of the same kind, `_swKindOf()`).
-- From templates (design templates' layouts) is not built yet; see "What is left?".
+- The widget panel's "Layout Template" section lists layouts for the widget's kind: Default (the starter tree; a form view with a form chosen gets the layout built from that form's fields), From the template (only in a design made from a template) and On this site (every other widget of the same kind, `_swKindOf()`).
 
 ## Which widgets on this site are offered?
 - Same kind; a stored tree that is not empty and not a template placeholder (`_swIsTemplatePlaceholder()`); not the same tree as this widget's; identical trees once.
@@ -21,5 +20,11 @@ description: W5 layout gallery of a system widget: sources (Default, On this sit
 ## Who may use it?
 - Shown only to an operator who may edit (`_collab.mayEdit`) and is not content-level (widgets never open to content editors); Try checks the same and nudges.
 
-## What is left?
-- From templates: the design templates' layouts for the kind (`includes/design_templates/<id>.php` starter widgets), styled ones only in a design made from that template. A design records its template in `style.style_template` (passed to the editor in `edit_system_style.php`), the key to match a template's starter widgets of the same kind. Owner decision: [[widget-designability-decisions]].
+## Which template layouts are offered?
+- Only the design's own template (`style.style_template`, else `sdDesign.template.id` while it is being opened): its layouts carry that template's styles. `shared_component` `template_layouts` reads the template from the design's row, then `pg_sw_template_layouts()` (`includes/fn/widgets_gallery.php`).
+- Explicit trees of the kind (not `'tree' => 'starter'`, the Default already), whose page the site has. `{{page:}}` and `{{tab:}}` resolve to this design's pages (`pg_sw_template_page_map()`: the template page's name, or the lowest `-2`… suffix opening gave it); site name, e-mail, year are filled.
+- Left out: a page the design lacks; folders, product or contact groups (`_pg_tpl_fill()` would turn them into 0 silently); nested `templateWidget`/`templateShared` parts (they need rows).
+- A form view carries the field names of the template form it was made for (the custom form widget on the page its setting names); offered only when this widget's form has the same names. A custom form: same control names, as on this site.
+
+## What is not in W5?
+- Other templates' layouts with their styles, and an online library (owner, 2026-10-26: [[widget-designability-decisions]]).

@@ -59606,6 +59606,7 @@ const StyleDesigner = (function () {
     // linked, and the widget's settings stay as they are.
     var _sdLgState = null;   // { sid, original: json, label, key } while a layout is tried
     var _sdLgSite  = {};     // sid → { kind, loading, items: [{ id, name, tree }] }
+    var _sdLgTpl   = {};     // sid → { kind, loading, items: [{ key, label, tree }] }
     var _sdLgDrawing = false; // the gallery's own redraw is not an edit
 
     function _sdLgApi(body, cb) {
@@ -59719,7 +59720,10 @@ const StyleDesigner = (function () {
     // one equal to the widget's own, and each distinct layout once.
     function _sdLgSiteItems(sid, kind) {
         var entry = _sdLgSite[sid];
-        if (!entry || entry.kind !== kind) return [];
+        return (entry && entry.kind === kind) ? _sdLgFit(sid, kind, entry.items) : [];
+    }
+
+    function _sdLgFit(sid, kind, items) {
         var cur = _sharedCache[sid] && _sharedCache[sid].tree;
         if (_sdLgState && _sdLgState.sid === sid) {
             try { cur = JSON.parse(_sdLgState.original); } catch (e) {}
@@ -59727,12 +59731,54 @@ const StyleDesigner = (function () {
         var seen = {};
         if (cur) seen[_sdSharedTreeJSON(_sdLgStrip(cur))] = true;
         var mineNames = (kind === 'custom_form' && cur) ? _sdLgNames(_cfControls(cur)) : null;
-        return entry.items.filter(function (it) {
+        return items.filter(function (it) {
             if (mineNames !== null && _sdLgNames(_cfControls(it.tree)) !== mineNames) return false;
             var key = _sdSharedTreeJSON(_sdLgStrip(it.tree));
             if (seen[key]) return false;
             seen[key] = true;
             return true;
+        });
+    }
+
+    // The design's template, when it was made from one: the saved row's,
+    // else the one being opened.
+    function _sdLgTemplateId() {
+        var el = document.querySelector('[name="style_template"]');
+        var v = el ? String(el.value || '') : '';
+        if (!v && _design && _design.template && typeof _design.template.id === 'string') v = _design.template.id;
+        return v;
+    }
+
+    // The layouts the design's template ships for this kind
+    // (pg_sw_template_layouts()), once per widget. A form view keeps only
+    // those made for a form with the same field names as this one's.
+    function _sdLgLoadTemplate(sid, kind, tplId) {
+        var have = _sdLgTpl[sid];
+        if (have && have.kind === kind) return;
+        var entry = _sdLgTpl[sid] = { kind: kind, loading: true, items: [] };
+        var done = function () {
+            entry.loading = false;
+            if (_sdLgTpl[sid] !== entry || typeof renderProperties !== 'function') return;
+            _sdLgDrawing = true;
+            try { renderProperties(); } finally { _sdLgDrawing = false; }
+        };
+        var styleId = (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0;
+        _sdLgApi({ action: 'shared_component', sub_action: 'template_layouts', kind: kind,
+                   style_id: styleId, template: tplId }, function (resp) {
+            var cfg = _sdLgCfg(sid);
+            ((resp && resp.layouts) || []).forEach(function (l) {
+                var t = l && l.tree ? _sdLgPrepare(JSON.stringify(l.tree), kind, cfg) : null;
+                if (!t || _isDefaultEmptyTree(t)) return;
+                entry.items.push({ key: String(l.key), label: String(l.label || l.key), tree: t,
+                                   fields: Array.isArray(l.fields) ? _sdLgNames(l.fields.map(function (n) { return { name: n }; })) : null });
+            });
+            if (kind !== 'form_list_view' && kind !== 'form_item_view') { done(); return; }
+            var fid = _sdLgFormId(cfg);
+            _fetchFormFields(fid, function () {
+                var mine = fid ? _sdLgNames(_formFieldsCache[fid]) : null;
+                entry.items = entry.items.filter(function (it) { return mine !== null && it.fields === mine; });
+                done();
+            });
         });
     }
 
@@ -59758,7 +59804,25 @@ const StyleDesigner = (function () {
         var head = function (text) {
             return '<div class="text-uppercase text-muted mt-2 mb-1" style="font-size:.62rem;letter-spacing:.04em">' + esc(text) + '</div>';
         };
+        var muted = function (text) {
+            return '<div class="text-muted py-1" style="font-size:.72rem">' + esc(text) + '</div>';
+        };
         var h = head(_sdT('Default')) + rowHtml('default', _sdT('Default layout'), 'bi-stars');
+        // Only the template this design was made from: its layouts carry
+        // that template's styles.
+        var tplId = _sdLgTemplateId();
+        if (tplId) {
+            _sdLgLoadTemplate(sid, kind, tplId);
+            h += head(_sdT('From the template'));
+            var tEntry = _sdLgTpl[sid];
+            if (!tEntry || tEntry.loading) {
+                h += muted(_sdT('Loading…'));
+            } else {
+                var tItems = _sdLgFit(sid, kind, tEntry.items);
+                if (!tItems.length) h += muted(_sdT('The design\'s template has no layout for this widget that fits here.'));
+                tItems.forEach(function (it) { h += rowHtml('tpl:' + it.key, it.label, 'bi-grid-1x2'); });
+            }
+        }
         h += head(_sdT('On this site'));
         var entry = _sdLgSite[sid];
         if (!entry || entry.loading) {
@@ -59835,6 +59899,13 @@ const StyleDesigner = (function () {
             var t = _buildStarterTree(cfg.regionType || kind);
             if (!t) { sdToast(_sdT('There is no default layout for this widget type.'), 'warning'); return; }
             _sdLgShow(sid, key, label, t);
+            return;
+        }
+        if (String(key).indexOf('tpl:') === 0) {
+            var tk = String(key).slice(4);
+            var te = _sdLgTpl[sid];
+            var ti = te ? _sdLgFit(sid, kind, te.items).filter(function (x) { return x.key === tk; })[0] : null;
+            if (ti) _sdLgShow(sid, key, ti.label, JSON.parse(JSON.stringify(ti.tree)));
             return;
         }
         var id = parseInt(String(key).replace('site:', ''), 10);
