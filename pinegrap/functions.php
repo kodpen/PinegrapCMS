@@ -60,6 +60,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_themes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_theme_vars.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_finish.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_attrs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_fill.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');

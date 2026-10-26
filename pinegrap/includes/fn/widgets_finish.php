@@ -233,7 +233,8 @@ function pg_sw_finish_resolve($html, $nonce, &$cut)
 
 // Every carrier of this request taken out with what it holds, so a measure
 // of what a visitor sees (pg_sw_has_content()) never counts a value that
-// is only there for a condition. Found with strpos(), as the spans are.
+// is only there for a condition or an attribute (aK, widgets_attrs.php).
+// Found with strpos(), as the spans are.
 function pg_sw_finish_strip_carriers($html, $nonce = null)
 {
     if (!is_string($html) || strpos($html, '<!--pg-cv:') === false) return $html;
@@ -246,7 +247,7 @@ function pg_sw_finish_strip_carriers($html, $nonce = null)
         if ($head_end === false) break;
         $n     = substr($html, $at + strlen($open), $head_end - $at - strlen($open));
         $close = '<!--/pg-cv:' . $nonce . ':' . $n . '-->';
-        $c     = preg_match('/^\d+$/', $n) ? strpos($html, $close, $head_end + 3) : false;
+        $c     = preg_match('/^a?\d+$/', $n) ? strpos($html, $close, $head_end + 3) : false;
         if ($c === false) {
             $out .= substr($html, $pos, $head_end + 3 - $pos);
             $pos  = $head_end + 3;
@@ -436,7 +437,8 @@ function pg_sw_finish_positions($html, $nonce)
 //   2. lists inside a record (pg_sw_lists_expand(), widgets_lists.php),
 //      drawn from the published rows, each row with its own positions, so
 //      a condition in a list's row reads that row;
-//   3. conditions (pg_sw_finish_resolve());
+//   3. conditions (pg_sw_finish_resolve()), then the values in attributes
+//      (pg_sw_attr_resolve(), widgets_attrs.php) of the elements kept;
 //   4. when a span was cut or a list came out empty, pg-hide-if-empty again
 //      in the kinds whose renderer honours it, on the elements around a cut
 //      point only, so a row whose value left and a box whose last row left
@@ -461,6 +463,7 @@ function pg_sw_finish_widget_html($html, $scope)
     $cut  = false;
     $html = pg_sw_lists_expand($html, $nonce, $scope, $published, $cut);
     $html = pg_sw_finish_resolve($html, $nonce, $cut);
+    $html = pg_sw_attr_resolve($html, $nonce);
 
     $kind = (is_array($scope) && isset($scope['kind'])) ? pg_sw_finish_kind($scope['kind']) : '';
     if ($cut && in_array($kind, array('form_list_view', 'form_item_view', 'comments'), true)) {
