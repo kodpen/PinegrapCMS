@@ -723,6 +723,172 @@
         }).catch(K.fail);
     }
 
+    // ── A scheduled action on the canvas ───────────────────────────────
+
+    // The boxes of a scheduled action (ws_scheduled_graph()) in the colours
+    // of the flow boxes that will keep them: its "when" a start, its step a
+    // task.
+    var ACTION_KINDS = {
+        when: 'wsf-node-manual',
+        condition: 'wsf-node-sa-condition',
+        step: 'wsf-node-task',
+        follow: 'wsf-node-sa-follow'
+    };
+
+    // A staff member's scheduled action drawn read-only in the Scheduled
+    // actions section, in place of its list: its "when", conditions, step
+    // and follow-ups as boxes with the arrows between them, on a canvas
+    // that scrolls; the actions that start it, those it starts and its
+    // retry as chips above. Nothing is changed here: Edit (options.edit,
+    // the card's form) changes it, Back shows the list again. The boxes
+    // are a list in the order of the arrows for the keyboard and screen
+    // readers, each with all of its text.
+    function showAction(item, graph, options) {
+        if (state.section !== 'scheduled') {
+            return;
+        }
+
+        var nodes = (graph && graph.nodes) || [];
+        var chips = (graph && graph.chips) || {};
+        var pad = 24;
+        var width = Math.max.apply(null, [0].concat(nodes.map(function (node) { return node.x + BOX_W; }))) + 2 * pad;
+        var height = Math.max.apply(null, [0].concat(nodes.map(function (node) { return node.y + BOX_H; }))) + 2 * pad;
+        var byId = {};
+
+        options = options || {};
+        K.clear(ui.bar);
+        K.clear(ui.scheduled);
+
+        var back = K.button('btn btn-sm btn-ghost', t('sa_canvas_back'), 'bi-arrow-left');
+        back.setAttribute('data-refocus', 'sa-back');
+        back.addEventListener('click', function () {
+            state.refocus = 'scheduled';
+            showScheduled();
+        });
+        ui.bar.appendChild(back);
+        listToggle();
+        ui.bar.appendChild(el('span', 'fw-semibold wsf-name-text', item.name));
+        ui.bar.appendChild(el('span', 'ws-sa-state ws-sa-state-' + item.status, item.status_label));
+        ui.bar.appendChild(el('span', 'pg-toolbar-grow'));
+
+        if (options.edit) {
+            var edit = K.button('btn btn-sm btn-outline-secondary', t('edit'), 'bi-pencil');
+            edit.addEventListener('click', options.edit);
+            ui.bar.appendChild(edit);
+        }
+
+        ui.scheduled.appendChild(el('h2', 'h5 mb-1', item.name));
+        ui.scheduled.appendChild(el('p', 'small text-body-secondary', t('sa_canvas_help')));
+
+        var chipRow = el('div', 'ws-sa-graph-chips');
+        var chip = function (iconName, text) {
+            var part = el('span', 'badge rounded-pill text-bg-light border ws-sa-graph-chip');
+
+            part.appendChild(K.icon(iconName, 'me-1'));
+            part.appendChild(document.createTextNode(text));
+            chipRow.appendChild(part);
+        };
+        var names = function (list) {
+            return list.map(function (other) { return other.name; }).join(', ');
+        };
+
+        if ((chips.starters || []).length) {
+            chip('bi-box-arrow-in-right', t('sa_started_by') + ': ' + names(chips.starters));
+        }
+
+        if ((chips.started || []).length) {
+            chip('bi-box-arrow-right', t('sa_canvas_starts') + ': ' + names(chips.started));
+        }
+
+        if ((chips.self_retry || []).length) {
+            var outcomes = chips.self_retry.filter(function (label) { return label; });
+
+            chip('bi-arrow-counterclockwise', outcomes.length ? t('sa_canvas_retry_on', outcomes.join(', ')) : t('sa_canvas_retry'));
+        }
+
+        if (chipRow.children.length) {
+            ui.scheduled.appendChild(chipRow);
+        }
+
+        var stage = el('div', 'wsf-stage ws-sa-graph');
+        var layer = el('div', 'ws-sa-graph-layer');
+        var svg = svgEl('svg', 'wsf-edges');
+        var boxes = el('div');
+
+        stage.style.height = Math.min(height + 2, 560) + 'px';
+        layer.style.width = width + 'px';
+        layer.style.height = height + 'px';
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('width', String(width));
+        svg.setAttribute('height', String(height));
+        svg.innerHTML = '<defs><marker id="ws-sa-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="wsf-arrowhead" d="M0 0L10 5L0 10z"/></marker></defs>';
+        boxes.setAttribute('role', 'list');
+        boxes.setAttribute('aria-label', t('sa_canvas_label'));
+
+        nodes.forEach(function (node) {
+            var box = el('div', 'wsf-node ' + (ACTION_KINDS[node.kind] || ''));
+            var head = el('div', 'wsf-node-head');
+            var text = node.kind_label + ': ' + node.label + (node.meta ? '. ' + node.meta : '');
+
+            byId[node.id] = node;
+            box.tabIndex = 0;
+            box.setAttribute('role', 'listitem');
+            box.setAttribute('aria-label', text);
+            box.title = node.label + (node.meta ? '\n' + node.meta : '');
+
+            if (node.kind !== 'when') {
+                box.appendChild(port('in'));
+            }
+
+            head.appendChild(K.icon(node.icon));
+            head.appendChild(el('span', 'wsf-node-kind', node.kind_label));
+            box.appendChild(head);
+            box.appendChild(el('div', 'wsf-node-title', node.label));
+            box.appendChild(el('div', 'wsf-node-meta', node.meta));
+
+            if (node.kind !== 'follow') {
+                box.appendChild(port('out'));
+            }
+
+            place(box, { x: node.x + pad, y: node.y + pad });
+            boxes.appendChild(box);
+        });
+
+        ((graph && graph.edges) || []).forEach(function (edge) {
+            var from = byId[edge.from];
+            var to = byId[edge.to];
+
+            if (!from || !to) {
+                return;
+            }
+
+            var path = curve(from.x + pad + BOX_W, from.y + pad + BOX_H / 2, to.x + pad, to.y + pad + BOX_H / 2);
+            var line = svgEl('path', 'wsf-edge-line');
+
+            line.setAttribute('d', path.d);
+            line.style.markerEnd = 'url(#ws-sa-arrow)';
+            svg.appendChild(line);
+
+            // A follow-up's arrow says on which outcome it is taken, beside
+            // the box it leads to.
+            if (edge.label) {
+                var label = svgEl('text', 'wsf-edge-label');
+
+                label.setAttribute('x', String(to.x + pad - 8));
+                label.setAttribute('y', String(to.y + pad + BOX_H / 2 - 8));
+                label.setAttribute('text-anchor', 'end');
+                label.textContent = edge.label;
+                svg.appendChild(label);
+            }
+        });
+
+        layer.appendChild(svg);
+        layer.appendChild(boxes);
+        stage.appendChild(layer);
+        ui.scheduled.appendChild(stage);
+        back.focus();
+    }
+
     // fallback: the flow opened instead when this one cannot be.
     function open(id, fallback) {
         return leaveFlow().then(function (go) {
@@ -4224,5 +4390,5 @@
         });
     }
 
-    window.PGWsFlow = { start: start };
+    window.PGWsFlow = { start: start, showAction: showAction };
 })();

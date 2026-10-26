@@ -113,6 +113,7 @@
     "If User has already submitted form in the past, then show": "Kullanıcı geçmişte formu göndermişse, şunu göster",
     "If a notebook is missing, check that you are in the right workspace with the switcher at the top of the sidebar.": "Bir defter eksikse kenar çubuğunun üstündeki seçiciyle doğru çalışma alanında olup olmadığınızı kontrol edin.",
     "If it breaks the guidelines, hide the topic, or edit or delete the reply under Comments.": "Yönergelere aykırıysa konuyu gizleyin ya da yanıtı Yorumlar altında düzenleyin veya silin.",
+    "If it does not hold, the run is skipped.": "Tutmazsa çalışma atlanır.",
     "If it failed": "Başarısız olursa",
     "If it was skipped": "Atlanırsa",
     "If it went well": "Başarılı olursa",
