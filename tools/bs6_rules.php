@@ -687,13 +687,118 @@ function bs6_line_of($source, $offset)
  *
  * Returns a list of array(start, end) byte offsets, end exclusive.
  */
-function bs6_site_output_ranges($source)
+function bs6_site_output_ranges($source, $path = null)
 {
 	$marker = '/* @pg-site-output */';
+	$path = ($path !== null) ? $path : bs6_current_path();
+	$functions = bs6_site_functions();
+
+	if ($path !== null && isset($functions[$path])) {
+		$ranges = bs6_function_ranges($source, $functions[$path]);
+		$marked = (strpos($source, $marker) === false) ? array() : bs6_marker_ranges($source);
+		$all = array_merge($ranges, $marked);
+		usort($all, function ($a, $b) {
+			return $a[0] - $b[0];
+		});
+		return $all;
+	}
 
 	if (strpos($source, $marker) === false) {
 		return array();
 	}
+
+	return bs6_marker_ranges($source);
+}
+
+/**
+ * The file the tools are reading now (relative to pinegrap/), set by the
+ * codemod, check_bs6.php and the switch for each file, so
+ * bs6_site_output_ranges() can add the file's site functions
+ * (bs6_site_functions()). Pass false to clear.
+ */
+function bs6_current_path($path = null)
+{
+	static $current = null;
+
+	if ($path === false) {
+		$current = null;
+	} elseif ($path !== null) {
+		$current = str_replace('\\', '/', $path);
+	}
+
+	return $current;
+}
+
+/**
+ * Functions of panel files that print into site pages (called from site
+ * renderers): their markup stays Bootstrap 5 like any site output. Found by
+ * tests/bs6_site_output_test.php, which fails on a site-called function the
+ * codemod would change that is not listed here. The OAuth consent screens
+ * are not listed: they print under output_header_secure(), on Bootstrap 6.
+ */
+function bs6_site_functions()
+{
+	return array(
+		'includes/fn/custom_form.php' => array('pg_cf_validation_script'),
+		'includes/fn/design_themes.php' => array('pg_design_looks'),
+		'includes/fn/passkeys.php' => array('pg_passkey_account_section', 'pg_passkey_add_form_script'),
+		'includes/fn/returns.php' => array('pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
+	);
+}
+
+/**
+ * Byte ranges of the named top-level functions of a PHP source, as
+ * array(start, end): from the `function` keyword to the closing brace.
+ */
+function bs6_function_ranges($source, array $names)
+{
+	$ranges = array();
+	$offset = 0;
+	$depth = 0;
+	$start = null;
+	$name = null;
+	$current = null;
+	$want_name = false;
+
+	foreach (token_get_all($source) as $token) {
+		$text = is_array($token) ? $token[1] : $token;
+
+		if (is_array($token) && $token[0] === T_FUNCTION && $depth === 0) {
+			$want_name = true;
+			$start = $offset;
+		} elseif ($want_name && is_array($token) && $token[0] === T_STRING) {
+			$name = $token[1];
+			$want_name = false;
+		} elseif ($want_name && $text === '(') {
+			$want_name = false;
+		}
+
+		if ($text === '{' || (is_array($token) && ($token[0] === T_CURLY_OPEN || $token[0] === T_DOLLAR_OPEN_CURLY_BRACES))) {
+			if ($depth === 0 && $name !== null) {
+				$current = $name;
+				$name = null;
+			}
+			$depth++;
+		} elseif ($text === '}') {
+			$depth--;
+			if ($depth === 0 && $current !== null) {
+				if (in_array($current, $names, true)) {
+					$ranges[] = array($start, $offset + 1);
+				}
+				$current = null;
+			}
+		}
+
+		$offset += strlen($text);
+	}
+
+	return $ranges;
+}
+
+// Ranges covered by `/* @pg-site-output */` markers (bs6_site_output_ranges()).
+function bs6_marker_ranges($source)
+{
+	$marker = '/* @pg-site-output */';
 
 	$ranges = array();
 	$lines = explode("\n", $source);
