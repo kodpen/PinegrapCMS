@@ -38,6 +38,7 @@
  *            to --bs-menu-*, offcanvas to drawer, modal to dialog)
  *   shell    the v5 look the panel keeps: flush drawers, the menu caret, the
  *            menu wrapper's positioning (bs6_switch_shell_rules())
+ *   links    v5 link colour helpers to the panel's own pg-link-* classes
  *   breakpoints  own media queries at v5's lg/xl/xxl widths (992, 1200,
  *            1400) move to v6's (1024, 1280, 1536)
  *   texts    hand fixes found by their exact text (bs6_switch_texts())
@@ -107,6 +108,10 @@ function bs6_switch_plan($root)
 
 	$plan[] = array('assets/css/backend.src.css', 'shell', 'bs6_switch_shell_rules');
 
+	foreach (bs6_switch_link_files($root) as $path) {
+		$plan[] = array($path, 'links', 'bs6_switch_links');
+	}
+
 	foreach (bs6_switch_breakpoint_files($root) as $path) {
 		$plan[] = array($path, 'breakpoints', 'bs6_switch_breakpoints');
 	}
@@ -175,6 +180,30 @@ function bs6_switch_shell_files($root)
 		}
 
 		if (preg_match('/modal|offcanvas|dropdown|dropup|dropend|dropstart/', (string) file_get_contents(rtrim($root, '/') . '/' . $path))) {
+			$paths[] = $path;
+		}
+	}
+
+	sort($paths);
+
+	return $paths;
+}
+
+// Files the codemod converts and panel stylesheets that name a v5 link
+// colour helper, sorted; the editor's script is left out (its canvas code
+// names the site's Bootstrap 5 classes).
+function bs6_switch_link_files($root)
+{
+	$paths = array();
+
+	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
+		$sheet = in_array($path, bs6_switch_stylesheets($root), true);
+
+		if ((!$sheet && !bs6_codemod_converts($path)) || $path === 'assets/js/style_designer.js' || !preg_match('/\.(php|js|css)$/', $path)) {
+			continue;
+		}
+
+		if (preg_match('/(?<![\w-])link-(primary|secondary|success|danger|warning|info|body-emphasis)(?![\w-])/', (string) file_get_contents(rtrim($root, '/') . '/' . $path))) {
 			$paths[] = $path;
 		}
 	}
@@ -728,6 +757,12 @@ function bs6_switch_test_pins()
 		'tests/signin_test.php' => array(
 			array("'bg-warning'", "'theme-warning'"),
 		),
+		'tests/code_editor_test.php' => array(
+			array("if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;", "if (!_modalEl || !_modalEl.classList.contains('dialog-fullscreen')) return false;"),
+		),
+		'tests/output_test.php' => array(
+			array("'dropdown-item link-body-emphasis active'", "'menu-item pg-link-body-emphasis active'"),
+		),
 		'tests/workspace_sales_quote_test.php' => array(
 			array("'\\\\.dropdown-divider'", "'\\\\.menu-divider'"),
 		),
@@ -763,7 +798,8 @@ const BS6_SWITCH_SHELL_NOTE = '/* Bootstrap 6 shell: what the panel keeps of Boo
 // of the converted components: drawers flush with the screen edge and
 // square (v6 floats them with an inset and a radius), the caret v6 no
 // longer draws on a menu toggle, the wrapper a menu used to position
-// against, and the scrim of a dialog printed open (bs6_shell_open_sheet()).
+// against, the scrim of a dialog printed open (bs6_shell_open_sheet()), and
+// v5's link-body-emphasis as the panel's pg-link-body-emphasis.
 function bs6_switch_shell_rules($source)
 {
 	if (strpos($source, BS6_SWITCH_SHELL_NOTE) !== false) {
@@ -783,7 +819,11 @@ function bs6_switch_shell_rules($source)
 		. "  border-top: 0.3em solid;\n  border-right: 0.3em solid transparent;\n  border-bottom: 0;\n  border-left: 0.3em solid transparent;\n}\n"
 		. ".pg-menu-caret:empty::after {\n  margin-left: 0;\n}\n"
 		. ".pg-open-sheet {\n  position: fixed;\n  inset: 0;\n  z-index: 1055;\n  overflow-y: auto;\n  padding: 1.75rem 0;\n}\n"
-		. ".pg-open-sheet > .dialog {\n  position: relative;\n  max-height: none;\n}\n\n";
+		. ".pg-open-sheet > .dialog {\n  position: relative;\n  max-height: none;\n}\n"
+		. ".pg-link-body-emphasis {\n  color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-opacity, 1) * 100%), transparent) !important;\n"
+		. "  text-decoration-color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-underline-opacity, 1) * 100%), transparent) !important;\n}\n"
+		. ".pg-link-body-emphasis:hover,\n.pg-link-body-emphasis:focus {\n  color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-opacity, 0.75) * 100%), transparent) !important;\n"
+		. "  text-decoration-color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-underline-opacity, 0.75) * 100%), transparent) !important;\n}\n\n";
 
 	return bs6_switch_result(str_replace($open, $open . $rules, $source), 'applied');
 }
