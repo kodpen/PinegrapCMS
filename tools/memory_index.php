@@ -10,6 +10,17 @@
  *     description: One line that says what the file answers
  *     ---
  *
+ * A memory file that describes modules under pinegrap/includes/fn/ names
+ * them in an optional field, several separated by commas:
+ *
+ *     module: comments, widgets_comments
+ *
+ * The list of those modules, each with the files that describe it, is
+ * generated into docs/memory/core/fn-modules.md (MODULE_LIST), so a new
+ * module is one line in its own memory file rather than a line appended to
+ * a shared hand-written file. The module line does not count toward the
+ * size limit: a file at the limit can still carry it.
+ *
  * The index has two levels so a session reads little: docs/memory/README.md
  * lists the memory folders (FOLDERS below) and the other documents;
  * docs/memory/<folder>/README.md lists that folder's files, one
@@ -35,6 +46,8 @@
  * What is read:
  *   docs/memory/**.md   frontmatter required; name equals the file name;
  *                       at most MAX_MEMORY_BYTES bytes per file
+ *                       (the module line not counted); module names a
+ *                       file under pinegrap/includes/fn/
  *   other docs/**.md    indexed when they carry frontmatter, else skipped
  *
  * A new memory folder needs a line in FOLDERS; files directly in docs/memory/
@@ -45,7 +58,7 @@
  *                                              written (CI)
  * Exit:   0 when the indexes were written or are current; 1 when a file has
  *         missing or invalid frontmatter, a memory file is too large or sits
- *         outside a known folder, a folder index has no key rules block or a
+ *         outside a known folder, a module field names no module file, a folder index has no key rules block or a
  *         merge conflict inside it, or, with --check, an index differs from
  *         what the files produce.
  *
@@ -70,6 +83,10 @@ const MAX_DESCRIPTION_CHARS = 200;
 // The lines around the hand-written key rules of a folder index.
 const KEY_RULES_START = '<!-- key-rules:start -->';
 const KEY_RULES_END = '<!-- key-rules:end -->';
+
+// The generated module list, relative to docs/, and its line in the core index.
+const MODULE_LIST = 'memory/core/fn-modules.md';
+const MODULE_LIST_DESCRIPTION = 'Generated from the module field of the memory files: each includes/fn/ module so named and the memory files that describe it';
 
 // Memory folders and what they hold, as listed in the top index.
 const FOLDERS = array(
@@ -103,6 +120,7 @@ $errors = array();
 $folders = array();
 $others = array();
 $names = array();
+$modules = array();
 
 foreach (memory_index_files($docs) as $relative) {
 
@@ -135,8 +153,24 @@ foreach (memory_index_files($docs) as $relative) {
 		$errors[] = "docs/$relative: description is longer than " . MAX_DESCRIPTION_CHARS . ' characters';
 	}
 
+	if (isset($meta['module'])) {
+		$listed = memory_index_module_names($meta['module'], $error);
+		if (!$in_memory) {
+			$errors[] = "docs/$relative: a module field belongs in a memory file";
+		} elseif ($listed === null) {
+			$errors[] = "docs/$relative: module field: $error";
+		} else {
+			foreach ($listed as $module) {
+				if (!is_file($repository . '/pinegrap/includes/fn/' . $module . '.php')) {
+					$errors[] = "docs/$relative: module \"$module\" has no file pinegrap/includes/fn/$module.php";
+				}
+			}
+			$modules[$stem] = $listed;
+		}
+	}
+
 	if ($in_memory) {
-		$bytes = strlen($content);
+		$bytes = memory_index_counted_bytes($content);
 		if ($bytes > MAX_MEMORY_BYTES) {
 			$errors[] = "docs/$relative: $bytes bytes, more than " . MAX_MEMORY_BYTES . '; split the topic';
 		}
@@ -144,6 +178,10 @@ foreach (memory_index_files($docs) as $relative) {
 			$errors[] = "docs/$relative: name \"$name\" is also used by docs/" . $names[$name];
 		}
 		$names[$name] = $relative;
+	}
+
+	if ($relative !== MODULE_LIST && $name === basename(MODULE_LIST, '.md')) {
+		$errors[] = "docs/$relative: name \"$name\" is kept for the generated " . MODULE_LIST;
 	}
 
 	if ($in_memory) {
@@ -166,8 +204,14 @@ if ($errors) {
 	exit(1);
 }
 
+// The generated module list is listed in its folder like a memory file.
+$folders['core'][basename(MODULE_LIST)] = MODULE_LIST_DESCRIPTION;
+
 // Index path relative to docs/ => expected content.
-$indexes = array('memory/README.md' => memory_index_top($folders, $others));
+$indexes = array(
+	'memory/README.md' => memory_index_top($folders, $others),
+	MODULE_LIST => memory_index_module_list($modules),
+);
 
 foreach ($folders as $folder => $entries) {
 
@@ -242,7 +286,7 @@ exit(0);
 
 /**
  * Every .md file under docs/ that may be indexed, relative to docs/, sorted.
- * The generated indexes themselves are left out.
+ * The generated indexes and the generated module list are left out.
  */
 function memory_index_files($docs) {
 
@@ -260,7 +304,7 @@ function memory_index_files($docs) {
 
 		$relative = str_replace('\\', '/', substr($file->getPathname(), strlen($docs) + 1));
 
-		if ($relative === 'memory/README.md' || (strncmp($relative, 'memory/', 7) === 0 && basename($relative) === 'README.md')) {
+		if ($relative === 'memory/README.md' || $relative === MODULE_LIST || (strncmp($relative, 'memory/', 7) === 0 && basename($relative) === 'README.md')) {
 			continue;
 		}
 
@@ -423,4 +467,108 @@ function memory_index_key_rules($path, &$error) {
 	}
 
 	return implode("\n", $block);
+}
+
+/**
+ * The module names of a module field, in the order given, each once; null
+ * (and $error set) when a name is empty or is not a bare module file name
+ * (lower-case letters, digits and underscores, no path, no .php).
+ */
+function memory_index_module_names($value, &$error) {
+
+	$error = '';
+	$names = array();
+
+	foreach (explode(',', $value) as $part) {
+
+		$part = trim($part);
+
+		if ($part === '') {
+			$error = 'an empty module name; give names separated by commas';
+			return null;
+		}
+
+		if (!preg_match('/^[a-z0-9_]+$/', $part)) {
+			$error = "\"$part\" is not a module name (the file name under includes/fn/ without .php)";
+			return null;
+		}
+
+		if (!in_array($part, $names, true)) {
+			$names[] = $part;
+		}
+	}
+
+	return $names;
+}
+
+/**
+ * The size a memory file is held to: its bytes without the module line of
+ * its frontmatter, which is index metadata rather than content.
+ */
+function memory_index_counted_bytes($content) {
+
+	$bytes = strlen($content);
+
+	if (strncmp($content, "---\n", 4) !== 0) {
+		return $bytes;
+	}
+
+	$end = strpos($content, "\n---", 3);
+
+	if ($end === false) {
+		return $bytes;
+	}
+
+	foreach (explode("\n", substr($content, 4, $end - 4)) as $line) {
+		$colon = strpos($line, ':');
+		if ($colon !== false && trim(substr($line, 0, $colon)) === 'module') {
+			$bytes -= strlen($line) + 1;
+		}
+	}
+
+	return $bytes;
+}
+
+/**
+ * The generated module list: one line per module named in a module field,
+ * sorted by module name, with the memory files that name it, sorted by
+ * file name. $modules is memory file name => its module names.
+ */
+function memory_index_module_list($modules) {
+
+	$files = array();
+
+	foreach ($modules as $file => $names) {
+		foreach ($names as $module) {
+			$files[$module][] = $file;
+		}
+	}
+
+	uksort($files, 'strcmp');
+
+	$lines = array(
+		'---',
+		'name: ' . basename(MODULE_LIST, '.md'),
+		'description: ' . MODULE_LIST_DESCRIPTION,
+		'---',
+		'',
+		'<!-- Generated by php tools/memory_index.php from the module field in the frontmatter of the memory files. Do not edit by hand. -->',
+		'',
+		'## Which memory file describes an `includes/fn/` module?',
+	);
+
+	if (!$files) {
+		$lines[] = '- No memory file names a module yet.';
+	}
+
+	foreach ($files as $module => $names) {
+		usort($names, 'strcmp');
+		$lines[] = '- `' . $module . '`: [[' . implode(']], [[', $names) . ']]';
+	}
+
+	$lines[] = '';
+	$lines[] = '## How does a module get on this list?';
+	$lines[] = '- The memory file that describes it names it in its frontmatter (`module: comments, widgets_comments`) and `php tools/memory_index.php` is run. The kinds of function the older modules hold are in [[fn-module-map]].';
+
+	return implode("\n", $lines) . "\n";
 }

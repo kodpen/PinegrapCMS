@@ -1,6 +1,7 @@
 ---
 name: designer-prototype-viewer
 description: prototype.php plays a design's saved drafts (roles 0-2, or a share link): a session-less frame signed for one browser, link kinds, inert forms, no tracking, link_resolve.php
+module: link_resolve, prototype
 ---
 
 ## What does the viewer show?

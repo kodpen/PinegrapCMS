@@ -28,6 +28,9 @@ description: Working rules (2026-10-25) for every session: why they exist, one o
 ## What about changelog.txt?
 - A PR does not edit it. The Changelog section of its body names the `[NEW]` line, the `[SCHEME]` item or "none"; the merging session writes it when it lands the PR (`merge-train.md`).
 
+## Where does a new `includes/fn/` module get listed?
+- In the `module:` field of the memory file that describes it; `tools/memory_index.php` generates `core/fn-modules.md` from those fields. The hand-written list it replaced was an append-only file every module PR edited, so trains kept settling conflicts in it (PR #NNNN).
+
 ## Which PRs skip the train?
 - A PR that changes only `docs/`, `CLAUDE.md` or `.github/`: the merging session lands it alone as soon as it is green, so every new session starts under the current rules. When a train is already waiting and both regenerate the same index, it rides that train instead, so `development` does not move under it.
 

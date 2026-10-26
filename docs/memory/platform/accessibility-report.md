@@ -1,6 +1,7 @@
 ---
 name: accessibility-report
 description: Accessibility report (seo_a11y_job.php, includes/fn/a11y.php, view_accessibility.php): server-side WCAG 2.2 checks, a11y_ codes in seo_issue, the resumable pass, screen, PDF, API filter
+module: a11y
 ---
 
 ## What does the report check?

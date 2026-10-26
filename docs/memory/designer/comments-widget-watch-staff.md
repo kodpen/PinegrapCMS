@@ -1,6 +1,7 @@
 ---
 name: comments-widget-watch-staff
 description: The comments widget's watch form, watcher list and staff open-or-close form: wiring, who gets them, address masking, count text, where their messages print, canvas fades by place
+module: widgets_comments
 ---
 
 ## How are the small forms wired?

@@ -1,6 +1,7 @@
 ---
 name: designer-prototype-share-links
 description: Share links of a design's prototype (prototype_links, 11.0.35): makers, audiences, what anyone sees, the password lock, the token kept out of logs and the frame, uses, revoked with the design
+module: prototype_links
 ---
 
 ## What is a share link?

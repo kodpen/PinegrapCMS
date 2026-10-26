@@ -1,6 +1,7 @@
 ---
 name: comments-widget-replies
 description: Replies in the comments widget: order units, quotes, reply/cancel/share on links and buttons, the kept parent_id and ?reply_to=, pg_comment_reply_ok, init_comment_actions
+module: widgets_comments
 ---
 
 ## In which order are comments drawn?

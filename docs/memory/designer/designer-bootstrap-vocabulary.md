@@ -1,6 +1,7 @@
 ---
 name: designer-bootstrap-vocabulary
 description: The Bootstrap 5 vocabulary of the designer's smart completion (assets/js/designer_vocab/bootstrap5.json): how it is generated and kept, its keys and what each entry holds
+module: designer_vocab
 ---
 
 ## What is it and where does it come from?

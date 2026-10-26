@@ -1,6 +1,7 @@
 ---
 name: comments-widget
 description: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, e-mails, tokens, flags, escaping, default layout, checks
+module: widgets_comments
 ---
 
 ## What is it and where does it live?

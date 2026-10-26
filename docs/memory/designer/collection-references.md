@@ -1,6 +1,7 @@
 ---
 name: collection-references
 description: A form list or detail element prints a field of the record a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
+module: collections
 ---
 
 ## What does it do?

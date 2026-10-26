@@ -1,6 +1,7 @@
 ---
 name: comments-moderation-counters
 description: Comment moderation on designed record pages: the stored row decides, edit_comment.php and the API rebuild submitted_form_info and mail the record's submitter unless they wrote it
+module: comments
 ---
 
 ## Which comments belong to a form record?

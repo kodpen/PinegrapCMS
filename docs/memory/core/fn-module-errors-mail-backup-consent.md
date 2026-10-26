@@ -1,6 +1,7 @@
 ---
 name: fn-module-errors-mail-backup-consent
 description: The 2026.4.8 modules errors, mail_queue, backup and consent in includes/fn/: entry functions, gates, storage keys and behaviour rules.
+module: errors, mail_queue, backup, consent
 ---
 
 ## What does `errors` (the central error log) do?

@@ -1,6 +1,7 @@
 ---
 name: menu-widget
 description: Menu widget (menu_region, #1781): a classic menu region in the designer; items stay in the menu screen; menu.children lists, row tokens, current item, access, window, edit chip, gaps.
+module: widgets_lists_menu, widgets_menu
 ---
 
 ## What is it?
