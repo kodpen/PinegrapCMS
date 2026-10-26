@@ -239,6 +239,7 @@
     "Upload one web page (.html) on its own, without other files.": "Tek bir web sayfasını (.html) başka dosya olmadan tek başına yükleyin.",
     "Upload submitted form data for any existing custom form.": "Mevcut herhangi bir özel form için form verilerini yükleyin.",
     "Upload to": "Yükleme klasörü",
+    "Uploaded files": "Yüklenen dosyalar",
     "Uploaded files available to your pages": "Sayfalarınızın kullanabileceği yüklenmiş dosyalar",
     "Uploaded photos are compressed, and scaled down when wider or taller than {var:1} pixels. At least {var:2} pixels is recommended.": "Yüklenen fotoğraflar sıkıştırılır; genişliği veya yüksekliği {var:1} pikselden fazlaysa küçültülür. En az {var:2} piksel önerilir.",
     "Uploading": "Yükleniyor",
