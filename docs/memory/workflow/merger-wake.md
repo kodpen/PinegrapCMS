@@ -18,4 +18,8 @@ description: How the merging session keeps waking (2026-10-26): a 5-minute sessi
 - Both: the 5-minute tick and the hourly routine (delete an older routine of a session that is no longer merging). Then it lands or builds as the tick says. A recurring cron expires after 7 days; the hourly routine re-creates it.
 - Reviews of a train run while its CI runs, not before the push: CI takes about ten minutes, a review by sub-agents about as long.
 
+## Is the next train built before the open one lands?
+- Yes (2026-10-26): on the open train's tip, pushed and opened at once, so both CIs run together. The first lands by fast-forward, after which the second's base is `development` itself; its PR then shows only its own merges. A red first train means rebuilding the second on the rebuilt first.
+- The old rule against stacked trains came from squash landings, which rewrote the first train's commits and left every train built on it `dirty`.
+
 Related: docs/memory/workflow/merge-train.md, docs/memory/workflow/coordinator.md
