@@ -59,7 +59,7 @@ function test_dregion_attribute_clean()
 	pg_assert_same('', pg_dregion_attribute_clean(array('x')), 'not a string');
 	pg_assert_same('sports', pg_dregion_attribute_clean(' sports '));
 	pg_assert_same('a & b', pg_dregion_attribute_clean('a & b'), 'kept as typed, as in a style tag');
-	pg_assert_same('abphp x(); ?c', pg_dregion_attribute_clean("a\"b<?php x(); ?>\nc>"), 'no quote, angle bracket or line break');
+	pg_assert_same('ab?php x(); ?c', pg_dregion_attribute_clean("a\"b<?php x(); ?>\nc>"), 'no quote, angle bracket or line break');
 	pg_assert_same(255, strlen(pg_dregion_attribute_clean(str_repeat('x', 300))));
 }
 
@@ -81,7 +81,7 @@ function test_dregion_attribute_reaches_the_code()
 	pg_assert_same(array('attribute' => '', 'name' => 'News'), _test_dregion_attribute_seen(_render_region_tag($cases['no attribute'])));
 	pg_assert_same(array('attribute' => 'sports', 'name' => 'News'), _test_dregion_attribute_seen(_render_region_tag($cases['attribute'])));
 	pg_assert_same(array('attribute' => 'top 5 & more', 'name' => 'News'), _test_dregion_attribute_seen(_render_region_tag($cases['attribute with spaces'])));
-	pg_assert_same(array('attribute' => 'abphp x(); ?c', 'name' => 'News'), _test_dregion_attribute_seen(_render_region_tag($cases['attribute breaking the tag'])));
+	pg_assert_same(array('attribute' => 'ab?php x(); ?c', 'name' => 'News'), _test_dregion_attribute_seen(_render_region_tag($cases['attribute breaking the tag'])));
 }
 
 // The editor prints the same tags.

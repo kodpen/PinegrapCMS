@@ -28541,6 +28541,37 @@ const StyleDesigner = (function () {
         });
     }
 
+    // A dynamic region's PHP code as a file tab: read and saved through
+    // api.php's dynamic_region_code, which admits administrators only (the
+    // right of edit_dynamic_region.php) and checks the form token; the row
+    // is the same dregion row the classic screen edits.
+    function _sdDregionCodeOpen(name) {
+        if (!name) return;
+        var post = function (sub, extra, cb) {
+            var body = { action: 'dynamic_region_code', sub_action: sub, name: name, token: _pgToken() };
+            if (extra) Object.keys(extra).forEach(function (k) { body[k] = extra[k]; });
+            var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+            fetch(url, { method: 'POST', body: JSON.stringify(body), credentials: 'same-origin',
+                         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data && data.status === 'success') cb({ ok: true, content: data.content || '' });
+                    else cb({ ok: false, message: (data && data.message) || _sdT('Network error') });
+                })
+                .catch(function () { cb({ ok: false, message: _sdT('Network error') }); });
+        };
+        _sdCodeTabOpen({
+            key: 'dregion:' + name,
+            title: name + '.php',
+            icon: 'bi-filetype-php',
+            language: 'php',
+            readOnly: false,
+            url: null,
+            load: function (cb) { post('read', null, cb); },
+            save: function (content, cb) { post('save', { content: content }, cb); }
+        });
+    }
+
     // Ctrl+S with the keyboard in a file tab saves that file, not the design.
     function _sdCodeSaveShortcut() {
         var tab = _sdCodeActiveTab();
@@ -31850,6 +31881,7 @@ const StyleDesigner = (function () {
             legacyNote +
             row(_sdT('Type'), sel('regionType', typeOpts, n.props.regionType)) +
             '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
+            (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
             designableHtml
         ) + commentsInfo;
     }
@@ -43114,6 +43146,24 @@ const StyleDesigner = (function () {
         return navLinkActiveSection + sect(cnt.icon, cnt.label, h) + linkSection2 + buttonSection2 + textSection2;
     }
 
+    // A dynamic region's own rows: the attribute its tag hands to the code
+    // ($dregion_attribute) and, for administrators (the right of the
+    // classic Dynamic Region screen), its PHP code in a code-view tab.
+    function _sdDregionPropsHtml(n) {
+        var h = row(_sdT('Attribute'), '<input type="text" class="form-control form-control-sm" data-prop="regionAttr" maxlength="255" value="' + esc(n.props.regionAttr || '') + '">') +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Handed to the region\'s code as $dregion_attribute. Quotes and angle brackets are left out.')) +
+            '</div></div>';
+        if (_design && _design.dynamicRegionCode && n.props.regionName) {
+            h += '<div class="sd-prop-row">' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-dregion-code">' +
+                        '<span class="bi bi-filetype-php me-1"></span>' + esc(_sdT('Edit PHP code')) +
+                    '</button>' +
+                '</div>';
+        }
+        return h;
+    }
+
     function needsName(t) { return ['ad','common','designer','dynamic','login','menu','menu_sequence','tag_cloud','system'].indexOf(t) !== -1; }
 
     function buildRegionNames(type) {
@@ -45773,6 +45823,11 @@ const StyleDesigner = (function () {
         // The fixed comments block becomes the design's Comments widget.
         var cmtDesignBtn = document.getElementById('sd-cmt-make-designable');
         if (cmtDesignBtn) cmtDesignBtn.addEventListener('click', function () { _sdCommentsMakeDesignable(selectedNode); });
+        // A dynamic region's PHP code opens as a code-view tab.
+        var dregionCodeBtn = document.getElementById('sd-dregion-code');
+        if (dregionCodeBtn) dregionCodeBtn.addEventListener('click', function () {
+            if (selectedNode && selectedNode.props) _sdDregionCodeOpen(selectedNode.props.regionName);
+        });
 
         // Spacing toggle — expand/collapse responsive breakpoint rows
         document.querySelectorAll('#sd-properties .sd-sp-toggle').forEach(function(btn) {
@@ -57767,12 +57822,22 @@ const StyleDesigner = (function () {
         }
     }
 
+    // Twin of pg_dregion_attribute_clean() (includes/fn/designer.php).
+    function _sdDregionAttr(v) {
+        if (typeof v !== 'string') return '';
+        v = v.replace(/["<>\u0000-\u001f\u007f]/g, '').trim();
+        return Array.from(v).slice(0, 255).join('');
+    }
+
     function _sdRegionTag(p) {
         switch (p.regionType) {
             case 'page': return '<pregion></pregion>';
             case 'system': return p.regionName ? '<system>' + esc(p.regionName) + '</system>' : '<system></system>';
             case 'common': case 'designer': return '<cregion>' + esc(p.regionName || '') + '</cregion>';
-            case 'dynamic': return '<dregion>' + esc(p.regionName || '') + '</dregion>';
+            case 'dynamic': {
+                var attr = _sdDregionAttr(p.regionAttr);
+                return '<dregion' + (attr ? ' "' + attr + '"' : '') + '>' + esc(p.regionName || '') + '</dregion>';
+            }
             case 'menu': return '<menu>' + esc(p.regionName || '') + '</menu><div style="clear:both"></div>';
             case 'menu_sequence': return '<menu_sequence>' + esc(p.regionName || '') + '</menu_sequence>';
             case 'login': return '<login>' + esc(p.regionName || '') + '</login>';

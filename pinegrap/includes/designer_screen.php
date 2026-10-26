@@ -252,6 +252,10 @@ function pg_designer_screen_render($ctx)
         // made, listed and revoked by administrators and designers, once
         // the schema has them. False hides the "Share prototype" item.
         'prototypeShare' => ((int)$user['role'] <= 1) && $sd_proto_share,
+        // A dynamic region's PHP code opens as a code-view tab for the role
+        // the classic Dynamic Region screen admits (administrators); the
+        // endpoint (dynamic_region_code) checks the same.
+        'dynamicRegionCode' => ((int)$user['role'] === 0),
         'exitUrl'       => pg_safe_back_url($ctx['send_to'], ($ctx['from_pages'] ? 'view_pages.php' : 'view_system_styles.php')),
         'access'        => $access,
         // The schema can open shared components to content editors
