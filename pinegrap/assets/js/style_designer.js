@@ -27257,6 +27257,7 @@ const StyleDesigner = (function () {
         host.className = 'sd-html-code';
         host.innerHTML =
             '<div class="sd-code-tabs" id="sd-code-tabs"></div>' +
+            '<div class="sd-code-find d-none" id="sd-code-find"></div>' +
             '<div class="sd-code-panes" id="sd-code-panes">' +
                 '<div class="sd-code-pane pg-code-editor sd-code-pane-active" data-key="page" id="sd-code-pane-page"></div>' +
             '</div>';
@@ -27326,7 +27327,8 @@ const StyleDesigner = (function () {
             lockTitle: _sdCodeLockTitle,
             onSelection: _sdCodeOnSelection,
             onChange: _sdCodeOnChange,
-            onLockHit: _sdCodeOnLockHit
+            onLockHit: _sdCodeOnLockHit,
+            keys: [_sdCodeFindKey()]
         }).then(function (ed) {
             _sdCode.loading = false;
             _sdCode.ed = ed;
@@ -28682,7 +28684,7 @@ const StyleDesigner = (function () {
             readOnly: true,
             phrases: _sdCodePhrases(),
             labels: { syntaxError: _sdT('Syntax error') },
-            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }],
+            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }, _sdCodeFindKey()],
             onChange: function () {
                 if (!tab.loaded || tab.dirty) return;
                 tab.dirty = true;
@@ -28860,6 +28862,7 @@ const StyleDesigner = (function () {
                 '</button>';
         });
         html += '<span class="sd-code-tabs-spacer"></span>';
+        html += '<button type="button" class="sd-code-tab sd-code-find-toggle' + (_sdCodeFind && _sdCodeFind.open ? ' sd-code-tab-active' : '') + '" id="sd-code-find-toggle" title="' + esc(_sdT('Search in all tabs (Ctrl+Shift+F)')) + '"><span class="bi bi-search"></span></button>';
         if (active && active.key !== 'page' && active.spec) {
             if (active.spec.url) {
                 html += '<input type="text" class="sd-code-url" id="sd-code-url" value="' + esc(active.spec.url.value || '') + '" placeholder="https://" title="' + esc(_sdT('External URL:')) + '">';
@@ -28879,6 +28882,7 @@ const StyleDesigner = (function () {
                 if (e.button === 1 && this.getAttribute('data-key') !== 'page') { e.preventDefault(); _sdCodeTabClose(this.getAttribute('data-key')); }
             });
         });
+        strip.querySelector('#sd-code-find-toggle').addEventListener('click', function () { _sdCodeFindShow(!_sdCodeFind.open); });
         var save = strip.querySelector('#sd-code-file-save');
         if (save) save.addEventListener('click', function () { _sdCodeTabSave(active.key); });
         var url = strip.querySelector('#sd-code-url');
@@ -28886,6 +28890,142 @@ const StyleDesigner = (function () {
             url.addEventListener('change', function () { active.spec.url.onSave(this.value.trim()); });
             url.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); this.blur(); } });
         }
+    }
+
+    // ===================== CODE VIEW: SEARCH IN ALL TABS =====================
+    // One search over the page and every loaded file tab: a bar under the
+    // strip lists the hits by tab, a hit opens its tab and selects it. The
+    // texts are read from the editors as they are now (unsaved changes
+    // included); PgCodeEditor.findAll() does the matching. Enter / Shift+
+    // Enter in the field walk the hits, Escape closes the bar.
+    var _sdCodeFind = { open: false, query: { search: '', caseSensitive: false, wholeWord: false, regexp: false }, hits: [], at: -1, timer: 0 };
+    var _SD_CODE_FIND_LIMIT = 500;   // hits per tab
+
+    function _sdCodeFindKey() {
+        return { key: 'Mod-Shift-f', run: function () { _sdCodeFindShow(true); return true; } };
+    }
+
+    function _sdCodeFindShow(on) {
+        var bar = document.getElementById('sd-code-find');
+        if (!bar) return;
+        _sdCodeFind.open = !!on;
+        bar.classList.toggle('d-none', !on);
+        _sdCodeTabsRender();
+        if (!on) { bar.innerHTML = ''; _sdCodeFind.hits = []; return; }
+        // A one-line selection in the active tab is what is looked for.
+        var tab = _sdCodeActiveTab();
+        if (tab && tab.ed) {
+            var sel = tab.ed.selection();
+            var picked = sel.to > sel.from ? tab.ed.sliceDoc(sel.from, sel.to) : '';
+            if (picked && picked.indexOf('\n') === -1) _sdCodeFind.query.search = picked;
+        }
+        var q = _sdCodeFind.query;
+        var opt = function (name, label, icon) {
+            return '<button type="button" class="sd-code-find-opt' + (q[name] ? ' active' : '') + '" data-opt="' + name + '" title="' + esc(label) + '" aria-pressed="' + (q[name] ? 'true' : 'false') + '">' + icon + '</button>';
+        };
+        bar.innerHTML =
+            '<div class="sd-code-find-row">' +
+                '<span class="bi bi-search"></span>' +
+                '<input type="search" class="sd-code-find-input" id="sd-code-find-input" placeholder="' + esc(_sdT('Search in all tabs')) + '" value="' + esc(q.search) + '" spellcheck="false">' +
+                opt('caseSensitive', _sdT('match case'), 'Aa') + opt('wholeWord', _sdT('by word'), 'ab') + opt('regexp', _sdT('regexp'), '.*') +
+                '<span class="sd-code-find-count" id="sd-code-find-count"></span>' +
+                '<button type="button" class="sd-code-find-opt" data-close="1" title="' + esc(_sdT('Close')) + '">&times;</button>' +
+            '</div>' +
+            '<div class="sd-code-find-results" id="sd-code-find-results"></div>';
+        var input = bar.querySelector('#sd-code-find-input');
+        input.addEventListener('input', function () {
+            q.search = this.value;
+            clearTimeout(_sdCodeFind.timer);
+            _sdCodeFind.timer = setTimeout(_sdCodeFindRun, 200);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _sdCodeFindShow(false); return; }
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            clearTimeout(_sdCodeFind.timer);
+            if (q.search !== '' && !_sdCodeFind.hits.length) _sdCodeFindRun();
+            var n = _sdCodeFind.hits.length;
+            if (n) _sdCodeFindPick(((_sdCodeFind.at + (e.shiftKey ? -1 : 1)) % n + n) % n, true);
+        });
+        bar.querySelectorAll('.sd-code-find-opt').forEach(function (b) {
+            b.addEventListener('click', function () {
+                if (this.getAttribute('data-close')) { _sdCodeFindShow(false); return; }
+                var name = this.getAttribute('data-opt');
+                q[name] = !q[name];
+                this.classList.toggle('active', q[name]);
+                this.setAttribute('aria-pressed', q[name] ? 'true' : 'false');
+                _sdCodeFindRun();
+            });
+        });
+        bar.querySelector('#sd-code-find-results').addEventListener('click', function (e) {
+            var hit = e.target.closest('[data-hit]');
+            if (hit) _sdCodeFindPick(parseInt(hit.getAttribute('data-hit'), 10), false);
+        });
+        input.focus();
+        input.select();
+        _sdCodeFindRun();
+    }
+
+    function _sdCodeFindRun() {
+        var list = document.getElementById('sd-code-find-results');
+        var count = document.getElementById('sd-code-find-count');
+        if (!list || !count) return;
+        var q = _sdCodeFind.query;
+        var hits = [], html = '', error = '', truncated = false, tabs = 0;
+        if (q.search !== '' && typeof PgCodeEditor !== 'undefined') {
+            _sdCode.tabs.forEach(function (t) {
+                if (!t.ed || (t.key !== 'page' && !t.loaded) || error) return;
+                var r = PgCodeEditor.findAll(t.ed.getValue(), q, _SD_CODE_FIND_LIMIT);
+                if (r.error) { error = r.error; return; }
+                if (!r.matches.length) return;
+                truncated = truncated || r.truncated;
+                tabs++;
+                var title = t.key === 'page' ? _sdT('Page') : t.title;
+                html += '<div class="sd-code-find-tab"><span class="bi ' + esc(t.icon) + '"></span>' + esc(title) + '<span class="sd-code-find-n">' + r.matches.length + '</span></div>';
+                r.matches.forEach(function (m) {
+                    html += '<div class="sd-code-find-hit" data-hit="' + hits.length + '"><span class="sd-code-find-ln">' + m.line + '</span>' + _sdCodeFindPreview(m) + '</div>';
+                    hits.push({ key: t.key, from: m.from, to: m.to, text: m.text });
+                });
+            });
+        }
+        _sdCodeFind.hits = error ? [] : hits;
+        _sdCodeFind.at = -1;
+        if (error) {
+            count.textContent = _sdT('Invalid regular expression');
+            list.innerHTML = '';
+        } else {
+            count.textContent = q.search === '' ? '' : (hits.length ? _sdT('{var:1} results in {var:2} tabs', [hits.length + (truncated ? '+' : ''), tabs]) : _sdT('No results'));
+            list.innerHTML = html;
+        }
+        count.classList.toggle('text-danger', !!error);
+    }
+
+    // The hit's line, cut to the words around the match, the match marked.
+    function _sdCodeFindPreview(m) {
+        var line = m.lineText, end = Math.min(line.length, m.col + m.text.length);
+        var start = Math.max(0, m.col - 40);
+        var before = line.slice(start, m.col).replace(/^\s+/, '');
+        var after = line.slice(end, end + 80);
+        return '<span class="sd-code-find-text">' + (start > 0 ? '&hellip;' : '') + esc(before) +
+            '<mark>' + esc(line.slice(m.col, end)) + '</mark>' + esc(after) + (end + 80 < line.length ? '&hellip;' : '') + '</span>';
+    }
+
+    // Opens the hit's tab and selects it; a text that changed since the
+    // search (typed, a canvas edit, a closed tab) is searched again first.
+    function _sdCodeFindPick(i, keepFocus) {
+        var hit = _sdCodeFind.hits[i];
+        if (!hit) return;
+        var tab = _sdCodeTabFind(hit.key);
+        if (!tab || !tab.ed || tab.ed.sliceDoc(hit.from, hit.to) !== hit.text) { _sdCodeFindRun(); return; }
+        _sdCodeFind.at = i;
+        if (_sdCode.active !== hit.key) _sdCodeTabActivate(hit.key);
+        tab.ed.goTo(hit.from, hit.to, { focus: !keepFocus });
+        var list = document.getElementById('sd-code-find-results');
+        if (!list) return;
+        list.querySelectorAll('.sd-code-find-hit.active').forEach(function (el) { el.classList.remove('active'); });
+        var row = list.querySelector('[data-hit="' + i + '"]');
+        if (row) { row.classList.add('active'); row.scrollIntoView({ block: 'nearest' }); }
+        if (keepFocus) { var input = document.getElementById('sd-code-find-input'); if (input) input.focus(); }
     }
 
     // ── Shared Context Menu Builder ────────────────────────────────────────────────
