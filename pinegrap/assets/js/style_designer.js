@@ -23891,9 +23891,11 @@ const StyleDesigner = (function () {
         return attrs;
     }
 
-    // Remove any class in cssClass that shares a mutex prefix with newClass.
-    // Uses the LONGEST matching prefix so that e.g. 'p-sm-3' matches 'p-sm-' not 'p-',
-    // allowing p-sm-3 and p-md-5 to coexist independently.
+    // Remove any class in cssClass that shares a mutex prefix with newClass at
+    // the same breakpoint. Uses the LONGEST matching prefix so that e.g.
+    // 'p-sm-3' matches 'p-sm-' not 'p-'; the breakpoint is the infix after the
+    // prefix ('d-md-block' is 'd-' at md), so d-none and d-md-block, or p-3
+    // and p-md-5, coexist while d-flex replaces d-none.
     function deduplicateCssClass(cssClass, newClass) {
         if (!newClass) return cssClass;
         var matchedPrefix = null;
@@ -23905,8 +23907,13 @@ const StyleDesigner = (function () {
             }
         }
         if (!matchedPrefix) return cssClass;
+        var bpOf = function (cls) {
+            var m = /^-?(sm|md|lg|xl|xxl)-/.exec(cls.slice(matchedPrefix.length));
+            return m ? m[1] : '';
+        };
+        var bp = bpOf(newClass);
         return (cssClass || '').split(/\s+/).filter(function (c) {
-            return c.trim() && !c.startsWith(matchedPrefix);
+            return c.trim() && !(c.startsWith(matchedPrefix) && bpOf(c) === bp);
         }).join(' ');
     }
 
