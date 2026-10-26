@@ -36,7 +36,7 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 - F6 done #1702: facade primer, `addCompletionRanker`, css/js sources inside HTML, swatches ([[code-editor-completion]]).
 - 1 done #1704: vocabulary from tools/build_designer_vocab.php ([[designer-bootstrap-vocabulary]]).
 - 2 Breakpoint-aware class dedupe (~23686, ~41142).
-- 3 Predictor core: pg_style_predict.js, tests/style_predict_test.php.
+- 3 done #1722: predictor ([[style-predictor]]).
 - 4 Loader and class field; `class_suggestions.js` removed (clean_up.php).
 - 5 Attribute rows and Styles panel inputs.
 - 6 Custom style model and Styles "This element": tests/designer_custom_style_test.php.
