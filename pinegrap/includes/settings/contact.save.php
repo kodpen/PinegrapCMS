@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - what the Communication screen writes: e-mail campaigns,
- * live chat, MailChimp and SMS.
+ * live chat, MailChimp, SMS and İYS.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -19,6 +19,8 @@
 if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
+
+require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
 
 
 
@@ -112,6 +114,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // there that a refusal here could not take back.
     $sms_settings_post = pg_sms_settings_check($_POST, $liveform);
     $sms_messages_post = pg_sms_message_settings_check($_POST, $liveform);
+
+    // ── İYS ──
+    //
+    // Same order and reason as the SMS account: a changed account is asked
+    // about at İYS before MailChimp can create anything.
+    $iys_settings_post = pg_iys_settings_check($_POST, $liveform);
 
     // ── MailChimp ──
     //
@@ -264,3 +272,4 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // config row; the test message, when its button was pressed, after that.
     pg_sms_settings_save($sms_settings_post, USER_ID, $liveform);
     pg_sms_message_settings_save($sms_messages_post, USER_ID);
+    pg_iys_settings_save($iys_settings_post, USER_ID, $liveform);
