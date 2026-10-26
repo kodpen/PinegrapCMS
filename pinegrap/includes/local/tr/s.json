@@ -1294,6 +1294,7 @@
     "Sign in with Google, Microsoft and Apple": "Google, Microsoft ve Apple ile Giriş",
     "Sign in with Microsoft": "Microsoft ile Giriş",
     "Sign in with a passkey": "Geçiş anahtarıyla oturum aç",
+    "Sign in with a passkey alone": "Yalnızca geçiş anahtarıyla oturum açma",
     "Sign in with the account you ordered with to review this product.": "Bu ürünü değerlendirmek için sipariş verdiğiniz hesapla giriş yapın.",
     "Sign in with your email address or username.": "E-posta adresiniz ya da kullanıcı adınızla giriş yapın.",
     "Sign in with {var:1}": "{var:1} ile Giriş",

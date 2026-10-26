@@ -2904,6 +2904,7 @@
     "The short link, {var:1}, was restored.": "{var:1} kısa bağlantısı geri alındı.",
     "The shortest way back up that score runs through {var:1}.": "Sistem sağlığını toparlamanın en kısa yolu {var:1} üzerinden geçer.",
     "The sign-in area: a link to sign in, or the visitor once signed in.": "Giriş alanı: giriş bağlantısı ya da giriş yaptıktan sonra ziyaretçi.",
+    "The sign-in screens show a \"Sign in with a passkey\" button. A passkey verified on the device (PIN, fingerprint or face) signs the person in without a password or code. People add passkeys from their account page.": "Oturum açma ekranları \"Geçiş anahtarıyla oturum aç\" düğmesini gösterir. Cihazda doğrulanan bir geçiş anahtarı (PIN, parmak izi veya yüz) kişiyi parola ya da kod olmadan oturum açtırır. Geçiş anahtarları hesap sayfasından eklenir.",
     "The sign-in server did not register the site: {var:1}": "Giriş sunucusu siteyi kaydetmedi: {var:1}",
     "The sign-in server does not say that it takes PKCE (S256), so the site does not sign in there.": "Giriş sunucusu PKCE (S256) desteklediğini belirtmiyor, bu yüzden site orada giriş yapmaz.",
     "The sign-in server gives no usable authorization or token address.": "Giriş sunucusu kullanılabilir bir yetkilendirme ya da jeton adresi vermiyor.",

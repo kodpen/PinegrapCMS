@@ -31,4 +31,4 @@ description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys
 - [[passkey-second-factor]] (PR #1862).
 
 ## What is not built yet? (plans/passkeys.md)
-- Recovery codes for passkey-only accounts, adding a passkey without TOTP. Passwordless sign-in: `pg_passkey_signin_begin(0)` and the check already handle it (user handle required, UV required) but no screen offers it.
+- Recovery codes for passkey-only accounts, adding a passkey without TOTP, conditional UI. Passwordless sign-in is built: [[passkey-passwordless]] (PR #1882).
