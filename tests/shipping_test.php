@@ -324,3 +324,31 @@ function test_shipment_warning_text()
 	pg_assert_contains('MNG Kargo', pg_shipment_warning_text('MNG Kargo'));
 	pg_assert_same(lang('This does not look like a tracking number. It was saved anyway.'), pg_shipment_warning_text(''));
 }
+
+// The order_shipped / order_delivered e-mail fields: every number, each
+// carrier once in the order first met, and the first parcel's link (one link
+// fits an href); a row without a number adds nothing.
+function test_shipment_merge_fields()
+{
+	$fields = pg_shipment_merge_fields(array(
+		array('number' => '1234567890', 'carrier_name' => 'Aras Kargo', 'url' => ''),
+		array('number' => '', 'carrier_name' => 'MNG Kargo', 'url' => 'https://example.com/x'),
+		array('number' => 'AB123', 'carrier_name' => 'Yurtiçi Kargo', 'url' => 'https://example.com/ab123'),
+		array('number' => '777', 'carrier_name' => 'Aras Kargo', 'url' => 'https://example.com/777'),
+		array('number' => '888', 'carrier_name' => '', 'url' => ''),
+	));
+
+	pg_assert_same(array(
+		array('name' => 'tracking_numbers', 'data' => '1234567890, AB123, 777, 888'),
+		array('name' => 'carrier_name', 'data' => 'Aras Kargo, Yurtiçi Kargo'),
+		array('name' => 'tracking_url', 'data' => 'https://example.com/ab123'),
+	), $fields);
+
+	// No parcel: the fields are still there, empty, so a [[...||...]]
+	// conditional takes its else part instead of printing the ^^name^^.
+	pg_assert_same(array(
+		array('name' => 'tracking_numbers', 'data' => ''),
+		array('name' => 'carrier_name', 'data' => ''),
+		array('name' => 'tracking_url', 'data' => ''),
+	), pg_shipment_merge_fields(array()));
+}

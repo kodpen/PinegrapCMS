@@ -16,10 +16,11 @@ description: pg_catalog_variant_set_create(): input array, shared check, prices 
 
 ## Who calls it?
 - The product screen's group mode, `pg_pb_save_new_product()`: it turns the posted prices into cents (`pg_pb_price_to_cents()`), reads the rules from the form (`pg_pb_price_rules_from_post()`) and passes `ai_fields`. The single mode and the image code template stay in the screen.
+- The Workspace's `variant_set` change (`ws_change_write_variant_set()`).
 - `POST /product-groups/variant-sets` (`api_product_groups_variant_sets_create()`, products:write, dry_run): 409 `name_taken` for the group name or a SKU, the parent (`api_product_group_parent_or_fail()`, shared with POST /product-groups), images, rows (`api_product_group_variant_rows()`: lengths 100/100/50, a SKU sent twice, option pairs through `api_products_create_attributes()`), stock 0..`API_INVENTORY_QUANTITY_LIMIT`, rule amounts whole ints (`api_product_group_price_rule_amounts_or_fail()`: the normalizer would round or drop them), rules normalized and owned; a row without a price needs rules. It writes `pg_audit_record()` per product itself (the screen's add_product.php does too, so the writer does not). Then the shared check, `api_dry_run_stop()`, the writer with `$app['owner']`, `submit_form` empty, `barcode_auto` false, `price_source` 'api'. Variants start from `api_products_create_defaults()`; the axes are the attributes in the order the rows name them.
 
 ## What does it not do?
-- No `product.created` or `product_group.created`, no marketplace call, no SEO rescore: the screen never made them for a set, and a new product is matched to no listing. Revisit with the Workspace `variant_set` kind (plan slice 4b).
+- No `product.created` or `product_group.created`, no marketplace call, no SEO rescore: the screen never made them for a set, and a new product is matched to no listing. The Workspace's `variant_set` kind scores and announces after it (workspace/workspace-variant-set-change.md).
 
 ## Which test covers it?
 - `tests/catalog_variant_set_test.php`: the check, the price, one built row, and from the source that the screen and the route write through it with the rehearsal above the write.

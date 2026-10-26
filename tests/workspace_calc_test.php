@@ -301,3 +301,13 @@ function test_workspace_calc_a_written_share_shows_as_one()
 	pg_assert_same(0.2, $lines[1]['value'], 'the value stays the share');
 	pg_assert_same('20', $lines[2]['display'], 'a line using it is a figure');
 }
+
+function test_workspace_calc_inline_reads_a_highlighted_figure()
+{
+	$plain = ws_calc_inline('Kira 15.000 + aidat 750 =');
+	$marked = ws_calc_inline('Kira ==15.000== + aidat 750 =');
+
+	pg_assert_same(15750.0, (float) ws_calc_inline('Kira 15000 + aidat 750 =')['value'], 'the plain line');
+	pg_assert_same((float) $plain['value'], (float) $marked['value'], 'a highlighted figure adds up the same');
+	pg_assert_same(5.0, (float) ws_calc_inline('==2== + ==3== =')['value'], 'two highlighted figures');
+}

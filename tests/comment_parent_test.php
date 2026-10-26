@@ -300,7 +300,7 @@ function test_comment_parent_page_copy_wiring()
 // Deleting a comment leaves its replies; they read as comments of their own.
 function test_comment_parent_deletes_keep_replies()
 {
-	foreach (array('edit_comment.php', 'includes/api/resources/comments.php', 'edit_page.php', 'edit_pages.php', 'view_folder_and_files_f.php') as $file) {
+	foreach (array('edit_comment.php', 'includes/api/resources/comments.php', 'edit_page.php', 'edit_pages.php', 'includes/explorer/recycle_bin.php') as $file) {
 		$source = comment_parent_test_source($file);
 
 		pg_assert_true(strpos($source, 'DELETE FROM comments') !== false, $file . ' deletes comments');

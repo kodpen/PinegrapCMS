@@ -60,10 +60,11 @@ function test_form_list_result_count_render_order()
 
 	_form_list_result_count_order($body, '$loop_empty = ($loop_template === \'\');', '$loop_template = _pg_sw_resolve_visibility($loop_template, $flags);', 'the empty loop area is taken before visibility is resolved');
 	_form_list_result_count_order($body, 'if ($loop_empty && $static_html === \'\') return \'\';', 'SELECT COUNT(*) FROM forms', 'a list with nothing to draw runs no query');
-	_form_list_result_count_order($body, 'SELECT COUNT(*) FROM forms', '$result_count = ($max_results > 0) ? min($total_records, $max_results) : $total_records;', 'the count follows the COUNT query');
-	_form_list_result_count_order($body, '$result_count = ($max_results > 0) ? min($total_records, $max_results) : $total_records;', 'if ($max_results > 0 && $total_records > $max_results) {', 'the count is taken before pagination caps the total');
+	_form_list_result_count_order($body, 'SELECT COUNT(*) FROM forms', '$listed_records = max(0, $total_records - $offset_records);', 'the offset is taken off the COUNT');
+	_form_list_result_count_order($body, '$listed_records = max(0, $total_records - $offset_records);', '$result_count = ($max_results > 0) ? min($listed_records, $max_results) : $listed_records;', 'max_results caps what the offset left');
+	_form_list_result_count_order($body, '$result_count = ($max_results > 0) ? min($listed_records, $max_results) : $listed_records;', '$total_pages  = $loop_empty ? min(1, $result_count) : (int)ceil($result_count / $items_per_page);', 'the pages follow the capped count');
 	_form_list_result_count_order($body, 'pg_sw_url_filter_state(array(', 'if ($loop_empty) return $stitch(\'\', \'\');', 'a count strip registers the head state first');
-	_form_list_result_count_order($body, 'if ($total_records === 0) return $stitch($empty_html, \'\');', 'if ($loop_empty) return $stitch(\'\', \'\');', 'a count strip shows the empty message only when nothing matched');
+	_form_list_result_count_order($body, 'if ($result_count === 0) return $stitch($empty_html, \'\');', 'if ($loop_empty) return $stitch(\'\', \'\');', 'a count strip shows the empty message only when nothing matched');
 	_form_list_result_count_order($body, 'if ($loop_empty) return $stitch(\'\', \'\');', 'pg_sw_pagination_html(', 'a count strip has no pagination');
 
 	// The old shortcut printed the empty message without a query.
@@ -87,7 +88,7 @@ function test_form_list_result_count_tokens_and_flags()
 	pg_assert_contains("\$extra['__result_count'] = \$result_count_html;", $body);
 	pg_assert_true((bool) preg_match("/'has_records'\s*=> \\\$result_count > 0,/", $body), 'has_records is on when the list counted records');
 	pg_assert_true((bool) preg_match("/'no_records'\s*=> \\\$result_count === 0,/", $body), 'no_records is on when it counted none');
-	pg_assert_contains("_pg_sw_mark_visibility(\$tree_decoded, array('has_filter_value', 'no_filter_value', 'has_records', 'no_records'));", $body);
+	pg_assert_contains("_pg_sw_mark_visibility(\$tree_decoded, array('has_filter_value', 'no_filter_value', 'has_records', 'no_records', 'has_prev_page', 'has_next_page', 'has_more_pages'));", $body);
 
 	// A finished value, not a raw HTML key.
 	pg_assert_false(in_array('__result_count', pg_sw_raw_token_keys(), true), '__result_count is not a raw key');
@@ -104,7 +105,7 @@ function test_form_list_result_count_editor()
 	$list = substr($js, (int) $start, (int) strpos($js, '];', (int) $start) - (int) $start);
 	pg_assert_contains("['__result_count', _sdT('Number of results')]", $list);
 
-	pg_assert_true((bool) preg_match("/form_list_view: \[\s*\['has_filter_value',[^\]]*\],\s*\['no_filter_value',[^\]]*\],\s*\['has_records',[^\]]*\],\s*\['no_records',[^\]]*\]\s*\]/", $js), 'form_list_view lists the address flags, then has_records and no_records');
+	pg_assert_true((bool) preg_match("/form_list_view: \[\s*\['has_filter_value',[^\]]*\],\s*\['no_filter_value',[^\]]*\],\s*\['has_records',[^\]]*\],\s*\['no_records',[^\]]*\],/", $js), 'form_list_view lists the address flags, then has_records and no_records');
 	pg_assert_true((bool) preg_match("/\['has_records',\s*_sdT\('The list found records'\)\]/", $js), 'has_records carries its label');
 	pg_assert_true((bool) preg_match("/\['no_records',\s*_sdT\('The list found nothing'\)\]/", $js), 'no_records carries its label');
 

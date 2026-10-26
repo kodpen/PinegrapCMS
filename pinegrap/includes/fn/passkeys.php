@@ -860,6 +860,235 @@ function pg_passkey_signin_check($input, $user_id)
     );
 }
 
+// ── Sign-in with a passkey alone ────────────────────────────────────────────
+
+/**
+ * Whether the sign-in screens offer a passkey as the only factor: the site
+ * switched it on (config.passkey_signin, read into PASSKEY_SIGNIN; off
+ * before the upgrade adds the column) and passkeys work on this site.
+ *
+ * @return bool
+ */
+function pg_passkey_passwordless_enabled()
+{
+    return defined('PASSKEY_SIGNIN') && ((int) PASSKEY_SIGNIN === 1) && pg_passkeys_available();
+}
+
+/**
+ * Why the account a passkey named may not sign in, or '' when it may: it
+ * must still exist ('account'), and a member whose address is on the block
+ * list is refused ('blocked') as validate_login() refuses their password.
+ * Staff are never stopped by the block list, for the reason given there.
+ *
+ * @param array|null $account       user row: user_id, user_role
+ * @param bool       $email_blocked pg_email_blocked() of its address
+ * @return string
+ */
+function pg_passkey_passwordless_refusal($account, $email_blocked)
+{
+    if (!is_array($account) || empty($account['user_id'])) {
+        return 'account';
+    }
+
+    if (((int) $account['user_role'] === 3) && $email_blocked) {
+        return 'blocked';
+    }
+
+    return '';
+}
+
+/**
+ * Whether a screen offers passkeys in its email/username field's autofill
+ * (conditional UI): only a screen that only signs in, the login screen and
+ * the login widget (pg_signin_buttons() with no sign-up, false or 'none').
+ * A screen that also registers keeps its address field for the new account.
+ *
+ * @param mixed $signup pg_signin_buttons()'s $signup
+ * @return bool
+ */
+function pg_passkey_autofill_for($signup)
+{
+    return ($signup === false) || ($signup === 'none');
+}
+
+/**
+ * The "Sign in with a passkey" button printed among the social sign-in
+ * buttons (pg_signin_buttons()), or '' when the site does not offer it.
+ *
+ * The buttons sit inside the password form on most screens, so this is a
+ * plain button rather than a form of its own: pg_passkey.js shows it when
+ * the browser can use a passkey, runs the ceremony and posts the answer to
+ * index.php in a form it builds, carrying the token, send_to, the
+ * surrounding form's remember-me box and the page to come back to when it
+ * is refused. The script is linked once per page.
+ *
+ * With $autofill the script also has the browser offer the site's passkeys
+ * in the autofill of the form's email field (pg_passkey_autofill_for()).
+ *
+ * @param string $send_to  where a completed sign-in lands
+ * @param bool   $autofill
+ * @return string
+ */
+function pg_passkey_signin_button($send_to = '', $autofill = false)
+{
+    static $script_linked = false;
+
+    if (!pg_passkey_passwordless_enabled()) {
+        return '';
+    }
+
+    $script = '';
+
+    if (!$script_linked) {
+        $script_linked = true;
+        $script = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_passkey.js?v='
+            . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_passkey.js') . '" defer="defer"></script>';
+    }
+
+    $texts = json_encode(array(
+        'cancelled' => lang('The passkey was not used. Please try again.'),
+        'failed'    => lang('Your browser could not use a passkey here.'),
+    ), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    return '<div class="pg-signin-button pg-signin-passkey" style="margin-top:1em;text-align:center" hidden="hidden">'
+        . '<button type="button" data-pg-passkey-signin="1"'
+        . ($autofill ? ' data-autofill="1"' : '')
+        . ' data-options-url="' . h(PATH . SOFTWARE_DIRECTORY . '/passkey.php') . '"'
+        . ' data-action="' . h(PATH . SOFTWARE_DIRECTORY . '/index.php') . '"'
+        . ' data-token="' . h((string) ($_SESSION['software']['token'] ?? '')) . '"'
+        . ' data-send-to="' . h((string) $send_to) . '"'
+        . ' data-return-to="' . h(get_request_uri()) . '"'
+        . ' data-texts="' . h($texts) . '"'
+        . ' style="display:inline-flex;align-items:center;justify-content:center;min-width:240px;max-width:100%;box-sizing:border-box;padding:9px 18px;border:1px solid #747775;border-radius:4px;background:#ffffff !important;color:#1f1f1f !important;font-weight:500;font-size:14px !important;line-height:1.4;cursor:pointer">'
+        . '<i class="bi bi-key" aria-hidden="true" style="margin-right:10px"></i>'
+        . '<span style="color:#1f1f1f !important;white-space:nowrap">' . h(lang('Sign in with a passkey')) . '</span></button>'
+        . '<div class="pg-passkey-signin-error" role="alert" hidden="hidden" style="margin-top:.5em"></div>'
+        . '</div>' . $script;
+}
+
+/**
+ * Where a refused passkey sign-in goes back to: the page the button was on
+ * (a designed login page prints the error there, as for a refused
+ * password), else the login screen.
+ *
+ * @return string absolute URL
+ */
+function pg_passkey_passwordless_back_url()
+{
+    $return_to = (isset($_POST['return_to']) && is_scalar($_POST['return_to'])) ? (string) $_POST['return_to'] : '';
+
+    if ($return_to !== '') {
+        return URL_SCHEME . HOSTNAME . pg_safe_redirect_path($return_to);
+    }
+
+    return URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/';
+}
+
+/**
+ * Completes a sign-in with a passkey alone, posted to index.php by
+ * pg_passkey.js; does not return.
+ *
+ * The passkey is the first factor and, verified on the device (PIN,
+ * fingerprint, face: pg_passkey_signin_check() with no account requires it),
+ * the second as well, so no code is asked for. The account it names must
+ * still exist and not be blocked; the rest is the order the password
+ * sign-in uses after its second step: device limit (told the second step is
+ * done), device token, session, order. A refusal is written to the login
+ * form's messages and the visitor sent back to the page the button was on.
+ */
+function pg_passkey_passwordless_signin()
+{
+    validate_token_field();
+    require_cookies();
+    check_banned_ip_addresses('login');
+
+    $error = '';
+    $account = null;
+    $name = '';
+
+    if (!pg_passkey_passwordless_enabled()) {
+        $error = 'passwordless_off';
+    } elseif (pg_passkey_passwordless_blocked()) {
+        $error = 'attempts';
+    } else {
+        $credential = (isset($_POST['credential']) && is_string($_POST['credential'])) ? $_POST['credential'] : '';
+        $result = pg_passkey_signin_check($credential, 0);
+
+        if (!$result['ok']) {
+            $error = $result['error'];
+        } else {
+            $account = db_item("SELECT user_id, user_username, user_email, user_role
+                FROM user WHERE user_id = '" . (int) $result['user_id'] . "'");
+            $error = pg_passkey_passwordless_refusal($account,
+                is_array($account) && pg_email_blocked((string) $account['user_email']));
+            $name = (string) $result['name'];
+        }
+    }
+
+    if ($error !== '') {
+        log_activity(lang(array(
+            'string' => 'access denied (passkey not accepted: {var:1})',
+            'vars'   => array($error))), is_array($account) ? (string) $account['user_username'] : lang('UNKNOWN'));
+
+        $liveform = new liveform('login');
+        $liveform->mark_error('email', ($error === 'attempts')
+            ? lang('Too many attempts. Please wait a few minutes and try again.')
+            : pg_passkey_refusal($error, 'signin'));
+
+        header('Location: ' . pg_passkey_passwordless_back_url());
+        exit();
+    }
+
+    $user_id = (int) $account['user_id'];
+    $username = (string) $account['user_username'];
+    $send_to = (isset($_POST['send_to']) && is_scalar($_POST['send_to'])) ? (string) $_POST['send_to'] : '';
+    // The remember-me box of the form the button sat in, when it has one.
+    $remember = (REMEMBER_ME == TRUE) && isset($_POST['remember_me']) && ((string) $_POST['remember_me'] === '1');
+
+    pg_device_limit_gate($user_id, $username, $send_to, $remember, true);
+    pg_login_set_device_cookie($user_id, $remember);
+
+    if (REMEMBER_ME == TRUE) {
+        setcookie('software[remember_me]', $remember ? 'true' : 'false', time() + 315360000, '/');
+    }
+
+    pg_session_sign_in($user_id, $username);
+
+    require_once(PG_FUNCTIONS_DIR . '/connect_user_to_order.php');
+    connect_user_to_order();
+
+    log_activity(lang(array(
+        'string' => 'user signed in with a passkey ({var:1})',
+        'vars'   => array($name))), $username);
+
+    send_user_to_login_home();
+    exit();
+}
+
+/**
+ * Counts one passkey sign-in attempt of this address and says whether it is
+ * over its allowance (30 in 10 minutes). A passkey cannot be guessed, but
+ * each attempt costs a signature check and a lookup, so a script posting
+ * answers in a loop is stopped. Fails open where waf_rate is unavailable,
+ * like every other rate limit here.
+ *
+ * @return bool
+ */
+function pg_passkey_passwordless_blocked()
+{
+    if (!function_exists('waf_rate_exceeded') || !function_exists('waf_client_ip') || !isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $ip = waf_client_ip();
+
+    if (($ip === '') || !function_exists('waf_ip_subject')) {
+        return false;
+    }
+
+    return waf_rate_exceeded(waf_ip_subject($ip), 'passkey-ip', 30, 600);
+}
+
 // ── Words for the visitor ───────────────────────────────────────────────────
 
 /**
@@ -891,6 +1120,9 @@ function pg_passkey_refusal($error, $context)
 
         case 'duplicate':
             return lang('This passkey is registered already.');
+
+        case 'passwordless_off':
+            return lang('Signing in with a passkey alone is not available on this site.');
     }
 
     return ($context === 'register')

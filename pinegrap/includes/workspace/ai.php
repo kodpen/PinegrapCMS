@@ -3042,6 +3042,10 @@ function ws_ai_changes_guide($asker, $channel_id)
                 return ' (the whole list, as a list of lines)';
             case 'erp_lines':
                 return ' (a JSON list of line objects: product_id, description, quantity, unit, unit_price in minor units, discount_rate, tax_rate, tax2_rate, withholding_code, withholding_rate; a line with a product_id takes the product\'s name and VAT rate when they are left out, any other needs description and tax_rate)';
+            case 'variants':
+                return ' (a JSON list of variant objects, one product each: name (its SKU), short_description, gtin, attributes (a list of {attribute_id, option_id}, one per attribute), price in minor units (left out: priced by price_rules from price), quantity (its stock))';
+            case 'price_rules':
+                return ' (a JSON list of {attribute_id, mode (set, multiply or adjust), options: a list of {option_id, amount in minor units, or factor, or percent}}; at most one attribute sets the price)';
             case 'answers':
                 return ' (an object of field name => new answer, only the ones to change)';
             default:
@@ -3087,6 +3091,12 @@ function ws_ai_changes_guide($asker, $channel_id)
             $line .= '. A new one is a sales quote (never a cart quote) and needs account_id and lines; give lines in one call, the whole list. invoice turns an open, expired or accepted quote (its id, no field) into an invoice draft dated today at the prices quoted';
         }
 
+        // Added whole: the rows are one field, given at once.
+        if ($key === 'variant_set') {
+            $line .= '. A new one is a product group shown as one item with a variant picker and a product per row; give variants (at least two) in one call, the whole list. '
+                . ws_ai_variant_attributes_guide();
+        }
+
         $lines[] = $line . '.';
     }
 
@@ -3098,6 +3108,37 @@ function ws_ai_changes_guide($asker, $channel_id)
         . 'action is update when left out; create takes id 0, delete and invoice no field. The stock of a product is changed with type stock, field quantity and the product\'s id. A channel change takes the id of this channel and the whole summary as it should read. '
         . 'Asked to rename a product, change name and short_description both where both hold the old name. '
         . 'A deleted product, product group, page or file goes to the Recycle Bin; a deleted contact, offer or calendar event is gone for good.';
+}
+
+/**
+ * The shop's attributes and their options with their ids, for the rows of a
+ * variant set: Pinegrap AI reads no attribute anywhere else. At most 20
+ * attributes of 40 options each.
+ *
+ * @return string
+ */
+function ws_ai_variant_attributes_guide()
+{
+    $attributes = (array) db_items("SELECT id, name, label FROM product_attributes ORDER BY name LIMIT 20");
+
+    if (empty($attributes)) {
+        return 'The shop has no product attributes yet, so no variant set can be proposed: they are made under Product Attributes first';
+    }
+
+    $parts = array();
+
+    foreach ($attributes as $attribute) {
+        $options = array();
+
+        foreach ((array) db_items("SELECT id, label FROM product_attribute_options WHERE product_attribute_id = '" . (int) $attribute['id'] . "' ORDER BY sort_order, id LIMIT 40") as $option) {
+            $options[] = $option['label'] . ' ' . (int) $option['id'];
+        }
+
+        $name = ((string) $attribute['label'] !== '') ? $attribute['label'] : $attribute['name'];
+        $parts[] = $name . ' (attribute_id ' . (int) $attribute['id'] . '; option_id: ' . implode(', ', $options) . ')';
+    }
+
+    return 'The shop\'s attributes: ' . implode('; ', $parts);
 }
 
 /**
@@ -3504,7 +3545,7 @@ function ws_ai_tools($row)
             'action' => array('type' => 'string', 'enum' => array('update', 'create', 'delete', 'add', 'remove', 'invoice')),
             'id'     => array('type' => 'integer', 'description' => 'The record id, as read; 0 for create.'),
             'field'  => array('type' => 'string', 'description' => 'The field to set; empty for delete and invoice; product_ids for add and remove.'),
-            'value'  => array('type' => 'string', 'description' => 'The new value as text; a list as comma-separated items; a sales quote\'s lines as a JSON list of line objects.'),
+            'value'  => array('type' => 'string', 'description' => 'The new value as text; a list as comma-separated items; a sales quote\'s lines, or a variant set\'s variants and price_rules, as a JSON list of objects.'),
             'reason' => array('type' => 'string', 'description' => 'One line on why.'),
         ), array('type', 'action'));
     }

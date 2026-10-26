@@ -21,7 +21,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 
 - access-control-and-roles.md: validate_area_access() gates, real role numbering (Designer above Manager), role table, job-script gating, and the ecommerce role rule (panel and external API owner).
 - admin-new-account-email-link.md: The "New Account" e-mail an administrator sends from add user or import users carries a single-use set password link, never the random password (PR #1217)
-- ai-prompt-data-blocks.md: Untrusted text set apart in Pinegrap AI's prompts and tool answers (pg_ai_data_block(), PR #1854): the marks, forged marks, what is framed, the site's own words outside
+- ai-prompt-data-blocks.md: Untrusted text set apart in AI prompts, tool answers and the designer's page brief (pg_ai_data_block(), PR #1854, #1953): the marks, forged marks, what is framed
 - ai-prompt-rules.md: The rules block every language-model prompt ends with (pg_ai_prompt_rules(), PR #1124) writer and assistant profiles, the builders, the test that fails for a prompt without it
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
@@ -33,10 +33,13 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
 - code-editor-completion.md: Code editor completion (pg_code_editor.js): css/js sources inside an HTML editor, addCompletionRanker, colour swatches, the slot sources and the lezer lookup-cache reset
-- code-editor-facade-and-bundle.md: The code editor facade window.PgCodeEditor (assets/js/pg_code_editor.js): lazy CodeMirror 6 bundle, opening an editor, locks and islands, tracked ranges, registries, bundle build
+- code-editor-facade-and-bundle.md: The code editor facade window.PgCodeEditor (assets/js/pg_code_editor.js): lazy CodeMirror 6 bundle, opening an editor, locks and islands, tracked ranges, registries, format, bundle build
+- code-editor-format.md: The code editor's format command: ed.format() and Shift+Alt+F for CSS, JavaScript and JSON through the bundled js-beautify, what refuses it, how it lands in the undo history (PR #1909)
+- code-editor-minimap.md: The code editor's minimap: @replit/codemirror-minimap in the lazy bundle, the opt-in `minimap` option and page default, setMinimap(), on in the designer, what it cost
 - code-editor-syntax-lint.md: The code editor's syntax lint (_syntaxLinter): what is marked, empty documents, the whole document parsed in slices first (files over 100 KB), what stops a running parse, the 200-mark cap
 - concurrent-agents.md: Several agents or threads on the repo at once: own branch and area, rebase before push, migration sub-step numbers that do not collide
 - consent-log-and-audit-trail.md: consent_log and audit_log (11.0.16): the person token, consent row rules, what pg_audit() keeps (changed fields, masked secrets, size limits), who writes them
+- consent-log-cookie-notice.md: How the cookie notice's answers reach consent_log: consent_answer.php, the cookie as baseline, the same-origin check instead of a token, rate limit, signed-in and ghosting visitors
 - consent-log-writer-gaps.md: What the e-mail consent log writers leave unrecorded or record unasked (custom layouts without the box), what was run against them, open questions for the owner (PR #1581)
 - consent-log-writers.md: Which screens write a person's own e-mail marketing answer to consent_log (sign-up, preferences, one-click, checkout, custom form) and when a row is written (PR #1581)
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
@@ -57,6 +60,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - file-integrity-github-reference.md: Integrity reference from 2026.4.5: the release tag's tree on GitHub (git blob SHA-1), cache, release rules, what 2026.4.4 sites use, cacert.pem refresh, headers read without $http_response_header.
 - file-placement-rules.md: Where new PHP files go (root only for URL-called files, else includes/), the gate constant each include starts with, root files that stay, file-integrity scope.
 - fn-module-errors-mail-backup-consent.md: The 2026.4.8 modules errors, mail_queue, backup and consent in includes/fn/: entry functions, gates, storage keys and behaviour rules.
+- fn-module-map-additions-2.md: The includes/fn/ modules added after fn-module-map-additions filled up (2026.11.0 on) and the memory file that describes each.
 - fn-module-map-additions.md: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 and the memory file that describes each.
 - fn-module-map.md: Which includes/fn/ module holds which kind of function (core, auth, forms, ecommerce, seo, content, designer, widgets, output, system_status ...).
 - form-double-opt-in.md: Double opt-in for custom forms that add to a contact group (11.0.27): the switch, the signed stateless link, confirm_subscription.php, consent_log pending/granted, the global opt-out
@@ -66,6 +70,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - js-bundles.md: Scripts minified from a list (pg_js_bundles(), tools/build_js.php): the bundles, how a screen prints one, src mode, the CI check, the test, the Workspace drawer's loader on record screens.
 - json-endpoint-rules.md: Endpoints that speak JSON: rejections and CSRF failures in JSON with the right status, api.php reads a JSON body (FormData gets "Invalid action."), no pg_post_body_discarded() on a JSON body.
+- lang-compiled-cache.md: The compiled language cache data/temp/lang_<code>.php that pg_lang_map() reads through opcache: speed, the signature that rebuilds it, atomic write, no writable data/temp, the gate (PR #1933)
 - lang-files.md: Turkish wording as sorted shards in includes/local/tr/: why, layout, pg_lang_map() the one reader, old tr.json on updated sites, tr_add.php, tr_resolve.php, check_lang.php, speed
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)
@@ -76,6 +81,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - panel-action-table.md: Adding an api.php panel action: the pg_panel_actions() row and its columns, handler file and signature, what the general gate does with listed, unlisted and prefixed names, the test.
 - passkey-account-section.md: Passkeys on the account page (pg_passkey_account_section(), PR #1384): who may add one, the re-authentication in passkey.php, rename and remove in account_security.php, what is shown when
 - passkey-ceremonies.md: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php, the account page; what is not built yet
+- passkey-passwordless.md: Sign-in with a passkey alone (PR #1882): the switch config.passkey_signin (11.0.41, default off), the button among the sign-in buttons, passkey.php options, the answer handled by index.php
 - passkey-second-factor.md: A passkey alone is a second factor (PR #1862): pg_mfa_has_passkey/has_factor/gate_mode, the passkey-only verify screen, what still looks at TOTP only
 - permission-columns.md: Adding a user right: column type and naming, the role-3 ladder files that must learn it, column probes, drawing it on the user screens, exact stored values, separate gates for a card and its links.
 - personal-data-erasure.md: privacy_erase.php (PR #1706): erasing one person after a dry run; whose records are taken, what is deleted and what is kept with personal fields replaced, the checks, the audit lines

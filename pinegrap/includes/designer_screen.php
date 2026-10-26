@@ -598,9 +598,10 @@ function pg_designer_screen_render($ctx)
         <script>PgStyleSuggest.configure({ predictor: "assets/js/pg_style_predict.js?v=' . h(pg_designer_asset_stamp('assets/js/pg_style_predict.js')) . '", vocab: "assets/js/designer_vocab/bootstrap5.json?v=' . h(pg_designer_asset_stamp('assets/js/designer_vocab/bootstrap5.json')) . '", complete: "assets/js/pg_style_complete.js?v=' . h(pg_designer_asset_stamp('assets/js/pg_style_complete.js')) . '" });</script>
         <!-- The code editor facade is small; its engine (the CodeMirror 6
              bundle) is fetched the first time a code view opens, so the
-             designer page does not carry it on every load. -->
+             designer page does not carry it on every load. Its editors show
+             a minimap beside the scroll bar. -->
         <script src="assets/js/pg_code_editor.js?v=' . pg_designer_asset_stamp('assets/js/pg_code_editor.js') . '"></script>
-        <script>PgCodeEditor.configure({ bundle: "assets/lib/code_editor/cm6.bundle.js?v=' . h(pg_designer_asset_stamp('assets/lib/code_editor/cm6.bundle.js')) . '" });</script>
+        <script>PgCodeEditor.configure({ minimap: true, bundle: "assets/lib/code_editor/cm6.bundle.js?v=' . h(pg_designer_asset_stamp('assets/lib/code_editor/cm6.bundle.js')) . '" });</script>
         <!-- Text contrast for the audit (window.PgContrast). -->
         <script src="assets/js/pg_contrast.js?v=' . pg_designer_asset_stamp('assets/js/pg_contrast.js') . '"></script>
         <!-- User Styles text helpers (window.PgUserStyles). -->

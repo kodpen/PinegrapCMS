@@ -1,6 +1,6 @@
 ---
 name: workspace-app-handles
-description: How an application tag <@app:N> is drawn: Claude's link reads @Claude, Pinegrap AI's @ai, any other app a handle from its own name; deleted and former Claude apps
+description: How an application tag <@app:N> is drawn (Claude's link @Claude, Pinegrap AI's @ai, any other app a handle from its own name) and which apps the @ picker offers per channel
 ---
 
 ## What does a tag read as?
@@ -17,5 +17,10 @@ description: How an application tag <@app:N> is drawn: Claude's link reads @Clau
 - No row: "@app-N", meta "Deleted record", `known` false, `gone` true, like any tag whose record is gone.
 - An application Claude used before the link moved: no history of the link is kept, so its old tags read as that application itself ("@claude-routine"), or "@app-N" when its name is a reserved word.
 
+## Which applications does the @ picker offer?
+- Per channel, `ws_channel_detail()` sets `apps` from `ws_channel_app_picker()`: one query on `api_webhooks` joined to `api_apps` (both active, the subscription active or failing) whose events hold `workspace.app.mentioned`; a subscription narrowed to a group counts only when the group is in the channel's chain (`ws_webhook_event_groups()`, a discussion by its channel), as the queue matches it. Then `ws_app_hears_mentions()` and `ws_app_reads_channel()` for the owner: the conditions `ws_message_tell_apps()` asks, so the picker never offers an app the mention would not reach (PR #1975).
+- Claude's and Pinegrap AI's applications are left out: they have their own entries. Each entry is drawn with `ws_app_tag()` (label and shown `@handle`, meta the name, token `<@app:N>`), so the picked text is the tag as it reads.
+- Guest rooms and channels shared with guests get none, like the assistants. workspace.js lists them after the MCP aliases and before the people (the list is cut at ten), matched by handle or name prefix; never in a note.
+
 ## Where is it tested?
-- tests/workspace_app_handles_test.php. The @ picker (workspace.js) does not offer applications yet: step 1b of the plan.
+- tests/workspace_app_handles_test.php: handles, tags and the pure picker filter `ws_app_picker_entries()`.

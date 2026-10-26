@@ -349,6 +349,34 @@ function ws_change_types()
                 'product_ids' => array('ids', 'product', lang('Products'), ''),
             ),
         ),
+        // A variant set: one 'select' product group and a product per row,
+        // added whole and written by the catalogue's set writer
+        // (pg_catalog_variant_set_create()), as the product screen's group
+        // mode and POST /product-groups/variant-sets write one. Once made it
+        // is a product group and its products, changed as those.
+        'variant_set' => array(
+            'label'    => lang('Variant set'),
+            'right'    => 'ecommerce',
+            'tag'      => 'product_group',
+            'table'    => 'product_groups',
+            'actions'  => array('create'),
+            'required' => array('name'),
+            'names'    => array('short_description', 'name'),
+            'fields'   => array(
+                'name'              => array('text', 100, lang('Name'), 'name'),
+                'short_description' => array('long', 100, lang('Short description'), 'short_description'),
+                'full_description'  => array('long', 20000, lang('Full description'), 'full_description'),
+                'enabled'           => array('bool', 0, lang('On sale'), 'enabled'),
+            ),
+            'create'   => array(
+                'parent_id'   => array('ids', 'product_group', lang('Parent group'), ''),
+                // The base the rules price from; a row's own price stays.
+                'price'       => array('money', 2147483647, lang('Base price'), ''),
+                'price_rules' => array('price_rules', 0, lang('Price rules'), ''),
+                // [at most, longest SKU or short description].
+                'variants'    => array('variants', array(100, 100), lang('Variants'), ''),
+            ),
+        ),
         'channel' => array(
             'label'   => lang('Channel'),
             // No right of its own: whoever may post in the channel may write
@@ -529,7 +557,7 @@ function ws_change_types()
 
     // Kinds of record the site does not run are not offered.
     if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
-        unset($types['product'], $types['stock'], $types['order'], $types['product_group'], $types['offer']);
+        unset($types['product'], $types['stock'], $types['order'], $types['product_group'], $types['variant_set'], $types['offer']);
     }
 
     if (defined('CALENDARS') && (CALENDARS !== true)) {
@@ -760,6 +788,16 @@ function ws_change_value($field, $value)
 
             return is_array($lines) ? $lines : null;
 
+        case 'variants':
+            $rows = ws_change_variant_rows($value, $field[1]);
+
+            return is_array($rows) ? $rows : null;
+
+        case 'price_rules':
+            $rules = ws_change_price_rules($value);
+
+            return is_array($rules) ? $rules : null;
+
         case 'answers':
             // [at most, longest]: an object of field name => answer.
             if (!is_array($value) || empty($value) || (count($value) > (int) $field[1][0])) {
@@ -901,6 +939,13 @@ function ws_change_value_refusal($field, $value, $label)
         $lines = ws_change_erp_lines($value, $field[1], (string) $label);
 
         return is_string($lines) ? $lines : '';
+    }
+
+    // So do a variant set's rows, and its rules say what they must be.
+    if (($field[0] === 'variants') || ($field[0] === 'price_rules')) {
+        $out = ($field[0] === 'variants') ? ws_change_variant_rows($value, $field[1], (string) $label) : ws_change_price_rules($value);
+
+        return is_string($out) ? $out : '';
     }
 
     if (ws_change_value($field, $value) !== null) {
@@ -1213,6 +1258,364 @@ function ws_change_erp_line_text($line, $currency = '')
     }
 
     return implode(' · ', $parts);
+}
+
+/**
+ * The rows of a variant set as a change carries them: a list of objects,
+ * one product each, with the fields POST /product-groups/variant-sets takes
+ * for a row (name, the SKU; short_description; gtin; attributes, the
+ * {attribute_id, option_id} pairs that make it that variant; price in whole
+ * minor units, left out to be priced by the rules; quantity, the stock,
+ * which tracks it). Whether the SKUs are free and the pairs this shop's is
+ * asked when the set is checked (ws_change_variant_set_refusal()).
+ *
+ * Pure: reads nothing, so a proposal and a test meet the same refusals.
+ *
+ * @param mixed  $value the rows as sent
+ * @param array  $limit [at most, longest SKU or short description]
+ * @param string $label the field as a refusal names it
+ * @return array|string the rows (name, short_description, gtin, attributes,
+ *                      price and quantity, null when left out), or why
+ *                      they are refused
+ */
+function ws_change_variant_rows($value, $limit, $label = 'variants')
+{
+    if (!is_array($value) || ($value === array()) || (array_keys($value) !== range(0, count($value) - 1))) {
+        return lang(array('string' => '{var:1} is a list of variant objects.', 'vars' => $label));
+    }
+
+    if (count($value) > (int) $limit[0]) {
+        return lang(array('string' => '{var:1} takes at most {var:2} variants.', 'vars' => array($label, (int) $limit[0])));
+    }
+
+    $rows = array();
+    $skus = array();
+
+    foreach ($value as $index => $entry) {
+        $where = $label . '[' . $index . ']';
+
+        if (!is_array($entry)) {
+            return lang(array('string' => '{var:1} is a list of variant objects.', 'vars' => $label));
+        }
+
+        $row = array();
+
+        foreach (array('name' => (int) $limit[1], 'short_description' => (int) $limit[1], 'gtin' => 50) as $name => $longest) {
+            $text = $entry[$name] ?? '';
+
+            if (!is_scalar($text) && ($text !== null)) {
+                return lang(array('string' => '{var:1} does not have a value of the right kind.', 'vars' => $where . '.' . $name));
+            }
+
+            $text = trim(preg_replace('/\s+/u', ' ', (string) $text));
+
+            if (mb_strlen($text) > $longest) {
+                return lang(array('string' => '{var:1} is longer than the {var:2} characters accepted.', 'vars' => array($where . '.' . $name, $longest)));
+            }
+
+            $row[$name] = $text;
+        }
+
+        if ($row['name'] === '') {
+            return lang(array('string' => '{var:1} needs a product ID / SKU.', 'vars' => $where . '.name'));
+        }
+
+        if (in_array(mb_strtolower($row['name']), $skus, true)) {
+            return $where . '.name: ' . lang(array('string' => 'The SKU {var:1} was sent for two variants.', 'vars' => array($row['name'])));
+        }
+
+        $skus[] = mb_strtolower($row['name']);
+
+        // A variant is the options it is made of: one per attribute.
+        $pairs = array();
+
+        foreach ((is_array($entry['attributes'] ?? null) ? $entry['attributes'] : array()) as $pair) {
+            $attribute_id = (is_array($pair) && is_numeric($pair['attribute_id'] ?? null)) ? (int) $pair['attribute_id'] : 0;
+            $option_id = (is_array($pair) && is_numeric($pair['option_id'] ?? null)) ? (int) $pair['option_id'] : 0;
+
+            if (($attribute_id <= 0) || ($option_id <= 0) || isset($pairs[$attribute_id])) {
+                $pairs = array();
+                break;
+            }
+
+            $pairs[$attribute_id] = array('attribute_id' => $attribute_id, 'option_id' => $option_id);
+        }
+
+        if (empty($pairs)) {
+            return lang(array('string' => '{var:1} needs the option pairs that make it that variant: {attribute_id, option_id}, one per attribute.', 'vars' => $where . '.attributes'));
+        }
+
+        $row['attributes'] = array_values($pairs);
+
+        // Never rounded: 99.5 meant as lira would be a price nobody asked for.
+        $row['price'] = null;
+
+        if (isset($entry['price'])) {
+            if (!function_exists('pg_catalog_variant_set_minor_units') || !pg_catalog_variant_set_minor_units($entry['price'])) {
+                return $where . '.price: ' . lang('A price is a whole number of minor units, from 0 to 2147483647.');
+            }
+
+            $row['price'] = $entry['price'];
+        }
+
+        $row['quantity'] = null;
+
+        if (isset($entry['quantity'])) {
+            if (!is_int($entry['quantity']) || ($entry['quantity'] < 0) || ($entry['quantity'] > 1000000)) {
+                return lang(array('string' => '{var:1}: the value is out of range.', 'vars' => $where . '.quantity'));
+            }
+
+            $row['quantity'] = $entry['quantity'];
+        }
+
+        $rows[] = $row;
+    }
+
+    return $rows;
+}
+
+/**
+ * The price rules of a variant set as a change carries them: the list POST
+ * /product-groups/variant-sets takes ({attribute_id, mode set|multiply|adjust,
+ * options: {option_id, amount|factor|percent}}), laid out as the catalogue
+ * keeps them (pg_variant_price_rules_normalize()). An amount is whole minor
+ * units: the normaliser would round it. Whether the options are this shop's
+ * is asked when the set is checked.
+ *
+ * Pure.
+ *
+ * @param mixed $value
+ * @return array|string the rules' attributes (empty for none), or why not
+ */
+function ws_change_price_rules($value)
+{
+    if (($value === null) || ($value === '') || ($value === array())) {
+        return array();
+    }
+
+    $refused = lang('price_rules is a list of {attribute_id, mode, options}: mode set, multiply or adjust, each attribute once, at most one that sets the price.');
+
+    if (!is_array($value) || (array_keys($value) !== range(0, count($value) - 1))) {
+        return $refused;
+    }
+
+    foreach ($value as $rule) {
+        foreach ((is_array($rule) && is_array($rule['options'] ?? null)) ? $rule['options'] : array() as $option) {
+            if (is_array($option) && ((array_key_exists('amount', $option) && !is_int($option['amount']))
+                || (array_key_exists('factor', $option) && !is_int($option['factor']) && !is_float($option['factor']))
+                || (array_key_exists('percent', $option) && !is_int($option['percent']) && !is_float($option['percent'])))) {
+                return lang('A price rule amount is a whole number of minor units, and a factor or percent a number.');
+            }
+        }
+    }
+
+    $rules = function_exists('pg_variant_price_rules_normalize') ? pg_variant_price_rules_normalize(array('attributes' => $value)) : null;
+
+    return $rules ? $rules['attributes'] : $refused;
+}
+
+/**
+ * The matrix a variant set's card draws: one column per attribute, in the
+ * order the rows first name them, an option's label in each cell, and each
+ * row's price in integer minor units, the one the set writer will give it
+ * (pg_catalog_variant_set_price(): the rules through
+ * pg_variant_price_compute() on the base, unless the row has its own).
+ *
+ * @param array $values the change's values (price, price_rules, variants)
+ * @param array $labels attributes => id => name, options => id => label
+ *                      (ws_change_variant_set_labels()); a missing one is
+ *                      shown by its number
+ * @return array axes (names), rows (sku, options, price, manual)
+ */
+function ws_change_variant_set_matrix($values, $labels)
+{
+    $base = (int) ($values['price'] ?? 0);
+    $rules = empty($values['price_rules']) ? null : array('version' => 1, 'attributes' => $values['price_rules']);
+    $axes = array();
+
+    foreach ((array) ($values['variants'] ?? array()) as $row) {
+        foreach ($row['attributes'] as $pair) {
+            $axes[$pair['attribute_id']] = (string) ($labels['attributes'][$pair['attribute_id']] ?? ('#' . $pair['attribute_id']));
+        }
+    }
+
+    $rows = array();
+
+    foreach ((array) ($values['variants'] ?? array()) as $row) {
+        $chosen = array();
+
+        foreach ($row['attributes'] as $pair) {
+            $chosen[$pair['attribute_id']] = (string) ($labels['options'][$pair['option_id']] ?? ('#' . $pair['option_id']));
+        }
+
+        $options = array();
+
+        foreach (array_keys($axes) as $attribute_id) {
+            $options[] = $chosen[$attribute_id] ?? '—';
+        }
+
+        $manual = ($row['price'] !== null);
+
+        $rows[] = array(
+            'sku'     => $row['name'],
+            'options' => $options,
+            'price'   => pg_catalog_variant_set_price(array('price' => $manual ? $row['price'] : $base, 'price_manual' => $manual) + $row, $base, $rules),
+            'manual'  => $manual,
+        );
+    }
+
+    return array('axes' => array_values($axes), 'rows' => $rows);
+}
+
+/**
+ * The names of the attributes and options a variant set's rows name.
+ *
+ * @param array $rows ws_change_variant_rows()
+ * @return array attributes => id => name, options => id => label
+ */
+function ws_change_variant_set_labels($rows)
+{
+    $out = array('attributes' => array(), 'options' => array());
+    $attribute_ids = array();
+    $option_ids = array();
+
+    foreach ((array) $rows as $row) {
+        foreach ((array) ($row['attributes'] ?? array()) as $pair) {
+            $attribute_ids[(int) $pair['attribute_id']] = (int) $pair['attribute_id'];
+            $option_ids[(int) $pair['option_id']] = (int) $pair['option_id'];
+        }
+    }
+
+    if ($attribute_ids) {
+        foreach ((array) db_items("SELECT id, name, label FROM product_attributes WHERE id IN (" . implode(',', $attribute_ids) . ")") as $item) {
+            $out['attributes'][(int) $item['id']] = ((string) $item['label'] !== '') ? (string) $item['label'] : (string) $item['name'];
+        }
+    }
+
+    if ($option_ids) {
+        foreach ((array) db_items("SELECT id, label FROM product_attribute_options WHERE id IN (" . implode(',', $option_ids) . ")") as $item) {
+            $out['options'][(int) $item['id']] = (string) $item['label'];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A proposed variant set as pg_catalog_variant_set_create() takes it: the
+ * group, the columns every variant shares (the starting row a Workspace
+ * product gets: off sale unless the change says so, taxable, shippable),
+ * the rows priced from the base where they have no price of their own, and
+ * the axes in the order the rows name them.
+ *
+ * @param array $values  the change's values
+ * @param int   $user_id who applies it
+ * @return array
+ */
+function ws_change_variant_set_data($values, $user_id)
+{
+    $enabled = !empty($values['enabled']);
+    $base = (int) ($values['price'] ?? 0);
+
+    $common = array(
+        'enabled' => $enabled ? '1' : '0', 'taxable' => '1', 'shippable' => '1', 'free_shipping' => '0',
+        'brand' => '', 'mpn' => '', 'keywords' => '', 'weight' => 0, 'length' => 0, 'width' => 0, 'height' => 0,
+        'user' => (int) $user_id, 'meta_keywords' => '', 'notes' => '', 'seo_analysis' => '', 'code' => '',
+        'out_of_stock_message' => '', 'order_receipt_message' => '', 'add_comment_message' => '', 'gift_card_email_body' => '',
+        'google_product_category' => '', 'tax_rate' => null,
+    );
+
+    $variants = array();
+    $axes = array();
+
+    foreach ((array) ($values['variants'] ?? array()) as $row) {
+        $variants[] = array(
+            'name'               => $row['name'],
+            'short_description'  => $row['short_description'],
+            'price'              => ($row['price'] !== null) ? $row['price'] : $base,
+            'price_manual'       => ($row['price'] !== null),
+            'inventory'          => ($row['quantity'] !== null) ? '1' : '0',
+            'inventory_quantity' => (int) $row['quantity'],
+            'images'             => array(),
+            'attributes'         => $row['attributes'],
+            'recurring'          => array(),
+            'gtin'               => $row['gtin'],
+            'barcode'            => '',
+        );
+
+        foreach ($row['attributes'] as $pair) {
+            $axes[$pair['attribute_id']] = array('id' => $pair['attribute_id'], 'default_option_id' => 0);
+        }
+    }
+
+    return array(
+        'name'              => (string) ($values['name'] ?? ''),
+        'short_description' => (string) ($values['short_description'] ?? ''),
+        'full_description'  => (string) ($values['full_description'] ?? ''),
+        'details'           => '',
+        'parent_id'         => (int) (((array) ($values['parent_id'] ?? array()))[0] ?? 0),
+        'enabled'           => $enabled,
+        'keywords'          => '',
+        'images'            => array(),
+        'title'             => '',
+        'meta_description'  => '',
+        'attribute_meta'    => array_values($axes),
+        'common'            => $common,
+        'zone_ids'          => array(),
+        'price_base'        => $base,
+        'price_rules'       => empty($values['price_rules']) ? null : array('version' => 1, 'attributes' => $values['price_rules']),
+        'variants'          => $variants,
+    );
+}
+
+/**
+ * Why a proposed variant set cannot be written, or '': what POST
+ * /product-groups/variant-sets asks of the shop before it writes (names
+ * free, the parent there, the option pairs and rules this shop's, a row
+ * without a price priced by rules), then the set writer's own check
+ * (pg_catalog_variant_set_check()). Asked at proposal and at apply.
+ *
+ * @param array $values
+ * @return string
+ */
+function ws_change_variant_set_refusal($values)
+{
+    $name = (string) ($values['short_description'] ?? '');
+    $name = ($name !== '') ? $name : (string) ($values['name'] ?? '');
+
+    if (($name !== '') && ($taken = (int) db_value("SELECT id FROM product_groups WHERE name = '" . e($name) . "' LIMIT 1"))) {
+        return lang(array('string' => 'A product group with the name {var:1} already exists (id {var:2}).', 'vars' => array($name, $taken)));
+    }
+
+    if (isset($values['parent_id']) && (count((array) $values['parent_id']) !== 1)) {
+        return lang('parent_id is one product group.');
+    }
+
+    $rows = (array) ($values['variants'] ?? array());
+
+    foreach ($rows as $row) {
+        if ($taken = (int) db_value("SELECT id FROM products WHERE name = '" . e($row['name']) . "' LIMIT 1")) {
+            return lang(array('string' => 'A product with the name {var:1} already exists (id {var:2}).', 'vars' => array($row['name'], $taken)));
+        }
+
+        foreach ($row['attributes'] as $pair) {
+            if (!db_value("SELECT id FROM product_attribute_options WHERE id = '" . (int) $pair['option_id'] . "' AND product_attribute_id = '" . (int) $pair['attribute_id'] . "' LIMIT 1")) {
+                return lang(array('string' => 'Option {var:1} does not belong to attribute {var:2}.', 'vars' => array((int) $pair['option_id'], (int) $pair['attribute_id'])));
+            }
+        }
+
+        if (($row['price'] === null) && empty($values['price_rules'])) {
+            return lang('A variant without a price needs price rules to be priced by.');
+        }
+    }
+
+    if (!empty($values['price_rules']) && !pg_variant_price_rules_owned(array('version' => 1, 'attributes' => $values['price_rules']))) {
+        return lang('The price rules do not describe this shop\'s options: at most one attribute sets the price, and every option belongs to its attribute.');
+    }
+
+    $errors = pg_catalog_variant_set_check(ws_change_variant_set_data($values, 0));
+
+    return $errors ? $errors[0]['message'] : '';
 }
 
 /**
@@ -1927,6 +2330,9 @@ function ws_change_check($viewer, $type, $action, $record, $values)
         case 'erp_quote':
             return ($action === 'invoice') ? ws_change_erp_quote_invoice_refusal($record) : ws_change_erp_quote_refusal($values);
 
+        case 'variant_set':
+            return ws_change_variant_set_refusal($values);
+
         case 'task_note':
             foreach ((array) ($values['task_id'] ?? array()) as $task_id) {
                 $task = ws_task($task_id);
@@ -2108,6 +2514,25 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $f
         }
 
         $type = (string) ($change['type'] ?? '');
+
+        // A scheduled action an application proposes (scheduled_draft.php):
+        // no record kind, but a draft the person opens in its form and saves
+        // in their own name. A task's drawer has no form to open it in.
+        if (($type === 'scheduled') && $for_proposal && function_exists('ws_scheduled_draft_proposal_row')) {
+            if ((int) $task_id > 0) {
+                return $refuse(lang('A scheduled action is proposed in a channel, not on a task.'));
+            }
+
+            $drafted = ws_scheduled_draft_proposal_row($asker_id, $change, $channel_id);
+
+            if (!$drafted['ok']) {
+                return $refuse($drafted['error']);
+            }
+
+            $out['rows'][] = $drafted['row'];
+
+            continue;
+        }
 
         if (!isset($types[$type])) {
             return $refuse(lang(array('string' => 'type is one of {var:1}.', 'vars' => implode(', ', array_keys($types)))));
@@ -2392,6 +2817,11 @@ function ws_change_create_check($type, $list)
         return lang('task_id is one task.');
     }
 
+    // A variant set carries its rows.
+    if (($type === 'variant_set') && empty($values['variants'])) {
+        return lang(array('string' => '{var:1} is required', 'vars' => array('variants')));
+    }
+
     // A sales quote is for one current account and carries its lines.
     if ($type === 'erp_quote') {
         if (count((array) ($values['account_id'] ?? array())) !== 1) {
@@ -2550,6 +2980,17 @@ function ws_change_show($type, $name, $value, $limit = 300)
 
             return ($text === '') ? lang('(empty)') : ((mb_strlen($text) > $limit) ? rtrim(mb_substr($text, 0, $limit - 1)) . '…' : $text);
 
+        // A variant set's rows by their SKUs, its rules by how many there are.
+        case 'variants':
+            $text = implode(', ', array_map(function ($row) {
+                return (string) ($row['name'] ?? '');
+            }, array_filter((array) $value, 'is_array')));
+
+            return ($text === '') ? lang('(empty)') : ((mb_strlen($text) > $limit) ? rtrim(mb_substr($text, 0, $limit - 1)) . '…' : $text);
+
+        case 'price_rules':
+            return empty($value) ? lang('(empty)') : lang(array('string' => '{var:1} attributes set the prices', 'vars' => count((array) $value)));
+
         case 'enum':
             return ws_change_enum_label($type, $value);
     }
@@ -2683,7 +3124,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
         }
 
         if ($scheduled) {
-            $out[(int) $row[$by]][] = ws_scheduled_draft_change_entry($viewer, $row, $people, !empty($can_post[$place]));
+            $out[(int) $row[$by]][] = ws_scheduled_draft_change_entry($viewer, $row, $people, !empty($can_post[$place]), $proposer);
             continue;
         }
 
@@ -2751,13 +3192,17 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
         $cancels = false;
         $note_task = 0;
 
-        // A sales quote's lines are written in its own currency.
+        // A sales quote's lines are written in its own currency; a variant
+        // set's rows are priced from its base and rules.
         $currency = '';
+        $values = array();
 
         foreach ($fields as $item) {
             if (($type === 'erp_quote') && (($item['name'] ?? '') === 'currency')) {
                 $currency = (string) ($item['to'] ?? '');
             }
+
+            $values[(string) ($item['name'] ?? '')] = $item['to'] ?? null;
         }
 
         foreach ($fields as $item) {
@@ -2798,6 +3243,35 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
                         'html'  => '',
                     );
                 }
+
+                continue;
+            }
+
+            // A variant set's rows as a matrix: the attributes, and each
+            // row's price as it will be written; the rules are in the prices.
+            if ($field[0] === 'price_rules') {
+                continue;
+            }
+
+            if ($field[0] === 'variants') {
+                $matrix = ws_change_variant_set_matrix($values, ws_change_variant_set_labels($item['to'] ?? array()));
+                $cells = array();
+
+                foreach ($matrix['rows'] as $variant) {
+                    $cells[] = array('sku' => $variant['sku'], 'options' => $variant['options'], 'price' => ws_money_out($variant['price']), 'manual' => $variant['manual']);
+                }
+
+                $items[] = array(
+                    'label'  => $field[2],
+                    'from'   => '',
+                    'to'     => ws_change_show($type, $name, $item['to'] ?? array()),
+                    'html'   => '',
+                    'matrix' => array(
+                        'head'   => array_merge($matrix['axes'], array(lang('SKU'), lang('Price'))),
+                        'rows'   => $cells,
+                        'manual' => lang('Price typed for this variant'),
+                    ),
+                );
 
                 continue;
             }
@@ -4694,6 +5168,58 @@ function ws_change_write_product_group($viewer, $action, $record, $values)
     pg_announce('product_group.updated', array('id' => $id, 'name' => (string) $record['name']));
 
     return array('ok' => true, 'error' => '', 'id' => $id);
+}
+
+/**
+ * A variant set, written by the catalogue's set writer
+ * (pg_catalog_variant_set_create()) in the name of the person who applies
+ * it: the 'select' group, a product per row filed only in it, their price
+ * histories and the rules kept on the group. Then what the Workspace's own
+ * product and group creates do: each product in the audit trail (the
+ * groups table is not followed), scored for SEO and announced
+ * (product.created per product, product_group.created once).
+ *
+ * @param array      $viewer
+ * @param string     $action create
+ * @param array|null $record
+ * @param array      $values
+ * @return array ok, error, id (the group)
+ */
+function ws_change_write_variant_set($viewer, $action, $record, $values)
+{
+    $data = ws_change_variant_set_data($values, (int) $viewer['id']);
+
+    // Parent 0 would be a second catalogue root, which the storefront, search and feeds never read.
+    if ($data['parent_id'] <= 0) {
+        $data['parent_id'] = pg_catalog_group_top_id();
+    }
+
+    $created = pg_catalog_variant_set_create($data, $viewer, array(
+        'submit_form'  => array(),
+        'barcode_auto' => false,
+    ));
+
+    if (!empty($created['errors']) || ((int) $created['group_id'] <= 0)) {
+        return array('ok' => false, 'error' => $created['errors'][0]['message'] ?? lang('The product group could not be created.'), 'id' => 0);
+    }
+
+    $group_id = (int) $created['group_id'];
+
+    foreach ($created['product_ids'] as $index => $product_id) {
+        if (function_exists('pg_audit_record')) {
+            pg_audit_record('create', 'products', (int) $product_id);
+        }
+
+        pg_catalog_seo_rescore('product', (int) $product_id);
+        pg_announce('product.created', array('id' => (int) $product_id, 'name' => (string) ($values['variants'][$index]['name'] ?? '')));
+    }
+
+    pg_catalog_seo_rescore('product_group', $group_id);
+    pg_announce('product_group.created', array('id' => $group_id, 'name' => $created['name']));
+
+    ws_change_log(lang(array('string' => 'Variant set ({var:1}) with {var:2} products was added in the Workspace, on Claude\'s proposal.', 'vars' => array($created['name'], count($created['product_ids'])))));
+
+    return array('ok' => true, 'error' => '', 'id' => $group_id);
 }
 
 /**

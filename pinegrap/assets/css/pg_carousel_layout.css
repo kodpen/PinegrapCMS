@@ -189,3 +189,8 @@ button.pg-civ-out-of-stock {
 /* Each star is its own node, so the markup has white space between them;
    a flex box keeps them touching, as the one-line drawing did. */
 .pg-comment-stars{display:inline-flex}
+
+/* ── Products bought together (the catalog detail view's cross-sell part) */
+/* Square pictures, cropped; the grey box without a picture keeps the same
+   shape. */
+.pg-civ-cross-sell .card-img-top{aspect-ratio:1/1;object-fit:cover}

@@ -563,6 +563,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_scroller_inject($content);
     }
 
+    // ── Interactions ────────────────────────────────────────────────────────────
+    // A node with an interaction carries data-pg-fx attributes, no script;
+    // the page brings the head style and the script (pg_fx_inject()),
+    // checked once everything is drawn in. Not in an e-mail.
+    if (!$email && stripos($content, 'data-pg-fx') !== false && function_exists('pg_fx_inject')) {
+        $content = pg_fx_inject($content);
+    }
+
     // ── Tooltips and popovers ───────────────────────────────────────────────────
     // Bootstrap starts neither by itself: a visual editor page holding a
     // tooltip (the panel's Tooltip option) or a popover gets the small script
@@ -5246,6 +5254,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
         }
         
+        // The visual designer's canvas cuts the page's own system region out
+        // of a whole page render (pg_layout_region_preview()).
+        if ($primary_system_region && function_exists('pg_layout_region_marking') && pg_layout_region_marking()) {
+            $system_output = '<!--pg-layout-region-start-->' . $system_output . '<!--pg-layout-region-end-->';
+        }
+
         $content = preg_replace('/<system>' . $system_page_name . '<\/system>/i', pg_regex_replacement($system_output), $content);
     }
 

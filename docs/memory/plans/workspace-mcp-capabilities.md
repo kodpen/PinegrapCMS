@@ -20,11 +20,11 @@ description: Plan (2026-10-23, steps 1-6 done, answers 1-2 given): an AI app on 
 1. No schema: a handler calling either guard takes `'mcp' => false` (the routine uses REST), never all of `ws_claude_api_routes()`: GET /workspace/channels/{id}/context has no guard, stays a tool, feeds slice 4. Test like `test_ws_api_own_words_routes_are_no_tools` (tests/workspace_api_test.php); update api/api-mcp-server.md.
 2. No schema: question 1 (b: `'mcp' => false`, same test).
 3. PR #1564, no schema: `workspace.changes.propose` (POST /workspace/channels/{id}/changes) and `workspace.tasks.changes.propose`, the one proposal route for every plan (catalogue bulk drafts, `erp_quote` creates, scheduled change cards), none per kind: workspace/workspace-change-proposals.md. Agents `oauth:<oauth_clients.id>`, `app:<id>`; a proposal's own message shows the client, other OAuth messages keep the shared row (plans/workspace-agent-handles.md question 5 stays open).
-4. PR #1598: resources my-day, channel context, refs by their GET routes; prompts channel_summary, weekly_report with `pg_ai_prompt_rules()` (api/mcp-resources-prompts.md). Left: `…/channels/{id}/customer` on the route of #1622.
+4. PR #1598: resources my-day, channel context, refs by their GET routes; prompts channel_summary, weekly_report with `pg_ai_prompt_rules()` (api/mcp-resources-prompts.md). `…/channels/{id}/customer`: #1970.
 5. PR #1716: consent presets (Workspace, Store, Accounting, All) on the consent screen (api/api-oauth-consent-presets.md); what each ticks waits on question 3.
 6. No schema, a PR each: tasks `due_time`, `remind_minutes` (PR #1742, workspace/workspace-api-task-reminder.md); channel customer on create/update (PR #1766, workspace/workspace-api-channel-customer.md); forward (PR #1816, workspace/workspace-api-forward.md); small-file path (PR #1830, api/workspace-mcp-small-file.md).
 7. Scheduled actions as tools: plans/workspace-canvas-workflow-tables.md S1, S2.
-8. No schema, a PR per area: `dry_run` on the ERP writes lacking it (accounts: PR #1850; receipts: PR #1870; expenses: PR #1891; erp/erp-api-dry-run.md) and all 7 translations writes.
+8. No schema, a PR per area: `dry_run` on the ERP writes lacking it (accounts: PR #1850; receipts: PR #1870; expenses: PR #1891; erp/erp-api-dry-run.md) and the 7 translations writes (PR #1911, api/translations-api-dry-run.md).
 - Each new change kind (`erp_quote`: done #1705; `variant_set`, bulk create) also reaches `ws_api_changes_param()` (the `changes` text of requests.answer and both propose routes, so their MCP tools) and `ws_ai_tools()`.
 
 ## Which questions are answered? (owner, 2026-10-24)
@@ -34,4 +34,4 @@ Open: 3. Tool profiles: (a) consent presets, (b) tool groups per connection (sch
 Open: 4. An application's proposal is applied over REST from the team devices session only, no OAuth connection (slice 3, else a client applies its own card): keep?
 
 ## Where to start?
-- Slices 1-6 are in (slice 6: #1742, #1766, #1816, #1830). Next: slice 8 translations (expenses: #1891).
+- Slices 1-6 are in (slice 4's last: #1970; slice 6: #1742, #1766, #1816, #1830). Slice 8 is in. Left: slice 7 (own plan), questions 3-4.

@@ -8,7 +8,8 @@
  * and day words, the names the commands answer to, that the help lists every
  * one of them, and who is offered them when nobody is named; the registry
  * (ws_commands()) the picker, /help and the argument popup read, the
- * suggestions it offers, and how a mistyped /word is told apart from a path.
+ * suggestions it offers, and how a mistyped /word is told apart from a path;
+ * the registry as GET /workspace/commands lists it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,8 +21,19 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+if (!defined('PG_MCP_ENTRY')) {
+	define('PG_MCP_ENTRY', true);
+}
+
+if (!defined('PG_API_PANEL')) {
+	define('PG_API_PANEL', true);
+}
+
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 
 // An amount comes back in minor units whichever way it is written: a comma
 // or a point before the cents, thousands grouped by the other mark, a
@@ -187,7 +199,7 @@ function test_workspace_command_registry_holds_every_name_once()
 		return $entry['key'];
 	}, ws_commands(null));
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
 }
 
 // Every argument is typed with a known kind, says whether it may be left
@@ -541,5 +553,221 @@ function test_workspace_command_status_reads_task_and_word()
 		}
 	}
 
-	pg_assert_same(array('task', 'status'), $live, 'the commands with a live line');
+	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting'), $live, 'the commands with a live line');
+}
+
+// /schedule (/zamanla) answers to its names and reads when at the start of
+// the line: a time from now, a day, a time of day or both; the rest is the
+// message. 2026-10-21 is a Wednesday; the line is read at 10:15.
+function test_workspace_command_schedule_reads_when_and_message()
+{
+	$now = strtotime('2026-10-21 10:15:20');
+
+	pg_assert_same(array('command' => 'schedule', 'rest' => 'yarın 09:00 Toplantı'), ws_command_split('/zamanla yarın 09:00 Toplantı'), '/zamanla');
+	pg_assert_same(array('command' => 'schedule', 'rest' => 'friday x'), ws_command_split('/SCHEDULE friday x'), '/SCHEDULE in capitals');
+
+	$at = function ($date, $time, $body) {
+		return array('date' => $date, 'time' => $time, 'at' => strtotime($date . ' ' . $time . ':00'), 'body' => $body);
+	};
+
+	pg_assert_same($at('2026-10-22', '09:00', 'Toplantı on dakika sonra'), ws_command_parse_schedule('yarın 09:00 Toplantı on dakika sonra', $now), 'a day and a time');
+	pg_assert_same($at('2026-10-23', '14:30', 'Ship it'), ws_command_parse_schedule('friday at 14:30 Ship it', $now), '"at" before the time');
+	pg_assert_same($at('2026-10-23', '14:30', 'Gönder'), ws_command_parse_schedule("cuma saat 14:30'da Gönder", $now), '"saat" and a suffix');
+	pg_assert_same($at('2026-10-23', '09:00', 'Rapor'), ws_command_parse_schedule('cuma Rapor', $now), 'a day alone is at 09:00');
+	pg_assert_same($at('2026-10-21', '16:00', 'Çay'), ws_command_parse_schedule('16:00 Çay', $now), 'a time alone, still ahead today');
+	pg_assert_same($at('2026-10-22', '08:00', 'Günaydın cuma'), ws_command_parse_schedule('08:00 Günaydın cuma', $now), 'a time gone by is tomorrow; a day after it is the message');
+	pg_assert_same($at('2026-10-21', '10:45', 'Ara bitti'), ws_command_parse_schedule('+30dk Ara bitti', $now), '+30dk');
+	pg_assert_same($at('2026-10-21', '12:15', 'Lunch'), ws_command_parse_schedule('+2h Lunch', $now), '+2h is two hours, not a week');
+	pg_assert_same($at('2026-10-23', '09:00', '<@user:5> rapor'), ws_command_parse_schedule('+2g <@user:5> rapor', $now), '+2g is a day');
+	pg_assert_same(array('date' => '', 'time' => '', 'at' => 0, 'body' => 'Merhaba dünya'), ws_command_parse_schedule('Merhaba dünya', $now), 'no time read');
+	pg_assert_same($at('2026-10-22', '09:00', ''), ws_command_parse_schedule('yarın', $now), 'no message');
+}
+
+// A time from now is read only with a minute or hour unit after +.
+function test_workspace_command_schedule_offset()
+{
+	pg_assert_same(30, ws_parse_schedule_offset('+30dk'), '+30dk');
+	pg_assert_same(45, ws_parse_schedule_offset('+45m'), '+45m');
+	pg_assert_same(120, ws_parse_schedule_offset('+2SA'), '+2SA');
+	pg_assert_same(60, ws_parse_schedule_offset('+1hour'), '+1hour');
+	pg_assert_same(0, ws_parse_schedule_offset('+2g'), 'a day is no offset');
+	pg_assert_same(0, ws_parse_schedule_offset('30dk'), 'no plus');
+	pg_assert_same(0, ws_parse_schedule_offset('+0dk'), 'nothing');
+}
+
+// The message /schedule posts is the text as written after its time: line
+// breaks, a list, a quote and a code block stay, as they do when the clock
+// beside the send button schedules it. 2026-10-21 is a Wednesday.
+function test_workspace_command_schedule_keeps_the_message_as_written()
+{
+	$now = strtotime('2026-10-21 10:15:20');
+	$message = "Günaydın!\n\nGündem:\n- Satış\n- Stok\n> Önce rakamlar";
+
+	pg_assert_same($message, ws_command_parse_schedule('yarın 09:00 ' . $message, $now)['body'], 'a day and a time');
+	pg_assert_same($message, ws_command_parse_schedule("cuma saat 14:30\n" . $message, $now)['body'], '"saat", then the message on the next line');
+	pg_assert_same($message, ws_command_parse_schedule('+30dk ' . $message, $now)['body'], 'a time from now');
+	pg_assert_same("Kod:\n```\nfoo  bar\n```", ws_command_parse_schedule("16:00 Kod:\n```\nfoo  bar\n```", $now)['body'], 'a code block keeps its spaces');
+}
+
+// /timer (/süre) answers to its names and tells a stop word from a task.
+function test_workspace_command_timer_names_and_stop_words()
+{
+	pg_assert_same(array('command' => 'timer', 'rest' => 'G-42'), ws_command_split('/süre G-42'), '/süre');
+	pg_assert_same(array('command' => 'timer', 'rest' => 'dur'), ws_command_split('/SURE dur'), '/SURE without Turkish letters');
+	pg_assert_same(array('command' => 'timer', 'rest' => 'stop'), ws_command_split('/timer stop'), '/timer');
+
+	foreach (array('dur', 'Durdur', 'bitir', 'STOP', 'end.') as $word) {
+		pg_assert_true(ws_command_timer_stop_word($word), $word . ' stops');
+	}
+
+	foreach (array('', 'G-42', '42', 'durum') as $word) {
+		pg_assert_true(!ws_command_timer_stop_word($word), '"' . $word . '" does not stop');
+	}
+}
+
+// /away (/izin) reads the first day, a last day when one follows, and the
+// rest as the title. 2026-10-21 is a Wednesday.
+function test_workspace_command_away_reads_its_days()
+{
+	pg_assert_same(array('command' => 'away', 'rest' => 'cuma'), ws_command_split('/izin cuma'), '/izin');
+
+	$away = function ($start, $end, $title) {
+		return array('kind' => 'leave', 'scope' => 'people', 'start' => $start, 'end' => $end, 'title' => $title);
+	};
+
+	pg_assert_same($away('2026-10-23', '2026-10-26', 'Aile ziyareti'), ws_command_away_data('cuma pazartesi Aile ziyareti', '2026-10-21'), 'two days and a note');
+	pg_assert_same($away('2026-10-22', '2026-10-22', ''), ws_command_away_data('yarın', '2026-10-21'), 'one day');
+	pg_assert_same($away('2026-11-02', '2026-11-06', ''), ws_command_away_data('2.11 6.11', '2026-10-21'), 'two dates');
+	pg_assert_same($away('', '', 'Tatil'), ws_command_away_data('Tatil', '2026-10-21'), 'no day');
+}
+
+// /away reads its last day from its first, so two weekdays are a range that
+// starts on the first whatever day the line is typed on. 2026-10-26 is a
+// Monday, 2026-10-27 a Tuesday, 2026-10-31 a Saturday.
+function test_workspace_command_away_reads_its_last_day_from_its_first()
+{
+	$away = function ($start, $end, $title) {
+		return array('kind' => 'leave', 'scope' => 'people', 'start' => $start, 'end' => $end, 'title' => $title);
+	};
+
+	pg_assert_same($away('2026-10-30', '2026-11-02', 'Family visit'), ws_command_away_data('friday monday Family visit', '2026-10-26'), 'friday monday, typed on a Monday');
+	pg_assert_same($away('2026-11-02', '2026-11-06', ''), ws_command_away_data('pazartesi cuma', '2026-10-27'), 'pazartesi cuma, typed on a Tuesday');
+	pg_assert_same($away('2026-11-06', '2026-11-09', ''), ws_command_away_data('cuma pazartesi', '2026-10-31'), 'cuma pazartesi, typed on a Saturday');
+	pg_assert_same($away('2026-12-28', '2027-01-04', ''), ws_command_away_data('28.12 4.1', '2026-10-27'), 'a date without a year before the first day is in the next year');
+}
+
+// /meeting (/toplantı) reads when it starts as /schedule does, then an end
+// or a length (an hour by default), the people tagged and the title.
+function test_workspace_command_meeting_reads_its_parts()
+{
+	$now = strtotime('2026-10-21 10:15:00');
+
+	pg_assert_same(array('command' => 'meeting', 'rest' => 'yarın 14:00 x'), ws_command_split('/Toplantı yarın 14:00 x'), '/Toplantı');
+	pg_assert_same(array('command' => 'meeting', 'rest' => 'x'), ws_command_split('/toplanti x'), '/toplanti');
+
+	$meeting = function ($people, $title, $start, $start_time, $end, $end_time) {
+		return array('kind' => 'meeting', 'scope' => 'people', 'people' => $people, 'title' => $title, 'start' => $start, 'end' => $end, 'start_time' => $start_time, 'end_time' => $end_time);
+	};
+
+	pg_assert_same($meeting(array(5, 7), 'Açılış toplantısı', '2026-10-22', '14:00', '2026-10-22', '15:30'), ws_command_meeting_data('yarın 14:00 ~1.5sa Açılış <@user:5> toplantısı <@user:7> <@user:5>', $now), 'a day, a time, a length, people');
+	pg_assert_same($meeting(array(), 'Plan', '2026-10-23', '09:30', '2026-10-23', '11:00'), ws_command_meeting_data('cuma 09:30 11:00 Plan', $now), 'an end time');
+	pg_assert_same($meeting(array(), 'Kahve', '2026-10-21', '16:00', '2026-10-21', '17:00'), ws_command_meeting_data('16:00 Kahve', $now), 'an hour by default');
+	pg_assert_same($meeting(array(), 'Gece', '2026-10-21', '23:30', '2026-10-22', '00:30'), ws_command_meeting_data('bugün 23:30 Gece', $now), 'past midnight');
+	pg_assert_same($meeting(array(), 'Plan', '', '', '', ''), ws_command_meeting_data('Plan', $now), 'no start');
+
+	$viewer = array('id' => 3);
+	$data = ws_command_meeting_people($viewer, ws_command_meeting_data('16:00 Kahve <@user:5>', $now));
+
+	pg_assert_same(array(3, 5), $data['people'], 'the writer is on the meeting');
+}
+
+
+// GET /workspace/commands lists the registry: a read under workspace:read,
+// no parameters, no MCP tool, answering a list of WorkspaceCommand.
+function test_workspace_commands_api_route_is_a_read_and_no_tool()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $item) {
+		if ($item['id'] === 'workspace.commands.list') {
+			$route = $item;
+		}
+	}
+
+	pg_assert_true(is_array($route), 'workspace.commands.list is declared');
+	pg_assert_same('GET', $route['method']);
+	pg_assert_same('/workspace/commands', $route['path']);
+	pg_assert_same('workspace:read', $route['scope']);
+	pg_assert_same('ws_api_commands_list', $route['handler']);
+	pg_assert_same(array('list' => 'WorkspaceCommand'), $route['returns']);
+	pg_assert_same(array(), $route['params']);
+	pg_assert_same(false, $route['mcp'] ?? null, 'carries \'mcp\' => false');
+	pg_assert_false(pg_mcp_route_is_offered($route), 'no MCP tool');
+	pg_assert_false(!empty($route['dry_run']), 'a read does not rehearse');
+
+	$objects = ws_openapi_objects();
+	pg_assert_same('ws_api_command_schema', $objects['WorkspaceCommand'] ?? null, 'WorkspaceCommand is registered');
+	pg_assert_same('ws_api_command_argument_schema', $objects['WorkspaceCommandArgument'] ?? null, 'WorkspaceCommandArgument is registered');
+}
+
+// A registry entry is answered with the fields its schema declares, in that
+// order and with those types, and its arguments the same way.
+function test_workspace_commands_api_present_matches_its_schema()
+{
+	$entries = ws_commands(null);
+	$task = null;
+
+	foreach ($entries as $entry) {
+		if ($entry['key'] === 'task') {
+			$task = $entry;
+		}
+	}
+
+	pg_assert_true(is_array($task), 'the registry holds /task');
+
+	$present = ws_api_command_present($task);
+
+	pg_assert_same(array_keys(ws_api_command_schema()), array_keys($present), 'command fields');
+	pg_assert_same('task', $present['key']);
+	pg_assert_same($task['names'], $present['names']);
+	pg_assert_same($task['usage'], $present['usage']);
+	pg_assert_same(true, $present['live']);
+	pg_assert_same(count($task['args']), count($present['args']), 'every argument');
+
+	$people = $present['args'][1];
+
+	pg_assert_same(array_keys(ws_api_command_argument_schema()), array_keys($people), 'argument fields');
+	pg_assert_same(array('name' => 'people', 'kind' => 'people', 'label' => $task['args'][1]['label'], 'optional' => true,
+		'suggest' => 'people_departments', 'multiple' => true, 'anywhere' => true), $people, '/task people');
+
+	// A suggestion source left empty in the registry is null in the answer.
+	$help = null;
+	$poll = null;
+
+	foreach ($entries as $entry) {
+		if ($entry['key'] === 'help') {
+			$help = ws_api_command_present($entry);
+		}
+		if ($entry['key'] === 'poll') {
+			$poll = ws_api_command_present($entry);
+		}
+	}
+
+	pg_assert_same(array(), $help['args'], '/help takes none');
+	pg_assert_same(false, $help['live'], '/help has no live line');
+	pg_assert_same(null, $poll['args'][0]['suggest'], 'no suggestion source');
+}
+
+// The list is the viewer's registry in its order: a command the person may
+// not use is never listed.
+function test_workspace_commands_api_list_keeps_the_registry_order()
+{
+	$keys = array_map(function ($entry) {
+		return $entry['key'];
+	}, ws_api_commands_present(ws_commands(null)));
+
+	pg_assert_same(array_map(function ($entry) {
+		return $entry['key'];
+	}, ws_commands(null)), $keys, 'registry order');
+	pg_assert_same(array(), ws_api_commands_present(array()), 'nothing offered, nothing listed');
 }

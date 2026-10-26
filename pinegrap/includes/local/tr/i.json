@@ -475,6 +475,7 @@
     "Integrations": "Entegrasyonlar",
     "Integrations and AI applications present their own credentials and run wherever their provider does.": "Entegrasyonlar ve yapay zeka uygulamaları kendi kimlik bilgileriyle bağlanır ve sağlayıcıları nerede çalışıyorsa oradan gelir.",
     "Integrations, AI applications and calendar services present their own credentials and run wherever their provider does.": "Entegrasyonlar, yapay zeka uygulamaları ve takvim servisleri kendi kimlik bilgileriyle bağlanır ve sağlayıcıları nerede çalışıyorsa oradan gelir.",
+    "Interactions": "Etkileşimler",
     "Interface text of the website (a button, a label, a message)": "Web sitesinin arayüz metni (düğme, etiket, ileti)",
     "Interface texts": "Arayüz metinleri",
     "Interface tour": "Arayüz turu",
@@ -834,5 +835,6 @@
     "it is removed from all of them.": "hepsinden kaldırılacak.",
     "item(s)": "öğe",
     "its own design": "kendi tasarımı",
+    "iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal": "iys, ileti yönetim sistemi, izin, onay, marka, pazarlama, ticari ileti, ret",
     "iyzico logo address": "iyzico logosunun adresi"
 }

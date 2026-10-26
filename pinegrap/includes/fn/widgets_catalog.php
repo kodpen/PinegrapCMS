@@ -118,14 +118,15 @@ function _pg_render_catalog_group_tree($parent_id, $listing_path_base, $listing_
 // bindings on the designer's nodes into the concrete render-time HTML.
 //
 // Designer-friendly architecture: instead of telling the designer "drop this
-// `^^__breadcrumb_html^^` token here", we let them drop a real <nav> element
-// and pick "Breadcrumb" from the data-binding panel. The element keeps its
+// `^^__group_tree_html^^` token here", we let them drop a real <nav> element
+// and pick "Category tree" from the data-binding panel. The element keeps its
 // own CSS classes / attributes / selector chain — the binding only defines
 // what content goes inside.
 //
 // Bindings recognized:
 //   • _bindings.section = '<name>'  (on any container — div, nav, ul, ol)
-//       breadcrumb         → emits the active-group breadcrumb HTML
+//       (breadcrumb: drawn by its default part before this pass,
+//       pg_sw_part_catalog_crumbs())
 //       group_tree         → emits the nested group navigation tree HTML
 //       filter_chips       → emits the active-filter chip strip
 //       filters_offcanvas  → emits the offcanvas with all filter forms
@@ -344,12 +345,11 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
     //
     // $bindings_used (by-ref, populated as we walk): the catalog widget
     // renderer reads this set after the binding pass to SKIP auto-stitched
-    // legacy duplicates — e.g. if `section_breadcrumb` is set, the body
-    // composition omits the legacy $breadcrumb_html prefix so the visitor
-    // doesn't see two breadcrumbs.
+    // legacy duplicates — e.g. if `section_filter_chips` is set, the body
+    // composition omits the legacy $chips_html so the visitor doesn't see
+    // two chip strips.
     if (isset($bindings['section'])) {
         $section_inner_token_map = array(
-            'breadcrumb'        => '__breadcrumb_inner_html',
             'group_tree'        => '__group_tree_inner_html',
             'filter_chips'      => '__filter_chips_inner_html',
             'filters_offcanvas' => '__filters_offcanvas_inner_html',
@@ -786,7 +786,9 @@ function _pg_catalog_stock_states_differ($products)
  * Wires a control of the back-in-stock form (stock_notify.php): a button
  * bound to stock_notify submits the form $form_id names, a text input bound
  * to stock_notify_email becomes its address field, filled with the
- * signed-in visitor's address. The form is printed after the widget's own,
+ * signed-in visitor's address, and one bound to stock_notify_phone its
+ * optional mobile number field (only while the notice can go out as a text
+ * message, see _pg_catalog_stock_notify_dropped()). The form is printed after the widget's own,
  * since a form cannot sit inside the add-to-cart form. A control with no
  * "Show only when" of its own takes can_notify, so it never shows for a
  * product that can be bought.
@@ -803,13 +805,15 @@ function _pg_catalog_stock_notify_control(&$node, $form_id, $email)
     $tag = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
     $is_button = ($type === 'component' && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn')
         || ($type === 'semantic' && $tag === 'button');
-    $field = isset($bindings['value']) && $bindings['value'] === 'stock_notify_email';
+    $value_binding = isset($bindings['value']) ? $bindings['value'] : '';
+    $phone = ($value_binding === 'stock_notify_phone');
+    $field = $phone || ($value_binding === 'stock_notify_email');
 
     if ($field ? !($type === 'semantic' && $tag === 'input') : !$is_button) {
         return false;
     }
 
-    $managed = array('type' => 1, 'form' => 1, 'formaction' => 1, 'formmethod' => 1, 'name' => 1, 'required' => 1, 'autocomplete' => 1, 'maxlength' => 1);
+    $managed = array('type' => 1, 'form' => 1, 'formaction' => 1, 'formmethod' => 1, 'name' => 1, 'required' => 1, 'autocomplete' => 1, 'maxlength' => 1, 'inputmode' => 1);
     $kept = array();
     $value = '';
     foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
@@ -822,7 +826,14 @@ function _pg_catalog_stock_notify_control(&$node, $form_id, $email)
         $kept[] = $a;
     }
 
-    if ($field) {
+    if ($phone) {
+        $kept[] = array('name' => 'type', 'value' => 'tel');
+        $kept[] = array('name' => 'name', 'value' => 'phone');
+        $kept[] = array('name' => 'autocomplete', 'value' => 'tel');
+        $kept[] = array('name' => 'inputmode', 'value' => 'tel');
+        $kept[] = array('name' => 'maxlength', 'value' => '50');
+        if ($value !== '') $kept[] = array('name' => 'value', 'value' => $value);
+    } elseif ($field) {
         $kept[] = array('name' => 'type', 'value' => 'email');
         $kept[] = array('name' => 'name', 'value' => 'email_address');
         $kept[] = array('name' => 'autocomplete', 'value' => 'email');
@@ -854,21 +865,25 @@ function _pg_catalog_stock_notify_control(&$node, $form_id, $email)
 
 /**
  * Whether a node bound to the back-in-stock form is left out: the requests
- * have no table yet (no form), or the node cannot be the control it is bound
- * as (a link, a select). A switched-off feature draws nothing.
+ * have no table yet (no form), the node cannot be the control it is bound
+ * as (a link, a select), or it is the number field while no notice goes out
+ * as a text message. A switched-off feature draws nothing.
  *
  * @param array $node
- * @param array $context the item view's binding context (stock_notify_form)
+ * @param array $context the item view's binding context (stock_notify_form,
+ *                       stock_notify_sms)
  * @return bool
  */
 function _pg_catalog_stock_notify_dropped($node, $context)
 {
     $bindings = (is_array($node) && isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    $value = isset($bindings['value']) ? $bindings['value'] : '';
     if (!(isset($bindings['action']) && $bindings['action'] === 'stock_notify')
-        && !(isset($bindings['value']) && $bindings['value'] === 'stock_notify_email')) {
+        && $value !== 'stock_notify_email' && $value !== 'stock_notify_phone') {
         return false;
     }
     if (empty($context['stock_notify_form'])) return true;
+    if ($value === 'stock_notify_phone' && empty($context['stock_notify_sms'])) return true;
     return !_pg_catalog_stock_notify_control($node, (string)$context['stock_notify_form'], '');
 }
 
@@ -1062,9 +1077,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                             ? $cfg['out_of_stock_behavior'] : 'disable';
 
     // ── URL params (shared) ───────────────────────────────────────────────
-    $page_param   = 'page_number';
-    $query_param  = 'query';
-    $current_page = isset($_GET[$page_param]) ? max(1, (int)$_GET[$page_param]) : 1;
+    // The page number reads the listing's own `page_param` when it has one,
+    // else page_number, which running sites' addresses carry
+    // (pg_sw_list_page_param()); `offset` skips the first products.
+    $page_param     = pg_sw_list_page_param($cfg);
+    $offset_records = pg_sw_list_offset($cfg);
+    $query_param    = 'query';
+    $current_page   = isset($_GET[$page_param]) ? max(1, (int)$_GET[$page_param]) : 1;
     $search_query = ($search_enabled && isset($_GET[$query_param])) ? trim((string)$_GET[$query_param]) : '';
     if (strlen($search_query) > 100) $search_query = substr($search_query, 0, 100);
 
@@ -1229,7 +1248,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // ── Designer bindings pre-process ────────────────────────────────────
     // Convert section / action / value bindings on user-placed nodes into
     // concrete attrs + placeholder tokens. Section bindings collapse into
-    // custom_html nodes carrying tokens like ^^__breadcrumb_html^^ that the
+    // custom_html nodes carrying tokens like ^^__group_tree_inner_html^^ that the
     // $page_tokens substitution at the end of this function resolves.
     //
     // Context bag: precompute the deterministic bits the binding pass needs
@@ -1280,6 +1299,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $static_html   = '';
     } else {
         $_pg_cards     = _pg_catalog_card_templates($split['loop_children']);
+        // The paging flags are known after the count: their parts of the
+        // surround are marked here and kept or cut at the end.
+        _pg_sw_mark_visibility($split['static_tree'], array('has_prev_page', 'has_next_page', 'has_more_pages'));
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
     $loop_template       = $_pg_cards['unrated'];
@@ -1538,6 +1560,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
              WHERE products.enabled = 1
                $search_where"
         );
+        // The pages run through the products after the offset.
+        $total_records = max(0, $total_records - $offset_records);
         if ($total_records === 0) {
             $no_products = true;
         }
@@ -1558,6 +1582,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $remaining = $max_results - $offset;
         if ($remaining < $page_limit) $page_limit = max(0, $remaining);
     }
+    // ^^__page_number^^, ^^__page_count^^, the previous / next page links and
+    // the flags has_prev_page, has_next_page, has_more_pages, as a form list
+    // gives them (pg_sw_list_paging()).
+    $paging = pg_sw_list_paging($page_param, $current_page, $total_pages);
 
     // ── Pull product rows (page slice) ────────────────────────────────────
     // SELECT pulls only the columns we expose as tokens — keeps the row size
@@ -1594,7 +1622,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                $search_where
              GROUP BY products.id
              ORDER BY $order_by_sql
-             LIMIT $page_limit OFFSET $offset"
+             LIMIT $page_limit OFFSET " . ($offset_records + $offset)
         );
         if (!$products) {
             $no_products = true;
@@ -1988,8 +2016,12 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     }
 
     // ── Pagination HTML (Bootstrap 5, ±2 windowing — same as form_list_view) ──
+    // A design holding a list of the page links draws them itself: its rows
+    // are published and the built-in pagination is left out.
     $pagination_html = '';
-    if ($total_pages > 1) {
+    if (pg_sw_list_wanted('paging')) {
+        pg_sw_list_publish('paging', pg_sw_list_paging_rows($page_param, $current_page, $total_pages));
+    } elseif ($total_pages > 1) {
         $pagination_html .= '<nav class="pg-sw-pagination" aria-label="' . h(lang('Page navigation')) . '"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
         if ($current_page > 1) {
             $pagination_html .= '<li class="page-item"><a class="page-link" href="?' .
@@ -2246,27 +2278,22 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // scope (a different catalog widget might surface them).
     //
     // Crumb composition:
-    //   • "Ana Katalog" link → catalog root URL (active group dropped from URL)
+    //   • "Main Catalog" link → catalog root URL (active group dropped from URL)
     //   • Each ancestor BETWEEN the root and the active group → linkable
     //   • The active group itself → text (current location)
     //
     // At ROOT (no drill, $active_group_id == $product_group_id): only the
-    // "Ana Katalog" crumb appears, marked active (current location). This
+    // "Main Catalog" crumb appears, marked active (current location). This
     // way a designer-bound <nav> still has visible content even on the
     // catalog landing page — the visitor sees their location consistently.
     //
     // When `$product_group_id == 0` (no configured root) the loop walks all
     // the way to parent_id=0, matching the legacy unbounded behaviour.
     //
-    // Two-token output:
-    //   • $breadcrumb_inner_html — just the <ol>…</ol> (no <nav> wrapper).
-    //     Used when designer binds their own <nav>/<div>/etc. with section=
-    //     breadcrumb — wrapper preserved, children replaced with this.
-    //   • $breadcrumb_html       — full <nav><ol>…</ol></nav>. Legacy token
-    //     for designers placing the raw `^^__breadcrumb_html^^` inside their
-    //     own custom HTML.
-    $breadcrumb_inner_html = '';
-    $breadcrumb_html       = '';
+    // The crumbs are published for the catalog.crumbs list the breadcrumb
+    // part draws (widgets_parts.php); __has_breadcrumb (1 or empty) is the
+    // list's key and the part's condition.
+    $has_breadcrumb = '';
     if ($group_navigation !== 'none') {
         $crumbs = array();
         if ($active_group_id > 0 && $active_group_id !== (int)$product_group_id) {
@@ -2275,7 +2302,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             $_pg_root_id = (int)$product_group_id;
             while ($cur > 0 && $safety-- > 0) {
                 // Stop AT the configured root — don't include it as its own crumb
-                // because "Ana Katalog" already serves that role.
+                // because "Main Catalog" already serves that role.
                 if ($_pg_root_id > 0 && $cur === $_pg_root_id) break;
                 $row = db_item(
                     "SELECT id, name, address_name, parent_id FROM product_groups WHERE id = '" . (int)$cur . "' LIMIT 1"
@@ -2285,35 +2312,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 $cur = (int)$row['parent_id'];
             }
         }
-        $bcParts = array();
-        if ($crumbs) {
-            // Drilled into a sub-category: "Ana Katalog" is a link back to
-            // the catalog root; the trail ends at the active group as text.
-            $bcParts[] = '<a href="' . h($listing_root_url) . '">' . h(lang('Main Catalog')) . '</a>';
-            $last_idx = count($crumbs) - 1;
-            foreach ($crumbs as $i => $c) {
-                if ($i === $last_idx) {
-                    $bcParts[] = '<span class="active">' . h($c['name']) . '</span>';
-                } else {
-                    $href = !empty($c['address_name'])
-                        ? $group_link_base . encode_url_path((string)$c['address_name'])
-                        : $listing_root_url;
-                    $bcParts[] = '<a href="' . h($href) . '">' . h($c['name']) . '</a>';
-                }
-            }
-        } else {
-            // At root (no drill): single non-link "Ana Katalog" crumb so the
-            // designer-bound <nav> still has visible content.
-            $bcParts[] = '<span class="active">' . h(lang('Main Catalog')) . '</span>';
+        $has_breadcrumb = '1';
+        if (pg_sw_list_wanted('crumbs')) {
+            pg_sw_list_publish('crumbs', array('catalog.crumbs' => array(1 => pg_sw_list_crumb_rows_listing($crumbs, $listing_root_url, $group_link_base))));
         }
-        $breadcrumb_inner_html =
-            '<ol class="breadcrumb mb-0">' .
-            implode('', array_map(function ($p) { return '<li class="breadcrumb-item">' . $p . '</li>'; }, $bcParts)) .
-            '</ol>';
-        $breadcrumb_html =
-            '<nav class="pg-sw-breadcrumb mb-3" aria-label="breadcrumb">' .
-            $breadcrumb_inner_html .
-            '</nav>';
     }
 
     // Group tree -------------------------------------------------------------
@@ -2822,7 +2824,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     }
 
     // ── Stitch body ──────────────────────────────────────────────────────
-    // Render order: breadcrumb → search/sort/filters toolbar (single row) →
+    // Render order: search/sort/filters toolbar (single row) →
     // active filter chips (col-12) → child groups → product loop → pagination
     // → offcanvas (sibling of everything; positioned by Bootstrap CSS).
     //
@@ -2833,7 +2835,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // Auto-stitched legacy controls SUPPRESSION:
     // When the designer's tree already provides any of these UI elements
     // via bindings (action=search_form / open_filters / submit_search,
-    // section=filter_chips / filters_offcanvas / breadcrumb …), we skip
+    // section=filter_chips / filters_offcanvas …), we skip
     // the auto-stitched legacy duplicate so the visitor doesn't see two
     // copies. Bindings are tracked in $_pg_bindings_used during the
     // pre-process pass above.
@@ -2875,7 +2877,6 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // Same suppression rule as toolbar: when the designer placed bound
     // versions of these blocks via section bindings, skip the auto-stitched
     // duplicates so the visitor doesn't see two copies.
-    $_skip_breadcrumb = !empty($_pg_bindings_used['section_breadcrumb']);
     $_skip_chips      = !empty($_pg_bindings_used['section_filter_chips'])
                        || !empty($_pg_bindings_used['section_active_filters']);
     $_skip_offcanvas  = !empty($_pg_bindings_used['section_filters_offcanvas']);
@@ -2890,7 +2891,6 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $_loop_block = $empty_html;
     }
     $body =
-        ($_skip_breadcrumb ? '' : $breadcrumb_html) .
         $toolbar_html .
         ($_skip_chips      ? '' : $chips_html) .
         $child_groups_html .
@@ -2906,7 +2906,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $page_tokens = array(
         '__active_cat_id'           => (string)$active_group_id,
         '__active_cat_name'         => $active_group_name,
-        '__breadcrumb_html'         => $breadcrumb_html,
+        '__has_breadcrumb'          => $has_breadcrumb,
         '__group_tree_html'         => $group_tree_html,
         '__has_children'            => (string)$has_children,
         // Phase 2.5 attribute filter tokens — designer can place them anywhere
@@ -2923,25 +2923,26 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 
         // ── Inner-only variants (no outer wrapper) ─────────────────────
         // Used by the section-binding pre-process: when a designer marks
-        // their own <nav>/<div>/<aside>/<ul> with section=breadcrumb
-        // (or group_tree, filter_chips, etc.), the binding pass replaces
+        // their own <nav>/<div>/<aside>/<ul> with section=group_tree
+        // (or filter_chips, etc.), the binding pass replaces
         // that node's children with one of these inner-only tokens — so
         // the designer's wrapping tag, classes, and attributes are
         // preserved while the inner markup comes from the backend.
-        '__breadcrumb_inner_html'        => $breadcrumb_inner_html,
         '__group_tree_inner_html'        => $group_tree_inner_html,
         '__filter_chips_inner_html'      => $filter_chips_inner_html,
         '__filters_offcanvas_inner_html' => $filters_offcanvas_inner_html,
         '__active_filters_inner_html'    => $active_attr_chips_html,
         '__attribute_filters_inner_html' => $attribute_filters_html,
     );
-    $page_tokens = pg_sw_escape_token_values($page_tokens);
+    // The paging values are escaped already.
+    $page_tokens = pg_sw_escape_token_values($page_tokens) + $paging['tokens'];
     // In the map's order, as always; a format after a token is read.
     $body = _pg_catalog_fill_page_tokens($body, $page_tokens);
     // Everything the loops and this pass could answer has been answered; what
     // is left is unanswered. This is the loop halves' only sweep.
     $body = pg_sw_sweep_tokens($body);
     if ($static_html !== '') {
+        $static_html = _pg_sw_resolve_visibility($static_html, $paging['flags']);
         $static_html = _pg_catalog_fill_page_tokens($static_html, $page_tokens);
         // The loop halves are swept where they are built; the static surround
         // was not, so an identifier misspelled in a header printed itself.
@@ -3187,14 +3188,14 @@ function _civ_resolve_catalog_listing_root_group_id($page_id)
 }
 
 /**
- * Render the catalog_item_view breadcrumb — Ana Katalog → Group → Subgroup → Product.
+ * The crumbs of the catalog_item_view breadcrumb — Main Catalog → Group → Subgroup → Product.
  *
  * Walks parent_id from the product's primary product_group up to the root
  * (or to the configured `catalog_listing_root_group_id` if set, mirroring
  * the catalog_listing widget's "world" scoping).
  *
  * URL strategy:
- *   • "Ana Katalog" + group crumbs link to the catalog listing page when
+ *   • "Main Catalog" + group crumbs link to the catalog listing page when
  *     `cfg['catalog_listing_page_id']` is set. Each group crumb appends
  *     its `address_name` slug so the visitor lands on that group's
  *     drill-down view.
@@ -3205,7 +3206,7 @@ function _civ_resolve_catalog_listing_root_group_id($page_id)
  * Out-of-scope handling: when $root_group_id > 0 and the walk doesn't reach
  * that root (product lives in a different branch of the product_group tree),
  * group crumbs are dropped to avoid leaking categories outside the catalog
- * scope. The "Ana Katalog" link + final product crumb still render so the
+ * scope. The "Main Catalog" link + final product crumb still render so the
  * visitor has a navigation anchor.
  *
  * @param array  $p              The active product row (id, name, short_description, …).
@@ -3213,20 +3214,18 @@ function _civ_resolve_catalog_listing_root_group_id($page_id)
  * @param string $select_group_name Friendly name when select-group active.
  * @param int    $catalog_page_id   Optional listing page id for crumb URLs.
  * @param int    $root_group_id     Optional scope root (excludes ancestors above this).
- * @return array                  ['inner' => '<ol>…</ol>', 'full' => '<nav>…</nav>']
+ * @return array                  the catalog.crumbs rows (pg_sw_list_crumb_rows_item())
  */
-function _civ_render_breadcrumb($p, $select_group_id, $select_group_name, $catalog_page_id, $root_group_id)
+function _civ_breadcrumb_rows($p, $select_group_id, $select_group_name, $catalog_page_id, $root_group_id)
 {
     $base_path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
     $catalog_root_url = '';
-    $catalog_path_prefix = '';
     if ($catalog_page_id > 0) {
         $cat_page_name = db_value(
             "SELECT page_name FROM page WHERE page_id = '" . (int)$catalog_page_id . "' LIMIT 1"
         );
         if ($cat_page_name) {
-            $catalog_root_url    = $base_path . encode_url_path($cat_page_name);
-            $catalog_path_prefix = $catalog_root_url . '/';
+            $catalog_root_url = $base_path . encode_url_path($cat_page_name);
         }
     }
 
@@ -3270,53 +3269,16 @@ function _civ_render_breadcrumb($p, $select_group_id, $select_group_name, $catal
         $cur = (int)$row['parent_id'];
     }
     if (!$reached_root) {
-        // Out of scope — keep "Ana Katalog" + final product crumb only.
+        // Out of scope — keep "Main Catalog" + final product crumb only.
         $crumbs = array();
     }
 
-    $bcParts = array();
-    // First crumb: "Ana Katalog" — link if catalog page configured, text otherwise.
-    if ($catalog_root_url !== '') {
-        $bcParts[] = '<a href="' . h($catalog_root_url) . '">' . h(lang('Main Catalog')) . '</a>';
-    } else {
-        $bcParts[] = '<span>' . h(lang('Main Catalog')) . '</span>';
-    }
-    // Group ancestors → link when catalog page configured + address_name set.
-    if ($crumbs) {
-        // Last crumb in $crumbs is the IMMEDIATE parent group of the
-        // displayed product. When the URL points at a select-group, that
-        // group itself IS the final destination — display as active text.
-        // When the URL points at a product, the immediate group is still
-        // a clickable link (drilling INTO that group), and the product's
-        // own name becomes the final active crumb.
-        $last_idx = count($crumbs) - 1;
-        $on_select_group = ((int)$select_group_id > 0);
-        foreach ($crumbs as $i => $c) {
-            $is_last_crumb = ($i === $last_idx);
-            $href = ($catalog_path_prefix !== '' && !empty($c['address_name']))
-                       ? $catalog_path_prefix . encode_url_path((string)$c['address_name'])
-                       : '';
-            if ($on_select_group && $is_last_crumb) {
-                // The last crumb IS the active select-group. Show as text.
-                $bcParts[] = '<span class="active">' . h($c['name']) . '</span>';
-            } elseif ($href !== '') {
-                $bcParts[] = '<a href="' . h($href) . '">' . h($c['name']) . '</a>';
-            } else {
-                $bcParts[] = '<span>' . h($c['name']) . '</span>';
-            }
-        }
-    }
-    // Final crumb: the product itself (when not already covered by select-group).
+    // The product itself ends the path, unless a select-group is.
+    $product_name = null;
     if ($select_group_id <= 0 && is_array($p) && !empty($p['id'])) {
         $product_name = !empty($p['short_description']) ? (string)$p['short_description'] : (string)$p['name'];
-        $bcParts[] = '<span class="active">' . h($product_name) . '</span>';
     }
-
-    $inner = '<ol class="breadcrumb mb-0">'
-           . implode('', array_map(function ($p) { return '<li class="breadcrumb-item">' . $p . '</li>'; }, $bcParts))
-           . '</ol>';
-    $full  = '<nav class="pg-civ-breadcrumb mb-3" aria-label="breadcrumb">' . $inner . '</nav>';
-    return array('inner' => $inner, 'full' => $full);
+    return pg_sw_list_crumb_rows_item($crumbs, $catalog_root_url, (int)$select_group_id > 0, $product_name);
 }
 
 /**
@@ -3636,27 +3598,6 @@ function _pg_format_price_with_discount($original_cents, $effective_cents, $curr
 }
 
 /**
- * Render the catalog_item_view "cross-sell" section for a given product.
- *
- * Cross-sell = "ordered together" suggestions from the legacy
- * get_cross_sell_items() helper (analyzes order_items history). Output is
- * a horizontal-scroll row of compact product cards. Empty when no
- * suggestions can be computed (new sites with no order history, or
- * products that have never been ordered together with anything).
- *
- * The variant chooser JS (pg_civ_variants.js) re-fetches via the
- * `get_cross_sell_items` API endpoint when the visitor switches variants,
- * so the cross-sell row always reflects the currently-displayed product.
- *
- * @param int   $product_id           Source product (the product being viewed).
- * @param int   $catalog_detail_pid   Page id used to build per-card detail URLs.
- *                                    When 0, cards link to '#'.
- * @param int   $count                Max number of items (default 4).
- * @return string                     Wrapped <div> containing the row HTML.
- *                                    Always wrapped (even when empty) so the
- *                                    JS refresh has a stable target.
- */
-/**
  * Expand `<!--pg-variant-attr:base64(cfg)-->` markers in $html by cloning
  * the configured template once per shared attribute in $vattrs.
  *
@@ -3813,9 +3754,8 @@ function _civ_expand_variant_attr_markers($html, $vattrs, $defaults = array())
  *     'image_url'=>…, 'url'=>…, 'price'=>'199.95',
  *     'original_price'=>'199.95', 'has_discount'=>0|1], …]
  *
- * The same shape is consumed by _civ_render_cross_sell_html (server-side
- * card markup) AND the new `get_cross_sell_for_product` API action (JSON
- * for the variant-chooser JS refresh path), keeping output consistent.
+ * The same shape feeds the product.related list (the cross-sell part's
+ * cards) and the `get_cross_sell_for_product` API action.
  *
  * @param int $product_id        Source product (the product being viewed).
  * @param int $catalog_detail_pid Page id used for per-card detail URLs.
@@ -3899,6 +3839,86 @@ function _civ_get_cross_sell_items($product_id, $catalog_detail_pid, $count = 4)
     return $items;
 }
 
+// The cross-sell part of a catalog detail view's tree (the first node
+// classed pg-civ-cross-sell, pg_sw_part_catalog_cross_sell()), null for none.
+function _civ_cross_sell_part_node($node)
+{
+    if (!is_array($node)) return null;
+    $cls = isset($node['props']['cssClass']) ? ' ' . (string)$node['props']['cssClass'] . ' ' : '';
+    if (strpos($cls, ' pg-civ-cross-sell ') !== false) return $node;
+    foreach (isset($node['children']) && is_array($node['children']) ? $node['children'] : array() as $child) {
+        $found = _civ_cross_sell_part_node($child);
+        if ($found !== null) return $found;
+    }
+    return null;
+}
+
+// Whether the detail view tree $node holds a list of the products bought
+// together (product.related) that still shows with cross-sell switched
+// off, when __has_related is empty: one that no condition on __has_related
+// cuts, on a node above it. The cross-sell part's list stands under such
+// conditions (pg_sw_part_catalog_cross_sell()), so with cross-sell off
+// nothing is read for it; a list the design placed elsewhere is read as
+// before. A condition that cannot be read draws nothing, and one on a
+// node holding a required control is ignored, as in _render_tree_node().
+function _civ_related_list_shown_when_off($node)
+{
+    if (!is_array($node)) return false;
+    if (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'product.related') return true;
+    $type = isset($node['type']) ? (string)$node['type'] : '';
+    if (isset($node['props']['_bindings']['show_if']) && !in_array($type, array('root', 'loop_area', 'recipient_loop_area'), true)) {
+        $cond = pg_sw_cond_spec($node['props']);
+        if ($cond !== null && pg_sw_cond_holds_required($node)) $cond = null;
+        if ($cond === false) return false;
+        if (is_array($cond) && strtolower($cond['token']) === '__has_related' && !pg_sw_cond_eval($cond['op'], '', $cond['operand'])) {
+            return false;
+        }
+    }
+    foreach (isset($node['children']) && is_array($node['children']) ? $node['children'] : array() as $child) {
+        if (_civ_related_list_shown_when_off($child)) return true;
+    }
+    return false;
+}
+
+// The cross-sell part $node drawn alone for product $product_id of widget
+// $sid with the related rows $rows (pg_sw_list_product_related_rows()), as
+// the detail view draws it: the design's own elements and classes, values
+// of other tokens empty.
+function _civ_cross_sell_part_draw($node, $sid, $product_id, $rows)
+{
+    $scope = pg_sw_finish_open(array('sid' => (int)$sid, 'kind' => 'catalog_item_view', 'email' => false));
+    try {
+        $html = _render_tree_node($node, 0, 0);
+        if (pg_sw_list_wanted('product')) pg_sw_list_publish('product', array('product.related' => array((int)$product_id => $rows)));
+        $values = pg_sw_escape_token_values(array('__id' => (string)(int)$product_id, '__has_related' => $rows ? '1' : ''));
+        $html = pg_sw_sweep_tokens(pg_sw_fill_longest($html, $values));
+    } finally {
+        pg_sw_finish_close();
+    }
+    return trim(pg_sw_finish_widget_html($html, $scope));
+}
+
+// The cross-sell part of catalog detail widget $sid drawn for a variant the
+// visitor picked ($product_id, enabled), its cards linking to page
+// $detail_page_id; '' when the widget has no such part, is switched off or
+// the product has nothing to suggest (the script then keeps the cards it
+// shows). The get_cross_sell_for_product API action answers with it.
+function _civ_cross_sell_part_html($sid, $product_id, $detail_page_id)
+{
+    $row = db_item("SELECT tree_json, system_region_config FROM shared_components WHERE id = '" . (int)$sid . "' LIMIT 1");
+    $cfg = $row ? json_decode((string)$row['system_region_config'], true) : null;
+    if (!is_array($cfg) || !isset($cfg['regionType']) || $cfg['regionType'] !== 'catalog_item_view') return '';
+    if (isset($cfg['cross_sell_enabled']) && !$cfg['cross_sell_enabled']) return '';
+    $tree = json_decode(pg_sw_default_parts_apply((string)$row['tree_json'], 'catalog_item_view', $cfg), true);
+    $node = _civ_cross_sell_part_node($tree);
+    if ($node === null) return '';
+    $p = db_item("SELECT id, image_name FROM products WHERE id = '" . (int)$product_id . "' AND enabled = 1 LIMIT 1");
+    if (!$p) return '';
+    $read = pg_sw_list_product_read(array($p), array('product.related' => true), (int)$detail_page_id);
+    $rows = isset($read['product.related'][(int)$p['id']]) ? $read['product.related'][(int)$p['id']] : array();
+    return $rows ? _civ_cross_sell_part_draw($node, (int)$sid, (int)$p['id'], $rows) : '';
+}
+
 /**
  * Normalize a cross-sell item from either tier into a stable shape.
  * Resolves URL, image URL, and adds discount fields from $disc_prices.
@@ -3949,89 +3969,6 @@ function _civ_normalize_xsell_item($it, $url_prefix, $disc_prices)
     );
 }
 
-function _civ_render_cross_sell($product_id, $catalog_detail_pid, $opts = array())
-{
-    // Designer-tunable knobs (passed via $cfg from catalog_item_view widget):
-    //   • count            — how many items to show (default 4, max 12)
-    //   • columns          — Bootstrap col split (1 / 2 / 3 / 4 / 6)
-    //   • heading          — heading text override (default "Birlikte sıkça
-    //                         satın alınanlar" / "Benzer ürünler" depending
-    //                         on which tier provided the items)
-    //   • heading_tag      — h2 / h3 / h4 / h5 / h6 (default h3)
-    //   • show_heading     — bool (default true)
-    //   • show_price       — bool (default true)
-    //   • card_class       — extra CSS classes appended to every <a class="card …">
-    //                         so designer can tune card look without touching PHP
-    //   • image_aspect     — aspect-ratio for card thumbnails (default '1/1')
-    //   • root_class       — extra CSS classes on the wrapper div (so the
-    //                         designer can target via custom CSS / utility
-    //                         spacing classes)
-    if (!is_array($opts)) $opts = array();
-    $count = isset($opts['count']) ? max(1, min(12, (int)$opts['count'])) : 4;
-    $columns = isset($opts['columns']) ? (int)$opts['columns'] : 4;
-    if (!in_array($columns, array(1, 2, 3, 4, 6), true)) $columns = 4;
-    $col_md = (int)(12 / $columns);
-    $col_sm = $columns >= 4 ? 6 : 12;  // tighten to 2-up on phones for 4+/cols layouts
-    $heading_tag    = isset($opts['heading_tag']) && in_array($opts['heading_tag'], array('h2','h3','h4','h5','h6'), true)
-                        ? $opts['heading_tag'] : 'h3';
-    $show_heading   = !isset($opts['show_heading']) || $opts['show_heading'];
-    $show_price     = !isset($opts['show_price'])   || $opts['show_price'];
-    $card_class     = isset($opts['card_class']) ? trim((string)$opts['card_class']) : '';
-    $image_aspect   = isset($opts['image_aspect']) ? (string)$opts['image_aspect'] : '1/1';
-    $root_class     = isset($opts['root_class']) ? trim((string)$opts['root_class']) : 'mt-4';
-    $custom_heading = isset($opts['heading']) && (string)$opts['heading'] !== '' ? (string)$opts['heading'] : null;
-
-    $wrapper_open  = '<div class="pg-civ-cross-sell ' . h($root_class) . '" data-pg-civ-cross-sell="1"'
-                   . ' data-pg-civ-source-id="' . (int)$product_id . '"'
-                   . ' data-pg-civ-detail-page="' . (int)$catalog_detail_pid . '"'
-                   . ' data-pg-civ-count="' . (int)$count . '"'
-                   . ' data-pg-civ-columns="' . (int)$columns . '"'
-                   . ' data-pg-civ-card-class="' . h($card_class) . '"'
-                   . ' data-pg-civ-image-aspect="' . h($image_aspect) . '"'
-                   . ' data-pg-civ-show-price="' . ($show_price ? '1' : '0') . '"'
-                   . '>';
-    $wrapper_close = '</div>';
-    if ($product_id <= 0) return $wrapper_open . $wrapper_close;
-
-    // Pull items via the shared helper — same logic the API endpoint uses
-    // so SSR + JS-refresh produce identical output.
-    $items   = _civ_get_cross_sell_items($product_id, $catalog_detail_pid, $count);
-    $heading = $custom_heading !== null
-                ? $custom_heading
-                : (lang('Frequently bought together'));
-
-    if (empty($items)) {
-        return $wrapper_open . $wrapper_close;
-    }
-
-    $cs_html = '';
-    if ($show_heading) {
-        $cs_html .= '<' . $heading_tag . ' class="h5 mb-3">' . h($heading) . '</' . $heading_tag . '>';
-    }
-    $cs_html .= '<div class="row g-3">';
-    $card_extra = $card_class !== '' ? ' ' . h($card_class) : '';
-    foreach ($items as $it) {
-        $cs_name  = isset($it['name']) ? h($it['name']) : '';
-        $cs_short = isset($it['short_description']) ? h($it['short_description']) : '';
-        $cs_image = isset($it['image_url']) ? (string)$it['image_url'] : '';
-        $cs_url   = isset($it['url']) ? (string)$it['url'] : '#';
-        $cs_price_block = isset($it['price_block_html']) ? (string)$it['price_block_html'] : '';
-        $cs_html .= '<div class="col-' . (int)$col_sm . ' col-md-' . (int)$col_md . '">'
-                  . '<a href="' . h($cs_url) . '" class="card h-100 text-decoration-none text-body' . $card_extra . '">'
-                  . ($cs_image !== ''
-                        ? '<img src="' . h($cs_image) . '" class="card-img-top" alt="" loading="lazy" style="aspect-ratio:' . h($image_aspect) . ';object-fit:cover">'
-                        : '<div class="card-img-top bg-body-tertiary" style="aspect-ratio:' . h($image_aspect) . '"></div>')
-                  . '<div class="card-body p-2">'
-                  . '<div class="small fw-semibold text-truncate">' . ($cs_short !== '' ? $cs_short : $cs_name) . '</div>'
-                  . ($show_price ? '<div class="small mt-1">' . $cs_price_block . '</div>' : '')
-                  . '</div>'
-                  . '</a>'
-                  . '</div>';
-    }
-    $cs_html .= '</div>';
-    return $wrapper_open . $cs_html . $wrapper_close;
-}
-
 function _apply_catalog_item_view_bindings(&$node, $context)
 {
     if (!is_array($node)) return;
@@ -4042,25 +3979,6 @@ function _apply_catalog_item_view_bindings(&$node, $context)
     // (Messages content node formName auto-fill is handled centrally by
     // _pg_inject_messages_node — called by the widget render fn before
     // this binding pass, so messages are already scoped here.)
-
-    // ── Section: breadcrumb (designer's <nav>/<div> wrapper) ──────────────
-    // Designer drops a <nav> (or any container) with `_bindings.section =
-    // 'breadcrumb'`. We replace the children with a custom_html node
-    // carrying `^^__breadcrumb_inner_html^^` — designer's wrapper tag,
-    // classes, and attrs survive; the inner <ol>…<li>…</li>…</ol> comes
-    // from backend (Ana Katalog → Group → Subgroup → Product). When the
-    // product can't be resolved (not found), the token is empty so the
-    // wrapper renders as an empty element.
-    if (isset($bindings['section']) && $bindings['section'] === 'breadcrumb') {
-        $node['children'] = array(
-            array(
-                'type'     => 'content',
-                'props'    => array('contentType' => 'custom_html', 'html' => '^^__breadcrumb_inner_html^^'),
-                'children' => array(),
-            ),
-        );
-        return;  // wrapper preserved; no further recursion into the now-replaced inner.
-    }
 
     // ── Section: recipient_picker container marker ────────────────────────
     // The recipient_picker section binding is just a hide-when-empty marker
@@ -4112,10 +4030,10 @@ function _apply_catalog_item_view_bindings(&$node, $context)
         _pg_catalog_wishlist_heart($node, '^^__id^^', empty($context['wishlist_preview']));
     }
 
-    // ── Back-in-stock form: the address field and its button ─────────────
+    // ── Back-in-stock form: the address and number fields and the button ──
     // A control that cannot be one (a link, a select) is dropped below.
     if ((isset($bindings['action']) && $bindings['action'] === 'stock_notify')
-        || (isset($bindings['value']) && $bindings['value'] === 'stock_notify_email')) {
+        || (isset($bindings['value']) && in_array($bindings['value'], array('stock_notify_email', 'stock_notify_phone'), true))) {
         _pg_catalog_stock_notify_control($node,
             isset($context['stock_notify_form']) ? (string)$context['stock_notify_form'] : '',
             isset($context['stock_notify_email']) ? (string)$context['stock_notify_email'] : '');
@@ -4492,6 +4410,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             'wishlist_preview'       => (bool)pg_sw_preview_overrides(),
             // The back-in-stock form the field and the button belong to.
             'stock_notify_form'      => $_civ_notify_form,
+            'stock_notify_sms'       => ($_civ_notify_form !== '') && pg_stock_notify_sms_on(),
             'stock_notify_email'     => (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_EMAIL_ADDRESS')) ? (string)USER_EMAIL_ADDRESS : '',
         ));
         $_civ_remuxed = json_encode($_civ_pre_tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -4991,11 +4910,12 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             'default_selection' => $default_selection,
             'currency_symbol'   => $currency_symbol,
             'api_url'           => $base_path . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software') . '/api.php',
-            // Visitor-facing text the script renders itself; the heading
-            // mirrors the one _civ_render_cross_sell() prints server-side.
+            // The widget, whose cross-sell part the server draws again for
+            // a variant picked (_civ_cross_sell_part_html()).
+            'widget_id'         => (int)$widget_id,
+            // Visitor-facing text the script renders itself.
             'labels'            => array(
                 'no_match'           => lang('No products match this selection.'),
-                'cross_sell_heading' => lang('Frequently bought together'),
                 // The words of pg_carousel_image_label(), numbers filled in
                 // by the script when it rebuilds the gallery.
                 'image_of'           => lang(array('string' => 'Image {var:1} of {var:2}', 'vars' => array('{n}', '{total}'))),
@@ -5112,10 +5032,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__select_group_id'      => '0',
             '__select_group_name'    => '',
             '__variant_picker'       => '',
-            '__cross_sell_html'      => '',
-            // Breadcrumb tokens — empty in not-found state.
-            '__breadcrumb_html'      => '',
-            '__breadcrumb_inner_html'=> '',
+            '__has_related'          => '',
+            // No breadcrumb in not-found state.
+            '__has_breadcrumb'       => '',
             // Discount tokens — empty in not-found state so designer's
             // strike-through markup renders as nothing.
             '__original_price'           => '',
@@ -5128,7 +5047,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     } else {
         $p_id = (int)$p['id'];
 
-        // Breadcrumb — built once and reused via $values['__breadcrumb_*'].
+        // Breadcrumb — its crumbs, published for the catalog.crumbs list.
         // Source order for the catalog listing page id (used for crumb
         // links + cross-sell card URLs):
         //   1. cfg['catalog_listing_page_id']    — explicit numeric id
@@ -5158,7 +5077,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 ? _civ_resolve_catalog_listing_root_group_id($_civ_cat_pid)
                 : 0;
         }
-        $_civ_breadcrumb = _civ_render_breadcrumb($p, (int)$select_group_id, (string)$select_group_name, $_civ_cat_pid, $_civ_cat_root);
+        if (pg_sw_list_wanted('crumbs')) {
+            pg_sw_list_publish('crumbs', array('catalog.crumbs' => array(1 => _civ_breadcrumb_rows($p, (int)$select_group_id, (string)$select_group_name, $_civ_cat_pid, $_civ_cat_root))));
+        }
 
         // Gallery images from products_images_xref (up to 5 named tokens + total count).
         $gallery_rows = db_items(
@@ -5292,10 +5213,16 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             return $_civ_detail_page;
         };
         $_civ_listed         = pg_sw_list_wanted('product');
-        $_civ_related_listed = isset($_civ_listed['product.related']);
         $_civ_xsell_off      = isset($cfg['cross_sell_enabled']) && !$cfg['cross_sell_enabled'];
-        $_civ_xsell_placed   = (strpos($loop_template, '^^__cross_sell_html^^') !== false)
-                            || (strpos($static_html, '^^__cross_sell_html^^') !== false);
+        // Switched off, the cross-sell part draws nothing (__has_related
+        // stays empty): the products bought together are read only for a
+        // list of them the design placed where it still shows.
+        if ($_civ_xsell_off && isset($_civ_listed['product.related']) && !_civ_related_list_shown_when_off($tree_decoded)) {
+            unset($_civ_listed['product.related']);
+        }
+        // The variant script asks the server to draw the cross-sell part
+        // again with cards linking to the same page.
+        if ($variant_data && !$_civ_xsell_off) $variant_data['detail_page_id'] = $_civ_detail_pid();
 
         $values = array(
             // Basic
@@ -5418,48 +5345,27 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // this contains <select> elements (one per shared attribute).
             // For direct-product URLs this stays empty.
             '__variant_picker'       => $variant_picker_html,
-            // Breadcrumb — Ana Katalog → Group → Subgroup → Product/Variant.
-            // Two tokens: `__breadcrumb_html` (full <nav>-wrapped) for raw
-            // token placement; `__breadcrumb_inner_html` (just the <ol>)
-            // for the section binding pattern (designer's <nav>/<div>
-            // wrapper preserved). cfg['catalog_listing_page_id'] enables
-            // crumb URLs pointing back at the listing page; without it
-            // crumbs render as plain text.
-            '__breadcrumb_html'      => isset($_civ_breadcrumb['full'])  ? $_civ_breadcrumb['full']  : '',
-            '__breadcrumb_inner_html'=> isset($_civ_breadcrumb['inner']) ? $_civ_breadcrumb['inner'] : '',
+            // Breadcrumb — Main Catalog → Group → Subgroup → Product/Variant,
+            // drawn by the catalog.crumbs list (key and condition: 1).
+            // cfg['catalog_listing_page_id'] enables crumb URLs pointing
+            // back at the listing page; without it crumbs render as words.
+            '__has_breadcrumb'       => '1',
 
-            // Cross-sell items ("birlikte satın alınanlar" / "benzer ürünler")
-            // — pre-rendered server-side. Tier 1: order-history-based via
-            // get_cross_sell_items (when site has order data). Tier 2:
-            // same-product-group fallback (siblings) when order history is
-            // empty. The variant chooser JS refreshes this block via API
-            // when the visitor switches variants so the suggestions reflect
-            // the active product.
-            //
-            // Toggle: cfg['cross_sell_enabled'] — when explicitly false the
-            // token resolves to '' and the auto-append below is skipped, so
-            // designer can fully turn off cross-sell from the widget
-            // settings panel without re-saving the tree. Default: ON.
-            //
-            // catalog_detail page id source order:
-            //   1. cfg['catalog_detail_page_id'] (designer-set in widget config)
-            //   2. The current page's id (visitor IS on the catalog detail page)
-            // Falling back to the current page is what every catalog item
-            // detail page actually wants — sibling products link to the
-            // same detail-page route the visitor came in via.
-            //
-            // A list of the products bought together (product.related)
-            // takes the block's place: the block is drawn only where its
-            // token is placed.
-            '__cross_sell_html'      => ($_civ_xsell_off || ($_civ_related_listed && !$_civ_xsell_placed))
-                ? ''
-                : _civ_render_cross_sell((int)$p_id, $_civ_detail_pid()),
+            // Products bought together (the cross-sell part, a
+            // product.related list): set below from the rows read.
+            '__has_related'          => '',
         );
 
         // The rows of the product lists the tree draws, read for this
         // product alone (widgets_lists_product.php).
+        // __has_related draws the cross-sell part: empty with
+        // cfg['cross_sell_enabled'] switched off (a list the design placed
+        // itself stays as it is), else 1 with products to suggest, 0
+        // without (the part's empty box the variant script fills).
         if ($_civ_listed) {
-            pg_sw_list_publish('product', pg_sw_list_product_read(array($p), $_civ_listed, isset($_civ_listed['product.related']) ? $_civ_detail_pid() : 0));
+            $_civ_list_rows = pg_sw_list_product_read(array($p), $_civ_listed, isset($_civ_listed['product.related']) ? $_civ_detail_pid() : 0);
+            pg_sw_list_publish('product', $_civ_list_rows);
+            if (!$_civ_xsell_off) $values['__has_related'] = !empty($_civ_list_rows['product.related'][(int)$p_id]) ? '1' : '0';
         }
     }
 
@@ -5572,40 +5478,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         }
     }
 
-    // ── Breadcrumb placement is now designer-controlled ──────────────────
-    // Designer drops a `breadcrumb` content type (or binds a <nav> with
-    // section='breadcrumb', or places `^^__breadcrumb_html^^` token) where
-    // they want the breadcrumb to appear. The previous auto-inject made
-    // breadcrumbs land in unexpected places (middle of layout, below
-    // tabs) because the loop_slot lives wherever the designer's tree
-    // happens to put it. Removing the auto-inject puts placement
-    // entirely in the designer's hands.
-    //
-    // The breadcrumb content type marker `<!--pg-breadcrumb-placeholder-->`
-    // gets substituted at the bottom of the render flow.
-
-    // ── Auto-append cross-sell at end if not placed by designer ──────────
-    // Designers can place `^^__cross_sell_html^^` anywhere they want. When
-    // they don't, we append it AFTER the loop_template (or AFTER the loop
-    // slot in static_html) so it sits at the bottom of the widget — the
-    // conventional location for "ordered together" suggestions on a
-    // product detail page.
-    if (isset($values['__cross_sell_html']) && $values['__cross_sell_html'] !== '') {
-        $_cs_token = '^^__cross_sell_html^^';
-        $_cs_already_placed = (strpos($loop_template, $_cs_token) !== false)
-                           || (strpos($static_html,   $_cs_token) !== false);
-        if (!$_cs_already_placed) {
-            if ($loop_template !== '') {
-                $loop_template = $loop_template . $_cs_token;
-            } elseif ($static_html !== '') {
-                $static_html = str_replace(
-                    '<!--pg-loop-slot-->',
-                    '<!--pg-loop-slot-->' . $_cs_token,
-                    $static_html
-                );
-            }
-        }
-    }
+    // ── Breadcrumb placement is designer-controlled ──────────────────────
+    // A breadcrumb shows only where the tree places one: its default part
+    // (widgets_parts.php), which the old content type, section binding and
+    // tokens are given before this render. Never auto-injected.
 
     // ── Apply tokens to template + static_html (single render, NO loop) ──
     // Longest keys first so '^^__out_of_stock_message^^' is replaced before
@@ -5624,15 +5500,6 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             : pg_sw_add_edit_chip($rendered, pg_sw_backend_edit_url('edit_product.php', (int)$p['id']), lang('Edit the product'), 'ecommerce');
     }
     $_civ_html = ($static === '') ? $rendered : str_replace('<!--pg-loop-slot-->', $rendered, $static);
-
-    // ── Resolve breadcrumb content-type marker ───────────────────────────
-    // Designer dropped a `breadcrumb` content node — replace its marker
-    // with the live breadcrumb HTML computed earlier (in $values). When
-    // not placed, the marker simply isn't present and nothing happens.
-    $_civ_bc_html = isset($values['__breadcrumb_html']) ? $values['__breadcrumb_html'] : '';
-    if (strpos($_civ_html, '<!--pg-breadcrumb-placeholder-->') !== false) {
-        $_civ_html = str_replace('<!--pg-breadcrumb-placeholder-->', $_civ_bc_html, $_civ_html);
-    }
 
     // ── Expand variant_attr markers (designer-placed templates) ──────────
     // Designer dropped one or more `variant_attr` content nodes in the
@@ -5734,7 +5601,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '6';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '7';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'

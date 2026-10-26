@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23, 1 done #1554, 2 done #1725 #1897, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
+description: Plan (2026-10-23, 1 #1554, 2 #1725 #1897, 4a #1972 done, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -9,19 +9,19 @@ description: Plan (2026-10-23, 1 done #1554, 2 done #1725 #1897, answers open): 
 ## What is there today?
 - One engine, `assets/js/workspace_editor.js` (`PGWsEditor`): selection bar, shortcuts, own undo, `pastePlain()`, table, checklist, code (also on ```), calc windows.
 - Slice 1 (#1554): `PGWsEditor.toolbar()` draws the rows of `composer()` (now with B/I/S, undo, redo), the notes `toolbar()` and `richField().tools()`; `format()` makes every mark on the nodes, no `execCommand` (docs/memory/workspace/workspace-editor-toolbar.md).
-- `ws_render_body()` (`includes/workspace/render.php`, escape first) draws marks, links, tables, checklists, fences, `::: Title`, lists and quotes; headings, `---`, images stay raw. `ws_plain_text()` folds lines into one; guest pages also use `ws_guest_render()`. The import (`ws_note_import_convert()`) makes headings and `==x==` bold.
+- `ws_render_body()` (`includes/workspace/render.php`, escape first) draws marks, links, tables, checklists, fences, `::: Title`, lists and quotes; headings, `---`, images stay raw. `ws_plain_text()` folds lines into one; guest pages also use `ws_guest_render()`. The import (`ws_note_import_convert()`) makes headings bold.
 
 ## What is proposed? (not approved yet)
 - New tools: item names in `PGWsEditor.toolbar()`, then `format()` / `applyMark()`; `php tools/build_js.php`.
-- New syntax: drawn by `ws_render_body()` (and its fast-path regex) alone, twin in `inlineNodes()`/`parseBlocks()`/`serializeNode()`, readable in `ws_plain_text()` (push, e-mail, API `text`) and `ws_guest_render()`, styled in `workspace_guest.css` and the print page too; API `body`, MCP, search, Markdown export stay raw. Test `tests/workspace_render_test.php` (proposed), red first.
+- New syntax: drawn by `ws_render_body()` (and its fast-path regex) alone, twin in `inlineNodes()`/`parseBlocks()`/`serializeNode()`, readable in `ws_plain_text()` (push, e-mail, API `text`) and `ws_guest_render()`, styled in `workspace_guest.css` and the print page too; API `body`, MCP, search, Markdown export stay raw. Test `tests/workspace_render_test.php`, red first.
 - Labels: `lang()` in `ws_editor_js_strings()` (screen.php, sent in `#ws-config`), `t()` in JS, keys added with `php tools/tr_add.php` (shards in `includes/local/tr/`).
-- Saved replies live here, not in the CRM seams plan (proposed).
+- Saved replies live here, not in the CRM seams plan.
 
 ## Slices
 1. Shared toolbar, no schema: factory, `format()`; the composer gains undo/redo and B/I/S; notes drop `execCommand`. PR #1554.
-2. Lists and quotes, no schema (done): server #1725 (workspace/workspace-text-lists.md), editor #1897 (workspace/workspace-editor-lists.md). Autoformat: step 4.
+2. Lists and quotes, no schema, done: #1725, #1897 (workspace/workspace-text-lists.md, -editor-lists.md); autoformat in 4.
 3. Headings `#`-`###` and `---` after question 1, no schema; the import keeps headings.
-4. Highlight `==x==` (import keeps it; not read by `ws_calc_inline()`), autoformat (one Ctrl+Z undoes, IME guard, off switch), no schema.
+4. Highlight `==x==`, autoformat (one Ctrl+Z undo, IME guard, off switch), no schema. 4a server done #1972 (workspace-text-highlight.md).
 5. Link Text field, Ctrl+/ shortcut sheet, "Aa" expanded composer after question 2, no schema.
 6. Slash inserts, no schema: in notes `/` lists inserts; channel commands unchanged.
 7. Smart paste, no schema: HTML mapped to the subset (DOMParser, never inserted), a sheet range to `openTable()`, a URL over words links them; a note's pasted image to `attach()`.
@@ -29,7 +29,7 @@ description: Plan (2026-10-23, 1 done #1554, 2 done #1725 #1897, answers open): 
 9. Objects, no schema: a lone tag as a card per reader (like `ws_form_cards_html()`); checklist item to task (`ws_command_parse_task()`).
 10. Saved replies with `{customer}`, `{order}`, schema, ask first: `;` picker, API with dry run; team ones need a right column (five ladder files, `pg_user_has_ws_columns()`).
 11. Rewrite with AI, no schema: a `pg_ai_write_targets()` target (proposed), plans/ai-write-buttons.md.
-12. Later: callouts, toggles, dictation, mermaid, find/replace; no GIFs, video.
+12. Later: callouts, toggles, dictation, mermaid, find/replace; no GIF, video.
 
 ## Open questions (recommendation)
 1. Headings in messages: (a) notes only, (b) both → a; answers question 1 of plans/notes-import-export-sync.md.
@@ -39,4 +39,5 @@ description: Plan (2026-10-23, 1 done #1554, 2 done #1725 #1897, answers open): 
 5. Dictation (Chrome sends audio to Google): (a) offer, privacy line, (b) not now → owner.
 
 ## Where to start?
-- Steps 6 to 8 need no answer; 3 waits for question 1, 4 (autoformat, also "- " typed at a line's start) for question 3, the "Aa" box of 5 for question 2.
+- Steps 6 to 8 need no answer; 3 waits for question 1, the "Aa" box of 5 for question 2.
+- Step 4 left: editor half (twin, button, a cell starting `==`; needs workspace.js), autoformat (also "- " at a line's start) after question 3.

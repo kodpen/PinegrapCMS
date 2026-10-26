@@ -68,7 +68,7 @@ function _wlp_texts($html, $class)
 }
 
 // Every product source's row keys are its tokens; the catalog detail view
-// offers the product sources alone, the form views and the listing none.
+// offers the product sources and the crumbs, the form views none.
 function test_widget_lists_product_descriptors()
 {
 	$rows = array(
@@ -77,7 +77,7 @@ function test_widget_lists_product_descriptors()
 		'product.related'    => pg_sw_list_product_related_rows(array(array('id' => 4, 'name' => 'Cup'))),
 	);
 	$sources = pg_sw_list_sources();
-	pg_assert_same(array_keys($rows), array_keys(pg_sw_kind_lists('catalog_item_view')), 'the detail view offers the product sources');
+	pg_assert_same(array_merge(array_keys($rows), array('catalog.crumbs')), array_keys(pg_sw_kind_lists('catalog_item_view')), 'the detail view offers the product sources and the crumbs');
 	foreach ($rows as $source => $list) {
 		$d = $sources[$source];
 		pg_assert_same('product', $d['family'], $source);
@@ -90,9 +90,9 @@ function test_widget_lists_product_descriptors()
 		pg_assert_true(pg_sw_list_spec(array('source' => $source)) !== false, $source . ' needs no arg');
 	}
 	foreach (array('form_list_view', 'form_item_view') as $kind) {
-		foreach (pg_sw_kind_lists($kind) as $d) pg_assert_same('form_record', $d['family'], $kind);
+		foreach (pg_sw_kind_lists($kind) as $d) pg_assert_true(in_array($d['family'], array('form_record', 'paging'), true), $kind . ': no product list');
 	}
-	pg_assert_same(array('product.images', 'product.attributes'), array_keys(pg_sw_kind_lists('catalog_listing')), 'the listing: no products bought together');
+	pg_assert_same(array('product.images', 'product.attributes', 'catalog.crumbs', 'paging.pages'), array_keys(pg_sw_kind_lists('catalog_listing')), 'the listing: no products bought together');
 }
 
 function test_widget_lists_product_rows()

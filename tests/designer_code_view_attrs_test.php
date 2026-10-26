@@ -169,3 +169,39 @@ function test_designer_code_view_style_keeps_sizing()
 	pg_assert_same('20px', $answer[7]);
 	pg_assert_same(array(array('name' => 'style', 'value' => 'color: red')), $answer[8]);
 }
+
+// An interaction's attributes edited in the code view go back to props._fx:
+// a changed value, a removed one, a new effect typed on a plain node; a
+// data-pg-fx naming no effect ends the interaction, and a stray
+// data-pg-fx-* on a node without one stays the Attributes panel's.
+function test_designer_code_view_interaction()
+{
+	$answer = designer_code_view_attrs_test_run(
+		'var n = { type: "col", props: { _fx: { effect: "slide-up", trigger: "view", duration: 900, repeat: true } } };'
+		. 'var was = printed(n).attrs;'
+		. '_sdCodeSetAttr(n, "data-pg-fx-duration", "900", "1200", {});'
+		. '_sdCodeSetAttr(n, "data-pg-fx-repeat", "", undefined, {});'
+		. '_sdCodeSetAttr(n, "data-pg-fx-trigger", "view", "hover", {});'
+		. 'var changed = [JSON.stringify(n.props._fx), printed(n).attrs, n.props._attrs || null];'
+		. 'var m = { type: "semantic", props: { tag: "div" } };'
+		. '_sdCodeSetAttr(m, "data-pg-fx-delay", undefined, "200", {});'
+		. 'var stray = JSON.stringify(m.props._attrs);'
+		. '_sdCodeSetAttr(m, "data-pg-fx", undefined, "fade", {});'
+		. 'var added = printed(m).attrs;'
+		. '_sdCodeSetAttr(m, "data-pg-fx", "fade", "spin", {});'
+		. 'console.log(JSON.stringify([was, changed, stray, added, m.props._fx === undefined, JSON.stringify(m.props._attrs)]));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(' data-pg-fx="slide-up" data-pg-fx-trigger="view" data-pg-fx-duration="900" data-pg-fx-repeat', $answer[0], 'what the emitter printed');
+	pg_assert_same('{"effect":"slide-up","trigger":"hover","duration":1200,"delay":0,"easing":"ease-out","distance":0}', $answer[1][0], 'the edits are the interaction\'s');
+	pg_assert_same(' data-pg-fx="slide-up" data-pg-fx-trigger="hover" data-pg-fx-duration="1200"', $answer[1][1]);
+	pg_assert_same(null, $answer[1][2], 'nothing went to the panel\'s list');
+	pg_assert_same('[{"name":"data-pg-fx-delay","value":"200"}]', $answer[2], 'a value without an effect is the panel\'s');
+	pg_assert_same(' data-pg-fx="fade" data-pg-fx-trigger="view"', $answer[3], 'a typed effect starts an interaction; the stray value is left out');
+	pg_assert_true($answer[4], 'an unknown effect ends it');
+	pg_assert_same('[{"name":"data-pg-fx-delay","value":"200"}]', $answer[5]);
+}

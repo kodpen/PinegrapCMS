@@ -120,10 +120,11 @@ function test_page_scripts_preview_table_mirrors_the_server()
 	$rows = _test_page_scripts_js_rows();
 	pg_assert_true(count($rows) >= 2, '_SD_PAGE_SCRIPTS rows are read');
 
-	$server = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+	$server = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer_fx.php');
 	foreach ($rows as $file) {
 		pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $file), $file . ' exists');
-		pg_assert_contains("'/" . $file, $server);
+		pg_assert_true(strpos($server, "'/" . $file) !== false || strpos($server, "'" . $file . "'") !== false, $file . ' is added by the server');
 	}
 
 	$php = pg_bs_tips_pattern();

@@ -72,6 +72,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_efatura_threshold();  // 11.0.61
 	upgrade_2026_11_0_contact_iys_status();     // 11.0.39
 	upgrade_2026_11_0_marketplace_remote_products(); // 11.0.40
+	upgrade_2026_11_0_passkey_signin();        // 11.0.41
+	upgrade_2026_11_0_delivered_campaigns();    // 11.0.42
 
 }
 
@@ -2411,5 +2413,57 @@ function upgrade_2026_11_0_marketplace_remote_products() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Marketplaces: the products a store sells on a marketplace can be read in and matched to this shop\'s products in bulk, with suggestions, on the new Marketplace products screen.');
+
+}
+
+// Sign-in with a passkey alone (2026.11.0, 11.0.41; includes/fn/passkeys.php).
+//
+// config.passkey_signin is the Security card's switch for the "Sign in with a
+// passkey" button on the sign-in screens (PASSKEY_SIGNIN). Off by default: an
+// upgraded site keeps its sign-in screen as it is until a manager turns the
+// button on.
+function upgrade_2026_11_0_passkey_signin() {
+
+	install_add_column('config', 'passkey_signin', "TINYINT NOT NULL DEFAULT 0");
+
+	install_note('Settings › Security: a switch offers sign-in with a passkey alone on the sign-in screens. It starts off.');
+
+}
+
+// A campaign made from an order_delivered profile copies the profile's action
+// into email_campaigns.action. 11.0.20 widened only the profiles' enum, so
+// such a campaign was stored with action ''. The list is read first and only
+// widened, so a value another step added stays; the default and the null rule
+// are kept as they are.
+function upgrade_2026_11_0_delivered_campaigns() {
+
+	$action = install_column_info('email_campaigns', 'action');
+
+	if (!$action) {
+
+		return;
+
+	}
+
+	if (strpos((string) $action['Type'], "'order_delivered'") !== false) {
+
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'email_campaigns.action order_delivered')));
+
+	} else {
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		$values = $matches[1];
+		$values[] = 'order_delivered';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column('email_campaigns', 'action', $definition);
+
+	}
+
+	install_note('E-mail campaigns: a campaign started by an "order delivered" profile now keeps its action, and the order shipped and order delivered e-mails can show ^^tracking_numbers^^, ^^carrier_name^^ and ^^tracking_url^^.');
 
 }

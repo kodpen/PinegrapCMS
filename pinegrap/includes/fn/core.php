@@ -4149,11 +4149,82 @@ function pg_lang_source($code, $local = null)
     return is_file($local . '/' . $code . '.json') ? $local . '/' . $code . '.json' : null;
 }
 
+// Every file language $source (a folder of shards or a single file) is read
+// from, file name => array(mtime, size), for pg_lang_cache_signature().
+function pg_lang_source_stats($source)
+{
+    $files = is_dir($source) ? glob(rtrim($source, '/\\') . '/*.json') : array($source);
+    $stats = array();
+
+    foreach ((is_array($files) ? $files : array()) as $file) {
+        $stat = @stat($file);
+
+        if (is_array($stat)) {
+            $stats[basename($file)] = array($stat['mtime'], $stat['size']);
+        }
+    }
+
+    return $stats;
+}
+
+// The map in compiled cache file $path when it was built from files with
+// $signature; null when there is no such file, it does not parse, or the
+// language files changed since it was written.
+function pg_lang_cache_read($path, $signature)
+{
+    if (!is_file($path)) {
+        return null;
+    }
+
+    try {
+        $data = @include $path;
+    } catch (Throwable $e) {
+        return null;
+    }
+
+    if (!is_array($data) || !isset($data['signature'], $data['map']) || !is_array($data['map'])
+        || ((string) $data['signature'] !== (string) $signature)) {
+        return null;
+    }
+
+    return $data['map'];
+}
+
+// Writes the compiled cache of $map to $path through a temporary file and
+// rename(), so a request never includes a half-written file, and drops the
+// old copy from opcache (which may not check file times at all). false when
+// the folder is missing or not writable: lang() then decodes the JSON each
+// request, as it did before the cache.
+function pg_lang_cache_write($path, $signature, array $map)
+{
+    $dir = dirname($path);
+
+    if (!is_dir($dir) || !is_writable($dir)) {
+        return false;
+    }
+
+    if (!pg_lang_write_file($path, pg_lang_cache_text($signature, $map))) {
+        return false;
+    }
+
+    if (function_exists('opcache_invalidate')) {
+        @opcache_invalidate($path, true);
+    }
+
+    return true;
+}
+
 // The wording of language $code as lang() reads it, key => text, from where
 // pg_lang_source() finds it. Every reader of a language file goes through
 // here, so none of them can read a stale single file beside the folder.
 // array() when the language has no file, or its single file does not decode.
-function pg_lang_map($code, $local = null)
+//
+// Decoding the Turkish shards (about 2.8 MB of JSON) costs every request
+// tens of milliseconds, so the map is also compiled into a PHP array in
+// $temp (by default data/temp) and read from there while its signature
+// matches the language files' names, times and sizes. A caller that names
+// its own $local gets the cache only when it names a $temp as well.
+function pg_lang_map($code, $local = null, $temp = null)
 {
     $source = pg_lang_source($code, $local);
 
@@ -4161,9 +4232,29 @@ function pg_lang_map($code, $local = null)
         return array();
     }
 
+    $cache = (($local === null) || ($temp !== null)) ? pg_lang_cache_path($code, $temp) : null;
+    $signature = '';
+
+    if ($cache !== null) {
+        $signature = pg_lang_cache_signature(pg_lang_source_stats($source));
+        $map = pg_lang_cache_read($cache, $signature);
+
+        if ($map !== null) {
+            return $map;
+        }
+    }
+
     $map = is_dir($source) ? pg_lang_read_folder($source) : @json_decode((string) @file_get_contents($source), true);
 
-    return is_array($map) ? $map : array();
+    if (!is_array($map)) {
+        return array();
+    }
+
+    if ($cache !== null) {
+        pg_lang_cache_write($cache, $signature, $map);
+    }
+
+    return $map;
 }
 
 // Software localization / translation helper.

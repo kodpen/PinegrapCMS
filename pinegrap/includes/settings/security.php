@@ -199,6 +199,14 @@ $pg_settings_cards[] = '
                                             <div class="form-text">' . lang('Two-step verification asks for a code from an authenticator app after the password. People in a required role who have not set it up are asked to when they next sign in. Anybody can turn it on from their account page.') . '</div>
                                             ' . ($mfa_available ? '' : '<div class="alert alert-warning mt-2 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . lang('Two-step verification needs an encryption key in config.php; set one from Settings › Commerce (Reset Encryption Key) first.') . '</div>') . '
                                         </div>
+                                        ' . ($passkey_signin_ready ? '<div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . ($passkey_signin ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="passkey_signin" name="passkey_signin"/>
+                                                <label class="form-check-label" for="passkey_signin">' . h(lang('Sign in with a passkey alone')) . '</label>
+                                            </div>
+                                            <div class="form-text">' . h(lang('The sign-in screens show a "Sign in with a passkey" button. A passkey verified on the device (PIN, fingerprint or face) signs the person in without a password or code. People add passkeys from their account page.')) . '</div>
+                                            ' . ($passkeys_available ? '' : '<div class="alert alert-warning mt-2 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h(pg_passkey_refusal('unavailable', 'signin')) . '</div>') . '
+                                        </div>' : '') . '
                 </div>
             </div>
         </div>

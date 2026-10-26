@@ -349,6 +349,84 @@ function test_widget_entity_fields_order_line_event_and_select()
 	}
 }
 
+function test_widget_entity_fields_ship_to_values()
+{
+	$row = array('ship_to_name' => 'Office', 'salutation' => 'Mr.', 'address_type' => 'business',
+		'ship_date' => '2026-11-03', 'delivery_date' => '0000-00-00');
+	$v = pg_sw_entity_values('ship_to', $row, array('date_format' => 'd.m.Y'));
+
+	pg_assert_same('Office', $v['__ship_to_name']);
+	pg_assert_same('Mr.', $v['__shipping_salutation']);
+	pg_assert_same(lang('Business address'), $v['__shipping_address_type'], 'a choice reads as translated words');
+	pg_assert_same('03.11.2026', $v['__shipping_ship_date']);
+	pg_assert_same('', $v['__shipping_delivered_date'], 'not delivered yet');
+
+	$v = pg_sw_entity_values('ship_to', array('address_type' => 'residential'));
+	pg_assert_same(lang('Residential address'), $v['__shipping_address_type']);
+	$v = pg_sw_entity_values('ship_to', array());
+	pg_assert_same('', $v['__shipping_address_type'], 'a digital order has no recipient');
+
+	// The order view's first recipient and a list of recipients read the
+	// same columns in the same query.
+	$sql = pg_sw_entity_select('ship_to', 'ship_tos');
+	foreach (array('ship_to_name', 'salutation', 'address_type', 'ship_date', 'delivery_date') as $column) {
+		pg_assert_contains('ship_tos.' . $column, $sql);
+	}
+	$list = pg_sw_list_order_shipment_row($row, function ($ymd) { return 'on ' . $ymd; });
+	pg_assert_same('on 2026-11-03', $list['__shipping_ship_date'], 'a list row dates it the widget\'s way');
+	pg_assert_same(lang('Business address'), $list['__shipping_address_type']);
+}
+
+function test_widget_entity_fields_address_book_values()
+{
+	$v = pg_sw_entity_values('address_book', array('salutation' => 'Dr.', 'first_name' => ' Ayşe ', 'last_name' => 'Kaya',
+		'address_1' => 'Street 1', 'address_2' => '', 'city' => 'Izmir', 'state' => 'Izmir', 'zip_code' => '35000',
+		'country' => 'Turkey', 'address_type' => 'residential'));
+
+	pg_assert_same('Ayşe', $v['__recipient_first_name']);
+	pg_assert_same('Kaya', $v['__recipient_last_name']);
+	pg_assert_same('', $v['__recipient_address_2']);
+	pg_assert_same('35000', $v['__recipient_zip']);
+	pg_assert_same('Turkey', $v['__recipient_country']);
+	pg_assert_same(lang('Residential address'), $v['__recipient_address_type']);
+}
+
+// Shipping cost, zone, offer, verification and package data stay off, and
+// no address token takes a name its widget already fills.
+function test_widget_entity_fields_address_no_internals()
+{
+	foreach (array('ship_to', 'address_book') as $entity) {
+		foreach (pg_sw_entity_fields($entity) as $token => $spec) {
+			pg_assert_false(in_array($spec[0], array('shipping_cost', 'original_shipping_cost', 'zone_id', 'offer_id',
+				'address_verified', 'packages', 'shipping_method_code', 'arrival_date_code', 'user', 'order_id'), true), $token);
+		}
+	}
+	foreach (array('__shipping_name', '__shipping_first_name', '__shipping_address_1', '__shipping_country', '__ship_to_key') as $own) {
+		pg_assert_false(isset(pg_sw_entity_fields('ship_to')[$own]), $own);
+	}
+	foreach (array('__recipient_name', '__recipient_full_name', '__recipient_company', '__recipient_address', '__recipient_phone') as $own) {
+		pg_assert_false(isset(pg_sw_entity_fields('address_book')[$own]), $own);
+	}
+}
+
+// The order lists carry the recipient's, the line's and its product's
+// values as their own row tokens, a yes/no one marked as a condition.
+function test_widget_entity_fields_order_list_rows()
+{
+	$sources = pg_sw_list_sources();
+	$names = function ($source) use ($sources) { return array_map(function ($t) { return $t[0]; }, $sources[$source]['tokens']); };
+	foreach (array_keys(pg_sw_entity_fields('ship_to')) as $token) {
+		pg_assert_true(in_array($token, $names('order.shipments'), true), $token);
+	}
+	foreach (array_merge(array_keys(pg_sw_entity_fields('order_line')), array_keys(pg_sw_entity_fields('product'))) as $token) {
+		pg_assert_true(in_array($token, $names('order.items'), true), $token);
+	}
+	foreach ($sources['order.items']['tokens'] as $t) {
+		if ($t[0] === '__item_added_by_offer' || $t[0] === '__is_gift_card') pg_assert_same('cond', isset($t[2]) ? $t[2] : '', $t[0]);
+		if ($t[0] === '__item_vat') pg_assert_same(2, count($t));
+	}
+}
+
 // The list view never offers the record's allow-listed values.
 function test_widget_entity_fields_quiz_not_in_list_view()
 {
@@ -363,7 +441,7 @@ function test_widget_entity_fields_editor_twin()
 {
 	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 
-	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS', 'form_record' => 'SW_FORM_RECORD_ENTITY_TOKENS', 'order' => 'SW_ORDER_ENTITY_TOKENS', 'account' => 'SW_MEMBER_ENTITY_TOKENS', 'order_line' => 'SW_ORDER_LINE_ENTITY_TOKENS') as $entity => $name) {
+	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS', 'form_record' => 'SW_FORM_RECORD_ENTITY_TOKENS', 'order' => 'SW_ORDER_ENTITY_TOKENS', 'account' => 'SW_MEMBER_ENTITY_TOKENS', 'order_line' => 'SW_ORDER_LINE_ENTITY_TOKENS', 'ship_to' => 'SW_SHIP_TO_ENTITY_TOKENS', 'address_book' => 'SW_ADDRESS_BOOK_ENTITY_TOKENS') as $entity => $name) {
 		pg_assert_true((bool)preg_match('/var ' . $name . ' = \[(.*?)\n    \];/s', $js, $m), $name . ' found');
 
 		preg_match_all("/\['(__[a-z0-9_]+)',[^\n]*?(, 'cond')?\]/", $m[1], $rows, PREG_SET_ORDER);

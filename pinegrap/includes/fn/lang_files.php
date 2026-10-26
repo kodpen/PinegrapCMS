@@ -4,8 +4,9 @@
  *
  * Language files kept as shards: which shard a key belongs to, the exact
  * text of a language file, the three-way merge of two edits of one, and the
- * checks a shard must pass. Used by tools/tr_add.php, tools/tr_resolve.php
- * and tools/check_lang.php.
+ * checks a shard must pass, and the compiled cache pg_lang_map() keeps in
+ * data/temp. Used by tools/tr_add.php, tools/tr_resolve.php,
+ * tools/check_lang.php and pg_lang_map().
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -215,4 +216,65 @@ function pg_lang_write_file($path, $text)
     }
 
     return true;
+}
+
+// Where the compiled cache of language $code is kept: $temp (by default
+// data/temp) /lang_<code>.php; null when $code is not a plain name, so no
+// path is ever built from one.
+function pg_lang_cache_path($code, $temp = null)
+{
+    $code = (string) $code;
+
+    if (!preg_match('/^[A-Za-z0-9_-]{1,32}$/', $code)) {
+        return null;
+    }
+
+    $temp = rtrim(($temp === null) ? PG_FUNCTIONS_DIR . '/data/temp' : (string) $temp, '/\\');
+
+    return $temp . '/lang_' . $code . '.php';
+}
+
+// What the compiled cache was built from: $stats is file name => array(mtime,
+// size) for every file of the language (its shards, or its single file). Any
+// file added, gone, renamed, rewritten or copied in with an older time gives
+// another signature, so the cache is rebuilt; a plain "newer than" check would
+// miss a shard an update writes with the package's older time.
+function pg_lang_cache_signature(array $stats)
+{
+    ksort($stats, SORT_STRING);
+
+    $lines = array('pg_lang_cache 1');
+
+    foreach ($stats as $name => $stat) {
+        $lines[] = $name . '|' . (int) $stat[0] . '|' . (int) $stat[1];
+    }
+
+    return sha1(implode("\n", $lines));
+}
+
+// The text of the compiled cache: a PHP file returning array('signature' =>
+// $signature, 'map' => $map). opcache keeps its array in shared memory, so a
+// request reads the language without decoding any JSON. The gate stops it
+// from running as a page; var_export() writes every string so that it reads
+// back byte for byte.
+function pg_lang_cache_text($signature, array $map)
+{
+    return "<?php\n"
+        . "/**\n"
+        . " * Pinegrap - Enterprise Website Platform\n"
+        . " *\n"
+        . " * Compiled language cache written by pg_lang_map() from the language\n"
+        . " * files in includes/local. Rebuilt when they change; safe to delete.\n"
+        . " *\n"
+        . " * @author      Erdal Güral (Kodpen)\n"
+        . " * @link        https://kodpen.com\n"
+        . " * @copyright   2017–2026 Kodpen\n"
+        . " * @license     https://opensource.org/licenses/mit-license.html MIT License\n"
+        . " */\n"
+        . "\n"
+        . "if (!defined('PG_FUNCTIONS_DIR')) {\n"
+        . "    exit;\n"
+        . "}\n"
+        . "\n"
+        . 'return ' . var_export(array('signature' => (string) $signature, 'map' => $map), true) . ";\n";
 }

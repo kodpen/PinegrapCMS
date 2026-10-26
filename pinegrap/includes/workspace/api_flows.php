@@ -654,13 +654,16 @@ define('WS_API_FLOW_RESULT_CHARS', 1000);
 
 /**
  * One box of a run as the API hands it out: which box, how it stands, the
- * task it opened, its times and how it went, in short.
+ * task it opened, its times and how it went, in short (a change box's
+ * record and values only to whoever may change the flow,
+ * ws_step_result_shown()).
  *
  * @param array $step  ws_flow_run_steps row
  * @param array $graph the version the run follows
+ * @param bool  $edit  the reader may change the flow
  * @return array
  */
-function ws_api_flow_run_step_present($step, $graph)
+function ws_api_flow_run_step_present($step, $graph, $edit = false)
 {
     $node = ws_flow_graph_node($graph, $step['node_id']);
     $task_id = ws_flow_effect_task_id((string) $step['effect']);
@@ -676,7 +679,7 @@ function ws_api_flow_run_step_present($step, $graph)
         'ready_at'    => ws_flow_time($step['ready_at']),
         'started_at'  => ws_flow_time($step['claimed_at']),
         'finished_at' => ws_flow_time($step['finished_at']),
-        'result'      => mb_substr(ws_flow_result_text($step['result']), 0, WS_API_FLOW_RESULT_CHARS),
+        'result'      => mb_substr(ws_step_result_shown($node ? (string) $node['kind'] : '', (string) $step['outcome'], ws_flow_result_text($step['result']), $edit), 0, WS_API_FLOW_RESULT_CHARS),
     );
 }
 
@@ -718,6 +721,7 @@ function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null
 {
     $starter = ((int) $run['started_by'] === (int) $viewer['id']);
     $full = ($steps !== null) && ($graph !== null);
+    $edit = ((string) $run['access'] === 'edit');
 
     return array(
         'id'          => (int) $run['id'],
@@ -734,10 +738,10 @@ function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null
         'started_at'  => ws_flow_time($run['started_at']),
         'updated_at'  => ws_flow_time($run['updated_at']),
         'finished_at' => ws_flow_time($run['finished_at']),
-        'steps'       => $full ? array_map(function ($step) use ($graph) {
-            return ws_api_flow_run_step_present($step, $graph);
+        'steps'       => $full ? array_map(function ($step) use ($graph, $edit) {
+            return ws_api_flow_run_step_present($step, $graph, $edit);
         }, $steps) : null,
-        'graph'       => $full ? ws_api_flow_graph_present($graph, (string) $run['access'] === 'edit') : null,
+        'graph'       => $full ? ws_api_flow_graph_present($graph, $edit) : null,
     );
 }
 

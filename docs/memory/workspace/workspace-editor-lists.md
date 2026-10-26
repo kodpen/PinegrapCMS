@@ -22,10 +22,11 @@ description: Lists and quotes in the Workspace writing box (#1897): twins of the
 ## Which bugs were fixed with it?
 - A person or record picked inside bold, italic, strike, code or a link went into the mark (in code the chip was lost, in bold its `**` showed as characters): `replaceTyped()` splits the mark at the caret (`outOfMarks()`) and inserts the chip between the halves, not with insertHTML.
 - Select all and delete in a box with a list left an empty bullet: a delete over the whole box empties it (`wholeBox()`). An empty item made on purpose (a tool on an empty box) stays: `isEmpty()` counts lists.
-- A card inserted in an item goes below the list; `<code>` is not made over two items.
+- A card inserted in an item, or right after a list that ends the box, is put in below the list as nodes (`insertBlock()`): insertHTML next to a list drew it into the last item, saved as `- - [ ] one` (#1934). `<code>` is not made over two items.
+- Letters typed with a mark waiting right after a list that ends the box go into its last item, as letters without one do (`typeMarked()` retargets with `boundaryItem()`).
 
 ## What is not done?
 - Typed autoformat ("- " at a line's start making a list) waits for question 3 of plans/workspace-composer-tools.md.
 
 ## How was it checked?
-- Node twins and wiring in the test; headless Chromium on the editor alone: round trips, Enter, Shift+Enter, Tab, Shift+Tab, Backspace, tools and pressed state, undo, select all and delete, chips in bold and code. Not the whole screen, Safari, Firefox, a phone or a running site.
+- Node twins and wiring in the test; headless Chromium on the editor alone: round trips, Enter, Shift+Enter, Tab, Shift+Tab, Backspace, tools and pressed state, undo, select all and delete, chips in bold and code, a card and marked letters after a list. Not the whole screen, Safari, Firefox, a phone or a running site.

@@ -60,7 +60,50 @@ function pg_sw_default_part_tokens()
         'comments' => array(
             array('__comment_stars_html', 'pg_sw_part_comment_stars'),
         ),
+        // A section binding and a content type are read as the tokens
+        // 'section:<name>' and 'content:<type>' (pg_sw_part_token_of()).
+        'catalog_listing' => array(
+            array('__breadcrumb_html', 'pg_sw_part_catalog_breadcrumb_listing'),
+            array('__breadcrumb_inner_html', 'pg_sw_part_catalog_crumbs'),
+            array('section:breadcrumb', 'pg_sw_part_catalog_crumbs'),
+            array('content:breadcrumb', 'pg_sw_part_catalog_breadcrumb_listing'),
+        ),
+        'catalog_item_view' => array(
+            array('__breadcrumb_html', 'pg_sw_part_catalog_breadcrumb_item'),
+            array('__breadcrumb_inner_html', 'pg_sw_part_catalog_crumbs'),
+            array('section:breadcrumb', 'pg_sw_part_catalog_crumbs'),
+            array('content:breadcrumb', 'pg_sw_part_catalog_breadcrumb_item'),
+            array('__cross_sell_html', 'pg_sw_part_catalog_cross_sell'),
+        ),
     );
+}
+
+// The blocks a renderer put before a widget's main loop whose layout
+// placed none of their tokens, now default parts added just before the
+// main loop once, by widget kind: pairs of the tokens that place the block
+// and the function that builds it from the widget's settings.
+function pg_sw_default_lead_parts()
+{
+    return array(
+        'catalog_listing' => array(
+            array(array('__breadcrumb_html', '__breadcrumb_inner_html', 'catalog.crumbs'), 'pg_sw_part_catalog_breadcrumb_listing'),
+        ),
+    );
+}
+
+// Puts $nodes just before the main loop under $node (pg_sw_main_loop_ref()).
+// Returns whether there was a main loop to put them before.
+function pg_sw_insert_before_main_loop(&$node, $nodes)
+{
+    if (!is_array($node) || pg_sw_list_is_sourced($node) || !isset($node['children']) || !is_array($node['children'])) return false;
+    foreach ($node['children'] as $i => $child) {
+        if (is_array($child) && isset($child['type']) && $child['type'] === 'loop_area' && !pg_sw_list_is_sourced($child)) {
+            array_splice($node['children'], $i, 0, $nodes);
+            return true;
+        }
+        if (pg_sw_insert_before_main_loop($node['children'][$i], $nodes)) return true;
+    }
+    return false;
 }
 
 // The blocks a renderer added after a widget whose layout placed none of
@@ -82,13 +125,18 @@ function pg_sw_default_tail_parts()
 // row placed none of their tokens, now default parts added to the end of
 // the main loop once, by widget kind: pairs of the tokens that place the
 // block (the old token, the list the part draws) and the function that
-// builds it. In the order the renderer added them.
+// builds it, then 'tree' when the block is placed by its tokens anywhere in
+// the tree (one block a page, added to the end of the tree when there is no
+// main loop). In the order the renderer added them.
 function pg_sw_default_loop_tail_parts()
 {
     return array(
         'order_view' => array(
             array(array('__item_form_data_html', 'order.item_forms'), 'pg_sw_part_order_item_form'),
             array(array('__item_gift_card_html', 'order.item_gift_cards'), 'pg_sw_part_order_item_gift_card'),
+        ),
+        'catalog_item_view' => array(
+            array(array('__cross_sell_html', 'product.related'), 'pg_sw_part_catalog_cross_sell', 'tree'),
         ),
     );
 }
@@ -117,13 +165,20 @@ function pg_sw_default_loop_tails(&$tree, $kind, $cfg)
 {
     $all = pg_sw_default_loop_tail_parts();
     if (!isset($all[$kind])) return false;
+    $placed = $tree;
     $loop = &pg_sw_main_loop_ref($tree);
-    if ($loop === null) return false;
-    $row = array('type' => 'root', 'children' => isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array());
+    $row = array('type' => 'root', 'children' => ($loop !== null && isset($loop['children']) && is_array($loop['children'])) ? $loop['children'] : array());
     $added = false;
     foreach ($all[$kind] as $pair) {
-        if (pg_sw_placed($row, $pair[0])) continue;
-        $loop['children'] = array_merge(isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array(), call_user_func($pair[1], $cfg));
+        $whole = !empty($pair[2]);
+        if (pg_sw_placed($whole ? $placed : $row, $pair[0])) continue;
+        if ($loop !== null) {
+            $loop['children'] = array_merge(isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array(), call_user_func($pair[1], $cfg));
+        } elseif ($whole) {
+            $tree['children'] = array_merge(isset($tree['children']) && is_array($tree['children']) ? $tree['children'] : array(), call_user_func($pair[1], $cfg));
+        } else {
+            continue;
+        }
         $added = true;
     }
     return $added;
@@ -141,7 +196,8 @@ function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = f
     foreach (isset($all[$kind]) ? $all[$kind] : array() as $pair) $parts[$pair[0]] = $pair[1];
     $found = false;
     foreach ($parts as $token => $builder) {
-        if (strpos($tree_json, $token) !== false) { $found = true; break; }
+        $colon = strpos($token, ':');
+        if (strpos($tree_json, ($colon === false) ? $token : '"' . substr($token, $colon + 1) . '"') !== false) { $found = true; break; }
     }
     $tails = pg_sw_default_tail_parts();
     $due = array();
@@ -155,8 +211,15 @@ function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = f
     foreach (isset($loop_tails[$kind]) ? $loop_tails[$kind] : array() as $pair) {
         if (!pg_sw_placed($tree_json, $pair[0])) { $loop_due = true; break; }
     }
+    // A lead block is read again once the parts are given: a section
+    // binding or a content type places it only as its part.
+    $leads = pg_sw_default_lead_parts();
+    $lead_due = false;
+    foreach (isset($leads[$kind]) ? $leads[$kind] : array() as $pair) {
+        if (!pg_sw_placed($tree_json, $pair[0])) { $lead_due = true; break; }
+    }
     $mail = $email && (strpos($tree_json, 'pg-ov-timeline') !== false || strpos($tree_json, 'pg-comment-stars') !== false);
-    if (!$found && !$due && !$loop_due && !$mail) return $tree_json;
+    if (!$found && !$due && !$loop_due && !$lead_due && !$mail) return $tree_json;
 
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return $tree_json;
@@ -164,6 +227,12 @@ function pg_sw_default_parts_apply($tree_json, $kind, $cfg = array(), $email = f
     $changed = $found ? pg_sw_default_parts_tree($tree, $parts, $cfg) : false;
     if (!pg_sw_tree_is_placeholder($tree)) {
         $changed = pg_sw_default_loop_tails($tree, $kind, $cfg) || $changed;
+    }
+    if ($lead_due && !pg_sw_tree_is_placeholder($tree)) {
+        foreach ($leads[$kind] as $pair) {
+            if (pg_sw_placed($tree, $pair[0])) continue;
+            $changed = pg_sw_insert_before_main_loop($tree, call_user_func($pair[1], $cfg)) || $changed;
+        }
     }
     if ($due && !pg_sw_tree_is_placeholder($tree)) {
         $placed = $tree;
@@ -199,6 +268,21 @@ function pg_sw_default_parts_tree(&$node, $parts, $cfg)
 {
     if (!is_array($node)) return false;
     $token = pg_sw_part_token_of($node, array_keys($parts));
+    if (strncmp($token, 'content:', 8) === 0) {
+        // The content node stood for the whole block: the part takes its
+        // place.
+        $built = call_user_func($parts[$token], $cfg);
+        $node = $built[0];
+        return true;
+    }
+    if (strncmp($token, 'section:', 8) === 0) {
+        // The bound element keeps its tag, classes and attributes; the
+        // part replaces what it held, as the section's markup did.
+        unset($node['props']['_bindings']['section']);
+        if (!$node['props']['_bindings']) unset($node['props']['_bindings']);
+        $node['children'] = call_user_func($parts[$token], $cfg);
+        return true;
+    }
     if ($token !== '') {
         $host = pg_sw_part_host($node);
         $host['children'] = array_merge(
@@ -221,15 +305,28 @@ function pg_sw_default_parts_tree(&$node, $parts, $cfg)
 }
 
 // The token of $tokens that $node draws: its text binding, or a text that is
-// the token alone (^^token^^, as older layouts wrote it). '' for none.
+// the token alone (^^token^^, as older layouts wrote it); its section
+// binding as 'section:<name>', a content node as 'content:<type>'. '' for
+// none.
 function pg_sw_part_token_of($node, $tokens)
 {
     $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+    if (isset($props['_bindings']['section']) && is_string($props['_bindings']['section'])
+        && in_array('section:' . $props['_bindings']['section'], $tokens, true)) {
+        return 'section:' . $props['_bindings']['section'];
+    }
+    if (isset($node['type'], $props['contentType']) && $node['type'] === 'content' && is_string($props['contentType'])
+        && in_array('content:' . $props['contentType'], $tokens, true)) {
+        return 'content:' . $props['contentType'];
+    }
     if (isset($props['_bindings']['text']) && in_array($props['_bindings']['text'], $tokens, true)) {
         return $props['_bindings']['text'];
     }
-    if (isset($props['text']) && is_string($props['text'])
-        && preg_match('/^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/', $props['text'], $m)
+    // A custom HTML node holding the token alone counts as its text.
+    $text = (isset($props['contentType']) && $props['contentType'] === 'custom_html' && isset($props['html'])) ? $props['html']
+          : (isset($props['text']) ? $props['text'] : null);
+    if (is_string($text)
+        && preg_match('/^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/', $text, $m)
         && in_array($m[1], $tokens, true)) {
         return $m[1];
     }
@@ -260,7 +357,7 @@ function pg_sw_part_host($node)
         if (!empty($props['lead']) && $ct === 'paragraph') $cls[] = 'lead';
         if (!empty($props['align'])) $cls[] = 'text-' . $props['align'];
         if (isset($props['cssClass']) && (string)$props['cssClass'] !== '') $cls[] = (string)$props['cssClass'];
-        unset($props['contentType'], $props['lead'], $props['align']);
+        unset($props['contentType'], $props['lead'], $props['align'], $props['html']);
         $props['tag'] = $tag;
         $props['cssClass'] = implode(' ', $cls);
         $type = 'semantic';
@@ -536,6 +633,107 @@ function pg_sw_part_comment_star($filled, $place)
         ),
         'children' => array(),
     );
+}
+
+// The crumbs of the catalog path as the catalog widgets drew them: an
+// ol.breadcrumb of one item per crumb (catalog.crumbs), a link, words, or
+// where the visitor is (span.active), by the crumb's kind. Drawn only when
+// the widget draws a path (__has_breadcrumb), unless $when is false (the
+// nav around it asks).
+function pg_sw_part_catalog_crumbs($cfg = array(), $when = true)
+{
+    $crumb = function ($tag, $class, $name, $kind, $props = array()) {
+        return pg_sw_part_el($tag, $class, $name, array_merge($props, array(
+            'text'        => '',
+            '_bindings'   => array_merge(isset($props['_bindings']) ? $props['_bindings'] : array(), array('text' => '__crumb_label', 'show_if' => '__crumb_kind')),
+            '_bindParams' => array('show_if' => array('op' => 'eq', 'value' => $kind)),
+        )));
+    };
+    return array(pg_sw_part_el('ol', 'breadcrumb mb-0', 'Breadcrumb List', $when ? pg_sw_part_when('__has_breadcrumb', 'not_empty') : array(), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'catalog.crumbs'), 'children' => array(
+            pg_sw_part_el('li', 'breadcrumb-item', 'Crumb', array(), array(
+                $crumb('a', '', 'Link', 'link', array('href' => '#', '_bindings' => array('href' => '__crumb_url'))),
+                $crumb('span', 'active', 'Where the visitor is', 'active'),
+                $crumb('span', '', 'Words', 'text'),
+            )),
+        )),
+    )));
+}
+
+// The breadcrumb a catalog widget drew: a nav of $class said as
+// "breadcrumb" around the crumbs, drawn only when the widget draws a path.
+function pg_sw_part_catalog_breadcrumb($class)
+{
+    return array(pg_sw_part_el('nav', $class, 'Breadcrumb', array_merge(
+        array('_attrs' => array(array('name' => 'aria-label', 'value' => 'breadcrumb'))),
+        pg_sw_part_when('__has_breadcrumb', 'not_empty')
+    ), pg_sw_part_catalog_crumbs(array(), false)));
+}
+
+// The listing's breadcrumb (pg-sw-breadcrumb), as it stood before the
+// toolbar.
+function pg_sw_part_catalog_breadcrumb_listing($cfg = array())
+{
+    return pg_sw_part_catalog_breadcrumb('pg-sw-breadcrumb mb-3');
+}
+
+// The detail view's breadcrumb (pg-civ-breadcrumb).
+function pg_sw_part_catalog_breadcrumb_item($cfg = array())
+{
+    return pg_sw_part_catalog_breadcrumb('pg-civ-breadcrumb mb-3');
+}
+
+// The products bought together with the one a catalog detail view shows,
+// as the view added them after its record: a box the variant script finds
+// (data-pg-civ-cross-sell), drawn unless switched off (__has_related
+// empty), holding, when there are any (__has_related 1, 0 for none), a
+// heading and a row of up to four cards (product.related), each a link
+// around the picture (or a grey box without one), the short description
+// (else the name) and the price, struck through beside the sale price when
+// a discount applies. The pictures' shape is in pg_carousel_layout.css.
+function pg_sw_part_catalog_cross_sell($cfg = array())
+{
+    $value = function ($tag, $class, $name, $token, $op = '', $test = '') {
+        $props = array('text' => '', '_bindings' => array('text' => $token));
+        if ($op !== '') {
+            $props['_bindings']['show_if'] = $test !== '' ? $test : $token;
+            $props['_bindParams'] = array('show_if' => array('op' => $op));
+        }
+        return pg_sw_part_el($tag, $class, $name, $props);
+    };
+    $has = pg_sw_part_when('__has_related', 'eq', '1');
+    $card = pg_sw_part_el('a', 'card h-100 text-decoration-none text-body', 'Product card', array('href' => '#', '_bindings' => array('href' => '__related_url')), array(
+        array('type' => 'content', 'props' => array(
+            'contentType' => 'image', 'src' => '', 'alt' => '', 'fluid' => false, 'rounded' => false, 'loading' => 'lazy',
+            'cssClass' => 'card-img-top', 'customName' => 'Picture',
+            '_bindings' => array('src' => '__related_image_url', 'show_if' => '__related_image_url'),
+            '_bindParams' => array('show_if' => array('op' => 'not_empty')),
+        ), 'children' => array()),
+        pg_sw_part_el('div', 'card-img-top bg-body-tertiary', 'No picture', pg_sw_part_when('__related_image_url', 'empty')),
+        pg_sw_part_el('div', 'card-body p-2', 'Card Body', array(), array(
+            $value('div', 'small fw-semibold text-truncate', 'Short Description', '__related_short_description', 'not_empty'),
+            $value('div', 'small fw-semibold text-truncate', 'Name', '__related_name', 'empty', '__related_short_description'),
+            pg_sw_part_el('div', 'small mt-1', 'Price', array(), array(
+                pg_sw_part_el('span', 'pg-price-block has-discount', 'Discounted price', pg_sw_part_when('__related_original_price', 'not_empty'), array(
+                    $value('span', 'pg-price-original', 'Price before the discount', '__related_original_price'),
+                    $value('span', 'pg-price-current', 'Price', '__related_price'),
+                )),
+                pg_sw_part_el('span', 'pg-price-block', 'Price', pg_sw_part_when('__related_original_price', 'empty'), array(
+                    $value('span', 'pg-price', 'Price', '__related_price'),
+                )),
+            )),
+        )),
+    ));
+    return array(pg_sw_part_el('div', 'pg-civ-cross-sell mt-4', 'Products bought together', array_merge(array(
+        '_attrs' => array(array('name' => 'data-pg-civ-cross-sell', 'value' => '1')),
+    ), pg_sw_part_when('__has_related', 'not_empty')), array(
+        pg_sw_part_el('h3', 'h5 mb-3', 'Heading', array_merge(array('text' => lang('Frequently bought together')), $has)),
+        pg_sw_part_el('div', 'row g-3', 'Products', $has, array(
+            array('type' => 'loop_area', 'props' => array('source' => 'product.related', 'limit' => 4), 'children' => array(
+                pg_sw_part_el('div', 'col-6 col-md-3', 'Product', array(), array($card)),
+            )),
+        )),
+    )));
 }
 
 // The stylesheet a page needs for the parts in a widget's output $html

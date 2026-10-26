@@ -304,7 +304,13 @@ function pg_consent_log_record(array $event)
         return 0;
     }
 
-    return (int) mysqli_insert_id(db::$con);
+    $id = (int) mysqli_insert_id(db::$con);
+
+    if (function_exists('pg_announce_consent_changed')) {
+        pg_announce_consent_changed($id, $row);
+    }
+
+    return $id;
 }
 
 /**

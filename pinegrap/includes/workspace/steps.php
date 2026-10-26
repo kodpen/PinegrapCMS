@@ -53,6 +53,11 @@ function ws_step_kinds()
         'task_open' => array('label' => lang('Open a task without waiting'), 'type' => 'task', 'texts' => array('title', 'description'), 'lines' => array('title')),
         'webhook'   => array('label' => lang('Call a webhook'), 'type' => 'webhook', 'texts' => array('text'), 'lines' => array()),
         'web_check' => array('label' => lang('Check a web address'), 'type' => 'web_check', 'texts' => array(), 'lines' => array()),
+        'task_digest' => array('label' => lang('E-mail people their tasks'), 'type' => 'task_digest', 'texts' => array('subject', 'intro'), 'lines' => array('subject')),
+        'report'    => array('label' => lang('Send a summary of counts'), 'type' => 'report', 'texts' => array('title'), 'lines' => array('title')),
+        'checkin'   => array('label' => lang('Ask for a check-in'), 'type' => 'checkin', 'texts' => array('question'), 'lines' => array('question')),
+        'start_action' => array('label' => lang('Start a scheduled action'), 'type' => 'trigger', 'texts' => array(), 'lines' => array()),
+        'change'    => array('label' => lang('Change a record'), 'type' => 'change', 'texts' => array(), 'lines' => array()),
     );
 }
 
@@ -79,6 +84,15 @@ function ws_step_outcomes()
  *            none), due_in ('' or 0-3650 days), priority
  * webhook:   url, format (ws_scheduled_webhook_formats()), text
  * web_check: url, mode (status, ssl), redirect, contains, max_ms, days
+ * task_digest: mode (mine, channel), channel_id, user_ids (up to 50), only
+ *            (ws_scheduled_digest_filters()), subject, intro, missed, ai
+ * report:    title, metrics (up to 20 of key, param), channel_id, to
+ * checkin:   channel_id, question
+ * start_action: target_id (a scheduled action), delay (0-10080 minutes)
+ * change:    record (a kind of the change catalogue), action (update,
+ *            delete), id, fields (up to 30 of name => value; a value is a
+ *            number, yes/no, a text, or a set of texts, a submission's
+ *            answers; none for a delete)
  *
  * @param string $kind
  * @param mixed  $config
@@ -158,6 +172,85 @@ function ws_step_config_normalize($kind, $config)
                 'max_ms'   => min(60000, $number($config['max_ms'] ?? 0)),
                 'days'     => max(1, min(365, ($days > 0) ? $days : 14)),
             );
+
+        case 'task_digest':
+            $only = ws_flow_token($config['only'] ?? '', 16);
+
+            return array(
+                'mode'       => (($config['mode'] ?? '') === 'channel') ? 'channel' : 'mine',
+                'channel_id' => $number($config['channel_id'] ?? 0),
+                'user_ids'   => $people($config['user_ids'] ?? array(), 50),
+                'only'       => in_array($only, array('open', 'week', 'overdue', 'stale'), true) ? $only : 'open',
+                'subject'    => ws_flow_line($config['subject'] ?? '', 250),
+                'intro'      => ws_flow_lines($config['intro'] ?? '', 2000),
+                'missed'     => !empty($config['missed']),
+                'ai'         => !empty($config['missed']) && !empty($config['ai']),
+            );
+
+        case 'report':
+            $metrics = array();
+
+            foreach ((is_array($config['metrics'] ?? null) ? $config['metrics'] : array()) as $item) {
+                $key = (string) preg_replace('/[^a-z_]/', '', strtolower(ws_flow_text(is_array($item) ? ($item['key'] ?? '') : $item)));
+
+                if (($key !== '') && (count($metrics) < 20)) {
+                    $metrics[] = array('key' => substr($key, 0, 40), 'param' => is_array($item) ? $number($item['param'] ?? 0) : 0);
+                }
+            }
+
+            $to = $config['to'] ?? '';
+
+            return array(
+                'title'      => ws_flow_line($config['title'] ?? '', 160),
+                'metrics'    => $metrics,
+                'channel_id' => $number($config['channel_id'] ?? 0),
+                'to'         => ws_flow_lines(is_array($to) ? implode(', ', array_map('ws_flow_text', $to)) : $to, 2000),
+            );
+
+        case 'checkin':
+            return array(
+                'channel_id' => $number($config['channel_id'] ?? 0),
+                'question'   => ws_flow_line($config['question'] ?? '', 500),
+            );
+
+        case 'start_action':
+            return array(
+                'target_id' => $number($config['target_id'] ?? 0),
+                'delay'     => min(10080, $number($config['delay'] ?? 0)),
+            );
+
+        case 'change':
+            $verb = (($config['action'] ?? '') === 'delete') ? 'delete' : 'update';
+            $fields = array();
+
+            foreach ((($verb === 'update') && is_array($config['fields'] ?? null)) ? $config['fields'] : array() as $name => $value) {
+                if (!is_string($name) || !preg_match('/^[a-z][a-z0-9_]{0,39}$/', $name) || (count($fields) >= 30)) {
+                    continue;
+                }
+
+                if (is_bool($value) || is_int($value) || is_float($value)) {
+                    $fields[$name] = $value;
+                } elseif (is_string($value)) {
+                    $fields[$name] = ws_flow_lines($value, 20000);
+                } elseif (is_array($value)) {
+                    $set = array();
+
+                    foreach ($value as $key => $item) {
+                        if (is_scalar($item) && (count($set) < 50)) {
+                            $set[(string) $key] = ws_flow_lines($item, 10000);
+                        }
+                    }
+
+                    $fields[$name] = $set;
+                }
+            }
+
+            return array(
+                'record' => (string) preg_replace('/[^a-z_]/', '', strtolower(ws_flow_token($config['record'] ?? '', 32))),
+                'action' => $verb,
+                'id'     => $number($config['id'] ?? 0),
+                'fields' => $fields,
+            );
     }
 
     return array();
@@ -225,6 +318,53 @@ function ws_step_config_problems($kind, $config, $name)
 
             if (($kind === 'webhook') && ($config['format'] !== 'generic') && ($config['text'] === '')) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs the message to send.', 'vars' => $name));
+            }
+
+            break;
+
+        case 'task_digest':
+            if (($config['mode'] === 'channel') && ((int) $config['channel_id'] <= 0)) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the channel whose tasks are sent.', 'vars' => $name));
+            }
+
+            break;
+
+        case 'report':
+            if (empty($config['metrics'])) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the counts the summary lists.', 'vars' => $name));
+            }
+
+            if (((int) $config['channel_id'] <= 0) && (trim($config['to']) === '')) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs a channel or e-mail addresses to send the summary to.', 'vars' => $name));
+            }
+
+            break;
+
+        case 'checkin':
+            if ((int) $config['channel_id'] <= 0) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs a channel to write in.', 'vars' => $name));
+            }
+
+            break;
+
+        case 'start_action':
+            if ((int) $config['target_id'] <= 0) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the scheduled action it starts.', 'vars' => $name));
+            }
+
+            break;
+
+        case 'change':
+            if ($config['record'] === '') {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the kind of record it changes.', 'vars' => $name));
+            }
+
+            if ((int) $config['id'] <= 0) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the record it changes.', 'vars' => $name));
+            }
+
+            if (($config['action'] === 'update') && empty($config['fields'])) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs a field and its new value.', 'vars' => $name));
             }
 
             break;
@@ -357,6 +497,38 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
 }
 
 /**
+ * What a box of a run says it did, as a reader of the run sees it. A change
+ * box's sentence names the record and the values it wrote, a condition box's
+ * the record, the value and the count it looked at, which only whoever may
+ * change the flow reads (ws_flow_graph_present() keeps them
+ * back the same way); everybody else reads that a change was made, or not.
+ * Pure.
+ *
+ * @param string $kind    the box's kind
+ * @param string $outcome the step's outcome, '' while it has none
+ * @param string $text    ws_flow_result_text()
+ * @param bool   $edit    the reader may change the flow
+ * @return string
+ */
+function ws_step_result_shown($kind, $outcome, $text, $edit)
+{
+    if ($edit || !in_array((string) $kind, array('change', 'condition'), true) || ((string) $text === '')) {
+        return (string) $text;
+    }
+
+    // A condition's sentence names the record, the value and the count now.
+    if ((string) $kind === 'condition') {
+        if ((string) $outcome === '') {
+            return lang('The condition could not be checked.');
+        }
+
+        return ((string) $outcome === 'yes') ? lang('The condition held.') : lang('The condition did not hold.');
+    }
+
+    return ((string) $outcome === 'done') ? lang('The change was made.') : lang('The change could not be made.');
+}
+
+/**
  * How a step's end settles its box: done on done; a failure leaves on
  * failed where an arrow does, and fails the box where none does. Pure.
  *
@@ -411,10 +583,13 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $context = ws_flow_run_context($run);
 
     // What ws_scheduled_fill() reads of the action: the flow's name as the
-    // run started, and the run's number for {{run}}.
+    // run started, and the run's number for {{run}}. A change posts its
+    // decision under a scheduled action's card in that action's channel; a
+    // box has neither, its run's result says what it changed.
     $row = array(
         'id'          => 0,
         'message_id'  => 0,
+        'channel_id'  => 0,
         'name'        => (string) ($context['flow_name'] ?? ''),
         'run_count'   => max(0, (int) $run['id'] - 1),
         'last_run_at' => 0,
@@ -434,6 +609,9 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         'depth'           => (int) ($run['depth'] ?? 0),
         'idempotency_key' => ws_step_idempotency_key($run['id'], $step['node_id'], $step['pass'] ?? 0),
         'flow'            => array('id' => (int) $run['flow_id'], 'run' => (int) $run['id'], 'box' => (string) $step['node_id']),
+        // A scheduled action a box starts carries no source action; the
+        // depth of the run still counts in its chain.
+        'run_id'          => 0,
     ));
     $end = ws_step_settlement(!empty($done['ok']), $routed);
     $data = array();

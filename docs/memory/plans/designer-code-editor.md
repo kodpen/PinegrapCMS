@@ -1,6 +1,6 @@
 ---
 name: designer-code-editor
-description: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap)
+description: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license)
 ---
 
 ## What is being built?
@@ -21,6 +21,7 @@ description: Plan (2026-10-19) for the visual designer's code editor: owner rule
 ## What is left, and where to start?
 - Done (PR #669): bindings in the code view — a bound value prints as `{{token}}`, typing one binds, `{{` completes the widget's tokens (`docs/memory/designer/designer-code-view-bindings.md`).
 - Emmet: `@emmetio/codemirror6-plugin` carries no license (repo and package, 2026-10-19), so it is not bundled; the `emmet` core package is MIT and an expand-abbreviation command of our own on it is the way, if wanted.
-- A formatter for CSS/JS tabs (the page view is normalised by the emitter already), a minimap: each needs a new library, loaded only on the first Edit.
+- Done (PR #1909): format for CSS/JS/JSON, `ed.format()` and Shift+Alt+F (docs/memory/core/code-editor-format.md); no toolbar button yet.
+- Done (PR #1955): a minimap in the lazy bundle, opt-in per editor or page, on in the designer (docs/memory/core/code-editor-minimap.md); no toggle button yet.
 - Done (PR #1871): search across the open tabs (docs/memory/designer/code-view-tab-search.md).
 - Done 2026-10-19: every panel screen, the File Manager, the legacy page designer and CKEditor's source mode are on the facade and CodeMirror 5 left the product (docs/memory/ui/panel-code-fields.md).

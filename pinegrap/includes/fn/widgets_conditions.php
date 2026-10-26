@@ -185,12 +185,13 @@ function pg_sw_cond_operand_is_words($props)
 }
 
 // Tokens whose value is a fixed code, the same in every language: the order
-// view's default parts compare them (created, paid, complete, pending...).
-// A translated compared text would never match the code, and the status badge
-// and the timeline icons would not draw on that language.
+// view's default parts compare them (created, paid, complete, pending...),
+// the catalog breadcrumb part its crumb's kind (link, text, active). A
+// translated compared text would never match the code, and the status badge,
+// the timeline icons and the crumbs would not draw on that language.
 function pg_sw_cond_code_tokens()
 {
-    return array('__step_kind', '__order_status_stage');
+    return array('__step_kind', '__order_status_stage', '__crumb_kind');
 }
 
 // Whether a condition may read $token (see pg_sw_cond_denied_tokens()).

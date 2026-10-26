@@ -1,6 +1,6 @@
 ---
 name: widget-condition-canvas
-description: The canvas state preview of value conditions (W19, #1904): band chips, states, which value a token reads, picking a hidden node, the _sdCondEval twin, a list's sample rows (#1914)
+description: The canvas state preview of value conditions (W19, #1904): band chips, states, which value a token reads, picking a hidden node, the _sdCondEval twin, list and main loop sample rows (#1914, #1928)
 ---
 
 ## What does the canvas draw for a value condition?
@@ -24,5 +24,8 @@ description: The canvas state preview of value conditions (W19, #1904): band chi
 - After a list's card (a `loop_area` with `props.source`) the canvas draws sample rows from the same nodes (`_sdListGhostEls()`, both the div and the table loop): ghost DOM as the sample comments, off with the sample switch, none when the band is amber, none inside a sample row, at most `props.limit` less one.
 - `SD_LIST_SAMPLE_ROWS` gives each source's rows the values that differ from the card (`order.steps`: paid, shipped, delivered as an estimate, so each timeline icon shows in its row); another source gets two rows of the card's values. `_sdListSample` is read first in `_displayValueForBinding()` after a comment sample; a test that cuts it declares it.
 
-## What is left of W19?
-- Sample rows for the main loop of kinds without server ghosts (cart and order items). Plan: [[widget-designability]].
+## Which main loops get sample rows? (#1928)
+- The widget's first loop without a source (`_sdFirstLoopArea()`), two rows of the card's values, in a kind that repeats it and has neither server ghosts (`_SD_GHOST_TYPES`, [[designer-widget-ghosts-and-edit-chips]]) nor sample comments: the cart, the order view's items, an account's order list. None in a single-record kind (`_sdLoopIsSingle()`, the rule that also hides the loop's band), inside a sample row or sample comment.
+
+## What does the owner still answer?
+- The default state: the sample (as the page looks) or "All elements" (as before). Built as the sample.

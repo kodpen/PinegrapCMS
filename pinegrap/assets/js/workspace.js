@@ -9730,7 +9730,48 @@
 
                         var value = el('dd');
 
-                        if (field.html) {
+                        if (field.matrix) {
+                            // A variant set: its attributes, a row per variant
+                            // and the price each will be written with.
+                            var wrap = el('div', 'table-responsive');
+                            var table = el('table', 'table table-sm table-borderless mb-0 ws-change-matrix');
+                            var headRow = el('tr');
+
+                            field.matrix.head.forEach(function (name, index) {
+                                var th = el('th', (index === field.matrix.head.length - 1) ? 'text-end' : '', name);
+                                th.setAttribute('scope', 'col');
+                                headRow.appendChild(th);
+                            });
+
+                            table.appendChild(el('thead')).appendChild(headRow);
+
+                            var body = table.appendChild(el('tbody'));
+
+                            field.matrix.rows.forEach(function (row) {
+                                var tr = el('tr');
+
+                                row.options.forEach(function (option) {
+                                    tr.appendChild(el('td', '', option));
+                                });
+
+                                tr.appendChild(el('td', 'font-monospace', row.sku));
+
+                                var price = el('td', 'text-end text-nowrap', row.price);
+
+                                if (row.manual) {
+                                    var mark = icon('bi-pencil', 'ms-1 text-body-secondary');
+                                    mark.setAttribute('title', field.matrix.manual);
+                                    price.appendChild(mark);
+                                    price.appendChild(el('span', 'visually-hidden', ' (' + field.matrix.manual + ')'));
+                                }
+
+                                tr.appendChild(price);
+                                body.appendChild(tr);
+                            });
+
+                            wrap.appendChild(table);
+                            value.appendChild(wrap);
+                        } else if (field.html) {
                             // Records the change names: products, a parent group.
                             var chips = el('span', 'ws-change-to');
                             setHtml(chips, field.html);
@@ -13117,6 +13158,15 @@
 
                 if (self.channel) {
                     mcpAliases();
+
+                    // Outside applications a mention here reaches, by their
+                    // handle or name (app_handles.php); before the people,
+                    // as the list is cut at ten.
+                    (self.channel.apps || []).forEach(function (app) {
+                        if (!needle || app.shown.slice(1).indexOf(needle) === 0 || app.meta.toLocaleLowerCase().indexOf(needle) === 0) {
+                            items.push({ label: app.label, meta: app.meta, icon: app.icon, token: app.token, shown: app.shown });
+                        }
+                    });
                 }
 
                 BOOT.people.forEach(function (member) {

@@ -344,13 +344,13 @@ function ws_scheduled_webhook_formats()
 /**
  * The kinds of change a scheduled action does not make: a channel's summary,
  * the workspace's own tasks and notes, which an assistant proposes, and a
- * sales quote, which is only ever added.
+ * sales quote or a variant set, which is only ever added.
  *
  * @return string[]
  */
 function ws_scheduled_change_skipped()
 {
-    return array('channel', 'task', 'task_note', 'note', 'erp_quote');
+    return array('channel', 'task', 'task_note', 'note', 'erp_quote', 'variant_set');
 }
 
 /**
@@ -366,9 +366,9 @@ function ws_scheduled_record_types()
     $out = array();
 
     foreach (ws_change_types() as $type => $info) {
-        // A task note, a note or a sales quote is only ever added from here:
-        // nothing to wait on.
-        if (in_array($type, array('channel', 'task_note', 'note', 'erp_quote'), true)) {
+        // A task note, a note, a sales quote or a variant set is only ever
+        // added from here: nothing to wait on.
+        if (in_array($type, array('channel', 'task_note', 'note', 'erp_quote', 'variant_set'), true)) {
             continue;
         }
 
@@ -451,9 +451,29 @@ function ws_scheduled_metrics()
 }
 
 /**
+ * The keys of the counts in money, whose condition is kept in minor units
+ * and sent by the form in major units.
+ *
+ * @return string[]
+ */
+function ws_scheduled_money_metrics()
+{
+    $keys = array();
+
+    foreach (ws_scheduled_metrics() as $key => $metric) {
+        if ($metric['kind'] === 'money') {
+            $keys[] = $key;
+        }
+    }
+
+    return $keys;
+}
+
+/**
  * One count now.
  *
- * @param array  $viewer the creator: a count they may not see is refused
+ * @param array  $viewer the creator: a count they may not see, or one of a
+ *                       channel they do not read, is refused
  * @param string $key
  * @param int    $param  a channel (scope channel) or a threshold
  * @param int    $since  the action's previous run, 0 for the last day
@@ -470,6 +490,16 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
 
     if (($metric['right'] !== '') && empty($viewer[$metric['right']])) {
         return array('ok' => false, 'value' => 0, 'text' => '', 'error' => lang('You may not see this count.'));
+    }
+
+    // A channel's count needs the creator to read that channel, asked at
+    // every count: they may have left it after the action was saved.
+    if (($metric['scope'] === 'channel') && ((int) $param > 0)) {
+        $channel_row = ws_channel((int) $param);
+
+        if (!$channel_row || !ws_can_read_channel($viewer, $channel_row)) {
+            return array('ok' => false, 'value' => 0, 'text' => '', 'error' => lang('You may not see this count.'));
+        }
     }
 
     $since = ((int) $since > 0) ? (int) $since : time() - 86400;
@@ -1194,7 +1224,16 @@ function ws_scheduled_rule_input($viewer, $rule)
                 return $fail(lang('You may not see records of this kind.'));
             }
 
-            if (($id <= 0) || (ws_scheduled_record($record_type, $id) === null)) {
+            $record = ($id > 0) ? ws_scheduled_record($record_type, $id) : null;
+
+            if ($record === null) {
+                return $fail(lang('Choose the record the condition looks at.'));
+            }
+
+            // A task the creator may not see is refused as one that is not
+            // there: the words of the condition name the task by its title,
+            // and a refusal of its own would tell that it exists.
+            if (($record_type === 'task') && !ws_can_see_task($viewer, $record)) {
                 return $fail(lang('Choose the record the condition looks at.'));
             }
 
@@ -1554,6 +1593,15 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 $param = is_array($item) ? max(0, (int) ($item['param'] ?? 0)) : 0;
 
                 if (isset($metrics[$key]) && (($metrics[$key]['right'] === '') || !empty($viewer[$metrics[$key]['right']]))) {
+                    // A channel's count, as a count condition checks it.
+                    if (($metrics[$key]['scope'] === 'channel') && ($param > 0)) {
+                        $channel = ws_channel($param);
+
+                        if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+                            return $fail(lang('That channel could not be found.'));
+                        }
+                    }
+
                     $list[] = array('key' => $key, 'param' => $param);
                 }
             }
@@ -2714,6 +2762,28 @@ function ws_scheduled_form_data($viewer, $row)
         'action' => $label($row['action']),
         'follow' => $follow,
     );
+}
+
+/**
+ * Rules as they are kept, or as the form reads them, turned into the rules
+ * the form sends (pure): a count in money back in major units with two
+ * decimals, since ws_scheduled_input() multiplies it by 100 again. Anything
+ * else is left as it is.
+ *
+ * @param array    $rules as kept
+ * @param string[] $money the counts in money (ws_scheduled_money_metrics())
+ * @return array
+ */
+function ws_scheduled_rules_as_sent($rules, $money)
+{
+    foreach ($rules as $i => $rule) {
+        if (is_array($rule) && (($rule['type'] ?? '') === 'metric') && isset($rule['value'])
+            && in_array((string) ($rule['metric'] ?? ''), (array) $money, true)) {
+            $rules[$i]['value'] = number_format(((int) $rule['value']) / 100, 2, '.', '');
+        }
+    }
+
+    return $rules;
 }
 
 /**
@@ -4497,8 +4567,16 @@ function ws_scheduled_summary($viewer, $row, $action, $context)
     $plain = array();
 
     foreach ((array) $action['metrics'] as $item) {
-        $count = ws_scheduled_metric_value($viewer, $item['key'], (int) ($item['param'] ?? 0), (int) ($row['last_run_at'] ?? 0));
-        $label = ws_scheduled_metric_label($item['key'], (int) ($item['param'] ?? 0));
+        $param = (int) ($item['param'] ?? 0);
+        $count = ws_scheduled_metric_value($viewer, $item['key'], $param, (int) ($row['last_run_at'] ?? 0));
+
+        // A refused count of a channel is named without the channel; a
+        // threshold is still given.
+        if (!$count['ok'] && ((ws_scheduled_metrics()[$item['key']]['scope'] ?? '') === 'channel')) {
+            $param = 0;
+        }
+
+        $label = ws_scheduled_metric_label($item['key'], $param);
         $value = $count['ok'] ? $count['text'] : '—';
 
         $lines[] = '• ' . $label . ': **' . $value . '**';

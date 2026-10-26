@@ -4353,7 +4353,7 @@ function _pg_widget_layout_css_once()
     $base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
           . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
           . '/assets/css/';
-    $v = '5';   // bump on layout css changes
+    $v = '6';   // bump on layout css changes
     return '<link rel="stylesheet" href="' . h($base) . 'pg_carousel_layout.css?v=' . $v . '">';
 }
 
@@ -5018,7 +5018,7 @@ function _render_region_tag($props)
 // when the caller didn't already include it in $skip_names.
 //
 // $title: also write the node's title and tooltip (_pg_node_title_attrs())
-//   after the id. Content, semantic and grid nodes pass true; a component's
+//   and its interaction (pg_fx_attrs()) after the id. Content, semantic and grid nodes pass true; a component's
 //   props.title is its heading text, not an attribute.
 function _render_extra_attrs($props, $skip_names = array(), $title = false)
 {
@@ -5031,7 +5031,10 @@ function _render_extra_attrs($props, $skip_names = array(), $title = false)
         // render knows to describe its parts in the structured data.
         if (!empty($props['searchSection'])) $out .= ' data-pg-search-section';
     }
-    if ($title) $out .= _pg_node_title_attrs($props);
+    // Content, semantic and grid nodes also carry their interaction
+    // (pg_fx_attrs()); its own names typed into the panel are left out.
+    $fx = $title ? pg_fx_attrs($props) : '';
+    if ($title) $out .= _pg_node_title_attrs($props) . $fx;
     if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
         foreach ($props['_attrs'] as $a) {
             if (!is_array($a) || empty($a['name'])) continue;
@@ -5039,6 +5042,7 @@ function _render_extra_attrs($props, $skip_names = array(), $title = false)
             $lname = strtolower($name);
             if ($lname === 'class' || $lname === 'style' || $lname === 'id') continue;
             if (isset($skip_map[$lname])) continue;
+            if ($fx !== '' && pg_fx_attr_name($lname)) continue;
             // The search section mark is the Search section switch's,
             // written once after the id (here or by the semantic case).
             if ($lname === 'data-pg-search-section' && !empty($props['id']) && !empty($props['searchSection'])) continue;
@@ -5395,7 +5399,8 @@ function _render_component_html($props, $pad, $kids = '')
 // was drawn by a path that does not expand it (another widget kind, a shared
 // component nested inside the widget), so it prints '#' like the canvas and
 // is no token: an unanswered token would be swept to href="", which opens
-// the current address.
+// the current address. An href bound to '__ref' (a field of a record the
+// record points at, pg_coll_ref_bindings()) is the same kind of sentinel.
 function _apply_bindings($props, $rich_text = false)
 {
     if (empty($props['_bindings']) || !is_array($props['_bindings'])) return $props;
@@ -5413,7 +5418,7 @@ function _apply_bindings($props, $rich_text = false)
         // no field and printed nothing.
         $safe = preg_replace('/[^a-z0-9_\-]/i', '', (string)$field_name);
         if ($safe === '') continue;
-        if ($prop_name === 'href' && $safe === '__page_link') {
+        if ($prop_name === 'href' && ($safe === '__page_link' || $safe === '__ref')) {
             $props['href'] = '#';
             continue;
         }
@@ -5813,11 +5818,10 @@ function _render_content_html($props, $pad, $kids = '')
             break;
 
         case 'breadcrumb':
-            // Marker for catalog_item_view / catalog_listing render to
-            // substitute with the live breadcrumb HTML (Main Catalog →
-            // Group → Subgroup → Product). Each widget detects the
-            // marker via strpos AFTER its own breadcrumb computation.
-            // Outside a catalog widget the marker simply disappears.
+            // Inside a catalog widget the node is given the breadcrumb
+            // part before the render (pg_sw_default_parts_apply()), so
+            // only a node outside one reaches here: the marker prints
+            // nothing.
             $html .= $pad . '<!--pg-breadcrumb-placeholder-->' . "\n";
             break;
 

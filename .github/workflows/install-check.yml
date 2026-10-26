@@ -8,6 +8,12 @@
 #
 # tools/ is tracked on the development branch only; on main and the release
 # branches the steps are skipped and the job still reports.
+#
+# On a pull request the six databases run only when the installer, the
+# migration steps, tools/, the starter dumps or this file changed; a merge
+# train and a push to main or development always run them. A trigger-level
+# paths filter cannot express this, because a merge train must run whatever
+# it changes, so the first job reads the diff with plain git.
 name: Install check
 
 on:
@@ -20,11 +26,48 @@ permissions:
   contents: read
 
 jobs:
-  install:
-    name: install and upgrade on ${{ matrix.db }}
+  changes:
+    name: files the install check depends on
     # A draft pull request claims a task (CLAUDE.md) and is not checked until
     # it is marked ready; a merge train is a draft that is checked.
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || startsWith(github.head_ref, 'merge-train/') }}
+    runs-on: ubuntu-latest
+    outputs:
+      install: ${{ steps.diff.outputs.install }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: List the changed files
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "install=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # A diff that cannot be read runs the matrix rather than skip it.
+          if ! changed="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"; then
+            echo "The diff could not be read; the install check runs."
+            echo "install=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if printf '%s\n' "$changed" | grep -qE '^(pinegrap/install/|pinegrap/includes/migrations/|tools/|pinegrap/data/backups/|\.github/workflows/install-check\.yml$)'; then
+            echo "install=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No installer, migration, tools or starter dump file changed; the install check is skipped."
+            echo "install=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  install:
+    name: install and upgrade on ${{ matrix.db }}
+    needs: changes
+    if: ${{ needs.changes.outputs.install == 'true' || github.event_name == 'push' || startsWith(github.head_ref, 'merge-train/') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

@@ -4525,37 +4525,14 @@ function license_check($properties = false)
 
             // Prefer cURL if available
             if (function_exists('curl_init')) {
-                $ch = curl_init();
-                // Identify this installation on outgoing requests. Sent with no
-                // User-Agent, a request looks like an anonymous client to the receiving
-                // server's firewall and gets rejected — which is how Pinegrap ended up
-                // blocking its own licence and update checks.
-                curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-                curl_setopt($ch, CURLOPT_URL, $api_url);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                pg_curl_tls($ch);
-                // send JSON POST
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-                curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-                curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-                    'Content-Type: application/json',
-                    'Content-Length: ' . strlen($data)
-                ));
-                // optional proxy
-                if (defined('PROXY_ADDRESS') && PROXY_ADDRESS !== '') {
-                    curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-                    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-                    curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-                }
-
-                $response = @curl_exec($ch);
-                $curl_errno = curl_errno($ch);
-                $curl_error = curl_error($ch);
-                unset($ch);
+                // pg_curl_run() sends this installation's User-Agent (without one
+                // the licence server's firewall refused the check), applies
+                // pg_curl_tls() and PROXY_ADDRESS. An unanswered request leaves
+                // the body empty, which the decoding below treats as no answer.
+                $answer = pg_curl_run('POST', $api_url, pg_license_request_options($data, 5));
+                $response = $answer['body'];
+                $curl_errno = $answer['errno'];
+                $curl_error = $answer['error'];
             } else {
                 // Fallback: file_get_contents with stream context if allow_url_fopen is enabled
                 // The certificate is verified here as well, against the same CA bundle
@@ -6232,6 +6209,7 @@ function pg_js_bundles()
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
+        'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
     );
 }
 

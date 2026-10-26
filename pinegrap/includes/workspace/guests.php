@@ -971,8 +971,8 @@ function ws_guest_clean_text($text)
 }
 
 /**
- * A message as the guest reads it: the words with bold, italics and
- * strike-through, line breaks and plain links; a person tagged by name, a
+ * A message as the guest reads it: the words with bold, italics,
+ * strike-through and highlights, line breaks and plain links; a person tagged by name, a
  * record by its kind, nothing that leads into the panel.
  *
  * @param string $body
@@ -1023,7 +1023,7 @@ function ws_guest_render($body)
 
         // Addresses are set aside first, so the marks below cannot reach into
         // them; then the marks the staff's screen reads the same way
-        // (render.php): **bold**, _italics_, ~~strike-through~~.
+        // (render.php): **bold**, _italics_, ~~strike-through~~, ==highlight==.
         $links = array();
         $html = preg_replace_callback('#https?://[^\s<>"]{2,500}#i', function ($match) use (&$links) {
             $url = rtrim($match[0], '.,;:!?)');
@@ -1035,6 +1035,7 @@ function ws_guest_render($body)
         $html = preg_replace('/\*\*([^*\n]{1,300})\*\*/', '<strong>$1</strong>', $html);
         $html = preg_replace('/~~([^~\n]{1,300})~~/', '<del>$1</del>', $html);
         $html = preg_replace('/(?<![\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])/u', '<em>$1</em>', $html);
+        $html = preg_replace('/(?<!=)==(?=\S)([^=\n]{1,300}?)(?<=\S)==(?!=)/u', '<mark>$1</mark>', $html);
 
         $html = preg_replace_callback("/\x01([0-9]+)\x01/", function ($match) use ($links) {
             return $links[(int) $match[1]] ?? '';

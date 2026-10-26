@@ -900,6 +900,7 @@ const StyleDesigner = (function () {
                                 // Never on a template's placeholder (below).
                                 if (mcfg && !_swIsTemplatePlaceholder(parsed)) {
                                     _sdDefaultLoopTails(parsed, _swKindOf(mcfg), mcfg);
+                                    _sdDefaultLeads(parsed, _swKindOf(mcfg), mcfg);
                                     _sdDefaultTails(parsed, _swKindOf(mcfg), mcfg);
                                 }
                             }
@@ -5874,6 +5875,11 @@ const StyleDesigner = (function () {
         // Region placeholder
         '.sd-region-ph { padding:10px; text-align:center; color:#6c757d; font-size:11px; border:1px dashed #ccc; border-radius:4px; background:rgba(0,0,0,.015); }',
         '.sd-region-ph .bi { margin-right:4px; }',
+        // A classic system region drawn by the server under its label (_sdLegacyRegionAppend())
+        '.sd-region-ph.sd-legacy-live { padding:0; text-align:start; color:inherit; font-size:inherit; background:none; }',
+        '.sd-legacy-band { padding:4px 8px; text-align:center; color:#6c757d; font-size:11px; border-bottom:1px dashed #ccc; }',
+        '.sd-legacy-note { opacity:.85; }',
+        '.sd-legacy-region { padding:8px; pointer-events:none; user-select:none; overflow:hidden; }',
         // Drop active on parent
         // Drop indicators — doubled selector boosts specificity so semantic-wrap rules
         // (.sd-shared-wrap, .sd-custom-html-wrap, .sd-custom-php-wrap) with their own
@@ -10515,6 +10521,7 @@ const StyleDesigner = (function () {
         _reExecuteCanvasScripts(canvasDoc.body);
         _sdThemeSwitchers();
         _sdScrollers();
+        _sdFxCanvas();
         _initCanvasTooltips();
         // Restore tab activation captured before the DOM wipe — keeps the
         // designer on the tab they were editing, not always tab 1.
@@ -10597,6 +10604,38 @@ const StyleDesigner = (function () {
         scr.id = 'pg-scroller-js';
         try { scr.src = new URL('assets/js/pg_scroller.js', document.baseURI).href; } catch (e) { return; }
         canvasDoc.head.appendChild(scr);
+    }
+
+    // Interactions play on the canvas as on the page: the same file
+    // (pg_fx.min.js), loaded into the frame once and bound again after
+    // every render. pgFxEditing makes a node drawn again by a later render
+    // show in place instead of playing its entrance on every change; the
+    // Interactions section's Play button replays one. While the canvas's
+    // motion is paused the frame answers reduced motion, so nothing moves.
+    function _sdFxCanvas() {
+        if (!canvasDoc || !canvasDoc.querySelector('[data-pg-fx]')) return;
+        var win = canvasDoc.defaultView;
+        if (win && typeof win.pgFxBind === 'function') { win.pgFxBind(canvasDoc); return; }
+        if (canvasDoc.getElementById('pg-fx-js') || !canvasDoc.head) return;
+        if (win) win.pgFxEditing = true;
+        var scr = canvasDoc.createElement('script');
+        scr.id = 'pg-fx-js';
+        try { scr.src = new URL('assets/js/pg_fx.min.js', document.baseURI).href; } catch (e) { return; }
+        canvasDoc.head.appendChild(scr);
+    }
+
+    // The Play button of the Interactions section: the node's interaction
+    // once on the canvas, whether the canvas's motion plays or not.
+    function _sdFxReplay(node) {
+        var el = _sdCanvasInnerOf(node);
+        if (el && !el.hasAttribute('data-pg-fx')) el = el.querySelector('[data-pg-fx]');
+        var win = canvasDoc && canvasDoc.defaultView;
+        if (!el || !win) return;
+        if (win.pgFx && typeof win.pgFx.replay === 'function') { win.pgFx.replay(el); return; }
+        // The file is not in the frame yet: load it, then play.
+        _sdFxCanvas();
+        var scr = canvasDoc.getElementById('pg-fx-js');
+        if (scr) scr.addEventListener('load', function () { if (win.pgFx && win.pgFx.replay) win.pgFx.replay(el); });
     }
 
     function _reExecuteCanvasScripts(root) {
@@ -10794,21 +10833,7 @@ const StyleDesigner = (function () {
         // of which builder handled it.
         var hideLoop = false;
         var isList = _sdListIsSourced(node);
-        if (_sysWidgetRenderCfg && !isList) {
-            var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
-                ? _sysWidgetRenderCfg.regionType : 'form_list_view';
-            hideLoop = (_lwRt === 'form_item_view') ||
-                       (_lwRt === 'my_account' && _sysWidgetRenderCfg.show_submissions !== true) ||
-                       (_lwRt === 'login_form') ||
-                       (_lwRt === 'forgot_password') ||
-                       (_lwRt === 'registration') ||
-                       (_lwRt === 'membership') ||
-                       (_lwRt === 'custom_form') ||
-                       (_lwRt === 'catalog_item_view') ||
-                       (_lwRt === 'calendar_event_view') ||
-                       (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
-                       (_SW_ONE_SCREEN[_lwRt] === 1);
-        }
+        if (_sysWidgetRenderCfg && !isList) hideLoop = _sdLoopIsSingle(_sysWidgetRenderCfg);
 
         var isRecipient = (node.type === 'recipient_loop_area');
         var listBand = isList ? _sdListBand(node) : null;
@@ -12226,16 +12251,52 @@ const StyleDesigner = (function () {
         'product.attributes': [
             { __attr_name: _sdT('Size'), __attr_value: 'M' }
         ],
+        'catalog.crumbs': [
+            { __crumb_label: _sdT('Example group'), __crumb_url: '#', __crumb_kind: 'link' },
+            { __crumb_label: _sdT('Example product'), __crumb_url: '', __crumb_kind: 'active' }
+        ],
         'security.passkeys': [
             { __passkey_id: '2', __passkey_name: _sdT('My laptop'), __passkey_last_used: _sdT('Never'), __passkey_is_synced: '' }
+        ],
+        'paging.pages': [
+            { __pager_number: '2', __pager_url: '', __pager_is_current: '1' },
+            { __pager_number: '3' },
+            { __pager_number: '', __pager_url: '', __pager_is_gap: '1' },
+            { __pager_number: '9' }
         ]
     };
 
-    // The rows drawn after a list's card: none when the site draws nothing
-    // for it, inside a sample row, or with the sample switch off; at most
-    // the rows the list shows (props.limit) less the card.
+    // Whether a widget of `cfg` draws its main loop once: a single-record
+    // kind, whose loop holds the layout but repeats nothing.
+    function _sdLoopIsSingle(cfg) {
+        var rt = (cfg && typeof cfg.regionType === 'string' && cfg.regionType !== '') ? cfg.regionType : 'form_list_view';
+        return (rt === 'form_item_view') ||
+               (rt === 'my_account' && cfg.show_submissions !== true) ||
+               (rt === 'login_form') ||
+               (rt === 'forgot_password') ||
+               (rt === 'registration') ||
+               (rt === 'membership') ||
+               (rt === 'custom_form') ||
+               (rt === 'catalog_item_view') ||
+               (rt === 'calendar_event_view') ||
+               (_SW_ACCOUNT_SINGLE[rt] === 1) ||
+               (_SW_ONE_SCREEN[rt] === 1);
+    }
+
+    // The rows drawn after a loop's card. A list: none when the site draws
+    // nothing for it, at most the rows it shows (props.limit) less the card.
+    // The main loop: two rows of the card's values, in a kind that repeats
+    // it and gets no real records (server ghosts) or sample comments. None
+    // inside a sample row or a sample comment, or with the sample switch off.
     function _sdListSampleRows(node) {
-        if (!_sdGhostsOn || _sdListSample || !_sdListIsSourced(node)) return [];
+        if (!_sdGhostsOn || _sdListSample || _sdCommentSample || !node || node.type !== 'loop_area') return [];
+        if (!_sdListIsSourced(node)) {
+            var cfg = _sysWidgetRenderCfg;
+            if (!cfg || !_sysWidgetRenderTreeRoot || _sdFirstLoopArea(_sysWidgetRenderTreeRoot) !== node) return [];
+            var kind = _swKindOf(cfg);
+            if (_SD_GHOST_TYPES[kind] || _SD_GHOST_TYPES[cfg.regionType] || kind === 'comments' || kind === 'comments_recent' || _sdLoopIsSingle(cfg)) return [];
+            return [{}, {}];
+        }
         var src = SW_LIST_SOURCES[node.props.source];
         if (!src || _sdListBand(node).off) return [];
         var rows = SD_LIST_SAMPLE_ROWS[node.props.source] || [{}, {}];
@@ -12410,6 +12471,18 @@ const StyleDesigner = (function () {
         } else if (node.props.title) {
             _attrEl.title = node.props.title;
         }
+        // The interaction, as the page writes it (_sdFxAttrs()); a copy of
+        // its names typed into the Attributes panel gives way, as there.
+        var _fxAttrs = _sdFxAttrs(node.props);
+        if (_fxAttrs) {
+            Array.prototype.slice.call(_attrEl.attributes).forEach(function (a) {
+                if (a.name === 'data-pg-fx' || a.name.indexOf('data-pg-fx-') === 0) _attrEl.removeAttribute(a.name);
+            });
+            _fxAttrs.replace(/\s(data-pg-fx[a-z-]*)(?:="([^"]*)")?/g, function (all, n, v) {
+                _attrEl.setAttribute(n, v === undefined ? '' : v);
+                return all;
+            });
+        }
     }
 
     // Whether an image's canvas wrapper is a block (buildNodeEl()): a
@@ -12554,20 +12627,7 @@ const StyleDesigner = (function () {
         // _sysWidgetRenderCfg is set by buildSharedRefEl before rendering the tree.
         // A list inside a record repeats its rows in every kind that draws it.
         if (node.type === 'loop_area' && _sysWidgetRenderCfg && !_sdListIsSourced(node)) {
-            var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
-                ? _sysWidgetRenderCfg.regionType : 'form_list_view';
-            var _loopHide = (_lwRt === 'form_item_view') ||
-                            (_lwRt === 'my_account' && _sysWidgetRenderCfg.show_submissions !== true) ||
-                            (_lwRt === 'login_form') ||
-                            (_lwRt === 'forgot_password') ||
-                            (_lwRt === 'registration') ||
-                            (_lwRt === 'membership') ||
-                            (_lwRt === 'custom_form') ||
-                            (_lwRt === 'catalog_item_view') ||
-                            (_lwRt === 'calendar_event_view') ||
-                            (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
-                            (_SW_ONE_SCREEN[_lwRt] === 1);
-            if (_loopHide) {
+            if (_sdLoopIsSingle(_sysWidgetRenderCfg)) {
                 // A single-record widget renders its loop_area once, so the
                 // "repeated for every record" band would mislead. An empty
                 // one goes altogether; one holding the layout (a form item
@@ -12992,7 +13052,7 @@ const StyleDesigner = (function () {
                 innerEl.appendChild(dz);
             }
             // Section-binding placeholder — when a semantic node is bound to
-            // a system widget section (breadcrumb, group_tree, filter_chips,
+            // a system widget section (group_tree, filter_chips,
             // filters_offcanvas …), show a friendly hint in the canvas so
             // the designer sees what content the backend will inject at
             // render time. Hint is canvas-only — never saved or sent to
@@ -13005,7 +13065,6 @@ const StyleDesigner = (function () {
             if (node.type === 'semantic'
                 && node.props && node.props._bindings && node.props._bindings.section) {
                 var _sectionLabels = {
-                    breadcrumb:        _sdT('Breadcrumb (category path — filled in by the backend)'),
                     group_tree:        _sdT('Category Tree (nested list — filled by the backend)'),
                     filter_chips:      _sdT('Active Filter Chips (filled in by the backend)'),
                     filters_offcanvas: _sdT('Filter Offcanvas (filled in by the backend — Bootstrap offcanvas)'),
@@ -13540,6 +13599,7 @@ const StyleDesigner = (function () {
                 var rn = node.props.regionName ? ': ' + node.props.regionName : '';
                 rg.innerHTML = '<span class="bi ' + ico + '"></span>' + esc(rl) + esc(rn) +
                     (SD_LEGACY_REGIONS[node.props.regionType] ? ' ' + _sdLegacyBadge() : '');
+                if (_sdLegacyRegionOwn(node)) _sdLegacyRegionAppend(doc, rg);
                 return rg;
             case 'component':
                 var comp = COMPONENTS[node.props.componentType];
@@ -14047,7 +14107,7 @@ const StyleDesigner = (function () {
 
     // Numeric / count tokens — return a small number instead of lorem.
     var _SD_NUMERIC_TOKENS = {
-        '__result_count': '12', '__page_count': '2', '__result_number': '1', '__event_count': '4',
+        '__result_count': '12', '__page_count': '2', '__page_number': '1', '__result_number': '1', '__event_count': '4',
         '__item_qty': '1', '__item_quantity': '1',
         '__cart_count': '3', '__cart_count_label': _sdT('3 items'),
         '__inventory_quantity': '12', '__item_inventory_quantity': '12',
@@ -14063,7 +14123,7 @@ const StyleDesigner = (function () {
         '__has_low_stock': 1, '__has_tax': 1, '__has_shipping': 1,
         '__has_offers': 1, '__has_terms': 1, '__is_cancelled': 1,
         '__can_cancel': 1, '__has_timeline': 1, '__has_notes': 1,
-        '__has_tracking_link': 1
+        '__has_tracking_link': 1, '__has_related': 1
     };
     // A date the way the server prints one when no format suffix is given:
     // day/month/year and a 12-hour clock. Today's date, so the canvas never
@@ -14126,6 +14186,85 @@ const StyleDesigner = (function () {
     }
 
     // Decide preview value for a bound prop based on the prop name + node context.
+    // ── Legacy region preview ────────────────────────────────────────────
+    // The page's own system region of a classic page that draws a custom
+    // layout prints <system></system>, which the server fills from the
+    // layout. Under the region's label the canvas shows it as the server
+    // draws it for the signed-in user (api.php designer/legacy_region_preview):
+    // the page's saved state, read only. A named system region draws another
+    // page's region and keeps the plain placeholder. Canvas-only DOM like the
+    // ghost records: inert, never in the tree JSON, and nothing that would run
+    // in the editor, which shares the site's origin and holds the designer's
+    // session: no scripts, frames, plugins, event attributes or javascript:
+    // addresses, and no ids. Asked for once per page and again after a Save or
+    // a save of the page's layout tab.
+    var _sdLegacyRegionCache = {};   // page id → { html, loading, stale }
+
+    // The page's own system region: the unnamed one, the only one the server
+    // marks for the cut (get_page_content.php).
+    function _sdLegacyRegionOwn(node) {
+        return !!(node && node.props && node.props.regionType === 'system' && !node.props.regionName);
+    }
+
+    // Whether an attribute value is a javascript: address. Read as the browser
+    // reads one, and a little wider: C0 controls and spaces are left out
+    // wherever they stand, and the case does not count.
+    function _sdLegacyRegionJsUrl(value) {
+        return String(value == null ? '' : value).replace(/[\x00-\x20]+/g, '').toLowerCase().indexOf('javascript:') === 0;
+    }
+
+    // Ask again at the next render; the last answer stays on screen meanwhile.
+    function _sdLegacyRegionForget(pageId) {
+        Object.keys(_sdLegacyRegionCache).forEach(function (k) {
+            if (!pageId || String(pageId) === k) _sdLegacyRegionCache[k].stale = true;
+        });
+    }
+
+    function _sdLegacyRegionAppend(doc, rg) {
+        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        if (!_design || !p || !(p.page_id > 0)) return;
+        if ((_design.layoutPages || []).indexOf(p.page_id) === -1) return;
+        var id = p.page_id;
+        var entry = _sdLegacyRegionCache[id] || (_sdLegacyRegionCache[id] = { html: '', loading: false, stale: true });
+        if (entry.stale && !entry.loading) {
+            entry.stale = false;
+            entry.loading = true;
+            _pgApiPost('legacy_region_preview', { page_id: id }).then(function (res) {
+                entry.loading = false;
+                var html = (res && res.status === 'success' && typeof res.html === 'string') ? res.html : '';
+                if (html === entry.html) return;
+                entry.html = html;
+                if (typeof renderCanvas === 'function') renderCanvas();
+            }).catch(function () { entry.loading = false; });
+        }
+        if (!entry.html) return;
+
+        var tpl = doc.createElement('template');
+        tpl.innerHTML = entry.html;
+        // A frame or plugin runs even inside an inert box (a srcdoc or
+        // javascript: frame would run in the editor's origin), so they go
+        // with the scripts.
+        tpl.content.querySelectorAll('script, iframe, object, embed').forEach(function (el) { el.remove(); });
+        tpl.content.querySelectorAll('*').forEach(function (el) {
+            Array.prototype.slice.call(el.attributes).forEach(function (a) {
+                if (a.name === 'id' || a.name.slice(0, 2) === 'on' || _sdLegacyRegionJsUrl(a.value)) el.removeAttribute(a.name);
+            });
+        });
+        var box = doc.createElement('div');
+        box.className = 'sd-legacy-region';
+        box.setAttribute('aria-hidden', 'true');
+        box.setAttribute('inert', '');
+        box.appendChild(tpl.content);
+
+        var band = doc.createElement('div');
+        band.className = 'sd-legacy-band';
+        band.innerHTML = rg.innerHTML + ' <span class="sd-legacy-note">· ' + esc(_sdT('as the site draws it, read only')) + '</span>';
+        rg.innerHTML = '';
+        rg.classList.add('sd-legacy-live');
+        rg.appendChild(band);
+        rg.appendChild(box);
+    }
+
     // ── Ghost records ────────────────────────────────────────────────────
     // A listing widget's repeated part is designed once, on one sample
     // record. The canvas follows that card with real records the server draws
@@ -14243,6 +14382,8 @@ const StyleDesigner = (function () {
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
         if (prop === 'href') return '#';
+        // A field of a referenced record ('__ref', SW_REF_TOKEN).
+        if ((prop === 'text' || prop === 'alt') && fieldName === '__ref') return _sdT('Example');
         if (prop === 'text' || prop === 'alt') {
             // Adaptive link caption — preview the DETAIL wording, since the
             // canvas always shows a sample product row and products always
@@ -22379,6 +22520,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Images of the product'), type: 'loop_area', icon: 'bi-images', extra: { listSource: 'product.images' } },
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
+                { label: _sdT('Crumbs of the catalog path'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'catalog.crumbs' } },
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
                 { label: _sdT('Days of the week'), type: 'loop_area', icon: 'bi-calendar-week', extra: { listSource: 'calendar.weekdays' } },
                 { label: _sdT('Days of the calendar'), type: 'loop_area', icon: 'bi-calendar-day', extra: { listSource: 'calendar.days' } },
@@ -22390,7 +22532,8 @@ const StyleDesigner = (function () {
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } },
-                { label: _sdT('Passkeys of the member'), type: 'loop_area', icon: 'bi-fingerprint', extra: { listSource: 'security.passkeys' } }
+                { label: _sdT('Passkeys of the member'), type: 'loop_area', icon: 'bi-fingerprint', extra: { listSource: 'security.passkeys' } },
+                { label: _sdT('Page links'), type: 'loop_area', icon: 'bi-three-dots', extra: { listSource: 'paging.pages' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
@@ -28261,6 +28404,7 @@ const StyleDesigner = (function () {
         if (_sdCodeApplyBoundValue(node, key || name, now)) return;
         if (key) { p[key] = now || ''; return; }
         if (_sdCodeSetTitleAttr(node, name, now)) return;
+        if (_sdCodeSetFxAttr(node, name, now)) return;
         if (!Array.isArray(p._attrs)) p._attrs = [];
         var idx = -1;
         for (var i = 0; i < p._attrs.length; i++) {
@@ -28354,6 +28498,33 @@ const StyleDesigner = (function () {
         if (now === 'tooltip') return true;
         p.tooltipEnabled = false;
         return now === undefined;
+    }
+
+    // A data-pg-fx attribute edited in the code view goes back to the
+    // interaction it was printed from (_sdFxAttrs()): the node's attributes
+    // as printed, with this one changed, read back into props._fx. A
+    // data-pg-fx naming no known effect ends the interaction; false when the
+    // attribute is not the interaction's (another name, or a value typed on
+    // a node that has none and names no effect), which the caller then
+    // writes to the Attributes panel's list.
+    function _sdCodeSetFxAttr(node, name, now) {
+        if (name !== 'data-pg-fx' && name.indexOf('data-pg-fx-') !== 0) return false;
+        var p = node.props;
+        var had = _sdFxNormalize(p._fx);
+        if (!had && name !== 'data-pg-fx') return false;
+        var attrs = {};
+        _sdFxAttrs(p).replace(/\s(data-pg-fx[a-z-]*)(?:="([^"]*)")?/g, function (all, n, v) { attrs[n] = v === undefined ? '' : v; return all; });
+        if (now === undefined) delete attrs[name]; else attrs[name] = now;
+        var fx = { effect: attrs['data-pg-fx'] };
+        ['trigger', 'duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed'].forEach(function (f) {
+            if (attrs['data-pg-fx-' + f] !== undefined) fx[f] = attrs['data-pg-fx-' + f];
+        });
+        fx.repeat = attrs['data-pg-fx-repeat'] !== undefined;
+        fx = _sdFxNormalize(fx);
+        if (fx) { p._fx = fx; return true; }
+        if (!had) return false;
+        delete p._fx;
+        return true;
     }
 
     // The body tag's id and style live where the Attributes panel keeps the
@@ -28916,7 +29087,12 @@ const StyleDesigner = (function () {
                     if (res.ok && tab) { tab.dirty = true; _sdCodeTabsRender(); }
                 });
             },
-            save: function (content, cb) { post('save', { content: content }, cb); }
+            save: function (content, cb) {
+                post('save', { content: content }, function (res) {
+                    if (res.ok) { _sdLegacyRegionForget(page.page_id); if (typeof renderCanvas === 'function') renderCanvas(); }
+                    cb(res);
+                });
+            }
         };
         _sdCodeTabOpen(spec);
         if (!regenerate || !open) return;
@@ -31640,6 +31816,10 @@ const StyleDesigner = (function () {
         // Search and SERP: the part of the page a site search result points at.
         optHtml += propsSearchSection(selectedNode);
 
+        // Interactions: the node's entrance, hover, click, sticky or
+        // parallax effect (props._fx).
+        optHtml += propsInteractions(selectedNode);
+
         // Data binding section — shown ONLY when selectedNode is inside a system widget.
         // Renders nothing for nodes outside system widgets (zero overhead in the common case).
         optHtml = propsDataBinding(selectedNode) + optHtml;
@@ -31689,6 +31869,7 @@ const StyleDesigner = (function () {
         var _cmtOpenBtn = document.getElementById('sd-cmt-open-settings');
         if (_cmtOpenBtn) _cmtOpenBtn.addEventListener('click', function () { _sdOpenWidgetSection(this.dataset.swId, 'sd-cmt-settings'); });
         _sdIlBind(selectedNode);
+        _sdFxBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
         // Re-apply search filter if user had typed something
@@ -31782,6 +31963,113 @@ const StyleDesigner = (function () {
                 '</div></div>';
         }
         return sect('bi-search', _sdT('Search and SERP'), h);
+    }
+
+    // ── Interactions ──────────────────────────────────────────────────────
+    // One effect per node, kept in props._fx (_sdFxNormalize()) and written
+    // on the page as data-pg-fx-* attributes (_sdFxAttrs(), pg_fx_attrs());
+    // assets/js/pg_fx.src.js plays it on the published page and in the
+    // Preview. Offered only where the page writes it: the content types
+    // whose markup carries the node's attributes, semantic and grid nodes.
+    var _SD_FX_CONTENT = ['heading', 'paragraph', 'span', 'text', 'link', 'icon', 'image', 'divider', 'spacer', 'svg'];
+    function _sdFxTakes(n) {
+        if (!n || !n.props) return false;
+        if (n.type === 'semantic' || n.type === 'container' || n.type === 'row' || n.type === 'col') return true;
+        return n.type === 'content' && _SD_FX_CONTENT.indexOf(n.props.contentType) !== -1;
+    }
+
+    // The node's interaction after one field of the panel changed: the
+    // stored one with `field` set to `value`, normalized; null when the
+    // effect is cleared. Fields that no longer apply drop out; switching
+    // the effect keeps the timing.
+    function _sdFxSet(fx, field, value) {
+        if (field === 'effect' && !value) return null;
+        var cur = _sdFxNormalize(fx) || {}, next = {};
+        for (var k in cur) if (Object.prototype.hasOwnProperty.call(cur, k)) next[k] = cur[k];
+        next[field] = value;
+        return _sdFxNormalize(next);
+    }
+
+    function propsInteractions(n) {
+        if (!_sdFxTakes(n)) return '';
+        var fx = _sdFxNormalize(n.props._fx) || { effect: '' };
+        var spec = _sdFxSpec();
+        var select = function (field, opts) {
+            return '<select class="form-select form-select-sm" data-fx="' + field + '">' + opts.map(function (o) {
+                return '<option value="' + esc(o[0]) + '"' + (o[0] === fx[field] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+            }).join('') + '</select>';
+        };
+        var number = function (field, unit, placeholder) {
+            var r = spec.numbers[field];
+            var v = (field === 'distance' && !fx.distance) ? '' : fx[field];
+            return '<div class="input-group input-group-sm">' +
+                '<input type="number" class="form-control form-control-sm" data-fx="' + field + '" min="' + r[0] + '" max="' + r[1] + '" step="1" value="' + esc(String(v)) + '"' +
+                (placeholder ? ' placeholder="' + esc(String(placeholder)) + '"' : '') + '>' +
+                '<span class="input-group-text">' + unit + '</span></div>';
+        };
+        var h = row(_sdT('Effect'), select('effect', [
+            ['', _sdT('None')], ['fade', _sdT('Fade in')],
+            ['slide-up', _sdT('Slide up')], ['slide-down', _sdT('Slide down')],
+            ['slide-left', _sdT('Slide left')], ['slide-right', _sdT('Slide right')],
+            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')]
+        ]));
+        if (fx.trigger) {
+            var entrance = fx.trigger === 'load' || fx.trigger === 'view';
+            h += row(_sdT('Trigger'), select('trigger', [
+                ['view', _sdT('Scroll into view')], ['load', _sdT('Page load')],
+                ['hover', _sdT('Hover')], ['click', _sdT('Click')]
+            ]));
+            h += row(_sdT('Duration'), number('duration', 'ms'));
+            h += row(_sdT('Delay'), number('delay', 'ms'));
+            h += row(_sdT('Easing'), select('easing', [
+                ['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
+                ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]
+            ]));
+            if (/^slide-/.test(fx.effect)) h += row(_sdT('Distance'), number('distance', 'px', entrance ? 24 : 6));
+            if (entrance) h += row(_sdT('Stagger children'), number('stagger', 'ms'));
+            if (fx.trigger === 'view') h += row(_sdT('Every time'), swAttr('data-fx="repeat"', !!fx.repeat));
+        }
+        if (fx.effect === 'sticky') h += row(_sdT('Top offset'), number('offset', 'px'));
+        if (fx.effect === 'parallax') h += row(_sdT('Speed'), number('speed', '%'));
+        if (fx.trigger) {
+            h += row('', '<button type="button" class="btn btn-sm btn-outline-secondary" data-fx-play>' +
+                '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
+        }
+        if (fx.effect) {
+            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                esc(_sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
+                '</div></div>';
+        }
+        return sect('bi-stars', _sdT('Interactions'), h);
+    }
+
+    // The Interactions section's fields write props._fx (_sdFxSet()). A
+    // choice is one undo step and redraws the panel, whose rows follow the
+    // effect and trigger; a typed number is one undo step per focus and
+    // redraws the panel once it is left, showing the value kept.
+    function _sdFxBind(n) {
+        var panel = document.getElementById('sd-properties');
+        if (!panel || !_sdFxTakes(n)) return;
+        var play = panel.querySelector('[data-fx-play]');
+        if (play) play.addEventListener('click', function () { _sdFxReplay(n); });
+        panel.querySelectorAll('[data-fx]').forEach(function (el) {
+            var field = el.getAttribute('data-fx');
+            var typed = el.type === 'number';
+            var before = typed ? _sdUndoBeforeFirstInput(el) : null;
+            el.addEventListener(typed ? 'input' : 'change', function () {
+                if (typed) before(); else saveState();
+                var fx = _sdFxSet(n.props._fx, field, el.type === 'checkbox' ? el.checked : el.value);
+                if (fx) n.props._fx = fx; else delete n.props._fx;
+                if (!typed) { render(); return; }
+                renderCanvas();
+                renderTree();
+                renderStatusBar();
+                renderAttrsPanel();
+                renderHtmlTree();
+                _sdLivePreviewSchedule();
+            });
+            if (typed) el.addEventListener('change', function () { render(); });
+        });
     }
 
     // A design built without a framework (Custom) has nothing that styles
@@ -32460,6 +32748,7 @@ const StyleDesigner = (function () {
             'product.images':     _sdT('One row for every image of the product, its main image first. Bind a picture to "Image address" in Bind Data. A variant picked on the page does not change the list.'),
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
+            'catalog.crumbs':     _sdT('One row for every crumb of the path to what the page shows: the catalog, its groups, then the group or product itself. A condition on "Kind of crumb" draws a link, words, or where the visitor is.'),
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
             'calendar.weeks':     _sdT('One row for every week the monthly or weekly view shows. Put a list of the days of the calendar inside the row: it lists that week\'s days.'),
             'calendar.days':      _sdT('One row for every day: inside a list of weeks that week\'s days, else every day the view shows. Days of the next or previous month hold no events; a condition on "Day of another month" or "Today" styles them.'),
@@ -32474,7 +32763,8 @@ const StyleDesigner = (function () {
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
-            'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.')
+            'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.'),
+            'paging.pages':       _sdT('One row for every page link the list shows: the first and the last page, two pages either side of the page shown, a gap between them. With this list in the widget its built-in pagination is not added. Conditions on "Page address" and "The page shown" tell a link, the current page and a gap apart.')
         };
         if (about[p.source]) html += note(about[p.source], false);
         html += note(_sdT('A list without rows draws nothing. The canvas shows its row once.'), false);
@@ -33051,6 +33341,15 @@ const StyleDesigner = (function () {
                         '<input type="number" class="form-control form-control-sm" id="sd-sw-max-results" data-sw-id="' + sid + '" min="1" value="' + _maxResVal + '" placeholder="' + esc(_sdT('Unlimited')) + '">' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty for no limit. Paging happens within this ceiling.')) + '</div>'
                     ) +
+                    // Offset and the list's own page parameter
+                    // (pg_sw_list_offset(), pg_sw_list_page_param()).
+                    ((_isFormListView || _isCatalogListing) ? row(_sdT('Skip the first records'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="offset" data-sw-cfg-kind="int" min="0" max="100000" value="' + _swListOffset(_cfg) + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The list starts after this many records, for example beside a box that shows the newest one.')) + '</div>'
+                    ) + row(_sdT('Page number in the address'),
+                        '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="page_param" data-sw-cfg-kind="param" maxlength="32" value="' + esc(_swUrlParamName(_cfg.page_param)) + '" placeholder="page_number">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty to share page_number with the other lists on the page. A name of its own (letters, digits, underscores) lets this list turn its pages alone.')) + '</div>'
+                    ) : '') +
                     row(_sdT('Detail page'),
                         '<select class="form-select form-select-sm" id="sd-sw-detail-page" data-sw-id="' + sid + '">' + _detailOpts + '</select>' +
                         _detailHint
@@ -34047,6 +34346,14 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Results per page'),
                         '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="results_per_page" data-sw-cfg-kind="int" min="1" max="200" value="' + _srPerPage + '">'
+                    ) +
+                    // As a form list's (pg_sw_list_offset(), pg_sw_list_page_param()).
+                    row(_sdT('Skip the first results'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="offset" data-sw-cfg-kind="int" min="0" max="100000" value="' + _swListOffset(_cfg) + '">'
+                    ) +
+                    row(_sdT('Page number in the address'),
+                        '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="page_param" data-sw-cfg-kind="param" maxlength="32" value="' + esc(_swUrlParamName(_cfg.page_param)) + '" placeholder="page_number">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty to share page_number with the other lists on the page. A name of its own (letters, digits, underscores) lets this list turn its pages alone.')) + '</div>'
                     ) +
                     row(_sdT('No results message'),
                         '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="empty_message" value="' + esc(_srNoResults) + '" maxlength="255">'
@@ -36404,6 +36711,10 @@ const StyleDesigner = (function () {
                     v = _swPageVal(this);
                 } else if (kind === 'bool') {
                     v = !!this.checked;
+                } else if (kind === 'param') {
+                    // A query parameter name, '' when it cannot be used.
+                    v = _swUrlParamName(this.value);
+                    this.value = v;
                 } else {
                     v = ('' + this.value).slice(0, 255);
                 }
@@ -37048,7 +37359,11 @@ const StyleDesigner = (function () {
     // and the classic list count them; _render_system_widget_form_list()).
     var SW_FORM_LIST_VIEW_TOKENS = [
         ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')],
-        ['__result_count', _sdT('Number of results')]
+        ['__result_count', _sdT('Number of results')],
+        ['__page_number',   _sdT('Page shown')],
+        ['__page_count',    _sdT('Number of pages')],
+        ['__prev_page_url', _sdT('Previous page link')],
+        ['__next_page_url', _sdT('Next page link')]
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
 
@@ -37065,6 +37380,15 @@ const StyleDesigner = (function () {
     // The widget kinds whose renderer expands the link: the form list under
     // its four names and the form detail.
     var _SW_PAGE_LINK_TYPES = { form_list_view: 1, submitted_forms_list: 1, form_list: 1, blog_list: 1, form_item_view: 1 };
+    // A field of a record the record points at: the binding of a text, an
+    // image or a link in the same widget kinds (pg_coll_ref_bindings() in
+    // includes/fn/collections.php). Which own field holds the reference, the
+    // form it points into and the field to print are kept beside it in
+    // props._bindParams.<prop> (_swRefSpec()). In no token palette, like
+    // the link above.
+    var SW_REF_TOKEN = '__ref';
+    // The props it binds: what a text, an image or a link prints.
+    var _SW_REF_PROPS = { text: 1, alt: 1, src: 1, href: 1 };
 
     // Standard names a form's own field overrides on the server
     // (pg_sw_form_field_wins() in includes/fn/widgets.php keeps the same
@@ -37534,7 +37858,7 @@ const StyleDesigner = (function () {
     ];
     var SW_ATTR_MARKUP = [
         '__description', '__details', '__out_of_stock_message', '__price_formatted', '__price_block_html',
-        '__price_range', '__breadcrumb_html', '__breadcrumb_inner_html', '__cross_sell_html', '__variant_picker',
+        '__price_range', '__variant_picker',
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
@@ -37871,6 +38195,32 @@ const StyleDesigner = (function () {
         ['__member_affiliate_code',   _sdT('Affiliate code (approved affiliates)')]
     ];
 
+    // A recipient's allow-listed values (pg_sw_entity_fields('ship_to')),
+    // offered by the order view (its receipt e-mail too) for the first
+    // recipient and by a list of the order's recipients for each.
+    var SW_SHIP_TO_ENTITY_TOKENS = [
+        ['__ship_to_name',            _sdT('Ship-to name')],
+        ['__shipping_salutation',     _sdT('Salutation (Mr/Ms)')],
+        ['__shipping_address_type',   _sdT('Address type (Residential address, Business address)')],
+        ['__shipping_ship_date',      _sdT('Ship date (shipped or planned)')],
+        ['__shipping_delivered_date', _sdT('Delivered date')]
+    ];
+
+    // A saved recipient's allow-listed values (pg_sw_entity_fields(
+    // 'address_book')), offered by the address book's row loop.
+    var SW_ADDRESS_BOOK_ENTITY_TOKENS = [
+        ['__recipient_salutation',   _sdT('Salutation (Mr/Ms)')],
+        ['__recipient_first_name',   _sdT('First name')],
+        ['__recipient_last_name',    _sdT('Last name')],
+        ['__recipient_address_1',    _sdT('Address line 1')],
+        ['__recipient_address_2',    _sdT('Address line 2')],
+        ['__recipient_city',         _sdT('City')],
+        ['__recipient_state',        _sdT('State / Province')],
+        ['__recipient_zip',          _sdT('Zip Code')],
+        ['__recipient_country',      _sdT('Country')],
+        ['__recipient_address_type', _sdT('Address type (Residential address, Business address)')]
+    ];
+
     // Whether a palette entry is offered only as a condition (yes/no).
     function _swTokenCondOnly(t) {
         return !!(t && t[2] === 'cond');
@@ -37946,7 +38296,8 @@ const StyleDesigner = (function () {
         { label: _sdT('Drill-down / Page'), tokens: [
             ['__active_cat_id',   _sdT('Active category ID')],
             ['__active_cat_name', _sdT('Active category name')],
-            ['__has_children',    _sdT('Whether there is a subgroup (0/1)')]
+            ['__has_children',    _sdT('Whether there is a subgroup (0/1)')],
+            ['__has_breadcrumb',  _sdT('Whether a breadcrumb is drawn (1 or empty)')]
         ]},
         // Legacy HTML tokens — kept for backward compatibility with widgets
         // built before the section-binding system. New designs should use
@@ -37954,7 +38305,6 @@ const StyleDesigner = (function () {
         // instead — designer's wrapper is preserved and only the inner
         // markup comes from the backend.
         { label: _sdT('Old HTML Tokens (legacy)'), tokens: [
-            ['__breadcrumb_html',        _sdT('Breadcrumb HTML (legacy — use the section binding)')],
             ['__group_tree_html',        _sdT('Category tree HTML (old — use a section binding)')],
             ['__filters_button',         _sdT('Filters button (old — use the open_filters action)')],
             ['__filters_offcanvas',      _sdT('Filter offcanvas (legacy — use the section binding)')],
@@ -37982,6 +38332,13 @@ const StyleDesigner = (function () {
             ['__attribute_filters_html', _sdT('Attribute filter UI HTML (legacy)')],
             ['__active_filters_html',    _sdT('Active attribute filter chips HTML (legacy)')],
             ['__has_active_filters',     _sdT('Whether a filter is active (1/0)')]
+        ]},
+        // pg_sw_list_paging(), as in a form list.
+        { label: _sdT('Pages'), tokens: [
+            ['__page_number',   _sdT('Page shown')],
+            ['__page_count',    _sdT('Number of pages')],
+            ['__prev_page_url', _sdT('Previous page link')],
+            ['__next_page_url', _sdT('Next page link')]
         ]}
         // There is no add-to-cart TOKEN. Use the `catalog_add_to_cart` action
         // binding on a real button (that's what the starter tree does): the
@@ -38142,11 +38499,10 @@ const StyleDesigner = (function () {
             ['__discount_percent',         _sdT('Discount percentage (number, without the % sign)')]
         ]},
         { label: _sdT('Cross-sell / Sold Together'), tokens: [
-            ['__cross_sell_html', _sdT('Frequently bought together (HTML — a row of cards)')]
+            ['__has_related', _sdT('Products bought together: 1 shown, 0 none to suggest, empty switched off')]
         ]},
         { label: _sdT('Breadcrumb / Page Path'), tokens: [
-            ['__breadcrumb_html',       _sdT('Breadcrumb (HTML — Catalog → Group → Product)')],
-            ['__breadcrumb_inner_html', _sdT('Breadcrumb inner HTML (only <ol> — for a section binding)')]
+            ['__has_breadcrumb', _sdT('Whether a breadcrumb is drawn (1 or empty)')]
         ]}
     ];
 
@@ -38290,6 +38646,7 @@ const StyleDesigner = (function () {
             ['__recipient_edit_url',     _sdT('Edit address (href)')],
             ['__recipient_remove_url',   _sdT('Remove address (href)')]
         ]},
+        { label: _sdT('More recipient details (loop)'), tokens: SW_ADDRESS_BOOK_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__my_account_url',         _sdT('My account page address (the link drops when there is none)')],
             ['__login_url',              _sdT('Sign-in page address (signed-out view)')]
@@ -38784,6 +39141,9 @@ const StyleDesigner = (function () {
             ['__results_heading',  _sdT('Results heading ("Found 12 results for: …")')],
             ['__result_count',     _sdT('Number of results')],
             ['__page_count',       _sdT('Number of pages')],
+            ['__page_number',      _sdT('Page shown')],
+            ['__prev_page_url',    _sdT('Previous page link')],
+            ['__next_page_url',    _sdT('Next page link')],
             ['__empty_message',    _sdT('No results message')]
         ]},
         { label: _sdT('Result Item (loop_area)'), tokens: [
@@ -39029,6 +39389,7 @@ const StyleDesigner = (function () {
             ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
         { label: _sdT('More order details'), tokens: SW_ORDER_ENTITY_TOKENS },
+        { label: _sdT('More recipient details'), tokens: SW_SHIP_TO_ENTITY_TOKENS },
         { label: _sdT('More item details (loop)'), tokens: SW_ORDER_LINE_ENTITY_TOKENS },
         { label: _sdT('Item\'s product details (loop)'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Order item (loop_area)'), tokens: [
@@ -39399,6 +39760,21 @@ const StyleDesigner = (function () {
         // A list of recent comments is a comments widget on the server.
         comments_recent: {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
+        },
+        // A section binding and a content type are read as the tokens
+        // 'section:<name>' and 'content:<type>' (_sdPartTokenOf()).
+        catalog_listing: {
+            '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); },
+            '__breadcrumb_inner_html': function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'section:breadcrumb':      function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); }
+        },
+        catalog_item_view: {
+            '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); },
+            '__breadcrumb_inner_html': function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'section:breadcrumb':      function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); },
+            '__cross_sell_html':       function (cfg) { return _sdPartCatalogCrossSell(); }
         }
     };
 
@@ -39408,6 +39784,23 @@ const StyleDesigner = (function () {
         var parts = SW_DEFAULT_PARTS[kind];
         if (!parts || !node || typeof node !== 'object') return false;
         var token = _sdPartTokenOf(node, Object.keys(parts));
+        if (token.indexOf('content:') === 0) {
+            // The content node stood for the whole block: the part takes
+            // its place, the node's id kept.
+            var built = parts[token](cfg || null)[0];
+            node.type = built.type;
+            node.props = built.props;
+            node.children = built.children;
+            return true;
+        }
+        if (token.indexOf('section:') === 0) {
+            // The bound element keeps its tag, classes and attributes; the
+            // part replaces what it held.
+            delete node.props._bindings.section;
+            if (!Object.keys(node.props._bindings).length) delete node.props._bindings;
+            node.children = parts[token](cfg || null);
+            return true;
+        }
         if (token) {
             _sdPartHost(node);
             node.children = parts[token](cfg || null).concat(node.children || []);
@@ -39421,11 +39814,16 @@ const StyleDesigner = (function () {
     }
 
     // The token of `tokens` that `node` draws: its text binding, or a text
-    // that is the token alone (^^token^^). '' for none.
+    // that is the token alone (^^token^^); its section binding as
+    // 'section:<name>', a content node as 'content:<type>'. '' for none.
     function _sdPartTokenOf(node, tokens) {
         var p = node.props || {};
+        if (p._bindings && typeof p._bindings.section === 'string' && tokens.indexOf('section:' + p._bindings.section) !== -1) return 'section:' + p._bindings.section;
+        if (node.type === 'content' && typeof p.contentType === 'string' && tokens.indexOf('content:' + p.contentType) !== -1) return 'content:' + p.contentType;
         if (p._bindings && tokens.indexOf(p._bindings.text) !== -1) return p._bindings.text;
-        var m = (typeof p.text === 'string') ? /^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/.exec(p.text) : null;
+        // A custom HTML node holding the token alone counts as its text.
+        var text = (p.contentType === 'custom_html') ? p.html : p.text;
+        var m = (typeof text === 'string') ? /^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/.exec(text) : null;
         return (m && tokens.indexOf(m[1]) !== -1) ? m[1] : '';
     }
 
@@ -39448,7 +39846,7 @@ const StyleDesigner = (function () {
             if (p.lead && ct === 'paragraph') cls.push('lead');
             if (p.align) cls.push('text-' + p.align);
             if (p.cssClass) cls.push(p.cssClass);
-            delete p.contentType; delete p.lead; delete p.align;
+            delete p.contentType; delete p.lead; delete p.align; delete p.html;
             p.tag = tag;
             p.cssClass = cls.join(' ');
             node.type = 'semantic';
@@ -39565,6 +39963,78 @@ const StyleDesigner = (function () {
         return createNode('content', p, []);
     }
 
+    // The crumbs of the catalog path (pg_sw_part_catalog_crumbs()): an
+    // ol.breadcrumb of one item per crumb (catalog.crumbs), a link, words,
+    // or where the visitor is, by the crumb's kind; drawn only when the
+    // widget draws a path, unless `when` is false (the nav around it asks).
+    /* @pg-site-output */
+    function _sdPartCatalogCrumbs(when) {
+        var crumb = function (tag, cls, name, kind, props) {
+            var p = props || {};
+            p.text = '';
+            p._bindings = p._bindings || {};
+            p._bindings.text = '__crumb_label';
+            p._bindings.show_if = '__crumb_kind';
+            p._bindParams = { show_if: { op: 'eq', value: kind } };
+            return _sdPartEl(tag, cls, name, p);
+        };
+        return [_sdPartEl('ol', 'breadcrumb mb-0', _sdT('Breadcrumb List'), when ? _sdPartWhen('__has_breadcrumb', 'not_empty') : {}, [
+            createNode('loop_area', { source: 'catalog.crumbs' }, [
+                _sdPartEl('li', 'breadcrumb-item', _sdT('Crumb'), {}, [
+                    crumb('a', '', _sdT('Link'), 'link', { href: '#', _bindings: { href: '__crumb_url' } }),
+                    crumb('span', 'active', _sdT('Where the visitor is'), 'active'),
+                    crumb('span', '', _sdT('Words'), 'text')
+                ])
+            ])
+        ])];
+    }
+
+    // A catalog widget's breadcrumb (pg_sw_part_catalog_breadcrumb()): a nav
+    // of `cls` said as "breadcrumb" around the crumbs.
+    /* @pg-site-output */
+    function _sdPartCatalogBreadcrumb(cls) {
+        var p = _sdPartWhen('__has_breadcrumb', 'not_empty');
+        p._attrs = [{ name: 'aria-label', value: 'breadcrumb' }];
+        return [_sdPartEl('nav', cls, _sdT('Breadcrumb'), p, _sdPartCatalogCrumbs(false))];
+    }
+
+    // The blocks the server put before the main loop of a widget whose
+    // layout placed none of their tokens, now parts added just before the
+    // main loop once (pg_sw_default_lead_parts()): kind => [tokens that
+    // place it, part].
+    var SW_DEFAULT_LEADS = {
+        catalog_listing: [
+            [['__breadcrumb_html', '__breadcrumb_inner_html', 'catalog.crumbs'], function () { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); }]
+        ]
+    };
+
+    // Puts `nodes` just before the main loop under `node`
+    // (pg_sw_insert_before_main_loop()). Returns whether there was one.
+    function _sdInsertBeforeMainLoop(node, nodes) {
+        if (!node || typeof node !== 'object' || _sdListIsSourced(node) || !node.children) return false;
+        for (var i = 0; i < node.children.length; i++) {
+            var c = node.children[i];
+            if (c && c.type === 'loop_area' && !_sdListIsSourced(c)) {
+                Array.prototype.splice.apply(node.children, [i, 0].concat(nodes));
+                return true;
+            }
+            if (_sdInsertBeforeMainLoop(c, nodes)) return true;
+        }
+        return false;
+    }
+
+    // Adds before the main loop of `tree` each lead block of `kind` it does
+    // not place. Returns whether anything was added.
+    function _sdDefaultLeads(tree, kind, cfg) {
+        var leads = SW_DEFAULT_LEADS[kind];
+        if (!leads || !tree || typeof tree !== 'object') return false;
+        var added = false;
+        leads.forEach(function (l) {
+            if (!_sdPartPlaced(tree, l[0]) && _sdInsertBeforeMainLoop(tree, l[1](cfg || null))) added = true;
+        });
+        return added;
+    }
+
     var SW_DEFAULT_TAILS = {
         order_view: [
             [['__return_form', '__returns'], function (cfg, tree) { return _sdPartOrderReturns(); }],
@@ -39604,11 +40074,15 @@ const StyleDesigner = (function () {
     // The blocks the server added after each row of the main loop whose row
     // placed none of their tokens, now parts added to the end of the main
     // loop once (pg_sw_default_loop_tail_parts()): kind => [tokens that
-    // place it, part].
+    // place it, part, 'tree' when placed anywhere in the tree (added to
+    // the end of the tree without a main loop)].
     var SW_DEFAULT_LOOP_TAILS = {
         order_view: [
             [['__item_form_data_html', 'order.item_forms'], function () { return _sdPartOrderItemForm(); }],
             [['__item_gift_card_html', 'order.item_gift_cards'], function () { return _sdPartOrderItemGiftCard(); }]
+        ],
+        catalog_item_view: [
+            [['__cross_sell_html', 'product.related'], function () { return _sdPartCatalogCrossSell(); }, 'tree']
         ]
     };
 
@@ -39630,13 +40104,68 @@ const StyleDesigner = (function () {
     // anything was added.
     function _sdDefaultLoopTails(tree, kind, cfg) {
         var tails = SW_DEFAULT_LOOP_TAILS[kind];
-        var loop = tails ? _sdMainLoop(tree) : null;
-        if (!loop) return false;
-        var row = { type: 'root', children: loop.children || [] };
-        var due = tails.filter(function (t) { return !_sdPartPlaced(row, t[0]); });
-        loop.children = loop.children || [];
-        due.forEach(function (t) { loop.children = loop.children.concat(t[1](cfg || null)); });
-        return due.length > 0;
+        if (!tails || !tree || typeof tree !== 'object') return false;
+        var placed = JSON.parse(JSON.stringify(tree));
+        var loop = _sdMainLoop(tree);
+        var row = { type: 'root', children: loop ? (loop.children || []) : [] };
+        var added = false;
+        tails.forEach(function (t) {
+            var whole = t[2] === 'tree';
+            if (_sdPartPlaced(whole ? placed : row, t[0])) return;
+            var host = loop || (whole ? tree : null);
+            if (!host) return;
+            host.children = (host.children || []).concat(t[1](cfg || null));
+            added = true;
+        });
+        return added;
+    }
+
+    // The products bought together (pg_sw_part_catalog_cross_sell()): a box
+    // the variant script finds, unless switched off (__has_related empty),
+    // holding a heading and a row of up to four cards (product.related)
+    // when there are any (__has_related 1).
+    /* @pg-site-output */
+    function _sdPartCatalogCrossSell() {
+        var value = function (tag, cls, name, token, op, test) {
+            var p = { text: '', _bindings: { text: token } };
+            if (op) {
+                p._bindings.show_if = test || token;
+                p._bindParams = { show_if: { op: op } };
+            }
+            return _sdPartEl(tag, cls, name, p);
+        };
+        var card = _sdPartEl('a', 'card h-100 text-decoration-none text-body', _sdT('Product card'), { href: '#', _bindings: { href: '__related_url' } }, [
+            createNode('content', {
+                contentType: 'image', src: '', alt: '', fluid: false, rounded: false, loading: 'lazy',
+                cssClass: 'card-img-top', customName: _sdT('Picture'),
+                _bindings: { src: '__related_image_url', show_if: '__related_image_url' },
+                _bindParams: { show_if: { op: 'not_empty' } }
+            }, []),
+            _sdPartEl('div', 'card-img-top bg-body-tertiary', _sdT('No picture'), _sdPartWhen('__related_image_url', 'empty')),
+            _sdPartEl('div', 'card-body p-2', _sdT('Card Body'), {}, [
+                value('div', 'small fw-semibold text-truncate', _sdT('Short Description'), '__related_short_description', 'not_empty'),
+                value('div', 'small fw-semibold text-truncate', _sdT('Name'), '__related_name', 'empty', '__related_short_description'),
+                _sdPartEl('div', 'small mt-1', _sdT('Price'), {}, [
+                    _sdPartEl('span', 'pg-price-block has-discount', _sdT('Discounted price'), _sdPartWhen('__related_original_price', 'not_empty'), [
+                        value('span', 'pg-price-original', _sdT('Price before the discount'), '__related_original_price'),
+                        value('span', 'pg-price-current', _sdT('Price'), '__related_price')
+                    ]),
+                    _sdPartEl('span', 'pg-price-block', _sdT('Price'), _sdPartWhen('__related_original_price', 'empty'), [
+                        value('span', 'pg-price', _sdT('Price'), '__related_price')
+                    ])
+                ])
+            ])
+        ]);
+        var box = _sdPartWhen('__has_related', 'not_empty');
+        box._attrs = [{ name: 'data-pg-civ-cross-sell', value: '1' }];
+        return [_sdPartEl('div', 'pg-civ-cross-sell mt-4', _sdT('Products bought together'), box, [
+            _sdPartEl('h3', 'h5 mb-3', _sdT('Heading'), { text: _sdT('Frequently bought together'), _bindings: { show_if: '__has_related' }, _bindParams: { show_if: { op: 'eq', value: '1' } } }),
+            _sdPartEl('div', 'row g-3', _sdT('Products'), _sdPartWhen('__has_related', 'eq', '1'), [
+                createNode('loop_area', { source: 'product.related', limit: 4 }, [
+                    _sdPartEl('div', 'col-6 col-md-3', _sdT('Product'), {}, [card])
+                ])
+            ])
+        ])];
     }
 
     // The props of an element showing `token`, `sample` on the canvas,
@@ -39955,13 +40484,20 @@ const StyleDesigner = (function () {
         search_results: [
             ['has_query',   _sdT('Something was searched')],
             ['has_results', _sdT('The search found results')],
-            ['no_results',  _sdT('The search found nothing')]
+            ['no_results',  _sdT('The search found nothing')],
+            ['has_prev_page',  _sdT('A previous page exists')],
+            ['has_next_page',  _sdT('A next page exists')],
+            ['has_more_pages', _sdT('The list runs over more than one page')]
         ],
         // The rating of the card's product (listing) or of the product shown
         // (detail): verified, starred reviews, as __rating_count counts them.
         catalog_listing: [
             ['has_rating', _sdT('Row: the product has a rating from verified reviews')],
-            ['no_rating',  _sdT('Row: the product has no rating yet')]
+            ['no_rating',  _sdT('Row: the product has no rating yet')],
+            // Outside the card only (the listing's surround).
+            ['has_prev_page',  _sdT('A previous page exists')],
+            ['has_next_page',  _sdT('A next page exists')],
+            ['has_more_pages', _sdT('The list runs over more than one page')]
         ],
         catalog_item_view: [
             ['has_rating', _sdT('The product has a rating from verified reviews')],
@@ -39993,7 +40529,10 @@ const StyleDesigner = (function () {
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
             ['no_filter_value',  _sdT('No value from the page address is applied')],
             ['has_records',      _sdT('The list found records')],
-            ['no_records',       _sdT('The list found nothing')]
+            ['no_records',       _sdT('The list found nothing')],
+            ['has_prev_page',    _sdT('A previous page exists')],
+            ['has_next_page',    _sdT('A next page exists')],
+            ['has_more_pages',   _sdT('The list runs over more than one page')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
@@ -40414,6 +40953,7 @@ const StyleDesigner = (function () {
                 vOpts.push(['recipient_name',   _sdT('New recipient name (add_name) — catalog_item_view')]);
                 vOpts.push(['recipient_select', _sdT('Recipient picker (ship_to) — catalog_item_view')]);
                 vOpts.push(['stock_notify_email', _sdT('E-mail for the back-in-stock notice (email_address) — catalog_item_view')]);
+                vOpts.push(['stock_notify_phone', _sdT('Mobile number for the back-in-stock text message (phone) — catalog_item_view')]);
             }
             if (region === 'shopping_cart') {
                 vOpts.push(['cart_qty',    _sdT('Row quantity (cart_qty) — shopping_cart loop_area')]);
@@ -41436,10 +41976,12 @@ const StyleDesigner = (function () {
         function _buildOptionsHtml(currentVal, prop) {
             if (currentVal && Object.prototype.hasOwnProperty.call(_bindAlias, currentVal)) currentVal = _bindAlias[currentVal];
             var withPageLink = (prop === 'href' && _pageLinkOffered);
+            var withRef = _pageLinkOffered && _SW_REF_PROPS[prop] === 1;
             var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
             if (_listRows.length) {
                 html += '<optgroup label="' + esc(_sdT('Row of the list')) + '">';
                 _listRows.forEach(function (o) {
+                    if (o.cond && o.token !== currentVal) return;
                     html += '<option value="' + esc(o.token) + '"' + (o.token === currentVal ? ' selected' : '') + '>' + esc(o.label) + '</option>';
                 });
                 html += '</optgroup>';
@@ -41476,9 +42018,13 @@ const StyleDesigner = (function () {
             if (withPageLink) {
                 html += '<option value="' + esc(SW_PAGE_LINK_TOKEN) + '"' + (currentVal === SW_PAGE_LINK_TOKEN ? ' selected' : '') + '>' + esc(_sdT('Another page, with values from the record')) + '</option>';
             }
+            if (withRef) {
+                html += '<option value="' + esc(SW_REF_TOKEN) + '"' + (currentVal === SW_REF_TOKEN ? ' selected' : '') + '>' + esc(_sdT('A field of a referenced record')) + '</option>';
+            }
             // Custom — shown when the saved binding doesn't match any known token
             var isCustom = !!(currentVal &&
                               !(withPageLink && currentVal === SW_PAGE_LINK_TOKEN) &&
+                              !(withRef && currentVal === SW_REF_TOKEN) &&
                               !_listRows.some(function (o) { return o.token === currentVal; }) &&
                               !formFields.some(function (ff) { return ((ff.name && ('' + ff.name).trim()) || ('field_' + ff.id)) === currentVal; }) &&
                               !(_withLabels && formFields.some(function (ff) { return _labelToken(ff) === currentVal; })) &&
@@ -41556,6 +42102,57 @@ const StyleDesigner = (function () {
             return html;
         }
 
+        // Which own field holds the reference, the form it points into and
+        // that form's field to print (props._bindParams[prop]), under the
+        // select. The other form's fields come with the first panel that
+        // asks for them.
+        function _sdRefRows(n, fields, prop) {
+            var spec = _swRefSpec(n.props && n.props._bindParams && n.props._bindParams[prop]);
+            if (!_customFormsCache && typeof _fetchCustomForms === 'function') _fetchCustomForms(function () { renderProperties(); });
+            var target = (typeof spec.page_id === 'number') ? spec.page_id : 0;
+            var targetFields = target ? _formFieldsCache[target] : [];
+            if (target && !targetFields) _fetchFormFields(target, function () { renderProperties(); });
+            var label = function (text) { return '<div style="font-size:.7rem;font-weight:600;margin:8px 0 2px">' + esc(text) + '</div>'; };
+            // The other form's staff-only fields are never read; this form's
+            // own may hold the reference (a category staff choose).
+            var fieldOptions = function (list, cur, extra) {
+                var known = (cur === '');
+                var out = '<option value=""' + (cur === '' ? ' selected' : '') + '>' + esc(_sdT('— Choose a field —')) + '</option>';
+                (list || []).forEach(function (ff) {
+                    if (extra ? !_swFormFieldShown(ff) : (ff.type === 'information')) return;
+                    var t = _swFormFieldToken(ff).toLowerCase();
+                    if (t === cur) known = true;
+                    out += '<option value="' + esc(t) + '"' + (t === cur ? ' selected' : '') + '>' + esc(ff.label || ff.name || ('#' + ff.id)) + '</option>';
+                });
+                (extra || []).forEach(function (o) {
+                    if (o[0] === cur) known = true;
+                    out += '<option value="' + esc(o[0]) + '"' + (o[0] === cur ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                });
+                if (!known) out += '<option value="' + esc(cur) + '" selected>' + esc(cur + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+                return out;
+            };
+            var pageOptions = '<option value="0"' + (spec.page_id ? '' : ' selected') + '>' + esc(_sdT('— Choose a form —')) + '</option>';
+            if (typeof spec.page_id === 'string') {
+                pageOptions += '<option value="' + esc(spec.page_id) + '" selected>' + esc(_sdT('A page of this design (not published yet)')) + '</option>';
+            }
+            pageOptions += _swFormOptions(target);
+            var html = '<div class="sd-sw-ref mt-2">' +
+                label(_sdT('Field holding the reference')) +
+                '<select class="form-select form-select-sm sd-sw-ref-field" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field holding the reference')) + '">' + fieldOptions(fields, spec.field) + '</select>' +
+                label(_sdT('Form it points into')) +
+                '<select class="form-select form-select-sm sd-sw-ref-page" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Form it points into')) + '">' + pageOptions + '</select>';
+            if (target) {
+                html += label(_sdT('Field to show')) +
+                    '<select class="form-select form-select-sm sd-sw-ref-show" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field to show')) + '">' +
+                        fieldOptions(targetFields || [], spec.show, [['reference_code', _sdT('Reference code')], ['address_name', _sdT('Address name')]]) +
+                    '</select>';
+            }
+            html += '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:#888">' +
+                esc(_sdT('The field holds the reference code or the address name of the other record; several are separated by commas. Only complete records are read, and never a field kept for staff only.')) +
+                '</div></div>';
+            return html;
+        }
+
         var rowsHtml = '';
         bindable.forEach(function (b) {
             var current = bindings[b.prop] || '';
@@ -41573,7 +42170,9 @@ const StyleDesigner = (function () {
                 (built.isCustom ? '' : ' style="display:none"') + '>';
             var pageLinkRows = (b.prop === 'href' && _pageLinkOffered && current === SW_PAGE_LINK_TOKEN)
                 ? _sdPageLinkRows(node, formFields) : '';
-            rowsHtml += row(b.label, sel + customInp + pageLinkRows + _sdBindFormatRow(b.prop, current, node));
+            var refRows = (_pageLinkOffered && _SW_REF_PROPS[b.prop] === 1 && current === SW_REF_TOKEN)
+                ? _sdRefRows(node, formFields, b.prop) : '';
+            rowsHtml += row(b.label, sel + customInp + pageLinkRows + refRows + _sdBindFormatRow(b.prop, current, node));
         });
 
         return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
@@ -41649,6 +42248,9 @@ const StyleDesigner = (function () {
             if (bp && value === SW_PAGE_LINK_TOKEN) {
                 if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
                 if (!bp._bindParams[propName]) bp._bindParams[propName] = { page_id: 0, params: [{ name: '', token: '' }] };
+            } else if (bp && value === SW_REF_TOKEN) {
+                if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
+                if (!bp._bindParams[propName]) bp._bindParams[propName] = { field: '', page_id: 0, show: '' };
             } else if (bp && bp._bindParams) {
                 delete bp._bindParams[propName];
                 if (!Object.keys(bp._bindParams).length) delete bp._bindParams;
@@ -41673,6 +42275,36 @@ const StyleDesigner = (function () {
             renderCanvas();
             if (repaint && typeof renderProperties === 'function') renderProperties();
         }
+        // One edit of a reference spec: `fn` changes it, stored back
+        // normalised, and the panel is drawn again.
+        function _sdRefEdit(prop, fn) {
+            if (!selectedNode || !selectedNode.props || !prop) return;
+            saveState();
+            var p = selectedNode.props;
+            if (!p._bindParams || typeof p._bindParams !== 'object' || Array.isArray(p._bindParams)) p._bindParams = {};
+            var spec = _swRefSpec(p._bindParams[prop]);
+            fn(spec);
+            p._bindParams[prop] = _swRefSpec(spec);
+            var sid = _isInsideSystemWidget(selectedNode);
+            if (sid) _sharedDirty[sid] = true;
+            renderCanvas();
+            if (typeof renderProperties === 'function') renderProperties();
+        }
+        document.querySelectorAll('.sd-sw-ref-field, .sd-sw-ref-page, .sd-sw-ref-show').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                var v = this.value;
+                var key = this.classList.contains('sd-sw-ref-field') ? 'field' : (this.classList.contains('sd-sw-ref-page') ? 'page_id' : 'show');
+                _sdRefEdit(this.dataset.refProp, function (spec) {
+                    if (key === 'page_id') {
+                        // Another form: its fields are other fields.
+                        if (String(spec.page_id) !== v) spec.show = '';
+                        spec.page_id = /^tab:/.test(v) ? v : (parseInt(v, 10) || 0);
+                    } else {
+                        spec[key] = v;
+                    }
+                });
+            });
+        });
         var plinkPage = document.querySelector('.sd-sw-plink-page');
         if (plinkPage) {
             plinkPage.addEventListener('change', function () {
@@ -42588,7 +43220,6 @@ const StyleDesigner = (function () {
             var _curSection = (n.props._bindings && n.props._bindings.section) || '';
             var _sectionOpts = [['', _sdT('None')]];
             if (_semSwRegion === 'catalog_listing') {
-                _sectionOpts.push(['breadcrumb',        _sdT('Breadcrumb (category path)')]);
                 _sectionOpts.push(['group_tree',        _sdT('Category Tree (nested list)')]);
                 _sectionOpts.push(['filter_chips',      _sdT('Active Filter Chips')]);
                 _sectionOpts.push(['filters_offcanvas', _sdT('Filter Offcanvas')]);
@@ -42602,7 +43233,6 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['quick_add',         _sdT('Quick Add Box (its own form)')]);
                 _sectionOpts.push(['pending_offers',    _sdT('Campaign Gifts (with an Add button — its own form)')]);
             } else if (_semSwRegion === 'catalog_item_view') {
-                _sectionOpts.push(['breadcrumb',        _sdT('Breadcrumb (Catalog → Group → Product)')]);
                 _sectionOpts.push(['recipient_picker',  _sdT('Recipient Picker (hidden on a product that is not shipped)')]);
             } else if (_semSwRegion === 'custom_form') {
                 // Site-wide CAPTCHA (Settings → CAPTCHA). Absent for a signed-in
@@ -53639,6 +54269,11 @@ const StyleDesigner = (function () {
         'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
         'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact'
     ];
+    // Twin of pg_sw_list_offset(): records a list skips, 0 to 100000.
+    function _swListOffset(cfg) {
+        var n = parseInt(cfg && cfg.offset, 10);
+        return (n > 0) ? Math.min(100000, n) : 0;
+    }
     // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
     function _swUrlParamName(v) {
         var n = String(v == null ? '' : v).trim().toLowerCase();
@@ -53646,6 +54281,18 @@ const StyleDesigner = (function () {
         if (n.indexOf('utm_') === 0 || n.indexOf('pg_') === 0) return '';
         if (_SW_URL_PARAM_RESERVED.indexOf(n) !== -1) return '';
         return n;
+    }
+    // A field of a record the record points at (props._bindParams.<prop>
+    // beside the binding SW_REF_TOKEN), as the panel edits it: twin of
+    // pg_coll_ref_spec(), except that a tab of this design not published
+    // yet ('tab:<key>') stays the form until Publish resolves it.
+    function _swRefSpec(spec) {
+        spec = (spec && typeof spec === 'object') ? spec : {};
+        var tok = function (v) { return (typeof v === 'string') ? v.replace(/[^a-z0-9_-]/gi, '').toLowerCase() : ''; };
+        var pid = spec.page_id, page = 0;
+        if (typeof pid === 'string' && /^tab:/.test(pid)) page = pid;
+        else if (parseInt(pid, 10) > 0 && /^\d+$/.test(String(pid))) page = parseInt(pid, 10);
+        return { field: tok(spec.field), page_id: page, show: tok(spec.show) };
     }
     // A link's page and values (props._bindParams.href) as the panel edits
     // them. Not the server's normaliser (pg_sw_page_link_spec()): the page
@@ -53930,6 +54577,18 @@ const StyleDesigner = (function () {
                 ['__related_original_price',    _sdT('Price before the discount')]
             ]
         },
+        // The crumbs of the catalog path (pg_sw_list_crumb_sources()): the
+        // page's, so a list of them stands anywhere in either widget.
+        'catalog.crumbs': {
+            label: _sdT('Crumbs of the catalog path'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view', 'catalog_listing'],
+            rows: [
+                ['__crumb_label', _sdT('Crumb')],
+                ['__crumb_url',   _sdT('Crumb address')],
+                ['__crumb_kind',  _sdT('Kind of crumb (link, text, active)')]
+            ]
+        },
         // The calendar grid sources (pg_sw_list_calendar_sources()): the
         // monthly and weekly views' heads, weeks, days and a day's events;
         // none takes a field.
@@ -54008,7 +54667,7 @@ const StyleDesigner = (function () {
                 ['__shipping_method',       _sdT('Shipping method / carrier')],
                 ['__arrival_date',          _sdT('Estimated delivery date')],
                 ['__ship_to_item_count',    _sdT('Number of items')]
-            ]
+            ].concat(SW_SHIP_TO_ENTITY_TOKENS)
         },
         'order.items': {
             label: _sdT('Items of the order'),
@@ -54029,7 +54688,7 @@ const StyleDesigner = (function () {
                 ['__item_ship_to',           _sdT('This item\'s shipping address')],
                 ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],
                 ['__item_has_gift_card',     _sdT('Has gift cards (1 or empty)')]
-            ]
+            ].concat(SW_ORDER_LINE_ENTITY_TOKENS, SW_PRODUCT_ENTITY_TOKENS)
         },
         'order.parcels': {
             label: _sdT('Parcels of the order'),
@@ -54148,6 +54807,19 @@ const StyleDesigner = (function () {
                 ['__passkey_last_used', _sdT('Last used (relative time, else "Never")')],
                 ['__passkey_is_synced', _sdT('Synced to the member\'s other devices (1 or empty)')]
             ]
+        },
+        // The page links of a paged widget (pg_sw_list_paging_sources()),
+        // keyed by the page shown: anywhere in the widget.
+        'paging.pages': {
+            label: _sdT('Page links'),
+            arg: '', argRequired: false,
+            kinds: ['form_list_view', 'catalog_listing', 'search_results'],
+            rows: [
+                ['__pager_number',     _sdT('Page number (empty for a gap)')],
+                ['__pager_url',        _sdT('Page address (empty for a gap and the page shown)')],
+                ['__pager_is_current', _sdT('The page shown (1 or empty)')],
+                ['__pager_is_gap',     _sdT('A gap between page numbers (1 or empty)')]
+            ]
         }
     };
 
@@ -54168,6 +54840,9 @@ const StyleDesigner = (function () {
         __related_image_url: '',
         __related_price: '99.90',
         __related_original_price: '',
+        __crumb_label:   _sdT('Main Catalog'),
+        __crumb_url:     '#',
+        __crumb_kind:    'link',
         __weekday_name:  _sdT('Monday'),
         __weekday_short: _sdT('Mon'),
         __week_key:      '1',
@@ -54199,7 +54874,11 @@ const StyleDesigner = (function () {
         __passkey_name:      _sdT('My phone'),
         __passkey_added:     '20.10.2026',
         __passkey_last_used: _sdT('2 days ago'),
-        __passkey_is_synced: '1'
+        __passkey_is_synced: '1',
+        __pager_number:      '1',
+        __pager_url:         '#',
+        __pager_is_current:  '',
+        __pager_is_gap:      ''
     };
 
     // The orders a list's rows take (props.order).
@@ -54271,7 +54950,8 @@ const StyleDesigner = (function () {
     }
 
     // The row tokens of the lists `node` is drawn in, as { token, label },
-    // the nearest list's first; a token a nearer list gives is that list's
+    // with cond: true on a yes/no value (offered as a condition only), the
+    // nearest list's first; a token a nearer list gives is that list's
     // (the site fills it so) and is not offered twice.
     function _sdListRowOptions(node) {
         var out = [], seen = {};
@@ -54280,19 +54960,19 @@ const StyleDesigner = (function () {
             (src ? src.rows : []).forEach(function (r) {
                 if (seen[r[0]]) return;
                 seen[r[0]] = true;
-                out.push({ token: r[0], label: r[1] });
+                out.push(r[2] === 'cond' ? { token: r[0], label: r[1], cond: true } : { token: r[0], label: r[1] });
             });
         });
         return out;
     }
 
     // The row tokens of the nearest list `node` is drawn in, as [token,
-    // label] pairs: the values a page link may take from the row
-    // (_pg_sw_page_link_walk() reads the nearest list alone).
+    // label] pairs: the values a page link may take from the row, a yes/no
+    // value left out (_pg_sw_page_link_walk() reads the nearest list alone).
     function _sdPageLinkRowTokens(node) {
         var list = _sdListsAbove(node)[0];
         var src = list ? SW_LIST_SOURCES[list.props.source] : null;
-        return src ? src.rows.slice() : [];
+        return src ? src.rows.filter(function (r) { return r[2] !== 'cond'; }) : [];
     }
 
     // The label of a list row token, or '' for any other token.
@@ -54319,6 +54999,7 @@ const StyleDesigner = (function () {
     function _sdListStarter(source) {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
+        if (source === 'catalog.crumbs') return _sdPartCatalogCrumbs(false)[0];
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source === 'menu.children') {
@@ -54331,6 +55012,7 @@ const StyleDesigner = (function () {
                 ])
             ]);
         }
+        if (source === 'paging.pages') return _sdPagingListStarter(bs);
         if (source === 'security.passkeys') {
             return createNode('loop_area', { source: source }, [
                 createNode('semantic', { tag: 'div', cssClass: bs ? 'list-group-item d-flex flex-wrap align-items-center gap-2' : '', customName: _sdT('Passkey') }, [
@@ -54501,6 +55183,44 @@ const StyleDesigner = (function () {
     // (dimmed on a day of another month), a "Today" badge and its events as
     // links. The others: a list of their own rows, the days list with its
     // events. Every word is the designer's to restyle or translate.
+    // A new list of the page links: a Bootstrap pagination whose previous
+    // and next items show only when there is such a page (the widget's
+    // flags), around the list's row: a link, the page shown, or a gap, each
+    // picked by a condition on the row (pg_sw_list_paging_rows()).
+    /* @pg-site-output */
+    function _sdPagingListStarter(bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var when = function (token, op) {
+            return { _bindings: { show_if: token }, _bindParams: { show_if: { op: op } } };
+        };
+        var step = function (flag, token, text, name) {
+            return sem('li', 'page-item', name, { _bindings: { eo_visible_if: flag } }, [
+                sem('a', 'page-link', name, { text: text, href: '#', _attrs: [{ name: 'aria-label', value: name }], _bindings: { href: token } })
+            ]);
+        };
+        return sem('nav', 'mt-3', _sdT('Page links'), { _attrs: [{ name: 'aria-label', value: _sdT('Page navigation') }] }, [
+            sem('ul', 'pagination pagination-sm justify-content-center mb-0', _sdT('Page links'), {}, [
+                step('has_prev_page', '__prev_page_url', '\u00ab', _sdT('Previous')),
+                createNode('loop_area', { source: 'paging.pages' }, [
+                    sem('li', 'page-item', _sdT('Page link'), when('__pager_url', 'not_empty'), [
+                        sem('a', 'page-link', _sdT('Page link'), { text: '1', href: '#', _bindings: { href: '__pager_url', text: '__pager_number' } })
+                    ]),
+                    sem('li', 'page-item active', _sdT('The page shown'), when('__pager_is_current', 'not_empty'), [
+                        sem('span', 'page-link', _sdT('The page shown'), { text: '2', _attrs: [{ name: 'aria-current', value: 'page' }], _bindings: { text: '__pager_number' } })
+                    ]),
+                    sem('li', 'page-item disabled', _sdT('Gap'), when('__pager_is_gap', 'not_empty'), [
+                        sem('span', 'page-link', _sdT('Gap'), { text: '\u2026' })
+                    ])
+                ]),
+                step('has_next_page', '__next_page_url', '\u00bb', _sdT('Next'))
+            ])
+        ]);
+    }
+
     /* @pg-site-output */
     function _sdCalendarListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
@@ -54627,9 +55347,11 @@ const StyleDesigner = (function () {
         return (kind === 'submitted_forms_list' || kind === 'form_list' || kind === 'blog_list') ? 'form_list_view' : kind;
     }
 
-    // Whether a list in a widget of `kind` must sit in the main loop: in a
-    // list of records only the record template fills it.
-    function _sdListNeedsMainLoop(kind) {
+    // Whether a list of `source` in a widget of `kind` must sit in the main
+    // loop: in a list of records only the record template fills it. The
+    // crumbs and the page links are the page's, filled anywhere.
+    function _sdListNeedsMainLoop(kind, source) {
+        if (source === 'catalog.crumbs' || source === 'paging.pages') return false;
         return kind === 'form_list_view' || kind === 'catalog_listing';
     }
 
@@ -54677,7 +55399,7 @@ const StyleDesigner = (function () {
         var kind = _sdListWidgetKind(sid);
         if (!kind) return false;
         if (_sdKindLists(kind).indexOf(source) === -1 && !(list && _isInsideSystemWidget(list) === sid)) return false;
-        if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(target)) return false;
+        if (_sdListNeedsMainLoop(kind, source) && !_sdInMainLoopAt(target)) return false;
         // The calendar's grid lists read the calendar, not an event: never
         // in the event loop.
         if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
@@ -54769,7 +55491,7 @@ const StyleDesigner = (function () {
         }
         var kind = _sdListWidgetKind(_isInsideSystemWidget(node));
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
-        if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
+        if (_sdListNeedsMainLoop(kind, spec.source) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
         if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(node) && !_sdOrderItemListKey(spec.source)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
         if (_sdOrderListKeyless(spec.source, node)) {
@@ -54880,6 +55602,7 @@ const StyleDesigner = (function () {
         if (listRow) return listRow;
         if (type === 'form_list_view' || type === 'form_item_view') {
             if (token === SW_PAGE_LINK_TOKEN) return _sdT('Another page, with values from the record');
+            if (token === '__ref') return _sdT('A field of a referenced record'); // SW_REF_TOKEN
             // Names the settings once gave these values (see _bindAlias).
             if (token === '__detail_url' && type === 'form_list_view') token = 'form_item_view';
             if (token === '__not_found_message' && type === 'form_item_view') token = 'not_found';
@@ -56241,13 +56964,9 @@ const StyleDesigner = (function () {
                 // py-4, as for the form list: room under the pagination.
                 return createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [
-                        // Breadcrumb — semantic <nav> bound to section=breadcrumb.
-                        // Backend keeps the wrapper, replaces children with the
-                        // breadcrumb HTML at render time. Designer can re-style
-                        // the wrapper freely.
-                        createNode('semantic', { tag: 'nav', cssClass: 'pg-sw-breadcrumb mb-3',
-                            customName: 'Breadcrumb',
-                            _bindings: { section: 'breadcrumb' } }),
+                        // Breadcrumb — a nav around the crumbs of the catalog
+                        // path (catalog.crumbs), each element designable.
+                        _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3')[0],
                         // Toolbar — Filters button + search form + Clear.
                         // Each piece is a real component bound to its action /
                         // value so the designer can re-style them individually.
@@ -56479,7 +57198,9 @@ const StyleDesigner = (function () {
                         ]),
                         // Back-in-stock form: shown only while the product
                         // cannot be bought for want of stock (can_notify);
-                        // the address field (stock_notify_email) and the
+                        // the address field (stock_notify_email), the number
+                        // field (stock_notify_phone, drawn only while the
+                        // notice can go out as a text message) and the
                         // button (stock_notify) post stock_notify.php.
                         createNode('semantic', { tag: 'div', cssClass: 'mt-3',
                             customName: _sdT('Back-in-stock notice'),
@@ -56496,7 +57217,14 @@ const StyleDesigner = (function () {
                                 createNode('component', { componentType: 'btn',
                                     text: _sdT('Notify me'), variant: 'outline-primary', size: '', href: '#',
                                     _bindings: { action: 'stock_notify' } })
-                            ])
+                            ]),
+                            createNode('semantic', { tag: 'input',
+                                cssClass: 'form-control mt-2', customName: _sdT('Mobile number'),
+                                _attrs: [{ name: 'placeholder', value: _sdT('Mobile number for a text message (optional)') },
+                                         { name: 'aria-label', value: _sdT('Mobile number for a text message (optional)') }],
+                                _bindings: { value: 'stock_notify_phone' } }),
+                            createNode('content', { contentType: 'paragraph',
+                                text: _sdT('We will send you one message when it is back in stock.'), cssClass: 'form-text mb-0' })
                         ])
                     ])
                 ]);
@@ -56592,15 +57320,13 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
-                var loopArea = createNode('loop_area', {}, []);
-                // Breadcrumb at the top — designer can move/style/remove.
-                // Backend (catalog_item_view render) substitutes the
-                // <!--pg-breadcrumb-placeholder--> marker with the live
-                // "Ana Katalog → Group → Subgroup → Product" trail.
-                var breadcrumbNode = createNode('content', {
-                    contentType: 'breadcrumb',
-                    cssClass: 'mb-3'
-                });
+                // The products bought together at the end of the record, where
+                // the widget drew them when no layout placed them.
+                var loopArea = createNode('loop_area', {}, _sdPartCatalogCrossSell());
+                // Breadcrumb at the top — designer can move/style/remove:
+                // "Main Catalog → Group → Subgroup → Product", drawn by the
+                // catalog.crumbs list.
+                var breadcrumbNode = _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3')[0];
                 return createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [breadcrumbNode, starterRow, tabsSection, loopArea])
                 ]);
@@ -60729,8 +61455,71 @@ const StyleDesigner = (function () {
         return out;
     }
 
-    // The id, the title and tooltip, then the Attributes panel's entries
-    // (`list`, the node's _attrs) of a content, semantic or grid node.
+    // A node's interaction (props._fx) with every field known and in
+    // range, or null without one. Twin of pg_fx_normalize()
+    // (includes/fn/designer_fx.php): the same fields, ranges and defaults.
+    // The lists are first-is-default; a number is [min, max, default].
+    function _sdFxSpec() {
+        return {
+            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax'],
+            triggers: ['view', 'load', 'hover', 'click'],
+            easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
+            numbers: {
+                duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0],
+                distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20]
+            }
+        };
+    }
+    function _sdFxNormalize(fx) {
+        if (!fx || typeof fx !== 'object' || typeof fx.effect !== 'string') return null;
+        var spec = _sdFxSpec(), effect = fx.effect.toLowerCase();
+        if (spec.effects.indexOf(effect) === -1) return null;
+        var num = function (name) {
+            var r = spec.numbers[name], v = fx[name];
+            if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '' || !isFinite(Number(v))) return r[2];
+            // PHP's round() rounds halves away from zero.
+            v = Number(v);
+            v = v < 0 ? -Math.round(-v) : Math.round(v);
+            return Math.max(r[0], Math.min(r[1], v));
+        };
+        var out = { effect: effect };
+        if (effect === 'sticky') { out.offset = num('offset'); return out; }
+        if (effect === 'parallax') { out.speed = num('speed'); return out; }
+        var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
+        var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
+        out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
+        out.duration = num('duration');
+        out.delay = num('delay');
+        out.easing = spec.easings.indexOf(easing) !== -1 ? easing : spec.easings[0];
+        if (effect !== 'fade') out.distance = num('distance');
+        if (out.trigger === 'load' || out.trigger === 'view') out.stagger = num('stagger');
+        if (out.trigger === 'view') out.repeat = !!fx.repeat;
+        return out;
+    }
+
+    // The data-pg-fx-* attributes of a node's interaction, '' without one:
+    // the effect, its trigger, then only the values that differ from
+    // pg_fx.src.js's defaults. Twin of pg_fx_attrs().
+    function _sdFxAttrs(p) {
+        var fx = _sdFxNormalize(p ? p._fx : null), spec = _sdFxSpec();
+        if (!fx) return '';
+        var out = ' data-pg-fx="' + fx.effect + '"';
+        if (fx.trigger) out += ' data-pg-fx-trigger="' + fx.trigger + '"';
+        ['duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed'].forEach(function (name) {
+            if (fx[name] === undefined) return;
+            if (name === 'easing') {
+                if (fx.easing !== spec.easings[0]) out += ' data-pg-fx-easing="' + fx.easing + '"';
+                return;
+            }
+            if (fx[name] !== spec.numbers[name][2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
+        });
+        if (fx.repeat) out += ' data-pg-fx-repeat';
+        return out;
+    }
+
+    // The id, the title and tooltip, the interaction, then the Attributes
+    // panel's entries (`list`, the node's _attrs) of a content, semantic or
+    // grid node.
     // `skip`: lower-case names the caller wrote itself; 'id' in it leaves
     // the id out. class, style and id are never written from the list.
     // Twin of _render_extra_attrs($props, $skip, true), less the search
@@ -60739,11 +61528,13 @@ const StyleDesigner = (function () {
     function _sdNodeExtraAttrs(p, list, skip) {
         var out = '';
         if (skip.indexOf('id') === -1 && p.id) out += ' id="' + esc(p.id) + '"';
-        out += _sdNodeTitleAttrs(p, list);
+        var fx = _sdFxAttrs(p);
+        out += _sdNodeTitleAttrs(p, list) + fx;
         (Array.isArray(list) ? list : []).forEach(function (a) {
             if (!a || !a.name) return;
             var name = String(a.name), lname = name.toLowerCase();
             if (lname === 'class' || lname === 'style' || lname === 'id' || skip.indexOf(lname) !== -1) return;
+            if (fx && (lname === 'data-pg-fx' || lname.indexOf('data-pg-fx-') === 0)) return;
             if (lname === 'data-pg-search-section' && p.id && p.searchSection) return;
             var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
             out += ' ' + esc(name) + '="' + esc(val) + '"';
@@ -61546,12 +62337,14 @@ const StyleDesigner = (function () {
     // Platform scripts a visitor page gets when its markup holds their
     // marker. The server's twins add the same file to the published page:
     // pg_theme_switcher_inject(), pg_bs_tips_inject() (its expression is
-    // pg_bs_tips_pattern()) and pg_scroller_inject() (pg_scroller_pattern()).
+    // pg_bs_tips_pattern()), pg_scroller_inject() (pg_scroller_pattern())
+    // and pg_fx_inject() (pg_fx_pattern()).
     // A new row here needs its server step too.
     var _SD_PAGE_SCRIPTS = [
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover)\b/i, file: 'assets/js/pg_bs_tips.js' },
-        { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' }
+        { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
+        { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the
@@ -63074,6 +63867,8 @@ const StyleDesigner = (function () {
                     _okDur = _liveToo ? 4500 : 2500;
                 }
                 sdToast(esc(_okMsg || _pgSavedMessage(res.data)) + ' <span class="bi bi-check2"></span>', 'success', _okDur);
+                // The canvas's classic system regions are drawn from the saved pages.
+                _sdLegacyRegionForget();
                 // Update last-modified statusbar label without a full page reload
                 var _lmLabel = document.getElementById('sd-last-modified-label');
                 if (_lmLabel && res.data.saved_ts && res.data.saved_by) {

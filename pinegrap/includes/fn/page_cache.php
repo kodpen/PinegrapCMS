@@ -1370,7 +1370,7 @@ function pg_page_cache_request_dirties($method, $script, $signed_in, $api_client
 
     $script = strtolower(basename(str_replace('\\', '/', (string) $script)));
 
-    if (in_array($script, array('page_view.php', 'api.php', 'chat.php', 'software_update_check.php', 'wishlist.php', 'stock_notify.php'), true)
+    if (in_array($script, array('page_view.php', 'api.php', 'chat.php', 'software_update_check.php', 'wishlist.php', 'stock_notify.php', 'consent_answer.php'), true)
         || (strpos($script, 'workspace') === 0)) {
         return false;
     }
@@ -1436,7 +1436,7 @@ function pg_page_cache_panel_sub_actions()
                 'design_rename', 'design_delete', 'theme_save', 'theme_look_save', 'theme_palette_save'),
             'clean' => array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch', 'form_fields',
                 'design_targets', 'selectable_pages', 'page_load', 'import_fragment', 'seo_check',
-                'widget_ghosts', 'preview_widgets', 'template_prepare', 'template_from_design',
+                'widget_ghosts', 'preview_widgets', 'legacy_region_preview', 'template_prepare', 'template_from_design',
                 'template_delete', 'template_discard', 'tab_layout', 'revisions_list', 'revision_get',
                 'theme_look_css', 'theme_palette_css',
                 'prototype_links', 'prototype_link_create', 'prototype_link_address', 'prototype_link_revoke',

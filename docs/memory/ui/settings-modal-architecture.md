@@ -32,7 +32,7 @@ Shared
 | `appearance` | theme, dashboard (role < 2 only, `settings-dashboard-card.md`), editor |
 | `features` | features, images |
 | `seo` | seo, analytics |
-| `contact` | campaigns, chat, mailchimp |
+| `contact` | campaigns, chat, mailchimp, sms, sms-messages, iys |
 | `security` | session, device, signin, membership |
 | `firewall` | waf, bots, iplists |
 | `commerce` | store, shipping, giftcards, invoice, payments, affiliate |

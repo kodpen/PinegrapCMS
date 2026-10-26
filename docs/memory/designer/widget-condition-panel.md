@@ -20,4 +20,4 @@ description: The Bind Data row "Show only when a value…" (#1665): token, opera
 
 ## Is the compared text translated?
 - Yes, owner decision (2026-10-25): the value it is compared with is drawn in the page's language (form records through `translate_records`), so a compared text with words is a translatable field `_cond:show_if` (`pg_sw_cond_operand_is_words()`: eq, neq, contains, not_contains, starts; not a number or an amount). The renderer reads it in the page's language before it reads the condition (`pg_tr_condition_props()`). The Translate section lists it as "Condition: compared with" ([[designer-content-translation]]).
-- Not on a code token (`pg_sw_cond_code_tokens()`: `__step_kind`, `__order_status_stage`, #1808): its value is the same in every language, and a translated "complete" would hide the order view's status badge and timeline icons.
+- Not on a code token (`pg_sw_cond_code_tokens()`: `__step_kind`, `__order_status_stage`, #1808; `__crumb_kind`, #1945): its value is the same in every language, and a translated "complete" would hide the order view's status badge and timeline icons, a translated "active" every crumb of the catalog breadcrumb.
