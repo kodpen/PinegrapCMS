@@ -23,7 +23,7 @@ description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W5 #1879 #1905,
 - Owner (2026-10-26), detail and reasons in [[widget-designability-decisions]]: W16 equal look and behaviour, not bytes; W5 three sources, filtered, copied; W8 the allow-list of [[widget-entity-fields]].
 
 ## What does the owner still answer?
-OR in conditions; pg-hide-if-empty everywhere; words beside a value; code areas; page-level facts; per-placement settings; parts with controls; express order lists; classic bridge.
+OR in conditions; canvas default state; pg-hide-if-empty everywhere; words beside a value; code areas; page-level facts; per-placement settings; parts with controls; express order lists; classic bridge.
 
 ## What are the steps? (one PR each)
 - W1 done (#1592, [[widget-finish-pass]], [[widget-conditions]]).
