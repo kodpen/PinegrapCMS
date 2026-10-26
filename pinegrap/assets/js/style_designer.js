@@ -24385,6 +24385,9 @@ const StyleDesigner = (function () {
         _sdPanelLock(panel.querySelector('.sd-styles-user-rules'), designLock);
         var createRuleBtn = document.getElementById('sd-styles-create');
         if (createRuleBtn) createRuleBtn.disabled = !!designLock;
+        // Suggestions first: Enter on a highlighted row picks before the
+        // add rows' own Enter handlers run.
+        _sdAttachStylesSuggest(panel);
 
         // ── Bind element.style declaration events ──
         panel.querySelectorAll('.sd-styles-decl-toggle').forEach(function (cb) {
@@ -25043,6 +25046,9 @@ const StyleDesigner = (function () {
                 '</button>' +
             '</div>';
         _sdPanelLock(panel, _sdPanelLockReason([n]));
+        // Suggestions first: Enter on a highlighted row picks before the
+        // row's own handlers see it.
+        _sdAttachAttrsSuggest(panel, n);
 
         // ── id change ──
         var idInp = panel.querySelector('.sd-attr-val[data-prop="id"]');
@@ -25162,7 +25168,8 @@ const StyleDesigner = (function () {
                         _writeInlineStyleValue(n, inp.value);
                     };
                     inp.addEventListener('keydown', function (e) {
-                        if (e.key !== 'Enter') return;
+                        // A suggestion picked with Enter is still being typed.
+                        if (e.key !== 'Enter' || e.defaultPrevented) return;
                         e.preventDefault();
                         commitStyle();
                     });
@@ -25456,6 +25463,195 @@ const StyleDesigner = (function () {
                 if (next && next !== input) next.focus();
             }
         });
+    }
+
+    // ── Panel input suggestions ────────────────────────────────────────────
+    // The Attributes panel's attribute rows and the Styles panel's property,
+    // value and selector inputs ask the same predictor as the class field;
+    // PgStyleFields reads the part of the field under the caret and splices
+    // the pick in. A filled field lists nothing until it is typed in, so
+    // clicking into a value does not cover the panel.
+    function _sdTreeIds() {
+        var out = [];
+        _frWalk(tree, function (n) {
+            if (n.props && n.props.id) {
+                out.push({ id: n.props.id, classes: String(n.props.cssClass || '').split(/\s+/).filter(Boolean) });
+            }
+        });
+        return out;
+    }
+
+    // One short reason beside a property, value, selector or attribute.
+    function _sdFieldHint(it) {
+        var has = function (code) { return (it.codes || []).indexOf(code) !== -1; };
+        if (has('design')) return _sdT('Used in this design');
+        if (has('own')) return _sdT('On this element');
+        if (has('ctx')) return _sdT('Fits the parent');
+        if (has('pseudo')) return _sdT('Element state');
+        if (has('token')) return _sdT('Bootstrap variable');
+        if (has('option')) return _sdT('Component option');
+        if (has('component')) return _sdT('Bootstrap component');
+        if (has('tag')) return _sdT('Common on this tag');
+        return it.swatch || '';
+    }
+
+    // spec: { kind, name } as PgStyleFields.suggest() takes it; name may be
+    // a function, read at every list (the row's property or attribute).
+    // opts.node: whose context is read; opts.styles(): the declarations
+    // already set; opts.input: the field writes on `input`, so a pick sends
+    // one; opts.change: the field writes on `change`, which a pick set by
+    // script never fires, so it is sent on Enter or blur after a pick;
+    // opts.after(): runs after a pick instead of listing what follows.
+    function _sdAttachFieldSuggest(input, spec, opts) {
+        if (!input || input.disabled || typeof PgStyleSuggest === 'undefined' || typeof PgStyleFields === 'undefined') return;
+        opts = opts || {};
+        var design = null, last = null, handle = null;
+        var typed = false, picked = false;
+        // Before the dropdown's own listeners, which list on focus and input.
+        input.addEventListener('focus', function () { typed = !String(input.value || '').trim(); picked = false; });
+        input.addEventListener('input', function () { typed = true; picked = false; });
+        input.addEventListener('change', function () { picked = false; });
+        handle = PgStyleSuggest.dropdown(input, {
+            openEmpty: true,
+            onFocus: function () {
+                design = null;
+                PgStyleSuggest.load(function () { if (handle) handle.refresh(); });
+            },
+            items: function () {
+                var P = PgStyleSuggest.get();
+                last = null;
+                if (!P || !typed) return [];
+                if (!design) {
+                    design = { classes: _sdTreeClassCounts(), tokens: PgStyleFields.cssTokens(_userStylesGet()), ids: _sdTreeIds() };
+                }
+                var ctx = _sdClassPredictCtx(opts.node, design.classes);
+                ctx.design = design;
+                ctx.styles = opts.styles ? opts.styles() : {};
+                var s = { kind: spec.kind, name: typeof spec.name === 'function' ? spec.name() : spec.name };
+                last = PgStyleFields.suggest(P, s, input.value, input.selectionStart, ctx);
+                return last.items.map(function (it) {
+                    return { label: it.label, hint: _sdFieldHint(it) };
+                });
+            },
+            pick: function (it) {
+                if (!last) return;
+                var r = PgStyleFields.apply(input.value, last, it.label);
+                input.value = r.text;
+                try { input.setSelectionRange(r.caret, r.caret); } catch (e) { /* not a text field */ }
+                if (opts.input) input.dispatchEvent(new Event('input'));
+                if (opts.change) picked = true;
+                if (opts.after) opts.after();
+                else if (handle) handle.refresh();
+            }
+        });
+        if (!handle) return;
+        // The list follows the caret, so a pick lands where the caret is.
+        var follow = function (e) {
+            if (typed && (!e.key || /^(ArrowLeft|ArrowRight|Home|End)$/.test(e.key))) handle.refresh();
+        };
+        input.addEventListener('keyup', follow);
+        input.addEventListener('mouseup', follow);
+        if (opts.change) {
+            // After the dropdown's keydown: Enter on a highlighted row picks.
+            var fire = function () {
+                if (!picked) return;
+                picked = false;
+                input.dispatchEvent(new Event('change'));
+            };
+            input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.defaultPrevented) fire(); });
+            input.addEventListener('blur', fire);
+        }
+    }
+
+    // The Attributes panel's own attribute rows: a name, its value, and the
+    // style row as a declaration list.
+    function _sdAttachAttrsSuggest(panel, n) {
+        if (_sdPanelLockReason([n])) return;
+        var dyn = panel.querySelector('#sd-attr-dynamic');
+        if (!dyn) return;
+        dyn.querySelectorAll('.sd-attr-row').forEach(function (row) {
+            var nameInp = row.querySelector('input.sd-attr-name');
+            var valInp = row.querySelector('input.sd-attr-val');
+            if (valInp && valInp.classList.contains('sd-attr-style-val')) {
+                _sdAttachFieldSuggest(valInp, { kind: 'style' }, { node: n, change: true });
+                return;
+            }
+            if (nameInp) {
+                _sdAttachFieldSuggest(nameInp, { kind: 'attribute' }, {
+                    node: n, input: true,
+                    after: function () { if (valInp) valInp.focus(); }
+                });
+            }
+            if (valInp) {
+                _sdAttachFieldSuggest(valInp, { kind: 'attrValue', name: function () { return nameInp ? nameInp.value : ''; } }, {
+                    node: n, input: true, after: function () {}
+                });
+            }
+        });
+    }
+
+    // The Styles panel's element.style and User Styles cards: properties,
+    // values (units and tokens among them) and rule selectors.
+    function _sdAttachStylesSuggest(panel) {
+        var node = selectedNode;
+        if (!node) return;
+        var declMap = function (decls, skip) {
+            var m = {};
+            decls.forEach(function (d, i) { if (i !== skip && d.name) m[d.name.toLowerCase()] = d.value; });
+            return m;
+        };
+        var inline = function (skip) {
+            return function () { return declMap(_parseInlineStyle(_currentInlineStyleValue(node)), skip); };
+        };
+        var ruleDecls = function (ri, skip) {
+            return function () {
+                var r = _parseUserStyles(_userStylesGet())[ri];
+                return r ? declMap(r.decls, skip) : {};
+            };
+        };
+        var valueOf = function (inp) { return function () { return inp ? inp.value : ''; }; };
+        var one = function (sel) { return panel.querySelector(sel); };
+        // A property picked in a declaration row is written at once and
+        // the caret moves on to the row's value, drawn again.
+        var nameThenValue = function (inp, valueSel) {
+            return function () {
+                inp.dispatchEvent(new Event('change'));
+                var v = one(valueSel);
+                if (v) v.focus();
+            };
+        };
+        var focusOn = function (inp) { return function () { if (inp) inp.focus(); }; };
+
+        if (!_sdPanelLockReason([node])) {
+            panel.querySelectorAll('.sd-styles-decl-name-inp').forEach(function (inp) {
+                var idx = parseInt(inp.dataset.declIdx, 10);
+                var valueSel = '.sd-styles-decl-value-inp[data-decl-idx="' + idx + '"]';
+                _sdAttachFieldSuggest(inp, { kind: 'property' }, { node: node, styles: inline(idx), after: nameThenValue(inp, valueSel) });
+                _sdAttachFieldSuggest(one(valueSel), { kind: 'value', name: valueOf(inp) }, { node: node, styles: inline(idx), change: true });
+            });
+            var addName = one('.sd-styles-decl-add-name');
+            var addValue = one('.sd-styles-decl-add-value');
+            _sdAttachFieldSuggest(addName, { kind: 'property' }, { node: node, styles: inline(-1), after: focusOn(addValue) });
+            _sdAttachFieldSuggest(addValue, { kind: 'value', name: valueOf(addName) }, { node: node, styles: inline(-1) });
+        }
+
+        if (!_sdPanelLockReason(null, 'design')) {
+            panel.querySelectorAll('.sd-styles-user-rule-sel').forEach(function (inp) {
+                _sdAttachFieldSuggest(inp, { kind: 'selector' }, { node: node, change: true });
+            });
+            panel.querySelectorAll('.sd-styles-ur-name-inp').forEach(function (inp) {
+                var ri = parseInt(inp.dataset.urIdx, 10), di = parseInt(inp.dataset.declIdx, 10);
+                var valueSel = '.sd-styles-ur-value-inp[data-ur-idx="' + ri + '"][data-decl-idx="' + di + '"]';
+                _sdAttachFieldSuggest(inp, { kind: 'property' }, { node: node, styles: ruleDecls(ri, di), after: nameThenValue(inp, valueSel) });
+                _sdAttachFieldSuggest(one(valueSel), { kind: 'value', name: valueOf(inp) }, { node: node, styles: ruleDecls(ri, di), change: true });
+            });
+            panel.querySelectorAll('.sd-styles-ur-add-name').forEach(function (inp) {
+                var ri = parseInt(inp.dataset.urIdx, 10);
+                var addVal = one('.sd-styles-ur-add-value[data-ur-idx="' + ri + '"]');
+                _sdAttachFieldSuggest(inp, { kind: 'property' }, { node: node, styles: ruleDecls(ri, -1), after: focusOn(addVal) });
+                _sdAttachFieldSuggest(addVal, { kind: 'value', name: valueOf(inp) }, { node: node, styles: ruleDecls(ri, -1) });
+            });
+        }
     }
 
     // ========================= CSS STYLES PANEL (legacy — DEPRECATED) =====
