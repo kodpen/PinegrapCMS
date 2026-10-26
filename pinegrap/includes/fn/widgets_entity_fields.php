@@ -29,6 +29,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //   number      a whole number, zero included ('0' places left)
 //   money       integer minor units; zero gives '', else the visitor's money text
 //   rate        a percentage column that may be NULL (no rate of its own): ''
+//   day         a DATE column ('YYYY-MM-DD') as a date in $ctx['date_format'];
+//               '0000-00-00' gives ''
 //   stamp       a unix time stamp as a date in $ctx['date_format'] (or through
 //               $ctx['format_stamp'], a callable taking the stamp); 0 gives ''
 //   period      a recurring product's payment period, as translated words
@@ -101,6 +103,31 @@ function pg_sw_entity_fields($entity)
             '__order_refunded_amount'      => array('refunded_amount', 'money'),
             '__order_refunded_date'        => array('refunded_at', 'stamp'),
             '__order_is_tax_exempt'        => array('tax_exempt', 'yesno'),
+        );
+    }
+
+    // A pg_sw_entity_account_read() row: the signed-in member's own account
+    // (my account, profile, login region) or the addressee of an account
+    // e-mail. Password and hint, session and secret keys, device PIN, roles
+    // and rights, staff notes and accounting ids stay off.
+    if ($entity === 'account') {
+        return array(
+            '__member_reward_points'    => array('user_reward_points', 'number'),
+            '__member_expiry_date'      => array('expiration_date', 'day'),
+            '__member_salutation'       => array('salutation', 'text'),
+            '__member_nickname'         => array('nickname', 'text'),
+            '__member_company'          => array('company', 'text'),
+            '__member_job_title'        => array('title', 'text'),
+            '__member_website'          => array('website', 'text'),
+            '__member_mobile_phone'     => array('mobile_phone', 'text'),
+            '__member_business_phone'   => array('business_phone', 'text'),
+            '__member_home_phone'       => array('home_phone', 'text'),
+            '__member_business_city'    => array('business_city', 'text'),
+            '__member_business_country' => array('business_country', 'text'),
+            '__member_time_zone'        => array('timezone', 'text'),
+            '__member_tax_number'       => array('tax_number', 'text'),
+            '__member_tax_office'       => array('tax_office', 'text'),
+            '__member_affiliate_code'   => array('affiliate_code', 'text', array('when' => array('affiliate_approved'))),
         );
     }
 
@@ -222,6 +249,13 @@ function pg_sw_entity_value($spec, $row, $ctx = array())
             if ((int)$value <= 0) return '';
             if (isset($ctx['format_stamp']) && is_callable($ctx['format_stamp'])) return (string)call_user_func($ctx['format_stamp'], (int)$value);
             return date(isset($ctx['date_format']) && $ctx['date_format'] !== '' ? (string)$ctx['date_format'] : 'Y-m-d', (int)$value);
+        case 'day':
+            $text = trim((string)$value);
+            if ($text === '' || strpos($text, '0000-00-00') === 0) return '';
+            $ts = strtotime($text);
+            if (!$ts) return '';
+            if (isset($ctx['format_stamp']) && is_callable($ctx['format_stamp'])) return (string)call_user_func($ctx['format_stamp'], $ts);
+            return date(isset($ctx['date_format']) && $ctx['date_format'] !== '' ? (string)$ctx['date_format'] : 'Y-m-d', $ts);
         case 'period':
             return pg_sw_entity_period_words((string)$value);
         case 'recurrence':
@@ -325,6 +359,70 @@ function pg_sw_entity_order_read($id)
     }
 
     return $row;
+}
+
+// The account $user_id's allow-listed columns, as pg_sw_entity_fields(
+// 'account') reads them; null when there is no such account. One query
+// (user and contact; tax columns came with an upgrade), one more for the
+// country's name. Reward points only while the reward program runs, the
+// affiliate code only while the affiliate program does; the time zone is
+// the member's own, else the site's, by its pick-list label. The caller
+// decides that the visitor may see this account.
+function pg_sw_entity_account_read($user_id)
+{
+    $user_id = (int)$user_id;
+    if ($user_id <= 0) return null;
+
+    $tax = array();
+    foreach (array('tax_number', 'tax_office') as $column) {
+        $tax[] = pg_schema_has('contacts', $column) ? 'contacts.' . $column : 'NULL AS ' . $column;
+    }
+
+    $row = db_item(
+        "SELECT user.user_reward_points, user.timezone,
+                contacts.expiration_date, contacts.salutation, contacts.nickname,
+                contacts.company, contacts.title, contacts.website,
+                contacts.mobile_phone, contacts.business_phone, contacts.home_phone,
+                contacts.business_city, contacts.business_country,
+                contacts.affiliate_approved, contacts.affiliate_code,
+                " . implode(', ', $tax) . "
+         FROM user
+         LEFT JOIN contacts ON contacts.id = user.user_contact
+         WHERE user.user_id = '" . $user_id . "'
+         LIMIT 1");
+    if (!is_array($row)) return null;
+
+    if (!(defined('ECOMMERCE_REWARD_PROGRAM') && ECOMMERCE_REWARD_PROGRAM)) $row['user_reward_points'] = null;
+    if (!(defined('AFFILIATE_PROGRAM') && AFFILIATE_PROGRAM)) $row['affiliate_approved'] = 0;
+
+    $country = trim((string)$row['business_country']);
+    if ($country !== '') {
+        $name = (string)db_value("SELECT name FROM countries WHERE code = '" . e($country) . "' LIMIT 1");
+        if ($name !== '') $row['business_country'] = $name;
+    }
+
+    $zone = trim((string)$row['timezone']);
+    if ($zone === '') $zone = (defined('TIMEZONE') && TIMEZONE != '') ? (string)TIMEZONE : (defined('SERVER_TIMEZONE') ? (string)SERVER_TIMEZONE : '');
+    if ($zone !== '' && function_exists('get_timezones')) {
+        $label = array_search(pg_timezone_list_value($zone), get_timezones());
+        if ($label) $zone = (string)$label;
+    }
+    $row['timezone'] = $zone;
+
+    return $row;
+}
+
+// The account values a widget tree binds, escaped for the token map; an
+// empty array when the tree binds none (no query then) or there is no
+// account.
+function pg_sw_entity_account_tokens($user_id, $tree_json)
+{
+    if ((int)$user_id <= 0 || !pg_sw_entity_wanted('account', $tree_json)) return array();
+
+    $row = pg_sw_entity_account_read($user_id);
+    if (!is_array($row)) return array();
+
+    return array_map('h', pg_sw_entity_values('account', $row, array('date_format' => pg_sw_default_date_format('date'))));
 }
 
 // Whether a widget tree binds any allow-listed value of $entity, read from

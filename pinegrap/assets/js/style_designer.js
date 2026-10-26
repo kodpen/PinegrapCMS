@@ -37504,6 +37504,28 @@ const StyleDesigner = (function () {
         ['__order_is_tax_exempt',        _sdT('Is tax exempt'), 'cond']
     ];
 
+    // An account's allow-listed values (pg_sw_entity_fields('account')),
+    // offered by my account, the profile, the login region and the account
+    // e-mails: the member's own account, or the e-mail's addressee.
+    var SW_MEMBER_ENTITY_TOKENS = [
+        ['__member_reward_points',    _sdT('Reward points (while the reward program runs)')],
+        ['__member_expiry_date',      _sdT('Membership expiration date')],
+        ['__member_salutation',       _sdT('Salutation (Mr/Ms)')],
+        ['__member_nickname',         _sdT('Nickname')],
+        ['__member_company',          _sdT('Company')],
+        ['__member_job_title',        _sdT('Job title')],
+        ['__member_website',          _sdT('Website')],
+        ['__member_mobile_phone',     _sdT('Mobile phone')],
+        ['__member_business_phone',   _sdT('Work phone')],
+        ['__member_home_phone',       _sdT('Home phone')],
+        ['__member_business_city',    _sdT('Business city')],
+        ['__member_business_country', _sdT('Business country')],
+        ['__member_time_zone',        _sdT('Time zone')],
+        ['__member_tax_number',       _sdT('Tax number')],
+        ['__member_tax_office',       _sdT('Tax office')],
+        ['__member_affiliate_code',   _sdT('Affiliate code (approved affiliates)')]
+    ];
+
     // Whether a palette entry is offered only as a condition (yes/no).
     function _swTokenCondOnly(t) {
         return !!(t && t[2] === 'cond');
@@ -37641,6 +37663,7 @@ const StyleDesigner = (function () {
             ['member',                   _sdT('Active member (1/0)')],
             ['not_logged_in',            _sdT('Signed-out message')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Account Pages (href)'), tokens: [
             ['__profile_url',           _sdT('Profile page (the link drops when there is none)')],
             ['__email_preferences_url', _sdT('Email preferences page (the link drops when there is none)')],
@@ -37878,6 +37901,7 @@ const StyleDesigner = (function () {
             ['__username',       _sdT('User name')],
             ['__email_address',  _sdT('Email')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__my_account_url', _sdT('My account page address (the link drops when there is none)')],
             ['__login_url',      _sdT('Sign-in page address (signed-out view)')]
@@ -38002,6 +38026,7 @@ const StyleDesigner = (function () {
             ['__user_avatar_url', _sdT('Picture (their photo, else the picture of their initials)')],
             ['__user_badge',      _sdT('Badge label')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__login_url',       _sdT('Sign-in page address (signed out; brings the visitor back to this page)')],
             ['__register_url',    _sdT('Registration page address (signed out; the link drops when there is none)')],
@@ -38168,6 +38193,7 @@ const StyleDesigner = (function () {
             ['__user_email',       _sdT('Email')],
             ['__username',         _sdT('User name')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__set_password_url', _sdT('Set password link (password reset e-mail only)')],
             ['__login_url',        _sdT('Sign-in page address (the link drops when there is none)')],
