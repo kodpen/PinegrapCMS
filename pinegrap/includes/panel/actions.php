@@ -204,6 +204,10 @@ function pg_panel_actions()
         // made properly there.
         'designer' => array('file' => 'designer.php', 'handler' => 'pg_panel_designer', 'exempt' => true, 'token' => true, 'write' => true),
         'designer_file' => array('file' => 'designer.php', 'handler' => 'pg_panel_designer_file', 'exempt' => true, 'token' => true, 'write' => true),
+        // A dynamic region's PHP code from the visual designer's code tab.
+        // The general gate (role 1 or better) runs first; the handler then
+        // admits administrators only, the right of edit_dynamic_region.php.
+        'dynamic_region_code' => array('file' => 'designer.php', 'handler' => 'pg_panel_dynamic_region_code', 'exempt' => false, 'token' => true, 'write' => true),
         'shared_component' => array('file' => 'shared_component.php', 'handler' => 'pg_panel_shared_component', 'exempt' => true, 'token' => true, 'write' => true),
 
         'file_explorer' => array('file' => 'explorer.php', 'handler' => 'pg_panel_file_explorer', 'exempt' => true, 'token' => true, 'write' => true),

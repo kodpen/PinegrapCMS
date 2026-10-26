@@ -24,6 +24,9 @@
  *                                    sub-actions
  *   designer_file                    the visual designer's new CSS/JS/JSON
  *                                    files
+ *   dynamic_region_code              a dynamic region's PHP code, read and
+ *                                    saved from the visual designer's code
+ *                                    tab
  *
  * Called by pg_panel_dispatch() (includes/panel/actions.php); see that file
  * for the contract.
@@ -1851,4 +1854,63 @@ function pg_panel_designer_file($request, $action)
         default:
             respond(array('status' => 'error', 'message' => 'Unknown sub_action.'));
     }
+}
+
+function pg_panel_dynamic_region_code($request, $action)
+{
+    // The visual designer's code tab of a dynamic region (the region node
+    // names it). The code runs as PHP on every page that places the region,
+    // so the right is the one edit_dynamic_region.php asks for, and the row
+    // and the log are written as that screen writes them.
+
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    validate_token();
+    $user = validate_user();
+
+    // Administrators only, as the classic screen
+    // (validate_area_access($user, 'administrator')). The general gate has
+    // already let designers (1) through; they place the region but do not
+    // write its code.
+    if ((int) $user['role'] !== 0) {
+        respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+    }
+
+    $name = (isset($request['name']) && is_string($request['name'])) ? $request['name'] : '';
+    $region = ($name !== '')
+        ? db_item("SELECT dregion_id AS id, dregion_name AS name, dregion_code AS code FROM dregion WHERE dregion_name = '" . escape($name) . "'")
+        : false;
+
+    if (!$region) {
+        respond(array('status' => 'error', 'message' => lang('Record not found.')));
+    }
+
+    $sub = isset($request['sub_action']) ? $request['sub_action'] : '';
+
+    if ($sub === 'read') {
+        respond(array('status' => 'success', 'id' => (int) $region['id'], 'name' => $region['name'], 'content' => (string) $region['code']));
+    }
+
+    if ($sub === 'save') {
+        if (!isset($request['content']) || !is_string($request['content'])) {
+            respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+        }
+
+        db(
+            "UPDATE dregion
+            SET
+                dregion_code = '" . escape($request['content']) . "',
+                dregion_user = '" . (int) $user['id'] . "',
+                dregion_timestamp = UNIX_TIMESTAMP()
+            WHERE dregion_id = '" . (int) $region['id'] . "'"
+        );
+
+        log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('dynamic region'), $region['name']))), $_SESSION['sessionusername']);
+
+        respond(array('status' => 'success'));
+    }
+
+    respond(array('status' => 'error', 'message' => lang('Invalid action.')));
 }
