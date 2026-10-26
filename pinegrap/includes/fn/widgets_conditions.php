@@ -171,16 +171,26 @@ function pg_sw_cond_holds_required($node)
 // Whether a condition's compared text is words a site translation should
 // carry: an operator that compares text, and a value that is not a number
 // or an amount (pg_sw_cond_is_number()). Numbers read the same in every
-// language.
+// language, and so do the codes of pg_sw_cond_code_tokens().
 function pg_sw_cond_operand_is_words($props)
 {
     if (!is_array($props) || empty($props['_bindings']['show_if'])) return false;
+    if (in_array(strtolower((string)$props['_bindings']['show_if']), pg_sw_cond_code_tokens(), true)) return false;
     $params = (isset($props['_bindParams']['show_if']) && is_array($props['_bindParams']['show_if']))
         ? $props['_bindParams']['show_if'] : array();
     $op = isset($params['op']) ? (string)$params['op'] : '';
     if (!in_array($op, array('eq', 'neq', 'contains', 'not_contains', 'starts'), true)) return false;
     $value = (isset($params['value']) && is_string($params['value'])) ? trim($params['value']) : '';
     return ($value !== '') && !pg_sw_cond_is_number($value);
+}
+
+// Tokens whose value is a fixed code, the same in every language: the order
+// view's default parts compare them (created, paid, complete, pending...).
+// A translated compared text would never match the code, and the status badge
+// and the timeline icons would not draw on that language.
+function pg_sw_cond_code_tokens()
+{
+    return array('__step_kind', '__order_status_stage');
 }
 
 // Whether a condition may read $token (see pg_sw_cond_denied_tokens()).

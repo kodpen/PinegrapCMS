@@ -172,6 +172,19 @@ function test_widget_parts_order_status_badge_matches_the_old_block()
 	}
 }
 
+// A part's condition compares a code, the same in every language: its
+// compared text is no translatable words, or a translated "complete" would
+// never match and the badge would not draw.
+function test_widget_parts_code_conditions_are_not_translated()
+{
+	foreach (array('__order_status_stage' => 'complete', '__step_kind' => 'shipped') as $token => $code) {
+		$props = array('_bindings' => array('show_if' => $token), '_bindParams' => array('show_if' => array('op' => 'eq', 'value' => $code)));
+		pg_assert_false(pg_sw_cond_operand_is_words($props), $token . ' compares a code');
+	}
+	$props = array('_bindings' => array('show_if' => '__name'), '_bindParams' => array('show_if' => array('op' => 'eq', 'value' => 'Culture')));
+	pg_assert_true(pg_sw_cond_operand_is_words($props), 'other values stay words');
+}
+
 // The editor's part (style_designer.js) is the server's.
 function test_widget_parts_editor_twin()
 {
