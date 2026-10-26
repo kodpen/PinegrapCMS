@@ -345,3 +345,28 @@ function test_bs6_class_api_keeps_split_classes()
 		array(3, 'btn-outline-secondary -> btn-outline theme-secondary', 'a class API call takes one class: convert it by hand'),
 	), $r['reviews']);
 }
+
+// On a converted tree (check_bs6.php after the switch) a class the v6 dist
+// defines is kept: `p-5` is not grown to `p-12` and not counted as a rewrite;
+// a v5-only class is still mapped.
+function test_bs6_converted_tree_keeps_v6_classes()
+{
+	$dist = array('p-5' => true, 'md:col-6' => true, 'bg-primary' => true, 'badge' => true);
+	bs6_converted_tree_classes($dist);
+
+	try {
+		pg_assert_same('p-5', bs6_test_tokens('p-5'), 'a v6 spacer stays');
+		pg_assert_same('md:col-6', bs6_test_tokens('md:col-6'));
+		pg_assert_same('fg-secondary', bs6_test_tokens('text-muted'), 'a v5-only class is still mapped');
+		pg_assert_same('md:col-6', bs6_test_tokens('col-md-6'));
+
+		$list = bs6_convert_class_list('badge bg-primary p-5 text-muted');
+		pg_assert_same('badge bg-primary p-5 fg-secondary', $list['value'], 'badge rule skips a v6 class');
+		pg_assert_same(1, $list['changed']);
+	} finally {
+		bs6_converted_tree_classes(false);
+	}
+
+	pg_assert_same(null, bs6_converted_tree_classes(), 'cleared');
+	pg_assert_same('p-12', bs6_test_tokens('p-5'), 'Bootstrap 5 reading again');
+}
