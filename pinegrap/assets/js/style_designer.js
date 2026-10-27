@@ -32816,6 +32816,7 @@ const StyleDesigner = (function () {
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
             (n.props.regionType === 'system' ? _sdLayoutPropsHtml() : '') +
             (n.props.regionType === 'designer' || n.props.regionType === 'common' ? _sdDesignerRegionPropsHtml(n) : '') +
+            (n.props.regionType === 'page' ? _sdPageRegionPropsHtml(n) : '') +
             _sdRegionWidgetPropsHtml(n) +
             designableHtml
         ) + commentsInfo;
@@ -45893,6 +45894,106 @@ const StyleDesigner = (function () {
             .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
+    // A page region node in the open page's own tree: its content (the
+    // page's pregion row) moves into the tree as a block content editors
+    // edit (_sdPageRegionsConvert()), for the roles that convert regions.
+    function _sdPageRegionPropsHtml(n) {
+        var page = _pgActivePage();
+        if (!_design || !_design.designerRegionConvert || !page || !(page.page_id > 0)) return '';
+        var hit = _sdAnyParent(n);
+        if (!hit || hit.sid) return '';
+        return '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-page-region-convert">' +
+                    '<span class="bi bi-box-arrow-in-down me-1"></span>' + esc(_sdT('Move page content into the page')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Every page region of this page becomes a block with its content, edited here by the people who edit the page today; front-end inline editing of the page ends. Saving the page keeps it.')) +
+            '</div></div>';
+    }
+
+    // The page region nodes of the open page, the way the site fills them
+    // (the Nth <pregion> tag takes the page's Nth row): own holds the nodes
+    // of the page tree in document order, shared counts those inside the
+    // shared components and widgets it places, loading tells a component
+    // not fetched yet.
+    function _sdPageRegionNodes() {
+        var out = { own: [], shared: 0, loading: false };
+        var open = {};
+        function walk(node, sid) {
+            if (!node) return;
+            if (node.type === 'region' && node.props && node.props.regionType === 'page') {
+                if (sid) out.shared++; else out.own.push(node);
+            }
+            if (node.type === 'shared_ref') {
+                var rid = parseInt(node.props && node.props.sharedId, 10) || 0;
+                if (rid <= 0 || open[rid]) return;
+                var c = _sharedCache[rid];
+                if (!c || !c.tree) { out.loading = true; return; }
+                open[rid] = true;
+                walk(c.tree, rid);
+                delete open[rid];
+                return;
+            }
+            (node.children || []).forEach(function (k) { walk(k, sid); });
+        }
+        walk(tree, 0);
+        return out;
+    }
+
+    // Every page region node of the open page is replaced by the block the
+    // server made from its row (designer sub-action page_regions_import),
+    // in one undo step. All of them at once: a node left behind would be
+    // filled with another row once the ones before it are gone. A page
+    // region inside a shared component is drawn from every placing page's
+    // rows, so such a page is refused. The rows stay; the saved tree no
+    // longer asks for them.
+    function _sdPageRegionsConvert() {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var page = _pgActivePage();
+        if (!page || !(page.page_id > 0)) return;
+        var found = _sdPageRegionNodes();
+        if (found.loading) { sdToast(esc(_sdT('The shared components are still loading — wait a second.')), 'warning'); return; }
+        if (found.shared) {
+            sdToast(esc(_sdT('A page region inside a shared component shows the content of every page that places it, so it cannot move into one page. Put it on the page first.')), 'error', 9000);
+            return;
+        }
+        if (!found.own.length) return;
+        var key = _activeKey;
+        _pgApiPost('page_regions_import', { page_id: page.page_id, count: found.own.length }).then(function (data) {
+            if (!data || data.status !== 'success') {
+                sdToast(esc((data && data.message) || _sdT('Network error')), 'error');
+                return;
+            }
+            // Another tab, an undo or an edit meanwhile: the rows would no
+            // longer match the nodes.
+            var blocks = Array.isArray(data.blocks) ? data.blocks : [];
+            var spots = (_activeKey === key && blocks.length === found.own.length) ? found.own.map(function (node) {
+                var parent = findParent(node, tree);
+                var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(node) : -1;
+                return idx === -1 ? null : { parent: parent, node: node };
+            }) : [];
+            if (!spots.length || spots.indexOf(null) !== -1) {
+                sdToast(esc(_sdT('The page changed meanwhile; try again.')), 'warning');
+                return;
+            }
+            saveState();
+            var first = null;
+            spots.forEach(function (s, i) {
+                var block = blocks[i];
+                _backfillIds(block);
+                s.parent.children.splice(s.parent.children.indexOf(s.node), 1, block);
+                if (!first) first = block;
+            });
+            selectedNode  = first;
+            selectedNodes = [];
+            if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(first);
+            render();
+            sdToast(esc(_sdT('The page\'s content is now part of the page; save the page to keep it.')), 'success', 7000);
+            (Array.isArray(data.warnings) ? data.warnings : []).forEach(function (w) { sdToast(esc(String(w)), 'warning', 12000); });
+        }).catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
+    }
+
     // The classic data-driven regions, the widget kind that draws each and
     // the widget setting that names the region (the same name the region
     // node holds).
@@ -48645,6 +48746,9 @@ const StyleDesigner = (function () {
         // A designer region becomes a shared component on this page.
         var dsgRegionBtn = document.getElementById('sd-designer-region-convert');
         if (dsgRegionBtn) dsgRegionBtn.addEventListener('click', function () { _sdDesignerRegionConvert(selectedNode); });
+        // The page's own regions move into its tree.
+        var pageRegionBtn = document.getElementById('sd-page-region-convert');
+        if (pageRegionBtn) pageRegionBtn.addEventListener('click', function () { _sdPageRegionsConvert(); });
         // A menu, menu sequence, ad or tag cloud region becomes its widget.
         var regionWidgetBtn = document.getElementById('sd-region-make-widget');
         if (regionWidgetBtn) regionWidgetBtn.addEventListener('click', function () { _sdRegionMakeWidget(selectedNode); });

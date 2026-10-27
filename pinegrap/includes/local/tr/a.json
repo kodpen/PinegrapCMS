@@ -533,6 +533,7 @@
     "A page of type {var:1} is part of how the site works and cannot be deleted through the API.": "{var:1} tipindeki sayfa sitenin işleyişinin parçasıdır ve API üzerinden silinemez.",
     "A page of type {var:1} is part of how the site works and is not deleted from here.": "{var:1} türündeki sayfa sitenin çalışmasının parçasıdır, buradan silinmez.",
     "A page of type {var:1} is part of how the site works and is not moved through the API.": "{var:1} tipindeki sayfa sitenin işleyişinin parçasıdır ve API üzerinden taşınmaz.",
+    "A page region inside a shared component shows the content of every page that places it, so it cannot move into one page. Put it on the page first.": "Paylaşılan bileşen içindeki bir sayfa bölgesi, onu yerleştiren her sayfanın içeriğini gösterir; bu yüzden tek bir sayfaya taşınamaz. Önce onu sayfaya koyun.",
     "A page that explains the card's security code, linked beside the field.": "Kartın güvenlik kodunu açıklayan, alanın yanında bağlantısı verilen sayfa.",
     "A page that explains the cookies in detail, shown as a link in the notice. Start it with / or https://; leave it empty for no link.": "Çerezleri ayrıntılı anlatan sayfa; bildirimde bağlantı olarak gösterilir. / ya da https:// ile başlatın; bağlantı istemiyorsanız boş bırakın.",
     "A page that is closed to search engines cannot be in the site map.": "Arama motorlarına kapatılmış bir sayfa site haritasında yer alamaz.",

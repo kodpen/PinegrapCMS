@@ -5,7 +5,7 @@ module: widgets_lists_menu, widgets_menu
 ---
 
 ## What is it?
-- Kind `menu_region` (`includes/fn/widgets_menu.php`; not `menu`, the region node's type), label "Menu". `cfg.menu_name` names the menu as `<menu>name</menu>` does; a new widget takes the site's first menu. R6 of [[legacy-retirement-prerequisites]].
+- Kind `menu_region` (`includes/fn/widgets_menu.php`; not `menu`, the region node's type), label "Menu". `cfg.menu_name` names the menu as `<menu>name</menu>` does; a new widget takes the site's first menu. See [[classic-regions-in-designer]].
 - The items stay where they were: `menu_items`, edited in the menu screen by managers and the users of `users_menus_xref`. The widget reads them on every request through `pg_menu_tree()` (which now also reads `link_page_id`).
 
 ## How are the levels drawn?
