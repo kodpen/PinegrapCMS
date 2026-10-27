@@ -182,9 +182,10 @@ function ws_mcp_ask_problem($server, $asker = null, $channel_id = 0, $task_id = 
 
 /**
  * The servers the channel screen offers after @: those that can be asked.
- * agent says the server answers on its own (mcp_agent.php).
+ * agent says the server answers on its own (mcp_agent.php); avatar and icon
+ * are the ones it has everywhere (ws_mcp_agent_identity()).
  *
- * @return array[] alias, name, agent
+ * @return array[] alias, name, agent, avatar, icon
  */
 function ws_mcp_boot()
 {
@@ -196,7 +197,7 @@ function ws_mcp_boot()
                 'alias' => (string) $server['alias'],
                 'name'  => (string) $server['name'],
                 'agent' => function_exists('ws_mcp_agent_mode') && ws_mcp_agent_mode($server),
-            );
+            ) + array_intersect_key(ws_mcp_agent_identity($server), array('avatar' => true, 'icon' => true));
         }
     }
 

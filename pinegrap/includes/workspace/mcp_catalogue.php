@@ -260,6 +260,83 @@ function ws_mcp_catalogue_added($servers)
 }
 
 /**
+ * The ready-made connector a server's address is, compared as
+ * ws_mcp_catalogue_added() compares them: ws_mcp_servers stores no key.
+ *
+ * @param mixed      $url
+ * @param array|null $catalogue the entries to look in, ws_mcp_catalogue() when null
+ * @return string the entry's key, '' when the address is none of them
+ */
+function ws_mcp_catalogue_entry_for_url($url, $catalogue = null)
+{
+    if (!is_string($url) || (trim($url) === '')) {
+        return '';
+    }
+
+    $key = ws_mcp_url_key($url);
+
+    foreach (($catalogue === null) ? ws_mcp_catalogue() : (array) $catalogue as $entry_key => $entry) {
+        if (ws_mcp_url_key($entry['url'] ?? '') === $key) {
+            return (string) $entry_key;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The one picture and icon an MCP server asked by its alias is drawn with,
+ * wherever the server draws it: the letters of its alias in a colour seeded
+ * by its id, and the icon of the ready-made connector it came from (the plug
+ * for one added by its address). A deleted server keeps its id's colour
+ * under the letters of "mcp".
+ *
+ * @param array|null $server    a ws_mcp_servers row (id, alias, url), null when deleted
+ * @param int        $server_id the id when the row is gone
+ * @param array|null $catalogue the entries to look in, ws_mcp_catalogue() when null
+ * @return array avatar, icon, initials, seed, catalogue (the entry's key or '')
+ */
+function ws_mcp_agent_identity($server, $server_id = 0, $catalogue = null)
+{
+    $id = is_array($server) ? (int) ($server['id'] ?? 0) : (int) $server_id;
+    $alias = is_array($server) ? trim((string) ($server['alias'] ?? '')) : '';
+    $entry_key = is_array($server) ? ws_mcp_catalogue_entry_for_url($server['url'] ?? '', $catalogue) : '';
+    $entries = ($catalogue === null) ? ws_mcp_catalogue() : (array) $catalogue;
+    $icon = ($entry_key !== '') ? (string) ($entries[$entry_key]['icon'] ?? '') : '';
+
+    // The icon goes into a class attribute: only a Bootstrap Icons name.
+    if (!preg_match('/^bi-[a-z0-9-]+$/', $icon)) {
+        $icon = 'bi-plug';
+    }
+
+    $initials = function_exists('pg_initials') ? pg_initials(($alias !== '') ? $alias : 'mcp', '') : 'M';
+    $seed = 'mcp' . $id;
+
+    return array(
+        'avatar'    => function_exists('pg_initials_avatar_url')
+            ? pg_initials_avatar_url($initials, 'contact', $seed)
+            : PATH . SOFTWARE_DIRECTORY . '/assets/images/ws-ai.svg',
+        'icon'      => $icon,
+        'initials'  => $initials,
+        'seed'      => $seed,
+        'catalogue' => $entry_key,
+    );
+}
+
+/**
+ * ws_mcp_agent_identity() for a server by id, also one deleted since.
+ *
+ * @param int $server_id
+ * @return array as ws_mcp_agent_identity()
+ */
+function ws_mcp_agent_identity_for_id($server_id)
+{
+    $server = function_exists('ws_mcp_server') ? ws_mcp_server((int) $server_id) : null;
+
+    return ws_mcp_agent_identity($server, (int) $server_id);
+}
+
+/**
  * The alias a host suggests: the name it is registered under (linear for
  * mcp.linear.app, example for shop.example.com.tr), shaped as an alias may
  * be. A reserved or too short name gets -mcp; a host with no name, server.
