@@ -7,13 +7,13 @@ description: Step B8 of plans/bootstrap-6-panel.md (claim #1866): building a reh
 - Rebuild `feature/bootstrap-6` (#1866, a draft until the owner says go) on the latest `development`, comment the result there. Tool commits first, the generated commit last, pushed only when every check passes: drop it (`git rebase --onto <gen>~1 <gen>`), `git rebase origin/development`, `php tools/bs6_migrate.php --all --write`, `--switch --write`, `php tools/build_js.php`, every CI check, commit; then `git merge -s ours origin/feature/bootstrap-6` (keeps the old history, the tree stays the rebuild) and a plain `git push`. Never commit the sandbox's `data/config.php`.
 - Scriptable hand fixes are code in `tools/bs6_switch.php`, `bs6_switch_shell.php`, `bs6_switch_tokens.php`, `bs6_switch_stems.php` (tests `tests/bs6_switch*_test.php`); a fix found by its exact text goes into `tools/bs6_switch_texts.txt`. Never a patch file. What each fix does: the file headers and `ui/bootstrap-6-codemod.md`.
 
-## What is still on the hand-fix list (rehearsal 4, 2026-10-27)?
-- `check_bs6.php` on the converted tree, 185 findings: modal markup left 33, surfaces with no v6 class 27, `display-*`/`lead` 23, text colours 22, RGB variables 14 (`design_themes.php`, -rgb triples), dropdown 12, CSS selectors 10, stems built in code 9 (values the code does not show), others under 8. `page_designer.js`'s `addClass('btn-danger open')` targets the site preview (v5) and stays.
+## What is still on the hand-fix list (rehearsal 5, 2026-10-27)?
+- `check_bs6.php` on the converted tree: 13 panel findings, each reviewed and left: `bg-`/`text-` stems whose values are theme colours or `start`/`end` (v6 has the same classes), a `removeClass` naming two themes, `page_designer.js`'s `addClass('btn-danger open')` (site preview), `.was-validated`/`was-validated` (no panel form uses `.needs-validation`), `.btn-outline-light/-dark` selectors (no panel element carries them).
 - Look: v6 has no 1400 px breakpoint (`xxl` classes become `2xl`, 1536), so 1400–1535 px screens take the `xl` layout; a few px of height on cards and phone form rows.
-- The visual editor's canvas-facing code in `style_designer.js` stays v5 on purpose; `forms.php` and the other shared files (`bs6_scope_kind()`) are not converted.
+- The visual editor's canvas-facing code in `style_designer.js` stays v5 on purpose; `forms.php` and the other shared files (`bs6_scope_kind()`, 77 check findings) are not converted.
 
 ## Where does the next rehearsal start?
-- Rebuild as above. Then open every dialog, menu and drawer of the liked screens in a browser (only the screenshot list and a few were opened), the modal (33) and dropdown (12) markup left, surfaces and text colours with no v6 class, the shared files.
+- Rebuild as above. The browser probe (open every dialog, drawer and menu toggle of the screenshot screens, light and dark) is in the rehearsal 5 comment; continue with what it lists, then the shared files.
 - Open owner questions in #1866's body: own media queries on 1024/1280 (keep until answered) and the lost 1400 px breakpoint.
 
 ## What does the owner check?
