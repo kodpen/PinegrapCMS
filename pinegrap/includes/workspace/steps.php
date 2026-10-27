@@ -1006,7 +1006,15 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $action['closes_at'] = time() + (int) $node['config']['closes_in'] * 3600;
     }
 
+    // An event the step causes starts the actions waiting for it one step
+    // further down the run's chain; the depth that stood before is given
+    // back after, so a step run inside another run keeps that run's depth.
+    $outer_depth = ws_event_depth();
+    ws_event_depth((int) ($run['depth'] ?? 0));
+
     $done = ws_scheduled_do($owner, $row, $action, $step_context);
+
+    ws_event_depth($outer_depth - 1);
 
     // An approval box asked: it waits for the request to end
     // (flow_runs.php).

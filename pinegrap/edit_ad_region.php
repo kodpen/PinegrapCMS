@@ -34,8 +34,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM ad_regions WHERE id = '" 
 // if user has a user role and if they do not have access to this ad region, output error
 if (($user['role'] == 3) && (in_array($_REQUEST['id'], get_items_user_can_edit('ad_regions', $user['id'])) == FALSE)) {
     // get ad region name
-    $query = "SELECT name FROM ad_regions WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT name FROM ad_regions WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     log_activity(lang(array('string'=>'access denied because user does not have access to edit the ad region ({var:1})','vars'=>$row['name'])), $_SESSION['sessionusername']);
@@ -49,8 +49,8 @@ $liveform = new liveform('edit_ad_region');
 $ads_assigned_to_this_ad_region = false;
 
 // determine if there are ads assigned to this ad region
-$query = "SELECT id FROM ads WHERE ad_region_id = '" . escape($_REQUEST['id']) . "' LIMIT 1";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT id FROM ads WHERE ad_region_id = ? LIMIT 1";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 
 // if there is a result, then there are ads assigned to this ad region, so remember that
 if (mysqli_num_rows($result) > 0) {
@@ -70,8 +70,8 @@ if (!$_POST) {
             slideshow_interval,
             slideshow_continuous
         FROM ad_regions
-        WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $name = $row['name'];
@@ -292,12 +292,12 @@ if (!$_POST) {
         }        
         
         // delete ad region
-        $query = "DELETE FROM ad_regions WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM ad_regions WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete users_ad_regions_xref records
-        $query = "DELETE FROM users_ad_regions_xref WHERE ad_region_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM users_ad_regions_xref WHERE ad_region_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('ad region'), $liveform->get_field_value('name')) )), $_SESSION['sessionusername']);
         
@@ -320,6 +320,7 @@ if (!$_POST) {
     // else the user selected to save the ad region
     } else {
         $sql_name = "";
+        $name_values = array();
         $name = '';
         
         // if the user is a designer or above, then validate name field and prepare to update it
@@ -333,8 +334,8 @@ if (!$_POST) {
                 // because the theme designer does not support underscores in names.  We are going to allow
                 // underscores as long as it was set in the past in order to prevent their styles or themes
                 // from being messed up.
-                $query = "SELECT name FROM ad_regions WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT name FROM ad_regions WHERE id = ?";
+                $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $previous_name = $row['name'];
                 
@@ -361,9 +362,9 @@ if (!$_POST) {
                     "SELECT id
                     FROM ad_regions
                     WHERE
-                        (name = '" . escape($liveform->get_field_value('name')) . "')
-                        AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (name = ?)
+                        AND (id != ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
                 
                 // if the name is already in use by a different ad region, then mark error
                 if (mysqli_num_rows($result) > 0) {
@@ -377,14 +378,15 @@ if (!$_POST) {
                 exit();
             }
             
-            $sql_name = "name = '" . escape($liveform->get_field_value('name')) . "',";
+            $sql_name = "name = ?,";
+            $name_values = array((string) $liveform->get_field_value('name'));
             
             $name = $liveform->get_field_value('name');
             
         // else the user is a manager, so get ad region name for log message
         } else {
-            $query = "SELECT name FROM ad_regions WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT name FROM ad_regions WHERE id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $name = $row['name'];
         }
@@ -394,16 +396,16 @@ if (!$_POST) {
             "UPDATE ad_regions
             SET
                 $sql_name
-                display_type = '" . escape($liveform->get_field_value('display_type')) . "',
-                transition_type = '" . escape($liveform->get_field_value('transition_type')) . "',
-                transition_duration = '" . escape($liveform->get_field_value('transition_duration')) . "',
-                slideshow = '" . escape($liveform->get_field_value('slideshow')) . "',
-                slideshow_interval = '" . escape($liveform->get_field_value('slideshow_interval')) . "',
-                slideshow_continuous = '" . escape($liveform->get_field_value('slideshow_continuous')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                display_type = ?,
+                transition_type = ?,
+                transition_duration = ?,
+                slideshow = ?,
+                slideshow_interval = ?,
+                slideshow_continuous = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array_merge($name_values, array((string) $liveform->get_field_value('display_type'), (string) $liveform->get_field_value('transition_type'), (string) $liveform->get_field_value('transition_duration'), (string) $liveform->get_field_value('slideshow'), (string) $liveform->get_field_value('slideshow_interval'), (string) $liveform->get_field_value('slideshow_continuous'), (string) $user['id'], (string) $liveform->get_field_value('id')))) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('ad region'), $name) )), $_SESSION['sessionusername']);
         
