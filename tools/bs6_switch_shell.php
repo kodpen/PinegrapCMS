@@ -1107,12 +1107,12 @@ function bs6_switch_script_checks($source)
 			$next = preg_match('/(?<![\w-])form-check(?![\w-])/', $window, $stop, PREG_OFFSET_CAPTURE) ? $stop[0][1] : strlen($window);
 			$window = substr($window, 0, $next);
 
-			if (!preg_match('/\b([A-Za-z_$][\w$]*)\s*=\s*' . $helper . 'input\3\s*,\s*([\'"])form-check-input\4/', $window, $input, PREG_OFFSET_CAPTURE)) {
+			if (!preg_match('/\b([A-Za-z_$][\w$]*)\s*=\s*' . $helper . 'input\3\s*,\s*([\'"])form-check-input(?=\4|\s)/', $window, $input, PREG_OFFSET_CAPTURE)) {
 				continue;
 			}
 
 			$name = $input[1][0];
-			$class_at = $from + $input[0][1] + strlen($input[0][0]) - strlen('form-check-input') - 1;
+			$class_at = $from + $input[0][1] + strlen($input[0][0]) - strlen('form-check-input');
 
 			if ($is_switch) {
 				$append = '/\b' . preg_quote($wrap[1][0], '/') . '\.appendChild\(\s*' . preg_quote($name, '/') . '\s*\)/';
@@ -1142,9 +1142,9 @@ function bs6_switch_script_checks($source)
 		$done[$edit[0]] = true;
 	}
 
-	if (preg_match_all('/\b([A-Za-z_$][\w$]*)\s*=\s*' . $helper . 'input\3\s*,\s*([\'"])form-check-input\4/', $source, $inputs, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+	if (preg_match_all('/\b([A-Za-z_$][\w$]*)\s*=\s*' . $helper . 'input\3\s*,\s*([\'"])form-check-input(?=\4|\s)/', $source, $inputs, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
 		foreach ($inputs as $input) {
-			$class_at = $input[0][1] + strlen($input[0][0]) - strlen('form-check-input') - 1;
+			$class_at = $input[0][1] + strlen($input[0][0]) - strlen('form-check-input');
 
 			if (isset($done[$class_at]) || ($site_output && bs6_in_ranges($class_at, $site_output))) {
 				continue;
