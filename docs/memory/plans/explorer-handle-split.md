@@ -16,9 +16,9 @@ description: Cutting pg_explorer_handle() (view_folder_and_files_f.php, ~7k line
 - Slice 5, catalog list, tree, create group, rename, membership remove and pages (941 lines, #2154): `handle_catalog.php`, six handlers, `pg_explorer_catalog_bin_entries()` and `pg_explorer_catalog_short_description_follows_name()` (test `explorer_handle_catalog_test.php`).
 - Slice 6, catalog paste, recycle, restore, purge and enable (1,196 lines, #2164): `handle_catalog.php` (1,105 lines now), five handlers, `pg_explorer_catalog_bin_item_type()` and `pg_explorer_catalog_recycle_message()` (test `explorer_handle_catalog_test.php`; `catalog_bin_test.php` reads the new file). A later catalog slice goes in a new `handle_catalog_*.php`.
 - Slice 7, bulk product options and products bulk edit (1,032 lines, #2172): `handle_products_bulk.php`, two handlers, `pg_explorer_bulk_product_group_options()`, `pg_explorer_bulk_product_new_price()` and `pg_explorer_bulk_product_new_quantity()` (test `explorer_handle_products_bulk_test.php`; `product_stock_events_test.php` reads the new file).
+- Slice 8, catalog quick edit, commerce access and file usage (1,189 lines, #PRNUM): `handle_catalog_edit.php` (catalog_quick_edit, catalog_access_get, catalog_access_set, `pg_explorer_catalog_quick_price()`, `pg_explorer_catalog_quick_quantity()`, `pg_explorer_column_length()`) and `handle_file_usage.php` (file_usage, which also takes `$folders_that_user_has_access_to` for its folder check, and `pg_explorer_file_usage_setting_hits()`) (tests `explorer_handle_catalog_edit_test.php`, `explorer_handle_file_usage_test.php`; `product_stock_events_test.php` and `workspace_upload_refusals_test.php` read the new files).
 
 ## In which order are the rest cut? (lines in the switch)
-8. catalog_quick_edit (174), catalog_access_get/set (110), file_usage (275).
 9. tree (33), create_folder (55), create_file (70), rename (148), move (173).
 10. paste (163), delete_files (61), folder_options (55), folder_settings_get/set (86), files_design (69).
 11. file_get/file_save (194), erp_tree/erp_list (111), shared_list (125).
