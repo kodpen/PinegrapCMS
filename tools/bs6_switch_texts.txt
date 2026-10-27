@@ -701,3 +701,64 @@ control.
 ===
 [class]:has(> .form-field > :is(input[type="checkbox"], .switch))
 >>>
+
+The design picker dialog (pg_designer_target_modal()) is panel chrome in a
+file the codemod leaves to the editor's site vocabulary.
+
+@@ includes/fn/designer.php
+<<<
+    <div class="modal fade" id="pgDesignTargetModal" tabindex="-1" aria-labelledby="pgDesignTargetTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="pgDesignTargetTitle"></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-body-secondary" id="pgDesignTargetIntro"></p>
+                    <div class="list-group" id="pgDesignTargetList" role="radiogroup" aria-labelledby="pgDesignTargetTitle"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="pgDesignTargetGo" disabled>' . lang('Continue') . '</button>
+                </div>
+            </div>
+        </div>
+    </div>
+===
+    <dialog class="dialog pg-dialog-centered dialog-scrollable" id="pgDesignTargetModal" aria-labelledby="pgDesignTargetTitle">
+        <div class="dialog-header">
+            <h2 class="dialog-title fs-lg" id="pgDesignTargetTitle"></h2>
+            <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
+        </div>
+        <div class="dialog-body">
+            <p class="small fg-secondary" id="pgDesignTargetIntro"></p>
+            <div class="list-group" id="pgDesignTargetList" role="radiogroup" aria-labelledby="pgDesignTargetTitle"></div>
+        </div>
+        <div class="dialog-footer">
+            <button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+            <button type="button" class="btn btn-sm btn-solid theme-primary" id="pgDesignTargetGo" disabled>' . lang('Continue') . '</button>
+        </div>
+    </dialog>
+>>>
+
+@@ includes/fn/designer.php
+<<<
+"<input class=\"form-check-input flex-shrink-0 m-0\" type=\"radio\"
+===
+"<input class=\"radio flex-shrink-0 m-0\" type=\"radio\"
+>>>
+
+@@ includes/fn/designer.php
+<<<
+" <span class=\"badge text-bg-primary fw-normal ms-1\">"
+===
+" <span class=\"badge theme-primary fw-normal ms-1\">"
+>>>
+
+@@ includes/fn/designer.php
+<<<
+small text-body-secondary\"
+===
+small fg-secondary\"
+>>>
