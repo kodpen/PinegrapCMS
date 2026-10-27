@@ -72,6 +72,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/proposals.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/quick_edit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bulk.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bulk_sources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled_draft.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled_messages.php');

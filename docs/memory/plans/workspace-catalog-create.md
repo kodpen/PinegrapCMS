@@ -1,6 +1,6 @@
 ---
 name: workspace-catalog-create
-description: Plan (2026-10-23, 1a #1603, 1b #1604, 2 #1613, answers 1-4 given; 3a #2266): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
+description: Plan (2026-10-23, 1a #1603, 1b #1604, 2 #1613, answers 1-4 given; 3a #2266, 3b #2278): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -22,7 +22,7 @@ None needs schema.
 2. PR #1613: "New product / product group" in the drawer (`openRecord()` new mode), the palette, `/product` (`/ürün`, `ws_command_create_names()`, `ws_command_names()` unchanged); `ws_quick_create_save()`, panel action `ws_record_create`; decision tick. API: POST /products, /product-groups suffice (owner default, 2026-10-19).
 3. Bulk product drafts, cut in three (each ~1,000 lines):
    3a. PR #2266: one 'bulk' `ws_ai_changes` row with `bulk.action` create and `rows` (products only, `WS_BULK_CREATE_MAX` 200, Q2), checked at proposal (`ws_bulk_create_rows()`, names free and not twice) and again per row at the write; run by `ws_bulk_step()`, each row's place saved before its write (`ws_bulk_create_row()`): no double on resume. Off sale unless the row ticks `enabled`; scored and `product.created` per row by the product writer (Q4). Reaches the answer routes' and `workspace.changes.propose`'s `bulk` with no new route. (`workspace/workspace-bulk-create.md`).
-   3b. From a pasted list and a channel xlsx/csv ("Make products", as the import: `pg_products_import_to_csv()`, `pg_products_import_price_cents()`): rows proposed as a 3a card.
+   3b. PR #2278: from a pasted list and a channel xlsx/csv ("Make products", as the import: `pg_products_import_to_csv()`, `pg_products_import_price_cents()`): rows proposed as a 3a card.
    3c. Pinegrap AI / @Claude from a description (Premium like Pinegrap AI? plans/workspace-agent-handles.md Q2): the tool texts that teach `bulk.action` create; MCP: the same entry via `workspace.changes.propose` after plans/workspace-mcp-capabilities.md slice 3.
 4. One-go variant set. 4a (PR #1887): `pg_catalog_variant_set_create()` and `POST /product-groups/variant-sets` (`commerce/catalog-variant-set-writer.md`). 4b (PR #1943): the `variant_set` change kind and matrix card (workspace/workspace-variant-set-change.md).
 
@@ -33,4 +33,4 @@ None needs schema.
 4. Answered (same answer): (a) `product.created` per row, as AI bulk updates.
 
 ## Where to start?
-- Slice 3b (open PR), then 3c.
+- Slice 3c after #2278 merges.

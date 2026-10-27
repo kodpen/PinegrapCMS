@@ -1112,6 +1112,7 @@
     "Columns Row": "Sütunlar Satırı",
     "Columns and commentary from our writers.": "Yazarlarımızdan köşe yazıları ve yorumlar.",
     "Columns are matched by name; you can correct the matching in the next step.": "Sütunlar ada göre eşleştirilir; eşlemeyi sonraki adımda düzeltebilirsiniz.",
+    "Columns not read: {var:1}.": "Okunmayan sütunlar: {var:1}.",
     "Columns to choose": "Sütunlar seçilecek",
     "Combinations": "Kombinasyonlar",
     "Come and talk it over": "Gelin, birlikte konuşalım",
