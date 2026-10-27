@@ -683,3 +683,21 @@ it is now on the dialog itself.
 ===
 #sdTemplateModal.sd-tpl-dialog {
 >>>
+
+The settings cards put a check's or a switch's control in the right-hand
+column; a v6 switch's input sits in a .switch box, so the box is the
+control.
+
+@@ assets/css/backend.src.css
+<<<
+[class]:has(> .form-field > input[type="checkbox"]) > .form-field > :is(.check, .radio) {
+===
+[class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > :is(.check, .radio, .switch) {
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+[class]:has(> .form-field > input[type="checkbox"])
+===
+[class]:has(> .form-field > :is(input[type="checkbox"], .switch))
+>>>
