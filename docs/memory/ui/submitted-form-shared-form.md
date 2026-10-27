@@ -14,4 +14,4 @@ description: The submitted form create and edit screens share includes/forms/sub
 - Edit: access (also posts from a site's form item view page, its hook code), prefill, form properties card, the required checks (only fields that appeared in the post), replacing / deleting a stored file, delete, notifications on completion, `send_to` redirects.
 
 ## Why only these parts?
-- Measured among the remaining add/edit pairs: add 1,048 and edit 1,511 lines, about 706 shared, the largest free pair. The save flows differ (edit is also posted from the site), so only the identical parts moved. Tests: `tests/submitted_form_form_test.php`.
+- PR #2466. Measured among the remaining add/edit pairs: add 1,048 and edit 1,511 lines, about 706 shared, the largest free pair. The save flows differ (edit is also posted from the site), so only the identical parts moved. Tests: `tests/submitted_form_form_test.php`.
