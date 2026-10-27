@@ -2069,11 +2069,10 @@ function ws_mcp_agent_answer_view($request, $body)
             'about'    => ($split['tool'] !== '')
                 ? lang(array('string' => 'Answered through {var:1}, for {var:2}', 'vars' => array($split['tool'], $asker)))
                 : lang(array('string' => 'Answered for {var:1}', 'vars' => $asker)),
-            'avatar'   => ws_mcp_agent_identity($server, (int) $request['mcp_server_id'])['avatar'],
             'presence' => 'offline',
             'app'      => true,
             'mcp'      => $alias,
-        ),
+        ) + ws_mcp_agent_face(ws_mcp_agent_identity($server, (int) $request['mcp_server_id'])),
         'text'   => $split['text'],
     );
 }

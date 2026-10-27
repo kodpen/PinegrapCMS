@@ -1,0 +1,20 @@
+[
+  {"join": "all", "tests": [], "expect": true},
+  {"join": "any", "tests": [], "expect": true},
+  {"join": "all", "tests": [["not_empty", "x", ""]], "expect": true},
+  {"join": "any", "tests": [["not_empty", "", ""]], "expect": false},
+  {"join": "all", "tests": [["eq", "İzmir", "izmir"], ["gt", "₺12,50", "10"]], "expect": true},
+  {"join": "all", "tests": [["eq", "İzmir", "izmir"], ["gt", "₺8,50", "10"]], "expect": false},
+  {"join": "any", "tests": [["eq", "Ankara", "izmir"], ["gt", "₺12,50", "10"]], "expect": true},
+  {"join": "any", "tests": [["eq", "Ankara", "izmir"], ["gt", "₺8,50", "10"]], "expect": false},
+  {"join": "any", "tests": [["eq", "Ankara", "İstanbul"], ["starts", "34100", "34"]], "expect": true},
+  {"join": "any", "tests": [["eq", "", "İstanbul"], ["starts", "", "34"]], "expect": false},
+  {"join": "any", "tests": [["not_empty", "", ""], ["not_empty", " ", ""], ["not_empty", "1", ""]], "expect": true},
+  {"join": "all", "tests": [["not_empty", "a", ""], ["not_empty", "b", ""], ["empty", " ", ""]], "expect": true},
+  {"join": "all", "tests": [["not_empty", "a", ""], ["not_empty", "b", ""], ["empty", "c", ""]], "expect": false},
+  {"join": "any", "tests": [["lt", "kat 2", "5"], ["multiple_of", "6", "3"]], "expect": true},
+  {"join": "all", "tests": [["neq", "€12,50 EUR", "12,5"], ["contains", "Ring twice", "TWICE"]], "expect": false},
+  {"join": "all", "tests": [["unknown", "a", ""], ["not_empty", "a", ""]], "expect": false},
+  {"join": "any", "tests": [["unknown", "a", ""], ["not_empty", "a", ""]], "expect": true},
+  {"join": "other", "tests": [["not_empty", "a", ""], ["empty", "a", ""]], "expect": false}
+]

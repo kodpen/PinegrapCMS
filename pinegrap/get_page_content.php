@@ -5305,6 +5305,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // first common region of an edit-mode view.
     $common_regions_user_can_edit = null;
 
+    // A common region made a shared component is drawn by that component
+    // (pg_common_region_component()): its row's content is no longer read
+    // and it has no inline editor, content people edit it in the designer.
+    $common_region_ids = array();
+    foreach ($cregion_rows as $row) {
+        if (($row !== null) && ($row['cregion_designer_type'] == 'no')) {
+            $common_region_ids[] = (int) $row['cregion_id'];
+        }
+    }
+    $common_region_components = $common_region_ids ? pg_common_region_components($common_region_ids) : array();
+
     foreach ($regions[0] as $region) {
         $row = $cregion_rows[strip_tags($region)];
 
@@ -5320,6 +5331,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // If this is a common region (not a designer region), then continue to replace it.
         if ($cregion_designer_type == 'no') {
+            if (!empty($common_region_components[(int) $cregion_id])) {
+                $content = str_replace($region, pg_common_region_component_html($common_region_components[(int) $cregion_id], $mode, $email), $content);
+                continue;
+            }
+
             if (($mode == 'edit') && ($user['role'] >= 3) && ($common_regions_user_can_edit === null)) {
                 $common_regions_user_can_edit = get_items_user_can_edit('common_regions', $user['id']);
             }

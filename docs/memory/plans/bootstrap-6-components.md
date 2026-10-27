@@ -5,13 +5,13 @@ description: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped fo
 
 ## Which swaps did the owner ask for?
 - B9a tagin to Chips: done (#2208), how it works in `ui/pg-field-wrappers.md`.
-- B9b select2 to Combobox (27): the native `<select>` stays the posted store (`name[]`, liveform, `required`). No remote search (google_product_category needs an own fetch layer), no new entries, no clear (add an empty item). ERP account choice re-rates taxes: a native `change` must fire.
+- B9b select2 to Combobox: done (#2243), how it works in `ui/pg-combobox.md`. Left on select2: google_product_category (`data-pg-source`), until an own fetch layer gives Combobox server search.
 - B9c Datepicker (31 date, 11 date and time, 8 time-only sites): init from JS with our own parse and format of the site date format (`isoToDisplay`/`displayToIso` in offer_editor.js), locale from the panel language, Monday first for tr; never the data API or `new Date()` parsing. Date and time: Datepicker plus `<input type="time">` composed into the original field. Time-only: `<input type="time">` only after B5, or 17:00 is stored as 00:00. ACL expiry pickers in drawers open inline.
 - B9d OTP: done (#2210, `ui/otp-fields.md`).
 - B9e Range with value bubble: done (#2207): editor inspector (3), label editor, image quality % and disk alert % (`ui/range-value-bubble.md`). Never the palette's site Range.
 - B9f form-adorn (150 sites): groups with buttons or selects (79), several inputs (12) or a hint on the add-on (9) stay input-groups. The add-on moves inside the border: pilot 3 places with screenshots first (pilot done, #2219, `ui/form-adorn.md`; the rest waits for the owner's look at it).
 - B9g Stepper: done (#2206); how it works is in `ui/step-rail.md`.
-- B9h `.hover-lift` with tokens at today's 1-2 px: `.mpp-pick`, explorer `.item-card`, `.esi-tile` done (#2217); `.pg-brief-ws-item` and `.pg-next` left.
+- B9h `.hover-lift` with tokens at today's 1-2 px, done: `.mpp-pick`, explorer `.item-card`, `.esi-tile` (#2217), dashboard `.pg-brief-ws-item` and `.pg-next` (#2237).
 - B9i Strength on the installer meter (`.pg-strength`): with `STRONG_PASSWORD` on, the B5 port of `validate_password_strength()` scores; off (the column default, so always at install) the default scoring only advises. Messages from `lang()`.
 - B9j Avatar (57 sites), text initials in theme colours: `ws_people()`, chat and widget sources return initials and a tone index (8 `theme-*`); presence dot; no `src=""`. `pg_initials_avatar_url()` stays for e-mail, PDF, print. `.avatar-stack` is row-reverse. Slice U2 of `workspace-friendly-ui.md`.
 

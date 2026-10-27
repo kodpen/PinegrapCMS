@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W5 #1879 #1905, W6 #1680, W7 #1688, W8, W10, W11, W14 #1602 #1701, W15 #1734, W19): legacy-layout power in widgets
+description: Plan (done: W25 #2221, W1 #1592, W2 #1582, W3 #1597, W4 #1665, W5 #1879 #1905, W6 #1680, W7 #1688, W8, W10, W11, W14 #1602 #1701, W15 #1734, W19): legacy-layout power in widgets
 ---
 
 ## What is built, and why?
@@ -28,17 +28,16 @@ Nothing open.
 
 ## What are the steps? (one PR each)
 - W1 done (#1592, [[widget-finish-pass]], [[widget-conditions]]).
-- W2 done (#1582): palette double-click lands beside it.
-- W3 done (#1597): row position ([[widget-loop-position]]).
-- W4 done (#1665, [[widget-condition-panel]]).
+- W2 done (#1582). W3 done (#1597, [[widget-loop-position]]). W4 done (#1665, [[widget-condition-panel]]).
 - W5 done (#1879, #1905, [[widget-layout-gallery]]).
-- W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 Entity fields: products #1809, events #1828, quiz #1847, order #1873, account #1890, order line #1903, addresses and order list row tokens #1917; done ([[widget-entity-fields-list]]).
-- W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 paging: #1924 #1947 #1968 #1984, rest in [[widget-list-paging]]. W13 done (#1758).
+- W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 done (#1809 #1828 #1847 #1873 #1890 #1903 #1917, [[widget-entity-fields-list]]).
+- W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 paging: #1924 #1947 #1968 #1984, search count grouping #2245; done ([[widget-list-paging]]). W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
 - W15 done (#1734). W16 default parts: order view #1808 #1824 #1863, stars #1908, crumbs #1945, cross-sell #1973 #2067, chips #2218, cart gift card #2260; left: recurring schedule, cancel, return forms, then the product order form.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` alias (pg-hide-if-empty done #2225). W24 Express order lists.
+- W25 done (#2221, [[widget-condition-rows]]): up to three conditions per element, All or Any (owner, 2026-10-27).
 
 ## How are other sessions kept clear?
 - Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.

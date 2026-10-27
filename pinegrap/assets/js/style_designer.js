@@ -12681,7 +12681,7 @@ const StyleDesigner = (function () {
         // A value condition (Bind Data, "Show only when a value…") is named
         // on the element; the state the band chose decides whether it is
         // drawn (_sdCondCanvasShows()).
-        if (_sysWidgetRenderCfg && node.props && node.props._bindings && node.props._bindings.show_if) {
+        if (_sysWidgetRenderCfg && node.props && _sdCondPresent(node.props) && _sdCondSpecs(node.props) !== null) {
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
             if (!_sdCondCanvasShows(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) wrapper.classList.add('sd-state-off');
@@ -30851,9 +30851,11 @@ const StyleDesigner = (function () {
         }
         // A value condition's compared text with words in it (the server
         // decides exactly: pg_sw_cond_operand_is_words()).
-        var cp = p._bindParams && p._bindParams.show_if;
-        if (p._bindings && p._bindings.show_if && cp && /^(eq|neq|contains|not_contains|starts)$/.test(String(cp.op || '')) &&
-            /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/.test(String(cp.value || ''))) return true;
+        if (SD_COND_NAMES.some(function (name) {
+            var cp = p._bindParams && p._bindParams[name];
+            return !!(p._bindings && p._bindings[name] && cp && /^(eq|neq|contains|not_contains|starts)$/.test(String(cp.op || '')) &&
+                /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/.test(String(cp.value || '')));
+        })) return true;
         if (Array.isArray(p._attrs)) {
             return p._attrs.some(function (a) {
                 return a && /^(alt|title|placeholder|aria-label|aria-description|data-bs-title|data-bs-content|value)$/i.test(String(a.name || '')) && String(a.value || '').trim() !== '';
@@ -30893,7 +30895,10 @@ const StyleDesigner = (function () {
             headerText: _sdT('Header'), footerText: _sdT('Footer'), brand: _sdT('Brand'), alt: _sdT('Alt text'), html: _sdT('HTML'),
             _labelDetail: _sdT('Caption: to the detail'), _labelExpand: _sdT('Caption: expanding') };
         if (field.indexOf('_attrs:') === 0) return field.slice(7);
-        if (field.indexOf('_cond:') === 0) return _sdT('Condition: compared with');
+        if (field.indexOf('_cond:') === 0) {
+            var condRow = SD_COND_NAMES.indexOf(field.slice(6));
+            return condRow > 0 ? _sdT('Condition {var:1}: compared with', [condRow + 1]) : _sdT('Condition: compared with');
+        }
         // An attribute of a text or of stored HTML (pg_tr_node_texts(),
         // pg_tr_field_segments()): "<field>@<attribute>#n".
         var at = field.indexOf('@');
@@ -32757,7 +32762,7 @@ const StyleDesigner = (function () {
             '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
             (n.props.regionType === 'system' ? _sdLayoutPropsHtml() : '') +
-            (n.props.regionType === 'designer' ? _sdDesignerRegionPropsHtml(n) : '') +
+            (n.props.regionType === 'designer' || n.props.regionType === 'common' ? _sdDesignerRegionPropsHtml(n) : '') +
             _sdRegionWidgetPropsHtml(n) +
             designableHtml
         ) + commentsInfo;
@@ -37775,6 +37780,67 @@ const StyleDesigner = (function () {
         '__link_label'
     ];
 
+    // The names a node's conditions are stored under, in order
+    // (pg_sw_cond_names()): the first, then the two an element may add,
+    // joined by _bindParams.show_if.join ('any' or 'all').
+    var SD_COND_NAMES = ['show_if', 'show_if_2', 'show_if_3'];
+
+    // Whether `props` names a condition, set or empty (pg_sw_cond_present()).
+    function _sdCondPresent(props) {
+        var b = props && props._bindings;
+        if (!b || typeof b !== 'object') return false;
+        return SD_COND_NAMES.some(function (name) { return Object.prototype.hasOwnProperty.call(b, name); });
+    }
+
+    // Every condition of `props`, twin of pg_sw_cond_specs(): null without
+    // one, false when one cannot be evaluated, a join is unknown or a later
+    // one stands without the first, else {join, conds: [{token, op, operand}]}.
+    function _sdCondSpecs(props) {
+        var b = (props && props._bindings) || {};
+        var bp = (props && props._bindParams) || {};
+        var conds = [];
+        for (var i = 0; i < SD_COND_NAMES.length; i++) {
+            var raw = b[SD_COND_NAMES[i]];
+            if (raw == null || raw === '' || raw === false) continue;
+            if (typeof raw !== 'string') return false;
+            var token = raw.replace(/[^a-z0-9_\-]/gi, '');
+            if (!token || !_sdCondTokenAllowed(token)) return false;
+            var params = (bp[SD_COND_NAMES[i]] && typeof bp[SD_COND_NAMES[i]] === 'object') ? bp[SD_COND_NAMES[i]] : {};
+            var op = 'not_empty';
+            if (params.op != null && params.op !== '') {
+                if (typeof params.op !== 'string') return false;
+                op = params.op;
+            }
+            var entry = _sdCondOp(op);
+            if (!entry) return false;
+            var operand = '';
+            if (entry[2]) {
+                operand = (typeof params.value === 'string' || typeof params.value === 'number' || typeof params.value === 'boolean')
+                    ? String(params.value === true ? '1' : params.value === false ? '' : params.value).trim() : '';
+                if (operand === '') return false;
+            }
+            if (i > 0 && !conds.length) return false;
+            conds.push({ token: token, op: op, operand: operand });
+        }
+        if (!conds.length) return null;
+        var join = (bp.show_if && typeof bp.show_if === 'object' && bp.show_if.join != null && bp.show_if.join !== '') ? bp.show_if.join : 'all';
+        if (join !== 'all' && join !== 'any') return false;
+        return { join: join, conds: conds };
+    }
+
+    // The joined test, twin of pg_sw_cond_eval_all(): `tests` is a list of
+    // [op, value, operand]; 'any' holds when one holds, any other join when
+    // every one does. No tests hold.
+    function _sdCondEvalAll(join, tests, decimal) {
+        if (!tests || !tests.length) return true;
+        for (var i = 0; i < tests.length; i++) {
+            var ok = _sdCondEval(tests[i][0], tests[i][1], tests[i][2], decimal);
+            if (join === 'any' && ok) return true;
+            if (join !== 'any' && !ok) return false;
+        }
+        return join !== 'any';
+    }
+
     // Whether a condition may read `token` (pg_sw_cond_token_allowed()).
     function _sdCondTokenAllowed(token) {
         var t = String(token == null ? '' : token).toLowerCase();
@@ -37995,43 +38061,84 @@ const StyleDesigner = (function () {
         return _swBindTokenOptions(node).filter(function (o) { return _sdCondTokenAllowed(o.token); });
     }
 
-    // Writes the condition of `node`: the token as its show_if binding, the
-    // operator and value in _bindParams.show_if. No token clears both; an
-    // operator that takes no value keeps none; an unknown operator reads as
-    // "is not empty". The caller records the undo step and redraws.
-    function _sdCondWrite(node, token, op, value) {
-        if (!node || !node.props) return;
-        var p = node.props;
-        _sdNodeSetBinding(node, 'show_if', token || '');
-        if (!token) {
-            if (p._bindParams && typeof p._bindParams === 'object') {
-                delete p._bindParams.show_if;
-                if (Object.keys(p._bindParams).length === 0) delete p._bindParams;
-            }
-            return;
-        }
-        var entry = _sdCondOp(op) || _sdCondOp('not_empty');
-        var params = { op: entry[0] };
-        if (entry[2]) params.value = (value == null) ? '' : String(value);
-        if (!p._bindParams || typeof p._bindParams !== 'object') p._bindParams = {};
-        p._bindParams.show_if = params;
+    // The conditions of `node` as rows, [{token, op, value}] in the order of
+    // SD_COND_NAMES; a name without a token is skipped.
+    function _sdCondRowsOf(node) {
+        var p = (node && node.props) || {};
+        var b = p._bindings || {};
+        var bp = p._bindParams || {};
+        var rows = [];
+        SD_COND_NAMES.forEach(function (name) {
+            if (!b[name] || typeof b[name] !== 'string') return;
+            var c = (bp[name] && typeof bp[name] === 'object') ? bp[name] : {};
+            rows.push({ token: b[name], op: c.op || 'not_empty', value: c.value == null ? '' : String(c.value) });
+        });
+        return rows;
     }
 
-    // The canvas chip of a node with a condition: "Only when: <value's
-    // name> <operator> <compared text>", the three as numbered parts so a
-    // language can order them. Whether the canvas draws the node is the
-    // state's (_sdCondCanvasShows()).
+    // How the conditions of `node` join: 'any' or 'all' (pg_sw_cond_specs()).
+    function _sdCondJoin(node) {
+        var c = node && node.props && node.props._bindParams && node.props._bindParams.show_if;
+        return (c && c.join === 'any') ? 'any' : 'all';
+    }
+
+    // Writes the conditions of `node`: `rows` ([{token, op, value}], a row
+    // without a token dropped, at most three) under SD_COND_NAMES in order,
+    // so the first row is always show_if, and the join on the first row's
+    // params when there are several and it is 'any'. An operator that takes
+    // no value keeps none; an unknown one reads as "is not empty". The
+    // caller records the undo step and redraws.
+    function _sdCondWriteRows(node, rows, join) {
+        if (!node || !node.props) return;
+        var p = node.props;
+        var kept = (rows || []).filter(function (r) { return r && r.token; }).slice(0, SD_COND_NAMES.length);
+        SD_COND_NAMES.forEach(function (name, i) {
+            var r = kept[i];
+            var had = !!(p._bindings && Object.prototype.hasOwnProperty.call(p._bindings, name));
+            if (r || had || i === 0) _sdNodeSetBinding(node, name, r ? r.token : '');
+            if (!r) {
+                if (p._bindParams && typeof p._bindParams === 'object') {
+                    delete p._bindParams[name];
+                    if (Object.keys(p._bindParams).length === 0) delete p._bindParams;
+                }
+                return;
+            }
+            var entry = _sdCondOp(r.op) || _sdCondOp('not_empty');
+            var params = { op: entry[0] };
+            if (entry[2]) params.value = (r.value == null) ? '' : String(r.value);
+            if (i === 0 && kept.length > 1 && join === 'any') params.join = 'any';
+            if (!p._bindParams || typeof p._bindParams !== 'object') p._bindParams = {};
+            p._bindParams[name] = params;
+        });
+    }
+
+    // Writes condition `row` (0 = the first) of `node`: no token removes it
+    // and the rows after it move up. The other rows and the join stay.
+    function _sdCondWrite(node, token, op, value, row) {
+        if (!node || !node.props) return;
+        var rows = _sdCondRowsOf(node);
+        var i = Math.min(row || 0, rows.length);
+        if (token) rows[i] = { token: token, op: op, value: value };
+        else rows.splice(i, 1);
+        _sdCondWriteRows(node, rows, _sdCondJoin(node));
+    }
+
+    // The canvas chip of a node with conditions: "Only when: <value's
+    // name> <operator> <compared text>", then "or …" or "and …" for each
+    // further one, the three as numbered parts so a language can order
+    // them. Whether the canvas draws the node is the state's
+    // (_sdCondCanvasShows()).
     function _sdCondSentence(node) {
-        var b = (node && node.props && node.props._bindings) || {};
-        if (!b.show_if) return '';
-        var params = (node.props._bindParams && node.props._bindParams.show_if) || {};
-        var entry = _sdCondOp(params.op || 'not_empty');
-        var value = (entry && entry[2]) ? (params.value == null ? '' : String(params.value)) : '';
-        return _sdT('Only when: {var:1} {var:2} {var:3}', [
-            _swBindLabel(_getSystemWidgetRegionType(node), b.show_if),
-            entry ? entry[1] : String(params.op),
-            value
-        ]).replace(/\s+/g, ' ').trim();
+        var rows = _sdCondRowsOf(node);
+        if (!rows.length) return '';
+        var kind = _getSystemWidgetRegionType(node);
+        var any = _sdCondJoin(node) === 'any';
+        return rows.map(function (r, i) {
+            var entry = _sdCondOp(r.op);
+            var parts = [_swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
+            if (!i) return _sdT('Only when: {var:1} {var:2} {var:3}', parts);
+            return any ? _sdT('or {var:1} {var:2} {var:3}', parts) : _sdT('and {var:1} {var:2} {var:3}', parts);
+        }).join(' ').replace(/\s+/g, ' ').trim();
     }
 
     // ── Canvas states of value conditions ────────────────────────────────
@@ -38058,8 +38165,10 @@ const StyleDesigner = (function () {
         var out = [];
         (function walk(n) {
             if (!n || typeof n !== 'object') return;
-            var t = n.props && n.props._bindings ? n.props._bindings.show_if : '';
-            if (t && typeof t === 'string' && out.indexOf(t) === -1) out.push(t);
+            SD_COND_NAMES.forEach(function (name) {
+                var t = n.props && n.props._bindings ? n.props._bindings[name] : '';
+                if (t && typeof t === 'string' && out.indexOf(t) === -1) out.push(t);
+            });
             if (Array.isArray(n.children)) n.children.forEach(walk);
         })(tree);
         return out;
@@ -38106,21 +38215,17 @@ const StyleDesigner = (function () {
         return _sdCondText(typeof v === 'function' ? v() : v);
     }
 
-    // Whether the canvas draws `node` in `state` by its own condition. An
-    // invalid condition draws nothing, as on the page (pg_sw_cond_spec());
-    // one on a required control is ignored there, and here.
+    // Whether the canvas draws `node` in `state` by its own conditions. An
+    // invalid one draws nothing, as on the page (pg_sw_cond_specs()); those
+    // on a required control are ignored there, and here.
     function _sdCondCanvasShows(node, state) {
-        var b = node && node.props && node.props._bindings;
-        if (!b || !b.show_if || state === 'all') return true;
-        if (_sdCondHoldsRequired(node)) return true;
-        var token = String(b.show_if).replace(/[^a-z0-9_\-]/gi, '');
-        if (!token || !_sdCondTokenAllowed(token)) return false;
-        var params = (node.props._bindParams && node.props._bindParams.show_if) || {};
-        var entry = _sdCondOp(params.op || 'not_empty');
-        if (!entry) return false;
-        var operand = entry[2] ? String(params.value == null ? '' : params.value).trim() : '';
-        if (entry[2] && operand === '') return false;
-        return _sdCondEval(entry[0], _sdCondCanvasValue(token, node, state), operand);
+        if (!node || state === 'all' || !_sdCondPresent(node.props)) return true;
+        var specs = _sdCondSpecs(node.props);
+        if (specs === null || _sdCondHoldsRequired(node)) return true;
+        if (specs === false) return false;
+        return _sdCondEvalAll(specs.join, specs.conds.map(function (c) {
+            return [c.op, _sdCondCanvasValue(c.token, node, state), c.operand];
+        }));
     }
 
     // The state that draws `target` of `root`'s tree: the one drawn when it
@@ -38208,38 +38313,61 @@ const StyleDesigner = (function () {
         if (holders.length === 1 && holders[0] !== node && holders[0].props) _sdNodeToggleClass(holders[0], SD_FIELD_VALUE, true);
     }
 
+    // The node an "Add a condition" click opened one empty row on; the row
+    // is written once a value is chosen in it.
+    var _sdCondOpenRow = null;
+
     // The "Show only when a value…" row of Bind Data, on any element of a
-    // system widget but its root and its loops: the value, the operator,
-    // the compared text. Beside the flag row above, which some kinds have;
-    // when both are set both must pass.
+    // system widget but its root and its loops: up to three conditions, each
+    // a value, an operator and a compared text, and with several of them
+    // the "All must hold / Any is enough" switch. Beside the flag row above,
+    // which some kinds have; when both are set both must pass.
     function _sdConditionRows(node) {
         if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
         if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
         var label = esc(_sdT('Show only when a value…'));
         var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
-        var cur = (node.props._bindings && node.props._bindings.show_if) || '';
+        var rows = _sdCondRowsOf(node);
         var required = _sdCondHoldsRequired(node);
-        if (required && !cur) {
+        if (required && !rows.length) {
             return row(label, note(_sdT('A required form field cannot be hidden by a condition: the form could not be sent.')));
         }
-        var params = (node.props._bindParams && node.props._bindParams.show_if) || {};
-        var entry = _sdCondOp(params.op || 'not_empty');
-        var tokOpts = '<option value="">' + esc(_sdT('Always')) + '</option>';
-        var found = false;
-        _sdCondTokenOptions(node).forEach(function (o) {
-            if (o.token === cur) found = true;
-            tokOpts += '<option value="' + esc(o.token) + '"' + (o.token === cur ? ' selected' : '') + '>' + esc(o.label) + '</option>';
-        });
-        if (cur && !found) tokOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur) + '</option>';
-        var html = '<select class="form-control form-control-sm sd-sw-cond-token" aria-label="' + esc(_sdT('Value to test')) + '">' + tokOpts + '</select>';
-        if (cur) {
-            var opOpts = '';
-            SW_COND_OPS.forEach(function (o) {
-                opOpts += '<option value="' + o[0] + '"' + (entry && entry[0] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+        if (_sdCondOpenRow !== node || required) _sdCondOpenRow = null;
+        var shown = rows.slice();
+        if (!shown.length || (_sdCondOpenRow === node && shown.length < SD_COND_NAMES.length)) shown.push({ token: '', op: 'not_empty', value: '' });
+        var options = _sdCondTokenOptions(node);
+        var html = '';
+        if (rows.length > 1) {
+            var any = _sdCondJoin(node) === 'any';
+            html += '<select class="form-control form-control-sm mb-1 sd-sw-cond-join" aria-label="' + esc(_sdT('How the conditions join')) + '">' +
+                '<option value="all"' + (any ? '' : ' selected') + '>' + esc(_sdT('All must hold')) + '</option>' +
+                '<option value="any"' + (any ? ' selected' : '') + '>' + esc(_sdT('Any is enough')) + '</option></select>';
+        }
+        shown.forEach(function (r, i) {
+            var cur = r.token;
+            var entry = _sdCondOp(r.op || 'not_empty');
+            var tokOpts = '<option value="">' + esc(i ? _sdT('Remove this condition') : _sdT('Always')) + '</option>';
+            var found = false;
+            options.forEach(function (o) {
+                if (o.token === cur) found = true;
+                tokOpts += '<option value="' + esc(o.token) + '"' + (o.token === cur ? ' selected' : '') + '>' + esc(o.label) + '</option>';
             });
-            html += '<select class="form-control form-control-sm mt-1 sd-sw-cond-op" aria-label="' + esc(_sdT('Condition')) + '">' + opOpts + '</select>' +
-                '<input type="text" class="form-control form-control-sm mt-1 sd-sw-cond-value" value="' + esc(params.value == null ? '' : String(params.value)) + '"' +
-                    ' aria-label="' + esc(_sdT('Compared with')) + '"' + ((entry && entry[2]) ? '' : ' style="display:none"') + '>';
+            if (cur && !found) tokOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur) + '</option>';
+            html += '<div class="sd-sw-cond-row' + (i ? ' mt-2' : '') + '">' +
+                '<select class="form-control form-control-sm sd-sw-cond-token" data-cond-row="' + i + '" aria-label="' + esc(_sdT('Value to test')) + '">' + tokOpts + '</select>';
+            if (cur) {
+                var opOpts = '';
+                SW_COND_OPS.forEach(function (o) {
+                    opOpts += '<option value="' + o[0] + '"' + (entry && entry[0] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                });
+                html += '<select class="form-control form-control-sm mt-1 sd-sw-cond-op" data-cond-row="' + i + '" aria-label="' + esc(_sdT('Condition')) + '">' + opOpts + '</select>' +
+                    '<input type="text" class="form-control form-control-sm mt-1 sd-sw-cond-value" data-cond-row="' + i + '" value="' + esc(r.value) + '"' +
+                        ' aria-label="' + esc(_sdT('Compared with')) + '"' + ((entry && entry[2]) ? '' : ' style="display:none"') + '>';
+            }
+            html += '</div>';
+        });
+        if (!required && rows.length && shown.length === rows.length && rows.length < SD_COND_NAMES.length) {
+            html += '<button type="button" class="btn btn-link btn-sm p-0 mt-1 sd-sw-cond-add">' + esc(_sdT('Add a condition')) + '</button>';
         }
         html += note(required
             ? _sdT('A required form field cannot be hidden by a condition: the site ignores this one. Choose Always to remove it.')
@@ -40242,8 +40370,10 @@ const StyleDesigner = (function () {
         (function strip(n) {
             if (!n || typeof n !== 'object') return;
             var p = n.props || {};
-            if (p._bindings && typeof p._bindings === 'object') delete p._bindings.show_if;
-            if (p._bindParams && typeof p._bindParams === 'object') delete p._bindParams.show_if;
+            SD_COND_NAMES.forEach(function (name) {
+                if (p._bindings && typeof p._bindings === 'object') delete p._bindings[name];
+                if (p._bindParams && typeof p._bindParams === 'object') delete p._bindParams[name];
+            });
             (n.children || []).forEach(strip);
         })(copy);
         var json = JSON.stringify(copy);
@@ -42807,44 +42937,67 @@ const StyleDesigner = (function () {
             });
         }
 
-        // The "Show only when a value…" row (_sdConditionRows()). A new value
-        // to test redraws the panel (the operator and value boxes come or go);
-        // the operator and the compared text change in place, so typing keeps
-        // the focus. One undo step for each choice and for each word typed.
-        var condTok = document.querySelector('.sd-sw-cond-token');
-        var condOp  = document.querySelector('.sd-sw-cond-op');
-        var condVal = document.querySelector('.sd-sw-cond-value');
-        var _sdCondNow = function () {
-            var p = (selectedNode && selectedNode.props) || {};
-            var c = (p._bindParams && p._bindParams.show_if) || {};
-            return { token: (p._bindings && p._bindings.show_if) || '', op: c.op || 'not_empty' };
+        // The "Show only when a value…" rows (_sdConditionRows()). A new
+        // value to test, the switch and "Add a condition" redraw the panel
+        // (boxes come or go); the operator and the compared text change in
+        // place, so typing keeps the focus. One undo step for each choice and
+        // for each word typed.
+        var _sdCondNow = function (i) {
+            return _sdCondRowsOf(selectedNode)[i] || { token: '', op: 'not_empty', value: '' };
         };
-        if (condTok) {
-            condTok.addEventListener('change', function () {
+        var _sdCondEl = function (cls, i) { return document.querySelector('.' + cls + '[data-cond-row="' + i + '"]'); };
+        var _sdCondRedraw = function () {
+            renderCanvas();
+            if (typeof renderProperties === 'function') renderProperties();
+        };
+        document.querySelectorAll('.sd-sw-cond-token').forEach(function (el) {
+            el.addEventListener('change', function () {
                 if (!selectedNode) return;
+                var i = parseInt(this.getAttribute('data-cond-row'), 10) || 0;
+                var val = _sdCondEl('sd-sw-cond-value', i);
                 saveState();
-                _sdCondWrite(selectedNode, this.value, _sdCondNow().op, condVal ? condVal.value : '');
-                renderCanvas();
-                if (typeof renderProperties === 'function') renderProperties();
+                _sdCondOpenRow = null;
+                _sdCondWrite(selectedNode, this.value, _sdCondNow(i).op, val ? val.value : '', i);
+                _sdCondRedraw();
             });
-        }
-        if (condOp) {
-            condOp.addEventListener('change', function () {
+        });
+        document.querySelectorAll('.sd-sw-cond-op').forEach(function (el) {
+            el.addEventListener('change', function () {
                 if (!selectedNode) return;
+                var i = parseInt(this.getAttribute('data-cond-row'), 10) || 0;
+                var val = _sdCondEl('sd-sw-cond-value', i);
                 saveState();
-                _sdCondWrite(selectedNode, _sdCondNow().token, this.value, condVal ? condVal.value : '');
+                _sdCondWrite(selectedNode, _sdCondNow(i).token, this.value, val ? val.value : '', i);
                 var entry = _sdCondOp(this.value);
-                if (condVal) condVal.style.display = (entry && entry[2]) ? '' : 'none';
+                if (val) val.style.display = (entry && entry[2]) ? '' : 'none';
                 renderCanvas();
             });
-        }
-        if (condVal) {
-            condVal.addEventListener('input', function () {
+        });
+        document.querySelectorAll('.sd-sw-cond-value').forEach(function (el) {
+            el.addEventListener('input', function () {
                 if (!selectedNode) return;
-                saveState(_sdEditRun('cond:value'));
-                var now = _sdCondNow();
-                _sdCondWrite(selectedNode, now.token, now.op, this.value);
+                var i = parseInt(this.getAttribute('data-cond-row'), 10) || 0;
+                saveState(_sdEditRun('cond:value:' + i));
+                var now = _sdCondNow(i);
+                _sdCondWrite(selectedNode, now.token, now.op, this.value, i);
                 renderCanvas();
+            });
+        });
+        var condJoin = document.querySelector('.sd-sw-cond-join');
+        if (condJoin) {
+            condJoin.addEventListener('change', function () {
+                if (!selectedNode) return;
+                saveState();
+                _sdCondWriteRows(selectedNode, _sdCondRowsOf(selectedNode), this.value);
+                _sdCondRedraw();
+            });
+        }
+        var condAdd = document.querySelector('.sd-sw-cond-add');
+        if (condAdd) {
+            condAdd.addEventListener('click', function () {
+                if (!selectedNode) return;
+                _sdCondOpenRow = selectedNode;
+                if (typeof renderProperties === 'function') renderProperties();
             });
         }
 
@@ -45605,16 +45758,22 @@ const StyleDesigner = (function () {
 
     // A designer region becomes a designer-only shared component on this
     // page (_sdDesignerRegionConvert()), for the roles that edit designer
-    // regions today.
+    // regions today. A common region becomes a component opened to content
+    // editors that its tag draws on every page; it needs the schema that
+    // opens components (the people who edit the region keep it).
     function _sdDesignerRegionPropsHtml(n) {
         if (!_design || !_design.designerRegionConvert || !n.props.regionName) return '';
+        var common = n.props.regionType === 'common';
+        if (common && !_design.sharedContentReady) return '';
         return '<div class="sd-prop-row">' +
                 '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-designer-region-convert">' +
                     '<span class="bi bi-puzzle-fill me-1"></span>' + esc(_sdT('Make shared component')) +
                 '</button>' +
             '</div>' +
             '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
-                esc(_sdT('Puts a shared component with the region\'s content in its place on this page, edited here. Other pages keep the region until they are converted.')) +
+                esc(common
+                    ? _sdT('Makes the region a shared component its content editors edit in the designer; its tag draws the component on every page, and front-end inline editing of the region ends. This page places the component.')
+                    : _sdT('Puts a shared component with the region\'s content in its place on this page, edited here. Other pages keep the region until they are converted.')) +
             '</div></div>';
     }
 
@@ -45623,13 +45782,14 @@ const StyleDesigner = (function () {
     // its shared_ref takes the region node's place.
     function _sdDesignerRegionConvert(regionNode) {
         if (!regionNode || regionNode.type !== 'region' || !regionNode.props ||
-            regionNode.props.regionType !== 'designer' || !regionNode.props.regionName) return;
+            (regionNode.props.regionType !== 'designer' && regionNode.props.regionType !== 'common') || !regionNode.props.regionName) return;
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var regionName = regionNode.props.regionName;
+        var common = regionNode.props.regionType === 'common';
         var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
         fetch(url, { method: 'POST', credentials: 'same-origin',
                      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                     body: JSON.stringify({ action: 'shared_component', sub_action: 'from_designer_region', name: regionName, token: _pgToken() }) })
+                     body: JSON.stringify({ action: 'shared_component', sub_action: common ? 'from_common_region' : 'from_designer_region', name: regionName, token: _pgToken() }) })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!data || data.status !== 'success') {
@@ -45656,7 +45816,9 @@ const StyleDesigner = (function () {
                 if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
                 if (!_sharedCache[sid] || !_sharedCache[sid].tree) prefetchShared([sid], render);
                 render();
-                sdToast(esc(data.created
+                sdToast(esc(common
+                    ? _sdT('The common region "{var}" is now a shared component; every page draws it, and its content editors edit it in the designer.', regionName)
+                    : data.created
                     ? _sdT('The designer region "{var}" is now a shared component on this page. Other pages keep the region until they are converted.', regionName)
                     : _sdT('This page now shows "{var}", the shared component made from this designer region before.', data.name || regionName)), 'success', 7000);
                 (Array.isArray(data.warnings) ? data.warnings : []).forEach(function (w) { sdToast(esc(String(w)), 'warning', 12000); });

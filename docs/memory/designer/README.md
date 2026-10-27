@@ -64,6 +64,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comments-widget-save-warnings.md: Save warnings about a page's comments not drawn (block plus widget, two widgets, nested record widget, comments off; an e-mail page only two widgets): census, approximation, codes
 - comments-widget-watch-staff.md: The comments widget's watch form, watcher list and staff open-or-close form: wiring, who gets them, address masking, count text, where their messages print, canvas fades by place
 - comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, e-mails, tokens, flags, escaping, default layout, checks
+- common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.
@@ -265,6 +266,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-attr-bindings.md: A widget record's values in an element's attributes ({{token}} in the Attributes panel or a title): placeholder and carrier, the pass stage, refused attributes and tokens, editor completion (W15)
 - widget-condition-canvas.md: The canvas state preview of value conditions (W19, #1904): band chips, states, which value a token reads, picking a hidden node, the _sdCondEval twin, list and main loop sample rows (#1914, #1928)
 - widget-condition-panel.md: The Bind Data row "Show only when a value…" (#1665): token, operator, compared text, the canvas chip, the twin lists, no condition on a required control, the compared text translated.
+- widget-condition-rows.md: Several value conditions on one widget node (W25): show_if_2/_3 beside show_if, the All/Any join, the marker with several tests, translation per row, the twin, the panel rows.
 - widget-conditions.md: Value conditions on system widget nodes (show_if): operators, how a value reads as text or a number, refused tokens, tree checks, fail closed (#1592).
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
 - widget-default-parts-breadcrumb.md: The catalog breadcrumb default part (W16, #1945): the catalog.crumbs list, its rows and key, the four placements it replaces, the listing's lead part, what changed for running sites

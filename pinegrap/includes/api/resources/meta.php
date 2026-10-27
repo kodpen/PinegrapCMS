@@ -31,9 +31,11 @@ function api_meta_read($params) {
 	api_ok(array(
 		'api_version'    => api_version(),
 		'software'       => 'Pinegrap',
+		'language'       => api_text_language(),
 		'site' => array(
 			'title'    => defined('TITLE') ? TITLE : '',
-			'hostname' => defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : ''
+			'hostname' => defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '',
+			'timezone' => api_meta_timezone()
 		),
 		'ecommerce' => array(
 			'enabled'  => (defined('ECOMMERCE') && ECOMMERCE === true),
@@ -67,6 +69,60 @@ function api_meta_read($params) {
 		'scopes'         => api_current_scopes(),
 		'server_time'    => api_time(time())
 	));
+
+}
+
+// The language error messages, role names and notification texts come in: the
+// code lang() picks, when that language has a file of its own.
+function api_text_language() {
+
+	return api_text_language_pick(
+		defined('FRONTEND_LANGUAGE') ? FRONTEND_LANGUAGE : '',
+		function_exists('pg_tr_suspend') && pg_tr_suspend(),
+		defined('ENFORCEMENT_SOFTWARE_LANGUAGE') ? ENFORCEMENT_SOFTWARE_LANGUAGE : '',
+		defined('SOFTWARE_LANGUAGE') ? SOFTWARE_LANGUAGE : '',
+		'pg_tr_ui_has_file'
+	);
+
+}
+
+// The order lang() picks its language in, kept apart so it is testable. A
+// language with no file (a front-end language reached through ?pg_lang=) keeps
+// lang()'s English source text, so it is answered as 'en'.
+function api_text_language_pick($frontend, $suspended, $enforced, $software, $has_file) {
+
+	$code = 'en';
+
+	if ((string)$frontend !== '' && !$suspended) {
+
+		$code = (string)$frontend;
+
+	} elseif ((string)$enforced !== '') {
+
+		$code = (string)$enforced;
+
+	} elseif ((string)$software !== '') {
+
+		$code = (string)$software;
+
+	}
+
+	if (($code !== 'en') && !call_user_func($has_file, $code)) {
+
+		return 'en';
+
+	}
+
+	return $code;
+
+}
+
+// The zone the site's days are counted in: the site setting init.php sets, or
+// the server's own when the setting is empty. PHP always has one, so this is
+// never ''.
+function api_meta_timezone() {
+
+	return date_default_timezone_get();
 
 }
 
@@ -263,9 +319,11 @@ function api_meta_schema() {
 	return array(
 		'api_version' => 'integer',
 		'software'    => 'string',
+		'language'    => 'string',
 		'site' => array(
 			'title'    => 'string',
-			'hostname' => 'string'
+			'hostname' => 'string',
+			'timezone' => 'string'
 		),
 		'ecommerce' => array(
 			'enabled'          => 'boolean',

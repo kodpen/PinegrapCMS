@@ -1709,7 +1709,7 @@ function pg_dashboard_brief($user, $changelog_sections)
             $greeting_strip_elapsed = max(0, time() - (int) $greeting_strip_ws['timer']['started_at']);
 
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item is-live" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['timer']['task_id'] . '">'
+                '<a class="pg-brief-ws-item hover-lift is-live" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['timer']['task_id'] . '">'
                 . '<i class="bi bi-stopwatch" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Timer running')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . $greeting_strip_title($greeting_strip_ws['timer']['title']) . '</span>'
@@ -1720,7 +1720,7 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         if ($greeting_strip_ws['new_task'] !== null) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item is-new" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['new_task']['id'] . '">'
+                '<a class="pg-brief-ws-item hover-lift is-new" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['new_task']['id'] . '">'
                 . '<i class="bi bi-check2-square" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('New task')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . $greeting_strip_title($greeting_strip_ws['new_task']['title']) . '</span>'
@@ -1730,7 +1730,7 @@ function pg_dashboard_brief($user, $changelog_sections)
         // Somebody asked for a yes or a no and is waiting on it.
         if (!empty($greeting_strip_ws['approvals'])) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item is-new" href="' . h(($greeting_strip_ws['approval_url'] !== null) ? $greeting_strip_ws['approval_url'] : 'workspace.php') . '">'
+                '<a class="pg-brief-ws-item hover-lift is-new" href="' . h(($greeting_strip_ws['approval_url'] !== null) ? $greeting_strip_ws['approval_url'] : 'workspace.php') . '">'
                 . '<i class="bi bi-patch-question" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Awaiting your approval')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['approvals'], 0)) . '</span>'
@@ -1742,7 +1742,7 @@ function pg_dashboard_brief($user, $changelog_sections)
             $greeting_strip_percent = (int) $greeting_strip_ws['doing']['progress']['percent'];
 
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['doing']['id'] . '">'
+                '<a class="pg-brief-ws-item hover-lift" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['doing']['id'] . '">'
                 . '<i class="bi bi-list-check" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('In progress')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . $greeting_strip_title($greeting_strip_ws['doing']['title']) . '</span>'
@@ -1754,7 +1754,7 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         if ($greeting_strip_ws['overdue'] > 0) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item is-late" href="workspace_tasks.php">'
+                '<a class="pg-brief-ws-item hover-lift is-late" href="workspace_tasks.php">'
                 . '<i class="bi bi-alarm" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Overdue')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['overdue'], 0)) . '</span>'
@@ -1763,7 +1763,7 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         if ($greeting_strip_ws['mentions'] > 0) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item is-new" href="' . h(($greeting_strip_ws['mention_url'] !== null) ? $greeting_strip_ws['mention_url'] : 'workspace.php') . '">'
+                '<a class="pg-brief-ws-item hover-lift is-new" href="' . h(($greeting_strip_ws['mention_url'] !== null) ? $greeting_strip_ws['mention_url'] : 'workspace.php') . '">'
                 . '<i class="bi bi-at" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Mentions')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['mentions'], 0)) . '</span>'
@@ -1774,14 +1774,14 @@ function pg_dashboard_brief($user, $changelog_sections)
         // overdue count they say less than it does.
         if (($greeting_strip_ws['overdue'] === 0) && ($greeting_strip_ws['due_today'] > 0)) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item" href="workspace_tasks.php">'
+                '<a class="pg-brief-ws-item hover-lift" href="workspace_tasks.php">'
                 . '<i class="bi bi-calendar-check" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Due today')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['due_today'], 0)) . '</span>'
                 . '</a>';
         } elseif (($greeting_strip_ws['overdue'] === 0) && ($greeting_strip_ws['open'] > 0)) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item" href="workspace_tasks.php">'
+                '<a class="pg-brief-ws-item hover-lift" href="workspace_tasks.php">'
                 . '<i class="bi bi-inbox" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Open tasks')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['open'], 0)) . '</span>'
@@ -1884,7 +1884,7 @@ function pg_dashboard_brief_next($events, $now)
             ));
 
         $item =
-            '<a class="pg-next' . (($until['state'] === 'now') ? ' is-now' : '') . '" href="workspace_calendar.php"'
+            '<a class="pg-next hover-lift' . (($until['state'] === 'now') ? ' is-now' : '') . '" href="workspace_calendar.php"'
             . ' data-pg-starts="' . (int) $event['starts_at'] . '" data-pg-ends="' . (int) $event['ends_at'] . '"'
             . ' data-pg-all-day="' . ($all_day ? '1' : '0') . '" title="' . h($kind . ': ' . $event['title']) . '">'
             . '<i class="bi ' . ($visit ? 'bi-geo-alt' : 'bi-people') . '" aria-hidden="true"></i>'

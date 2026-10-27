@@ -6051,7 +6051,8 @@ function pg_sw_search_index_save_item($item, $timestamp)
 // Render a 'search_results' system widget: the site search for ?query=,
 // one loop row per result, paginated.
 //
-// Static tokens: ^^__search_query^^, ^^__result_count^^, ^^__results_heading^^
+// Static tokens: ^^__search_query^^, ^^__result_count^^ (grouped in the page's
+//   language like the heading's number: 1.284 / 1,284), ^^__results_heading^^
 //   (the sentence the legacy page prints: found N / none found / enter a
 //   search), ^^__empty_message^^ (when a search found nothing), ^^__page_count^^.
 // Row tokens: ^^__result_title^^, ^^__result_url^^, ^^__result_full_url^^,
@@ -6187,7 +6188,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 
     $static_values = pg_sw_escape_token_values(array(
         '__search_query'    => $query,
-        '__result_count'    => (string)$total,
+        '__result_count'    => pg_format_number($total, 0),
         '__results_heading' => $heading,
         '__page_count'      => (string)$total_pages,
         '__empty_message'   => ($query !== '' && $total === 0) ? $empty_message : '',

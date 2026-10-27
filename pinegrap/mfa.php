@@ -8,10 +8,10 @@
  * second factor - or of an account whose role must have one - stashes a
  * short-lived pending record (pg_mfa_gate()) and sends the visitor here
  * before anything is signed in. 'verify' asks for a code from the
- * authenticator app, a recovery code or a passkey (a passkey only, for an
- * account with passkeys and no authenticator key); 'setup' has the account
- * add a key to its app, confirm it with the first code and save its recovery
- * codes. Only then is the sign-in completed, in the same order the sign-in
+ * authenticator app, a recovery code or a passkey (a passkey or a recovery
+ * code, for an account with passkeys and no authenticator key); 'setup' has
+ * the account add a key to its app, confirm it with the first code and save
+ * its recovery codes. Only then is the sign-in completed, in the same order the sign-in
  * flows use.
  *
  * @author      Erdal Güral (Kodpen)
@@ -309,9 +309,10 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
     $title = lang('Two-Step Verification');
 
     // An account with passkeys and no authenticator key is asked for a
-    // passkey only: without a key there are no codes to type (turning the
-    // key off removed its recovery codes too).
+    // passkey, or one of the recovery codes it got with its first passkey;
+    // there is no authenticator code to type.
     $totp_on = pg_mfa_enabled($user_id);
+    $recovery_left = $totp_on ? 0 : pg_mfa_recovery_remaining($user_id);
 
     // A passkey of the account, offered above the code when the browser can
     // use one (the script shows the block). The browser's answer is posted
@@ -329,7 +330,7 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
                     <button type="button" id="mfa_passkey_button" class="btn btn-solid theme-primary w-100"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Use a passkey')) . '</button>
                 </form>
                 <div id="mfa_passkey_error" class="alert theme-danger mt-5 mb-0 d-none" role="alert"></div>
-                ' . ($totp_on ? '<p class="text-center fg-secondary small my-5">' . h(lang('or enter a code')) . '</p>' : '') . '
+                ' . (($totp_on || ($recovery_left > 0)) ? '<p class="text-center fg-secondary small my-5">' . h(lang('or enter a code')) . '</p>' : '') . '
             </div>
             <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_passkey.js?v=' . (int) @filemtime(dirname(__FILE__) . '/assets/js/pg_passkey.js') . '"></script>
             <script>
@@ -373,7 +374,18 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
     // when the refused code was a recovery code.
     $recovery_mode = !pg_mfa_available() || (($error !== '') && (pg_mfa_code_kind($code ?? '') === 'recovery'));
 
-    if (!$totp_on) {
+    if (!$totp_on && ($recovery_left > 0)) {
+        $body =
+            '<p class="fg-secondary mb-5">' . h(lang('Use one of your passkeys, or one of your recovery codes, to finish signing in.')) . '</p>
+            ' . $messages . '
+            ' . $passkey_block . '
+            <form name="mfa_verify" action="' . $form_action . '" method="post" autocomplete="off">
+                ' . $hidden . '
+                ' . pg_mfa_screen_code_field('recovery', true) . '
+                <button type="submit" name="pg_mfa_action" value="verify" class="btn btn-outline theme-secondary w-100 mt-3">' . h(lang('Verify')) . '</button>
+                ' . $cancel_button . '
+            </form>';
+    } elseif (!$totp_on) {
         $body =
             '<p class="fg-secondary mb-5">' . h(lang('Use one of your passkeys to finish signing in.')) . '</p>
             ' . $messages . '

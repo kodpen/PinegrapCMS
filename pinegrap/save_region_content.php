@@ -210,6 +210,12 @@ switch ($liveform->get_field_value('region_type')) {
             output_error('Access denied.');
         }
         
+        // A common region made a shared component is drawn by the component;
+        // a write here would land in a row no page reads any more.
+        if (($cregion_row['cregion_designer_type'] == 'no') && !empty(pg_common_region_components(array($cregion_id))[$cregion_id])) {
+            output_error(lang('This common region is now a shared component. Edit its content in the visual designer.'));
+        }
+
         // update region content
         $query =
             "UPDATE cregion

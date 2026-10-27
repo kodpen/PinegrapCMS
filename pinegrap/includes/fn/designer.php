@@ -1202,6 +1202,41 @@ function pg_expand_nested_components($html, $mode = 'preview', $email = false)
     return $html;
 }
 
+// Returns a name that does not yet exist in shared_components (the panel's
+// create and rename, the region conversions).
+// If $desired is already taken, appends " [1]", " [2]", ... until a free slot is found.
+function _sc_unique_name($desired)
+{
+    $base = $desired;
+    $name = $base;
+    $i    = 1;
+    while (db_value("SELECT COUNT(*) FROM shared_components WHERE name = '" . e($name) . "'") > 0) {
+        $name = $base . ' [' . $i . ']';
+        $i++;
+    }
+    return $name;
+}
+
+/**
+ * The HTML of a shared component drawn where a classic <cregion> tag of a
+ * converted common region stands. The page's own passes for components,
+ * widgets and custom PHP have run by the time the common regions are
+ * replaced, so the component goes through them here.
+ *
+ * @param int    $sid    shared component id
+ * @param string $mode   page render mode
+ * @param bool   $email  drawn for an e-mail
+ * @return string
+ */
+function pg_common_region_component_html($sid, $mode = 'preview', $email = false)
+{
+    $html = pg_expand_nested_components('<!--pg-shared-ref:' . (int)$sid . '-->', $mode, $email);
+    if (strpos($html, '<!--pg-custom-php:') !== false) {
+        $html = _expand_custom_php($html);
+    }
+    return $html;
+}
+
 // Walk a widget tree (deep clone) and locate the FIRST loop_area node without
 // props.source, the main loop. A loop_area with props.source is a list inside
 // a record (widgets_lists.php): it is skipped with everything in it, so a
@@ -4548,22 +4583,25 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
         return '<!--pg-active:begin-->' . _render_tree_node($node, $indent, $depth) . '<!--pg-active:end-->';
     }
 
-    // A value condition (_bindings.show_if, _bindParams.show_if) is wiring,
-    // never a prop. Inside a widget render the node is drawn between the
-    // markers the finish pass keeps or cuts (widgets_finish.php); one that
-    // cannot be evaluated draws nothing. Outside a widget the node draws as
-    // it is, so no saved page body ever holds a marker. Its compared text is
-    // read in the page's language, as the values it is compared with are;
-    // a node that holds a required form control is always drawn.
-    if (isset($node['props']['_bindings']['show_if'])) {
+    // Value conditions (_bindings.show_if and show_if_2, show_if_3, with
+    // their _bindParams) are wiring, never props. Inside a widget render the
+    // node is drawn between the markers the finish pass keeps or cuts
+    // (widgets_finish.php); one that cannot be evaluated draws nothing.
+    // Outside a widget the node draws as it is, so no saved page body ever
+    // holds a marker. The compared texts are read in the page's language, as
+    // the values they are compared with are; a node that holds a required
+    // form control is always drawn.
+    if (pg_sw_cond_present(isset($node['props']) ? $node['props'] : null)) {
         if (defined('FRONTEND_LANGUAGE')) {
             $node['props'] = pg_tr_condition_props($node['props'], $node['type']);
         }
-        $cond = pg_sw_cond_spec($node['props']);
+        $cond = pg_sw_cond_specs($node['props']);
         if ($cond !== null && pg_sw_cond_holds_required($node)) $cond = null;
-        unset($node['props']['_bindings']['show_if']);
-        if (isset($node['props']['_bindParams']) && is_array($node['props']['_bindParams'])) {
-            unset($node['props']['_bindParams']['show_if']);
+        foreach (pg_sw_cond_names() as $cond_name) {
+            unset($node['props']['_bindings'][$cond_name]);
+            if (isset($node['props']['_bindParams']) && is_array($node['props']['_bindParams'])) {
+                unset($node['props']['_bindParams'][$cond_name]);
+            }
         }
         if ($cond !== null && pg_sw_finish_active()
             && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {

@@ -716,8 +716,10 @@ function pg_mfa_confirm_setup($user_id, $code)
 }
 
 /**
- * Remove the account's second factor and recovery codes, and revoke its
- * other remember-me tokens and its API devices.
+ * Remove the account's authenticator key, and revoke its other remember-me
+ * tokens and its API devices. The recovery codes go too, unless the account
+ * keeps a passkey: the passkey stays its second factor, and the codes stay
+ * its way in when the passkey is lost.
  *
  * @param int $user_id
  */
@@ -728,9 +730,24 @@ function pg_mfa_disable($user_id)
     }
 
     db("DELETE FROM user_mfa WHERE user_id = '" . (int) $user_id . "'");
-    db("DELETE FROM user_mfa_recovery WHERE user_id = '" . (int) $user_id . "'");
+
+    if (!function_exists('pg_passkey_count') || (pg_passkey_count($user_id) === 0)) {
+        pg_mfa_recovery_forget($user_id);
+    }
 
     pg_mfa_revoke_other_sessions($user_id);
+}
+
+/**
+ * Remove the account's recovery codes. Silent before the upgrade.
+ *
+ * @param int $user_id
+ */
+function pg_mfa_recovery_forget($user_id)
+{
+    if (pg_mfa_table_exists()) {
+        db("DELETE FROM user_mfa_recovery WHERE user_id = '" . (int) $user_id . "'");
+    }
 }
 
 /**
@@ -784,11 +801,14 @@ function pg_mfa_reset($user_id)
 {
     pg_mfa_disable($user_id);
     pg_passkeys_forget($user_id);
+    pg_mfa_recovery_forget($user_id);
 }
 
 /**
  * Check a code typed at the second step: six digits are a TOTP code,
- * anything that normalizes to eight characters is a recovery code.
+ * anything that normalizes to eight characters is a recovery code. An
+ * account whose only second factor is a passkey has recovery codes and no
+ * TOTP key, so only a recovery code can pass for it.
  *
  * Both are consumed with a conditional UPDATE whose affected-row count
  * decides, so two requests racing with the same code cannot both pass: the
@@ -801,7 +821,9 @@ function pg_mfa_reset($user_id)
  */
 function pg_mfa_verify_code($user_id, $code)
 {
-    if (!pg_mfa_enabled($user_id)) {
+    $totp_on = pg_mfa_enabled($user_id);
+
+    if (!$totp_on && !pg_mfa_has_passkey($user_id)) {
         return false;
     }
 
@@ -811,6 +833,10 @@ function pg_mfa_verify_code($user_id, $code)
     if ($kind === 'totp') {
 
         $digits = preg_replace('/\s+/', '', $code);
+
+        if (!$totp_on) {
+            return false;
+        }
 
         $row = pg_mfa_row($user_id);
         $secret = pg_mfa_secret_decode($row['totp_secret']);
@@ -915,7 +941,8 @@ function pg_mfa_attempt_clear($user_id)
  * @param string $code
  * @return string '' when every proof was accepted, otherwise the refusal:
  *                'attempts', 'locked', 'password' or 'code'
- *                (pg_mfa_reauth_message() words it).
+ *                (pg_mfa_reauth_message() words it, and the e-mailed code's
+ *                'email_code' and 'email_expired' of passkey.php).
  */
 function pg_mfa_reauth_refusal($user_id, $username, $current_password, $code)
 {
@@ -959,7 +986,8 @@ function pg_mfa_reauth_refusal($user_id, $username, $current_password, $code)
 /**
  * The sentence a refusal of pg_mfa_reauth_refusal() is shown as.
  *
- * @param string $refusal 'attempts', 'locked', 'password', 'code' or ''
+ * @param string $refusal 'attempts', 'locked', 'password', 'code',
+ *                        'email_code', 'email_expired' or ''
  * @param int    $minutes how long a sign-in lockout lasts; 0 reads it from
  *                        the throttle settings (60 where they cannot be read)
  * @return string '' for ''
@@ -984,6 +1012,12 @@ function pg_mfa_reauth_message($refusal, $minutes = 0)
 
         case 'password':
             return lang('The password you entered is incorrect. Please remember that passwords are case sensitive.');
+
+        case 'email_code':
+            return lang('That code was not accepted. Enter the code from the latest e-mail we sent you.');
+
+        case 'email_expired':
+            return lang('The code has expired or was used already. Send a new code and try again.');
     }
 
     return lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.');

@@ -3854,17 +3854,24 @@ function _civ_cross_sell_part_node($node)
 // nothing is read for it; a list the design placed elsewhere is read as
 // before. A condition that cannot be read draws nothing, and one on a
 // node holding a required control is ignored, as in _render_tree_node().
+// Of several conditions, only those on __has_related are known here: with
+// 'all' one of them failing cuts the node, with 'any' all of them must be
+// on __has_related and fail.
 function _civ_related_list_shown_when_off($node)
 {
     if (!is_array($node)) return false;
     if (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'product.related') return true;
     $type = isset($node['type']) ? (string)$node['type'] : '';
-    if (isset($node['props']['_bindings']['show_if']) && !in_array($type, array('root', 'loop_area', 'recipient_loop_area'), true)) {
-        $cond = pg_sw_cond_spec($node['props']);
+    if (isset($node['props']) && pg_sw_cond_present($node['props']) && !in_array($type, array('root', 'loop_area', 'recipient_loop_area'), true)) {
+        $cond = pg_sw_cond_specs($node['props']);
         if ($cond !== null && pg_sw_cond_holds_required($node)) $cond = null;
         if ($cond === false) return false;
-        if (is_array($cond) && strtolower($cond['token']) === '__has_related' && !pg_sw_cond_eval($cond['op'], '', $cond['operand'])) {
-            return false;
+        if (is_array($cond)) {
+            $failed = 0;
+            foreach ($cond['conds'] as $c) {
+                if (strtolower($c['token']) === '__has_related' && !pg_sw_cond_eval($c['op'], '', $c['operand'])) $failed++;
+            }
+            if ($cond['join'] === 'any' ? ($failed === count($cond['conds'])) : ($failed > 0)) return false;
         }
     }
     foreach (isset($node['children']) && is_array($node['children']) ? $node['children'] : array() as $child) {

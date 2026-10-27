@@ -384,6 +384,8 @@ function api_auth_me($params) {
 
 	api_ok(array(
 		'kind' => ($device === null) ? 'application' : ((isset($app['kind']) && ($app['kind'] === 'oauth')) ? 'oauth' : 'device'),
+		// No per-person language yet: the site's, as GET /meta gives it.
+		'language' => api_text_language(),
 		'user' => array(
 			'id'         => (int)$user['user_id'],
 			'username'   => (string)$user['user_username'],
@@ -416,6 +418,7 @@ function api_auth_me_schema() {
 
 	return array(
 		'kind'        => 'string',
+		'language'    => 'string',
 		'user'        => array(
 			'id'         => 'integer',
 			'username'   => 'string',

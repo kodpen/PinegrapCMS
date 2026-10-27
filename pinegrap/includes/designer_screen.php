@@ -1549,6 +1549,9 @@ function pg_designer_components_card($user)
         } elseif (strpos($category, 'cregion:') === 0) {
             // Made from a classic designer region (pg_designer_region_component()).
             $source_cell = h(lang('Designer Region'));
+        } elseif (strpos($category, 'common_region:') === 0) {
+            // Made from a common region (pg_common_region_component()).
+            $source_cell = h(lang('Common Region'));
         } else {
             $source_cell = '<span class="fg-secondary">—</span>';
         }

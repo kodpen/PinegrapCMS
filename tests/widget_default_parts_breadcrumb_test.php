@@ -283,7 +283,7 @@ function test_widget_parts_breadcrumb_editor_twin()
 		$b = strpos($js, $to, $a);
 		return substr($js, $a, $b + strlen($to) - $a);
 	};
-	$src = $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n") . $cut("\n    var SW_DEFAULT_LEADS = {", "\n    };\n");
+	$src = $cut("\n    var SD_COND_NAMES = ", ";\n") . $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n") . $cut("\n    var SW_DEFAULT_LEADS = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartCatalogCrumbs', '_sdPartCatalogBreadcrumb',
 		'_sdInsertBeforeMainLoop', '_sdDefaultLeads', '_sdPartPlaced', '_sdListIsSourced') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
