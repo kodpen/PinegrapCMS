@@ -1917,8 +1917,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '"' . $order_item['notes'] . '"' . "\n";
 
             // get maximum quantity number, so we can determine how many product forms there are for this order item
-            $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = '" . $order_item['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = ?";
+            $result = db_q($query, array((string) $order_item['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $number_of_forms = $row['number_of_forms'];
 
@@ -1938,11 +1938,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             count(*) as number_of_values
                         FROM form_data
                         WHERE
-                            (order_item_id = '" . $order_item['id'] . "')
-                            AND (quantity_number = '$quantity_number')
+                            (order_item_id = ?)
+                            AND (quantity_number = ?)
                         GROUP BY form_field_id
                         ORDER BY id";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number)) or output_error('Query failed.');
 
                     $form_data_items = array();
 
@@ -1985,11 +1985,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 "SELECT data
                                 FROM form_data
                                 WHERE
-                                    (order_item_id = '" . $order_item['id'] . "')
-                                    AND (quantity_number = '$quantity_number')
-                                    AND (form_field_id = '" . $form_data_item['form_field_id'] . "')
+                                    (order_item_id = ?)
+                                    AND (quantity_number = ?)
+                                    AND (form_field_id = ?)
                                 ORDER BY id";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number, (string) $form_data_item['form_field_id'])) or output_error('Query failed.');
 
                             while ($row = mysqli_fetch_assoc($result)) {
                                 // if data is not empty, then add comma and space
@@ -2154,8 +2154,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     '"' . $order_item['notes'] . '"' . "\n";
 
                 // get maximum quantity number, so we can determine how many product forms there are for this order item
-                $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = '" . $order_item['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = ?";
+                $result = db_q($query, array((string) $order_item['id'])) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $number_of_forms = $row['number_of_forms'];
 
@@ -2175,11 +2175,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 count(*) as number_of_values
                             FROM form_data
                             WHERE
-                                (order_item_id = '" . $order_item['id'] . "')
-                                AND (quantity_number = '$quantity_number')
+                                (order_item_id = ?)
+                                AND (quantity_number = ?)
                             GROUP BY form_field_id
                             ORDER BY id";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number)) or output_error('Query failed.');
 
                         $form_data_items = array();
 
@@ -2222,11 +2222,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                     "SELECT data
                                     FROM form_data
                                     WHERE
-                                        (order_item_id = '" . $order_item['id'] . "')
-                                        AND (quantity_number = '$quantity_number')
-                                        AND (form_field_id = '" . $form_data_item['form_field_id'] . "')
+                                        (order_item_id = ?)
+                                        AND (quantity_number = ?)
+                                        AND (form_field_id = ?)
                                     ORDER BY id";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number, (string) $form_data_item['form_field_id'])) or output_error('Query failed.');
 
                                 while ($row = mysqli_fetch_assoc($result)) {
                                     // if data is not empty, then add comma and space

@@ -261,8 +261,8 @@ function test_catalog_bin_group_screen_neither_lists_nor_drops_binned_rows()
 {
 	$source = catalog_bin_test_source('edit_product_group.php');
 
-	pg_assert_contains("parent_id = '\" . e(\$_GET['id']) . \"'\" . pg_catalog_bin_live_sql('product_groups')", $source, 'sub-groups in the bin are not listed or counted');
-	pg_assert_contains("product_group = '\" . e(\$_GET['id']) . \"'\" . pg_catalog_bin_live_sql('products')", $source, 'products in the bin are not listed');
+	pg_assert_contains("parent_id = ?\" . pg_catalog_bin_live_sql('product_groups')", $source, 'sub-groups in the bin are not listed or counted');
+	pg_assert_contains("product_group = ?\" . pg_catalog_bin_live_sql('products')", $source, 'products in the bin are not listed');
 
 	// Their group links survive the save that cannot post them back.
 	pg_assert_contains("AND product NOT IN (SELECT id FROM products WHERE recycled = '1')", $source, 'the save keeps the links of binned products');

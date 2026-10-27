@@ -1141,9 +1141,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                          zones.name 
                       FROM zones 
                       LEFT JOIN products_zones_xref ON products_zones_xref.zone_id = zones.id 
-                      WHERE products_zones_xref.product_id = '" . escape($product_id) . "'
+                      WHERE products_zones_xref.product_id = ?
                       ORDER BY zones.name ASC";
-            $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
+            $result2 = db_q($query2, array((string) $product_id)) or output_error('Query failed.');
             
             // loop through and prepare allowed zones
             while($row2 = mysqli_fetch_assoc($result2)){
