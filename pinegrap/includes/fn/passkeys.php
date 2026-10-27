@@ -272,6 +272,71 @@ function pg_passkey_ceremony_take(&$store, $purpose, $user_id, $now)
     return $ceremony;
 }
 
+// ── Sessions opened with a passkey ──────────────────────────────────────────
+
+/**
+ * Marks that the account signed in with a passkey, until the session's token
+ * is minted (pg_login_set_device_cookie()), which may be a request later
+ * when the device limit screen comes between.
+ *
+ * @param mixed $store      the session's value, by reference
+ * @param int   $user_id
+ * @param int   $passkey_id
+ * @param int   $now
+ */
+function pg_passkey_signin_mark(&$store, $user_id, $passkey_id, $now)
+{
+    $store = array('user_id' => (int) $user_id, 'passkey_id' => (int) $passkey_id, 'time' => (int) $now);
+}
+
+/**
+ * Takes the mark of pg_passkey_signin_mark() for an account whose token is
+ * being minted. Any mint takes it, so it never outlives the sign-in it was
+ * left by; one older than ten minutes (a sign-in given up at the device limit
+ * screen) names nothing.
+ *
+ * @param mixed $store   by reference
+ * @param int   $user_id
+ * @param int   $now
+ * @return int the passkey's id; 0 when none
+ */
+function pg_passkey_signin_marked(&$store, $user_id, $now)
+{
+    if (!is_array($store) || !isset($store['user_id'], $store['passkey_id'], $store['time'])) {
+        return 0;
+    }
+
+    if ((int) $store['user_id'] !== (int) $user_id) {
+        return 0;
+    }
+
+    $mark = $store;
+    $store = null;
+
+    if ((((int) $now - (int) $mark['time']) > 600) || ((int) $mark['time'] > (int) $now)) {
+        return 0;
+    }
+
+    return max(0, (int) $mark['passkey_id']);
+}
+
+/**
+ * Whether auth_tokens has its passkey_id column (2026.11.0, 11.0.46): the
+ * token of a sign-in is minted on the upgrade bridge too.
+ *
+ * @return bool
+ */
+function pg_auth_tokens_have_passkey()
+{
+    static $have = null;
+
+    if ($have === null) {
+        $have = pg_auth_tokens_table_exists() && pg_schema_has('auth_tokens', 'passkey_id');
+    }
+
+    return $have;
+}
+
 // ── E-mailed code ───────────────────────────────────────────────────────────
 
 /**
@@ -561,6 +626,12 @@ function pg_passkeys_forget($user_id)
         return;
     }
 
+    // The sessions they opened end with them, as when one is removed.
+    if (pg_auth_tokens_have_passkey()) {
+        db("DELETE FROM auth_tokens WHERE user_id = '" . (int) $user_id . "' AND passkey_id > 0"
+            . (pg_auth_tokens_have_pin() ? " AND pinned = 0" : ''));
+    }
+
     db("DELETE FROM user_passkeys WHERE user_id = '" . (int) $user_id . "'");
 }
 
@@ -632,6 +703,8 @@ function pg_passkey_remove($user_id, $passkey_id)
         return null;
     }
 
+    pg_passkey_sessions_end($user_id, $passkey_id);
+
     // The last passkey of an account without an authenticator key takes its
     // recovery codes along: there is no second step left for them to stand
     // in for.
@@ -640,6 +713,27 @@ function pg_passkey_remove($user_id, $passkey_id)
     }
 
     return $name;
+}
+
+/**
+ * Ends the sessions a passkey opened: their tokens go, and with them the
+ * sessions bound to them (pg_session_bind_token()), this browser's too when
+ * it signed in with that passkey. A synced passkey is one credential on every
+ * device of its cloud account, so they all go. A session an operator locked
+ * stays, as with "sign out of all devices". Silent before 11.0.46.
+ *
+ * @param int $user_id
+ * @param int $passkey_id
+ */
+function pg_passkey_sessions_end($user_id, $passkey_id)
+{
+    if (((int) $passkey_id <= 0) || !pg_auth_tokens_have_passkey()) {
+        return;
+    }
+
+    db("DELETE FROM auth_tokens
+        WHERE user_id = '" . (int) $user_id . "' AND passkey_id = '" . (int) $passkey_id . "'"
+        . (pg_auth_tokens_have_pin() ? " AND pinned = 0" : ''));
 }
 
 /**
@@ -1031,6 +1125,9 @@ function pg_passkey_signin_check($input, $user_id)
         return array('ok' => false, 'error' => 'sign_count');
     }
 
+    // The session about to be opened names this passkey.
+    pg_passkey_signin_mark($_SESSION['software']['signin_passkey'], (int) $row['user_id'], (int) $row['id'], time());
+
     return array(
         'ok'         => true,
         'user_id'    => (int) $row['user_id'],
@@ -1336,6 +1433,38 @@ function pg_passkey_reauth_fields($password_algo, $mfa_enabled, $adding = false)
 }
 
 /**
+ * The form that removes one passkey of the signed-in account
+ * (account_security.php, passkey_remove), asking for the proofs
+ * pg_passkey_reauth_fields() names. Drawn under each passkey and beside each
+ * session it opened (pg_account_security_section()).
+ *
+ * @param int    $passkey_id
+ * @param array  $proofs     pg_passkey_reauth_fields() of the account
+ * @param string $action_url account_security.php
+ * @param string $token      the CSRF field
+ * @param string $id_prefix  makes the field ids unique on the page
+ * @param string $button     the button's words
+ * @return string
+ */
+function pg_passkey_remove_form($passkey_id, $proofs, $action_url, $token, $id_prefix, $button)
+{
+    $id = (int) $passkey_id;
+    $field = function ($name, $label, $input) {
+        return '<label for="' . h($name) . '" style="display:block;margin-bottom:.25em">' . h($label) . '</label>' . $input;
+    };
+
+    return '<form method="post" action="' . h($action_url) . '" style="margin:.5em 0 1em" autocomplete="off">' . $token
+        . '<input type="hidden" name="pg_security_action" value="passkey_remove"/>'
+        . '<input type="hidden" name="passkey_id" value="' . $id . '"/>'
+        . '<p style="margin-bottom:.5em">' . h(lang('Removing it also signs out the sessions it opened. Delete it from your device or password manager as well.')) . '</p>'
+        . ($proofs['password'] ? $field($id_prefix . 'password_' . $id, lang('Current password'),
+            '<input type="password" id="' . h($id_prefix . 'password_' . $id) . '" name="current_password" class="software_input_password" required="required" autocomplete="current-password" style="margin-bottom:.5em"/><br/>') : '')
+        . ($proofs['code'] ? $field($id_prefix . 'code_' . $id, lang('Code from your authenticator app or a recovery code'),
+            '<input type="text" id="' . h($id_prefix . 'code_' . $id) . '" name="code" class="software_input_text" required="required" autocomplete="one-time-code" maxlength="20" spellcheck="false" style="margin-bottom:.5em"/><br/>') : '')
+        . '<button type="submit" class="software_input_submit_secondary">' . h($button) . '</button></form>';
+}
+
+/**
  * The passkeys part of the account security section
  * (pg_account_security_section()), in the plain style of
  * pg_mfa_account_section(): the account's passkeys, each with a rename and a
@@ -1445,12 +1574,7 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
                     '<input type="text" id="pg_passkey_name_' . $id . '" name="name" class="software_input_text" maxlength="' . (int) PG_PASSKEY_NAME_MAX . '" value="' . h($name) . '" style="margin-bottom:.5em"/><br/>')
                 . '<button type="submit" class="software_input_submit_primary">' . h(lang('Save')) . '</button>');
 
-            $remove = $form('passkey_remove',
-                '<input type="hidden" name="passkey_id" value="' . $id . '"/>'
-                . '<p style="margin-bottom:.5em">' . h(lang('After removing it here, delete it from your device or password manager as well.')) . '</p>'
-                . ($proofs['password'] ? $password_input('pg_passkey_remove_password_' . $id) : '')
-                . ($proofs['code'] ? $code_input('pg_passkey_remove_code_' . $id) : '')
-                . '<button type="submit" class="software_input_submit_secondary">' . h(lang('Remove')) . '</button>');
+            $remove = pg_passkey_remove_form($id, $proofs, $action_url, $token, 'pg_passkey_remove_', lang('Remove'));
 
             $rows_html .=
                 '<tr><td style="padding:.4em .6em">' . h($name) . $synced

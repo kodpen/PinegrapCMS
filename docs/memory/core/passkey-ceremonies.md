@@ -31,4 +31,4 @@ description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys
 - [[passkey-second-factor]] (PR #1862).
 
 ## What is not built yet? (plans/passkeys.md)
-- The designed widget's add form without TOTP and new recovery codes for passkey-only accounts (step 4c2); sessions tied to passkeys (4e). Passwordless sign-in and autofill: [[passkey-passwordless]].
+- The designed widget's add form without TOTP and new recovery codes for passkey-only accounts (step 4c2); Passwordless sign-in and autofill: [[passkey-passwordless]].
