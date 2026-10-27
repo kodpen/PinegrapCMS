@@ -25,3 +25,6 @@ description: ERP expenses (4.95): why an expense is nobody's debt, how payment a
 - Every money movement (a create with `cash_account_id`, pay, cancelling a paid one) calls `erp_api_expense_cash_gate()`: the key needs `erp_cash:write` and its owner the panel's cash right. Till transfers and cheques through the API use the same gate.
 - `erp.expense.created|paid|cancelled` are fired with `erp_event_expense()` inside the writer's transaction (a save that rolls back announces nothing; one paid on the spot announces both). A new write path fires them too.
 - Receipt files: erp-expense-receipts.md. Repeating expenses: erp-recurring-documents.md.
+
+## How does the list name its period?
+- The card heading is "Expenses · <period>" through `erp_profit_period_title()` (`includes/erp/profit.php`): "October 2026", "Year 2026", or the two dates in the site format, as the period picker names them. `erp_accountant_period_label()` (`2026-10`, `from_to`) is the pack's file-name form only (#2064; `tests/erp_profit_period_title_test.php`).
