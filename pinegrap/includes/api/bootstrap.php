@@ -42,6 +42,7 @@ require_once($pg_api_directory . '/console.php');
 require_once($pg_api_directory . '/seo.php');
 
 require_once($pg_api_directory . '/resources/meta.php');
+require_once($pg_api_directory . '/resources/discovery.php');
 require_once($pg_api_directory . '/resources/forms.php');
 require_once($pg_api_directory . '/resources/seo.php');
 require_once($pg_api_directory . '/resources/system.php');
@@ -216,8 +217,9 @@ function api_run() {
 	// /docs/endpoints under the description's rule once the reader has typed a
 	// key - so handing it out costs nothing that the description does not
 	// already guard, the same way the panel's login screen is public while the
-	// panel is not.
-	if ($route['id'] === 'docs') {
+	// panel is not. The discovery document is answered here too: it is what a
+	// client reads before it holds any credential.
+	if (($route['id'] === 'docs') || ($route['id'] === 'discovery')) {
 
 		call_user_func($route['handler'], array());
 

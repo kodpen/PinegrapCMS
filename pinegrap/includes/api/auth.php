@@ -307,31 +307,9 @@ function api_secret_matches($app, $supplied) {
 // notation here that they already write there.
 function api_check_ip_allowlist($app) {
 
-	$allowlist = trim((string)$app['ip_allowlist']);
-
-	if ($allowlist === '') {
+	if (api_ip_allowlist_admits($app['ip_allowlist'], api_client_ip())) {
 
 		return;
-
-	}
-
-	$ip = api_client_ip();
-
-	$patterns = preg_split('/[\s,;]+/', $allowlist, -1, PREG_SPLIT_NO_EMPTY);
-
-	foreach ($patterns as $pattern) {
-
-		if (function_exists('waf_ip_matches') && waf_ip_matches($ip, $pattern)) {
-
-			return;
-
-		}
-
-		if ($ip === $pattern) {
-
-			return;
-
-		}
 
 	}
 

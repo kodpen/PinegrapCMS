@@ -19,7 +19,7 @@ description: What keeps real OAuth/MCP clients (Cursor, VS Code, Gemini CLI, Cod
 - On refresh unknown names are ignored the same way; asking for more than was granted is 400 `invalid_scope`.
 
 ## Where do clients find the server?
-- `router.php` answers `.well-known/oauth-authorization-server`, `.well-known/openid-configuration` (the only name reachable for a site installed in a folder; it claims nothing OpenID Connect adds) and `.well-known/oauth-protected-resource/<path>`, each through `oauth.php`.
+- `router.php` answers `.well-known/oauth-authorization-server`, `.well-known/openid-configuration` (the only name reachable for a site installed in a folder; it claims nothing OpenID Connect adds) and `.well-known/oauth-protected-resource/<path>`, each through `oauth.php`. Beside them it answers `.well-known/pinegrap.json`, Pinegrap's own discovery document for team device clients, not an OAuth name (`api-discovery-document.md`).
 
 ## Where is a new client documented?
 - The panel guide `api_settings_oauth_guide()` (`api_settings.php`) gives each client's steps and the text to paste, with this site's address in it; a new client gets an entry there. The MCP file address in the software folder comes first, since it works on every server.
