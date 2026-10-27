@@ -219,6 +219,8 @@ function makePgUI(calls, late) {
                 calls.push(['combobox', toggle.className, opts]);
                 var menu = toggle.nextSibling;
                 toggle.instance = {
+                    toggled: 0,
+                    toggle: function () { this.toggled++; },
                     pick: function (v) {
                         menu.querySelectorAll('.menu-item').forEach(function (item) {
                             var hit = item.getAttribute('data-bs-value') === v;
@@ -418,6 +420,8 @@ function main() {
         few_text: [cb.doc.querySelector('#few').nextSibling.children[0].textContent, cb.doc.querySelector('#few').nextSibling.children[0].className],
         heard_on_draw: acctHeard.length
     };
+    (toggle.listeners.click || []).forEach(function (f) { f({ preventDefault: function () {} }); });
+    out.combobox_click = toggle.instance.toggled;
     toggle.instance.pick('120');
     out.combobox_pick = { value: acct.value, heard: acctHeard.slice(), text: toggle.children[0].textContent, get: cb.win.pgCombobox.get(acct) };
     cb.win.pgFields.destroy(acct);
@@ -658,16 +662,17 @@ function test_pg_fields_combobox_on_bootstrap_6()
 	pg_assert_same(array('BUTTON', 'button', 'acct_label', 'Account 335', 'combobox-value'), $m['toggle'], 'a button named by the field\'s label, showing the chosen option');
 	pg_assert_same(
 		array(
-			'search:Ara', 'combobox-no-results d-none:Sonuç bulunamadı', "item::\u{2014}",
+			'search:Ara', 'combobox-no-results d-none:Sonuç bulunamadı', 'item::Choose an account',
 			'menu-header:Assets', 'item:100:Account 100', 'item:102:Account 102', 'item:120:Account 120', 'item:153:Account 153',
 			'menu-header:Liabilities', 'item:320:Account 320', 'item:335:Account 335:selected', 'item:360:Account 360',
 		),
 		$m['menu'],
-		'translated search words, the empty option as an item, a header per group, the chosen item marked'
+		'translated search words, the empty option as an item reading as the placeholder, a header per group, the chosen item marked'
 	);
 	pg_assert_same(array('item:a:A', 'item:b:B'), $m['few'], 'no search box under eight options');
 	pg_assert_same(array('Pick one', 'combobox-value combobox-placeholder'), $m['few_text'], 'nothing chosen: the placeholder');
 	pg_assert_same(0, $m['heard_on_draw'], 'drawing fires no change');
+	pg_assert_same(1, $r['combobox_click'], 'a click on the toggle opens its own instance');
 	pg_assert_same(
 		array('value' => '120', 'heard' => array('120:true'), 'text' => 'Account 120', 'get' => '120'),
 		$r['combobox_pick'],

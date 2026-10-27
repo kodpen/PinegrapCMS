@@ -5,7 +5,7 @@ description: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped fo
 
 ## Which swaps did the owner ask for?
 - B9a tagin to Chips: done (#2208), how it works in `ui/pg-field-wrappers.md`.
-- B9b select2 to Combobox (27): the native `<select>` stays the posted store (`name[]`, liveform, `required`). No remote search (google_product_category needs an own fetch layer), no new entries, no clear (add an empty item). ERP account choice re-rates taxes: a native `change` must fire.
+- B9b select2 to Combobox: done (#2243), how it works in `ui/pg-combobox.md`. Left on select2: google_product_category (`data-pg-source`), until an own fetch layer gives Combobox server search.
 - B9c Datepicker (31 date, 11 date and time, 8 time-only sites): init from JS with our own parse and format of the site date format (`isoToDisplay`/`displayToIso` in offer_editor.js), locale from the panel language, Monday first for tr; never the data API or `new Date()` parsing. Date and time: Datepicker plus `<input type="time">` composed into the original field. Time-only: `<input type="time">` only after B5, or 17:00 is stored as 00:00. ACL expiry pickers in drawers open inline.
 - B9d OTP: done (#2210, `ui/otp-fields.md`).
 - B9e Range with value bubble: done (#2207): editor inspector (3), label editor, image quality % and disk alert % (`ui/range-value-bubble.md`). Never the palette's site Range.

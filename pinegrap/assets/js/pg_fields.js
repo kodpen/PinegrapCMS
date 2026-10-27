@@ -291,17 +291,20 @@
 
     var CARET = '<svg class="combobox-caret" width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M.47 5.47a.75.75 0 0 1 1.06 0L5 8.94l3.47-3.47a.75.75 0 1 1 1.06 1.06l-4 4a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06Z" fill="currentcolor"/></svg>';
 
+    var CHECK = '<svg class="menu-item-check" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
     // The select's own classes the toggle takes over: sizes, validation,
     // margins; not the control class, which the toggle has anyway.
     var COMBOBOX_SKIP = { 'form-control': 1, 'select2': 1, 'pg-combobox-native': 1 };
 
-    function comboboxItem(option, multiple) {
+    function comboboxItem(option, multiple, placeholder) {
         var item = document.createElement('button');
         item.type = 'button';
         item.className = 'menu-item';
         item.setAttribute('data-bs-value', option.value);
-        // An empty value is the "nothing chosen" item: it stands for the
-        // placeholder and is never shown as the choice.
+        // An empty value is the "nothing chosen" item, which takes the
+        // place of select2's clear button: it reads as the placeholder and is
+        // never shown as the choice.
         if (option.selected && (multiple || option.value !== '')) {
             item.className += ' selected';
             item.setAttribute('aria-selected', 'true');
@@ -309,7 +312,12 @@
         if (option.disabled) {
             item.disabled = true;
         }
-        item.textContent = option.textContent.trim() || (option.value === '' ? '\u2014' : option.value);
+        item.textContent = option.textContent.trim() || (option.value === '' ? (placeholder || '\u2014') : option.value);
+        // Several can be chosen: a check mark shows which (Bootstrap shows it
+        // on .selected).
+        if (multiple) {
+            item.insertAdjacentHTML('beforeend', CHECK);
+        }
         return item;
     }
 
@@ -377,10 +385,10 @@
                 header.textContent = child.getAttribute('label') || '';
                 menu.appendChild(header);
                 for (var k = 0; k < child.children.length; k++) {
-                    menu.appendChild(comboboxItem(child.children[k], multiple));
+                    menu.appendChild(comboboxItem(child.children[k], multiple, el.getAttribute('data-placeholder')));
                 }
             } else if (child.tagName === 'OPTION') {
-                menu.appendChild(comboboxItem(child, multiple));
+                menu.appendChild(comboboxItem(child, multiple, el.getAttribute('data-placeholder')));
             }
         }
         el.classList.add('pg-combobox-native');
@@ -422,6 +430,16 @@
                 menu.style.minWidth = toggle.offsetWidth + 'px';
             })
         ];
+        // Bootstrap opens a combobox from its click data API, which needs
+        // data-bs-toggle="combobox"; that attribute would also let its
+        // DOMContentLoaded pass create an instance with the default options,
+        // so the toggle opens its own instance here.
+        var open = function (event) {
+            event.preventDefault();
+            combobox.toggle();
+        };
+        toggle.addEventListener('click', open);
+        offs.push(function () { toggle.removeEventListener('click', open); });
         el.pgComboboxOff = function () {
             offs.forEach(function (off) { off(); });
         };
