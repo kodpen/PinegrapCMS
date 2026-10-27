@@ -1060,6 +1060,7 @@
     "Shipment create failed: {var:1}": "İrsaliye oluşturulamadı: {var:1}",
     "Shipment tracking link (carrier deep link)": "Kargo takip linki (firma deep-link)",
     "Shipment tracking number": "Kargo takip numarası",
+    "Shipments, labels and tracking numbers created through the account of a shipping service.": "Bir kargo hizmetinin hesabı üzerinden oluşturulan gönderiler, etiketler ve takip numaraları.",
     "Shippable": "Sevk Edilebilir",
     "Shippable Products": "Sevk Edilebilir Ürünler",
     "Shipped": "Sevk edildi",
