@@ -18,7 +18,7 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - Region-level gaps (menu, ad region, tag cloud…): done as widgets (`designer/region-node-to-widget.md`).
 
 ## Which are covered?
-- Custom form confirmation (`form_item_view`), order receipt (`order_view`), login, logout, forgot/change/set password, registration and membership entrance, My Account and its sub-pages, view order, address book, e-mail preferences, catalog and detail, cart, express order, the multi-step checkout (shipping address and arrival, shipping method, billing information, order preview), calendar view and event, form list and item view, search results, error.
+- Form confirmation and item view, order receipt and view, login, logout, password screens, registration and membership entrance, My Account and its sub-pages, catalog and detail, cart, express order, the multi-step checkout, calendar view and event, form list, search results, error.
 
 ## Why did the classic multi-step checkout get widgets?
 - Owner (2026-10-19): almost every site checks out through it, so it cannot stay a `system` node ("frozen" means its code keeps working). The four widgets post to the classic handlers with their names; the order preview draws `get_order_preview()`'s own values (`workflow/decisions-made-product.md`).
@@ -31,7 +31,7 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 
 ## Which order did the owner give?
 - 2026-10-27, through the coordinator: "bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle", and "sorular mimari soru değilse makul seçim yap". Under that the order is: order form, folder view, photo gallery, confirmations, affiliate sign-up form.
-- Confirmations: decided when reached; preferred is a state / next-page setting of the registration and membership widgets, not widgets of their own.
+- Confirmations: decided when reached; preferred: a state / next-page setting of the registration and membership widgets.
 
 ## Open questions?
 - Which of the types above must be designable before L5 (retire), and which may stay `system` region nodes?
