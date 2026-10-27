@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23; 1, 2, 6, 7, 8 done, 4, 5 partly; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+description: Plan (2026-10-23; 1, 2, 6, 7, 8, 11 done, 4, 5 partly; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -28,7 +28,7 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8 done, 4, 5 partly; answers open): o
 8. Small aids, no schema, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #2115 (workspace/workspace-colon-emoji.md).
 9. Objects, no schema: a lone tag as a card per reader (like `ws_form_cards_html()`); checklist item to task (`ws_command_parse_task()`).
 10. Saved replies with `{customer}`, `{order}`, schema, ask first: `;` picker, API with dry run; team ones need a right column (five ladder files, `pg_user_has_ws_columns()`).
-11. Rewrite with AI, no schema: a `pg_ai_write_targets()` target (proposed), plans/ai-write-buttons.md.
+11. Rewrite with AI, no schema, done: #2141, target `ws_message` (workspace/workspace-ai-rewrite.md).
 12. Later: callouts, toggles, dictation, mermaid, find/replace; no GIF, video.
 
 ## Open questions (recommendation)
@@ -39,5 +39,5 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8 done, 4, 5 partly; answers open): o
 5. Dictation (Chrome sends audio to Google): (a) offer, privacy line, (b) not now → owner.
 
 ## Where to start?
-- Step 8 is done. Next, needing no answer: 11 (rewrite with AI). 3 waits for question 1, the "Aa" box of 5 for question 2.
+- Step 11 is done. Next, needing no answer: 9 (objects). 3 waits for question 1, the "Aa" box of 5 for question 2.
 - Step 4 left: autoformat (`==x==`, also "- " at a line's start) after question 3.
