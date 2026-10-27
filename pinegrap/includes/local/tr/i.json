@@ -419,6 +419,7 @@
     "InnoDB tables cannot be repaired with REPAIR TABLE; InnoDB recovers from its own log, and a damaged InnoDB table is restored from a backup.": "InnoDB tabloları REPAIR TABLE ile onarılamaz; InnoDB kendi günlüğünden kurtarır, bozuk bir InnoDB tablosu yedekten geri yüklenir.",
     "Input": "Girdi",
     "Input Group": "Girdi Grubu",
+    "Input group": "Girdi grubu",
     "Insert After": "Sonrasına Ekle",
     "Insert Before": "Öncesine Ekle",
     "Insert a column on the left": "Soluna sütun ekle",

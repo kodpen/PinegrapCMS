@@ -21,7 +21,7 @@ module: widgets_parts
 - Same words in the site's language, same classes in the same order, forms keep names, ids and markers; hidden details may change. The test compares the old block with the new output by visible text and class order, and checks the e-mail output.
 
 ## What is left?
-- Form blocks: the cart rows' editable `__item_form_data_html` (the product order form, last), each return's moves (`__return_actions_html`). The order view's item blocks: [[widget-default-parts-order-items]].
+- Form blocks: the cart rows' editable `__item_form_data_html` (the product order form, last). The order view's item blocks: [[widget-default-parts-order-items]].
 - Express order offers; cart row form data; catalog listing body; variant picker; filters (offcanvas, group tree, `__attribute_filters_html`; the pushed chip row as a lead lands before the pushed toolbar: take both). Each check moves to `pg_sw_placed()`; a token freed from a rendered-template `strpos()` leaves `pg_sw_cond_denied_tokens()`. Then the raw keys in `pg_sw_raw_token_keys()` shrink.
 - Canvas: the band's state chips draw one status badge at a time ([[widget-condition-canvas]]); the timeline's card draws `created`, its sample rows paid, shipped and delivered.
 - A token inside a longer text gets no part (prints empty); a condition on `__timeline` or `__order_status_badge` reads empty.

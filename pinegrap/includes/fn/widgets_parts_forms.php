@@ -88,8 +88,17 @@ function pg_sw_form_label_for(&$node, $values)
     if (empty($node['children']) || !is_array($node['children'])) return;
     $id = '';
     $help = '';
+    // The control is a child, or a child's child (an input group).
+    $near = array();
     foreach ($node['children'] as $c) {
-        $v = (is_array($c) && isset($c['props']['_bindings']['value'])) ? $c['props']['_bindings']['value'] : '';
+        if (!is_array($c)) continue;
+        $near[] = $c;
+        if (isset($c['props']['tag']) && strtolower((string)$c['props']['tag']) !== 'label' && !empty($c['children']) && is_array($c['children'])) {
+            foreach ($c['children'] as $g) if (is_array($g)) $near[] = $g;
+        }
+    }
+    foreach ($near as $c) {
+        $v = isset($c['props']['_bindings']['value']) ? $c['props']['_bindings']['value'] : '';
         if ($v !== '' && in_array($v, $values, true) && !empty($c['props']['id'])) {
             $id = (string)$c['props']['id'];
             $help = (string)pg_sw_form_attr($c, 'aria-describedby');
@@ -272,12 +281,47 @@ function pg_sw_part_order_return_form($cfg = array())
     )));
 }
 
+// ── A return's moves ───────────────────────────────────────────────────
+
+// The button of a return's move: "I have sent it" or "Withdraw the request".
+function pg_sw_part_order_return_move_submit($move)
+{
+    return ($move === 'shipped')
+        ? pg_sw_part_el('button', 'btn btn-primary', 'Sent button', array('text' => lang('I have sent it'), '_bindings' => array('action' => 'order_return_submit')))
+        : pg_sw_part_el('button', 'btn btn-sm btn-outline-secondary', 'Withdraw button', array('text' => lang('Withdraw the request'), '_bindings' => array('action' => 'order_return_submit')));
+}
+
+// A return request's moves (the old __return_actions_html), in an
+// order.returns row: once approved, the parcel's tracking number and "I have
+// sent it" (__return_can_mark_sent); while asked, "Withdraw the request"
+// (__return_can_withdraw). Both post to order_return.php
+// (pg_sw_order_return_form_wire()).
+function pg_sw_part_order_return_moves($cfg = array())
+{
+    return array(
+        pg_sw_part_el('form', 'mt-2', 'Sent form', array_merge_recursive(array('_bindings' => array('action' => 'order_return_shipped_form')),
+            pg_sw_part_when('__return_can_mark_sent', 'not_empty')), array(
+            pg_sw_part_el('label', 'form-label small fw-semibold', 'Label', array('text' => lang('Tracking number of the parcel (optional)'))),
+            pg_sw_part_el('div', 'input-group input-group-sm', 'Input group', array(), array(
+                pg_sw_part_el('input', 'form-control', 'Tracking number', array('_bindings' => array('value' => 'return_tracking'))),
+                pg_sw_part_order_return_move_submit('shipped'),
+            )),
+        )),
+        pg_sw_part_el('form', 'mt-2', 'Withdraw form', array_merge_recursive(array('_bindings' => array('action' => 'order_return_withdraw_form')),
+            pg_sw_part_when('__return_can_withdraw', 'not_empty')), array(
+            pg_sw_part_order_return_move_submit('withdraw'),
+        )),
+    );
+}
+
 // Wires the return request forms under $node: a form bound to
 // order_return_form posts a request to order_return.php with the CSRF
 // token, the order, its delivery (the order.return_deliveries row) and the
 // page to come back to; its quantity boxes send qty[<item>] within what
 // may go back, the reason is required with the shop's reasons, the note
-// sends at most PG_RETURN_NOTE_MAX characters. A form without its reason
+// sends at most PG_RETURN_NOTE_MAX characters. A return's move (sent with
+// its tracking number, withdraw) posts its own action for the row's return.
+// A form without its reason
 // or its button gets them back, a delivery line without its quantity box
 // gets the cell back. $ctx: action, token, order_id, send_to.
 function pg_sw_order_return_form_wire(&$node, $ctx)
@@ -296,6 +340,20 @@ function pg_sw_order_return_form_wire(&$node, $ctx)
             . '<input type="hidden" name="order_id" value="' . (int)$ctx['order_id'] . '">'
             . '<input type="hidden" name="ship_to_id" value="^^__return_delivery_id^^">'
             . '<input type="hidden" name="send_to" value="' . h((string)$ctx['send_to']) . '">');
+    } elseif ($sem && $tag === 'form' && isset($b['action']) && ($b['action'] === 'order_return_shipped_form' || $b['action'] === 'order_return_withdraw_form')) {
+        // A return's move, in an order.returns row.
+        $move = ($b['action'] === 'order_return_shipped_form') ? 'shipped' : 'withdraw';
+        if (!isset($node['children']) || !is_array($node['children'])) $node['children'] = array();
+        if (!pg_sw_form_has_binding($node, 'action', 'order_return_submit')) $node['children'][] = pg_sw_part_order_return_move_submit($move);
+        pg_sw_form_post($node, $ctx['action'],
+            (string)$ctx['token'] . '<input type="hidden" name="action" value="' . $move . '">'
+            . '<input type="hidden" name="order_id" value="' . (int)$ctx['order_id'] . '">'
+            . '<input type="hidden" name="return_id" value="^^__return_id^^">'
+            . '<input type="hidden" name="send_to" value="' . h((string)$ctx['send_to']) . '">');
+    } elseif ($sem && $tag === 'input' && $value === 'return_tracking') {
+        pg_sw_form_set_attrs($node, array_fill_keys(array('type', 'name', 'maxlength', 'autocomplete', 'id'), 1),
+            array('type' => 'text', 'name' => 'tracking_number', 'maxlength' => '100', 'autocomplete' => 'off'));
+        $node['props']['id'] = 'pg-ov-return-tracking-^^__return_id^^';
     } elseif (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'order.return_delivery_lines') {
         if (!pg_sw_form_has_binding($node, 'value', 'return_qty') && isset($node['children'][0]['type']) && $node['children'][0]['type'] === 'semantic') {
             if (!isset($node['children'][0]['children']) || !is_array($node['children'][0]['children'])) $node['children'][0]['children'] = array();
@@ -324,6 +382,6 @@ function pg_sw_order_return_form_wire(&$node, $ctx)
     if (!empty($node['children']) && is_array($node['children'])) {
         foreach ($node['children'] as &$child) pg_sw_order_return_form_wire($child, $ctx);
         unset($child);
-        pg_sw_form_label_for($node, array('return_reason', 'return_note'));
+        pg_sw_form_label_for($node, array('return_reason', 'return_note', 'return_tracking'));
     }
 }
