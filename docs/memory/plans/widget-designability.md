@@ -23,24 +23,24 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - Owner (2026-10-27), every proposal accepted, reasons in [[widget-designability-decisions-2]].
 
 ## What does the owner still answer?
-Nothing open.
+- W17/W18 (#2334): record = what the address opens? Its values shown outside widgets (W17)? A form record's own fields too?
 
 ## What are the steps? (one PR each)
 - W1 done (#1592, [[widget-finish-pass]], [[widget-conditions]]).
 - W2 done (#1582). W3 done (#1597, [[widget-loop-position]]). W4 done (#1665, [[widget-condition-panel]]).
 - W5 done (#1879, #1905, [[widget-layout-gallery]]).
 - W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 done (seven PRs #1809 to #1917, [[widget-entity-fields-list]]).
-- W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 paging: #1924 #1947 #1968 #1984, search count grouping #2245; done ([[widget-list-paging]]). W13 done (#1758).
+- W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 done #1924 to #2245 ([[widget-list-paging]]). W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
 - W15 done (#1734). W16 default parts: order view #1808 #1824 #1863, stars #1908, crumbs #1945, cross-sell #1973 #2067, chips #2218, cart gift card #2260, cart payment schedule #2311; left: cancel, return forms, then the product order form.
 - W17 Parts anywhere, record values outside widgets. W18 done #2308 #2334 ([[page-conditions]]).
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
-- W20 Parts palette, starter library. W21 done #2326 #2345. W22: W22a #2317 ([[layout-form-converter]]); W22b editor, after owner. W23 done #2225 #2307. W24 Express order lists (owner, 2026-10-27): W24a done (#2259, [[widget-lists-checkout]]); W24b done (#2304, offer texts in Translations).
-- W25 done (#2221, [[widget-condition-rows]]): up to three conditions per element, All or Any (owner, 2026-10-27).
-- W26 Words beside a value ([[sentence-with-values]]): order view's ended line left.
+- W20 Parts palette, starter library. W21 done #2326 #2345. W22: W22a #2317 ([[layout-form-converter]]); W22b editor, after owner. W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).
+- W25 done (#2221, [[widget-condition-rows]]).
+- W26 done #2264 ([[sentence-with-values]]); order view's ended line left.
 
 ## How are other sessions kept clear?
 - Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W16's rest ([[widget-default-parts]]).
+- W16's rest ([[widget-default-parts]]); W17 after the answer ([[page-conditions]]).
