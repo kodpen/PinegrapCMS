@@ -4,7 +4,7 @@ description: W17: a value of the page's record printed by an element outside the
 ---
 
 ## What does an element outside a widget print?
-- A text, a link's address or a picture (`text`, `alt`, `href`, `src`) bound to `__record<token>`: a value of the record the address opens ([[page-conditions]]), from the W8 allow-list. Answered under the owner's delegation ([[widget-designability-decisions-2]]): escaped as the widget prints it, empty when the page opens no record.
+- A text, a link's address or a picture (`text`, `alt`, `href`, `src`) bound to `__record<token>`: a value of the record the address opens ([[page-conditions]]), from the W8 allow-list. Escaped as the widget prints it, empty when the page opens no record. Open decision: #2405.
 - `pg_page_record_value_tokens()`: every record token but `__record_found`. The yes/no ones print `'1'`; the editor offers them as conditions only.
 
 ## How is it drawn?

@@ -21,10 +21,9 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - Owner (2026-10-26): words translatable wherever possible; design elements over placeholder tokens. So no "default text": a sibling with `show_if empty` holds it ([[widget-fill-shop]]).
 - Owner (2026-10-26), detail and reasons in [[widget-designability-decisions]]: W16 equal look and behaviour, not bytes; W5 three sources, filtered, copied; W8 the allow-list of [[widget-entity-fields]].
 - Owner (2026-10-27), every proposal accepted, reasons in [[widget-designability-decisions-2]].
-- W17/W18 answers (2026-10-27, under the owner's delegation): [[widget-designability-decisions-2]], "Page-level facts?".
 
 ## What does the owner still answer?
-- Nothing open.
+- W17/W18: record = what the address opens? Its values shown outside widgets? A form record's own fields too? Asked in #2405.
 
 ## What are the steps? (one PR each)
 - W1 done (#1592, [[widget-finish-pass]], [[widget-conditions]]).
