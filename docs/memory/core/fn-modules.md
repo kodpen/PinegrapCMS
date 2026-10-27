@@ -17,6 +17,7 @@ description: Generated from the module field of the memory files: each includes/
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `lang_files`: [[lang-files]]
+- `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]]
 - `link_resolve`: [[designer-prototype-viewer]]
 - `mail_queue`: [[fn-module-errors-mail-backup-consent]]
