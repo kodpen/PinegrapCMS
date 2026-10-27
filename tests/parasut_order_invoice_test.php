@@ -583,7 +583,7 @@ function test_parasut_order_invoice_status_badge()
 	foreach (array(false, true) as $in_button) {
 		$unsure = parasut_order_invoice_status_badge(ERP_EDOC_PARASUT_UNSURE, $in_button);
 
-		pg_assert_contains('bg-warning', $unsure);
+		pg_assert_contains('theme-warning', $unsure);
 		pg_assert_contains(h(lang('Check Paraşüt')), $unsure);
 		pg_assert_false(strpos($unsure, '>' . lang('Sent') . '<') !== false, 'not "Sent"');
 		pg_assert_false(strpos($unsure, lang('Parasut ID')) !== false, 'the mark is not an id');

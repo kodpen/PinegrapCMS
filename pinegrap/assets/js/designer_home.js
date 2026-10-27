@@ -225,10 +225,10 @@
 
         list.forEach(function (item) {
             if (item.divider) {
-                html += '<div class="dropdown-divider" role="separator"></div>';
+                html += '<div class="menu-divider" role="separator"></div>';
                 return;
             }
-            html += '<button type="button" class="dropdown-item" role="menuitem" tabindex="-1" data-act="' + item.act + '">'
+            html += '<button type="button" class="menu-item" role="menuitem" tabindex="-1" data-act="' + item.act + '">'
                 + '<i class="bi ' + item.icon + '" aria-hidden="true"></i><span>' + escapeHtml(item.label) + '</span>'
                 + (item.key ? '<span class="sdh-menu-key" aria-hidden="true">' + escapeHtml(item.key) + '</span>' : '')
                 + '</button>';
@@ -278,7 +278,7 @@
         menu.style.left = Math.max(8, Math.min(x, window.innerWidth - width - 8)) + 'px';
         menu.style.top = Math.max(8, Math.min(y, window.innerHeight - height - 8)) + 'px';
 
-        var first = menu.querySelector('.dropdown-item');
+        var first = menu.querySelector('.menu-item');
 
         if (fromKeyboard && first) {
             first.focus({ preventScroll: true });
@@ -309,7 +309,7 @@
     }
 
     menu.addEventListener('click', function (event) {
-        var button = event.target.closest('.dropdown-item');
+        var button = event.target.closest('.menu-item');
 
         if (!button || !current) {
             return;
@@ -323,7 +323,7 @@
 
     // The menu has the keyboard while it is open. Taken on the window, ahead
     // of everything: Bootstrap's dropdown catches the arrow keys and Escape
-    // inside any .dropdown-menu on the document's capture phase, and fails
+    // inside any .menu on the document's capture phase, and fails
     // on one that no toggle of its own opened.
     window.addEventListener('keydown', function (event) {
         if (!current || !menu.contains(event.target)) {
@@ -332,7 +332,7 @@
 
         event.stopPropagation();
 
-        var items = Array.prototype.slice.call(menu.querySelectorAll('.dropdown-item'));
+        var items = Array.prototype.slice.call(menu.querySelectorAll('.menu-item'));
         var index = items.indexOf(document.activeElement);
 
         if (!items.length) {
@@ -507,7 +507,7 @@
         if (event.target.closest && event.target.closest('input, textarea, select, [contenteditable]')) {
             return;
         }
-        if (document.querySelector('.modal.show, .offcanvas.show')) {
+        if (document.querySelector('.dialog[open], .drawer[open]')) {
             return;
         }
 

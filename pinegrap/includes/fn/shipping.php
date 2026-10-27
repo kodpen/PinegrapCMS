@@ -1013,15 +1013,15 @@ function pg_shipment_status_class($status)
     switch ((string) $status) {
         case 'in_transit':
         case 'out_for_delivery':
-            return 'text-bg-primary';
+            return 'theme-primary';
         case 'delivered':
-            return 'text-bg-success';
+            return 'theme-success';
         case 'returned':
-            return 'text-bg-warning';
+            return 'theme-warning';
         case 'exception':
-            return 'text-bg-danger';
+            return 'theme-danger';
         default:
-            return 'text-bg-secondary';
+            return 'theme-secondary';
     }
 }
 

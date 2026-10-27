@@ -134,21 +134,21 @@ $options = '';
 
 foreach (ws_calendar_feed_kinds() as $key => $kind) {
     $options .= '
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" name="kinds[]" value="' . h($key) . '" id="ws_ical_kind_' . h($key) . '"' . (in_array($key, $chosen, true) ? ' checked' : '') . '>
-                    <label class="form-check-label" for="ws_ical_kind_' . h($key) . '">
+                <div class="form-field mb-3">
+                    <input class="check" type="checkbox" name="kinds[]" value="' . h($key) . '" id="ws_ical_kind_' . h($key) . '"' . (in_array($key, $chosen, true) ? ' checked' : '') . '>
+                    <label class="" for="ws_ical_kind_' . h($key) . '">
                         <span class="fw-semibold">' . h($kind['label']) . '</span>
-                        <span class="d-block small text-muted">' . h($kind['hint']) . '</span>
+                        <span class="d-block small fg-secondary">' . h($kind['hint']) . '</span>
                     </label>
                 </div>';
 }
 
 $options .= '
-                <div class="form-check form-switch mt-3">
-                    <input class="form-check-input" type="checkbox" role="switch" name="details" value="1" id="ws_ical_details"' . ($details_on ? ' checked' : '') . '>
-                    <label class="form-check-label" for="ws_ical_details">
+                <div class="form-field mt-5">
+                    <div class="switch"><input class="" type="checkbox" role="switch" name="details" value="1" id="ws_ical_details"' . ($details_on ? ' checked' : '') . '></div>
+                    <label class="" for="ws_ical_details">
                         <span class="fw-semibold">' . h(lang('Include descriptions and notes')) . '</span>
-                        <span class="d-block small text-muted">' . h(lang('Off: only titles, dates and a link go out. The calendar service (Google, Microsoft, Apple) keeps a copy of whatever the calendar carries.')) . '</span>
+                        <span class="d-block small fg-secondary">' . h(lang('Off: only titles, dates and a link go out. The calendar service (Google, Microsoft, Apple) keeps a copy of whatever the calendar carries.')) . '</span>
                     </label>
                 </div>';
 
@@ -158,15 +158,15 @@ $manage_card = '';
 if (!$feed) {
 
     $address_card = '
-        <div class="card mb-3">
+        <div class="card mb-5">
             <div class="card-body">
-                <h2 class="h6 mb-2"><i class="bi bi-calendar-plus me-2" aria-hidden="true"></i>' . h(lang('Your work in your own calendar')) . '</h2>
-                <p class="small text-muted">' . h(lang('Make a private address and add it to the calendar on your phone or computer. Your work appears there next to your other appointments and stays up to date by itself. The calendar only reads: changes are made here.')) . '</p>
+                <h2 class="h6 mb-3"><i class="bi bi-calendar-plus me-3" aria-hidden="true"></i>' . h(lang('Your work in your own calendar')) . '</h2>
+                <p class="small fg-secondary">' . h(lang('Make a private address and add it to the calendar on your phone or computer. Your work appears there next to your other appointments and stays up to date by itself. The calendar only reads: changes are made here.')) . '</p>
                 <form method="post" action="workspace_calendar_feed.php" class="disable_shortcut">
                     ' . get_token_field() . '
                     <input type="hidden" name="feed_action" value="create">
                     ' . $options . '
-                    <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Make my calendar address')) . '</button>
+                    <button type="submit" class="btn btn-solid theme-primary mt-5"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Make my calendar address')) . '</button>
                 </form>
             </div>
         </div>';
@@ -194,55 +194,55 @@ if (!$feed) {
 
         $address = '
                 <label class="form-label small fw-semibold" for="ws_ical_url">' . h(lang('Your calendar address')) . '</label>
-                <div class="input-group mb-2">
+                <div class="input-group mb-3">
                     <input type="text" class="form-control font-monospace" id="ws_ical_url" value="' . h(ws_calendar_feed_url($token)) . '" readonly>
-                    <button type="button" class="btn btn-outline-secondary" id="ws_ical_copy" data-done="' . h(lang('Copied')) . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                    <button type="button" class="btn btn-outline theme-secondary" id="ws_ical_copy" data-done="' . h(lang('Copied')) . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
                 </div>
-                <p class="small text-muted mb-3"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>' . h(lang('Keep it like a password: anyone who has it can read what it carries. If it got out, make a new address below.')) . '</p>
-                <div class="d-flex flex-wrap gap-2 mb-3">
+                <p class="small fg-secondary mb-5"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>' . h(lang('Keep it like a password: anyone who has it can read what it carries. If it got out, make a new address below.')) . '</p>
+                <div class="d-flex flex-wrap gap-3 mb-5">
                     ' . (($google !== '')
-                        ? '<a class="btn btn-sm btn-outline-primary" href="' . h($google) . '" target="_blank" rel="noopener noreferrer"><i class="bi bi-google me-1" aria-hidden="true"></i>' . h(lang('Add to Google Calendar')) . '</a>'
+                        ? '<a class="btn btn-sm btn-outline theme-primary" href="' . h($google) . '" target="_blank" rel="noopener noreferrer"><i class="bi bi-google me-1" aria-hidden="true"></i>' . h(lang('Add to Google Calendar')) . '</a>'
                         : '') . '
-                    <a class="btn btn-sm btn-outline-primary" href="' . h(ws_calendar_feed_webcal_url($token)) . '"><i class="bi bi-apple me-1" aria-hidden="true"></i>' . h(lang('Open in Apple Calendar or Outlook')) . '</a>
+                    <a class="btn btn-sm btn-outline theme-primary" href="' . h(ws_calendar_feed_webcal_url($token)) . '"><i class="bi bi-apple me-1" aria-hidden="true"></i>' . h(lang('Open in Apple Calendar or Outlook')) . '</a>
                 </div>';
 
     } else {
 
         $address = '
-                <div class="alert alert-warning small">' . h(lang('This site cannot show your address again because it has no encryption key. Make a new address below and copy it while it is on screen.')) . '</div>';
+                <div class="alert theme-warning small">' . h(lang('This site cannot show your address again because it has no encryption key. Make a new address below and copy it while it is on screen.')) . '</div>';
 
     }
 
     $address_card = '
-        <div class="card mb-3">
+        <div class="card mb-5">
             <div class="card-body">
-                <h2 class="h6 mb-3"><i class="bi bi-calendar-check me-2" aria-hidden="true"></i>' . h(lang('Your calendar subscription')) . '</h2>
+                <h2 class="h6 mb-5"><i class="bi bi-calendar-check me-3" aria-hidden="true"></i>' . h(lang('Your calendar subscription')) . '</h2>
                 ' . $address . '
-                <p class="small text-muted mb-0"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h($seen) . '</p>
+                <p class="small fg-secondary mb-0"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h($seen) . '</p>
             </div>
         </div>
-        <div class="card mb-3">
+        <div class="card mb-5">
             <div class="card-body">
-                <h2 class="h6 mb-3">' . h(lang('What the calendar carries')) . '</h2>
+                <h2 class="h6 mb-5">' . h(lang('What the calendar carries')) . '</h2>
                 <form method="post" action="workspace_calendar_feed.php" class="disable_shortcut">
                     ' . get_token_field() . '
                     <input type="hidden" name="feed_action" value="save">
                     ' . $options . '
-                    <button type="submit" class="btn btn-primary mt-3">' . h(lang('Save')) . '</button>
+                    <button type="submit" class="btn btn-solid theme-primary mt-5">' . h(lang('Save')) . '</button>
                 </form>
             </div>
         </div>';
 
     $manage_card = '
-        <div class="card mb-3">
+        <div class="card mb-5">
             <div class="card-body">
-                <h2 class="h6 mb-2">' . h(lang('The address')) . '</h2>
-                <p class="small text-muted">' . h(lang('A new address ends the old one at once: every calendar that reads it stops updating until the new one is added.')) . '</p>
-                <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary ws-ical-action" data-action="renew"
+                <h2 class="h6 mb-3">' . h(lang('The address')) . '</h2>
+                <p class="small fg-secondary">' . h(lang('A new address ends the old one at once: every calendar that reads it stops updating until the new one is added.')) . '</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <button type="button" class="btn btn-sm btn-outline theme-secondary ws-ical-action" data-action="renew"
                         data-confirm="' . h(lang('The current address will stop working. Make a new one?')) . '">
                         <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>' . h(lang('Make a new address')) . '</button>
-                    <button type="button" class="btn btn-sm btn-outline-danger ws-ical-action" data-action="end"
+                    <button type="button" class="btn btn-sm btn-outline theme-danger ws-ical-action" data-action="end"
                         data-confirm="' . h(lang('The address will stop working and your calendars will no longer be updated. End the subscription?')) . '">
                         <i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('End the subscription')) . '</button>
                 </div>
@@ -253,16 +253,16 @@ if (!$feed) {
 
 // How to add the address, application by application.
 $help = '
-        <div class="card mb-3">
+        <div class="card mb-5">
             <div class="card-body small">
-                <h2 class="h6 mb-3"><i class="bi bi-info-circle me-2" aria-hidden="true"></i>' . h(lang('How to add it')) . '</h2>
+                <h2 class="h6 mb-5"><i class="bi bi-info-circle me-3" aria-hidden="true"></i>' . h(lang('How to add it')) . '</h2>
                 <p class="fw-semibold mb-1">Google Calendar</p>
-                <p class="text-muted">' . h(lang('On the web, next to Other calendars choose +, then From URL, and paste the address. Google adds it to your phone as well; the Android app cannot add it by itself.')) . '</p>
+                <p class="fg-secondary">' . h(lang('On the web, next to Other calendars choose +, then From URL, and paste the address. Google adds it to your phone as well; the Android app cannot add it by itself.')) . '</p>
                 <p class="fw-semibold mb-1">Outlook</p>
-                <p class="text-muted">' . h(lang('In Outlook on the web choose Add calendar, then Subscribe from web, and paste the address. In the Windows app: Add calendar, From internet.')) . '</p>
+                <p class="fg-secondary">' . h(lang('In Outlook on the web choose Add calendar, then Subscribe from web, and paste the address. In the Windows app: Add calendar, From internet.')) . '</p>
                 <p class="fw-semibold mb-1">iPhone, iPad, Mac</p>
-                <p class="text-muted">' . h(lang('On iPhone and iPad: Settings, Calendar, Accounts, Add Account, Other, Add Subscribed Calendar. On a Mac: in Calendar, File, New Calendar Subscription.')) . '</p>
-                <p class="mb-0 text-muted"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>' . h(lang('Calendars read the address at their own pace: Apple and Outlook every hour or so, Google a few times a day. A change made here appears there after the next read.')) . '</p>
+                <p class="fg-secondary">' . h(lang('On iPhone and iPad: Settings, Calendar, Accounts, Add Account, Other, Add Subscribed Calendar. On a Mac: in Calendar, File, New Calendar Subscription.')) . '</p>
+                <p class="mb-0 fg-secondary"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>' . h(lang('Calendars read the address at their own pace: Apple and Outlook every hour or so, Google a few times a day. A change made here appears there after the next read.')) . '</p>
             </div>
         </div>';
 
@@ -288,12 +288,12 @@ echo pg_page_shell(array(
     <div class="row"><div class="col-12">
         ' . $liveform_messages . '
     </div></div>
-    <div class="row g-3">
-        <div class="col-12 col-xl-7">
+    <div class="row g-5">
+        <div class="col-12 xl:col-7">
             ' . $address_card . '
             ' . $manage_card . '
         </div>
-        <div class="col-12 col-xl-5">
+        <div class="col-12 xl:col-5">
             ' . $help . '
         </div>
     </div>

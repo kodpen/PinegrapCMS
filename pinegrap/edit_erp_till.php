@@ -72,7 +72,7 @@ if (!$_POST) {
     // order.
     $running = (int) $till['opening_balance'];
     $output_movements = '
-        <tr class="text-body-secondary" data-pg-sort-fixed="top">
+        <tr class="fg-secondary" data-pg-sort-fixed="top">
             <td colspan="4">' . lang('Opening Balance') . '</td>
             <td class="text-end">' . $money($running) . '</td>
         </tr>';
@@ -87,12 +87,12 @@ if (!$_POST) {
 
         $output_description = h($movement['description']);
         if ($is_receipt) {
-            $output_description = '<a href="erp_receipt.php?id=' . (int) $movement['id'] . '" class="link-body-emphasis">' . (($output_description !== '') ? $output_description : ('#' . (int) $movement['id'])) . '</a>';
+            $output_description = '<a href="erp_receipt.php?id=' . (int) $movement['id'] . '" class="pg-link-body-emphasis">' . (($output_description !== '') ? $output_description : ('#' . (int) $movement['id'])) . '</a>';
         } elseif (((string) $movement['doc_type'] === 'expense') && ((int) $movement['doc_id'] > 0)) {
-            $output_description = '<a href="edit_erp_expense.php?id=' . (int) $movement['doc_id'] . '" class="link-body-emphasis">' . (($output_description !== '') ? $output_description : ('#' . (int) $movement['doc_id'])) . '</a>';
+            $output_description = '<a href="edit_erp_expense.php?id=' . (int) $movement['doc_id'] . '" class="pg-link-body-emphasis">' . (($output_description !== '') ? $output_description : ('#' . (int) $movement['doc_id'])) . '</a>';
         }
         if ($is_cancelled) {
-            $output_description = '<span class="text-decoration-line-through text-body-secondary">' . $output_description . '</span> <span class="badge text-bg-secondary">' . lang('Cancelled') . '</span>';
+            $output_description = '<span class="text-decoration-line-through fg-secondary">' . $output_description . '</span> <span class="badge theme-secondary">' . lang('Cancelled') . '</span>';
         }
 
         $output_movements .= '
@@ -100,7 +100,7 @@ if (!$_POST) {
             <td class="align-middle text-nowrap" data-sort="' . h(str_replace('-', '', (string) $movement['doc_date'])) . '">' . h(prepare_form_data_for_output($movement['doc_date'], 'date')) . '</td>
             <td class="align-middle">' . $output_description . '</td>
             <td class="align-middle">' . h($movement['account_title']) . '</td>
-            <td class="align-middle text-end ' . ($in ? 'text-success' : 'text-danger') . '" data-sort="' . ($in ? $amount : -$amount) . '">'
+            <td class="align-middle text-end ' . ($in ? 'fg-success' : 'fg-danger') . '" data-sort="' . ($in ? $amount : -$amount) . '">'
                 . ($in ? '+' : '&minus;') . $money($amount, false) . '</td>
             <td class="align-middle text-end" data-sort="' . (int) $running . '">' . $money($running) . '</td>
         </tr>';
@@ -108,7 +108,7 @@ if (!$_POST) {
 
     if (empty($movements)) {
         $output_movements .= '
-        <tr data-pg-sort-fixed><td colspan="5" class="text-center text-body-secondary py-4">' . lang('There are no movements in this till yet.') . '</td></tr>';
+        <tr data-pg-sort-fixed><td colspan="5" class="text-center fg-secondary py-7">' . lang('There are no movements in this till yet.') . '</td></tr>';
     }
 
     $balance = (int) $till['balance'];
@@ -133,10 +133,10 @@ if (!$_POST) {
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <div class="card my-4">
-                <div class="card-body d-flex flex-wrap align-items-baseline gap-3">
-                    <span class="text-uppercase text-body-secondary">' . lang('Balance') . '</span>
-                    <span class="h4 mb-0 ' . (($balance < 0) ? 'text-danger' : 'text-success') . '">' . $money($balance) . '</span>
+            <div class="card my-7">
+                <div class="card-body d-flex flex-wrap align-items-baseline gap-5">
+                    <span class="text-uppercase fg-secondary">' . lang('Balance') . '</span>
+                    <span class="h4 mb-0 ' . (($balance < 0) ? 'fg-danger' : 'fg-success') . '">' . $money($balance) . '</span>
                 </div>
             </div>
 
@@ -144,20 +144,20 @@ if (!$_POST) {
                 ' . get_token_field() . '
                 ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
                 ' . erp_till_form_cards($liveform, !empty($movements)) . '
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                             ' . (empty($movements)
-                                ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline-danger"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline theme-danger"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '') . '
                         </div>
                     </div>
                 </nav>
             </form>
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Cash Book') . '
                 </div>
                 <div class="card-body p-0 position-relative table-responsive">

@@ -89,13 +89,13 @@ if (!$_POST) {
                         'name' => 'limit')) . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Gift Card Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-sm-4 col-lg-3 col-xl-2 my-2">
+                                        <div class="col-12 sm:col-4 lg:col-3 xl:col-2 my-3">
                                             <label for="amount" class="form-label">' . lang('Amount') . '</label>
                                             <div class="input-group">
                                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-control text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
@@ -104,7 +104,7 @@ if (!$_POST) {
                                            
                                             <script>$("#amount").focus()</script>
                                         </div>
-                                        <div class="col-12 col-sm-4 col-xl-3 my-2">
+                                        <div class="col-12 sm:col-4 xl:col-3 my-3">
                                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'text',
@@ -118,7 +118,7 @@ if (!$_POST) {
                                                 ' . get_date_picker_format() . pg_fields_script() . '
                                             <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
                                         </div>
-                                        <div class="col-12 col-sm-4 col-xl-3 my-2">
+                                        <div class="col-12 sm:col-4 xl:col-3 my-3">
                                             <label for="quantity" class="form-label">' . lang('Quantity') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button">remove</button>
@@ -138,7 +138,7 @@ if (!$_POST) {
                                             
                                             <div class="text-end form-text">' . lang('increase quantity to create multiple gift cards at once') . '</div>
                                         </div>
-                                        <div class="col-12 col-xl-8 my-2">
+                                        <div class="col-12 xl:col-8 my-3">
                                             <label for="notes" class="form-label">' . lang('Notes') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'textarea',
@@ -151,10 +151,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
