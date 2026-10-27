@@ -150,8 +150,8 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
                 || ($response['STATUS'] == 'Expired')
             )
         ) {
-            $query = "UPDATE order_items SET recurring_profile_enabled = '0' WHERE id = '" . $recurring_profile['order_item_id'] . "'";
-            $result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+            $query = "UPDATE order_items SET recurring_profile_enabled = '0' WHERE id = ?";
+            $result = db_q($query, array((string) $recurring_profile['order_item_id'])) or exit(mysqli_error(db::$con));
             
             // if actions should be performed
             if ($recurring_profile['recurring_profile_disabled_perform_actions'] == 1) {
@@ -170,8 +170,8 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
                         || ($recurring_profile['expiration_date'] >= $current_date)
                     )
                 ) {
-                    $query = "UPDATE contacts SET expiration_date = '" . $previous_date . "' WHERE id = '" . $recurring_profile['contact_id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+                    $query = "UPDATE contacts SET expiration_date = ? WHERE id = ?";
+                    $result = db_q($query, array((string) $previous_date, (string) $recurring_profile['contact_id'])) or exit(mysqli_error(db::$con));
                     
                     // update number of expired memberships
                     $number_of_expired_memberships++;
@@ -192,10 +192,10 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
                             "UPDATE aclfolder
                             SET aclfolder_rights = '0'
                             WHERE
-                                (aclfolder_user = '" . $recurring_profile['user_id'] . "')
-                                && (aclfolder_folder = '" . $recurring_profile['private_folder'] . "')
+                                (aclfolder_user = ?)
+                                && (aclfolder_folder = ?)
                                 && (aclfolder_rights = '1')";
-                        $result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+                        $result = db_q($query, array((string) $recurring_profile['user_id'], (string) $recurring_profile['private_folder'])) or exit(mysqli_error(db::$con));
                         
                         // update number of revoked private access
                         $number_of_revoked_private_access++;
@@ -208,8 +208,8 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
                         ($recurring_profile['user_send_to_page_id'])
                         && ($recurring_profile['user_send_to_page_id'] == $recurring_profile['product_send_to_page_id'])
                     ) {
-                        $query = "UPDATE user SET user_home = '0' WHERE user_id = '" . $recurring_profile['user_id'] . "'";
-                        $result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+                        $query = "UPDATE user SET user_home = '0' WHERE user_id = ?";
+                        $result = db_q($query, array((string) $recurring_profile['user_id'])) or exit(mysqli_error(db::$con));
                     }
                 }
                 
