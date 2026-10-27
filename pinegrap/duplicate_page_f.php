@@ -224,6 +224,15 @@ function duplicate_page($request) {
         $folder['id'] = $page_folder;
     }
 
+    // page.ai_fields (2026.11.0) is copied where the table has it, which the
+    // SELECT * above shows: the copy keeps the marks of the texts it writes
+    // unchanged, so a title or description changed by find and replace
+    // loses its mark.
+    $ai_fields = pg_ai_fields_copy('page', $row, array(
+        'page_title'            => $page_title,
+        'page_meta_description' => $page_meta_description,
+    ));
+
     // insert row into page table
     $query = "INSERT INTO page (
                 page_name,
@@ -240,6 +249,7 @@ function duplicate_page($request) {
                 nofollow," : "") . "
                 " . ($multi_page_design ? "page_tree_json,
                 page_tree_code," : "") . "
+                " . (($ai_fields !== false) ? "ai_fields," : "") . "
                 page_type,
                 layout_type,
                 layout_modified,
@@ -281,6 +291,7 @@ function duplicate_page($request) {
                 '" . (int) $nofollow . "'," : "") . "
                 " . ($multi_page_design ? "'" . e($page_tree_json) . "',
                 '" . e($page_tree_code) . "'," : "") . "
+                " . (($ai_fields !== false) ? (($ai_fields === null) ? "NULL," : "'" . e($ai_fields) . "',") : "") . "
                 '" . escape($page_type) . "',
                 '" . e($layout_type) . "',
                 '" . e($layout_modified) . "',
