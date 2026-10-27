@@ -579,6 +579,7 @@ function test_code_editor_minimap_option()
 	pg_assert_contains("if (typeof opts.minimap === 'boolean') _cfg.minimap = opts.minimap;", $facade, 'configure() takes the page default');
 	pg_assert_contains('minimapComp.of(_minimapExtension(cm, _minimapOn(opts)))', $facade, 'the editor reads the option');
 	pg_assert_contains('inst.setMinimap = function', $facade, 'the instance can switch it');
+	pg_assert_contains('inst.hasMinimap = function () { return _minimapOn(opts); };', $facade, 'and tells whether it is on');
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 
@@ -632,6 +633,16 @@ function test_code_editor_attach_offers_a_format_button()
 	pg_assert_contains('["css","javascript","json"]', $css, 'shown only for the languages with a formatter');
 	pg_assert_contains('editor.setLanguage = function', $css, 'and kept in step with a language change');
 	pg_assert_false(strpos($ro, 'pg-code-field-format') !== false, 'a read-only field has no button');
+
+	// Every field, read-only too, gets the minimap toggle, which starts from
+	// the editor's own state and switches it with setMinimap().
+	foreach (array('css' => $css, 'ro' => $ro) as $kind => $html) {
+		pg_assert_contains('pg-code-field-minimap', $html, $kind . ': the minimap toggle is drawn');
+		pg_assert_contains(lang('Minimap'), $html, $kind . ': with a translated label');
+		pg_assert_contains('aria-pressed', $html, $kind . ': as a toggle button');
+		pg_assert_contains('editor.hasMinimap()', $html, $kind . ': starting from the current state');
+		pg_assert_contains('editor.setMinimap(', $html, $kind . ': switching the instance');
+	}
 }
 
 // The code editor dialog's footer shows "Format code" only for CSS,
@@ -647,4 +658,19 @@ function test_code_editor_dialog_offers_a_format_button()
 	pg_assert_contains('_editor.format()', $modal, 'it runs the editor\'s format()');
 	pg_assert_contains("_formatBtn.classList.toggle('d-none', !!opts.readonly || !_formats(opts.mode));", $modal, 'hidden for read-only and other languages');
 	pg_assert_contains("'Format code'  => lang('Format code'),", $screen, 'the designer prints the label');
+}
+
+// The dialog's footer has a minimap toggle beside "Format code": a toggle
+// button (aria-pressed) that starts from the editor's state and switches it.
+function test_code_editor_dialog_offers_a_minimap_toggle()
+{
+	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+
+	pg_assert_contains('id="pgCodeEditorMinimap"', $modal, 'the footer has the toggle');
+	pg_assert_contains('aria-pressed="false"', $modal, 'as a toggle button');
+	pg_assert_contains("_t('Minimap')", $modal, 'its label is read from the map');
+	pg_assert_contains('_editor.setMinimap(', $modal, 'it switches the editor');
+	pg_assert_contains('_editor.hasMinimap()', $modal, 'and starts from the editor\'s state');
+	pg_assert_contains("'Minimap'      => lang('Minimap'),", $screen, 'the designer prints the label');
 }
