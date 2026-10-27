@@ -195,10 +195,10 @@ function test_ws_upload_macro_file_is_not_offered_for_editing()
 // and only through the helper that keeps to the channels the person may read.
 function test_ws_file_usage_is_asked_by_where_used()
 {
-	$explorer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
-	$case = ws_upload_refusals_test_between($explorer, "case 'explorer_file_usage':", "'file' => \$usage_name,");
+	$explorer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_file_usage.php');
+	$case = ws_upload_refusals_test_between($explorer, 'function pg_explorer_handle_file_usage(', "'file' => \$usage_name,");
 
-	pg_assert_true($case !== '', 'the explorer_file_usage case is found');
+	pg_assert_true($case !== '', 'the explorer_file_usage handler is found');
 
 	$flag = strpos($case, "defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED");
 	$bootstrap = strpos($case, "require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');");
