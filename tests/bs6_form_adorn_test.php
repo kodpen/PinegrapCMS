@@ -61,6 +61,12 @@ function pg_test_form_adorn_cases()
 		array($root . 'view_folders.php', 'id="ws_send_filter"', '', 'form-control-sm', 'bi bi-search'),
 		array($root . 'view_audit_log.php', 'name="q"', '', 'form-control-sm', 'bi bi-search'),
 		array($root . 'view_not_found_log.php', 'id="pg_404_search"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'translations.php', 'name="q"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'erp_cheques.php', 'name="search"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'erp_quotes.php', 'name="search"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'erp_purchase_orders.php', 'name="search"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'erp_stock_minimums.php', 'name="search"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'includes/forms/contact_form.php', 'id="affiliate_commission_rate" class', '<label for="affiliate_commission_rate" class="form-label"', 'form-adorn-end', '>%</span>'),
 	);
 }
 
@@ -111,7 +117,18 @@ function test_bs6_form_adorn_toolbar_search_keeps_its_toolbar_class()
 {
 	$root = dirname(__DIR__) . '/pinegrap/';
 
-	foreach (array('view_folders.php' => 'id="filter_input"', 'view_audit_log.php' => 'name="q"', 'view_not_found_log.php' => 'id="pg_404_search"') as $file => $id) {
+	$files = array(
+		'view_folders.php' => 'id="filter_input"',
+		'view_audit_log.php' => 'name="q"',
+		'view_not_found_log.php' => 'id="pg_404_search"',
+		'translations.php' => 'name="q"',
+		'erp_cheques.php' => 'name="search"',
+		'erp_quotes.php' => 'name="search"',
+		'erp_purchase_orders.php' => 'name="search"',
+		'erp_stock_minimums.php' => 'name="search"',
+	);
+
+	foreach ($files as $file => $id) {
 		$source = (string) file_get_contents($root . $file);
 		$at = (int) strpos($source, $id);
 		$before = substr($source, max(0, $at - 600), 600);
@@ -119,5 +136,35 @@ function test_bs6_form_adorn_toolbar_search_keeps_its_toolbar_class()
 		// The .pg-toolbar-search width and narrow-screen order stay on the field.
 		pg_assert_contains('pg-toolbar-search', $before, $file);
 		pg_assert_contains('rounded-pill', $before, $file);
+	}
+}
+
+function test_bs6_form_adorn_workspace_toolbar_searches()
+{
+	$root = dirname(__DIR__) . '/pinegrap/assets/js/';
+	$cases = array(
+		'workspace.js' => array("t('search_tasks')", "t('tl_search')", "t('notes_search')"),
+		'workspace_board_channel.js' => array("t('cb_search')"),
+	);
+
+	foreach ($cases as $file => $placeholders) {
+		$source = (string) file_get_contents($root . $file);
+
+		// No toolbar search is an input-group around a lone input any more.
+		pg_assert_false(strpos($source, "'input-group input-group-sm rounded-pill pg-toolbar-search'") !== false, $file . ': a toolbar search is still an input-group');
+
+		foreach ($placeholders as $placeholder) {
+			$at = strpos($source, $placeholder);
+			pg_assert_true($at !== false, $file . ': ' . $placeholder);
+			$before = substr($source, max(0, (int) $at - 700), 700);
+			$after = substr($source, (int) $at, 500);
+
+			pg_assert_contains("'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search'", $before, $file . ': ' . $placeholder);
+			pg_assert_contains("'form-ghost'", $before, $file . ': ' . $placeholder);
+			pg_assert_contains("'form-adorn-text'", $before, $file . ': ' . $placeholder);
+			pg_assert_contains("setAttribute('aria-hidden', 'true')", $before, $file . ': ' . $placeholder);
+			pg_assert_contains("'bi-search'", $before, $file . ': ' . $placeholder);
+			pg_assert_contains("setAttribute('aria-label'", $after, $file . ': ' . $placeholder);
+		}
 	}
 }
