@@ -54651,6 +54651,18 @@ const StyleDesigner = (function () {
                 ['__crumb_kind',  _sdT('Kind of crumb (link, text, active)')]
             ]
         },
+        // The listing's active attribute filters
+        // (pg_sw_list_active_filter_sources()): the page's, so a list of
+        // them stands anywhere in the listing.
+        'catalog.active_filters': {
+            label: _sdT('Active attribute filters'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_listing'],
+            rows: [
+                ['__filter_chip_label', _sdT('Filter (attribute: option)')],
+                ['__filter_chip_url',   _sdT('Address without the filter')]
+            ]
+        },
         // The calendar grid sources (pg_sw_list_calendar_sources()): the
         // monthly and weekly views' heads, weeks, days and a day's events;
         // none takes a field.
