@@ -824,10 +824,13 @@ function ws_polls_map($message_ids, $viewer)
             'closes_at'  => (int) $poll['closes_at'],
             'closes'     => ((int) $poll['closes_at'] > 0) ? date('d.m.Y H:i', (int) $poll['closes_at']) : '',
             'closed_on'  => $closed ? ws_time_label($poll['closed_at']) : '',
+            'closed_at'  => (int) $poll['closed_at'],
             'voters'     => count($people_voted),
             'options'    => $list,
             'voted'      => !empty($mine),
-            'can_vote'   => !$closed && ws_can_post_channel($viewer, $channel),
+            // Refused past closes_at before anything closes the poll, and in an
+            // earlier version of the conversation, as the vote refuses it.
+            'can_vote'   => ws_poll_vote_state($poll, ws_poll_in_past($poll))['ok'] && ws_can_post_channel($viewer, $channel),
             'can_close'  => !$closed && ws_can_close_poll($viewer, $poll, $channel),
             // The asker changes it while it is open; the form is filled from these.
             'can_edit'   => !$closed && ((int) $poll['created_by'] === (int) $viewer['id']) && ws_can_post_channel($viewer, $channel),
@@ -858,30 +861,68 @@ function ws_can_close_poll($viewer, $poll, $channel)
 }
 
 /**
+ * Can a vote be cast in the poll as it stands, before who votes is asked? A
+ * poll in an earlier version of the conversation is kept as it was
+ * (eras.php); a closed one takes no vote; one whose time ran out is refused
+ * as closed and said to be expired, so that the vote closes it. The field
+ * names what refused it, as the API answers.
+ *
+ * @param array    $poll    ws_polls row
+ * @param bool     $in_past its message is in an earlier version
+ * @param int|null $now
+ * @return array ok, error, field, expired
+ */
+function ws_poll_vote_state($poll, $in_past, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+
+    if ($in_past) {
+        return array('ok' => false, 'error' => lang('This message is in an earlier version of the conversation, which is kept as it was.'), 'field' => 'message_id', 'expired' => false);
+    }
+
+    if ((int) $poll['closed_at'] > 0) {
+        return array('ok' => false, 'error' => lang('The poll is closed.'), 'field' => 'closes_at', 'expired' => false);
+    }
+
+    if (((int) $poll['closes_at'] > 0) && ((int) $poll['closes_at'] <= $now)) {
+        return array('ok' => false, 'error' => lang('The poll is closed.'), 'field' => 'closes_at', 'expired' => true);
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'expired' => false);
+}
+
+/**
+ * Is the poll's message in an earlier version of the conversation?
+ *
+ * @param array $poll ws_polls row
+ * @return bool
+ */
+function ws_poll_in_past($poll)
+{
+    return function_exists('ws_message_in_past') && ws_message_in_past(array('id' => (int) $poll['message_id'], 'channel_id' => (int) $poll['channel_id']));
+}
+
+/**
  * May this person vote in the poll now? The checks ws_poll_vote() makes,
- * without writing, so that a dry run meets the same refusals. A poll whose
- * time ran out is refused as closed and said to be expired: the vote then
- * closes it.
+ * without writing, so that a dry run meets the same refusals.
  *
  * @param array $viewer
  * @param array $poll
- * @return array ok, error, expired
+ * @return array ok, error, field, expired
  */
 function ws_poll_vote_check($viewer, $poll)
 {
-    if ((int) $poll['closed_at'] > 0) {
-        return array('ok' => false, 'error' => lang('The poll is closed.'), 'expired' => false);
-    }
+    $state = ws_poll_vote_state($poll, ws_poll_in_past($poll));
 
-    if (((int) $poll['closes_at'] > 0) && ((int) $poll['closes_at'] <= time())) {
-        return array('ok' => false, 'error' => lang('The poll is closed.'), 'expired' => true);
+    if (!$state['ok']) {
+        return $state;
     }
 
     if (!ws_can_post_channel($viewer, ws_channel($poll['channel_id']))) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'expired' => false);
+        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'field' => '', 'expired' => false);
     }
 
-    return array('ok' => true, 'error' => '', 'expired' => false);
+    return $state;
 }
 
 /**
