@@ -8,7 +8,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - Filled only into a kind's `texts` (`ws_step_kinds()`): post body, e-mail subject and body, notify text, task title and description, webhook text, check-in question, report title, digest subject and intro. Addresses are never filled.
 - Ids are `<kind>_<n>` (`freeId()` in workspace_flow.js) and are not shown on the canvas; "Add value" puts them in as chips (D6, workspace/workspace-flows-value-picker.md).
 - A reference to a missing box or field is a problem, one to a box that may not run a warning (D4, workspace/workspace-flows-references.md); at run time it still becomes ''.
-- `{{trigger.<field>}}` reads what started the run (D5, workspace/workspace-flows-trigger-values.md). A condition cannot compare a box's value. No loops (`pass` is always 0).
+- `{{trigger.<field>}}` reads what started the run (D5, workspace/workspace-flows-trigger-values.md). A condition compares a box's or the trigger's value (D7). No loops (`pass` is always 0).
 - A filled value is never read again as a placeholder (D2) and is escaped for where it lands (D3), workspace/workspace-flows-outputs.md.
 
 ## Which steps? (one PR each, in this order)
@@ -24,7 +24,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 
 - D6 value picker: done (#2461), see workspace/workspace-flows-value-picker.md. Threads, fork, value boxes: workspace-flows-data-threads.md.
 
-- D7 conditions on values: a condition rule `value` compares an upstream output or trigger value, the input typed by the output's type.
+- D7 conditions on values: done (#PRNUM), see workspace/workspace-flows-condition-values.md.
 
 - D8 AI drafts: F8 of workspace-flows.md, after D1 and D4 (rules below).
 
@@ -45,4 +45,4 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 5. Lists (D9) start with webhook arrays.
 
 ## Where to start?
-- D7. Read workspace/workspace-flows-outputs.md and workspace-flows-trigger-values.md (`ws_flow_js_config()` `outputs`, `trigger_outputs`).
+- D8 (AI drafts), after F8 of workspace-flows.md; its rules are above.
