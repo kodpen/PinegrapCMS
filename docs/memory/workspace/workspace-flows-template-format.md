@@ -18,7 +18,7 @@ description: Flow templates (G1 #2161, G3 flow-only, flow_templates.php): format
 - A template needing a count the person cannot read is left out (digest needs one of its counts, overdue, stock, invoices theirs).
 
 ## Which day does a start box get?
-- A day of the site's calendar, as the scheduler reads date + time: from `today` (`date('Y-m-d')`) at noon in UTC (`DateTimeImmutable`). `strtotime('next monday')` in PHP's zone gave the Sunday before east of UTC (PR #NNNN); tested in five zones.
+- A day of the site's calendar, as the scheduler reads date + time: from `today` (`date('Y-m-d')`) at noon in UTC (`DateTimeImmutable`). `strtotime('next monday')` in PHP's zone gave the Sunday before east of UTC (PR #2230); tested in five zones.
 
 ## Which are a flow's own? (G3)
 - Started by hand, offered to everyone: `new_customer` (sales: welcome task → done → 3-day delay → follow-up task with a 48 h timeout → notify on timeout), `quote_approval` (sales: approval, 48 h, arrows on approved/rejected/expired/withdrawn to two task_open, a notify and an end box), `text_review` (team: writing task → done → approval reading `{{node.write.task_id}}` → task_open on approved, notify on rejected).
