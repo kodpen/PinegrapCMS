@@ -100,7 +100,8 @@ function test_bs6_site_output_codemod_scope()
 	pg_assert_true(bs6_codemod_converts('view_orders.php'), 'panel file');
 	pg_assert_false(bs6_codemod_converts('assets/css/style_designer.css'), 'unmarked editor file');
 	pg_assert_false(bs6_codemod_converts('assets/js/pg_style_predict.js'), 'the designer vocabulary is data');
-	pg_assert_false(bs6_codemod_converts('includes/fn/forms.php'), 'shared file');
+	pg_assert_true(bs6_codemod_converts('includes/fn/forms.php'), 'shared file with panel functions');
+	pg_assert_false(bs6_codemod_converts('liveform.class.php'), 'shared file with no panel function');
 	pg_assert_true(bs6_codemod_converts('includes/fn/output.php'), 'the panel head, menu and footer');
 	pg_assert_true(bs6_codemod_converts('includes/designer_screen.php'), 'the editor screen');
 	pg_assert_false(bs6_codemod_converts('get_page.php'), 'site file');
@@ -225,4 +226,28 @@ function test_bs6_site_called_functions_are_listed()
 
 	bs6_converted_tree_classes(false);
 	pg_assert_same(array(), $missing, 'site-called functions with Bootstrap classes');
+}
+
+function test_bs6_site_output_shared_file_outside_its_panel_functions()
+{
+	$source = "<?php\n\$top = '<p class=\"mb-2\">';\nfunction get_page_type_checkboxes_and_labels() {\n    return '<p class=\"mb-2\">';\n}\nfunction site_form() {\n    return '<p class=\"mb-2\">';\n}\n";
+	bs6_current_path('includes/fn/forms.php');
+	$ranges = bs6_site_output_ranges($source);
+	$r = bs6_convert_source($source);
+	bs6_current_path(false);
+
+	pg_assert_same(2, count($ranges));
+	pg_assert_contains("function get_page_type_checkboxes_and_labels() {\n    return '<p class=\"mb-3\">';", $r['source']);
+	pg_assert_contains("\$top = '<p class=\"mb-2\">';", $r['source']);
+	pg_assert_contains("function site_form() {\n    return '<p class=\"mb-2\">';", $r['source']);
+}
+
+function test_bs6_shared_panel_functions_exist()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	foreach (bs6_shared_panel_functions() as $path => $names) {
+		pg_assert_same('shared', bs6_scope_kind($path), $path);
+		$source = (string) file_get_contents($root . $path);
+		pg_assert_same(count($names), count(bs6_function_ranges($source, $names)), $path);
+	}
 }
