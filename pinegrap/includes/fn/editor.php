@@ -767,6 +767,38 @@ function pg_code_editor_attach($properties)
         $options['lint'] = false;
     }
 
+    // An editable field gets a "Format code" button under it, shown while
+    // the editor's language has a formatter (create_file.php changes the
+    // language after the start, so the button follows setLanguage()).
+    $format = '';
+
+    if (empty($properties['readonly'])) {
+        $format = '
+                    var formats = ["css","javascript","json"];
+                    var tools = document.createElement("div");
+                    tools.className = "pg-code-field-tools";
+                    tools.innerHTML = \'<button type="button" class="btn btn-sm btn-outline-secondary pg-code-field-format" title="Shift+Alt+F"></button>\';
+                    tools.firstChild.textContent = ' . pg_code_editor_json(lang('Format code')) . ';
+                    tools.firstChild.addEventListener("click", function () {
+                        editor.format();
+                        editor.focus();
+                    });
+                    var sync = function () { tools.classList.toggle("d-none", formats.indexOf(editor.getLanguage()) === -1); };
+                    var setLanguage = editor.setLanguage;
+                    editor.setLanguage = function () {
+                        var result = setLanguage.apply(editor, arguments);
+                        sync();
+                        return result;
+                    };
+                    var destroy = editor.destroy;
+                    editor.destroy = function () {
+                        if (tools.parentNode) tools.parentNode.removeChild(tools);
+                        return destroy.apply(editor, arguments);
+                    };
+                    sync();
+                    editor.container.parentNode.insertBefore(tools, editor.container.nextSibling);';
+    }
+
     return pg_code_editor_includes() . '<script>
         (function () {
             var field = document.getElementById(' . pg_code_editor_json($id) . ');
@@ -792,7 +824,7 @@ function pg_code_editor_attach($properties)
                 if (typeof PgCodeEditor === "undefined") return;
                 PgCodeEditor.attach(field, options).then(function (instance) {
                     editor = instance;
-                    window.pgCodeEditors[field.id] = instance;
+                    window.pgCodeEditors[field.id] = instance;' . $format . '
                     // A screen that changes the editor (its language, after a
                     // choice made before it arrived) hears when it is there.
                     try { field.dispatchEvent(new CustomEvent("pgcodeeditorready", { detail: instance })); } catch (e) {}

@@ -589,6 +589,7 @@ function pg_designer_screen_render($ctx)
                 'Save'         => lang('Save'),
                 'Code'         => lang('Code'),
                 'Syntax error' => lang('Syntax error'),
+                'Format code'  => lang('Format code'),
             )) . ';
         </script>
         <script src="assets/js/codemirror_modal.js?v=' . pg_designer_asset_stamp('assets/js/codemirror_modal.js') . '"></script>

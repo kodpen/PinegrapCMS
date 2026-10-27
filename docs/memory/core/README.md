@@ -34,7 +34,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
 - code-editor-completion.md: Code editor completion (pg_code_editor.js): css/js sources inside an HTML editor, addCompletionRanker, colour swatches, the slot sources and the lezer lookup-cache reset
 - code-editor-facade-and-bundle.md: The code editor facade window.PgCodeEditor (assets/js/pg_code_editor.js): lazy CodeMirror 6 bundle, opening an editor, locks and islands, tracked ranges, registries, format, bundle build
-- code-editor-format.md: The code editor's format command: ed.format() and Shift+Alt+F for CSS, JavaScript and JSON through the bundled js-beautify, what refuses it, how it lands in the undo history (PR #1909)
+- code-editor-format.md: The code editor's format command: ed.format(), Shift+Alt+F and the Format code buttons for CSS, JavaScript and JSON through the bundled js-beautify, what refuses it (PRs #1909, #2072)
 - code-editor-minimap.md: The code editor's minimap: @replit/codemirror-minimap in the lazy bundle, the opt-in `minimap` option and page default, setMinimap(), on in the designer, what it cost
 - code-editor-syntax-lint.md: The code editor's syntax lint (_syntaxLinter): what is marked, empty documents, the whole document parsed in slices first (files over 100 KB), what stops a running parse, the 200-mark cap
 - concurrent-agents.md: Several agents or threads on the repo at once: own branch and area, rebase before push, migration sub-step numbers that do not collide

@@ -3872,6 +3872,14 @@ body.pg-code-field-open {
   overflow: hidden;
 }
 
+/* The "Format code" button under an editable code field, at its right
+   edge, so it does not crowd the form's own buttons below. */
+.pg-code-field-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
 table.chart .text-truncate.overflow-hidden * {
   text-overflow: ellipsis;
   overflow: hidden;
