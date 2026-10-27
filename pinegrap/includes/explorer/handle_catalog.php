@@ -1,0 +1,494 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The Catalog Manager's listing, tree, new group, rename, membership and
+ * pages sub-actions: product groups and products shown through the file
+ * manager. Each handler answers through respond(), which ends the request.
+ * Called by pg_explorer_handle() and loaded by view_folder_and_files_f.php.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+// How long each binned row has left, keyed the way the grid keys its rows --
+// the screen calls them group and product, recycle_bin calls them
+// product_group and product. Whole days from the retention period, never
+// below zero.
+function pg_explorer_catalog_bin_entries($rows, $retention, $now)
+{
+    $bin_entries = array();
+
+    foreach ((array) $rows as $row) {
+
+        $age_days = (int) floor(($now - (int) $row['deleted_at']) / 86400);
+        $kind = ($row['item_type'] == 'product_group') ? 'group' : 'product';
+
+        $bin_entries[$kind . ':' . (int) $row['item_id']] = array(
+            'deleted_at' => (int) $row['deleted_at'],
+            'days_left' => max(0, $retention - $age_days),
+            'origin_name' => '');
+    }
+
+    return $bin_entries;
+}
+
+// Whether a group's rename reaches its short description. The short
+// description is what the site prints, so a rename has to reach it --
+// otherwise the group the operator just renamed keeps its old name everywhere
+// a visitor looks.
+//
+// Only while the two still agree, though: a short description that was
+// written by hand says something the name does not, and a rename here must
+// not overwrite it. Creation sets them the same, so the create-then-rename
+// that this screen does lands correctly, and an edited one is left alone.
+function pg_explorer_catalog_short_description_follows_name($group_row)
+{
+    return (is_array($group_row))
+        && ((trim((string) $group_row['short_description']) == '')
+            || (trim((string) $group_row['short_description']) == trim((string) $group_row['name'])));
+}
+
+// ── Catalog listing: one group's subgroups and its own products ──
+//
+// Three shapes come out of here.  A group id lists what is inside that
+// group; view_mode 'all_products' lists every product regardless of
+// group, which is the store's answer to the Files and Pictures views;
+// view_mode 'variant_sets' lists the groups that hold variants, the
+// same set view_products.php?mode=variant_sets prints.
+function pg_explorer_handle_catalog_list($type, $request, $user)
+{
+    if (pg_catalog_access($user) == false) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    // The bin empties itself once a day, claimed by whichever explorer
+    // visit comes first. The store is one of those visits: an operator
+    // who only ever opens this screen still gets the sweep.
+    pg_recycle_purge_if_due($user);
+
+    $view_mode = isset($request['view_mode']) ? (string) $request['view_mode'] : '';
+    $group_id = (int) (isset($request['group_id']) ? $request['group_id'] : 0);
+
+    $groups = array();
+    $products = array();
+    $current = null;
+    $breadcrumb = array();
+
+    if ($view_mode == 'recycled') {
+
+        // What is in the bin, both kinds together, newest first. The
+        // rows are built by the same two builders, so the grid, the
+        // preview panel and the status bar need nothing new.
+        if (pg_catalog_recycle_ready()) {
+
+            // A group that went into the bin inside another one is not
+            // listed on its own: the operator deleted the parent, and
+            // restoring the parent brings it back. Only the tops of the
+            // binned subtrees are shown, the way the folder bin shows a
+            // deleted folder rather than everything that was inside it.
+            $recycled_map = pg_catalog_group_map(true);
+
+            foreach ($recycled_map as $row) {
+
+                if (isset($recycled_map[(int) $row['parent_id']])) {
+                    continue;
+                }
+
+                $groups[] = pg_catalog_group_item($row);
+            }
+
+            $rows = db_items(
+                "SELECT products.*
+                FROM products
+                WHERE products.recycled = '1'
+                ORDER BY products.name");
+
+            foreach ((array) $rows as $row) {
+                $products[] = pg_catalog_product_item($row);
+            }
+
+            pg_catalog_attach_memberships($products);
+        }
+
+    } elseif ($view_mode == 'variant_sets') {
+
+        // A group whose display type is 'select' is not a category but
+        // one product in several forms, so the store lists those on
+        // their own the way view_products.php?mode=variant_sets does.
+        // Same rows, same builder -- the grid needs nothing new.
+        foreach (pg_catalog_group_map() as $row) {
+
+            if ($row['display_type'] == 'select') {
+                $groups[] = pg_catalog_group_item($row);
+            }
+        }
+
+    } elseif ($view_mode == 'all_products') {
+
+        // The product carries the name of one group only -- the deepest
+        // one it belongs to reads best in a flat list, the same choice
+        // the catalog feed makes when it prints a product path.
+        $rows = db_items(
+            "SELECT
+                products.*,
+                products_groups_xref.product_group,
+                product_groups.name AS group_name
+            FROM products
+            LEFT JOIN products_groups_xref ON products_groups_xref.product = products.id
+            LEFT JOIN product_groups ON product_groups.id = products_groups_xref.product_group
+            WHERE 1 = 1" . pg_catalog_live_filter('products') . "
+            GROUP BY products.id
+            ORDER BY products.name");
+
+        foreach ((array) $rows as $row) {
+            $products[] = pg_catalog_product_item($row);
+        }
+
+        pg_catalog_attach_memberships($products);
+
+    } else {
+
+        $map = pg_catalog_group_map();
+
+        // Open the root group rather than the level above it.  Listing
+        // level zero put a single tile on the screen that the operator
+        // had to click before seeing anything, while the folder side
+        // opens the root folder itself.  A catalog with several roots
+        // still gets the list, because there the choice is real.
+        if ($group_id <= 0) {
+
+            $roots = pg_catalog_child_groups(0);
+
+            if (count($roots) == 1) {
+                $group_id = (int) $roots[0]['id'];
+            }
+        }
+
+        if (($group_id > 0) && (isset($map[$group_id]))) {
+            $current = pg_catalog_group_item($map[$group_id]);
+            $breadcrumb = pg_catalog_breadcrumb($group_id);
+        }
+
+        foreach (pg_catalog_child_groups($group_id) as $row) {
+            $groups[] = pg_catalog_group_item($row);
+        }
+
+        // Direct members only.  Opening the whole subtree here would
+        // pile every product in the store next to the category tiles
+        // that exist to lead the way to them.
+        if ($group_id > 0) {
+
+            $rows = db_items(
+                "SELECT
+                    products.*,
+                    products_groups_xref.product_group,
+                    products_groups_xref.sort_order
+                FROM products_groups_xref
+                INNER JOIN products ON products.id = products_groups_xref.product
+                WHERE (products_groups_xref.product_group = '" . e($group_id) . "')" . pg_catalog_live_filter('products') . "
+                ORDER BY products_groups_xref.sort_order, products.name");
+
+            foreach ((array) $rows as $row) {
+                $products[] = pg_catalog_product_item($row);
+            }
+
+            pg_catalog_attach_memberships($products);
+        }
+    }
+
+    // How long each binned row has left.
+    $bin_entries = array();
+
+    if (($view_mode == 'recycled') && (pg_catalog_recycle_ready())) {
+
+        $rows = db_items("SELECT item_type, item_id, deleted_at FROM recycle_bin WHERE item_type IN ('product_group', 'product')");
+
+        $bin_entries = pg_explorer_catalog_bin_entries($rows, pg_recycle_retention_days(), time());
+    }
+
+    respond(array(
+        'status' => 'success',
+        'request' => $type,
+        'view_mode' => $view_mode,
+        'group_id' => $group_id,
+        'current' => $current,
+        'breadcrumb' => $breadcrumb,
+        'groups' => $groups,
+        'products' => $products,
+        'capabilities' => array(
+            'role' => (int) $user['role'],
+            'is_manager' => ($user['role'] <= 2),
+            'show_product_images' => (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES,
+            'can_edit_catalog' => pg_catalog_access($user)),
+        // The toolbar draws the bin button from this, exactly as the
+        // folder listing does; the store has no retention period yet,
+        // and says zero rather than a number it does not honour.
+        'recycle' => array(
+            'available' => pg_catalog_recycle_ready(),
+            'folder_id' => 0,
+            'retention_days' => pg_recycle_ready() ? pg_recycle_retention_days() : 0,
+            'inside' => ($view_mode == 'recycled'),
+            'count' => pg_catalog_recycle_ready()
+                ? ((int) db_value("SELECT COUNT(*) FROM product_groups WHERE recycled = '1'")
+                    + (int) db_value("SELECT COUNT(*) FROM products WHERE recycled = '1'"))
+                : 0),
+        'bin_entries' => $bin_entries,
+        'catalog_totals' => array(
+            'groups' => count(pg_catalog_group_map()),
+            'variant_sets' => count(array_filter(pg_catalog_group_map(), function ($row) { return ($row['display_type'] == 'select'); })),
+            'products' => (int) db_value("SELECT COUNT(*) FROM products" . (pg_catalog_recycle_ready() ? " WHERE recycled = '0'" : "")))));
+}
+
+// ── Catalog tree (lazy children, same contract as explorer_tree) ──
+function pg_explorer_handle_catalog_tree($type, $request, $user)
+{
+    if (pg_catalog_access($user) == false) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    $node_id = (int) (isset($request['node_id']) ? $request['node_id'] : 0);
+    $children = array();
+
+    foreach (pg_catalog_child_groups($node_id) as $row) {
+
+        $id = (int) $row['id'];
+        $stats = pg_catalog_group_stats($id);
+        $grandchildren = pg_catalog_child_groups($id);
+
+        $children[] = array(
+            'id' => $id,
+            'parent_id' => (int) $row['parent_id'],
+            'name' => (string) $row['name'],
+            'enabled' => ($row['enabled'] == '1'),
+            'display_type' => (string) $row['display_type'],
+            'catalog_role' => pg_catalog_group_role($row['display_type']),
+            'count' => $stats['products'],
+            'has_children' => (count($grandchildren) > 0),
+            'is_root' => ((int) $row['parent_id'] == 0),
+            'empty' => ((count($grandchildren) == 0) && ($stats['products'] == 0)),
+            'can_edit' => true);
+    }
+
+    respond(array(
+        'status' => 'success',
+        'request' => $type,
+        'node_id' => $node_id,
+        'children' => $children));
+}
+
+// ── Create a product group where you are standing ────────────────
+//
+// The same shape as creating a folder: a row appears with a working
+// name, the screen puts the cursor in it, and the full edit screen is
+// one click away for everything else the group can carry.
+function pg_explorer_handle_catalog_create_group($type, $request, $user)
+{
+    if (pg_catalog_access($user) == false) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    $parent_id = (int) (isset($request['group_id']) ? $request['group_id'] : 0);
+    $map = pg_catalog_group_map();
+
+    if (($parent_id <= 0) || (isset($map[$parent_id]) == false)) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    $name = trim(isset($request['name']) ? $request['name'] : '');
+
+    if ($name == '') {
+        respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
+    }
+
+    // The address is derived the way add_product_group.php derives it,
+    // and made unique the same way, so a group created here and one
+    // created there are the same kind of row.
+    //
+    // The name is written to short_description as well. On the site a
+    // product group is printed by its short description -- the name is
+    // the operator's own handle for it and never reaches a visitor --
+    // so a group created with only a name would be nameless out there.
+    $address_name = prepare_catalog_item_address_name($name);
+
+    if (db_value("SELECT id FROM product_groups WHERE address_name = '" . e($address_name) . "'")) {
+        $address_name = prepare_catalog_item_address_name($address_name . '[' . get_duplicate_catalog_item_address_name_number($address_name) . ']');
+    }
+
+    $sort_order = (int) db_value(
+        "SELECT MAX(sort_order)
+        FROM product_groups
+        WHERE parent_id = '" . e($parent_id) . "'");
+
+    db(
+        "INSERT INTO product_groups (
+            name,
+            enabled,
+            parent_id,
+            sort_order,
+            display_type,
+            address_name,
+            short_description,
+            full_description,
+            details,
+            code,
+            keywords,
+            image_name,
+            title,
+            meta_description,
+            meta_keywords,
+            user,
+            timestamp)
+        VALUES (
+            '" . e($name) . "',
+            '1',
+            '" . e($parent_id) . "',
+            '" . e($sort_order + 1) . "',
+            'browse',
+            '" . e($address_name) . "',
+            '" . e($name) . "',
+            '', '', '', '', '', '', '', '',
+            '" . e($user['id']) . "',
+            UNIX_TIMESTAMP())");
+
+    $group_id = mysqli_insert_id(db::$con);
+
+    log_activity(lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => h($name))), $_SESSION['sessionusername']);
+
+    respond(array(
+        'status' => 'success',
+        'request' => $type,
+        'group' => array('id' => (int) $group_id, 'name' => $name),
+        'message' => lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => h($name)))));
+}
+
+// ── Rename a group or a product ──────────────────────────────────
+//
+// The name only. address_name is the row's address on the site, and a
+// rename that silently moved a live URL would break links the operator
+// never touched; the edit screen is where an address is changed on
+// purpose.
+function pg_explorer_handle_catalog_rename($type, $request, $user)
+{
+    if (pg_catalog_access($user) == false) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    $item_kind = isset($request['item_kind']) ? (string) $request['item_kind'] : '';
+    $item_id = (int) (isset($request['item_id']) ? $request['item_id'] : 0);
+    $name = trim(isset($request['name']) ? $request['name'] : '');
+
+    if (($item_id <= 0) || ($name == '')) {
+        respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
+    }
+
+    if ($item_kind == 'group') {
+
+        // The short description follows the name while the two agree.
+        $group_row = db_item("SELECT name, short_description FROM product_groups WHERE id = '" . e($item_id) . "'");
+
+        $sql_short_description = '';
+
+        if (pg_explorer_catalog_short_description_follows_name($group_row)) {
+
+            $sql_short_description = "short_description = '" . e($name) . "',";
+        }
+
+        db("UPDATE product_groups SET name = '" . e($name) . "', " . $sql_short_description . " timestamp = UNIX_TIMESTAMP() WHERE id = '" . e($item_id) . "'");
+
+    } elseif ($item_kind == 'product') {
+
+        $audit_before = pg_audit_fetch('products', $item_id);
+        db("UPDATE products SET name = '" . e($name) . "', timestamp = UNIX_TIMESTAMP() WHERE id = '" . e($item_id) . "'");
+        pg_audit_record('update', 'products', $item_id, $audit_before);
+
+    } else {
+
+        respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+    }
+
+    respond(array(
+        'status' => 'success',
+        'request' => $type,
+        'name' => $name,
+        'message' => lang('The name was changed.')));
+}
+
+// ── Take a product out of one group ──────────────────────────────
+//
+// Not a delete. A product belongs to several groups at once, so leaving
+// this one changes nothing else about it: it stays on sale, and it stays
+// wherever else it is listed. The screen says so in those words, because
+// "delete" in a folder means something the operator would not want here.
+function pg_explorer_handle_catalog_membership_remove($type, $request, $user)
+{
+    if (pg_catalog_access($user) == false) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    $product_id = (int) (isset($request['product_id']) ? $request['product_id'] : 0);
+    $group_id = (int) (isset($request['group_id']) ? $request['group_id'] : 0);
+
+    if (($product_id <= 0) || ($group_id <= 0)) {
+        respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+    }
+
+    db(
+        "DELETE FROM products_groups_xref
+        WHERE (product = '" . e($product_id) . "')
+            AND (product_group = '" . e($group_id) . "')");
+
+    $remaining = (int) db_value(
+        "SELECT COUNT(*)
+        FROM products_groups_xref
+        WHERE product = '" . e($product_id) . "'");
+
+    $product = db_item("SELECT name FROM products WHERE id = '" . e($product_id) . "'");
+
+    log_activity(lang(array('string' => 'The product, {var:1}, was removed from a product group.', 'vars' => h(isset($product['name']) ? $product['name'] : ''))), $_SESSION['sessionusername']);
+
+    respond(array(
+        'status' => 'success',
+        'request' => $type,
+        'remaining' => $remaining,
+        'message' => ($remaining > 0)
+            ? lang(array('string' => 'Removed from this group. It is still in {var:1} other group(s).', 'vars' => $remaining))
+            : lang('Removed from this group. It is now in no group, and only the All Products view will show it.')));
+}
+
+// ── Where this group or product is visible on the site ───────────
+//
+// Asked for only when the preview panel is open, because both routes
+// scan text columns and neither belongs in a listing that redraws on
+// every click.  A single "view on site" button would have to pick one
+// of these for the operator; the panel lists them and lets them pick.
+function pg_explorer_handle_catalog_pages($type, $request, $user)
+{
+    if (pg_catalog_access($user) == false) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    $item_kind = isset($request['item_kind']) ? (string) $request['item_kind'] : '';
+    $item_id = (int) (isset($request['item_id']) ? $request['item_id'] : 0);
+
+    if ($item_id <= 0) {
+        respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+    }
+
+    $pages = ($item_kind == 'product')
+        ? pg_catalog_pages_for_product($item_id)
+        : pg_catalog_pages_for_group($item_id);
+
+    respond(array(
+        'status' => 'success',
+        'request' => $type,
+        'item_kind' => $item_kind,
+        'item_id' => $item_id,
+        'pages' => $pages));
+}
