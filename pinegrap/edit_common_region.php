@@ -38,7 +38,8 @@ $liveform = new liveform('edit_common_region');
 require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
 $component_id = pg_common_region_components(array($id))[$id];
 
-if (!isset($_POST['name'])) {
+// The conversion form posts no name: it is a POST all the same.
+if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
     $query = "SELECT cregion_name, cregion_content, cregion_designer_type "
             ."FROM cregion "
             ."WHERE cregion_id = '" . escape($_GET['id']) . "'";
@@ -52,11 +53,12 @@ if (!isset($_POST['name'])) {
         $component_name = (string) db_value("SELECT name FROM shared_components WHERE id = '" . (int) $component_id . "'");
         $output_component =
             '<div class="alert theme-primary my-7">
-                <p class="mb-0">' . h(lang(array('string' => 'This common region is now the shared component "{var:1}". Its content is edited in the visual designer, by managers and by the users granted the component; the content kept below is no longer shown on the site.', 'vars' => $component_name))) . '</p>
+                <p>' . h(lang(array('string' => 'This common region is now the shared component "{var:1}". Its content is edited in the visual designer, by managers and by the users granted the component; the content kept below is no longer shown on the site.', 'vars' => $component_name))) . '</p>
+                <a class="btn btn-sm btn-solid theme-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '&amp;send_to=' . h(urlencode(get_request_uri())) . '"><span class="material-icons me-1">edit</span>' . h(lang('Edit in the visual designer')) . '</a>
             </div>';
     } elseif (($user['role'] <= 1) && pg_shared_component_content_ready()) {
         $output_component =
-            '<form class="alert theme-warning d-flex gap-3 align-items-start my-7" action="edit_common_region.php" method="post">
+            '<form class="alert theme-warning d-flex gap-3 align-items-start my-7 disable_shortcut" action="edit_common_region.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $id . '">
                 <div class="flex-grow-1">
