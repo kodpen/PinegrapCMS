@@ -711,7 +711,7 @@ function ws_api_message_threads($viewer, $message_ids)
     return $out;
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null)
 {
     // The messages the reader deleted for themselves (ws_message_hide()).
     if ($hidden === null) {
@@ -721,6 +721,11 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
     // The poll it asks (interact.php).
     if ($polls === null) {
         $polls = ws_polls_map(array($row['id']), $viewer);
+    }
+
+    // The note it shares (notes.php).
+    if ($note_cards === null) {
+        $note_cards = function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, array($row['id'])) : array();
     }
 
     if ($reactions === null) {
@@ -808,6 +813,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'thread'         => $deleted ? null : ($threads['threads'][(int) $row['id']] ?? null),
         'from_thread_id' => $deleted ? null : ($threads['copies'][(int) $row['id']] ?? null),
         'poll'           => (!$deleted && isset($polls[(int) $row['id']])) ? ws_api_poll_present($polls[(int) $row['id']]) : null,
+        'note_card'      => ws_api_message_note_card($row, $note_cards),
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -833,6 +839,7 @@ function ws_api_message_schema()
         'thread'         => 'WorkspaceMessageThread?',
         'from_thread_id' => 'integer?',
         'poll'           => 'WorkspacePoll?',
+        'note_card'      => 'WorkspaceMessageNoteCard?',
         'created_at'  => 'string',
     );
 }
@@ -854,6 +861,31 @@ function ws_api_message_file_schema()
 function ws_api_message_thread_schema()
 {
     return array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'string?', 'closed' => 'boolean');
+}
+
+function ws_api_message_note_card_schema()
+{
+    return array('id' => 'integer', 'name' => 'string', 'excerpt' => 'string');
+}
+
+/**
+ * The note a message shares, from the page's ws_note_cards_map(). Null when
+ * it shares none or the share was taken back (the share row is gone), and
+ * on a deleted message, as on the channel screen.
+ *
+ * @param array $row        ws_messages row
+ * @param array $note_cards ws_note_cards_map() by message id
+ * @return array|null
+ */
+function ws_api_message_note_card($row, $note_cards)
+{
+    $card = $note_cards[(int) $row['id']] ?? null;
+
+    if (((int) $row['deleted_at'] > 0) || !is_array($card)) {
+        return null;
+    }
+
+    return array('id' => (int) $card['id'], 'name' => (string) $card['name'], 'excerpt' => (string) $card['excerpt']);
 }
 
 /**
@@ -973,8 +1005,8 @@ function ws_api_messages_list($params)
 }
 
 /**
- * Messages as the API shows them, with their tags, reactions, read receipts
- * and discussions read once for the whole set.
+ * Messages as the API shows them, with their tags, reactions, read receipts,
+ * discussions and shared notes read once for the whole set.
  *
  * @param array   $viewer
  * @param array[] $rows ws_messages rows
@@ -1001,12 +1033,13 @@ function ws_api_messages_present($viewer, $rows)
     $hidden = ws_message_hidden_ids($viewer['id'], $ids);
     $polls = ws_polls_map($ids, $viewer);
     $proposals = function_exists('ws_proposals_by_reply') ? ws_proposals_by_reply($ids) : array();
+    $note_cards = function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, $ids) : array();
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards);
     }
 
     return $out;
