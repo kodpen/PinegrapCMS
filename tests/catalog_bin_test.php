@@ -159,8 +159,8 @@ function test_catalog_bin_binned_subgroups_are_not_left_without_a_parent()
 	pg_assert_true($binned !== false, 'permanent delete counts binned subgroups');
 	pg_assert_true(($binned !== false) && ($binned < strpos($delete, 'DELETE FROM product_groups WHERE')), 'and refuses before deleting');
 
-	$explorer = catalog_bin_test_source('view_folder_and_files_f.php');
-	$start = strpos($explorer, "case 'explorer_catalog_restore':");
+	$explorer = catalog_bin_test_source('includes/explorer/handle_catalog.php');
+	$start = strpos($explorer, 'function pg_explorer_handle_catalog_restore(');
 	$restore = ($start === false) ? '' : (string) substr($explorer, $start, 4000);
 
 	pg_assert_contains("SELECT id FROM product_groups WHERE parent_id = '0'", $restore, 'restore finds the root group for an orphan');
@@ -181,7 +181,7 @@ function test_catalog_bin_panel_screens_send_deletes_to_the_bin()
 	pg_assert_contains('pg_pb_bin_variant_set($group_id', catalog_bin_test_source('variant_set_action.php'), 'variant set list');
 	pg_assert_contains('pg_catalog_bin_group(', catalog_bin_test_source('edit_product_group.php'), 'product group screen');
 
-	$explorer = catalog_bin_test_source('view_folder_and_files_f.php');
+	$explorer = catalog_bin_test_source('includes/explorer/handle_catalog.php');
 
 	pg_assert_contains("pg_catalog_bin_product(\$item_id", $explorer, 'Catalog Manager: products');
 	pg_assert_contains("pg_catalog_bin_statements('product_group'", $explorer, 'Catalog Manager: groups');
