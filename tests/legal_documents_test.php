@@ -618,7 +618,9 @@ function test_legal_documents_script()
 
 	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_inject');
 
-	pg_assert_same(2, substr_count($section, 'pg_legal_documents_script()'), 'both ways out of the injector carry it');
+	// Past the switch there is one way out, with or without boxes added.
+	pg_assert_same(2, preg_match_all('/^\s+return /m', $section), 'the off return and one more');
+	pg_assert_contains('$html) . pg_legal_documents_script();', $section, 'the way out with the documents carries it');
 }
 
 // The script posts exactly the billing fields the documents read.
@@ -782,4 +784,68 @@ function test_legal_documents_store_records_contract_consents()
 
 	pg_assert_true(($repeat !== false) && ($stored !== false) && ($consent !== false) && ($repeat < $stored) && ($stored < $consent), 'consents after the documents, never on the repeat call');
 	pg_assert_contains('pg_legal_documents_consent_events(', $section, 'rows built by the tested helper');
+}
+
+// The KVKK notice is kept with the order and named, but never required: the
+// checkout's required boxes stay the two documents.
+function test_legal_documents_kvkk_label()
+{
+	pg_assert_same(array('preinfo', 'contract'), array_keys(pg_legal_document_types()), 'required documents');
+	pg_assert_same(array('preinfo', 'contract', 'kvkk'), array_keys(pg_legal_document_labels()), 'kept types');
+}
+
+// The notice sentence links the page; the consent box is never required and
+// keeps its ticked state; the sentence is escaped; neither gives nothing.
+function test_legal_documents_kvkk_html()
+{
+	pg_assert_same('', pg_legal_kvkk_html(array(), '', '  '), 'nothing set');
+
+	$notice = pg_legal_kvkk_html(array(), '/kvkk?a=1&b=2', '');
+	pg_assert_contains('href="/kvkk?a=1&amp;b=2"', $notice, 'link escaped');
+	pg_assert_true(strpos($notice, 'legal_kvkk') === false, 'no box without a sentence');
+
+	$box = pg_legal_kvkk_html(array('legal_kvkk' => '1'), '', "I agree <b>\nfully</b>");
+	pg_assert_contains('name="legal_kvkk" id="legal_kvkk" value="1" checked>', $box, 'ticked, not required');
+	pg_assert_true(strpos($box, 'required') === false, 'never required');
+	pg_assert_contains('I agree &lt;b&gt;<br>' . "\n" . 'fully&lt;/b&gt;', $box, 'sentence escaped');
+	pg_assert_contains('value="1">', pg_legal_kvkk_html(array('legal_kvkk' => '0'), '', 'Yes'), 'unticked');
+	pg_assert_contains('class="pg-legal-kvkk', $box, 'the marker inject looks for');
+}
+
+// The kept copy names the linked page and the consent sentence.
+function test_legal_documents_kvkk_copy_html()
+{
+	pg_assert_same('', pg_legal_kvkk_copy_html('', ''), 'nothing shown, nothing kept');
+
+	$copy = pg_legal_kvkk_copy_html('https://example.com/kvkk', 'I consent & agree');
+	pg_assert_contains('<a href="https://example.com/kvkk">https://example.com/kvkk</a>', $copy, 'page address');
+	pg_assert_contains('<p>I consent &amp; agree</p>', $copy, 'consent sentence');
+	pg_assert_true(strpos(pg_legal_kvkk_copy_html('https://example.com/kvkk', ''), '<h3>') === false, 'no consent section without a sentence');
+}
+
+// A KVKK copy's note speaks of consent, not acceptance.
+function test_legal_documents_kvkk_acceptance_note()
+{
+	pg_assert_same(lang('The customer gave no explicit consent.'), pg_legal_document_acceptance_note(array('type' => 'kvkk', 'accepted_at' => null)));
+	pg_assert_same(
+		lang(array('string' => 'Explicit consent given by the customer on {var:1}.', 'vars' => array(pg_legal_document_time_text(1700000000)))),
+		pg_legal_document_acceptance_note(array('type' => 'kvkk', 'accepted_at' => '1700000000'))
+	);
+	pg_assert_same(lang('This copy was kept with the order without being accepted.'), pg_legal_document_acceptance_note(array('type' => 'contract', 'accepted_at' => null)), 'documents unchanged');
+}
+
+// The checkout posts the box, the submit passes it to the store, and the
+// store counts it as consent only when the checkout asked for it.
+function test_legal_documents_kvkk_reaches_the_store()
+{
+	$submit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+	$store = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_store');
+	$inject = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_inject');
+
+	pg_assert_contains("'kvkk'     => (\$liveform->get_field_value('legal_kvkk') == 1)", $submit, 'submit passes the answer');
+	pg_assert_contains("'legal_contract', 'legal_kvkk'", $submit, 'a single value');
+	pg_assert_contains("'legal_contract', 'legal_kvkk'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/express_order.php'), 'a single value on the express order');
+	pg_assert_contains("array_diff(\$accepted_types, array('kvkk'))", $store, 'no consent without the box');
+	pg_assert_contains("pg_legal_kvkk_copy_html(\$kvkk['full_url'], \$kvkk['consent'])", $store, 'the copy kept');
+	pg_assert_contains("strpos(\$html, 'pg-legal-kvkk') === false", $inject, 'one set of KVKK lines');
 }

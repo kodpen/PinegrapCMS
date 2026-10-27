@@ -627,6 +627,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ? $legal_template
             : pg_legal_document_default_template($legal_type, lang(array('info' => true)));
     }
+    // The KVKK notice page and the explicit consent sentence (11.0.48).
+    $legal_kvkk_ready = array_key_exists('ecommerce_kvkk_page_id', $row);
+    $ecommerce_kvkk_page_id = (int) ($row['ecommerce_kvkk_page_id'] ?? 0);
+    $ecommerce_kvkk_consent_text = (string) ($row['ecommerce_kvkk_consent_text'] ?? '');
     $erp_open_account_payment_checked = ((int) ($row['erp_open_account_payment'] ?? 0) === 1) ? ' checked' : '';
 
     // ERP notices on the bell and the devices (4.91); the amount is kept in

@@ -574,6 +574,8 @@ define('ECOMMERCE_NO_SHIPPING_METHODS_MESSAGE', $row['ecommerce_no_shipping_meth
 define('ECOMMERCE_END_OF_DAY_TIME', mb_substr($row['ecommerce_end_of_day_time'], 0, 5));
 define('ECOMMERCE_EMAIL_ADDRESS', $row['ecommerce_email_address']);
 define('ECOMMERCE_LEGAL_DOCUMENTS', (int) ($row['ecommerce_legal_documents'] ?? 0) === 1);
+define('ECOMMERCE_KVKK_PAGE_ID', (int) ($row['ecommerce_kvkk_page_id'] ?? 0));
+define('ECOMMERCE_KVKK_CONSENT_TEXT', (string) ($row['ecommerce_kvkk_consent_text'] ?? ''));
 define('ECOMMERCE_GIFT_CARD', $row['ecommerce_gift_card']);
 define('ECOMMERCE_GIFT_CARD_VALIDITY_DAYS', $row['ecommerce_gift_card_validity_days']);
 define('ECOMMERCE_GIVEX', $row['ecommerce_givex']);
