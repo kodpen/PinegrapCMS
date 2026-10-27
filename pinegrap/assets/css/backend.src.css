@@ -4266,6 +4266,20 @@ table.chart thead th {
   width: 1%;
 }
 
+/* A combobox searching the server (data-pg-source): its own search box,
+   which Bootstrap must not filter, and the line that says what the search
+   is doing. */
+.pg-combobox-query {
+  width: 100%;
+}
+
+.pg-combobox-status {
+  padding: .75rem 1rem;
+  font-size: .875rem;
+  color: var(--pg-fg-3);
+  text-align: center;
+}
+
 .min-height-tagin {
   min-height: 66px;
 }

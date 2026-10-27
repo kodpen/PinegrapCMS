@@ -15,11 +15,11 @@ description: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): 
 - ISO text: `'2026-10-26'`, `'17:00'`, `'2026-10-26 17:00'`; chips an array, a multiple combobox an array. Parse and format are our own from `date_picker_format` (day or month first, no leading zeros, `h:mm AM`), never `Date()` parsing. `pgDatePicker.parse/format`, `pgDateTimeField.parse/format/parseTime/formatTime` are exposed.
 - The posted input or `<select>` is always the store, in the text the server reads today. `set()` writes it, fires one bubbling native `change` and redraws the widget.
 - A field that changes kind (calendar all-day: date and time to date) uses `pgFields.switchKind(el, kind)`: the old widget goes, one hook stays; `pgFields.destroy(el)` leaves a plain field with its value.
-- Listen with `pgFields.onChange(el, fn)` or jQuery `.on('change')`: on the one select2 left (a `data-pg-source` field) a pick is announced only through jQuery, so a bare `addEventListener('change')` misses it there.
+- Listen with `pgFields.onChange(el, fn)` or jQuery `.on('change')`: on a select2 (a `data-pg-source` field on a page without Bootstrap 6) a pick is announced only through jQuery, so a bare `addEventListener('change')` misses it there.
 
 ## What is the engine today?
-- Chips: `v6`, Bootstrap 6 Chips (`pg-chips.md`). Combobox: `v6`, Bootstrap 6 Combobox (`pg-combobox.md`), except a `data-pg-source` field. Date, date and time, time: `v6`, Bootstrap 6 Datepicker and `<input type="time">` (`pg-datepicker.md`).
-- `v5`: only select2 for a `data-pg-source` combobox (theme bootstrap-5, `dropdownParent` from `pgUI.overlayHost()`). A field whose library is not on the screen stays a plain field.
+- Chips: `v6`, Bootstrap 6 Chips (`pg-chips.md`). Combobox: `v6`, Bootstrap 6 Combobox (`pg-combobox.md`), server search for `data-pg-source` included (#2362). Date, date and time, time: `v6`, Bootstrap 6 Datepicker and `<input type="time">` (`pg-datepicker.md`).
+- `v5`: only select2 for a `data-pg-source` combobox on a page without Bootstrap 6 (theme bootstrap-5, `dropdownParent` from `pgUI.overlayHost()`). A field whose library is not on the screen stays a plain field.
 - `pg_fields.js` is served as written (no twin, no bundle). Tested under Node by `tests/pg_fields_test.php`.
 
 ## Which screens use them?

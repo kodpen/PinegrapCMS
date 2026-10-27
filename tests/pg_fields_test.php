@@ -120,7 +120,7 @@ FakeElement.prototype.insertBefore = function (c, ref) {
     if (i < 0) { this.children.push(c); } else { this.children.splice(i, 0, c); }
     return c;
 };
-FakeElement.prototype.removeChild = function (c) { this.children = this.children.filter(function (x) { return x !== c; }); c.parentNode = null; return c; };
+FakeElement.prototype.removeChild = function (c) { this.children = this.children.filter(function (x) { return x !== c; }); this.options = this.options.filter(function (x) { return x !== c; }); c.parentNode = null; return c; };
 Object.defineProperty(FakeElement.prototype, 'childNodes', { get: function () { return this.children; } });
 // Only '.class' up the parents, as the drawer test needs.
 FakeElement.prototype.closest = function (sel) {
@@ -299,7 +299,7 @@ function load(opts) {
     });
     (opts.labels || []).forEach(function (l) { form.appendChild(doc.create('label', l)); });
     if (opts.firstDay !== undefined) { win.datetimepicker_options.firstDay = opts.firstDay; }
-    if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label, 'data-pg-search-label': 'Ara', 'data-pg-no-results-label': 'Sonuç bulunamadı', 'data-pg-locale-label': 'tr' }); }
+    if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label, 'data-pg-search-label': 'Ara', 'data-pg-no-results-label': 'Sonuç bulunamadı', 'data-pg-locale-label': 'tr', 'data-pg-searching-label': 'Aranıyor…', 'data-pg-type-label': 'Aramak için yazın...' }); }
     new Function('window', 'document', PG_FIELDS_SOURCE)(win, doc);
     return { win: win, doc: doc, calls: calls };
 }
@@ -575,7 +575,6 @@ function remote(out) {
     var r = load({ label: 'Kaldır', fetch: true, labels: [{ 'for': 'gpc', text: 'Google Product Category' }], fields: [
         ['select', { id: 'gpc', name: 'google_product_category', 'class': 'form-control', 'data-pg-combobox': '', 'data-pg-source': 'tax.php?action=search', 'data-pg-min-length': '2', 'data-pg-free-text': '', 'data-placeholder': 'Category' }]
     ], options: [['gpc', { value: '', text: '' }], ['gpc', { value: '187', text: 'Apparel > Shoes  (187)', selected: '' }]] });
-    r.doc.create('script', { 'data-pg-searching-label': 'Aranıyor…', 'data-pg-type-label': 'Aramak için yazın...' });
     r.win.pgFields.init();
     var el = r.doc.querySelector('#gpc'), toggle = el.nextSibling, menu = toggle.nextSibling;
     var input = menu.children[0].children[0], heard = [];
