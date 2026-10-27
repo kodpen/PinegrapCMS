@@ -348,9 +348,9 @@ $query =
     LEFT JOIN orders ON commissions.order_id = orders.id
     WHERE
         (commissions.status = 'pending')
-        AND (commissions.created_timestamp >= '" . $start_timestamp . "')
-        AND (commissions.created_timestamp <= '" . $stop_timestamp . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        AND (commissions.created_timestamp >= ?)
+        AND (commissions.created_timestamp <= ?)";
+$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $pending_total = $row['pending_total'];
 
@@ -362,9 +362,9 @@ $query =
     LEFT JOIN orders ON commissions.order_id = orders.id
     WHERE
         (commissions.status = 'payable')
-        AND (commissions.created_timestamp >= '" . $start_timestamp . "')
-        AND (commissions.created_timestamp <= '" . $stop_timestamp . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        AND (commissions.created_timestamp >= ?)
+        AND (commissions.created_timestamp <= ?)";
+$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $payable_total = $row['payable_total'];
 
@@ -376,9 +376,9 @@ $query =
     LEFT JOIN orders ON commissions.order_id = orders.id
     WHERE
         (commissions.status = 'ineligible')
-        AND (commissions.created_timestamp >= '" . $start_timestamp . "')
-        AND (commissions.created_timestamp <= '" . $stop_timestamp . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        AND (commissions.created_timestamp >= ?)
+        AND (commissions.created_timestamp <= ?)";
+$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $ineligible_total = $row['ineligible_total'];
 
@@ -390,9 +390,9 @@ $query =
     LEFT JOIN orders ON commissions.order_id = orders.id
     WHERE
         (commissions.status = 'paid')
-        AND (commissions.created_timestamp >= '" . $start_timestamp . "')
-        AND (commissions.created_timestamp <= '" . $stop_timestamp . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        AND (commissions.created_timestamp >= ?)
+        AND (commissions.created_timestamp <= ?)";
+$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $paid_total = $row['paid_total'];
 
