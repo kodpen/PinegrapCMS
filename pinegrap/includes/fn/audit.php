@@ -570,6 +570,7 @@ function pg_audit_tables()
         'orders'   => array('type' => 'order', 'id' => 'id', 'label' => array('order_number', 'reference_code'), 'skip' => array('mailchimp_sync_error'), 'skip_prefix' => array()),
         'files'    => array('type' => 'file', 'id' => 'id', 'label' => array('name'), 'skip' => array('user'), 'skip_prefix' => array()),
         'offers'   => array('type' => 'offer', 'id' => 'id', 'label' => array('code'), 'skip' => array('user'), 'skip_prefix' => array()),
+        'contacts' => array('type' => 'contact', 'id' => 'id', 'label' => array('email_address', 'last_name', 'first_name', 'company'), 'skip' => array('user'), 'skip_prefix' => array()),
         'api_apps' => array('type' => 'api_app', 'id' => 'id', 'label' => array('name'), 'skip' => array('last_used_ip'), 'skip_prefix' => array()),
     );
 }

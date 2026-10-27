@@ -157,6 +157,7 @@ function test_audit_view_record_url()
 {
 	pg_assert_same('edit_product.php?id=4', pg_audit_view_record_url('product', 4), 'product');
 	pg_assert_same('view_order.php?id=8', pg_audit_view_record_url('order', '8'), 'order');
+	pg_assert_same('edit_contact.php?id=12', pg_audit_view_record_url('contact', 12), 'contact');
 	pg_assert_same('', pg_audit_view_record_url('product', 0), 'no id');
 	pg_assert_same('api_settings.php', pg_audit_view_record_url('api_key', 2), 'API keys');
 	pg_assert_same('', pg_audit_view_record_url('settings', 0), 'settings');
