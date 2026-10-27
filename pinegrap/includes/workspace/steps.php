@@ -404,6 +404,38 @@ function ws_step_check($viewer, $kind, $config)
 }
 
 /**
+ * Whether the person who started a run may make a change box's change too.
+ * A change is made only with the rights of both the flow's owner and the
+ * starter, so a colleague who starts someone else's flow has no change made
+ * that they may not make themselves. A run an anchor starts has the owner as
+ * its starter; the other kinds of box keep the owner's rights alone. A
+ * starter who no longer exists or has left the team refuses the change.
+ *
+ * @param array    $run        ws_flow_runs row: started_by, actor_id
+ * @param string   $kind
+ * @param array    $config
+ * @param callable $viewer_for person id => ws_change_viewer_for_id()
+ * @param callable $check      ws_step_check()
+ * @return string '' when the change may be made, else why not
+ */
+function ws_step_starter_refusal($run, $kind, $config, $viewer_for = 'ws_change_viewer_for_id', $check = 'ws_step_check')
+{
+    $starter_id = (int) ($run['started_by'] ?? 0);
+
+    if (($kind !== 'change') || (($starter_id > 0) && ($starter_id === (int) ($run['actor_id'] ?? 0)))) {
+        return '';
+    }
+
+    $starter = ($starter_id > 0) ? $viewer_for($starter_id) : null;
+
+    if (is_array($starter) && !empty($starter['member']) && !empty($check($starter, $kind, $config)['ok'])) {
+        return '';
+    }
+
+    return lang('The person who started the run may not make this change.');
+}
+
+/**
  * The values the boxes of a run so far give {{node.<id>.<field>}}: each
  * box's sentence, outcome and status, and the values it kept that are a
  * single number, text or yes/no. Pure.
@@ -632,6 +664,14 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     if (!$check['ok']) {
         $end = ws_step_settlement(false, $routed);
         ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $check['error']);
+        return;
+    }
+
+    $refusal = ws_step_starter_refusal($run, $kind, $node['config']);
+
+    if ($refusal !== '') {
+        $end = ws_step_settlement(false, $routed);
+        ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $refusal);
         return;
     }
 
