@@ -6,7 +6,7 @@ description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys
 ## What is built? (PR #672, passkeys step 2)
 - Table `user_passkeys` (2026.11.0, 11.0.13): one row per credential. Binary values are base64url in `ascii_bin` columns; the unique key is `credential_hash` (SHA-256 hex of the raw ID), since an ID of up to 1023 bytes is past the 767-byte index of old row formats. `user_handle` is 32 random bytes drawn at the account's first passkey and copied to the next ones (never derived from site keys).
 - Module `includes/fn/passkeys.php` around the verifier (`docs/memory/core/webauthn-verifier.md`): `pg_passkey_registration_begin()` / `pg_passkey_register()`, `pg_passkey_signin_begin($user_id)` / `pg_passkey_signin_check()`, `pg_passkeys_of_user()`, `pg_passkeys_forget()` (called by `pg_mfa_reset()`; `edit_user.php`'s delete now also calls `pg_mfa_reset()` as `delete_users.php` did, since MySQL 5.7 hands the highest id out again after a restart). Tests: `tests/passkeys_test.php` (software authenticator with the W3C ES256 test key).
-- `passkey.php`: POST + session token, JSON only. `register_options` only for an account with TOTP on and after the password and a code (PR #1384, step 3: `core/passkey-account-section.md`); `register` needs the ceremony only that begins; both refused while logged in as another user. `signin_options` serves a sign-in waiting in `mfa.php` verify mode.
+- `passkey.php`: POST + session token, JSON only. `register_options` only after the password and a code (TOTP/recovery, or e-mailed without TOTP; `email_code` sends it; PR #1384, #2226: `core/passkey-account-section.md`); `register` needs the ceremony only that begins; both refused while logged in as another user. `signin_options` serves a sign-in waiting in `mfa.php` verify mode.
 - `mfa.php` verify mode shows "Use a passkey" when the account has one and the browser can (`assets/js/pg_passkey.js`). The answer is posted to `mfa.php` (`pg_mfa_action=passkey`), counts against `pg_mfa_attempt_blocked()` and completes through `pg_mfa_screen_complete()`.
 
 ## Where are they managed?
@@ -31,4 +31,4 @@ description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys
 - [[passkey-second-factor]] (PR #1862).
 
 ## What is not built yet? (plans/passkeys.md)
-- Recovery codes for passkey-only accounts, adding a passkey without TOTP. Passwordless sign-in and autofill are built: [[passkey-passwordless]] (PR #1882, #1960).
+- The designed widget's add form without TOTP and new recovery codes for passkey-only accounts (step 4c2); sessions tied to passkeys (4e). Passwordless sign-in and autofill: [[passkey-passwordless]].

@@ -519,13 +519,57 @@ function test_passkeys_refusal_words()
 
 // A change to an account's passkeys asks for the proofs the account has: its
 // password unless it is Google-only (algo 3), a code while two-step
-// verification is on.
+// verification is on. Adding one without two-step verification asks for a
+// code sent to the account's e-mail address instead; removing one never does.
 function test_passkeys_reauth_fields()
 {
-	pg_assert_same(array('password' => true, 'code' => true), pg_passkey_reauth_fields(1, true), 'password and two-step');
-	pg_assert_same(array('password' => true, 'code' => false), pg_passkey_reauth_fields(1, false), 'password only');
-	pg_assert_same(array('password' => false, 'code' => true), pg_passkey_reauth_fields(3, true), 'Google-only with two-step');
-	pg_assert_same(array('password' => false, 'code' => false), pg_passkey_reauth_fields('3', 0), 'Google-only without two-step');
+	pg_assert_same(array('password' => true, 'code' => true, 'email' => false), pg_passkey_reauth_fields(1, true), 'password and two-step');
+	pg_assert_same(array('password' => true, 'code' => false, 'email' => false), pg_passkey_reauth_fields(1, false), 'password only');
+	pg_assert_same(array('password' => false, 'code' => true, 'email' => false), pg_passkey_reauth_fields(3, true), 'Google-only with two-step');
+	pg_assert_same(array('password' => false, 'code' => false, 'email' => false), pg_passkey_reauth_fields('3', 0), 'Google-only without two-step');
+
+	pg_assert_same(array('password' => true, 'code' => true, 'email' => false), pg_passkey_reauth_fields(1, true, true), 'adding with two-step');
+	pg_assert_same(array('password' => true, 'code' => false, 'email' => true), pg_passkey_reauth_fields(1, false, true), 'adding without two-step');
+	pg_assert_same(array('password' => false, 'code' => false, 'email' => true), pg_passkey_reauth_fields(3, false, true), 'adding, Google-only without two-step');
+}
+
+// The e-mailed code: six digits, kept as a hash for one account, used once,
+// refused when old, for another account, or after five wrong guesses.
+function test_passkeys_email_code()
+{
+	for ($i = 0; $i < 20; $i++) {
+		pg_assert_true((bool) preg_match('/^[0-9]{6}$/D', pg_passkey_email_code_new()), 'six digits');
+	}
+
+	$store = null;
+	pg_passkey_email_code_keep($store, 7, '123456', 1000);
+	pg_assert_false(strpos(serialize($store), '123456') !== false, 'only a hash is kept');
+	pg_assert_same('email_code', pg_passkey_email_code_check($store, 7, '654321', 1001), 'wrong code');
+	pg_assert_same('', pg_passkey_email_code_check($store, 7, ' 123 456 ', 1002), 'spaces are ignored');
+	pg_assert_same('email_expired', pg_passkey_email_code_check($store, 7, '123456', 1003), 'used once');
+
+	pg_passkey_email_code_keep($store, 7, '123456', 1000);
+	pg_assert_same('email_expired', pg_passkey_email_code_check($store, 8, '123456', 1001), 'another account');
+	pg_assert_same('', pg_passkey_email_code_check($store, 7, '123456', 1001), 'another account does not use it up');
+
+	pg_passkey_email_code_keep($store, 7, '123456', 1000);
+	pg_assert_same('email_expired', pg_passkey_email_code_check($store, 7, '123456', 1000 + pg_passkey_email_code_lifetime() + 1), 'too old');
+
+	pg_passkey_email_code_keep($store, 7, '123456', 1000);
+	pg_passkey_email_code_keep($store, 7, '222222', 1010);
+	pg_assert_same('email_code', pg_passkey_email_code_check($store, 7, '123456', 1011), 'a newer code replaces the older');
+
+	pg_passkey_email_code_keep($store, 7, '123456', 1000);
+
+	for ($i = 0; $i < 4; $i++) {
+		pg_assert_same('email_code', pg_passkey_email_code_check($store, 7, '000000', 1001), 'guess ' . ($i + 1));
+	}
+
+	pg_assert_same('email_expired', pg_passkey_email_code_check($store, 7, '000000', 1001), 'fifth wrong guess ends it');
+	pg_assert_same('email_expired', pg_passkey_email_code_check($store, 7, '123456', 1001), 'right code after that');
+
+	$store = 'broken';
+	pg_assert_same('email_expired', pg_passkey_email_code_check($store, 7, '123456', 1001), 'nothing kept');
 }
 
 // -- sign-in with a passkey alone ----------------------------------------------------
