@@ -45,7 +45,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_scheduled.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_commands.php');
 
 /**
@@ -171,7 +170,6 @@ function ws_openapi_objects()
         'WorkspaceApproval'       => 'ws_api_approval_schema',
         'WorkspaceThread'           => 'ws_api_thread_schema',
         'WorkspaceScheduledMessage' => 'ws_api_scheduled_message_schema',
-        'WorkspaceScheduledAction'  => 'ws_api_scheduled_action_schema',
         'WorkspaceNoteVersion'      => 'ws_api_note_version_schema',
         'WorkspacePlanItem'         => 'ws_api_plan_item_schema',
         'WorkspaceSearchHit'        => 'ws_api_search_hit_schema',
@@ -2273,8 +2271,7 @@ function ws_api_routes()
 
     );
 
-    // Asking Claude in a channel (api_claude.php), the changes an
-    // application proposes (api_proposals.php) and the scheduled actions
-    // (api_scheduled.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_scheduled_api_routes());
+    // Asking Claude in a channel (api_claude.php) and the changes an
+    // application proposes (api_proposals.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes());
 }

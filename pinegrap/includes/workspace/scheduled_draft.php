@@ -993,8 +993,8 @@ function ws_scheduled_draft_ai_store($row, $message_id, $drafts)
 
 /**
  * A scheduled action an application proposes (api_proposals.php), read from
- * the change as sent: data is the body POST /workspace/scheduled-actions
- * takes (name, rules, action, follow, channel_id). Only the form's four
+ * the change as sent: data is the scheduled action as an object (name,
+ * rules, action, follow, channel_id). Only the form's four
  * parts are kept; the channel left out is the one it is proposed in; the
  * reason is the note shown above the form. Nothing is checked against the
  * site here (ws_scheduled_draft_proposal_row()).
@@ -1021,7 +1021,7 @@ function ws_scheduled_draft_proposal_input($change, $channel_id)
     $sent = $change['data'] ?? null;
 
     if (!is_array($sent) || (!empty($sent) && $is_list($sent))) {
-        return $fail(lang('data is the scheduled action as POST /workspace/scheduled-actions takes it: an object of name, rules, action, follow and channel_id.'));
+        return $fail(lang('data is the scheduled action: an object of name, rules, action, follow and channel_id.'));
     }
 
     $action = $sent['action'] ?? null;

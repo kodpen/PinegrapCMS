@@ -55,10 +55,10 @@ function ws_api_changes_param($applier, $required = false, $scheduled = false)
 
     // A scheduled action runs in the name of whoever saves it, so an
     // application proposes it as a draft the person saves from its form
-    // (scheduled_draft.php); creating one over the API is the person's own.
+    // (scheduled_draft.php); no route creates one for them.
     if ($scheduled) {
         $param['of']['data'] = 'object';
-        $param['description'] .= ' A scheduled action is proposed as {type: scheduled, action: draft, data, reason}: data is the body POST /workspace/scheduled-actions takes (name, rules, action, follow, and channel_id, the channel its card is posted in, this one when left out). It is checked as that save checks it, for the person, and a step they could not save refuses the call with 422 naming changes[i]; nothing is scheduled: the card opens it in the Scheduled actions form, filled in, for the person to read, complete and save in their own name. It is never applied, only saved from its form, and an application never creates, changes or resumes a scheduled action itself.';
+        $param['description'] .= ' A scheduled action is proposed as {type: scheduled, action: draft, data, reason}: data is the scheduled action as an object (name, rules, action, follow, and channel_id, the channel its card is posted in, this one when left out). It is checked as saving it from its form checks it, for the person, and a step they could not save refuses the call with 422 naming changes[i]; nothing is scheduled: the card opens it in the Scheduled actions form, filled in, for the person to read, complete and save in their own name. It is never applied, only saved from its form, and an application never creates, changes or resumes a scheduled action itself.';
     }
 
     if ($required) {
