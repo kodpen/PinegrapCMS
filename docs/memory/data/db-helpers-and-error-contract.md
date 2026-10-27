@@ -1,11 +1,12 @@
 ---
 name: db-helpers-and-error-contract
-description: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() returns false (mysqli_report OFF).
+description: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() and db_q() return false.
 ---
 
 ## Which DB helpers exist?
 - In `includes/fn/core.php`: `db_value('SQL')` one value, `db_values()` one column as a list, `db_item()` one row, `db_items('SQL', $key_column = '')` all rows as an array: walk it with `foreach`, never `mysqli_fetch_assoc()`. `get_file.php` keeps its own copies of `db()`, `db_value()`, `db_item()`, `db_items()` and `escape()` (`core/get-file-shared-code.md`).
 - `db('SQL')` runs anything and shapes its answer by the result: `true` for a write, `''` for no row, the value for one row of one column, the row for one row, a list for more. A loop over `db("SELECT ...")` breaks when exactly one row comes back; read with a helper of one shape.
+- `db_q($sql, $params)`: `?` placeholders, `false` on failure; new code uses it, not `mysqli_query()` (`db-q-placeholder-helper.md`).
 - `e($val)` escapes a quoted SQL value (`mysqli_real_escape_string`; `escape()` is the older name; null gives `''`): `WHERE name = '" . e($name) . "'`.
 - LIKE: `e(escape_like($val))`. `escape_like()` only puts a backslash before `%` and `_` and escapes no quote, so alone it is an SQL injection: the translation search (`translate_api_strings_list()`, `translations.php`) shipped that way in 2026.4.6 and was fixed in 2026.4.7. The other callers build the pattern with it and pass the whole pattern through `escape()`.
 
