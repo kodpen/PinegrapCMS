@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-approval-box
-description: The approval box of a flow (F5c): asks, waits on approval:<id>, leaves on approved, rejected, expired, withdrawn or failed; deadline in hours, woken by approval.decided or the hourly look
+description: The approval box of a flow (F5c, PR #2142): asks, waits on approval:<id>, leaves on approved, rejected, expired, withdrawn or failed; deadline in hours, woken by approval.decided or the hourly look
 ---
 
 ## What is it?
