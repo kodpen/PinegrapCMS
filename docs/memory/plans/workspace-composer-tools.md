@@ -25,7 +25,7 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8 done, 4, 5 partly; answers open): o
 5. Link Text field, Ctrl+/ sheet, done: #2101 (workspace/workspace-editor-link-keys.md); "Aa" expanded composer after question 2; no schema.
 6. Slash inserts in notes, done: #2009 (workspace/workspace-notes-slash-inserts.md).
 7. Smart paste, no schema, done: #2018 (workspace/workspace-editor-smart-paste.md).
-8. Small aids, no schema, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #PRNUM (workspace/workspace-colon-emoji.md).
+8. Small aids, no schema, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #2115 (workspace/workspace-colon-emoji.md).
 9. Objects, no schema: a lone tag as a card per reader (like `ws_form_cards_html()`); checklist item to task (`ws_command_parse_task()`).
 10. Saved replies with `{customer}`, `{order}`, schema, ask first: `;` picker, API with dry run; team ones need a right column (five ladder files, `pg_user_has_ws_columns()`).
 11. Rewrite with AI, no schema: a `pg_ai_write_targets()` target (proposed), plans/ai-write-buttons.md.
