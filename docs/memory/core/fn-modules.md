@@ -35,7 +35,7 @@ description: Generated from the module field of the memory files: each includes/
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]
 - `reviews`: [[product-reviews-verified]]
-- `seo`: [[sitemap-listed-pages]]
+- `seo`: [[robots-large-image-preview]], [[sitemap-listed-pages]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `stock_notify`: [[back-in-stock-notices]]
 - `submitted_form_list`: [[server-paged-lists]]

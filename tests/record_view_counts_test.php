@@ -273,6 +273,25 @@ function test_record_view_counts_placement()
 	pg_assert_false(strpos($widgets, 'pg_sfv_count_view') !== false);
 }
 
+// The legacy form item view counts under the same rule: a GET from a person.
+// Every write of the view (daily bucket, legacy per-view row, total) sits
+// behind the gate.
+function test_record_view_counts_legacy_view_gate()
+{
+	$legacy = _record_view_counts_source('get_form_item_view.php');
+
+	$gate = strpos($legacy, 'if (pg_sw_should_count_record_view(');
+	pg_assert_true($gate !== false, 'gate');
+	pg_assert_contains("isset(\$_SERVER['REQUEST_METHOD'])", substr($legacy, $gate, 400));
+	pg_assert_contains('pg_request_is_automated())', substr($legacy, $gate, 400));
+
+	foreach (array('if (!pg_sfv_record_view(', 'INSERT INTO submitted_form_views', 'INSERT INTO submitted_form_info', 'SET number_of_views = number_of_views + 1') as $write) {
+		$at = strpos($legacy, $write);
+		pg_assert_true(($at !== false) && ($at > $gate), $write);
+		pg_assert_same(1, substr_count($legacy, $write), $write);
+	}
+}
+
 // The counter writer never goes through db(), which turns a failed query
 // into an error screen.
 function test_record_view_counts_writer_swallows_failures()
