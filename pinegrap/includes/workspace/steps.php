@@ -995,6 +995,21 @@ function ws_flow_box_try($viewer, $flow, $data)
 
         case 'end':
             return array('said' => lang('The flow reached its end.')) + $answer;
+
+        // What it would wait, and when the boxes after it would start were
+        // it reached now; nothing waits.
+        case 'delay':
+            $problems = ws_flow_delay_problems($node['config'], ws_flow_box_name($node));
+
+            if (!empty($problems)) {
+                return array('refusal' => (string) $problems[0]) + $answer;
+            }
+
+            return array(
+                'outcome' => 'done',
+                'said'    => lang(array('string' => 'Waits {var:1}, then the boxes after it start.', 'vars' => ws_flow_delay_text($node['config']))),
+                'next'    => array(ws_scheduled_moment(ws_flow_delay_until($node['config'], time()))),
+            ) + $answer;
     }
 
     return array('refusal' => lang('This kind of box cannot run yet.')) + $answer;

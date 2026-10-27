@@ -4,7 +4,7 @@ description: Values a flow box gives later boxes (data-passing D1, D2): outputs 
 ---
 
 ## Where are they declared?
-- `ws_step_kinds()` gives each step kind `outputs` (key, type, label; `mode` on web_check ones); `ws_flow_kinds()` carries them for every kind (the waiting `task` box: `task_id`; start, condition, end: none). Types: `ws_step_output_types()` (number, text). Tests `tests/workspace_flow_outputs_test.php`.
+- `ws_step_kinds()` gives each step kind `outputs` (key, type, label; `mode` on web_check ones); `ws_flow_kinds()` carries them for every kind (the waiting `task` box: `task_id`; delay: `waited_until`; start, condition, end: none). Types: `ws_step_output_types()` (number, text). Tests `tests/workspace_flow_outputs_test.php`.
 - Per kind: post, report, checkin `message_id`; email `sent`; notify `told`; task_open and task `task_id`; webhook `status_code`, `duration_ms`; web_check status mode `status_code`, `duration_ms`, ssl mode `days_left`; task_digest `sent`, `tasks`; change `record_id`; lead `channel_id`; start_action none.
 - The webhook's answer body is not an output yet (open question 2 of the data-passing plan).
 
