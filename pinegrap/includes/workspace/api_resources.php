@@ -4662,9 +4662,10 @@ function ws_api_change_fields_present($row, $action, $entry = array())
         return $out;
     }
 
-    // A scheduled action Pinegrap AI drafted (scheduled_draft.php): its steps
-    // in words, as the card shows them to the person who asked.
-    if ($type === 'scheduled') {
+    // A scheduled action Pinegrap AI drafted (scheduled_draft.php), or a flow
+    // an application proposed (flow_draft.php): its steps or boxes in words,
+    // as the card shows them to the person who asked.
+    if (($type === 'scheduled') || ($type === 'flow')) {
         foreach ((array) ($entry['fields'] ?? array()) as $item) {
             $out[] = array('name' => (string) $item['name'], 'label' => (string) $item['label'], 'from_shown' => null, 'to_shown' => (string) $item['to']);
         }
@@ -4706,8 +4707,8 @@ function ws_api_change_record_present($row, $entry)
     // A call of an MCP server's tool (mcp_ask.php): the call is the record,
     // named by its tool; it has no tag. So is a drafted scheduled action
     // (scheduled_draft.php), named by its name, with the id of the action
-    // saved from it.
-    if (($type === 'mcp_call') || ($type === 'scheduled')) {
+    // saved from it, and a proposed flow (flow_draft.php), named by its name.
+    if (($type === 'mcp_call') || ($type === 'scheduled') || ($type === 'flow')) {
         return array(
             'type'       => $type,
             'type_label' => (string) $entry['type_label'],
@@ -4954,9 +4955,10 @@ function ws_api_changes_list($params)
     $types = ws_change_types();
     $type = (string) ($params['type'] ?? '');
 
-    // mcp_call: the calls of MCP server tools that wait the same way.
-    if (($type !== '') && !isset($types[$type]) && ($type !== 'mcp_call')) {
-        api_fail_validation(lang(array('string' => '{var:1} must be one of: {var:2}', 'vars' => array('type', implode(', ', array_merge(array_keys($types), array('mcp_call')))))), 'type');
+    // mcp_call: the calls of MCP server tools that wait the same way; flow:
+    // the flows applications proposed.
+    if (($type !== '') && !isset($types[$type]) && !in_array($type, array('mcp_call', 'flow'), true)) {
+        api_fail_validation(lang(array('string' => '{var:1} must be one of: {var:2}', 'vars' => array('type', implode(', ', array_merge(array_keys($types), array('mcp_call', 'flow')))))), 'type');
     }
 
     $where = array(ws_api_changes_reach_sql($viewer));
