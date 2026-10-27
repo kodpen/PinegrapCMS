@@ -101,9 +101,15 @@ $output_checklist = '';
 
 foreach ($rules as $rule_code => $rule) {
     $found = isset($summary[$rule_code]) ? $summary[$rule_code] : null;
-    $result = $found
-        ? '<a class="pg-link-danger" href="view_accessibility.php?code=' . h($rule_code) . '">' . h(lang(array('string' => '{var:1} page(s), {var:2} time(s)', 'vars' => array($found['pages'], $found['occurrences'])))) . '</a>'
-        : '<span class="fg-success"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . h(lang('No problem found')) . '</span>';
+    $state = pg_a11y_result_state($found, $last_run);
+
+    if ($state === 'found') {
+        $result = '<a class="pg-link-danger" href="view_accessibility.php?code=' . h($rule_code) . '">' . h(lang(array('string' => '{var:1} page(s), {var:2} time(s)', 'vars' => array($found['pages'], $found['occurrences'])))) . '</a>';
+    } elseif ($state === 'ok') {
+        $result = '<span class="fg-success"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . h(lang('No problem found')) . '</span>';
+    } else {
+        $result = '<span class="fg-secondary">' . h(lang('Not checked yet')) . '</span>';
+    }
 
     $output_checklist .=
         '<tr>
@@ -180,7 +186,7 @@ echo pg_page_shell($shell) . '
                 <div class="card-header">' . h(lang('Findings')) . '</div>
                 <div class="card-body p-0">
                     ' . (($output_rows === '')
-                        ? '<p class="fg-secondary m-7">' . h(lang('Nothing was found.')) . '</p>'
+                        ? '<p class="fg-secondary m-7">' . h($last_run ? lang('Nothing was found.') : lang('Not checked yet')) . '</p>'
                         : '<table class="table table-sm table-hover mb-0">
                             <thead><tr><th>' . h(lang('Page')) . '</th><th>' . h(lang('Problem')) . '</th><th>' . h(lang('Times')) . '</th><th>' . h(lang('Example')) . '</th></tr></thead>
                             <tbody>' . $output_rows . '</tbody>
