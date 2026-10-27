@@ -867,7 +867,8 @@ const BS6_SWITCH_SHELL_NOTE = '/* Bootstrap 6 shell: what the panel keeps of Boo
 // longer draws on a menu toggle, the wrapper a menu used to position
 // against, the scrim of a dialog printed open (bs6_shell_open_sheet()), and
 // v5's link-body-emphasis and print display utilities as the panel's
-// pg-link-body-emphasis and pg-print-*.
+// pg-link-body-emphasis and pg-print-*, and the other v5 utilities the
+// codemod maps to pg-* classes.
 function bs6_switch_shell_rules($source)
 {
 	if (strpos($source, BS6_SWITCH_SHELL_NOTE) !== false) {
@@ -945,7 +946,30 @@ function bs6_switch_shell_rules($source)
 		. "  text-decoration-color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-underline-opacity, 1) * 100%), transparent) !important;\n}\n"
 		. ".pg-link-body-emphasis:hover,\n.pg-link-body-emphasis:focus {\n  color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-opacity, 0.75) * 100%), transparent) !important;\n"
 		. "  text-decoration-color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-underline-opacity, 0.75) * 100%), transparent) !important;\n}\n"
-		. "@media print {\n";
+		. "/* v5 utilities with no v6 class (bs6_map_plain_token()): emphasis text,\n   the light table tint, lead and display text, block negative margins. */\n"
+		. ".pg-fg-emphasis {\n  color: var(--pg-fg-emphasis) !important;\n}\n"
+		. ".pg-table-light {\n  --bs-table-color: #000;\n  --bs-table-bg: #f8f9fa;\n  --bs-table-border-color: #c6c7c8;\n  color: #000;\n  border-color: #c6c7c8;\n}\n"
+		. ".pg-lead {\n  font-size: 1.25rem;\n  font-weight: 300;\n}\n";
+
+	foreach (array(1 => array('1.625rem', '4.5vw', '5rem'), 2 => array('1.575rem', '3.9vw', '4.5rem'), 3 => array('1.525rem', '3.3vw', '4rem'),
+		4 => array('1.475rem', '2.7vw', '3.5rem'), 5 => array('1.425rem', '2.1vw', '3rem'), 6 => array('1.375rem', '1.5vw', '2.5rem')) as $key => $size) {
+		$rules .= ".pg-display-" . $key . " {\n  font-size: min(calc(" . $size[0] . " + " . $size[1] . "), " . $size[2] . ");\n  font-weight: 300;\n  line-height: 1.2;\n}\n";
+	}
+
+	$sides = array('m' => array('margin'), 'mt' => array('margin-top'), 'mb' => array('margin-bottom'), 'ms' => array('margin-left'), 'me' => array('margin-right'),
+		'mx' => array('margin-left', 'margin-right'), 'my' => array('margin-top', 'margin-bottom'));
+
+	foreach ($sides as $side => $properties) {
+		foreach (array(1 => '0.25rem', 2 => '0.5rem', 3 => '1rem', 4 => '1.5rem', 5 => '3rem') as $key => $size) {
+			$rules .= ".pg-" . $side . "-n" . $key . " {\n";
+			foreach ($properties as $property) {
+				$rules .= "  " . $property . ": -" . $size . " !important;\n";
+			}
+			$rules .= "}\n";
+		}
+	}
+
+	$rules .= "@media print {\n";
 
 	foreach (array('none', 'inline', 'inline-block', 'block', 'grid', 'inline-grid', 'table', 'table-row', 'table-cell', 'flex', 'inline-flex') as $display) {
 		$rules .= "  .pg-print-" . $display . " {\n    display: " . $display . " !important;\n  }\n";
