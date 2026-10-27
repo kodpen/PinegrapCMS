@@ -11,7 +11,7 @@ module: page_facts
 ## What is the page's record? (W18b)
 - The record the address opens: the product of a product page, the event of an event page, the record of a form record page. Its widget publishes it while it draws (`pg_page_record_publish()` in the catalog item view, the event view, the form item view; the first one counts). Tokens (`pg_page_record_tokens()`): `__record_found` ('1' or '') and `__record` + each allow-listed token of [[widget-entity-fields]] (`__record__is_free_shipping`, `__record__event_reservations_open`, `__record__quiz_score`); no record: every one ''.
 - `get_page_content.php` starts each draw with no record and gives the earlier slot back after (`pg_page_record_begin()` / `_end()`), so an e-mail drawn meanwhile keeps neither's.
-- Conditions only for now; showing the record's values outside the widget is W17. The reading of the owner's "the page's own record" is the coordinator's; the owner is asked to confirm (PR of W18b).
+- Conditions only for now; showing the record's values outside the widget is W17. The reading of the owner's "the page's own record" is the coordinator's; the owner is asked to confirm (#2334).
 
 ## How is it drawn?
 - `_render_tree_node()` outside a widget scope writes `<!--pg-pf:ID:SPEC-->` node `<!--/pg-pf:ID-->` (`pg_page_fact_wrap()`, `includes/fn/page_facts.php`): SPEC is the rows as URL-safe base64 JSON, ID twelve hex characters of a hash of SPEC and the node, so a body drawn again from the same tree is the same bytes and the stored body and a shared component drawn now never share an id.
