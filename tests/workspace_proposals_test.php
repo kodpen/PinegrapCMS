@@ -419,9 +419,9 @@ function test_ws_proposal_takes_a_scheduled_draft()
 
 	pg_assert_contains("'scheduled'", pg_test_ws_proposals_code('ws_change_apply_check'), 'applying a draft stays refused');
 
-	foreach (ws_scheduled_api_routes() as $route) {
-		if (in_array($route['id'], array('workspace.scheduled_actions.create', 'workspace.scheduled_actions.update', 'workspace.scheduled_actions.resume'), true)) {
-			pg_assert_false($route['mcp'], $route['id'] . ' is still no tool');
-		}
+	// Scheduled work goes through the flow routes: an application never
+	// reaches a scheduled action by a route of its own.
+	foreach (ws_api_routes() as $route) {
+		pg_assert_false(strpos($route['id'], 'workspace.scheduled_actions.') === 0, $route['id'] . ' is not declared');
 	}
 }

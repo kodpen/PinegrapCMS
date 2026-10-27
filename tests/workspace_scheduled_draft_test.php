@@ -307,8 +307,8 @@ function test_workspace_scheduled_draft_tidy_task_digest_missed()
 	pg_assert_same(0, $tidy['data']['action']['ai'], 'no summary without what was missed');
 }
 
-// A scheduled action an application proposes: the body POST
-// /workspace/scheduled-actions takes, in data. The form's four parts are
+// A scheduled action an application proposes: an object of name, rules,
+// action, follow and channel_id, in data. The form's four parts are
 // kept, the channel left out is the one it is proposed in, the reason is
 // the note above the form, and anything but a draft or an object refused.
 function test_workspace_scheduled_draft_proposal_input()
