@@ -21,7 +21,7 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - Owner (2026-10-26): words translatable wherever possible; design elements over placeholder tokens. So no "default text": a sibling with `show_if empty` holds it ([[widget-fill-shop]]).
 - Owner (2026-10-26), detail and reasons in [[widget-designability-decisions]]: W16 equal look and behaviour, not bytes; W5 three sources, filtered, copied; W8 the allow-list of [[widget-entity-fields]].
 - Owner (2026-10-27), every proposal accepted, reasons in [[widget-designability-decisions-2]].
-- Owner (2026-10-27) to the coordinator, "bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle" (answer the waiting workers for me, with the most reasonable and functional choice); the W17/W18 answers given under it: (1) the page's record is the record the address opens (product, event, form record), never the page row; (2) its values show outside the widget (W17): a value element anywhere on the page, escaped as the widget prints it, empty when the page opens no record; (3) the form record's public fields (title, date, summary, image, author name; what the item view already shows) join the W8 allow-list, nothing private (no e-mail, IP, notes).
+- W17/W18 answers (2026-10-27, under the owner's delegation): [[widget-designability-decisions-2]], "Page-level facts?".
 
 ## What does the owner still answer?
 - Nothing open.

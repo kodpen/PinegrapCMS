@@ -25,6 +25,7 @@ description: Owner's 2026-10-27 widget designability answers: OR conditions, hid
 ## Page-level facts? (W17, W18)
 - The page's own record (allow-listed fields) plus three visit facts: signed in, cart has items, cart item count. They only choose which element shows; no personal data.
 - Why: covers the most wanted visitor-dependent bands with translatable elements; caching stays correct; the list starts narrow.
+- W17/W18b (2026-10-27, by the coordinator under the same delegation): the record is the one the address opens (product, event, form record), never the page row; its values show outside the widget, escaped as the widget prints them, empty with no record; the form record's public fields (title, date, summary, image, author name) join W8, nothing private.
 
 ## Per-placement settings? (W21)
 - The look is shared. Each placement may only narrow its content: records filter, product group, calendar, menu or ad region, count, order. Texts stay in the widget.
