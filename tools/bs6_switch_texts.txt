@@ -562,33 +562,9 @@ not read.
 .pg-proto-nav select.form-control
 >>>
 
-Bootstrap 5 helpers v6 dropped: a dismissible alert (v6's alert is a flex
-row, so the close button goes to its end), a light link on a badge, a
+Bootstrap 5 helpers v6 dropped: a light link on a badge, a
 border opacity v5 never applied to a plain border, the comment naming the
 dropped modal box.
-
-@@ assets/js/backend.src.js
-<<<
-        var alert = $('<div class="alert alert-dismissible show mb-5" role="alert"></div>')
-===
-        var alert = $('<div class="alert show mb-5" role="alert"></div>')
->>>
-
-@@ assets/js/backend.src.js
-<<<
-        $('<button type="button" class="btn-close no-popover" data-bs-dismiss="alert"></button>')
-===
-        $('<button type="button" class="btn-close no-popover ms-auto" data-bs-dismiss="alert"></button>')
->>>
-
-@@ assets/js/backend.src.js
-<<<
-        // No py-* here. .alert-dismissible parks the close button absolutely at
-        // the top right with a padding of its own, so a shortened alert cannot
-        // contain it and the button hangs out of the box.
-===
-        // No py-* here: a shortened alert would crowd the close button.
->>>
 
 @@ assets/js/offer_editor.js
 <<<
@@ -682,4 +658,14 @@ not beat Floating UI's.
   width: 350px;
   right: 2px !important;
   left: auto !important;
+>>>
+
+The template gallery's width class was on the dropped .modal-dialog box;
+it is now on the dialog itself.
+
+@@ assets/css/designer_home.css
+<<<
+#sdTemplateModal .sd-tpl-dialog {
+===
+#sdTemplateModal.sd-tpl-dialog {
 >>>
