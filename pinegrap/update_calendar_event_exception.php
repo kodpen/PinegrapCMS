@@ -33,8 +33,8 @@ if (validate_calendar_event_access($_GET['calendar_event_id']) == false) {
 // in order to check if the user should be able to edit exceptions for this calendar event
 if (($user['role'] == 3) && ($user['publish_calendar_events'] == FALSE)) {
     // check to see if the calendar event has been published
-    $query = "SELECT published FROM calendar_events WHERE id = '" . escape($_GET['calendar_event_id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT published FROM calendar_events WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['calendar_event_id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     // if the event has been published then log and output error
@@ -64,9 +64,9 @@ if (
                     calendar_event_id,
                     recurrence_number) 
                 VALUES (
-                    '" . escape($calendar_event_id) . "',
-                    '" . escape($recurrence_number) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?)";
+            $result = db_q($query, array((string) $calendar_event_id, (string) $recurrence_number)) or output_error('Query failed.');
             
             // Send a notice to let the user know the exception was created.
             $liveform = new liveform('calendars');
@@ -93,8 +93,8 @@ if (
                     recurrence_day_sat,
                     recurrence_month_type
                 FROM calendar_events
-                WHERE id = '" . escape($calendar_event_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+            $result = db_q($query, array((string) $calendar_event_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             // Give the returned $row variable names for easy access.
@@ -117,8 +117,8 @@ if (
                 "SELECT 
                     calendar_event_location_id
                 FROM calendar_events_calendar_event_locations_xref
-                WHERE calendar_event_id = '" . escape($calendar_event_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE calendar_event_id = ?";
+            $result = db_q($query, array((string) $calendar_event_id)) or output_error('Query failed.');
             
             $calendar_event_location_ids = array();
             
@@ -286,8 +286,8 @@ if (
                             $query =
                                 "SELECT name
                                 FROM calendar_events
-                                WHERE id = '" . escape($check_availability) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                WHERE id = ?";
+                            $result = db_q($query, array((string) $check_availability)) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             
                             $existing_calendar_name_statement = lang(array('string' => 'the event "{var:1}" is', 'vars' => h($row['name'])));
@@ -317,8 +317,8 @@ if (
                             $query =
                                 "SELECT name
                                 FROM calendar_events
-                                WHERE id = '" . escape($check_availability) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                WHERE id = ?";
+                            $result = db_q($query, array((string) $check_availability)) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             
                             $existing_calendar_name_statement = lang(array('string' => 'the event "{var:1}" is', 'vars' => h($row['name'])));
@@ -337,9 +337,9 @@ if (
             $query =
                 "DELETE FROM calendar_event_exceptions 
                 WHERE 
-                    (calendar_event_id = '" . escape($calendar_event_id) . "')
-                    AND (recurrence_number = '" . escape($recurrence_number) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (calendar_event_id = ?)
+                    AND (recurrence_number = ?)";
+            $result = db_q($query, array((string) $calendar_event_id, (string) $recurrence_number)) or output_error('Query failed.');
             
             // Mark a notice so that the user knows we did something with the selected event.
             $liveform = new liveform('calendars');

@@ -39,8 +39,8 @@ if ($_POST['users']) {
 
     foreach ($_POST['users'] as $user_id) {
         // get user's role so that we can determine if this logged-in user has access to delete this user
-        $query = "SELECT user_role FROM user WHERE user_id = '" . escape($user_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT user_role FROM user WHERE user_id = ?";
+        $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $user_role = $row['user_role'];
         
@@ -72,38 +72,38 @@ if ($_POST['users']) {
                 pg_stock_notify_forget_user($user_id);
 
                 // delete user record
-                $query = "DELETE FROM user WHERE user_id = '" . escape($user_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "DELETE FROM user WHERE user_id = ?";
+                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
 
                 pg_audit_record('delete', 'user', $audit_user_id, $audit_before);
                 
                 // delete aclfolder records
-                $query = "DELETE FROM aclfolder WHERE aclfolder_user = '" . escape($user_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "DELETE FROM aclfolder WHERE aclfolder_user = ?";
+                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
                 
                 // delete users_contact_groups_xref records
-                $query = "DELETE FROM users_contact_groups_xref WHERE user_id = '" . escape($user_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "DELETE FROM users_contact_groups_xref WHERE user_id = ?";
+                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
                 
                 // delete users_calendars_xref records
-                $query = "DELETE FROM users_calendars_xref WHERE user_id = '" . escape($user_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "DELETE FROM users_calendars_xref WHERE user_id = ?";
+                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
                 
                 // delete address book records
-                $query = "DELETE FROM address_book WHERE user = '" . escape($user_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "DELETE FROM address_book WHERE user = ?";
+                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
                 
                 // delete ad region xref records
-                $query = "DELETE FROM users_ad_regions_xref WHERE user_id = '" . escape($user_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "DELETE FROM users_ad_regions_xref WHERE user_id = ?";
+                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
                 
                 // delete common region xref records
-                $query = "DELETE FROM users_common_regions_xref WHERE user_id = '" . escape($user_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "DELETE FROM users_common_regions_xref WHERE user_id = ?";
+                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
                 
                 // delete menu xref records
-                $query = "DELETE FROM users_menus_xref WHERE user_id = '" . escape($user_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "DELETE FROM users_menus_xref WHERE user_id = ?";
+                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
 
                 db("DELETE FROM users_messages_xref WHERE user_id = '" . e($user_id) . "'");
 

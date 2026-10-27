@@ -34,8 +34,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM address_book WHERE id = '
 }
 
 // check to see if recipient exists
-$query = "SELECT id FROM address_book WHERE id = '" . escape($_GET['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT id FROM address_book WHERE id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
 // if recipient does not exist, output error
 if (mysqli_num_rows($result) == 0) {
@@ -43,14 +43,15 @@ if (mysqli_num_rows($result) == 0) {
 }
 
 // get user id in order to see if user has access to remove recipient
-$query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT user_id FROM user WHERE user_username = ?";
+$result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $user_id = $row['user_id'];
 
-// check to see if user has access to remove this recipient
-$query = "SELECT id FROM address_book WHERE id = '" . escape($_GET['id']) . "' AND user = $user_id";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+// check to see if user has access to remove this recipient; $user_id is a
+// database id and stays inline as it was
+$query = "SELECT id FROM address_book WHERE id = ? AND user = $user_id";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
 // if recipient does not have access to remove recipient, output error
 if (mysqli_num_rows($result) == 0) {
@@ -58,8 +59,8 @@ if (mysqli_num_rows($result) == 0) {
 }
 
 // remove recipient from address book
-$query = "DELETE FROM address_book WHERE id = '" . escape($_GET['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "DELETE FROM address_book WHERE id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
 // The address book widget's remove link names the page it came from.
 $pg_send_to = pg_safe_redirect_path((string) ($_GET['send_to'] ?? ''), '/__none__');

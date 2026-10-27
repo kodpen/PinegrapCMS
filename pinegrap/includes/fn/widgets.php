@@ -3415,6 +3415,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__new_account_set_password_url' => '',
             '__edit_url'             => '',
         ) + pg_sw_entity_values('form_record', null);
+        // No record: the page's record is not found (page_facts.php).
+        pg_page_record_publish('form_record', null);
     } else {
         // Pull all form_data rows for the matched submission. Same JOIN shape
         // as form_list_view's batch fetcher (single `form_id`) — file-upload
@@ -3485,9 +3487,12 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         // The record's allow-listed values (widgets_entity_fields.php): the
         // quiz score of a quiz form. This view shows one record to whoever
         // may open it; the list view offers none of them.
-        $extra += array_map('h', pg_sw_entity_values('form_record', $form_row + array(
+        $_fiv_entity = pg_sw_entity_values('form_record', $form_row + array(
             'quiz' => (int)db_value("SELECT quiz FROM custom_form_pages WHERE page_id = '" . $custom_form_page_id . "' LIMIT 1"),
-        )));
+        ));
+        $extra += array_map('h', $_fiv_entity);
+        // The record is the page's record (page_facts.php).
+        pg_page_record_publish('form_record', $_fiv_entity);
 
         // Optional label tokens: {field}__label beside the value, when toggled on.
         if ($show_field_labels && is_array($data_rows)) {
@@ -8573,7 +8578,10 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
             $times['__event_updated_date'] = array('type' => 'date and time', 'data' => date('Y-m-d H:i:s', (int)$entity_row['last_modified_timestamp']));
         }
     }
-    $values += pg_sw_entity_values('calendar_event', $entity_row, array('date_format' => pg_sw_default_date_format('date')));
+    $_cev_entity = pg_sw_entity_values('calendar_event', $entity_row, array('date_format' => pg_sw_default_date_format('date')));
+    $values += $_cev_entity;
+    // The event is the page's record (page_facts.php).
+    pg_page_record_publish('calendar_event', $shown ? $_cev_entity : null);
 
     pg_cf_apply_section_bindings($tree, array('reserve_form' => $reserve_form));
     // Visibility bindings (eo_visible_if): the event's own blocks give way to

@@ -207,9 +207,7 @@ function test_short_link_classic_delete_goes_to_the_bin()
 // the bin and the restore says why.
 function test_short_link_restore_checks_loops_before_the_link_goes_live()
 {
-	$explorer = short_link_requests_test_source('view_folder_and_files_f.php');
-	$start = strpos($explorer, "case 'explorer_recycle_restore':");
-	$restore = ($start === false) ? '' : (string) substr($explorer, $start, (int) strpos($explorer, "case 'explorer_hard_delete':", $start) - $start);
+	$restore = short_link_requests_test_function_body(short_link_requests_test_source('includes/explorer/handle_recycle.php'), 'pg_explorer_handle_recycle_restore');
 	$check = strpos($restore, '$restore_short_link_check = pg_short_link_redirect_columns(array(');
 	$live = strpos($restore, "SET recycled = '0',");
 

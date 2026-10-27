@@ -734,8 +734,8 @@ if (!$_POST) {
                                 $query =
                                     "SELECT name
                                     FROM calendar_events
-                                    WHERE id = '" . escape($check_availability) . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    WHERE id = ?";
+                                $result = db_q($query, array((string) $check_availability)) or output_error('Query failed.');
                                 
                                 $row = mysqli_fetch_assoc($result);
                     
@@ -934,8 +934,8 @@ if (!$_POST) {
                                     $query =
                                         "SELECT name
                                         FROM calendar_events
-                                        WHERE id = '" . escape($check_availability) . "'";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                        WHERE id = ?";
+                                    $result = db_q($query, array((string) $check_availability)) or output_error('Query failed.');
                                     
                                     $row = mysqli_fetch_assoc($result);
                                     $existing_calendar_name_statement = lang(array('string'=>' by the event, {var:1}','vars'=>h($row['name'])));
@@ -1004,7 +1004,7 @@ if (!$_POST) {
     // if notes has real content, then use notes content
     if ((strip_tags(escape($liveform->get_field_value('notes'))) != '')
         && (strip_tags(escape($liveform->get_field_value('notes'))) != '&nbsp;')) {
-        $notes = escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('notes')));
+        $notes = prepare_rich_text_editor_content_for_input($liveform->get_field_value('notes'));
         
     // else notes does not have real content, so set to empty string
     } else {
@@ -1019,13 +1019,15 @@ if (!$_POST) {
             unpublish_days,';
 
         $sql_publish_values =
-            "'" . e($liveform->get_field_value('published')) . "',
-            '" . e($liveform->get_field_value('unpublish_days')) . "',";
+            "?,
+            ?,";
+        $publish_values = array((string) $liveform->get_field_value('published'), (string) $liveform->get_field_value('unpublish_days'));
         
     // else do not update the field
     } else {
         $sql_publish_columns = '';
         $sql_publish_values = '';
+        $publish_values = array();
     }
     
     // create calendar event
@@ -1066,41 +1068,74 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES (
-            '" . escape($liveform->get_field_value('name')) . "',
+            ?,
             $sql_publish_values
-            '" . escape($liveform->get_field_value('short_description')) . "',
-            '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('full_description'))) . "',
-            '" . $notes . "',
-            '" . escape($liveform->get_field_value('all_day')) . "',
-            '" . escape(prepare_form_data_for_input($start_time, 'date and time')) . "',
-            '" . escape(prepare_form_data_for_input($end_time, 'date and time')) . "',
-            '" . escape($liveform->get_field_value('show_start_time')) . "',
-            '" . escape($liveform->get_field_value('show_end_time')) . "',
-            '" . escape($liveform->get_field_value('recurrence')) . "',
-            '" . escape($liveform->get_field_value('total_recurrence_number')) . "',
-            '" . escape($liveform->get_field_value('recurrence_type')) . "',
-            '" . escape($liveform->get_field_value('recurrence_day_sun')) . "',
-            '" . escape($liveform->get_field_value('recurrence_day_mon')) . "',
-            '" . escape($liveform->get_field_value('recurrence_day_tue')) . "',
-            '" . escape($liveform->get_field_value('recurrence_day_wed')) . "',
-            '" . escape($liveform->get_field_value('recurrence_day_thu')) . "',
-            '" . escape($liveform->get_field_value('recurrence_day_fri')) . "',
-            '" . escape($liveform->get_field_value('recurrence_day_sat')) . "',
-            '" . escape($liveform->get_field_value('recurrence_month_type')) . "',
-            '" . escape($liveform->get_field_value('location')) . "',
-            '" . escape($liveform->get_field_value('reservations')) . "',
-            '" . escape($liveform->get_field_value('separate_reservations')) . "',
-            '" . escape($liveform->get_field_value('limit_reservations')) . "',
-            '" . escape($liveform->get_field_value('number_of_initial_spots')) . "',
-            '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('no_remaining_spots_message'))) . "',
-            '" . escape($liveform->get_field_value('reserve_button_label')) . "',
-            '" . escape($liveform->get_field_value('product_id')) . "',
-            '" . escape($liveform->get_field_value('next_page_id')) . "',
-            '" . $user['id'] . "',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array_merge(
+        array((string) $liveform->get_field_value('name')),
+        $publish_values,
+        array(
+            (string) $liveform->get_field_value('short_description'),
+            (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('full_description')),
+            (string) $notes,
+            (string) $liveform->get_field_value('all_day'),
+            (string) prepare_form_data_for_input($start_time, 'date and time'),
+            (string) prepare_form_data_for_input($end_time, 'date and time'),
+            (string) $liveform->get_field_value('show_start_time'),
+            (string) $liveform->get_field_value('show_end_time'),
+            (string) $liveform->get_field_value('recurrence'),
+            (string) $liveform->get_field_value('total_recurrence_number'),
+            (string) $liveform->get_field_value('recurrence_type'),
+            (string) $liveform->get_field_value('recurrence_day_sun'),
+            (string) $liveform->get_field_value('recurrence_day_mon'),
+            (string) $liveform->get_field_value('recurrence_day_tue'),
+            (string) $liveform->get_field_value('recurrence_day_wed'),
+            (string) $liveform->get_field_value('recurrence_day_thu'),
+            (string) $liveform->get_field_value('recurrence_day_fri'),
+            (string) $liveform->get_field_value('recurrence_day_sat'),
+            (string) $liveform->get_field_value('recurrence_month_type'),
+            (string) $liveform->get_field_value('location'),
+            (string) $liveform->get_field_value('reservations'),
+            (string) $liveform->get_field_value('separate_reservations'),
+            (string) $liveform->get_field_value('limit_reservations'),
+            (string) $liveform->get_field_value('number_of_initial_spots'),
+            (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('no_remaining_spots_message')),
+            (string) $liveform->get_field_value('reserve_button_label'),
+            (string) $liveform->get_field_value('product_id'),
+            (string) $liveform->get_field_value('next_page_id'),
+            (string) $user['id'],
+            (string) $user['id']))) or output_error('Query failed.');
     
     $calendar_event_id = mysqli_insert_id(db::$con);
     
@@ -1113,9 +1148,9 @@ if (!$_POST) {
                     calendar_event_id,
                     calendar_id)
                 VALUES (
-                    '" . $calendar_event_id . "',
-                    '" . $calendar['id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?)";
+            $result = db_q($query, array((string) $calendar_event_id, (string) $calendar['id'])) or output_error('Query failed.');
         }
     }
     
@@ -1128,9 +1163,9 @@ if (!$_POST) {
                     calendar_event_id,
                     calendar_event_location_id)
                 VALUES (
-                    '" . $calendar_event_id . "',
-                    '" . $calendar_event_location['id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?)";
+            $result = db_q($query, array((string) $calendar_event_id, (string) $calendar_event_location['id'])) or output_error('Query failed.');
         }
     }
 

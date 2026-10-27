@@ -103,8 +103,8 @@ function get_shipping_address_and_arrival($properties) {
 
             $query =
                 "SELECT * FROM address_book
-                WHERE user = '" . e(USER_ID) . "' AND ship_to_name = '" . e($ship_to_name) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE user = ? AND ship_to_name = ?";
+            $result = db_q($query, array((string) USER_ID, (string) $ship_to_name)) or output_error('Query failed.');
             // if recipient was found in the address book, get field data and take note
             if (mysqli_num_rows($result) > 0) {
                 $row = mysqli_fetch_assoc($result);
@@ -114,8 +114,8 @@ function get_shipping_address_and_arrival($properties) {
 
         // if recipient data was not found in address book, get data from ship to
         if ($used_address_book == false) {
-            $query = "SELECT * FROM ship_tos WHERE id = '" . escape($_GET['ship_to_id']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT * FROM ship_tos WHERE id = ?";
+            $result = db_q($query, array((string) $_GET['ship_to_id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
         }
 
@@ -163,9 +163,9 @@ function get_shipping_address_and_arrival($properties) {
                     form_fields.type
                 FROM form_data
                 LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
-                WHERE form_data.ship_to_id = '" . escape($_GET['ship_to_id']) . "'
+                WHERE form_data.ship_to_id = ?
                 GROUP BY form_data.form_field_id";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $_GET['ship_to_id'])) or output_error('Query failed.');
             
             $fields = array();
             
@@ -181,10 +181,10 @@ function get_shipping_address_and_arrival($properties) {
                         "SELECT data
                         FROM form_data
                         WHERE
-                            (ship_to_id = '" . escape($_GET['ship_to_id']) . "')
-                            AND (form_field_id = '" . $field['form_field_id'] . "')
+                            (ship_to_id = ?)
+                            AND (form_field_id = ?)
                         ORDER BY id";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $_GET['ship_to_id'], (string) $field['form_field_id'])) or output_error('Query failed.');
                     
                     $field['data'] = array();
                     
@@ -247,8 +247,8 @@ function get_shipping_address_and_arrival($properties) {
     // if recipient mode is multi-recipient then determine if shipping same as billing option should be displayed
     if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient') {
         // get all recipients for this order
-        $query = "SELECT ship_to_name FROM ship_tos WHERE order_id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT ship_to_name FROM ship_tos WHERE order_id = ?";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
         
         // get number of recipients for this order
         $number_of_recipients = mysqli_num_rows($result);

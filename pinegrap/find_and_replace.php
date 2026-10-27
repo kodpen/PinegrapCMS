@@ -50,6 +50,9 @@ $all_table_defs = [
         // JOIN with the page table → the frontend URL comes from page_name
         'extra_select' => ['page.page_name AS pregion_page_name'],
         'extra_join'   => 'LEFT JOIN page ON pregion.pregion_page = page.page_id',
+        // A page whose content moved into its designer tree no longer reads
+        // its rows.
+        'base_where'   => pg_page_region_read_sql(),
         'columns'      => ['pregion_content'],
         // The page's frontend URL — edited from the page itself
         'edit_url'     => '{pregion_page_name}',

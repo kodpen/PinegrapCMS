@@ -381,6 +381,72 @@ function pg_common_region_not_converted_sql($column = 'cregion_id')
     return $ids ? '(' . $column . ' NOT IN (' . implode(',', $ids) . '))' : '1';
 }
 
+/**
+ * The shared components that print a page region, directly or through a
+ * component they place: a page placing one still reads its page region
+ * rows. Read once per request.
+ *
+ * @return int[]
+ */
+function pg_page_region_component_ids()
+{
+    static $ids = null;
+
+    if ($ids !== null) {
+        return $ids;
+    }
+
+    $ids = array();
+    $new = array_map('intval', (array) db_values("SELECT id FROM shared_components
+        WHERE tree_json LIKE '%\"regionType\":\"page\"%'"));
+
+    // Components placing one of those, until none is added (nesting is
+    // shallow; the bound only stops a loop written by hand).
+    for ($round = 0; $new && $round < 10; $round++) {
+        foreach ($new as $id) {
+            $ids[$id] = $id;
+        }
+        $like = array();
+        foreach ($new as $id) {
+            $like[] = "tree_json LIKE '%\"sharedId\":$id,%'";
+            $like[] = "tree_json LIKE '%\"sharedId\":$id}%'";
+            $like[] = "tree_json LIKE '%\"sharedId\":\"$id\"%'";
+        }
+        $new = array_diff(array_map('intval', (array) db_values("SELECT id FROM shared_components
+            WHERE " . implode(' OR ', $like))), $ids);
+    }
+
+    $ids = array_values($ids);
+    sort($ids);
+
+    return $ids;
+}
+
+/**
+ * An SQL condition keeping the page regions their page still draws: a page
+ * whose content moved into its designer tree saves a tree that prints no
+ * <pregion> tag and places no component printing one, and its rows are no
+ * longer read. A classic page has no tree of its own; a row of no page is
+ * kept as it was. '1' before the column exists.
+ *
+ * @param string $column  the pregion page column as the query names it
+ * @return string
+ */
+function pg_page_region_read_sql($column = 'pregion_page')
+{
+    if (!pg_multi_page_design_ready()) {
+        return '1';
+    }
+
+    $none = "page_tree_code NOT LIKE '%<pregion>%'";
+    foreach (pg_page_region_component_ids() as $id) {
+        $none .= " AND page_tree_code NOT LIKE '%<!--pg-shared-ref:" . (int) $id . "-->%'";
+    }
+
+    return "($column NOT IN (SELECT page_id FROM page
+                WHERE page_tree_code IS NOT NULL AND page_tree_code <> '' AND $none))";
+}
+
 // Outputs dynamic menu system using values from the database.
 // We don't currently support multiple menu items being set as the current menu item
 // because it causes problems for the accordion menu.  The logic for the accordion menu

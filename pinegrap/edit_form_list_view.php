@@ -53,9 +53,9 @@ $query = "SELECT
          LEFT JOIN page ON form_list_view_pages.custom_form_page_id = page.page_id
          LEFT JOIN custom_form_pages ON form_list_view_pages.custom_form_page_id = custom_form_pages.page_id
          WHERE
-            (form_list_view_pages.page_id = '" . e($_REQUEST['page_id']) . "')
+            (form_list_view_pages.page_id = ?)
             AND (form_list_view_pages.collection = 'a')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $_REQUEST['page_id'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 $custom_form_page_id = $row['custom_form_page_id'];
@@ -147,9 +147,9 @@ if (!$_POST) {
             show_results_by_default
         FROM form_list_view_pages
         WHERE
-            (page_id = '" . e($page['id']) . "')
+            (page_id = ?)
             AND (collection = 'a')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $page['id'])) or output_error('Query failed.');
 
     // if there is not a record for this form list view, then this is the first time it is being edited
     if (mysqli_num_rows($result) == 0) {
@@ -274,11 +274,11 @@ if (!$_POST) {
             wysiwyg
         FROM form_fields
         WHERE
-            (page_id = '$custom_form_page_id')
+            (page_id = ?)
             AND (type != 'information')
             AND (name != '')
         ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
 
     $custom_fields = array();
 
@@ -296,9 +296,9 @@ if (!$_POST) {
             dynamic_value,
             dynamic_value_attribute
         FROM form_list_view_filters
-        WHERE page_id = '" . escape($_GET['page_id']) . "'
+        WHERE page_id = ?
         ORDER BY id";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $_GET['page_id'])) or output_error('Query failed.');
 
     $filters = array();
 
@@ -532,8 +532,8 @@ if (!$_POST) {
                 shortcut,
                 date_format
             FROM form_list_view_browse_fields
-            WHERE page_id = '" . escape($_GET['page_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) $_GET['page_id'])) or output_error('Query failed.');
 
         $browse_fields = array();
 
@@ -1042,8 +1042,8 @@ if (!$_POST) {
         'search_advanced_layout' => $_POST['search_advanced_layout']));
 
     // delete old filters
-    $query = "DELETE FROM form_list_view_filters WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "DELETE FROM form_list_view_filters WHERE page_id = ?";
+    $result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
 
     // get standard fields in order to determine field type
     $standard_fields = get_standard_fields_for_view();
@@ -1054,9 +1054,9 @@ if (!$_POST) {
             id,
             type
         FROM form_fields
-        WHERE page_id = '$custom_form_page_id'
+        WHERE page_id = ?
         ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
 
     $custom_fields = array();
 
@@ -1127,20 +1127,20 @@ if (!$_POST) {
                     dynamic_value,
                     dynamic_value_attribute)
                 VALUES (
-                    '" . escape($_POST['page_id'] ?? '') . "',
-                    '" . escape($standard_field_value) . "',
-                    '" . escape($form_field_id) . "',
-                    '" . escape($_POST['filter_' . $i . '_operator']) . "',
-                    '" . escape(prepare_form_data_for_input($_POST['filter_' . $i . '_value'], $field_type)) . "',
-                    '" . escape($dynamic_value) . "',
-                    '" . escape($dynamic_value_attribute) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?)";
+            $result = db_q($query, array((string) ($_POST['page_id'] ?? ''), (string) $standard_field_value, (string) $form_field_id, (string) $_POST['filter_' . $i . '_operator'], (string) prepare_form_data_for_input($_POST['filter_' . $i . '_value'], $field_type), (string) $dynamic_value, (string) $dynamic_value_attribute)) or output_error('Query failed.');
         }
     }
 
     // Delete old browse fields.
-    $query = "DELETE FROM form_list_view_browse_fields WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "DELETE FROM form_list_view_browse_fields WHERE page_id = ?";
+    $result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
 
     // Loop through the custom fields in order to add active browse fields to database.
     foreach ($custom_fields as $field) {
@@ -1163,13 +1163,13 @@ if (!$_POST) {
                     shortcut,
                     date_format)
                 VALUES (
-                    '" . escape($_POST['page_id'] ?? '') . "',
-                    '" . $field['id'] . "',
-                    '" . escape($number_of_columns) . "',
-                    '" . escape($_POST['browse_field_' . $field['id'] . '_sort_order']) . "',
-                    '" . escape($_POST['browse_field_' . $field['id'] . '_shortcut']) . "',
-                    '" . escape($_POST['browse_field_' . $field['id'] . '_date_format']) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?)";
+            $result = db_q($query, array((string) ($_POST['page_id'] ?? ''), (string) $field['id'], (string) $number_of_columns, (string) $_POST['browse_field_' . $field['id'] . '_sort_order'], (string) $_POST['browse_field_' . $field['id'] . '_shortcut'], (string) $_POST['browse_field_' . $field['id'] . '_date_format'])) or output_error('Query failed.');
         }
     }
 
@@ -1178,9 +1178,9 @@ if (!$_POST) {
         "UPDATE page
         SET
             page_timestamp = UNIX_TIMESTAMP(),
-            page_user = '" . $user['id'] . "'
-        WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            page_user = ?
+        WHERE page_id = ?";
+    $result = db_q($query, array((string) $user['id'], (string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
     log_activity(lang(array('string'=>'page ({var:1}) was modified','vars'=>$page['name'])), $_SESSION['sessionusername']);
     
     if ($_POST['send_to']) {

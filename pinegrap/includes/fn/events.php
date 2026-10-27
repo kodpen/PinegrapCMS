@@ -232,8 +232,25 @@ function pg_event_record($event, $payload = array())
         return;
     }
 
-    $json = json_encode((array) $payload, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    $json = json_encode(pg_event_payload_depth((array) $payload), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
     db("INSERT INTO ws_events_in (event, payload, created_at, taken_at)
         VALUES ('" . e((string) $event) . "', '" . e(($json === false) ? '{}' : $json) . "', UNIX_TIMESTAMP(), 0)");
+}
+
+// The payload with the chain depth an event caused right now stands at
+// (ws_event_depth()), as ws_event() stamps it: an order a flow's step makes
+// starts the actions waiting for it one step further down the run's chain,
+// so a loop of runs stops at the chain limit (ws_events_start()). Outside a
+// run, or where the workspace's files are not loaded, it is left as it is.
+function pg_event_payload_depth($payload)
+{
+    $payload = (array) $payload;
+    $depth = function_exists('ws_event_depth') ? (int) ws_event_depth() : 0;
+
+    if ($depth > 0) {
+        $payload['_depth'] = $depth;
+    }
+
+    return $payload;
 }
