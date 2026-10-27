@@ -38,6 +38,7 @@ Table structures and SQL pitfalls.
 - db-q-converted-editors-explorer-waf.md: Theme and file editors, custom style, explorer panel, page form and firewall log screen converted to db_q() (PR #2333): special cases, what stayed raw and why, guard test.
 - db-q-converted-files.md: Content files converted to db_q() (get_page_content, content, seo, get_page): PR, how values are passed, what stayed raw and why, guard tests; the conversion rules.
 - db-q-converted-front.md: Front-end files converted to db_q() (shopping cart, form item view, view order, email preferences, watchers, affiliate sign-up): PR, clauses with values, what stayed raw, guard test.
+- db-q-converted-logs-short-links-system.md: Short link screens and module, comment toggle, search index, audit trail, privacy retention, dashboard and sessions converted to db_q(): special cases, what stayed raw and why, guard test.
 - db-q-converted-order-front.md: Order preview, receipts, shipping address step, reorder, retrieve order and remove item converted to db_q(): special cases, what stayed raw, guard test.
 - db-q-converted-panel-content.md: Folder, page copy, calendar event, image editor and theme designer screens converted to db_q(): PR, optional SQL pieces with their values, what stayed raw, guard test.
 - db-q-converted-panel-menus-calendars.md: Region, menu, form list view and calendar panel screens converted to db_q(): PR, optional SQL pieces with their values, what stayed raw, guard test.
