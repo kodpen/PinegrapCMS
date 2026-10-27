@@ -17,4 +17,4 @@ description: Products n11 ships from its own warehouse (n11depom): read into the
 - A catalogue never read (or read before #2228) marks nothing, and every quantity is sent as before.
 
 ## Are their orders imported?
-- No. `mp_n11_pull_orders()` asks `shipmentPackages` without `sender`, so warehouse packages are not listed. n11 ships them from its own stock; importing them would take the shop's stock down for goods it does not hold. Owner decision (2026-10-27), listed in `workflow/decisions-made-marketplace.md`.
+- No. `mp_n11_pull_orders()` asks `shipmentPackages` without `sender`, so warehouse packages are not listed. n11 ships them from its own stock. The shop's stock counts only what the shop ships itself: goods sent to the warehouse leave it once, when sent, so importing each warehouse sale would take them off twice. Owner decision (2026-10-27), listed in `workflow/decisions-made-marketplace.md`.
