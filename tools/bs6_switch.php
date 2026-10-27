@@ -162,6 +162,10 @@ function bs6_switch_plan($root)
 
 	$plan[] = array('assets/js/style_designer.js', 'dialogs', 'bs6_switch_editor_dialogs');
 
+	foreach (bs6_switch_drawer_files($root) as $path) {
+		$plan[] = array($path, 'drawer-vars', 'bs6_switch_drawer_variables');
+	}
+
 	foreach (bs6_switch_texts() as $path => $pairs) {
 		$plan[] = array($path, 'texts', function ($source) use ($pairs) {
 			return bs6_switch_pins($source, $pairs);
@@ -873,8 +877,7 @@ function bs6_switch_pins($source, array $pairs)
 const BS6_SWITCH_SHELL_NOTE = '/* Bootstrap 6 shell: what the panel keeps of Bootstrap 5\'s look. */';
 
 // Rules at the top of backend.src.css's custom layer that keep the v5 look
-// of the converted components: drawers flush with the screen edge and
-// square (v6 floats them with an inset and a radius), v5's badge metrics,
+// of the converted components: v5's badge metrics,
 // the caret v6 no
 // longer draws on a menu toggle, the wrapper a menu used to position
 // against, the scrim of a dialog printed open (bs6_shell_open_sheet()), and
@@ -894,7 +897,6 @@ function bs6_switch_shell_rules($source)
 	}
 
 	$rules = BS6_SWITCH_SHELL_NOTE . "\n"
-		. ".drawer {\n  --bs-drawer-inset: 0;\n  --bs-drawer-border-radius: 0;\n}\n"
 		. ".pg-menu-wrap {\n  position: relative;\n}\n"
 		. "/* v5's navbar has no minimum height; a button with no variant is clear. */\n"
 		. ".navbar {\n  --bs-navbar-min-height: 0;\n  --bs-navbar-nav-link-padding-x: 0.5rem;\n}\n"
