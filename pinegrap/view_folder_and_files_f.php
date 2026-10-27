@@ -1040,6 +1040,12 @@ require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_files.php');
 // pg_explorer_handle().
 require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_folders.php');
 
+// The file window sub-actions of pg_explorer_handle().
+require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_file_window.php');
+
+// The "Shared" sub-action of pg_explorer_handle().
+require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_shared.php');
+
 // ── Catalog: product groups and products through the explorer ────────────
 
 // Access, the group tree, statistics, breadcrumbs and the tile payloads.
@@ -1065,6 +1071,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_products_bulk.php');
 // The file-id sub-actions, the ERP module's seam and the virtual folder and
 // file rows.
 require_once(PG_FUNCTIONS_DIR . '/includes/explorer/erp.php');
+
+// The ERP documents sub-action of pg_explorer_handle().
+require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_erp.php');
 
 function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 {
@@ -1685,197 +1694,12 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             break;
 
         // ── The file window ─────────────────────────────────────────────
-        //
-        // What edit_file.php was: a file's name, folder, description and
-        // design flag, and for a text format its contents, in one place --
-        // now a window on the file manager rather than a screen of its own.
-        // The text is read here and written by explorer_file_save; every
-        // other change to a picture goes through the image editor, and the
-        // conversions go through the actions that already exist for them.
         case 'explorer_file_get':
-
-            $file_id = (int) (isset($request['id']) ? $request['id'] : 0);
-            $file = pg_explorer_file_row($file_id);
-
-            if (!$file) {
-                respond(array('status' => 'error', 'message' => lang('Sorry, the file could not be found.')));
-            }
-
-            if (pg_explorer_file_editable_by($file, $user) == false) {
-                log_activity(lang('access denied because user does not have access to file'), $_SESSION['sessionusername']);
-                respond(array('status' => 'error', 'message' => lang('Access denied')));
-            }
-
-            $payload = pg_explorer_file_payload($file, $user);
-            $extension = mb_strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $path = FILE_DIRECTORY_PATH . '/' . $file['name'];
-
-            // The signing key is shown as a file with no preview: its
-            // content never leaves the server (pg_file_withheld()).
-            $payload['editable'] = in_array($extension, pg_explorer_editable_formats(), true);
-            $payload['viewable'] = in_array($extension, pg_explorer_viewable_formats(), true)
-                && (pg_file_withheld($file['name']) == false);
-            $payload['editor_language'] = pg_explorer_editor_language($extension);
-            $payload['content'] = null;
-            $payload['content_too_large'] = false;
-            $payload['on_disk'] = is_file($path);
-
-            if ($payload['viewable'] && $payload['on_disk']) {
-
-                if (filesize($path) > pg_explorer_editor_max_bytes()) {
-                    $payload['content_too_large'] = true;
-                } else {
-                    $payload['content'] = (string) @file_get_contents($path);
-                }
-            }
-
-            $payload['editor_max_label'] = convert_bytes_to_string(pg_explorer_editor_max_bytes());
-
-            respond(array('status' => 'success', 'request' => $type, 'file' => $payload));
+            pg_explorer_handle_file_get($type, $request, $user);
             break;
 
         case 'explorer_file_save':
-
-            $file_id = (int) (isset($request['id']) ? $request['id'] : 0);
-            $file = pg_explorer_file_row($file_id);
-
-            if (!$file) {
-                respond(array('status' => 'error', 'message' => lang('Sorry, the file could not be found.')));
-            }
-
-            if (pg_explorer_file_editable_by($file, $user) == false) {
-                log_activity(lang('access denied to modify files because user does not have access to file'), $_SESSION['sessionusername']);
-                respond(array('status' => 'error', 'message' => lang('Access denied')));
-            }
-
-            $requested_name = trim(isset($request['name']) ? (string) $request['name'] : $file['name']);
-
-            // Renaming "photo.jpg" to "photo.php" is uploading a PHP file
-            // with an extra step, so the window keeps the upload rule.
-            if (($requested_name != $file['name']) && pg_upload_name_blocked($requested_name)) {
-                respond(array('status' => 'error', 'message' => pg_upload_blocked_message($requested_name)));
-            }
-
-            // The same preparation every other way of naming a file applies:
-            // ASCII conversion, reserved names, length and character rules.
-            $name = prepare_file_name($requested_name);
-
-            if ($name == '') {
-                respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
-            }
-
-            // Under another name the signing key would be served.
-            if (($name != $file['name']) && pg_file_withheld($file['name'])) {
-                respond(array('status' => 'error', 'message' => lang('Access denied')));
-            }
-
-            if (($name != $file['name']) && (check_name_availability(array('name' => $name, 'ignore_item_id' => $file_id, 'ignore_item_type' => 'file')) == false)) {
-                respond(array('status' => 'error', 'message' => lang('That name is already in use. Please choose a different name.')));
-            }
-
-            $folder_id = (int) (isset($request['folder_id']) ? $request['folder_id'] : $file['folder']);
-
-            if ($folder_id != (int) $file['folder']) {
-
-                if (($folder_id <= 0) || (check_edit_access($folder_id) == false)) {
-                    respond(array('status' => 'error', 'message' => lang('You do not have access to move items to the folder that you selected.')));
-                }
-
-                // The bin is only fed by the delete action, so restore
-                // metadata always exists for what sits inside it.
-                if (pg_recycle_is_inside($folder_id)) {
-                    respond(array('status' => 'error', 'message' => lang('You do not have access to move items to the folder that you selected.')));
-                }
-            }
-
-            $description = isset($request['description']) ? (string) $request['description'] : (string) $file['description'];
-
-            // The design flag is a designer's decision, and the switch is not
-            // drawn for anyone else -- so for anyone else the value is the
-            // one the file already carries.
-            $design = ($user['role'] <= 1)
-                ? ((isset($request['design']) && ((string) $request['design'] == '1')) ? '1' : '0')
-                : (($file['design'] == 1) ? '1' : '0');
-
-            $old_path = FILE_DIRECTORY_PATH . '/' . $file['name'];
-            $new_path = FILE_DIRECTORY_PATH . '/' . $name;
-            $size_sql = '';
-
-            // Cell values changed in a workbook's preview, or paragraph texts
-            // in a document's (includes/fn/office_edit.php). They go into the
-            // file before anything else moves, so a refused edit -- the file
-            // changed since it was opened, a cell or a paragraph that may not
-            // be changed -- leaves the file, its name and its record exactly
-            // as they were.
-            if (isset($request['cells']) || isset($request['paragraphs'])) {
-
-                $office_kind = pg_office_kind($file['name']);
-                $office_changes = ($office_kind === 'xlsx') ? ($request['cells'] ?? null) : (($office_kind === 'docx') ? ($request['paragraphs'] ?? null) : null);
-
-                if (!is_array($office_changes)) {
-                    respond(array('status' => 'error', 'message' => lang('This file cannot be edited here.')));
-                }
-
-                // A large sheet takes a few seconds to rewrite.
-                @set_time_limit(120);
-
-                $office_version = isset($request['office_version']) ? (string) $request['office_version'] : '';
-                $office_saved = ($office_kind === 'xlsx')
-                    ? pg_office_xlsx_save($old_path, $office_changes, $office_version)
-                    : pg_office_docx_save($old_path, $office_changes, $office_version);
-
-                if (!$office_saved['ok']) {
-                    respond(array('status' => 'error', 'message' => $office_saved['error']));
-                }
-
-                $size_sql = "size = '" . e((int) $office_saved['size']) . "',";
-            }
-
-            // The record's name is the address, so the disk file moves first
-            // and the row is only told if it did -- a row pointing at nothing
-            // is exactly the state this order exists to prevent.
-            if ($name != $file['name']) {
-                if ((file_exists($old_path) == true) && (@rename($old_path, $new_path) == false)) {
-                    respond(array('status' => 'error', 'message' => lang('The file could not be renamed on the file system. Check write permission for the file directory.')));
-                }
-            }
-
-            $extension = mb_strtolower(pathinfo($name, PATHINFO_EXTENSION));
-
-            // Text is written only for a format the editor may write, and only
-            // when the window sent some: a window opened on a picture sends
-            // none, and a file too large for the editor was never shown.
-            if (isset($request['content']) && is_string($request['content']) && in_array($extension, pg_explorer_editable_formats(), true)) {
-
-                if (@file_put_contents($new_path, $request['content']) === false) {
-                    respond(array('status' => 'error', 'message' => lang('The file could not be written to the file system.')));
-                }
-
-                clearstatcache(true, $new_path);
-                $size_sql = "size = '" . e((int) filesize($new_path)) . "',";
-            }
-
-            $audit_before = pg_audit_fetch('files', $file_id);
-            db(
-                "UPDATE files SET
-                    name = '" . e($name) . "',
-                    folder = '" . e($folder_id) . "',
-                    description = '" . e($description) . "',
-                    type = '" . e($extension) . "',
-                    design = '" . e($design) . "',
-                    " . $size_sql . "
-                    timestamp = UNIX_TIMESTAMP(),
-                    user = '" . e($user['id']) . "'
-                WHERE id = '" . e($file_id) . "'");
-            pg_audit_record('update', 'files', $file_id, $audit_before);
-
-            log_activity(lang(array('string' => 'file ({var:1}) was modified', 'vars' => $name)), $_SESSION['sessionusername']);
-
-            respond(array(
-                'status' => 'success',
-                'request' => $type,
-                'file' => pg_explorer_file_payload(pg_explorer_file_row($file_id), $user),
-                'message' => lang('The file was edited successfully.')));
+            pg_explorer_handle_file_save($type, $request, $user);
             break;
 
         // ── Turn a picture a quarter to the right ────────────────────────
@@ -1884,114 +1708,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             break;
 
         // ── ERP documents, read-only ─────────────────────────────────────
-        //
-        // The tree alone (for the sidebar), or one listing: the virtual
-        // folders at the top, one folder's documents, or a search. At the top
-        // a search runs across every folder, the way the module's own lists
-        // cannot. Nothing is generated here: a document is rendered or fetched
-        // from the provider only when it is opened.
         case 'explorer_erp_tree':
         case 'explorer_erp_list':
-
-            if (pg_explorer_erp_ready($user) == false) {
-                respond(array('status' => 'error', 'request' => $type, 'message' => lang('Access denied')));
-            }
-
-            $erp_tree = pg_explorer_erp_tree();
-
-            if ($type == 'explorer_erp_tree') {
-                respond(array('status' => 'success', 'request' => $type, 'tree' => $erp_tree));
-            }
-
-            if (isset($request['view_type']) && in_array($request['view_type'], array('grid', 'list'), true)) {
-                $_SESSION['software']['explorer']['folder']['view_type'] = $request['view_type'];
-            }
-
-            $view_type = ($_SESSION['software']['explorer']['folder']['view_type'] ?? 'grid');
-
-            if (in_array($view_type, array('grid', 'list'), true) == false) {
-                $view_type = 'grid';
-            }
-
-            // Counting and listing do not touch the session; let the next
-            // request of this screen in while they run.
-            pg_explorer_release_session();
-
-            $erp_labels = array();
-            $erp_notes = array();
-
-            foreach ($erp_tree as $node) {
-                $erp_labels[$node['key']] = $node['label'];
-                $erp_notes[$node['key']] = $node['note'];
-            }
-
-            $erp_folder = isset($request['folder']) ? (string) $request['folder'] : '';
-
-            if (isset($erp_labels[$erp_folder]) == false) {
-                $erp_folder = '';
-            }
-
-            $erp_search = isset($request['search']) ? trim((string) $request['search']) : '';
-
-            if (mb_strlen($erp_search) > 100) {
-                $erp_search = mb_substr($erp_search, 0, 100);
-            }
-
-            $erp_offset = max(0, (int) ($request['offset'] ?? 0));
-            $erp_page = 200;
-            $erp_folders = array();
-            $erp_files = array();
-            $erp_total = 0;
-            $index = 0;
-
-            if ($erp_folder != '') {
-
-                $found = erp_files_list($erp_folder, array('search' => $erp_search, 'limit' => $erp_page, 'offset' => $erp_offset));
-                $erp_total = (int) $found['total'];
-                $index = $erp_offset;
-
-                foreach ($found['items'] as $entry) {
-                    $erp_files[] = pg_explorer_erp_file_item($entry, $erp_folder, $erp_labels[$erp_folder], ++$index, $user);
-                }
-
-            } elseif ($erp_search != '') {
-
-                // Every folder that holds a match, up to fifty from each; the
-                // item says which folder it was found in.
-                foreach (erp_files_search($erp_search, 50) as $entry) {
-                    $entry_folder = (string) ($entry['folder'] ?? '');
-                    $erp_files[] = pg_explorer_erp_file_item($entry, $entry_folder, $erp_labels[$entry_folder] ?? '', ++$index, $user);
-                }
-
-                $erp_total = count($erp_files);
-
-            } else {
-
-                foreach ($erp_tree as $node) {
-                    $erp_folders[] = pg_explorer_erp_folder_item($node, ++$index);
-                }
-
-                $erp_total = count($erp_folders);
-            }
-
-            respond(array(
-                'status' => 'success',
-                'request' => $type,
-                'folder' => $erp_folder,
-                'folder_label' => ($erp_folder != '') ? $erp_labels[$erp_folder] : '',
-                'folder_note' => ($erp_folder != '') ? $erp_notes[$erp_folder] : '',
-                'search' => $erp_search,
-                'offset' => $erp_offset,
-                'total' => $erp_total,
-                'view_type' => $view_type,
-                'tree' => $erp_tree,
-                'folders' => $erp_folders,
-                'files' => $erp_files,
-                'capabilities' => array(
-                    'role' => (int) $user['role'],
-                    'is_manager' => ($user['role'] <= 2),
-                    'is_designer' => ($user['role'] <= 1),
-                    'show_product_images' => (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES)));
+            pg_explorer_handle_erp_tree_list($type, $request, $user);
             break;
 
         // ── Short links: the names that stand for something else ─────────
@@ -2072,128 +1791,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             break;
 
         // ── Shared: folders that were opened to specific users ──────────
-        //
-        // A virtual listing, not a folder: the manager's answer to "who can
-        // reach what". Only closed folders can be shared in any meaningful
-        // sense, so the list is membership and private folders that carry at
-        // least one rights row, each with the people it was opened to.
-        //
-        // Manager area, like every other per-user rights screen: a basic
-        // user is the subject of these rows, not their audience.
         case 'explorer_shared_list':
-
-            if ($user['role'] > 2) {
-                respond(array('status' => 'error', 'message' => lang('Access denied')));
-            }
-
-            $map = pg_explorer_folder_map();
-            $bin_id = pg_recycle_folder_id(false);
-
-            $rows = db_items(
-                "SELECT
-                    aclfolder.aclfolder_folder AS folder_id,
-                    aclfolder.aclfolder_user AS user_id,
-                    aclfolder.aclfolder_rights AS rights,
-                    aclfolder.expiration_date AS expiration_date,
-                    user.user_username AS username,
-                    user.user_contact AS contact_id,
-                    contacts.salutation AS contact_salutation,
-                    contacts.first_name AS contact_first_name,
-                    contacts.last_name AS contact_last_name,
-                    contacts.nickname AS contact_nickname,
-                    contacts.suffix AS contact_suffix
-                FROM aclfolder
-                LEFT JOIN user ON aclfolder.aclfolder_user = user.user_id
-                LEFT JOIN contacts ON user.user_contact = contacts.id
-                WHERE
-                    (aclfolder.aclfolder_rights > '0')
-                    AND (user.user_role = '3')
-                ORDER BY user.user_username");
-
-            $groups = array();
-            $today = date('Y-m-d');
-
-            if ($rows) {
-                foreach ($rows as $row) {
-
-                    $row_folder_id = (int) $row['folder_id'];
-
-                    if (isset($map[$row_folder_id]) == false) {
-                        continue;
-                    }
-
-                    // A rights row whose user is gone is dead data: it opens
-                    // the folder to nobody and would list a nameless person.
-                    if ((string) $row['username'] == '') {
-                        continue;
-                    }
-
-                    // Binned folders keep their rights rows so a restore puts
-                    // them back intact; they are not shared with anybody
-                    // while they sit in the bin.
-                    if (($bin_id > 0) && pg_explorer_is_self_or_descendant($bin_id, $row_folder_id)) {
-                        continue;
-                    }
-
-                    if (pg_explorer_folder_visible($row_folder_id, $folders_that_user_has_access_to) == false) {
-                        continue;
-                    }
-
-                    // Only closed folders: rights over a public folder grant
-                    // nothing that everybody does not already have.
-                    $access_control_type = get_access_control_type($row_folder_id);
-
-                    if (in_array($access_control_type, array('membership', 'private'), true) == false) {
-                        continue;
-                    }
-
-                    if (isset($groups[$row_folder_id]) == false) {
-
-                        $crumbs = array();
-
-                        foreach (pg_explorer_breadcrumb($row_folder_id, $folders_that_user_has_access_to) as $crumb) {
-                            $crumbs[] = $crumb['name'];
-                        }
-
-                        $groups[$row_folder_id] = array(
-                            'id' => $row_folder_id,
-                            'name' => $map[$row_folder_id]['folder_name'],
-                            'path' => implode(' / ', $crumbs),
-                            'archived' => ($map[$row_folder_id]['folder_archived'] == '1'),
-                            'access_control_type' => $access_control_type,
-                            'access_icon' => pg_explorer_access_icon($access_control_type),
-                            'can_edit' => check_edit_access($row_folder_id),
-                            'grants' => array());
-                    }
-
-                    // The expiration date only exists for view rights; edit
-                    // rights do not expire, and an empty date means no end.
-                    $expiration_date = (string) $row['expiration_date'];
-
-                    if (($expiration_date == '0000-00-00') || ($expiration_date == '')) {
-                        $expiration_date = '';
-                    }
-
-                    $groups[$row_folder_id]['grants'][] = array(
-                        'user_id' => (int) $row['user_id'],
-                        'username' => (string) $row['username'],
-                        'contact_id' => (int) $row['contact_id'],
-                        'contact_name' => pg_explorer_contact_name($row),
-                        'rights' => (int) $row['rights'],
-                        'expiration_date' => $expiration_date,
-                        'expired' => (($expiration_date != '') && ($expiration_date < $today)));
-                }
-            }
-
-            // Path order, so a subtree reads together.
-            $ordered = array_values($groups);
-
-            usort($ordered, 'pg_explorer_compare_shared_groups');
-
-            respond(array(
-                'status' => 'success',
-                'request' => $type,
-                'groups' => $ordered));
+            pg_explorer_handle_shared_list($type, $request, $user, $folders_that_user_has_access_to);
             break;
 
         // ── Bulk page edit: the choices the panel can offer ─────────────
