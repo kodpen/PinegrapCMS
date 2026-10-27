@@ -667,12 +667,13 @@ function pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_ord
     return array(
         'success'        => true,
         // A pending capture (an eCheck, a review on PayPal's side) settles
-        // later; the order is placed and the payment is PayPal's to finish.
+        // later; the order is placed unpaid (paid_at 0, pg_order_checkout_paid_at())
+        // and waits for the operator to record the payment.
         'status'         => ($status === 'PENDING') ? 'pending' : 'paid',
         'transaction_id' => $capture_id,
         'amount'         => (int) $amount,
         'log'            => ($status === 'PENDING')
-            ? array('PayPal Checkout payment for order #' . $order_id . ' is PENDING on PayPal (capture ' . $capture_id . ', reason ' . $reason . '). Check it on PayPal before shipping: PayPal may still deny it.')
+            ? array('PayPal Checkout payment for order #' . $order_id . ' is PENDING on PayPal (capture ' . $capture_id . ', reason ' . $reason . '). Check it on PayPal before shipping: PayPal may still deny it. The order waits as awaiting payment until Payment Received records it.')
             : array('PayPal Checkout payment for order #' . $order_id . ' was taken (capture ' . $capture_id . ').'),
     );
 }

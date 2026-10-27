@@ -856,6 +856,8 @@ function submit_order($type) {
     // order never touches them, but they are always written to the order record.
     $transaction_id = '';
     $authorization_code = '';
+    // The payment driver's answer ('paid', 'pending', ...); the legacy gateways leave it ''.
+    $payment_status = '';
     $payment_installment = '';
     $installment_charge = '';
     $commission = '';
@@ -1935,6 +1937,7 @@ function submit_order($type) {
         $total_witout_installment_charge = $payment_totals['total_without_installment_charge'];
         $payment_installment = $payment_totals['payment_installment'];
         $transaction_id = $payment_answer['transaction_id'];
+        $payment_status = $payment_answer['status'];
 
         if ($liveform->get_field_value('payment_method') == 'Credit/Debit Card') {
             $card_type = $payment_answer['card_brand'];
@@ -4515,7 +4518,8 @@ function submit_order($type) {
     // We update the user id again below, in case we now have new user info
     // from the auto-registration feature that ran above.
     // paid_at: a gateway-confirmed payment lands when the order is placed; an
-    // offline payment has no confirmed moment here, so it stays 0.
+    // offline payment has no confirmed moment here, so it stays 0, and so does
+    // a payment its service left pending (pg_order_checkout_paid_at()).
     $query = "UPDATE orders
              SET
                 payment_method = '" . escape($liveform->get_field_value('payment_method')) . "',
@@ -4536,7 +4540,7 @@ function submit_order($type) {
                 $sql_special_offer_code
                 last_modified_timestamp = '$order_date',
                 transaction_id = '" . escape($transaction_id) . "',
-                paid_at = '" . ($transaction_id != '' ? $order_date : 0) . "',
+                paid_at = '" . pg_order_checkout_paid_at((string) $liveform->get_field_value('payment_method'), (string) $transaction_id, (string) $payment_status, (int) $order_date) . "',
                 authorization_code = '" . escape($authorization_code) . "',
                 status = 'complete',
                 $sql_tracking_code
