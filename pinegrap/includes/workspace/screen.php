@@ -483,6 +483,7 @@ function ws_editor_js_strings()
         'designer_checklist'        => lang('Design a checklist'),
         'designer_code'             => lang('Share code'),
         'designer_table'            => lang('Design a table'),
+        'emoji_suggest'             => lang('Matching emoji'),
         'fmt_bold'                  => lang('Bold'),
         'fmt_code'                  => lang('Code'),
         'fmt_italic'                => lang('Italic'),

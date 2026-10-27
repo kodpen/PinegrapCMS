@@ -45,6 +45,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-channel-identity-motion.md: Workspace header in the channel colour (icon tile, top stripe), group colour chips, and the send pop, reaction bounce and new-message slide-in (U3, U5, PR #2094)
 - workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
+- workspace-colon-emoji.md: ":" and two letters in a Workspace writing box with the emoji button suggest matching emoji (colonEmojiAt(), colonEmojiList()): where it opens, order, keys, undo, which boxes
 - workspace-command-api.md: GET /workspace/commands (PR #1991): the command registry for the key's owner as WorkspaceCommand rows, workspace:read, no MCP tool, lists only and never runs a command
 - workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
 - workspace-command-plan-items.md: /timer (/süre), /away (/izin) and /meeting (/toplantı) in a Workspace channel (PR #1938): what each reads, the functions they write through, who is told, their live lines

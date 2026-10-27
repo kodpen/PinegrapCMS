@@ -4451,6 +4451,21 @@
             });
         },
 
+        // Whether the caret stands where a typed suggestion may not go: a
+        // selection, outside the box, in code, a link, a table cell or a
+        // card.
+        caretBlocked: function () {
+            var range = selectionRange();
+
+            if (!range || !range.collapsed || !this.node.contains(range.startContainer)) {
+                return true;
+            }
+
+            var element = (range.startContainer.nodeType === 1) ? range.startContainer : range.startContainer.parentNode;
+
+            return !!(element && element.closest && element.closest('code, a, td, th, .ws-rich-block, [data-ws-skip]'));
+        },
+
         // "/" in a note's box (options.slashInserts) lists the inserts that
         // match the word typed after it (slashInserts()). Not while a word is
         // composed, nor in code, a link or a card; "//" leaves one "/" and no
@@ -4463,9 +4478,7 @@
                 return;
             }
 
-            var element = (range.startContainer.nodeType === 1) ? range.startContainer : range.startContainer.parentNode;
-            var blocked = !range.collapsed || !this.node.contains(range.startContainer)
-                || !!(element && element.closest && element.closest('code, a, td, th, .ws-rich-block, [data-ws-skip]'));
+            var blocked = this.caretBlocked();
             var labels = {};
 
             SLASH.forEach(function (name) { labels[name] = t(TOOLS[name].label); });
