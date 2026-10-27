@@ -809,6 +809,10 @@ function bs6_switch_test_pins()
 		'tests/pg_ui_test.php' => array(
 			array("'root' => 'DIALOG.dialog dialog-xl dialog-scrollable',", "'root' => 'DIALOG.dialog dialog-xl pg-dialog-centered dialog-scrollable',"),
 		),
+		'tests/list_edit_lists_test.php' => array(
+			array("'status_enabled text-success'", "'status_enabled fg-success'"),
+			array("'status_disabled text-danger'", "'status_disabled fg-danger'"),
+		),
 		'tests/catalog_bin_test.php' => array(
 			array('btn my-1 btn-secondary', 'btn my-1 btn-solid theme-secondary'),
 		),
