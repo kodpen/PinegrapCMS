@@ -2445,7 +2445,7 @@ function workspace_flows_parity_table()
 			array(array('web_check.days'), 3, 'web check box: certificate days left (ssl)'),
 			array(workspace_flows_parity_prefixed('report', 'title metrics channel_id to'), 3, 'report box: title, counts, channel and addresses'),
 			array(workspace_flows_parity_prefixed('report.metrics', 'key param'), 3, 'report box: each count by its key, with its channel or threshold'),
-			array(array('trigger.target_id'), 3, 'start box: the action or flow started; itself again is a retry'),
+			array(array('trigger.target_id'), 3, 'start box: the action or flow started; itself again is a step box\'s own retry (retry, retry_after: up to WS_FLOW_RETRY_MAX more tries, minutes before each)'),
 			array(array('trigger.delay'), 3, 'delay box, the flows\' own: minutes before the start'),
 			array(workspace_flows_parity_prefixed('change', 'record action id fields'), 3, 'change box: kind, update or delete, record, fields'),
 			array(workspace_flows_parity_prefixed('approval', 'channel_id title text approvers rule'), 3, 'approval box: channel, title, text, people asked, rule'),

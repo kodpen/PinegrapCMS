@@ -314,7 +314,14 @@ function ws_flow_config_normalize($kind, $config)
             return function_exists('ws_flow_anchor_normalize') ? ws_flow_anchor_normalize($kind, $config) : array();
     }
 
-    return function_exists('ws_step_config_normalize') ? ws_step_config_normalize($kind, $config) : array();
+    if (!function_exists('ws_step_config_normalize')) {
+        return array();
+    }
+
+    // A step box may try again on its own after a failure (flow_runs.php).
+    $step = ws_step_config_normalize($kind, $config);
+
+    return (function_exists('ws_step_kinds') && isset(ws_step_kinds()[$kind])) ? $step + ws_flow_retry_normalize($config) : $step;
 }
 
 /**
@@ -519,7 +526,7 @@ function ws_flow_graph_check($graph)
         }
 
         if ($kinds[$node['kind']]['step']) {
-            foreach (ws_step_config_problems($node['kind'], $node['config'], $name, $joined) as $text) {
+            foreach (array_merge(ws_step_config_problems($node['kind'], $node['config'], $name, $joined), ws_flow_retry_problems($node['config'], $name)) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -1821,6 +1828,10 @@ function ws_flow_js_strings()
         'fl_delay_unit_days'  => lang('Days'),
         'fl_delay_help'       => lang('The boxes after it start when the time is up: at least a minute, at most a week.'),
         'fl_delay_none'       => lang('No time set'),
+        'fl_self_retry'       => lang('Tries again after a failure'),
+        'fl_self_retry_help'  => lang('0 for never; at most 7 more tries, 8 in all. The arrow on failed is taken once they are used.'),
+        'fl_self_retry_after' => lang('Minutes before each try'),
+        'fl_self_retry_after_help' => lang('At least a minute, at most a week (10,080 minutes). A try may post or send again.'),
         'fl_delay_minutes'    => ws_js_template('{var:1} minutes', 1),
         'fl_delay_hours'      => ws_js_template('{var:1} hours', 1),
         'fl_delay_days'       => ws_js_template('{var:1} days', 1),
@@ -2167,6 +2178,10 @@ function ws_flow_js_config($viewer, $mode)
     $build = ws_flows_ready() && ws_can_schedule($viewer);
     $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array(),
         'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null);
+
+    // The boxes that may try again on their own after a failure, and how
+    // many times at most (flow_runs.php).
+    $steps['retry'] = array('kinds' => function_exists('ws_step_kinds') ? array_keys(ws_step_kinds()) : array(), 'max' => WS_FLOW_RETRY_MAX, 'after_max' => WS_FLOW_DELAY_MAX);
 
     if ($build && function_exists('ws_scheduled_metrics')) {
         foreach (ws_scheduled_metrics() as $key => $metric) {

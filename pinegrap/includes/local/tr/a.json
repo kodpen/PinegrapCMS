@@ -2549,6 +2549,7 @@
     "At GİB": "GİB'de",
     "At a Scheduled Time": "Planlanmış Bir Zamanda",
     "At a time": "Belirli bir zamanda",
+    "At least a minute, at most a week (10,080 minutes). A try may post or send again.": "En az bir dakika, en çok bir hafta (10.080 dakika). Yeni deneme yeniden gönderi yazabilir ya da gönderebilir.",
     "At least one event is required.": "En az bir olay gereklidir.",
     "At least one field could not be deleted, because its form is edited in the visual editor.": "En az bir alan silinemedi, çünkü formu görsel editörde düzenleniyor.",
     "At least one field could not be deleted, because you do not have access to the field(s).": "Alanlara erişiminiz olmadığı için en az bir alan silinemedi.",
