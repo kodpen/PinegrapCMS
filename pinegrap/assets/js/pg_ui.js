@@ -12,7 +12,7 @@
  * the markup, not every caller.
  *
  * Components are named by their Bootstrap 6 kind: 'dialog', 'drawer', 'menu',
- * 'tooltip', 'popover', 'collapse', 'tab', 'toast', 'chips', 'combobox' (the
+ * 'tooltip', 'popover', 'collapse', 'tab', 'toast', 'chips', 'combobox', 'datepicker' (the
  * last two Bootstrap 6 only: under 5 their get() answers null). A target is an element, a jQuery object or
  * a selector.
  *
@@ -55,6 +55,7 @@
     // Bootstrap 6 only: under 5 there is no constructor and get() is null.
     KINDS.chips = { v5: 'Chips', v6: 'Chips', ev5: 'chips', ev6: 'chips' };
     KINDS.combobox = { v5: 'Combobox', v6: 'Combobox', ev5: 'combobox', ev6: 'combobox' };
+    KINDS.datepicker = { v5: 'Datepicker', v6: 'Datepicker', ev5: 'datepicker', ev6: 'datepicker' };
 
     // A v5 transition that never reports back (an element removed while it
     // was opening) must not leave a caller's promise pending for good.
