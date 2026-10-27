@@ -9,7 +9,7 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 - The code editor (`designer-code-editor.md`) is the bridge: a converted page keeps a code view, so nothing the old text editor allowed is lost; the emitter and the converter are the two halves of the round trip.
 
 ## Steps (one PR each)
-- L1 converter: done (`designer/classic-style-import.md`): classic placeholders to region nodes, `<meta_tags>`/`<stylesheet>` dropped, title and body on the root.
+- L1 converter: done (#2337, `designer/classic-style-import.md`): classic placeholders to region nodes, `<meta_tags>`/`<stylesheet>` dropped, title and body on the root.
 - L2 entry point: "Open in the visual designer" on the style list for a classic style; opt-in per style, the original row is kept until the design is saved (`style_layout` becomes the designer's). Pages keep their rows, `page_type`, `layout_type`, `layout_modified`; the style keeps its `layout_type` override. Needs Y1 first, or custom-layout pages vanish from the design.
 - L3 regions: done by the prerequisites R1-R5; here only wiring them into the conversion of a style.
 - L4 parity list: written (`legacy-page-designer-parity.md`, P1-P10, one build-or-drop proposal each); waits for the owner's choices. Page-type fields, layouts: Y2-Y3.
