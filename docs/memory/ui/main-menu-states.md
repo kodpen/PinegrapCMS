@@ -4,7 +4,7 @@ description: Main menu on wide screens: expanded / mini / hidden, the one bar bu
 ---
 
 ## What are the states?
-- lg and up (992px): `expanded` (icons and labels, `--pg-rail-w-expanded`), `collapsed` (the icon rail, the default) and `hidden` (no column, the content takes the width). Below lg the menu is the off-canvas drawer, open or shut; the drawer never writes the wide-screen state.
+- lg and up (Bootstrap 6's lg, 1024px; the menu's media queries in `backend.src.css`): `expanded` (icons and labels, `--pg-rail-w-expanded`), `collapsed` (the icon rail, the default) and `hidden` (no column, the content takes the width). Below lg the menu is a drawer of its own (`.drawer-open`, not Bootstrap's `.drawer`), open or shut; the drawer never writes the wide-screen state. `backend.src.js` decides drawer mode with `MENU_DRAWER_BREAKPOINT`, still 992 (v5's lg), so between 992 and 1023px the script and the stylesheet disagree.
 - A row that opens a panel widens the collapsed rail over the content while the panel is open (`.pg-menu-peek`); that is not a state and writes no cookie (`main-menu-panels.md`).
 
 ## Which control does what?

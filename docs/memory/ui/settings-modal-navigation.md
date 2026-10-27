@@ -1,6 +1,6 @@
 ---
 name: settings-modal-navigation
-description: Settings modal vs rest of panel: no settings breadcrumbs/back button, pgSettingsGo, preloader curtain, nested modals, return URL, notice handoff.
+description: Settings modal vs rest of panel: no settings breadcrumbs/back button, pgSettingsGo, preloader curtain, one dialog after another, return URL, notice handoff.
 ---
 
 ## Why do screens have no breadcrumb or back button pointing at settings?
@@ -11,7 +11,7 @@ description: Settings modal vs rest of panel: no settings breadcrumbs/back butto
 ## How does a non-link control navigate without being swallowed?
 - Call `pgSettingsGo(url)`. The header back button is a `<button>` with `onclick`; the delegated listener never sees it. `pg_page_shell`'s `cancel['url']` therefore goes through it; a screen writing `window.location` by hand via `cancel['onclick']` bypasses the dialog.
 - `pg_preloader_markup()`'s click listener runs on the document in the CAPTURE phase, before our delegated one; without asking, it would drop the full-screen curtain over a page that goes nowhere. It keeps no list of its own and asks `pgSettingsModal.asked(a)`.
-- A Bootstrap modal does its own link handoff: the command palette's settings chip calls `stopPropagation()` and opens the dialog in the search box's `hidden.bs.modal`. Two modals open at once leave a second backdrop and a body that cannot restore its scrollbar.
+- A dialog does its own link handoff: the command palette's settings chip calls `stopPropagation()`, hides the search box and opens the settings in its `hidden` handler (`pgUI.dialog.on($modal, 'hidden', …, {once: true})`), so one dialog gives way to the other instead of opening while the first is still closing.
 
 ## How does a tool that ends on another screen return to settings?
 - Use `pg_settings_return_url()`. There is no settings screen to return to; the address becomes `welcome.php#settings/<pane>/<card>` and the dialog opens itself on arrival. Users: `purge_cache`, `clean_up`, `cloudflare`, `software_update`, `view_parasut_inbox`.

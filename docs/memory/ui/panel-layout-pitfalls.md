@@ -1,13 +1,15 @@
 ---
 name: panel-layout-pitfalls
-description: Panel CSS and JS traps that fail silently, with their files: d-none not hidden, Popper in scroll boxes, flex overflow and min-height 0, nested :has(), forms and offcanvas, datepicker, multiselect.
+description: Panel CSS and JS traps that fail silently, with their files: hiding under CSS layers, menus in scroll boxes, flex min-height 0, nested :has(), drawers in forms, top layer, multiselect.
 ---
 
 ## How do I hide and show an element?
-- With `d-none`, never `hidden` / `el.hidden = true`: Bootstrap's display utilities (`d-flex`, `d-block`) carry `!important` and beat the `[hidden]` rule, so such an element stays on screen (`step-rail.md`).
+- Toggle `d-none` (the panel's one convention, e.g. `show(el, on)` in `offer_editor.js`, `step-rail.md`). Bootstrap 6 utilities sit in `@layer utilities` without `!important`: `d-none` beats every panel rule (all panel CSS is in `@layer custom`), but an inline display (`style="display:…"`, jQuery `.show()`/`.css()`) beats `d-none`.
+- `[hidden]` is `display: none !important` in `@layer reboot`, so `hidden` / `el.hidden = true` now hides even a `d-flex` element and beats inline styles too.
+- A panel rule cannot hide (or re-display) an element that carries a `d-*` utility: the utilities layer wins. Change the class instead.
 
-## How is a dropdown placed inside a scrolling box?
-- Popper with `strategy: "fixed"`: an absolutely positioned menu is clipped by the scroll box (`dashboard-sales-map-panel.md`). A menu a screen opens itself on `.dropdown-menu` takes its keys on `window` (`own-menu-dropdown-keydown.md`).
+## How is a menu placed inside a scrolling box?
+- Floating UI with `strategy: "fixed"`, passed as `floatingConfig` through `pgUI.menu.get()`: an absolutely positioned menu is clipped by the scroll box (`dashboard-sales-map-panel.md`). A menu a screen opens itself on `.menu` takes its keys on `window` (`own-menu-dropdown-keydown.md`).
 
 ## Which layouts collapse only on narrow screens?
 - `overflow` other than `visible` on a flex item drops its automatic minimum size: give the axis a floor first (`flex-overflow-hidden-pitfall.md`).
@@ -15,11 +17,13 @@ description: Panel CSS and JS traps that fail silently, with their files: d-none
 
 ## Which CSS mistakes drop without a word?
 - `:has()` inside `:has()` is invalid and the whole rule is dropped; a rule that overrides a `:has()` rule must carry the same predicate (`settings-card-layout-pitfalls.md`).
-- A class string missing a space (`col-xxl-6col-lg-3`) is one unknown class: the cell stays full width at every size (`settings-card-field-widths.md`).
-- `alert-dismissible` never takes `py-*`: its close button is placed absolutely and falls out of a shorter box (`settings-card-chrome.md`).
+- A class string missing a space (`2xl:col-6lg:col-3`) is one unknown class: the cell stays full width at every size (`settings-card-field-widths.md`).
+- `pg-alert-dismissible` never takes `py-*`: its close button is placed absolutely and falls out of a shorter box (`settings-card-chrome.md`).
 
 ## What about forms, panels and pickers?
-- Offcanvas panels stay inside the `<form>` (offcanvas moves nothing in the DOM, so their fields submit); anything with a form of its own stays outside the main form. A jQuery UI datepicker in an offcanvas or modal relies on `#ui-datepicker-div { z-index: 1065 !important }`. `multiselectCheckbox` fires no event per box: bind behaviour to state and re-sync on every change (`user-permission-rows.md`).
+- Drawers (`<dialog class="drawer">`) stay inside the `<form>`: the top layer moves nothing in the DOM, so their fields submit; anything with a form of its own stays outside the main form (`user-permission-rows.md`).
+- Open dialogs and drawers are in the browser's top layer, where no z-index reaches. A floating layer for something inside one is appended to `pgUI.overlayHost(el)` (select2 does, `pg_fields.js`). The jQuery UI datepicker still hangs off `<body>` with `#ui-datepicker-div { z-index: 1065 !important }`, which cannot lift it over an open dialog.
+- `multiselectCheckbox` fires no event per box: bind behaviour to state and re-sync on every change (`user-permission-rows.md`).
 
 ## Which JS traps have files of their own?
 - Sortables: `sortable-init-pitfall.md`. Charts and code editors are destroyed before their markup is replaced: `chart-destroy-before-markup-change.md`, `panel-code-fields.md`. Markup inserted by AJAX: `settings-modal-injected-markup.md`. Notices: `liveform-notices-trap.md`.

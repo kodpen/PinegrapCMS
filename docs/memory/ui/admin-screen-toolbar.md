@@ -4,10 +4,10 @@ description: Panel screen basics (frame, notices, fields, width, icons, help) an
 ---
 
 ## What are the basic panel UI helpers and conventions?
-- Bootstrap 5. `output_header([...])` / `output_footer()` = page frame. Cards are spaced with `mb-5`.
+- Bootstrap 6 (panel; sites stay on 5.3.8). `output_header([...])` / `output_footer()` = page frame. Cards are spaced with bottom margins on the v6 spacer scale: v5's `mb-5` (3rem) is `mb-12`; most screens use `mb-7` / `mb-5` (1.5rem / 1rem).
 - `$liveform->output_errors()` / `output_notices()` print messages; `add_notice(...)` / `add_error(...)` add one; `$liveform->mark_error('field', 'message')` marks a field, then redirect with `go($url)`. A screen that adds notices prints them and calls `remove_form()` after drawing (`liveform-notices-trap.md`).
 - Fields are drawn with `$liveform->output_field([...])`, never a hand-written `<input>`: error marking and refill come from it.
-- No `max-width` on an admin screen: screens are `container-fluid` wide; a field's width comes from the `col-*` grid.
+- No `max-width` on an admin screen: screens are `container-fluid` wide; a field's width comes from the grid (`col-*`, `md:col-*`).
 - Icons: Bootstrap Icons `<i class="bi bi-icon-name"></i>`, `aria-hidden="true"` when decorative. Material Icons (`<span class="material-icons">`) remain only in old code. The main menu rows are the exception (`main-menu-icons.md`).
 - Reference screens: `view_folders.php` (toolbar), `product_builder.php` (edit screen layout, `edit-screen-wide-layout.md`). Help link: `panel-help-links.md`.
 
@@ -19,12 +19,13 @@ description: Panel screen basics (frame, notices, fields, width, icons, help) an
 ## What is the toolbar slot order?
 | Slot | What | Class |
 |---|---|---|
-| 1 | Primary action (often opens a menu: "Yeni", "Kaydet") | `btn btn-sm btn-primary rounded-pill px-3` |
-| 2 | Secondary tools, grouped into one menu if needed | `btn btn-sm btn-ghost` |
+| 1 | Primary action (often opens a menu: "Yeni", "Kaydet") | `btn btn-sm btn-solid theme-primary rounded-pill px-5` |
+| 2 | Secondary tools, grouped into one menu if needed | `btn btn-sm btn-ghost` (own class) |
 | 3 | Location / breadcrumb, flexes (`flex: 1 1 220px`, `.pg-toolbar-grow`) | - |
 | 4 | Search / filter | `input-group input-group-sm rounded-pill` (`.pg-toolbar-search`) |
 | 5 | View switcher (if any) | `btn-group btn-group-sm` + `btn-ghost.active` |
-| 6 | Overflow menu `⋮`: rare, screen-specific things | `btn btn-sm btn-ghost` + `dropdown-menu-end` |
+| 6 | Overflow menu `⋮`: rare, screen-specific things | `btn btn-sm btn-ghost` with `data-bs-placement="bottom-end"` + `ul.menu.pg-menu-end` |
+- A menu slot is `div.pg-menu-wrap` > toggle (`data-bs-toggle="menu"`, `data-bs-display="static"`) + `ul.menu` of `.menu-item`s.
 - The strip under the heading of older screens (`#button_bar`) is the same component: `page-button-bar.md`.
 
 Related: docs/memory/ui/admin-screen-toolbar-rules.md
