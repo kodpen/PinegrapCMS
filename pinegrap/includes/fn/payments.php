@@ -424,7 +424,7 @@ function pg_payment_fields_normalize($fields)
 
     $normalized = array();
     // Taken by the card's own inputs (pg_payment_input_name()).
-    $names = array('present' => true, 'enabled' => true, 'row' => true);
+    $names = array('present' => true, 'enabled' => true, 'row' => true, 'callback' => true);
 
     foreach ($fields as $field) {
         if (!is_array($field) || !isset($field['name']) || !is_string($field['name'])) {
@@ -853,6 +853,19 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
                                                                                             'vars'   => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</div>';
     }
 
+    // A service that sends its own messages needs this site's address
+    // entered on its side; the operator copies it from here.
+    if (pg_payment_can($key, 'notify')) {
+        $html .= '
+                                                                                        <div class="col-12">
+                                                                                            <label class="form-label" for="' . h(pg_payment_input_name($key, 'callback')) . '">' . h(lang('Webhook Address')) . '</label>
+                                                                                            <input class="form-control" type="text" id="' . h(pg_payment_input_name($key, 'callback')) . '" value="' . h(pg_payment_callback_url($key)) . '" readonly="readonly"/>
+                                                                                            <div class="form-text">' . h(lang(array(
+                                                                                                'string' => 'Add this address as a webhook endpoint in your {var:1} account.',
+                                                                                                'vars'   => array($definition['label'])))) . '</div>
+                                                                                        </div>';
+    }
+
     foreach ($fields as $field) {
         $id = pg_payment_input_name($key, $field['name']);
         $value = isset($settings['values'][$field['name']]) ? $settings['values'][$field['name']] : $field['default'];
@@ -906,6 +919,22 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
     }
 
     return $html;
+}
+
+/**
+ * The address a driver's service posts its own messages to
+ * (payment_callback.php, notify()).
+ *
+ * @param string $key
+ * @return string
+ */
+function pg_payment_callback_url($key)
+{
+    // init.php defines the site's address; without it (a unit test run) the
+    // address is relative.
+    $base = defined('URL_SCHEME') ? URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY : '';
+
+    return $base . '/payment_callback.php?driver=' . rawurlencode((string) $key);
 }
 
 /**

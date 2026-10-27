@@ -2111,6 +2111,7 @@
     "Starts with pk_test_ or pk_live_. Test keys take test cards only.": "pk_test_ ya da pk_live_ ile başlar. Test anahtarları yalnız test kartlarını alır.",
     "Starts with sk_ (or rk_ for a restricted key that can write PaymentIntents and Refunds), from the same mode as the publishable key.": "sk_ ile başlar (PaymentIntents ve Refunds yazabilen kısıtlı anahtarsa rk_ ile); yayımlanabilir anahtarla aynı moddan olmalıdır.",
     "Starts with the value of ?{var}=… in the page address unless the visitor has already typed one. Leave empty to turn it off.": "Ziyaretçi henüz bir değer yazmadıysa sayfa adresindeki ?{var}=… değeriyle başlar. Kapatmak için boş bırakın.",
+    "Starts with whsec_. Add the webhook address above in the Stripe Dashboard and copy its signing secret here; without it Stripe's messages are refused.": "whsec_ ile başlar. Yukarıdaki webhook adresini Stripe panelinde ekleyin ve imzalama anahtarını buraya kopyalayın; anahtar olmadan Stripe'ın mesajları reddedilir.",
     "Starts your timer on a task, stopping the one that runs; /timer stop stops it and keeps the time.": "Bir görevde süre sayacınızı başlatır, çalışanı durdurur; /süre dur sayacı durdurur ve süreyi kaydeder.",
     "Startup": "Girişim",
     "Startup Awards": "Girişim Ödülleri",

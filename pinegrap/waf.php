@@ -3960,7 +3960,9 @@ function waf_address_has_staff_sign_in($ip)
  * whichever country it runs in. A product feed (feed.php) is read the same
  * way by a shopping platform's fetcher, with its token in the address. A
  * marketplace's servers post order packages to marketplace_webhook.php with
- * the key they were given in a header, under no browser's user agent. The
+ * the key they were given in a header, under no browser's user agent, and a
+ * payment service's servers post its events to payment_callback.php signed
+ * with the endpoint's secret. The
  * ShipWorks client posts to shipworks.php with a password the sign-in
  * throttle counts, one call per order it downloads or ships, from a
  * warehouse's address; a guest room's page posts to workspace_guest.php
@@ -3997,7 +3999,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php');
+        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php');
 
         // ShipWorks is spared the counters sized for a sign-in screen only
         // while the sign-in throttle counts its password; with the throttle
@@ -4758,7 +4760,7 @@ function waf_country_staff_signed_in()
  */
 function waf_country_api_scripts()
 {
-    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php');
+    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php');
 }
 
 function waf_country_request_exempt()

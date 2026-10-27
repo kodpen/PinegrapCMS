@@ -934,6 +934,7 @@
     "No viewport tag (mobile rendering)": "Viewport etiketi yok (mobil görünüm)",
     "No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.": "ERP ayar kartında sıcak satış carisi tanımlı değil; müşteri seçilmezse bu satış faturalanamaz.",
     "No webhook is registered for this account.": "Bu hesap için kayıtlı bir webhook yok.",
+    "No webhook signing secret is stored for Stripe.": "Stripe için kayıtlı bir webhook imzalama anahtarı yok.",
     "No writable field was sent.": "Yazılabilir bir alan gönderilmedi.",
     "No {var:1} account is connected for backups. Connect one in the backup settings.": "Yedekler için bağlı bir {var:1} hesabı yok. Yedek ayarlarından bir hesap bağlayın.",
     "No {var:1} account is connected.": "Bağlı {var:1} hesabı yok.",

@@ -56,7 +56,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what M1–M6 built, what M7 (native push) and M8 add, decisions, how its needs arrive
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex, Keep and HTML import, note revision, delete, sources and unshare in sync done; later Notion/OneNote; open questions
 - passkeys.md: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor and for sign-in with a passkey alone
-- payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 4a, 5 done; 3b, 4b, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
+- payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b½, 4a, 5 done; rest of 3b, 4b, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 - payment-driver-paypal.md: Step 4b (PayPal Checkout v2) hand-over: branch feature/payment-4b-paypal-v2 (closed PR #1827), what is missing before it lands, the open PENDING-capture question
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows, retention, window function done): automatic "price before discount" (TR 10/30-day, EU 30-day rules)
