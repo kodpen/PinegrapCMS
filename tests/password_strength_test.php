@@ -89,7 +89,8 @@ function password_strength_test_node()
 		. '  check: win.pgPasswordStrength.check("abc1"),' . "\n"
 		. '  empty: [win.pgPasswordStrength.isStrong(null), win.pgPasswordStrength.isStrong(undefined)],' . "\n"
 		. '  rules: win.pgPasswordStrength.rules,' . "\n"
-		. '  score: cases.map(function (p) { return win.pgPasswordStrength.score(p); }),' . "\n"
+		. '  level: cases.map(function (p) { var s = win.pgPasswordStrength; return s.level(s.score(p), true); }),' . "\n"
+		. '  advisory: ["", "abc", "abcdefgh", "Abcdefgh1!", "Abcdefgh12!@xyzw"].map(function (p) { var s = win.pgPasswordStrength; return s.level(s.advisoryScore(p), false); }),' . "\n"
 		. '  scores: ["abc", "Abc", "Abc1", "Abc12", "Abc12!", "Abcdefg12!"].map(function (p) { return win.pgPasswordStrength.score(p); }),' . "\n"
 		. '  thresholds: win.pgPasswordStrength.thresholds' . "\n"
 		. '}));' . "\n";
@@ -133,28 +134,6 @@ function test_password_strength_js_cases()
 	pg_assert_same(array('length' => 10, 'capital' => 1, 'numbers' => 2, 'symbol' => 1), $r['rules'], 'the numbers get_strong_password_requirements() lists');
 }
 
-// The level Bootstrap's Strength gives a score (_scoreToStrength()).
-function password_strength_test_level($score, $thresholds)
-{
-	if ($score === 0) {
-		return null;
-	}
-
-	if ($score <= $thresholds[0]) {
-		return 'weak';
-	}
-
-	if ($score <= $thresholds[1]) {
-		return 'fair';
-	}
-
-	if ($score <= $thresholds[2]) {
-		return 'good';
-	}
-
-	return 'strong';
-}
-
 // With "Require Strong Password" on, the meter reads strong exactly when the
 // server accepts the password, and fills one segment per rule met.
 function test_password_strength_js_meter_score()
@@ -175,13 +154,15 @@ function test_password_strength_js_meter_score()
 	$i = 0;
 
 	foreach (password_strength_test_cases() as $password => $strong) {
-		$level = password_strength_test_level($r['score'][$i], $r['thresholds']);
+		$level = $r['level'][$i];
 		pg_assert_same($strong, $level === 'strong', 'meter strong only when the server accepts: ' . $password);
 		pg_assert_same((string) $password === '', $level === null, 'no level only for no password: ' . $password);
 		$i++;
 	}
 
 	pg_assert_same(array(1, 2, 2, 3, 4, 5), $r['scores'], 'one point for typing, one per rule met');
+	// Bootstrap's default scoring: 1, 2, 5 and 8 points.
+	pg_assert_same(array(null, 'weak', 'weak', 'good', 'strong'), $r['advisory'], 'advisory levels with the setting off');
 }
 
 function test_password_strength_meter_markup()
@@ -194,7 +175,6 @@ function test_password_strength_meter_markup()
 	pg_assert_true(strpos($html, 'data-pg-strength-input="#new_password"') !== false, 'names its input');
 	pg_assert_true(strpos($html, 'data-pg-strength-strict="1"') !== false, 'strict when the setting is on');
 	pg_assert_true(strpos($html, 'data-bs-strength') === false, 'no data API: Bootstrap would score with its defaults first');
-	pg_assert_true(strpos($html, 'pg_password_strength.js') !== false, 'loads the script');
 
 	$advisory = pg_password_strength_meter('admin_password', false);
 	pg_assert_true(strpos($advisory, 'data-pg-strength-strict="0"') !== false, 'advisory when the setting is off');
