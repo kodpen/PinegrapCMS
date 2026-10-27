@@ -38,7 +38,8 @@ $liveform = new liveform('edit_common_region');
 require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
 $component_id = pg_common_region_components(array($id))[$id];
 
-if (!isset($_POST['name'])) {
+// The conversion form posts no name: it is a POST all the same.
+if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
     $query = "SELECT cregion_name, cregion_content, cregion_designer_type "
             ."FROM cregion "
             ."WHERE cregion_id = '" . escape($_GET['id']) . "'";
@@ -57,7 +58,7 @@ if (!isset($_POST['name'])) {
             </div>';
     } elseif (($user['role'] <= 1) && pg_shared_component_content_ready()) {
         $output_component =
-            '<form class="alert theme-warning d-flex gap-3 align-items-start my-7" action="edit_common_region.php" method="post">
+            '<form class="alert theme-warning d-flex gap-3 align-items-start my-7 disable_shortcut" action="edit_common_region.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $id . '">
                 <div class="flex-grow-1">
