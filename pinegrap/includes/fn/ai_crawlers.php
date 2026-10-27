@@ -507,12 +507,12 @@ function pg_llms_txt_page_views($days)
         return array();
     }
 
-    $result = @mysqli_query(
-        db::$con,
+    $result = db_q(
         "SELECT page_id, SUM(views) AS views
          FROM visitor_content_hourly
-         WHERE stat_date >= '" . e(date('Y-m-d', time() - (max(1, (int) $days) * 86400))) . "'
-         GROUP BY page_id"
+         WHERE stat_date >= ?
+         GROUP BY page_id",
+        array(date('Y-m-d', time() - (max(1, (int) $days) * 86400)))
     );
 
     $views = array();

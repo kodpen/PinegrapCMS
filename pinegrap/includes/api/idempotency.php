@@ -413,10 +413,10 @@ function api_idempotency_release() {
 
 	}
 
-	@mysqli_query(db::$con, "DELETE FROM api_idempotency
-		WHERE app_id = '" . (int)$context['app_id'] . "' AND idem_key = '" . escape($context['key']) . "'
+	db_q("DELETE FROM api_idempotency
+		WHERE app_id = ? AND idem_key = ?
 			AND status_code = '0'
-		LIMIT 1");
+		LIMIT 1", array((string)(int)$context['app_id'], (string)$context['key']));
 
 }
 
