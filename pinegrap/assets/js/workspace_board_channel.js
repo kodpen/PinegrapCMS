@@ -117,7 +117,7 @@
         groups.setAttribute('aria-label', t('cb_group'));
 
         GROUPS.forEach(function (key) {
-            var item = k.button('btn btn-ghost' + (prefs.group === key ? ' active' : ''), t('cb_by_' + key));
+            var item = k.button('btn btn-text theme-secondary' + (prefs.group === key ? ' active' : ''), t('cb_by_' + key));
             item.setAttribute('aria-pressed', prefs.group === key ? 'true' : 'false');
             item.addEventListener('click', function () {
                 if (prefs.group !== key) {
@@ -276,7 +276,7 @@
 
         // A new task with the column's value: its status, its person, its day.
         if (column.add && self.data.can_post) {
-            var add = k.button('btn btn-sm btn-ghost ws-cb-add', '', 'bi-plus-lg', t('cb_add'));
+            var add = k.button('btn btn-sm btn-text theme-secondary ws-cb-add', '', 'bi-plus-lg', t('cb_add'));
             add.addEventListener('click', function () { newTask(self, column); });
             head.appendChild(add);
         }

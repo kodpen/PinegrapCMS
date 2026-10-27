@@ -402,7 +402,7 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_inbox_file.php?id=' . $id . '&amp;format=pdf" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
                 <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_inbox_file.php?id=' . $id . '&amp;format=ubl"><i class="bi bi-filetype-xml me-1" aria-hidden="true"></i>' . lang('UBL') . '</a>
-                ' . $form('refresh', '<button type="submit" class="btn btn-sm btn-ghost"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Read the document again') . '</button>') . '
+                ' . $form('refresh', '<button type="submit" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Read the document again') . '</button>') . '
                 ' . $output_workspace_button . '
             </nav>
         </div>

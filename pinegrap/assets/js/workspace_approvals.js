@@ -126,7 +126,7 @@
             row.appendChild(badge);
 
             if (person.can_resend) {
-                var again = h.button('btn btn-sm btn-ghost py-0 px-1', '', 'bi-envelope', t('apv_guest_resend'));
+                var again = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-envelope', t('apv_guest_resend'));
 
                 again.addEventListener('click', function () {
                     again.disabled = true;
@@ -191,14 +191,14 @@
         }
 
         if (approval.result_id) {
-            var result = h.button('btn btn-sm btn-ghost', t('apv_result'), 'bi-patch-check');
+            var result = h.button('btn btn-sm btn-text theme-secondary', t('apv_result'), 'bi-patch-check');
             result.addEventListener('click', function () { view.jumpTo(approval.result_id, true); });
             foot.appendChild(result);
         }
 
         if (approval.can_withdraw || approval.can_close) {
             var label = approval.can_withdraw ? t('apv_withdraw') : t('apv_close');
-            var shut = h.button('btn btn-sm btn-ghost', label, 'bi-slash-circle');
+            var shut = h.button('btn btn-sm btn-text theme-secondary', label, 'bi-slash-circle');
 
             shut.addEventListener('click', function () {
                 h.ask(approval.can_withdraw ? t('apv_withdraw_confirm') : t('apv_close_confirm'), label, true).then(function (yes) {
@@ -322,7 +322,7 @@
         outcome.appendChild(document.createTextNode(t('apv_result_help')));
         body.appendChild(outcome);
 
-        var cancel = h.button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = h.button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
 
@@ -369,7 +369,7 @@
         var box = el('div', 'mb-5 ws-approval-guests');
         var list = el('div', 'ws-approval-guest-rows');
         var rows = [];
-        var add = h.button('btn btn-sm btn-ghost px-1', t('apv_guest_add'), 'bi-plus-lg');
+        var add = h.button('btn btn-sm btn-text theme-secondary px-1', t('apv_guest_add'), 'bi-plus-lg');
 
         function row() {
             var line = el('div', 'row g-1 mb-1 align-items-center');
@@ -378,7 +378,7 @@
             var dropCell = el('div', 'col-1 text-end');
             var name = el('input', 'form-control form-control-sm');
             var mail = el('input', 'form-control form-control-sm');
-            var drop = h.button('btn btn-sm btn-ghost px-1', '', 'bi-x-lg', t('apv_guest_remove'));
+            var drop = h.button('btn btn-sm btn-text theme-secondary px-1', '', 'bi-x-lg', t('apv_guest_remove'));
             var item = { name: name, mail: mail };
 
             name.type = 'text';

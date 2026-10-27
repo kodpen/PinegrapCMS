@@ -840,7 +840,7 @@ function ws_holidays_settings_card($self_url)
                 <td>' . h($event['title']) . '</td>
                 <td class="text-nowrap">' . h($when) . ((int) $event['yearly'] === 1 ? ' <span class="badge badge-subtle theme-secondary">' . h(lang('Every year')) . '</span>' : '') . '</td>
                 <td>' . $whom(((string) $event['scope'] === 'department') ? $event['department_id'] : 0) . '</td>
-                <td class="text-end">' . $form('holiday_remove', '<input type="hidden" name="event_id" value="' . (int) $event['id'] . '"><button type="submit" class="btn btn-sm btn-ghost" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>') . '</td>
+                <td class="text-end">' . $form('holiday_remove', '<input type="hidden" name="event_id" value="' . (int) $event['id'] . '"><button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>') . '</td>
             </tr>';
     }
 
@@ -887,8 +887,8 @@ function ws_holidays_settings_card($self_url)
                     <div class="fw-semibold">' . h($feed['name']) . ' <span class="badge badge-subtle theme-secondary">' . $whom($feed['department_id']) . '</span></div>
                     <div class="small fg-secondary text-break">' . h(parse_url((string) $feed['url'], PHP_URL_HOST)) . ' · ' . $state . '</div>
                 </div>
-                ' . $form('feed_sync', '<input type="hidden" name="feed_id" value="' . (int) $feed['id'] . '"><button type="submit" class="btn btn-sm btn-ghost"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Read now')) . '</button>') . '
-                ' . $form('feed_remove', '<input type="hidden" name="feed_id" value="' . (int) $feed['id'] . '"><button type="submit" class="btn btn-sm btn-ghost" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>') . '
+                ' . $form('feed_sync', '<input type="hidden" name="feed_id" value="' . (int) $feed['id'] . '"><button type="submit" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Read now')) . '</button>') . '
+                ' . $form('feed_remove', '<input type="hidden" name="feed_id" value="' . (int) $feed['id'] . '"><button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>') . '
             </div>';
 
         if ($days !== '') {

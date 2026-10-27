@@ -203,7 +203,7 @@ function erp_account_quick_modal()
                     </div>
                 </div>
                 <div class="dialog-footer">
-                    <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                    <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
                     <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 no-submit" data-erp-quick-go>' . lang('Open and pick') . '</button>
                 </div>
             </form>
