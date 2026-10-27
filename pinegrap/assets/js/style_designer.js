@@ -54765,6 +54765,36 @@ const StyleDesigner = (function () {
                 ['__gift_card_delivery',     _sdT('Delivery Date')]
             ]
         },
+        'order.returns': {
+            label: _sdT('Return requests of the order'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__return_id',                 _sdT('Return request ID')],
+                ['__return_title',              _sdT('Heading (Return request #12)')],
+                ['__return_asked',              _sdT('Date asked (Asked on …)')],
+                ['__return_status',             _sdT('Status code (requested, approved, rejected, shipped, received, refunded, closed)')],
+                ['__return_status_label',       _sdT('Status')],
+                ['__return_has_lines',          _sdT('Has products (1 or empty)')],
+                ['__return_reason',             _sdT('Reason')],
+                ['__return_customer_note_html', _sdT('Your note (HTML)')],
+                ['__return_decision_note_html', _sdT('Note from the shop (HTML)')],
+                ['__return_how',                _sdT('How to send the goods back')],
+                ['__return_code',               _sdT('Return code')],
+                ['__return_tracking_number',    _sdT('Tracking number')],
+                ['__return_refund_deadline',    _sdT('Refund due by')],
+                ['__return_actions_html',       _sdT('The customer\'s moves: sent, withdraw (HTML)')]
+            ]
+        },
+        'order.return_lines': {
+            label: _sdT('Products of the return request'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__return_line_name', _sdT('Product name')],
+                ['__return_line_qty',  _sdT('Quantity')]
+            ]
+        },
         'account.orders': {
             label: _sdT('Orders of the member'),
             arg: '', argRequired: false,
