@@ -55,8 +55,8 @@ Work from `development`, PRs to `development`, never to `main`.
 
 ## Claim work before starting it
 
-Work is claimed on GitHub with a draft PR, never an issue; issues are not
-used between sessions at all. Use REST (`gh api repos/kodpen/pinegrapcms/…`):
+Work is claimed on GitHub with a draft PR, never an issue; the only issues
+between sessions are decision questions (Working mode 10). Use REST (`gh api repos/kodpen/pinegrapcms/…`):
 `gh issue`, `gh pr` (GraphQL) and the search API are blocked in cloud
 sessions.
 
@@ -87,7 +87,8 @@ keep quota on the work. They are the sessions' own arrangement, changed by a
 PR that gives its reason (Fixed rules 6). Details in `docs/memory/workflow/`:
 `working-mode.md`, `session-lifecycle.md` and `session-checks.md` for every
 session, `merge-train.md`, `merge-train-landing.md` and `merge-review.md` for
-the merging session, `coordinator.md` for coordinators.
+the merging session, `coordinator.md` for coordinators, `architect.md` for
+decision questions.
 
 1. **One open PR per session; no stacked branches.** Branch only from
    `development`, never from an open PR; a plan's next step waits for the
@@ -120,19 +121,26 @@ the merging session, `coordinator.md` for coordinators.
    the `module:` field of its memory file (`core/fn-modules.md` is generated).
 8. **Queue limit.** While more than 15 PRs are open, drafts and
    `merge-train/*` not counted, nobody starts a new task (checked before the
-   claim); finished work is still marked ready. A PR waiting on the owner's
-   answer goes back to draft until the answer comes, so only work the
+   claim); finished work is still marked ready. A PR waiting on a decision
+   (Working mode 10) goes back to draft until it comes, so only work the
    merging session can take holds a place; each coordinator's workers hold
    at most 4 of the 15.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
-9. **Coordinators.** One coordinator per account starts its cloud workers
-   and carries the owner's questions; it writes no code and merges nothing.
-   A worker writes a question for the owner under `## Questions for the
-   owner` in its PR body, asks it in its own reply too (the owner reads the
-   session windows, not PR bodies) and waits; the answer comes in that
-   window or as a PR comment, and the session's next PR records it as
-   answered. The coordinator tells the owner when the merging session seems
-   stopped (`coordinator.md`).
+9. **Coordinators.** One coordinator per account starts its cloud workers;
+   it writes no code and merges nothing. It tells the owner when the merging
+   session seems stopped (`coordinator.md`).
+10. **Decisions go to the architect.** A question only the owner can
+   decide (product behaviour, a schema change, an entry of the decisions
+   list), an architecture question, a large migration or a logic clash
+   between PRs is never decided by the session that meets it. It opens an
+   issue labelled `architect` (template in `workflow/architect.md`), links
+   it from its PR, turns the PR back to draft and waits; what memory
+   already answers is not a question. The architect session analyses it,
+   brings it to the owner with the `erdal` label, decides with the owner,
+   records the decision and brings it to the PR as a comment. It never
+   decides alone. The issue is the only way to ask: no question to the
+   owner in a session's reply or PR body, and no `erdal` label but the
+   architect's.
 
 ## Fixed rules
 
@@ -155,13 +163,14 @@ the merging session, `coordinator.md` for coordinators.
    constant; new functions in `includes/fn/<module>.php`, not `functions.php`.
 5. **Schema changes only through a migration step** in the open version, with
    the idempotent helpers (`install_add_column()` family); never
-   `db("ALTER TABLE …")`. Ask the owner before any ADD/CREATE/DROP/MODIFY/CHANGE.
+   `db("ALTER TABLE …")`. Ask the owner (Working mode 10) before any
+   ADD/CREATE/DROP/MODIFY/CHANGE.
 6. **Owner decisions bind, and only the owner makes them.** An owner decision
    is about the product's behaviour, keeps running sites working, and comes
    with its reason; it is recorded in `docs/memory/workflow/decisions-made.md`.
    Places listed there as reviewed ("dead code", "unused field", "missing
-   check") stay; if you think one is wrong, ask the owner first (in your
-   reply, and under `## Questions for the owner` in your PR).
+   check") stay; if you think one is wrong, open a decision issue first
+   (Working mode 10).
    Working rules are the sessions' arrangement, never written as an owner
    decision.
 7. **Four silent traps:** table names are singular (`page`, `style`,

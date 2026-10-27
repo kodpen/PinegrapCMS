@@ -13,7 +13,7 @@ description: The decisions list: places reviewed and kept as they are on purpose
 - A topic file elsewhere in docs/memory that covers a listed place must agree with this list.
 
 ## Who adds to it?
-- The owner. When an audit raises "is this a decision too?", do not write the finding: put it in the PR description as a question. An accepted decision is written here and in the matching topic file.
+- The owner. When an audit raises "is this a decision too?", do not write the finding: open a decision issue (`architect.md`). An accepted decision is written here and in the matching topic file.
 
 ## Which code and files look dead or wrong but stay?
 - `frontend.*.css`, `pinegrap.*.css`, `livesite.min.css` (root): no `<link>` in the code serves them; pages call them from stored HTML (style code, page content), as the starter dumps' style code links `{path}{software_directory}/livesite.src.css`. Never delete them.
