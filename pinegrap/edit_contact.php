@@ -145,8 +145,8 @@ if (!$_POST) {
             user.user_role
         FROM contacts
         LEFT JOIN user ON contacts.id = user.user_contact
-        WHERE contacts.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        WHERE contacts.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
     $image = '';
     if($row['file_id'] == 0){
@@ -178,8 +178,8 @@ if (!$_POST) {
         "SELECT 
             files.name
         FROM files 
-        WHERE files.id = '" . escape($row['file_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE files.id = ?";
+        $result = db_q($query, array((string) $row['file_id'])) or output_error('Query failed.');
         $file = mysqli_fetch_array($result);
         $file_name = $file['name'];
 
@@ -323,9 +323,9 @@ if (!$_POST) {
             "SELECT contact_id
             FROM contacts_contact_groups_xref
             WHERE
-                (contact_id = '" . escape($_GET['id']) . "')
-                AND (contact_group_id = '" . $contact_group['id'] . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (contact_id = ?)
+                AND (contact_group_id = ?)";
+        $result = db_q($query, array((string) $_GET['id'], (string) $contact_group['id'])) or output_error('Query failed.');
         
         // if contact is in this contact group, then prepare checkbox to be checked
         if (mysqli_num_rows($result) > 0) {
@@ -343,9 +343,9 @@ if (!$_POST) {
                 "SELECT opt_in
                 FROM opt_in
                 WHERE
-                    (contact_id = '" . escape($_GET['id']) . "')
-                    AND (contact_group_id = '" . $contact_group['id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (contact_id = ?)
+                    AND (contact_group_id = ?)";
+            $result = db_q($query, array((string) $_GET['id'], (string) $contact_group['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             // if an opt-in record was not found or opt-in is 1, then contact is opted-in
@@ -764,18 +764,18 @@ if (!$_POST) {
         // delete contact
         $query =
             "DELETE FROM contacts
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         pg_audit_record('delete', 'contacts', (int) ($_POST['id'] ?? 0), $audit_before);
         
         // delete contact references in contacts_contact_groups_xref
-        $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete contact references in opt_in
-        $query = "DELETE FROM opt_in WHERE contact_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM opt_in WHERE contact_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         log_activity("contact ($_POST[first_name] $_POST[last_name]) was deleted", $_SESSION['sessionusername']);
         
@@ -796,8 +796,8 @@ if (!$_POST) {
         
         if (AFFILIATE_PROGRAM == true) {
             // determine if affiliate was approved already (we will use this later)
-            $query = "SELECT affiliate_approved FROM contacts WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            $query = "SELECT affiliate_approved FROM contacts WHERE id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
             $row = mysqli_fetch_assoc($result);
             $original_affiliate_approved = $row['affiliate_approved'];
             
@@ -805,8 +805,8 @@ if (!$_POST) {
             
             // if an affiliate code was entered check to see if affiliate code is already in use
             if ($affiliate_code) {
-                $query = "SELECT id FROM contacts WHERE affiliate_code = '" . escape($affiliate_code) . "' AND id != '" . escape($_POST['id'] ?? '') . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT id FROM contacts WHERE affiliate_code = ? AND id != ?";
+                $result = db_q($query, array((string) $affiliate_code, (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
                 
                 if (mysqli_num_rows($result) > 0) {
                     output_error(lang('That affiliate code is already in use. Please use a different code') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
@@ -930,9 +930,9 @@ if (!$_POST) {
                         "SELECT contact_id
                         FROM contacts_contact_groups_xref
                         WHERE
-                            (contact_id = '" . escape($_POST['id'] ?? '') . "')
-                            AND (contact_group_id = '" . $contact_group['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            (contact_id = ?)
+                            AND (contact_group_id = ?)";
+                    $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $contact_group['id'])) or output_error('Query failed.');
                     
                     // if contact is not already in contact group, then add contact to contact group
                     if (mysqli_num_rows($result) == 0) {
@@ -941,9 +941,9 @@ if (!$_POST) {
                                 contact_id,
                                 contact_group_id)
                             VALUES (
-                                '" . escape($_POST['id'] ?? '') . "',
-                                '" . $contact_group['id'] . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                ?,
+                                ?)";
+                        $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $contact_group['id'])) or output_error('Query failed.');
 
                         pg_announce_contact_group_members($contact_group['id'], array((int) ($_POST['id'] ?? 0)), array(), $contact_group['name']);
                     }
@@ -955,9 +955,9 @@ if (!$_POST) {
                             "SELECT contact_id
                             FROM opt_in
                             WHERE
-                                (contact_id = '" . escape($_POST['id'] ?? '') . "')
-                                AND (contact_group_id = '" . $contact_group['id'] . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                (contact_id = ?)
+                                AND (contact_group_id = ?)";
+                        $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $contact_group['id'])) or output_error('Query failed.');
                         
                         // if there is not already an opt-in record, then create record
                         if (mysqli_num_rows($result) == 0) {
@@ -967,20 +967,20 @@ if (!$_POST) {
                                     contact_group_id,
                                     opt_in)
                                 VALUES (
-                                    '" . escape($_POST['id'] ?? '') . "',
-                                    '" . $contact_group['id'] . "',
-                                    '" . escape($_POST['contact_group_opt_in_' . $contact_group['id']]) . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    ?,
+                                    ?,
+                                    ?)";
+                            $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $contact_group['id'], (string) $_POST['contact_group_opt_in_' . $contact_group['id']])) or output_error('Query failed.');
                             
                         // else an opt-in record already exists, so update record
                         } else {
                             $query =
                                 "UPDATE opt_in
-                                SET opt_in = '" . escape($_POST['contact_group_opt_in_' . $contact_group['id']]) . "'
+                                SET opt_in = ?
                                 WHERE
-                                    (contact_id = '" . escape($_POST['id'] ?? '') . "')
-                                    AND (contact_group_id = '" . $contact_group['id'] . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    (contact_id = ?)
+                                    AND (contact_group_id = ?)";
+                            $result = db_q($query, array((string) $_POST['contact_group_opt_in_' . $contact_group['id']], (string) ($_POST['id'] ?? ''), (string) $contact_group['id'])) or output_error('Query failed.');
                         }
                     }
                     
@@ -989,9 +989,9 @@ if (!$_POST) {
                     $query =
                         "DELETE FROM contacts_contact_groups_xref
                         WHERE
-                            (contact_id = '" . escape($_POST['id'] ?? '') . "')
-                            AND (contact_group_id = '" . $contact_group['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            (contact_id = ?)
+                            AND (contact_group_id = ?)";
+                    $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $contact_group['id'])) or output_error('Query failed.');
 
                     // Every group the contact is not ticked in comes through here, so
                     // only the ones it was actually in are announced.
@@ -1005,8 +1005,8 @@ if (!$_POST) {
         // if affiliate program is enabled and there is a group offer and the affiliate has been approved and it was not approved before, then determine if we need to add a key code for group offer for this affiliate
         if ((AFFILIATE_PROGRAM == TRUE) && (AFFILIATE_GROUP_OFFER_ID != 0) && (($_POST['affiliate_approved'] ?? '') == 1) && ($original_affiliate_approved == 0)) {
             // check if offer exists and get offer code
-            $query = "SELECT code FROM offers WHERE id = '" . AFFILIATE_GROUP_OFFER_ID . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT code FROM offers WHERE id = ?";
+            $result = db_q($query, array((string) AFFILIATE_GROUP_OFFER_ID)) or output_error('Query failed.');
             
             // if an offer was found, then continue to check if a key code should be added for group offer
             if (mysqli_num_rows($result) > 0) {
@@ -1017,9 +1017,9 @@ if (!$_POST) {
                     "SELECT id
                     FROM key_codes
                     WHERE
-                        (code = '" . escape($affiliate_code) . "')
-                        AND (offer_code = '" . escape($offer['code']) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (code = ?)
+                        AND (offer_code = ?)";
+                $result = db_q($query, array((string) $affiliate_code, (string) $offer['code'])) or output_error('Query failed.');
                 
                 // if a key code does not already exist for this group offer and affiliate, then create key code
                 if (mysqli_num_rows($result) == 0) {
@@ -1031,12 +1031,12 @@ if (!$_POST) {
                             user,
                             timestamp)
                         VALUES (
-                            '" . escape($affiliate_code) . "',
-                            '" . escape($offer['code']) . "',
+                            ?,
+                            ?,
                             '1',
-                            '" . $user['id'] . "',
+                            ?,
                             UNIX_TIMESTAMP())";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $affiliate_code, (string) $offer['code'], (string) $user['id'])) or output_error('Query failed.');
                 }
             }
         }
