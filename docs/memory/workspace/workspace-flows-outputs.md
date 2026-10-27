@@ -16,7 +16,7 @@ description: Values a flow box gives later boxes (data-passing D1, D2): outputs 
 - `ws_step_node_values()` reads scalars only, so a null fills `{{node.*}}` as ''.
 
 ## Can a value be read again as a placeholder?
-- No (D2, PR #PRNUM). Before, a node value or a `{{customer}}`/`{{form_fields}}`/`{{result}}` value holding `{{customer}}`, `{{node.…}}` or `{{count:…}}` (typed by a form visitor, returned by a webhook) was expanded by the next filler.
+- No (D2, PR #2121). Before, a node value or a `{{customer}}`/`{{form_fields}}`/`{{result}}` value holding `{{customer}}`, `{{node.…}}` or `{{count:…}}` (typed by a form visitor, returned by a webhook) was expanded by the next filler.
 - `ws_step_fill_nodes()` puts a word joiner (U+2060) after every `{` of a value, never removed, so `ws_scheduled_fill()` cannot match it, not even with a brace of the text beside it. Values without `{` are inserted unchanged.
 - `ws_scheduled_fill()` reads the counts from the text as written and fills everything with one `strtr()`, which never rescans what it put in.
 - Tests `tests/workspace_flow_fill_test.php`.

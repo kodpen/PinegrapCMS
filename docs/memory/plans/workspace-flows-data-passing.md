@@ -14,7 +14,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 ## Which steps? (one PR each, in this order)
 - D1 outputs: done (#2111), see workspace/workspace-flows-outputs.md.
 
-- D2 one-pass fill: done (#PRNUM), see workspace/workspace-flows-outputs.md.
+- D2 one-pass fill: done (#2121), see workspace/workspace-flows-outputs.md.
 
 - D3 escaping: a value is escaped for where it lands (message, e-mail HTML, webhook JSON; a line field strips control characters as today). First record what each destination does now. Addresses stay unfillable.
 
