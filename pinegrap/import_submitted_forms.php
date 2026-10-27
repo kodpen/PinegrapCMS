@@ -135,8 +135,8 @@ if (!$_POST) {
     // if a custom form was selected, validate user's access to custom form
     if ($custom_form_page_id) {
         // get folder id that custom form is in, in order to validate user's access
-        $query = "SELECT page_folder FROM page WHERE page_id = '" . escape($custom_form_page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT page_folder FROM page WHERE page_id = ?";
+        $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $folder_id = $row['page_folder'];
@@ -170,9 +170,9 @@ if (!$_POST) {
                     multiple
                 FROM form_fields
                 WHERE
-                    (page_id = '" . escape($custom_form_page_id) . "')
-                    AND (name = '" . escape($field_name) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (page_id = ?)
+                    AND (name = ?)";
+            $result = db_q($query, array((string) $custom_form_page_id, (string) $field_name)) or output_error('Query failed.');
             
             // if a field was found, then add to fields array
             if (mysqli_num_rows($result) > 0) {
@@ -211,14 +211,14 @@ if (!$_POST) {
                         last_modified_user_id,
                         last_modified_timestamp)
                     VALUES (
-                        '" . escape($custom_form_page_id) . "',
+                        ?,
                         '1',
-                        '" . $user['id'] . "',
-                        '" . generate_form_reference_code() . "',
+                        ?,
+                        ?,
                         UNIX_TIMESTAMP(),
-                        '" . $user['id'] . "',
+                        ?,
                         UNIX_TIMESTAMP())";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $custom_form_page_id, (string) $user['id'], (string) generate_form_reference_code(), (string) $user['id'])) or output_error('Query failed.');
                 
                 $submitted_form_id = mysqli_insert_id(db::$con);
                 
@@ -242,10 +242,10 @@ if (!$_POST) {
                                folder AS folder_id
                             FROM files
                             WHERE
-                                (name = '" . escape(trim($row[$key])) . "')
+                                (name = ?)
                                 AND (design = '0')
                                 AND (attachment = '0')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) trim($row[$key]))) or output_error('Query failed.');
                         
                         // if a file exists with the same name then continue to check if user has edit access to file
                         if (mysqli_num_rows($result) > 0) {
@@ -258,8 +258,8 @@ if (!$_POST) {
                                 $data = '';
                                 
                                 // mark file as an attachment
-                                $query = "UPDATE files SET attachment = '1' WHERE id = '" . $file_id . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $query = "UPDATE files SET attachment = '1' WHERE id = ?";
+                                $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
                             }
                         }
                         
@@ -313,13 +313,13 @@ if (!$_POST) {
                                         name,
                                         type)
                                     VALUES (
-                                        '" . $submitted_form_id . "',
-                                        '" . $field['id'] . "',
-                                        '" . $file_id . "',
-                                        '" . escape(trim($data_value)) . "',
-                                        '" . escape($field['name']) . "',
-                                        '$form_data_type')";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                        ?,
+                                        ?,
+                                        ?,
+                                        ?,
+                                        ?,
+                                        ?)";
+                                $result = db_q($query, array((string) $submitted_form_id, (string) $field['id'], (string) $file_id, (string) trim($data_value), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
                             }
 
                         // Otherwise the data has only one value so add a single record in the database for it.
@@ -333,13 +333,13 @@ if (!$_POST) {
                                     name,
                                     type)
                                 VALUES (
-                                    '" . $submitted_form_id . "',
-                                    '" . $field['id'] . "',
-                                    '" . $file_id . "',
-                                    '" . escape($data) . "',
-                                    '" . escape($field['name']) . "',
-                                    '$form_data_type')";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?)";
+                            $result = db_q($query, array((string) $submitted_form_id, (string) $field['id'], (string) $file_id, (string) $data, (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
                         }
                     }
                 }

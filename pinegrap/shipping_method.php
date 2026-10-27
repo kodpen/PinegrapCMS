@@ -41,8 +41,8 @@ $query =
         country,
         arrival_date
     FROM ship_tos
-    WHERE id = '" . escape($_POST['ship_to_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE id = ?";
+$result = db_q($query, array((string) ($_POST['ship_to_id'] ?? ''))) or output_error('Query failed.');
 
 // if ship to is not found, output error
 if (mysqli_num_rows($result) == 0) {
@@ -120,8 +120,8 @@ if ($liveform->check_form_errors() == false) {
             item_rate,
             item_rate_first_item_excluded
         FROM shipping_methods
-        WHERE id = '" . $shipping_method_id . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $shipping_method_id)) or output_error('Query failed.');
 
     // if shipping method cannot be found, then shipping method was recently deleted or someone is trying to hack, so output error
     if (mysqli_num_rows($result) == 0) {
@@ -160,8 +160,8 @@ if ($liveform->check_form_errors() == false) {
         $zone_id = (int)$shipping_method_check['zone']['id'];
 
         // get zone info
-        $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = '" . $zone_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = ?";
+        $result = db_q($query, array((string) $zone_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         if ($row) {
@@ -271,8 +271,8 @@ if ($liveform->check_form_errors() == false) {
             
             // update shipping cost column for order item record
             $shipping_cost_for_item_per_unit = round($shipping_cost_for_item / $quantity);
-            $query = "UPDATE order_items SET shipping = '$shipping_cost_for_item_per_unit' WHERE id = '" . $order_items[$key]['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE order_items SET shipping = ? WHERE id = ?";
+            $result = db_q($query, array((string) $shipping_cost_for_item_per_unit, (string) $order_items[$key]['id'])) or output_error('Query failed.');
         }
     }
     
@@ -308,22 +308,22 @@ if ($liveform->check_form_errors() == false) {
     $query =
         "UPDATE ship_tos
         SET
-            shipping_method_id = '" . $shipping_method_id . "',
-            shipping_method_code = '" . escape($shipping_method) . "',
-            zone_id = '" . $zone_id . "',
-            shipping_cost = '$shipping_cost',
-            original_shipping_cost = '$original_shipping_cost',
-            offer_id = '" . (int) ($offer['id'] ?? 0) . "',
+            shipping_method_id = ?,
+            shipping_method_code = ?,
+            zone_id = ?,
+            shipping_cost = ?,
+            original_shipping_cost = ?,
+            offer_id = ?,
             complete = '1'
-        WHERE id = '" . escape($_POST['ship_to_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $shipping_method_id, (string) $shipping_method, (string) $zone_id, (string) $shipping_cost, (string) $original_shipping_cost, (string) (int) ($offer['id'] ?? 0), (string) ($_POST['ship_to_id'] ?? ''))) or output_error('Query failed.');
 
     // remove liveform because software does not need it anymore
     $liveform->remove_form('shipping_method');
 
     // check to see if there is another recipient that is not complete in this order that the user needs to fill out information for
-    $query = "SELECT id FROM ship_tos WHERE (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (complete = 0) AND (id > '" . escape($_POST['ship_to_id'] ?? '') . "') ORDER BY id";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $query = "SELECT id FROM ship_tos WHERE (order_id = ?) AND (complete = 0) AND (id > ?) ORDER BY id";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) ($_POST['ship_to_id'] ?? ''))) or output_error('Query failed');
 
     // if there is another recipient, send user to shipping address & arrival screen for that recipient
     if (mysqli_num_rows($result) > 0) {
@@ -343,8 +343,8 @@ if ($liveform->check_form_errors() == false) {
         // else user did not come from an express order page, so figure out where user should be forwarded
         } else {
             // find out if billing information is complete
-            $query = "SELECT billing_complete FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT billing_complete FROM orders WHERE id = ?";
+            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $billing_complete = $row['billing_complete'];
             

@@ -1172,10 +1172,11 @@ function bs6_scope_kind($path)
 	}
 
 	// Every system widget module (widgets.php, widgets_*.php) draws site
-	// output, the ones added later included.
+	// output, the ones added later included. layout_convert.php writes the
+	// elements of a custom_form widget tree.
 	$site_fn = array(
-		'consent.php', 'language_redirect.php', 'maintenance_mode.php', 'meta_tags.php', 'reviews.php',
-		'visitor_texts.php',
+		'consent.php', 'language_redirect.php', 'layout_convert.php', 'maintenance_mode.php', 'meta_tags.php',
+		'reviews.php', 'visitor_texts.php',
 	);
 	if (strpos($path, 'includes/fn/') === 0 && (in_array($base, $site_fn, true) || preg_match('/^widgets(_[a-z0-9_]+)?\.php$/', $base))) {
 		return 'site';

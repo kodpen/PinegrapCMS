@@ -1134,6 +1134,7 @@
     "Output": "Çıktı",
     "Outset": "Dışa Çıkık",
     "Outside": "Dış Tıklama",
+    "Outside a system widget only the facts of the visit decide: with another value here the element is always shown.": "Sistem bileşeni dışında yalnızca ziyaretin bilgileri karar verir: burada başka bir değer varken öğe her zaman gösterilir.",
     "Outside accounts this site works with, such as Google or Microsoft. Each provider knows the site by an application you register there; features ask the connected account for what they need.": "Sitenin birlikte çalıştığı dış hesaplar, örneğin Google ya da Microsoft. Her sağlayıcı siteyi orada kaydettiğiniz bir uygulamayla tanır; özellikler bağlı hesaptan ihtiyaç duydukları izni ister.",
     "Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.": "Dış uygulamalar artık bir kişiden bağlanmasını isteyebilir. Kişi bu siteye giriş yapar, uygulamanın ne istediğini görür ve onaylar ya da reddeder; uygulama parolayı hiç görmez. Buradaki hiçbir bilginin gizli tutulması gerekmez.",
     "Outside applications you let act for you, such as an AI assistant. Each can do only what you allowed, and never more than your own account.": "Sizin adınıza çalışmasına izin verdiğiniz dış uygulamalar, örneğin bir yapay zeka asistanı. Her biri yalnız izin verdiğinizi yapabilir, kendi hesabınızdan fazlasını asla yapamaz.",

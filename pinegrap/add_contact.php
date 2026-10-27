@@ -422,8 +422,8 @@ if (!$_POST) {
         
         // if an affiliate code was entered check to see if affiliate code is already in use
         if ($affiliate_code) {
-            $query = "SELECT id FROM contacts WHERE affiliate_code = '" . escape($affiliate_code) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM contacts WHERE affiliate_code = ?";
+            $result = db_q($query, array((string) $affiliate_code)) or output_error('Query failed.');
             
             if (mysqli_num_rows($result) > 0) {
                 output_error(lang('That affiliate code is already in use. Please use a different code') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
@@ -610,9 +610,9 @@ if (!$_POST) {
                     contact_id,
                     contact_group_id)
                 VALUES (
-                    '" . $contact_id . "',
-                    '" . $contact_group['id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?)";
+            $result = db_q($query, array((string) $contact_id, (string) $contact_group['id'])) or output_error('Query failed.');
 
             pg_announce_contact_group_members($contact_group['id'], array($contact_id), array(), $contact_group['name']);
             
@@ -624,10 +624,10 @@ if (!$_POST) {
                         contact_group_id,
                         opt_in)
                     VALUES (
-                        '" . $contact_id . "',
-                        '" . $contact_group['id'] . "',
-                        '" . escape($_POST['contact_group_opt_in_' . $contact_group['id']]) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $contact_id, (string) $contact_group['id'], (string) $_POST['contact_group_opt_in_' . $contact_group['id']])) or output_error('Query failed.');
             }
         }
     }
@@ -635,8 +635,8 @@ if (!$_POST) {
     // if affiliate program is enabled and there is a group offer and the affiliate has been approved, then determine if we need to add a key code for group offer for this affiliate
     if ((AFFILIATE_PROGRAM == TRUE) && (AFFILIATE_GROUP_OFFER_ID != 0) && ($_POST['affiliate_approved'] == 1)) {
         // check if offer exists and get offer code
-        $query = "SELECT code FROM offers WHERE id = '" . AFFILIATE_GROUP_OFFER_ID . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT code FROM offers WHERE id = ?";
+        $result = db_q($query, array((string) AFFILIATE_GROUP_OFFER_ID)) or output_error('Query failed.');
         
         // if an offer was found, then continue to check if a key code should be added for group offer
         if (mysqli_num_rows($result) > 0) {
@@ -647,9 +647,9 @@ if (!$_POST) {
                 "SELECT id
                 FROM key_codes
                 WHERE
-                    (code = '" . escape($affiliate_code) . "')
-                    AND (offer_code = '" . escape($offer['code']) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (code = ?)
+                    AND (offer_code = ?)";
+            $result = db_q($query, array((string) $affiliate_code, (string) $offer['code'])) or output_error('Query failed.');
             
             // if a key code does not already exist for this group offer and affiliate, then create key code
             if (mysqli_num_rows($result) == 0) {
@@ -661,12 +661,12 @@ if (!$_POST) {
                         user,
                         timestamp)
                     VALUES (
-                        '" . escape($affiliate_code) . "',
-                        '" . escape($offer['code']) . "',
+                        ?,
+                        ?,
                         '1',
-                        '" . $user['id'] . "',
+                        ?,
                         UNIX_TIMESTAMP())";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $affiliate_code, (string) $offer['code'], (string) $user['id'])) or output_error('Query failed.');
             }
         }
     }

@@ -4,14 +4,18 @@
  *
  * Static checks on the contact and submitted form screens (edit_contact.php,
  * view_contacts.php, edit_submitted_form.php, view_submitted_forms.php,
- * edit_field.php): their raw queries with values run through db_q()
- * placeholders, not escape()/e() concatenated into the SQL text, and every
+ * edit_field.php, edit_contact_group.php, edit_contacts.php,
+ * add_contact.php, import_contacts.php, add_field.php, delete_fields.php,
+ * add_submitted_form.php, import_submitted_forms.php): their raw queries
+ * with values run through db_q() placeholders, not escape()/e()
+ * concatenated into the SQL text, and every
  * db_q() call passes one value per '?'. The raw queries left are those
  * without values (the bare column $date_type_column included) and those
  * completed by a clause built elsewhere with escaped values, which may hold
  * a '?' ($sql_affiliate, $sql_file_id, $sql_image, $where,
  * $my_contacts_where, $sql_form_editor, $sql_data_joins,
- * $form_type_filter, $sql_upload_folder_id, $sql_translate_values).
+ * $form_type_filter, $sql_upload_folder_id, $sql_translate_values,
+ * $sql_upload_folder_id_value, $sql_translate_values_value, $data_list).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -121,12 +125,12 @@ function db_q_contacts_forms_test_calls($path)
 // Clause variables a raw query may still be completed by.
 function db_q_contacts_forms_test_built($text)
 {
-	return (bool) preg_match('/\$(sql_affiliate|sql_file_id|sql_image|where|my_contacts_where|sql_form_editor|sql_data_joins|form_type_filter|sql_upload_folder_id|sql_translate_values|date_type_column)\b/', $text);
+	return (bool) preg_match('/\$(sql_affiliate|sql_file_id|sql_image|where|my_contacts_where|sql_form_editor|sql_data_joins|form_type_filter|sql_upload_folder_id|sql_translate_values|sql_upload_folder_id_value|sql_translate_values_value|data_list|date_type_column)\b/', $text);
 }
 
 function test_db_q_contacts_forms_value_queries_use_db_q()
 {
-	$expected = array('edit_contact.php' => 18, 'view_contacts.php' => 7, 'edit_submitted_form.php' => 18, 'view_submitted_forms.php' => 11, 'edit_field.php' => 14);
+	$expected = array('edit_contact.php' => 18, 'view_contacts.php' => 7, 'edit_submitted_form.php' => 18, 'view_submitted_forms.php' => 11, 'edit_field.php' => 14, 'edit_contact_group.php' => 10, 'edit_contacts.php' => 8, 'add_contact.php' => 6, 'import_contacts.php' => 4, 'add_field.php' => 7, 'delete_fields.php' => 8, 'add_submitted_form.php' => 6, 'import_submitted_forms.php' => 7);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;
@@ -158,7 +162,7 @@ function test_db_q_contacts_forms_value_queries_use_db_q()
 // elements as the SQL text has placeholders.
 function test_db_q_contacts_forms_values_fit_placeholders()
 {
-	foreach (array('edit_contact.php', 'view_contacts.php', 'edit_submitted_form.php', 'view_submitted_forms.php', 'edit_field.php') as $path) {
+	foreach (array('edit_contact.php', 'view_contacts.php', 'edit_submitted_form.php', 'view_submitted_forms.php', 'edit_field.php', 'edit_contact_group.php', 'edit_contacts.php', 'add_contact.php', 'import_contacts.php', 'add_field.php', 'delete_fields.php', 'add_submitted_form.php', 'import_submitted_forms.php') as $path) {
 		foreach (db_q_contacts_forms_test_calls($path) as $call) {
 			if ($call['call'] !== 'db_q' || strpos($call['values'], 'array(') !== 0) {
 				continue;
