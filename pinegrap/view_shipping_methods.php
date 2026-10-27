@@ -212,7 +212,7 @@ while ($row = mysqli_fetch_array($result)) {
             </td>
             <td style="max-width:100px" class="text-nowrap text-truncate align-middle chart_label ' . $status_color_class . '">' . h($name) . '</td>
             <td style="max-width:200px" class="text-nowrap text-truncate align-middle">' . h($description) . '</td>
-            <td class="align-middle"><span class="badge fg-black fw-light">' . h($code) . '</span></td>
+            <td class="align-middle"><span class="badge fg-body fw-light">' . h($code) . '</span></td>
             <td class="align-middle">' . h(get_shipping_service_name($service)) . '</td>
             <td class="align-middle text-center">' . $realtime_rate . '</td>
             <td class="' . $list_cells['base_rate']['class'] . '"' . ($row['variable_base_rate'] ? '' : pg_list_edit_cell($quick_edit, 'base_rate', $id, pg_format_input_amount($row['base_rate'] / 100))) . '>' . $list_cells['base_rate']['html'] . '</td>
