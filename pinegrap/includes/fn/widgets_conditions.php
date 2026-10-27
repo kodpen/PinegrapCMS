@@ -100,7 +100,6 @@ function pg_sw_cond_denied_tokens()
 {
     return array(
         '__variant_picker',
-        '__filter_chips',
         '__filters_button',
         '__filters_offcanvas',
         '__clear_filters_button',

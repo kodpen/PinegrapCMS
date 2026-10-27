@@ -194,3 +194,11 @@ button.pg-civ-out-of-stock {
 /* Square pictures, cropped; the grey box without a picture keeps the same
    shape. */
 .pg-civ-cross-sell .card-img-top{aspect-ratio:1/1;object-fit:cover}
+
+/* ── Active attribute filters (the catalog listing's filter chip parts) ─ */
+/* Each badge is its own node, so the markup has white space between them;
+   a flex row keeps the gaps to the badges' own margins. Normal weight and
+   a small cross, as the badges wrote inline before. */
+.pg-sw-attr-active-filters{display:flex;flex-wrap:wrap;align-items:center}
+.pg-sw-attr-active-filters > .badge{font-weight:normal}
+.pg-sw-attr-active-filters > .badge > .bi-x-lg{font-size:.7em}
