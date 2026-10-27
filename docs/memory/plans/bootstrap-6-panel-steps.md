@@ -10,7 +10,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 - B8, the switch, is done (#1866, `bootstrap-6-panel-done.md`); B9 can start.
 - B9 Component swaps on v6, one claim each (`bootstrap-6-components.md`): B9a Chips (done, #2208), B9b Combobox (done, #2243), B9c Datepicker and time (done, #2262), B9e Range (done, #2207), B9f form-adorn, B9g Stepper (done, #2206), B9h hover-lift (done, #2217, #2237), B9i Strength, B9j Avatar, B9k research proposals (slice 1 done, #2273; next slice `.btn-ghost`, the rest waits for B11: `ui/bootstrap-6-own-widget-swaps.md`).
 - B9j Avatar in slices (`ui/panel-avatar.md`): j1 server initials and tone, `pg_avatar_markup()`, header account button and menu (#2216); j2 Workspace screens, `tasks.php`, `workspace_settings.php` (#2242); j3 chat, dashboard widgets 4/28/30, designer collaborators' letters, contacts list, order screen, guest page, delegate tone (#2256); left: `edit_contact.php` (held by #2246 at the time).
-- B9i: the panel meter is done (#2211, `ui/password-strength-js.md`). Left as B9i2, after B9g (#2206, which holds `install/index.php`) merges: the installer's `.pg-strength` becomes `pg_password_strength_meter('admin_password', false)` plus `pg_password_strength_script()`, and its own scoring script and CSS go.
+- B9i: done — the panel meter (#2211) and the installer meter (#2274), `ui/password-strength-js.md`.
 - B10 Token tuning, B11 redesign, B12 jQuery UI out of the panel: `bootstrap-6-redesign.md`.
 
 ## Where do I start?

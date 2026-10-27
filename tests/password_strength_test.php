@@ -187,3 +187,12 @@ function test_password_strength_meter_markup()
 	$odd = pg_password_strength_meter('a"b', false);
 	pg_assert_true(strpos($odd, 'a"b') === false, 'input id escaped');
 }
+
+function test_password_strength_installer_uses_meter()
+{
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/install/index.php');
+
+	pg_assert_true(strpos($source, "pg_password_strength_meter('admin_password', false)") !== false, 'installer meter advises: strong passwords are off at install');
+	pg_assert_true(strpos($source, 'pg_password_strength_script()') !== false, 'installer loads the meter script');
+	pg_assert_true(strpos($source, 'pg-strength') === false, 'no installer copy of the meter left');
+}
