@@ -325,6 +325,22 @@ function ws_mcp_agent_identity($server, $server_id = 0, $catalogue = null)
 }
 
 /**
+ * The picture, letters and tone of an MCP identity (ws_mcp_agent_identity()),
+ * the fields a sender brief draws its Avatar from.
+ *
+ * @param array $identity
+ * @return array avatar, initials, tone
+ */
+function ws_mcp_agent_face($identity)
+{
+    return array(
+        'avatar'   => (string) ($identity['avatar'] ?? ''),
+        'initials' => (string) ($identity['initials'] ?? ''),
+        'tone'     => (int) ($identity['tone'] ?? 0),
+    );
+}
+
+/**
  * ws_mcp_agent_identity() for a server by id, also one deleted since.
  *
  * @param int $server_id

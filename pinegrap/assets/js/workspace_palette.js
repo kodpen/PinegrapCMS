@@ -446,7 +446,7 @@
         row.setAttribute('aria-selected', 'false');
 
         if ((item.type === 'person') && item.avatar && k) {
-            var face = k.avatar({ avatar: item.avatar, avatar_kind: item.avatar_kind }, '1.6rem');
+            var face = k.avatar({ avatar: item.avatar, avatar_kind: item.avatar_kind, initials: item.initials, tone: item.tone, name: item.title }, '1.6rem');
             face.classList.add('ws-palette-face');
             row.appendChild(face);
         } else {
