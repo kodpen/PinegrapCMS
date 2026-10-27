@@ -4,7 +4,7 @@ description: The form field create and edit screens share includes/forms/field_f
 ---
 
 ## Where is the form field form?
-- `includes/forms/field_form.php` (gate `PG_FUNCTIONS_DIR`), PR #2364 (create) and #FIELD_PR2 (edit). `add_field.php` and `edit_field.php` stay at the root as thin wrappers and `require_once` it.
+- `includes/forms/field_form.php` (gate `PG_FUNCTIONS_DIR`), PR #2364 (create) and #2464 (edit). `add_field.php` and `edit_field.php` stay at the root as thin wrappers and `require_once` it.
 - `pg_field_form_cards($liveform, $field, $context)` prints the field type, settings, information and choices cards. `$field` is `pg_field_form_new_field($folder_id)` for a new field (required and "Include in translation" on, the form's folder as upload folder) or the stored row with `options` from `pg_field_form_options_text()` (one `pg_field_form_option_line()` per choice, the format `…_parse_option_line()` reads back; escaped once by the cards). `$context`: `form_type`, `quiz`, `position`, `form_id`, `page_type`, `upload_folder_row` (add: custom forms only; edit: every form, as before).
 - A new field's name gets `required`; a stored one gets its value.
 
