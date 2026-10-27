@@ -5,7 +5,7 @@ module: widgets_affiliate_sign_up
 ---
 
 ## What is it?
-- Kind `affiliate_sign_up_form` (`includes/fn/widgets_affiliate_sign_up.php`), step 5e of [[system-widget-missing-types]]. It posts the classic names (`first_name`, `last_name`, `address_1`, `address_2`, `city`, `state`, `zip_code`, `country`, `phone_number`, `fax_number`, `email_address`, `affiliate_name`, `affiliate_website`, `affiliate_code`, `terms_and_conditions`, `submit`, hidden `current_page_id`, `next_page_id`) to `affiliate_sign_up_form.php`; its sign-in redirect, checks, contact update, e-mails and redirects are unchanged.
+- Kind `affiliate_sign_up_form` (`includes/fn/widgets_affiliate_sign_up.php`), step 5e (#2508) of [[system-widget-missing-types]]. It posts the classic names (`first_name`, `last_name`, `address_1`, `address_2`, `city`, `state`, `zip_code`, `country`, `phone_number`, `fax_number`, `email_address`, `affiliate_name`, `affiliate_website`, `affiliate_code`, `terms_and_conditions`, `submit`, hidden `current_page_id`, `next_page_id`) to `affiliate_sign_up_form.php`; its sign-in redirect, checks, contact update, e-mails and redirects are unchanged.
 
 ## Where are the settings?
 - In the page's `affiliate_sign_up_form_pages` row: the handler asks for the terms box when the row of `current_page_id` names a terms page. A designed page gets a row at render (`INSERT IGNORE`, not in a background render). `terms_page_id`, `submit_button_label`, `next_page_id` are written only when the widget has the key; a page of 0 means "the page's own" (`pg_aff_page_row_changes()`).
