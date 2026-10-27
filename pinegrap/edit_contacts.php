@@ -112,9 +112,13 @@ if ($_POST['contacts']) {
 
         // if contacts are being opted-in
         case 'optin':
+            $audit_before = array();
+
             foreach ($_POST['contacts'] as $contact_id) {
                 // if user has access to contact, then continue
                 if (validate_contact_access($user, $contact_id) == true) {
+                    $audit_before += pg_audit_fetch_many('contacts', array($contact_id));
+
                     $query =    "UPDATE contacts ".
                                 "SET opt_in = 1 ".
                                 "WHERE id = '" . escape($contact_id) . "'";
@@ -123,6 +127,8 @@ if ($_POST['contacts']) {
                     $number_of_contacts++;
                 }
             }
+
+            pg_audit_record_many('update', 'contacts', $audit_before);
             
             // if at least one contact was opted-in, log activity
             if ($number_of_contacts > 0) {
@@ -136,9 +142,13 @@ if ($_POST['contacts']) {
 
         // if contacts are being opted-out
         case 'optout':
+            $audit_before = array();
+
             foreach ($_POST['contacts'] as $contact_id) {
                 // if user has access to contact, then continue
                 if (validate_contact_access($user, $contact_id) == true) {
+                    $audit_before += pg_audit_fetch_many('contacts', array($contact_id));
+
                     $query =    "UPDATE contacts ".
                                 "SET opt_in = 0 ".
                                 "WHERE id = '" . escape($contact_id) . "'";
@@ -147,6 +157,8 @@ if ($_POST['contacts']) {
                     $number_of_contacts++;
                 }
             }
+
+            pg_audit_record_many('update', 'contacts', $audit_before);
             
             // if more than 0 contacts were opted-out, then log activity
             if ($number_of_contacts > 0) {
@@ -160,9 +172,13 @@ if ($_POST['contacts']) {
 
         // if contacts are being deleted
         case 'delete':
+            $audit_before = array();
+
             foreach ($_POST['contacts'] as $contact_id) {
                 // if user has access to contact, then continue
                 if (validate_contact_access($user, $contact_id) == true) {
+                    $audit_before += pg_audit_fetch_many('contacts', array($contact_id));
+
                     // delete contact
                     $query = "DELETE FROM contacts WHERE id = '" . escape($contact_id) . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -178,6 +194,8 @@ if ($_POST['contacts']) {
                     $number_of_contacts++;
                 }
             }
+
+            pg_audit_record_many('delete', 'contacts', $audit_before);
             
             // if more than 0 contacts were deleted, then log activity
             if ($number_of_contacts > 0) {

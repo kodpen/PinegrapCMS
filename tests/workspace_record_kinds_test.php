@@ -250,7 +250,7 @@ function workspace_record_kinds_test_lists()
 		'audit' => array(
 			'where'  => 'pg_audit_tables() in includes/fn/audit.php, through ws_change_audit_target() in includes/workspace/changes.php',
 			'kinds'  => workspace_record_kinds_test_tags_of($audited),
-			'except' => $tag_only + array_fill_keys(array('product_group', 'contact', 'erp_account', 'form', 'calendar_event'),
+			'except' => $tag_only + array_fill_keys(array('product_group', 'erp_account', 'form', 'calendar_event'),
 				'its table is not in pg_audit_tables(), as ws_change_audit_target() says') + array(
 				'erp_quote' => 'erp_quotes is not in pg_audit_tables(); its save announces erp.quote.created to the ERP\'s own audit trail',
 			),

@@ -25,7 +25,7 @@ description: privacy_erase.php (PR #1706): erasing one person after a dry run; w
 
 ## What does the audit trail keep?
 - One line: `pg_audit('erase', 'person', 0, [], after, '')`, `after` = token, ids, counts under `deleted` / `anonymised`; no address or name, no line per row (tested).
-- Earlier lines about the person (user, order, return lines by id; export lines labelled with the address): `pg_privacy_erase_audit_row()` replaces the field list's columns in before/after and clears a user's or export's label. Actor, time and action stay.
+- Earlier lines about the person (user, order, return by id; export by address; contact: `core/audit-trail-contacts.md`): `pg_privacy_erase_audit_row()` replaces the field list's columns in before/after and clears a user's or export's label. Actor, time and action stay.
 
 ## What is not reached?
 - Paraşüt's copies, Workspace customer channels, the site log, `visitors`.

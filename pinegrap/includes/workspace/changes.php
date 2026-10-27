@@ -3785,6 +3785,7 @@ function ws_change_audit_target($type, $action, array $done, array $values = arr
         'page'    => 'page',
         'file'    => 'files',
         'offer'   => 'offers',
+        'contact' => 'contacts',
     );
 
     $type = (string) $type;

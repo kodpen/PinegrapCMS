@@ -654,6 +654,8 @@ function api_customers_create($params) {
 
 	$id = (int)api_insert_id();
 
+	pg_audit_record('create', 'contacts', $id);
+
 	if ($group !== null) {
 
 		api_exec("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES ('" . $id . "', '" . (int)$group['id'] . "')");
@@ -761,7 +763,11 @@ function api_customers_update($params) {
 
 	api_dry_run_stop('updated', 'customer', array('id' => $id, 'fields' => count($set)));
 
+	$audit_before = pg_audit_fetch('contacts', $id);
+
 	api_exec("UPDATE contacts SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
+
+	pg_audit_record('update', 'contacts', $id, $audit_before);
 
 	log_activity(lang(array(
 		'string' => 'Customer ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
@@ -818,7 +824,11 @@ function api_customers_delete($params) {
 
 	api_dry_run_stop('deleted', 'customer', array('id' => $id));
 
+	$audit_before = pg_audit_fetch('contacts', $id);
+
 	api_exec("DELETE FROM contacts WHERE id = '" . $id . "' LIMIT 1");
+
+	pg_audit_record('delete', 'contacts', $id, $audit_before);
 
 	api_exec("DELETE FROM contacts_contact_groups_xref WHERE contact_id = '" . $id . "'");
 
