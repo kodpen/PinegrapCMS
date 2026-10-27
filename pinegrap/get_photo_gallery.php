@@ -47,8 +47,8 @@ function get_photo_gallery($properties) {
                     folder.folder_name
                 FROM page 
                 LEFT JOIN folder on folder.folder_id = page.page_folder
-                WHERE page_id = '" . escape($page_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE page_id = ?";
+            $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $folder_id = $row['page_folder'];
             $folder_name = $row['folder_name'];
@@ -89,8 +89,8 @@ function get_photo_gallery($properties) {
                 $folder_id = $_GET['folder_id'];
                 
                 // get the new folder's name
-                $query = "SELECT folder_name, folder_parent FROM folder WHERE folder_id = '" . escape($folder_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT folder_name, folder_parent FROM folder WHERE folder_id = ?";
+                $result = db_q($query, array((string) $folder_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $folder_name = $row['folder_name'];
                 $folder_parent = $row['folder_parent'];
@@ -157,14 +157,14 @@ function get_photo_gallery($properties) {
                             // if user does not have edit rights to this folder, then we need to validate membership
                             if (check_edit_access($folder_id) == false) {
                                 // get user information so we can find contact for user
-                                $query = "SELECT user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                                $query = "SELECT user_contact FROM user WHERE user_username = ?";
+                                $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');
                                 $row = mysqli_fetch_assoc($result);
                                 $contact_id = $row['user_contact'];
                                 
                                 // get contact information
-                                $query = "SELECT member_id, expiration_date FROM contacts WHERE id = '" . $contact_id . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                                $query = "SELECT member_id, expiration_date FROM contacts WHERE id = ?";
+                                $result = db_q($query, array((string) $contact_id)) or output_error('Query failed');
                                 $row = mysqli_fetch_assoc($result);
                                 $member_id = $row['member_id'];
                                 $expiration_date = $row['expiration_date'];
@@ -208,11 +208,11 @@ function get_photo_gallery($properties) {
                     folder_name as name
                 FROM folder
                 WHERE 
-                    folder_parent = '" . escape($folder_id) . "'
+                    folder_parent = ?
                 ORDER BY
                     folder_order,
                     folder_name";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $folder_id)) or output_error('Query failed.');
             
             $child_folders = array();
             
@@ -273,14 +273,14 @@ function get_photo_gallery($properties) {
                             // else if user does not have edit rights to this folder, then we need to validate membership
                             } elseif (check_edit_access($folder_id) == false) {
                                 // get user information so we can find contact for user
-                                $query = "SELECT user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                                $query = "SELECT user_contact FROM user WHERE user_username = ?";
+                                $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');
                                 $row = mysqli_fetch_assoc($result);
                                 $contact_id = $row['user_contact'];
                                 
                                 // get contact information
-                                $query = "SELECT member_id, expiration_date FROM contacts WHERE id = '" . $contact_id . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                                $query = "SELECT member_id, expiration_date FROM contacts WHERE id = ?";
+                                $result = db_q($query, array((string) $contact_id)) or output_error('Query failed');
                                 $row = mysqli_fetch_assoc($result);
                                 $member_id = $row['member_id'];
                                 $expiration_date = $row['expiration_date'];
@@ -675,8 +675,8 @@ function get_photo_gallery($properties) {
                 folder.folder_name
             FROM page 
             LEFT JOIN folder on folder.folder_id = page.page_folder
-            WHERE page_id = '" . escape($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $folder_id = $row['page_folder'];
         $folder_name = $row['folder_name'];
@@ -717,8 +717,8 @@ function get_photo_gallery($properties) {
             $folder_id = $_GET['folder_id'];
             
             // get the new folder's name
-            $query = "SELECT folder_name, folder_parent FROM folder WHERE folder_id = '" . escape($folder_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT folder_name, folder_parent FROM folder WHERE folder_id = ?";
+            $result = db_q($query, array((string) $folder_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $folder_name = $row['folder_name'];
             $folder_parent = $row['folder_parent'];
@@ -785,14 +785,14 @@ function get_photo_gallery($properties) {
                         // if user does not have edit rights to this folder, then we need to validate membership
                         if (check_edit_access($folder_id) == false) {
                             // get user information so we can find contact for user
-                            $query = "SELECT user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                            $query = "SELECT user_contact FROM user WHERE user_username = ?";
+                            $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');
                             $row = mysqli_fetch_assoc($result);
                             $contact_id = $row['user_contact'];
                             
                             // get contact information
-                            $query = "SELECT member_id, expiration_date FROM contacts WHERE id = '" . $contact_id . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                            $query = "SELECT member_id, expiration_date FROM contacts WHERE id = ?";
+                            $result = db_q($query, array((string) $contact_id)) or output_error('Query failed');
                             $row = mysqli_fetch_assoc($result);
                             $member_id = $row['member_id'];
                             $expiration_date = $row['expiration_date'];
@@ -835,11 +835,11 @@ function get_photo_gallery($properties) {
                 folder_name as name
             FROM folder
             WHERE 
-                folder_parent = '" . escape($folder_id) . "'
+                folder_parent = ?
             ORDER BY
                 folder_order,
                 folder_name";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $folder_id)) or output_error('Query failed.');
         
         $child_folders = array();
         
@@ -900,14 +900,14 @@ function get_photo_gallery($properties) {
                         // else if user does not have edit rights to this folder, then we need to validate membership
                         } elseif (check_edit_access($folder_id) == false) {
                             // get user information so we can find contact for user
-                            $query = "SELECT user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                            $query = "SELECT user_contact FROM user WHERE user_username = ?";
+                            $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');
                             $row = mysqli_fetch_assoc($result);
                             $contact_id = $row['user_contact'];
                             
                             // get contact information
-                            $query = "SELECT member_id, expiration_date FROM contacts WHERE id = '" . $contact_id . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                            $query = "SELECT member_id, expiration_date FROM contacts WHERE id = ?";
+                            $result = db_q($query, array((string) $contact_id)) or output_error('Query failed');
                             $row = mysqli_fetch_assoc($result);
                             $member_id = $row['member_id'];
                             $expiration_date = $row['expiration_date'];

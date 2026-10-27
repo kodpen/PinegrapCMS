@@ -10,6 +10,7 @@ description: Content files converted to db_q() (get_page_content, content, seo, 
 - `get_page.php` (PR #2227): its 29 queries with values (page lookup, membership check, the RSS and Google feeds of form list views, calendars and catalogs, the iCalendar export), `(string)` as above. The two calendar OR lists are built as `?` with a value list beside them. Raw stay the calls without values, the home page lookup (integer list `$sql_not_binned`) and the two submitted form lists of the form list view feed, completed by `$sql_where` / `$sql_filters` with escaped filter values. `tests/db_q_get_page_test.php` guards it.
 
 - Commerce files (`includes/fn/ecommerce.php`, `shopping_cart.php`, `submit_order.php`, `includes/fn/forms.php`): `db-q-converted-commerce.md`.
+- Catalog, photo gallery and custom form submit (`get_catalog.php`, `get_photo_gallery.php`, `custom_form.php`): `db-q-converted-catalog-forms.md`.
 - Front-end files (`get_shopping_cart.php`, `get_form_item_view.php`, `get_view_order_screen_content.php`, `email_preferences.php`, `add_or_remove_watcher.php`, `affiliate_sign_up_form.php`): `db-q-converted-front.md`.
 
 ## What is the rule for a query that stays raw?

@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-outputs
-description: Values a flow box gives later boxes (data-passing D1, D2): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, report counts, one-pass fill, canvas config
+description: Values a flow box gives later boxes (data-passing D1-D3): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, one-pass fill, escaping per destination
 ---
 
 ## Where are they declared?
@@ -16,10 +16,15 @@ description: Values a flow box gives later boxes (data-passing D1, D2): outputs 
 - `ws_step_node_values()` reads scalars only, so a null fills `{{node.*}}` as ''.
 
 ## Can a value be read again as a placeholder?
-- No (D2, PR #2121). Before, a node value or a `{{customer}}`/`{{form_fields}}`/`{{result}}` value holding `{{customer}}`, `{{node.…}}` or `{{count:…}}` (typed by a form visitor, returned by a webhook) was expanded by the next filler.
-- `ws_step_fill_nodes()` puts a word joiner (U+2060) after every `{` of a value, never removed, so `ws_scheduled_fill()` cannot match it, not even with a brace of the text beside it. Values without `{` are inserted unchanged.
-- `ws_scheduled_fill()` reads the counts from the text as written and fills everything with one `strtr()`, which never rescans what it put in.
-- Tests `tests/workspace_flow_fill_test.php`.
+- No (D2, PR #2121): `ws_step_fill_value()` puts a word joiner (U+2060) after every `{` of a value, so `ws_scheduled_fill()` (one `strtr()`, counts read from the text as written) cannot match it. Before, a typed `{{customer}}` or `{{node.…}}` was expanded by the next filler.
+
+## How is a value escaped for where it lands?
+- D3 (PR #2293): `ws_step_fill_target($kind, $action)` names the destination, `ws_step_fill_value()` fills by it. Tests `tests/workspace_flow_fill_test.php`.
+- message (post, task_open, the waiting task's try, report, checkin, approval): a `<` gets a word joiner, so `<@user:N>`/`<#order:N>` in a value is text; before it mentioned people and tagged records. The builder's own tags stay. `ws_render_body()` escapes the HTML.
+- chat (webhook format text: Slack, Teams, Google Chat): `<` too (`<!channel>`, `<url|label>`); discord: `<` and `@everyone`/`@here`.
+- text (e-mail box, plain text; task e-mail; notify; generic webhook): as given. The task e-mail escapes subject and intro where it writes its HTML (`h()`, `nl2br(h())`); `json_encode()` makes the text one JSON string (values come from `json_decode()`, valid UTF-8). Escaping in the fill would show `&amp;lt;`.
+- Line fields (`lines` of `ws_step_kinds()`): control characters and line breaks become a space after the fill. Addresses are never filled.
+- Not covered: `ws_scheduled_fill()` values (`{{form_fields}}`, `{{result}}`) and Markdown marks in a message.
 
 ## What does the canvas get?
 - `ws_flow_js_config()` `outputs`: kind => declared list (report: `message_id` only; its counts follow from `steps.metrics` and the box config). Used by the reference check (D4) and the value picker (D6); no canvas UI reads it yet.
