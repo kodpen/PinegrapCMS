@@ -66,6 +66,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-change-box.md: The change box of a flow (F4b3, PR #1957): the scheduled change step as a box, its settings, rights, what it writes, and why its record and values reach only the flow's editors
 - workspace-flows-condition-box.md: The condition box of a flow (F4c, PR #1980, flow_conditions.php): one scheduled-action condition, yes/no outcomes, a no without an arrow ends the branch, owner rights, what non-editors read
 - workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
+- workspace-flows-retry-skip.md: A failed box of a flow run tried again or skipped by hand (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, boxes walked again, routes, panel action, canvas buttons
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php, no schema change): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog

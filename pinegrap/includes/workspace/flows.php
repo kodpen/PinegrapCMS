@@ -1763,6 +1763,12 @@ function ws_flow_js_strings()
         'fl_step_failed'      => lang('Failed'),
         'fl_step_skipped'     => lang('Skipped'),
         'fl_step_none'        => lang('Not reached yet'),
+        'fl_step_retry'       => lang('Try again'),
+        'fl_step_skip'        => lang('Skip'),
+        'fl_step_retry_ask'   => ws_js_template('Try the box {var:1} again? It runs once more in the name of the owner of the flow: a message or e-mail it may have sent already can go out again, and a task box opens a new task.', 1),
+        'fl_step_skip_ask'    => ws_js_template('Skip the box {var:1}? The run goes on as if its branch had not been taken.', 1),
+        'fl_step_retried'     => lang('The box will run again.'),
+        'fl_step_skipped_by_hand' => lang('The box was skipped.'),
         // A flow shared with the team (flow_shares.php).
         'fl_level_view'       => lang('Can view'),
         'fl_level_run'        => lang('Can run'),

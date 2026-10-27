@@ -1088,6 +1088,8 @@
     "workspace department ({var:1}) was saved": "çalışma alanı departmanı ({var:1}) kaydedildi",
     "workspace flow ({var:1}) is no longer shared with {var:2}": "çalışma alanı akışı ({var:1}) artık {var:2} ile paylaşılmıyor",
     "workspace flow ({var:1}) run {var:2} was cancelled": "çalışma alanı akışı ({var:1}) {var:2} numaralı çalıştırması iptal edildi",
+    "workspace flow ({var:1}) run {var:2}: the box {var:3} was skipped": "çalışma alanı akışı ({var:1}) çalışma {var:2}: {var:3} kutusu atlandı",
+    "workspace flow ({var:1}) run {var:2}: the box {var:3} was tried again": "çalışma alanı akışı ({var:1}) çalışma {var:2}: {var:3} kutusu yeniden denendi",
     "workspace flow ({var:1}) was created": "çalışma alanı akışı ({var:1}) oluşturuldu",
     "workspace flow ({var:1}) was deleted": "çalışma alanı akışı ({var:1}) silindi",
     "workspace flow ({var:1}) was paused": "çalışma alanı akışı ({var:1}) duraklatıldı",

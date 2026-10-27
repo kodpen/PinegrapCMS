@@ -2023,6 +2023,7 @@
     "An assistant does not manage the MCP servers of the site; an administrator does.": "Bir asistan sitenin MCP sunucularını yönetmez; bunu bir yönetici yapar.",
     "An assistant does not share a flow; the person does.": "Bir asistan akış paylaşmaz; paylaşımı kişinin kendisi yapar.",
     "An assistant does not start or cancel the runs of a flow; the person does.": "Bir asistan bir akışın çalıştırmalarını başlatmaz ya da iptal etmez; bunu kişi yapar.",
+    "An assistant does not try again or skip the boxes of a flow's run; the person does.": "Bir asistan bir akış çalışmasının kutularını yeniden denemez veya atlamaz; bunu kişi yapar.",
     "An assistant does not try the boxes of a flow; the person does.": "Bir asistan akışın kutularını denemez; bunu kişinin kendisi yapar.",
     "An assistant is already working on this task. Wait for its answer or stop it first.": "Bu görev üzerinde zaten bir asistan çalışıyor. Cevabını bekleyin ya da önce durdurun.",
     "An assistant is working on this task. Propose the changes when its run has ended, or in a channel.": "Bu görev üzerinde bir asistan çalışıyor. Değişiklikleri onun çalışması bitince ya da bir kanalda önerin.",
