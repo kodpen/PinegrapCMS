@@ -10561,8 +10561,18 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   opacity: .7;
 }
 .ws-group-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: var(--ws-radius-xs);
+  background: color-mix(in srgb, var(--ws-group, var(--pg-fg-2)) 16%, transparent);
   color: var(--ws-group, var(--pg-fg-2));
-  font-size: .85rem;
+  font-size: .75rem;
+}
+html[data-bs-theme="dark"] .ws-group-icon {
+  background: color-mix(in srgb, var(--ws-group, var(--pg-fg-2)) 26%, transparent);
 }
 .ws-group-name {
   flex: 1 1 auto;
@@ -11133,6 +11143,32 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* The channel's sign: its icon on a soft tile in its colour, and a thin
+   stripe of the colour along the top of the header. */
+.ws-head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-right: .45rem;
+  vertical-align: middle;
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-2);
+  color: var(--pg-fg-2);
+  font-size: .95rem;
+  font-weight: 400;
+}
+.ws-head[data-ws-colored] {
+  box-shadow: inset 0 3px 0 var(--ws-ch);
+}
+.ws-head[data-ws-colored] .ws-head-icon {
+  background: color-mix(in srgb, var(--ws-ch) 16%, transparent);
+  color: var(--ws-ch);
+}
+html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
+  background: color-mix(in srgb, var(--ws-ch) 26%, transparent);
 }
 .ws-head-title .ws-topic {
   font-size: .8rem;
@@ -13890,6 +13926,35 @@ a.ws-chip:hover {
   from { opacity: 0; transform: translateY(.35rem); }
   to { opacity: 1; transform: none; }
 }
+/* Small motions: the Send button pops when a message goes, a reaction chip
+   bounces when left or taken back, a message that arrives slides in. The
+   classes are set by playMotion() in workspace.js. */
+@media (prefers-reduced-motion: no-preference) {
+  .ws-pop {
+    animation: ws-pop .32s ease-out;
+  }
+  .ws-react.ws-bounce {
+    animation: ws-bounce .45s ease-out;
+  }
+  .ws-msg-in {
+    animation: ws-msg-in .25s ease-out backwards;
+  }
+}
+@keyframes ws-pop {
+  35% { transform: scale(.9); }
+  70% { transform: scale(1.08); }
+  to { transform: none; }
+}
+@keyframes ws-bounce {
+  30% { transform: translateY(-.25rem) scale(1.12); }
+  60% { transform: translateY(0) scale(.95); }
+  80% { transform: scale(1.03); }
+  to { transform: none; }
+}
+@keyframes ws-msg-in {
+  from { opacity: 0; transform: translateY(.5rem); }
+  to { opacity: 1; transform: none; }
+}
 .ws-summary-view {
   max-width: 52rem;
   line-height: 1.6;
@@ -15548,6 +15613,12 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
   .ws-head-title h2 {
     font-size: 1rem;
+  }
+  .ws-head-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: .35rem;
+    font-size: .85rem;
   }
   .ws-tabs {
     gap: 0;

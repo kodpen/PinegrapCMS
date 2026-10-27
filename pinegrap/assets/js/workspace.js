@@ -83,6 +83,20 @@
         return node;
     }
 
+    // Plays a one-off motion class from its start again; the keyframes in
+    // backend.src.css run only under prefers-reduced-motion: no-preference,
+    // so without them the class is a harmless leftover.
+    function playMotion(node, className) {
+        if (!node) {
+            return;
+        }
+
+        node.classList.remove(className);
+        void node.offsetWidth;
+        node.classList.add(className);
+        node.addEventListener('animationend', function () { node.classList.remove(className); }, { once: true });
+    }
+
     // An icon with a small mark in its corner (ws_icon_badged_html() in
     // includes/workspace/channel_icons.php); the plain icon without one.
     function badgedIcon(name, badge, extra) {
@@ -7849,9 +7863,18 @@
             var head = el('div', 'ws-head');
             head.appendChild(channelsToggle(self.root));
 
+            // The channel's colour on its icon tile and a thin stripe.
+            if (channel.hex) {
+                head.style.setProperty('--ws-ch', channel.hex);
+                head.setAttribute('data-ws-colored', '1');
+            }
+
             var title = el('div', 'ws-head-title');
             var h = el('h2');
-            h.appendChild(channelIcon(channel, 'me-1 text-body-secondary'));
+            var tile = el('span', 'ws-head-icon');
+            tile.setAttribute('aria-hidden', 'true');
+            tile.appendChild(channelIcon(channel));
+            h.appendChild(tile);
             h.appendChild(document.createTextNode(channel.name));
             title.appendChild(h);
 
@@ -9808,6 +9831,17 @@
 
             api('ws_react', data).then(function (result) {
                 self.replaceMessage(result.message);
+
+                // The chip just left or taken back bounces.
+                var node = self.center.querySelector('[data-ws-message="' + result.message.id + '"]');
+
+                Array.prototype.forEach.call(node ? node.querySelectorAll('.ws-react') : [], function (chip) {
+                    var face = chip.querySelector('.ws-react-emoji');
+
+                    if (face && face.textContent === emoji) {
+                        playMotion(chip, 'ws-bounce');
+                    }
+                });
             }).catch(fail);
         },
 
@@ -11503,6 +11537,7 @@
 
             var send = button('btn btn-sm btn-primary rounded-pill px-3', t('send'), 'bi-send');
             send.addEventListener('click', function () { self.send(); });
+            self.sendButton = send;
 
             // Beside it, the times the message can wait for instead
             // (scheduled_messages.php).
@@ -12335,6 +12370,10 @@
             }
 
             Object.keys(options || {}).forEach(function (key) { data[key] = options[key]; });
+
+            if (self.sendButton && self.sendButton.isConnected) {
+                playMotion(self.sendButton, 'ws-pop');
+            }
 
             api('ws_send', data).then(function (result) {
                 self.busy = false;
@@ -14415,6 +14454,7 @@
                         }
 
                         self.appendMessage(message, previous);
+                        playMotion(self.pane.lastElementChild, 'ws-msg-in');
                         grew = true;
 
                         if (!message.mine && message.kind !== 'system') {
