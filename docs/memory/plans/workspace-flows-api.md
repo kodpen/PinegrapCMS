@@ -13,9 +13,9 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 ## What comes? (one PR each, in this order)
 - A1 done (PR #2122): list filters `start`, `status`, `channel_id`, `updated_since`; `GET /{id}` gives `start` and `start_text` (workspace-flows-api-filters.md).
 
-- A2 done (PR #PRNUM): `GET /workspace/flow-kinds` (workspace-flows-catalogue.md).
+- A2 done (PR #2263): `GET /workspace/flow-kinds` (workspace-flows-catalogue.md).
 
-- A3 done (PR #PRNUM): `GET /{id}/validate` (GET: it writes nothing); box try is `/{id}/boxes/{node}/try` (F4e, PR #2024).
+- A3 done (PR #2263): `GET /{id}/validate` (GET: it writes nothing); box try is `/{id}/boxes/{node}/try` (F4e, PR #2024).
 
 - A4 done (PR #2234): `/{id}/resume` (own session); `/{id}/versions` list, `/{n}` read, `/{n}/restore` into the draft (workspace-flows-versions.md).
 
