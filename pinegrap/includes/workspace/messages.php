@@ -298,6 +298,13 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         }
     }
 
+    // A message that is one record tag and nothing else is drawn as its card
+    // (render.php), with what this reader may see of the record.
+    $tag_card = (!$deleted && !$agent && in_array($row['kind'], array('message', 'decision', 'note'), true)
+        && in_array($row['sender_kind'], array('user', 'app'), true))
+        ? ws_tag_card_html((string) $row['body'], $refs)
+        : '';
+
     $payload = array(
         'id'          => (int) $row['id'],
         'channel_id'  => (int) $row['channel_id'],
@@ -310,7 +317,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // (guests.php), here as on their own page: a guest adds no table.
         'html'        => $deleted ? '' : ((($row['sender_kind'] === 'guest') && function_exists('ws_guest_render'))
             ? ws_guest_render($row['body'])
-            : ws_render_body($agent ? $agent['text'] : $row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready())),
+            : (($tag_card !== '') ? $tag_card : ws_render_body($agent ? $agent['text'] : $row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready()))),
         'raw'         => ($mine && !$deleted) ? (string) $row['body'] : '',
         'labels'      => ($mine && !$deleted) ? $labels : array(),
         'deleted'     => $deleted,

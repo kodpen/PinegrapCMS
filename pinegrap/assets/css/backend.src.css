@@ -17763,6 +17763,54 @@ a.ws-form-card-head:hover span {
     margin: 0;
     overflow-wrap: anywhere;
 }
+/* A message that is one record tag (ws_tag_card_html()). */
+.ws-tag-card {
+    max-width: 34rem;
+    margin-top: .15rem;
+    padding: .5rem .7rem;
+    border: 1px solid var(--pg-border-color);
+    border-left: 3px solid var(--pg-primary);
+    border-radius: var(--ws-radius-sm);
+    background: var(--pg-bg-body);
+    font-size: .8125rem;
+}
+.ws-tag-card-top {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-width: 0;
+}
+.ws-tag-card-head {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    min-width: 0;
+    font-weight: 600;
+    color: var(--pg-fg-body);
+    text-decoration: none;
+}
+.ws-tag-card-head span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+a.ws-tag-card-head:hover span {
+    text-decoration: underline;
+}
+.ws-tag-card-status {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0 .45rem;
+    border-radius: 999px;
+    background: var(--pg-bg-2);
+    color: var(--pg-fg-2);
+    font-size: .75rem;
+}
+.ws-tag-card-meta {
+    margin-top: .15rem;
+    color: var(--pg-fg-2);
+    overflow-wrap: anywhere;
+}
 /* ── Workspace: channel templates (assets/js/workspace_templates.js) ── */
 .ws-tpl-row {
     display: flex;

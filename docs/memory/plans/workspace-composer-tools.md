@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23; 1, 2, 6, 7, 8, 11 done, 4, 5 partly; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+description: Plan (2026-10-23; 1, 2, 6, 7, 8, 11, 9a done, 4, 5 partly; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -15,7 +15,7 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8, 11 done, 4, 5 partly; answers open
 - New tools: item names in `PGWsEditor.toolbar()`, then `format()` / `applyMark()`; `php tools/build_js.php`.
 - New syntax: drawn by `ws_render_body()` (and its fast-path regex) alone, twin in `inlineNodes()`/`parseBlocks()`/`serializeNode()`, readable in `ws_plain_text()` (push, e-mail, API `text`) and `ws_guest_render()`, styled in `workspace_guest.css` and the print page too; API `body`, MCP, search, Markdown export stay raw. Test `tests/workspace_render_test.php`, red first.
 - Labels: `lang()` in `ws_editor_js_strings()` (screen.php, sent in `#ws-config`), `t()` in JS, keys added with `php tools/tr_add.php` (shards in `includes/local/tr/`).
-- Saved replies live here, not in the CRM seams plan.
+- Saved replies live here, not the CRM plan.
 
 ## Slices
 1. Shared toolbar, no schema: `format()`, composer undo/redo and B/I/S. PR #1554.
@@ -26,7 +26,7 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8, 11 done, 4, 5 partly; answers open
 6. Slash inserts in notes, done: #2009 (workspace/workspace-notes-slash-inserts.md).
 7. Smart paste, no schema, done: #2018 (workspace/workspace-editor-smart-paste.md).
 8. Small aids, no schema, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #2115 (workspace/workspace-colon-emoji.md).
-9. Objects, no schema: a lone tag as a card per reader (like `ws_form_cards_html()`); checklist item to task (`ws_command_parse_task()`).
+9. Objects, no schema. 9a lone tag as a card, done: #PRNUM (workspace/workspace-tag-card.md). 9b checklist item to task (`ws_command_parse_task()`).
 10. Saved replies with `{customer}`, `{order}`, schema, ask first: `;` picker, API with dry run; team ones need a right column (five ladder files, `pg_user_has_ws_columns()`).
 11. Rewrite with AI, no schema, done: #2141, target `ws_message` (workspace/workspace-ai-rewrite.md).
 12. Later: callouts, toggles, dictation, mermaid, find/replace; no GIF, video.
@@ -39,5 +39,5 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8, 11 done, 4, 5 partly; answers open
 5. Dictation (Chrome sends audio to Google): (a) offer, privacy line, (b) not now → owner.
 
 ## Where to start?
-- Step 11 is done. Next, needing no answer: 9 (objects). 3 waits for question 1, the "Aa" box of 5 for question 2.
+- Step 9a is done. Next, needing no answer: 9b (checklist item to task). 3 waits for question 1, the "Aa" box of 5 for question 2.
 - Step 4 left: autoformat (`==x==`, also "- " at a line's start) after question 3.
