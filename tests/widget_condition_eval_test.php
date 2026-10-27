@@ -171,13 +171,14 @@ function _cond_eval_canvas_source()
 	$src = _cond_eval_js_source()
 		. $cut("\n    var SW_COND_OPS = [", "\n    ];\n")
 		. $cut("\n    var SW_COND_DENY = [", "\n    ];\n")
+		. $cut("\n    var SD_COND_NAMES = ", ";\n")
 		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
 		. $cut("\n    var _SD_FLAG_TOKENS = {", "\n    };\n")
 		. $cut("\n    var _sdCondCanvasState = ", ";\n")
 		. $cut("\n    var SD_HIDE_EMPTY = ", ";\n")
 		. $cut("\n    var SD_FIELD_VALUE = ", ";\n");
 	foreach (array('_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondCodeStates', '_sdCondTreeTokens',
-		'_sdCondCanvasStates', '_sdCondStateOf', '_sdCondCanvasValue', '_sdCondCanvasShows', '_sdCondStateFor',
+		'_sdCondCanvasStates', '_sdCondStateOf', '_sdCondCanvasValue', '_sdCondCanvasShows', '_sdCondPresent', '_sdCondSpecs', '_sdCondEvalAll', '_sdCondStateFor',
 		'_sdNodeClassHas', '_sdTreeHasHideEmpty', '_sdHideEmptyValueNode', '_sdHideEmptyContentShows', '_sdHideEmptyShows',
 		'_sdHideEmptyCanvasOff') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
@@ -297,10 +298,11 @@ function test_widget_condition_eval_timeline_sample_rows()
 	$src = _cond_eval_js_source()
 		. $cut("\n    var SW_COND_OPS = [", "\n    ];\n")
 		. $cut("\n    var SW_COND_DENY = [", "\n    ];\n")
+		. $cut("\n    var SD_COND_NAMES = ", ";\n")
 		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
 		. $cut("\n    var _SD_FLAG_TOKENS = {", "\n    };\n")
 		. $cut("\n    var SD_LIST_SAMPLE_ROWS = {", "\n    };\n");
-	foreach (array('_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondCodeStates', '_sdCondCanvasValue', '_sdCondCanvasShows') as $fn) {
+	foreach (array('_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondCodeStates', '_sdCondCanvasValue', '_sdCondCanvasShows', '_sdCondPresent', '_sdCondSpecs', '_sdCondEvalAll') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$timeline = json_decode(json_encode(pg_sw_part_order_timeline()), true);

@@ -208,7 +208,7 @@ function test_widget_parts_editor_twin()
 		$b = strpos($js, $to, $a);
 		return substr($js, $a, $b + strlen($to) - $a);
 	};
-	$src = $cut("\n    var SD_OV_STATUS_CLASS_DEFAULTS = {", "\n    };\n")
+	$src = $cut("\n    var SD_COND_NAMES = ", ";\n") . $cut("\n    var SD_OV_STATUS_CLASS_DEFAULTS = {", "\n    };\n")
 		. $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n")
 		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
 		. $cut("\n    var SW_DEFAULT_TAILS = {", "\n    };\n")
