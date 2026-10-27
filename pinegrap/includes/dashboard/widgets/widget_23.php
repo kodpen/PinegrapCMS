@@ -73,8 +73,7 @@ function pg_dashboard_widget_23($request, $user)
         // Averages are computed from the sums. Averaging the
         // per-bucket averages would weight a quiet hour the same
         // as a busy one and quietly give the wrong number.
-        $pf_totals = mysqli_fetch_assoc(mysqli_query(
-            db::$con,
+        $pf_totals = mysqli_fetch_assoc(db_q(
             "SELECT
                 COALESCE(SUM(hits), 0)      AS hits,
                 COALESCE(SUM(slow_hits), 0) AS slow_hits,
@@ -82,8 +81,8 @@ function pg_dashboard_widget_23($request, $user)
                 COALESCE(MAX(max_ms), 0)    AS max_ms,
                 COALESCE(SUM(total_kb), 0)  AS total_kb
              FROM perf_stats
-             WHERE hour_start >= " . (int) $pf_day_ago . "
-               AND area = 'frontend'"
+             WHERE hour_start >= ?
+               AND area = 'frontend'", array((int) $pf_day_ago)
         ));
 
         $pf_hits = (int) $pf_totals['hits'];
@@ -136,31 +135,29 @@ function pg_dashboard_widget_23($request, $user)
         // half the time grades on its good half. Understating is
         // the safer error for a badge that has to be trusted, and
         // the average is still visible in the list underneath.
-        $pf_worst = mysqli_fetch_assoc(mysqli_query(
-            db::$con,
+        $pf_worst = mysqli_fetch_assoc(db_q(
             "SELECT label, SUM(hits) AS hits, MIN(min_ms) AS floor_ms,
                     SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms
              FROM perf_stats
-             WHERE hour_start >= " . (int) $pf_day_ago . "
+             WHERE hour_start >= ?
                AND area = 'frontend'
              GROUP BY label
              HAVING SUM(hits) >= 3
              ORDER BY floor_ms DESC, label ASC
-             LIMIT 1"
+             LIMIT 1", array((int) $pf_day_ago)
         ));
 
         // Quiet site: nothing opened three times yet.
         if (!$pf_worst) {
-            $pf_worst = mysqli_fetch_assoc(mysqli_query(
-                db::$con,
+            $pf_worst = mysqli_fetch_assoc(db_q(
                 "SELECT label, SUM(hits) AS hits, MIN(min_ms) AS floor_ms,
                         SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms
                  FROM perf_stats
-                 WHERE hour_start >= " . (int) $pf_day_ago . "
+                 WHERE hour_start >= ?
                    AND area = 'frontend'
                  GROUP BY label
                  ORDER BY floor_ms DESC, label ASC
-                 LIMIT 1"
+                 LIMIT 1", array((int) $pf_day_ago)
             ));
         }
 
@@ -291,8 +288,7 @@ function pg_dashboard_widget_23($request, $user)
         // count is in the bar's tooltip for context.
         $pf_rows = '';
 
-        $pf_result = mysqli_query(
-            db::$con,
+        $pf_result = db_q(
             "SELECT
                 label,
                 area,
@@ -300,11 +296,11 @@ function pg_dashboard_widget_23($request, $user)
                 SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms,
                 MAX(max_ms)                            AS max_ms
              FROM perf_stats
-             WHERE hour_start >= " . (int) $pf_day_ago . "
+             WHERE hour_start >= ?
                AND area = 'frontend'
              GROUP BY label, area
              ORDER BY avg_ms DESC, label ASC, area ASC
-             LIMIT 5"
+             LIMIT 5", array((int) $pf_day_ago)
         );
 
         $pf_pages = $pf_result ? mysqli_fetch_items($pf_result) : array();

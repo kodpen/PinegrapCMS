@@ -67,13 +67,16 @@ function test_file_withheld_is_asked_by_the_file_doors()
 {
 	$explorer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php')
 		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/archives.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_items.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_files.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_file_window.php')
 		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_zip.php');
 
 	$doors = array(
-		"case 'explorer_file_get':"                 => 'file_get_contents(',
-		"case 'explorer_file_save':"                => '@rename(',
-		"case 'explorer_rename':"                   => '@rename(',
-		"case 'explorer_paste':"                    => '@copy(',
+		'function pg_explorer_handle_file_get('   => 'file_get_contents(',
+		'function pg_explorer_handle_file_save('  => '@rename(',
+		'function pg_explorer_handle_rename('     => '@rename(',
+		'function pg_explorer_handle_paste('      => '@copy(',
 		'function pg_explorer_handle_zip_create(' => '->addFile(',
 		'function pg_explorer_copy_folder('         => '@copy(',
 		'function pg_explorer_zip_add_folder('      => '->addFile('

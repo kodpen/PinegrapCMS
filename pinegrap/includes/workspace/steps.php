@@ -39,6 +39,14 @@ define('WS_STEP_BEGAN', 'began:');
 // (30 days).
 define('WS_STEP_APPROVAL_CLOSES_MAX', 720);
 
+// The key the values of what started a run ({{trigger.<field>}}) sit under
+// among the boxes' values (ws_step_node_values()): never a box id.
+define('WS_STEP_TRIGGER', '@trigger');
+
+// A value a box's text reads: {{node.<id>.<field>}}, or {{trigger.<field>}}
+// (group 1 the box id, empty for the trigger; group 2 the field).
+define('WS_STEP_VALUE_PATTERN', '/\{\{(?:node\.([a-z][a-z0-9_]{0,31})|trigger)\.([a-z_][a-z0-9_]{0,31})\}\}/');
+
 /**
  * The kinds of step box: their name, the scheduled action's step they are
  * (type), the texts of their settings that {{node.*}} values are filled into
@@ -197,7 +205,8 @@ function ws_step_outcomes()
  * dropped. Pure: whether the owner may write in the channel, or the
  * addresses are good, is asked by ws_step_check().
  *
- * post:      channel_id, body
+ * post:      channel_id (-1 for the channel joined, in a flow a join
+ *            starts), body
  * email:     to (addresses, separated by commas or lines), subject, body,
  *            page_id (a page sent instead of the body, 0 for none)
  * notify:    user_ids (up to 50), text
@@ -245,7 +254,7 @@ function ws_step_config_normalize($kind, $config)
     switch ($kind) {
         case 'post':
             return array(
-                'channel_id' => $number($config['channel_id'] ?? 0),
+                'channel_id' => (is_numeric($config['channel_id'] ?? 0) && ((int) ($config['channel_id'] ?? 0) === -1)) ? -1 : $number($config['channel_id'] ?? 0),
                 'body'       => ws_flow_lines($config['body'] ?? '', 4000),
             );
 
@@ -407,15 +416,20 @@ function ws_step_config_normalize($kind, $config)
  * @param string $kind
  * @param array  $config ws_step_config_normalize()
  * @param string $name   the box's name in the sentences
+ * @param bool   $joined the flow starts when somebody joins a channel
+ *                       (ws_flow_starts_on_join()): a post box may write
+ *                       in the channel joined
  * @return string[]
  */
-function ws_step_config_problems($kind, $config, $name)
+function ws_step_config_problems($kind, $config, $name, $joined = false)
 {
     $problems = array();
 
     switch ($kind) {
         case 'post':
-            if ((int) $config['channel_id'] <= 0) {
+            if (((int) $config['channel_id'] === -1) && !$joined) {
+                $problems[] = lang(array('string' => 'The box {var:1} writes in the channel joined, but the flow does not start when somebody joins a channel.', 'vars' => $name));
+            } elseif (((int) $config['channel_id'] === 0) || ((int) $config['channel_id'] < -1)) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs a channel to write in.', 'vars' => $name));
             }
 
@@ -552,15 +566,136 @@ function ws_step_action($kind, $config)
  * @param array  $viewer
  * @param string $kind
  * @param array  $config
+ * @param bool   $joined the flow starts when somebody joins a channel: a
+ *                       post box may write in the channel joined (-1)
  * @return array ok, error, action
  */
-function ws_step_check($viewer, $kind, $config)
+function ws_step_check($viewer, $kind, $config, $joined = false)
 {
     if (!isset(ws_step_kinds()[$kind])) {
         return array('ok' => false, 'error' => lang('This kind of box cannot run yet.'), 'action' => null);
     }
 
-    return ws_scheduled_action_input($viewer, ws_step_action($kind, $config));
+    return ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
+}
+
+/**
+ * What a box's step reads of what started its run, as a scheduled action's
+ * step reads it (ws_scheduled_fill(), ws_events_fill_values()): the event
+ * and its payload, the newcomer and the channel they joined, the flow
+ * whose box started it ({{source}}, {{source_result}}). The run's
+ * other keys (its trigger box, home channel, flow name) are the flow's own.
+ * Pure.
+ *
+ * @param array $context ws_flow_run_context()
+ * @return array event, event_payload, newcomer, join_channel_id, source,
+ *               source_result, those known
+ */
+function ws_step_trigger_context($context)
+{
+    $out = array();
+
+    if ((string) ($context['event'] ?? '') !== '') {
+        $out['event'] = (string) $context['event'];
+
+        if (is_array($context['event_payload'] ?? null)) {
+            $out['event_payload'] = $context['event_payload'];
+        }
+    }
+
+    if ((int) ($context['newcomer'] ?? 0) > 0) {
+        $out['newcomer'] = (int) $context['newcomer'];
+        $out['join_channel_id'] = max(0, (int) ($context['join_channel_id'] ?? 0));
+    }
+
+    // A run another flow's box started: that flow and what led to it.
+    if ((string) ($context['source'] ?? '') !== '') {
+        $out['source'] = (string) $context['source'];
+        $out['source_result'] = (string) ($context['source_result'] ?? '');
+    }
+
+    return $out;
+}
+
+/**
+ * The values of what started a run, {{trigger.<field>}}: every field its
+ * start box declares (ws_flow_trigger_outputs(), by the context's trigger
+ * kind and event), from the run's context; a field the context lacks, or a
+ * value that is not a single number or text, is empty. An event's record
+ * and payload only where the owner may see the record now ($sees); its
+ * name always. A run started by hand or by another flow's box declares
+ * none, whatever it carries. Pure.
+ *
+ * @param array $context ws_flow_run_context()
+ * @param bool  $sees    the owner may see what the event is about
+ * @param array $names   newcomer, channel: their names (ws_step_trigger_values_for())
+ * @return array field => text
+ */
+function ws_step_trigger_values($context, $sees, $names = array())
+{
+    $kind = (string) ($context['trigger'] ?? '');
+    $event = (string) ($context['event'] ?? '');
+    $outputs = function_exists('ws_flow_trigger_outputs') ? ws_flow_trigger_outputs($kind, array('event' => $event)) : array();
+    $given = array();
+
+    if ($kind === 'event') {
+        $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
+        $record = function_exists('ws_events_record_of') ? ws_events_record_of($event, $payload) : array('', 0);
+        $given = $sees ? array('record_id' => ($record[1] > 0) ? $record[1] : null) + $payload : array();
+        $given['event'] = $event;
+    } elseif ($kind === 'join') {
+        $given = array(
+            'newcomer_id'   => ((int) ($context['newcomer'] ?? 0) > 0) ? (int) $context['newcomer'] : null,
+            'newcomer_name' => $names['newcomer'] ?? null,
+            'channel_id'    => ((int) ($context['join_channel_id'] ?? 0) > 0) ? (int) $context['join_channel_id'] : null,
+            'channel_name'  => $names['channel'] ?? null,
+        );
+    }
+
+    $out = array();
+
+    foreach ($outputs as $output) {
+        $value = $given[$output['key']] ?? null;
+        $out[$output['key']] = (is_scalar($value) && !is_bool($value)) ? (string) $value : '';
+    }
+
+    return $out;
+}
+
+/**
+ * ws_step_trigger_values() of a run for its owner: whether they may see the
+ * event's record now (the right its kind of record needs, and for the
+ * workspace's own events the task or the channel, ws_events_creator_sees()),
+ * and the names of the newcomer and the channel joined.
+ *
+ * @param array $owner   the flow's owner, as the workspace sees their rights
+ * @param array $context ws_flow_run_context()
+ * @return array field => text
+ */
+function ws_step_trigger_values_for($owner, $context)
+{
+    $kind = (string) ($context['trigger'] ?? '');
+    $sees = false;
+    $names = array();
+
+    if (($kind === 'event') && function_exists('ws_events_catalog')) {
+        $event = (string) ($context['event'] ?? '');
+        $right = (string) (ws_events_catalog()[$event]['right'] ?? '');
+        $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
+        $sees = ($right !== '') && !empty($owner[$right])
+            && (!ws_events_is_own($event) || ws_events_creator_sees((int) ($owner['id'] ?? 0), $event, $payload));
+    }
+
+    if ($kind === 'join') {
+        $newcomer = (int) ($context['newcomer'] ?? 0);
+        $channel = (int) ($context['join_channel_id'] ?? 0);
+        $names = array(
+            'newcomer' => ($newcomer > 0) ? ws_person_name($newcomer) : '',
+            'channel'  => ($channel > 0) ? (string) db_value("SELECT name FROM ws_channels WHERE id = '" . $channel . "'") : '',
+        );
+    }
+
+    return ws_step_trigger_values($context, $sees, $names);
 }
 
 /**
@@ -628,32 +763,107 @@ function ws_step_node_values($rows)
 }
 
 /**
- * Fills the {{node.<id>.<field>}} of a text; one the run has no value for
- * becomes empty. The other double braces are left for ws_scheduled_fill().
- * Every "{" of a value is followed by a word joiner (U+2060), so nothing a
- * box gave (a visitor's words, a webhook's answer) is read again as a
- * placeholder by ws_scheduled_fill(), not even with a brace of the text
- * around it. Values without braces are inserted as they are. Pure.
+ * Fills the {{node.<id>.<field>}} and {{trigger.<field>}} of a text; one the
+ * run has no value for becomes empty. The other double braces are left for
+ * ws_scheduled_fill(). Each value is made safe for where the text lands
+ * (ws_step_fill_value()). Pure.
  *
  * @param string $text
- * @param array  $values ws_step_node_values()
+ * @param array  $values ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
+ * @param string $target ws_step_fill_target()
  * @return string
  */
-function ws_step_fill_nodes($text, $values)
+function ws_step_fill_nodes($text, $values, $target = 'text')
 {
     $text = (string) $text;
 
-    if (strpos($text, '{{node.') === false) {
+    if ((strpos($text, '{{node.') === false) && (strpos($text, '{{trigger.') === false)) {
         return $text;
     }
 
-    return (string) preg_replace_callback('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', function ($match) use ($values) {
-        return str_replace('{', "{\u{2060}", (string) ($values[$match[1]][$match[2]] ?? ''));
+    return (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values, $target) {
+        return ws_step_fill_value((string) ($values[ws_step_value_box($match)][$match[2]] ?? ''), $target);
     }, $text);
 }
 
 /**
- * A step's texts with the {{node.*}} values of its run filled in. Pure.
+ * Where the values of a match of WS_STEP_VALUE_PATTERN sit among a run's
+ * values: the box's id, WS_STEP_TRIGGER for {{trigger.<field>}}. Pure.
+ *
+ * @param string[] $match
+ * @return string
+ */
+function ws_step_value_box($match)
+{
+    return ((string) ($match[1] ?? '') !== '') ? (string) $match[1] : WS_STEP_TRIGGER;
+}
+
+/**
+ * Where a step's texts land, which decides how a value is filled into them:
+ * message (a Workspace message, task or approval request, whose
+ * <@user:N> and <#order:N> tags would mention people and tag records), chat
+ * (a webhook's text read by Slack, Teams or Google Chat), discord, or text
+ * (a plain e-mail, an inbox notice, a webhook's JSON body, the task e-mail,
+ * which escapes its HTML where it writes it). Pure.
+ *
+ * @param string $kind   a step kind, or task (the box that waits)
+ * @param array  $action ws_scheduled_action_input()
+ * @return string message | chat | discord | text
+ */
+function ws_step_fill_target($kind, $action)
+{
+    switch ($kind) {
+        case 'post':
+        case 'task':
+        case 'task_open':
+        case 'report':
+        case 'checkin':
+        case 'approval':
+            return 'message';
+
+        case 'webhook':
+            $format = (string) ($action['format'] ?? '');
+
+            return ($format === 'text') ? 'chat' : (($format === 'discord') ? 'discord' : 'text');
+    }
+
+    return 'text';
+}
+
+/**
+ * One {{node.*}} value as it goes into a text landing at $target. Every "{"
+ * is followed by a word joiner (U+2060), so nothing a box gave (a visitor's
+ * words, a webhook's answer) is read again as a placeholder by
+ * ws_scheduled_fill(), not even with a brace of the text around it. In a
+ * message or a chat service so is every "<", so the value's tags, mentions
+ * and links (<@user:5>, <!channel>, <url|label>) stay text; Discord's
+ * @everyone and @here as well. The HTML is escaped where it is written (the
+ * message renderer, the task e-mail) and a webhook's body by json_encode(),
+ * so the value is not escaped here: it would show twice escaped. Pure.
+ *
+ * @param string $value
+ * @param string $target ws_step_fill_target()
+ * @return string
+ */
+function ws_step_fill_value($value, $target)
+{
+    $value = str_replace('{', "{\u{2060}", (string) $value);
+
+    if (in_array($target, array('message', 'chat', 'discord'), true)) {
+        $value = str_replace('<', "<\u{2060}", $value);
+    }
+
+    if ($target === 'discord') {
+        $value = (string) preg_replace('/@(everyone|here)/i', "@\u{2060}\$1", $value);
+    }
+
+    return $value;
+}
+
+/**
+ * A step's texts with the {{node.*}} values of its run filled in, each made
+ * safe for where the texts land (ws_step_fill_target()); a line field loses
+ * its control characters and line breaks after the fill. Pure.
  *
  * @param string $kind
  * @param array  $action ws_scheduled_action_input()
@@ -663,10 +873,11 @@ function ws_step_fill_nodes($text, $values)
 function ws_step_fill_action($kind, $action, $values)
 {
     $info = ws_step_kinds()[$kind] ?? array('texts' => array(), 'lines' => array());
+    $target = ws_step_fill_target($kind, $action);
 
     foreach ($info['texts'] as $key) {
         if (isset($action[$key]) && is_string($action[$key])) {
-            $action[$key] = ws_step_fill_nodes($action[$key], $values);
+            $action[$key] = ws_step_fill_nodes($action[$key], $values, $target);
 
             if (in_array($key, $info['lines'], true)) {
                 $action[$key] = trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $action[$key]));
@@ -678,7 +889,8 @@ function ws_step_fill_action($kind, $action, $values)
 }
 
 /**
- * The {{node.<id>.<field>}} of a text the run gives no value for, each
+ * The {{node.<id>.<field>}} and {{trigger.<field>}} of a text the run gives
+ * no value for, each
  * once, in the order they first appear: they would be filled in empty.
  * Pure.
  *
@@ -690,9 +902,9 @@ function ws_step_fill_missing($text, $values)
 {
     $missing = array();
 
-    if (preg_match_all('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', (string) $text, $matches, PREG_SET_ORDER)) {
+    if (preg_match_all(WS_STEP_VALUE_PATTERN, (string) $text, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $match) {
-            if (!isset($values[$match[1]][$match[2]]) && !in_array($match[0], $missing, true)) {
+            if (!isset($values[ws_step_value_box($match)][$match[2]]) && !in_array($match[0], $missing, true)) {
                 $missing[] = $match[0];
             }
         }
@@ -751,9 +963,10 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
 /**
  * What a box of a run says it did, as a reader of the run sees it. A change
  * box's sentence names the record and the values it wrote, a condition box's
- * the record, the value and the count it looked at, which only whoever may
- * change the flow reads (ws_flow_graph_present() keeps them
- * back the same way); everybody else reads that a change was made, or not.
+ * the record, the value and the count it looked at, a start box's the flow
+ * it started, which only whoever may change the flow reads
+ * (ws_flow_graph_present() keeps them back the same way); everybody else
+ * reads that a change was made, or not.
  * Pure.
  *
  * @param string $kind    the box's kind
@@ -764,8 +977,14 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  */
 function ws_step_result_shown($kind, $outcome, $text, $edit)
 {
-    if ($edit || !in_array((string) $kind, array('change', 'condition'), true) || ((string) $text === '')) {
+    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow'), true) || ((string) $text === '')) {
         return (string) $text;
+    }
+
+    // The flow started may be one the reader does not reach: its name stays
+    // back.
+    if ((string) $kind === 'start_flow') {
+        return ((string) $outcome === 'done') ? lang('Another flow was started.') : lang('Another flow could not be started.');
     }
 
     // A condition's sentence names the record, the value and the count now.
@@ -822,25 +1041,32 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     }
 
     $routed = ws_flow_outcome_routed($graph, $node['id'], 'failed');
-    $check = ws_step_check($owner, $kind, $node['config']);
+    $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
 
     if (!$check['ok']) {
-        $end = ws_step_settlement(false, $routed);
-        ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $check['error']);
+        if (!ws_flow_retry_wait($step, $node, $check['error'])) {
+            $end = ws_step_settlement(false, $routed);
+            ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $check['error']);
+        }
+
         return;
     }
 
     $refusal = ws_step_starter_refusal($run, $kind, $node['config']);
 
     if ($refusal !== '') {
-        $end = ws_step_settlement(false, $routed);
-        ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $refusal);
+        if (!ws_flow_retry_wait($step, $node, $refusal)) {
+            $end = ws_step_settlement(false, $routed);
+            ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $refusal);
+        }
+
         return;
     }
 
     $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
         WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
     $context = ws_flow_run_context($run);
+    $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
 
     // What ws_scheduled_fill() reads of the action: the flow's name as the
     // run started, and the run's number for {{run}}. A change posts its
@@ -874,19 +1100,24 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         'run_id'          => 0,
     );
 
-    // A lead box reads the form submission that started the run; the other
-    // boxes' texts are not filled from the event.
-    if ($kind === 'lead') {
-        $step_context['event'] = (string) ($context['event'] ?? '');
-        $step_context['event_payload'] = (array) ($context['event_payload'] ?? array());
-    }
+    // What started the run: the texts' {{record}}, {{newcomer}} and the
+    // rest, a post in the channel joined, a lead box's form submission.
+    $step_context += ws_step_trigger_context($context);
 
     // An approval's deadline counts from when the box runs.
     if (($kind === 'approval') && ($node['config']['closes_in'] ?? '') !== '') {
         $action['closes_at'] = time() + (int) $node['config']['closes_in'] * 3600;
     }
 
+    // An event the step causes starts the actions waiting for it one step
+    // further down the run's chain; the depth that stood before is given
+    // back after, so a step run inside another run keeps that run's depth.
+    $outer_depth = ws_event_depth();
+    ws_event_depth((int) ($run['depth'] ?? 0));
+
     $done = ws_scheduled_do($owner, $row, $action, $step_context);
+
+    ws_event_depth($outer_depth - 1);
 
     // An approval box asked: it waits for the request to end
     // (flow_runs.php).
@@ -895,9 +1126,18 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         return;
     }
 
+    $data = ws_step_result_data($kind, $node['config'], $done);
+
+    // A failure tries again first where the box is set to (its owner's
+    // answer to a passing outage); the arrow on failed is taken once the
+    // tries are used.
+    if (empty($done['ok']) && ws_flow_retry_wait($step, $node, (string) ($done['text'] ?? ''), $data)) {
+        return;
+    }
+
     $end = ws_step_settlement(!empty($done['ok']), $routed);
 
-    ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), ws_step_result_data($kind, $node['config'], $done));
+    ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), $data);
 }
 
 /**
@@ -960,6 +1200,7 @@ function ws_flow_box_try($viewer, $flow, $data)
         $values = ws_step_node_values(array_filter(ws_flow_run_steps($run_id), function ($row) {
             return ws_flow_step_settled((string) $row['status']);
         }));
+        $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, ws_flow_run_context($run));
     }
 
     $kind = (string) $node['kind'];
@@ -981,7 +1222,7 @@ function ws_flow_box_try($viewer, $flow, $data)
     );
 
     if (!empty(ws_flow_kinds()[$kind]['step'])) {
-        $check = ws_step_check($owner, $kind, $node['config']);
+        $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
 
         if (!$check['ok']) {
             return array('outcome' => 'failed', 'refusal' => (string) $check['error']) + $answer;
@@ -1040,7 +1281,7 @@ function ws_flow_box_try($viewer, $flow, $data)
             return array('outcome' => 'next', 'said' => lang('The flow starts when somebody runs it.')) + $answer;
 
         case 'task':
-            $title = ws_step_fill_nodes((string) ($node['config']['title'] ?? ''), $values);
+            $title = ws_step_fill_nodes((string) ($node['config']['title'] ?? ''), $values, ws_step_fill_target('task', array()));
 
             $hours = function_exists('ws_flow_timeout_hours') ? ws_flow_timeout_hours($node['config']) : 0;
 
@@ -1068,6 +1309,20 @@ function ws_flow_box_try($viewer, $flow, $data)
                 'outcome' => 'done',
                 'said'    => lang(array('string' => 'Waits {var:1}, then the boxes after it start.', 'vars' => ws_flow_delay_text($node['config']))),
                 'next'    => array(ws_scheduled_moment(ws_flow_delay_until($node['config'], time()))),
+            ) + $answer;
+
+        // The flow it would start; the chain's depth and the started flow's
+        // limits are a run's, so they are not asked here.
+        case 'start_flow':
+            $chain = ws_flow_chain_check($owner, (int) $flow['id'], $node['config']);
+
+            if (!$chain['ok']) {
+                return array('outcome' => 'failed', 'refusal' => (string) $chain['error']) + $answer;
+            }
+
+            return array(
+                'outcome' => 'done',
+                'said'    => lang(array('string' => 'Starts the flow “{var:1}” and goes on without waiting for it.', 'vars' => (string) $chain['flow']['name'])),
             ) + $answer;
     }
 

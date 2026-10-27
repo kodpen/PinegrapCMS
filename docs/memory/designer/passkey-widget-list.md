@@ -1,6 +1,6 @@
 ---
 name: passkey-widget-list
-description: Passkeys in the designed account_security widget (PR #1843): the security.passkeys list, row tokens, widget flags, rename/remove buttons that carry the passkey, the add form and its script
+description: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
 ---
 
 ## How does the widget list passkeys?
@@ -19,6 +19,11 @@ description: Passkeys in the designed account_security widget (PR #1843): the se
 
 ## How does adding work?
 - A form bound to `passkey_add_form` gets `hidden`, `data-pg-passkey-add` and the CSRF field; it counts as a bound form. `pg_passkey_add_form_script()` (`includes/fn/passkeys.php`, appended once when such a form is drawn) unhides it when `PgPasskey.supported()`, else puts the "cannot create passkeys" sentence before it; on submit it calls `PgPasskey.register()` with `name`, `current_password`, `code` and reloads. Errors go to `[data-pg-passkey-message]` in the form, or a div it adds. Sentences: `pg_passkey_add_texts()`, shared with the classic section.
+
+## How does an account without TOTP add one? (PR #2279)
+- As on the classic page: password + a code e-mailed to the account (`email_code`). Flag `passkey_asks_email_code`; a button bound to `passkey_send_code` becomes `type="button" data-pg-passkey-send`, which the script wires to `PgPasskey.sendEmailCode()` (sentence into `[data-pg-passkey-sent]`, else the message). The first passkey's recovery codes replace the form (`showRecoveryCodes()`).
+- Only a tree with a control named `email_code` offers it (`_pg_sec_tree_has_email_code()`); a tree saved before keeps `passkey_needs_mfa` (`pg_sw_passkey_add_state()`).
+- Device rows: `__device_passkey` (the passkey that opened the session), flag `device_by_passkey`, `__passkey_id` filled so a `passkey_remove` button there removes it; the proof flags apply in device rows too.
 
 ## What was not verified?
 - Unit tests only (`tests/widget_lists_passkeys_test.php`, the editor twin test): no browser authenticator, no designer canvas round.

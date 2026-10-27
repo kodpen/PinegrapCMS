@@ -219,6 +219,7 @@ $pg_settings_cards[] = '
                                                                                 </div>
                                                                             </div>
                                                                         </div>
+                                                                        ' . pg_label_settings_rows() . '
                                                                         <div class="col-12 ">
                                                                             <label for="ecommerce_product_restriction_message" class="form-label">' . lang('Product Restriction Message') . '</label>
                                                                             <input type="text" name="ecommerce_product_restriction_message" id="ecommerce_product_restriction_message" class="form-control" value="' . h($ecommerce_product_restriction_message) . '" maxlength="255"/>
@@ -1105,6 +1106,46 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Reference Price ──
+// Which price stands beside a reduced price as the price before the discount
+// (pg_price_reference_rule()). Drawn once the schema has its column; the save
+// writes it only then.
+if ($reference_price_rule_ready) {
+    $reference_price_rule_options = array(
+        'lowest_30d' => array(lang('Lowest price of the last 30 days'), lang('The Turkish price label regulation and the EU Omnibus rule ask for this one.')),
+        'lowest_10d' => array(lang('Lowest price of the last 10 days'), lang('The Turkish rule for discount advertising from 1 August 2026.')),
+        'manual'     => array(lang('Compare-at Price'), lang('The compare-at price entered on each product, shown only when it is higher than the current price.')),
+    );
+    $reference_price_rule_fields = '';
+
+    foreach ($reference_price_rule_options as $reference_rule => $reference_rule_text) {
+        $reference_rule_id = 'ecommerce_reference_price_rule_' . $reference_rule;
+        $reference_price_rule_fields .= '
+                            <div class="form-field">
+                                <input value="' . $reference_rule . '" class="radio" type="radio" id="' . $reference_rule_id . '" name="ecommerce_reference_price_rule"' . (($ecommerce_reference_price_rule === $reference_rule) ? ' checked' : '') . '>
+                                <label class="" for="' . $reference_rule_id . '">' . $reference_rule_text[0] . '</label>
+                            </div>
+                            <div class="form-text mb-3">' . $reference_rule_text[1] . '</div>';
+    }
+
+    $pg_settings_cards[] = '
+    <div id="pgset-reference-price" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Reference Price') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                    <div class="col-12">
+                        <label class="form-label">' . lang('Price before the discount') . '</label>' . $reference_price_rule_fields . '
+                        <div class="form-text">' . lang('Under a lowest-price rule, a product whose price history is shorter than the period shows its current price as the reference, never a lowest read from part of the period.') . '</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>';
+}
+
 // ── Legal Documents ──
 // The pre-information form and the distance sales contract, filled from the
 // order. Drawn once the schema has its fields; the save writes them only then.
@@ -1124,6 +1165,27 @@ if ($legal_documents_ready) {
                                                             <label class="form-label" for="' . $legal_field . '">' . h($legal_label) . '</label>
                                                             <textarea class="form-control font-monospace" id="' . $legal_field . '" name="' . $legal_field . '" rows="12" spellcheck="false">' . h($ecommerce_legal_templates[$legal_type]) . '</textarea>
                                                         </div>';
+    }
+
+    // The KVKK lines of the checkout: a link to the store's own notice page
+    // and an optional explicit consent box.
+    $legal_kvkk_fields = '';
+
+    if ($legal_kvkk_ready) {
+        $legal_kvkk_fields = '
+                                    <div class="col-12 md:col-6">
+                                        <label class="form-label" for="ecommerce_kvkk_page_id">' . lang('KVKK Notice Page') . '</label>
+                                        <select class="form-control" id="ecommerce_kvkk_page_id" name="ecommerce_kvkk_page_id">
+                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>
+                                            ' . select_page($ecommerce_kvkk_page_id ?: '') . '
+                                        </select>
+                                        <div class="form-text">' . lang('The checkout links this page where it explains how personal data is processed.') . '</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" for="ecommerce_kvkk_consent_text">' . lang('Explicit Consent Sentence') . '</label>
+                                        <textarea class="form-control" id="ecommerce_kvkk_consent_text" name="ecommerce_kvkk_consent_text" rows="3">' . h($ecommerce_kvkk_consent_text) . '</textarea>
+                                        <div class="form-text">' . lang('Shown beside a box the customer may leave unticked; the answer is kept with the order. Leave it empty for no box.') . '</div>
+                                    </div>';
     }
 
     $pg_settings_cards[] = '
@@ -1146,7 +1208,7 @@ if ($legal_documents_ready) {
                                 <div class="row gy-5">
                                     <div class="col-12">
                                         <div class="form-text">' . lang('The templates are a starting point. Have them reviewed for your business before switching this on, and add what only you know, such as your MERSİS number and your return carrier. Clear a template to go back to the built-in one.') . '</div>
-                                    </div>' . $legal_template_fields . '
+                                    </div>' . $legal_template_fields . $legal_kvkk_fields . '
                                     <div class="col-12">
                                         <details>
                                             <summary class="form-text">' . lang('Fields you can use in a template') . '</summary>

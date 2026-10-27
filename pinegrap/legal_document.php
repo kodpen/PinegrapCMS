@@ -14,14 +14,15 @@
  * checkout page was drawn with.
  *
  * With an order id: the copy kept with a placed order when it was placed
- * (pg_legal_documents_store()), with when it was accepted. Shown to the
+ * (pg_legal_documents_store()), the KVKK copy included,
+ * with when it was accepted. Shown to the
  * customer the order belongs to, to the guest who has just placed it and to
  * staff who manage the store (pg_legal_document_may_view()); a kept copy
  * stays readable after the store switches the documents off.
  *
  * Changes nothing in either case.
  *
- * Request: GET type=preinfo|contract [order_id=N]
+ * Request: GET type=preinfo|contract [order_id=N], type=kvkk order_id=N
  *          POST to the same address: token, billing_*, payment_method
  *
  * @author      Erdal Güral (Kodpen)
@@ -32,7 +33,7 @@
 
 include('init.php');
 
-$types = pg_legal_document_types();
+$types = pg_legal_document_labels();
 $type = isset($_GET['type']) && is_string($_GET['type']) ? $_GET['type'] : '';
 $order_id = isset($_GET['order_id']) && is_scalar($_GET['order_id']) ? (int) $_GET['order_id'] : 0;
 
@@ -56,7 +57,8 @@ if ($order_id > 0) {
     $note = pg_legal_document_acceptance_note($kept[$type]);
 
 } else {
-    if (!pg_legal_documents_enabled()) {
+    // The KVKK notice is a page of the site; only a kept copy is shown here.
+    if (!pg_legal_documents_enabled() || !isset(pg_legal_document_types()[$type])) {
         output_error(lang('This page is not available.'));
     }
 

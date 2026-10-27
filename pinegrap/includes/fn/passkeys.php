@@ -272,6 +272,159 @@ function pg_passkey_ceremony_take(&$store, $purpose, $user_id, $now)
     return $ceremony;
 }
 
+// ── Sessions opened with a passkey ──────────────────────────────────────────
+
+/**
+ * Marks that the account signed in with a passkey, until the session's token
+ * is minted (pg_login_set_device_cookie()), which may be a request later
+ * when the device limit screen comes between.
+ *
+ * @param mixed $store      the session's value, by reference
+ * @param int   $user_id
+ * @param int   $passkey_id
+ * @param int   $now
+ */
+function pg_passkey_signin_mark(&$store, $user_id, $passkey_id, $now)
+{
+    $store = array('user_id' => (int) $user_id, 'passkey_id' => (int) $passkey_id, 'time' => (int) $now);
+}
+
+/**
+ * Takes the mark of pg_passkey_signin_mark() for an account whose token is
+ * being minted. Any mint takes it, so it never outlives the sign-in it was
+ * left by; one older than ten minutes (a sign-in given up at the device limit
+ * screen) names nothing.
+ *
+ * @param mixed $store   by reference
+ * @param int   $user_id
+ * @param int   $now
+ * @return int the passkey's id; 0 when none
+ */
+function pg_passkey_signin_marked(&$store, $user_id, $now)
+{
+    if (!is_array($store) || !isset($store['user_id'], $store['passkey_id'], $store['time'])) {
+        return 0;
+    }
+
+    if ((int) $store['user_id'] !== (int) $user_id) {
+        return 0;
+    }
+
+    $mark = $store;
+    $store = null;
+
+    if ((((int) $now - (int) $mark['time']) > 600) || ((int) $mark['time'] > (int) $now)) {
+        return 0;
+    }
+
+    return max(0, (int) $mark['passkey_id']);
+}
+
+/**
+ * Whether auth_tokens has its passkey_id column (2026.11.0, 11.0.46): the
+ * token of a sign-in is minted on the upgrade bridge too.
+ *
+ * @return bool
+ */
+function pg_auth_tokens_have_passkey()
+{
+    static $have = null;
+
+    if ($have === null) {
+        $have = pg_auth_tokens_table_exists() && pg_schema_has('auth_tokens', 'passkey_id');
+    }
+
+    return $have;
+}
+
+// ── E-mailed code ───────────────────────────────────────────────────────────
+
+/**
+ * How long a code e-mailed for adding a passkey works, in seconds.
+ *
+ * @return int
+ */
+function pg_passkey_email_code_lifetime()
+{
+    return 600;
+}
+
+/**
+ * A new six-digit code to e-mail.
+ *
+ * @return string
+ */
+function pg_passkey_email_code_new()
+{
+    return sprintf('%06d', random_int(0, 999999));
+}
+
+/**
+ * Keeps an e-mailed code for an account: its hash, never the code, so a
+ * session store that is read cannot hand it out. One code per session; a
+ * newer one replaces the older.
+ *
+ * @param mixed  $store   the session's value, by reference
+ * @param int    $user_id
+ * @param string $code
+ * @param int    $now
+ */
+function pg_passkey_email_code_keep(&$store, $user_id, $code, $now)
+{
+    $store = array(
+        'user_id' => (int) $user_id,
+        'hash'    => hash('sha256', 'passkey-email-code:' . (int) $user_id . ':' . (string) $code),
+        'time'    => (int) $now,
+        'misses'  => 0,
+    );
+}
+
+/**
+ * Checks a typed e-mailed code. A right one is used up; a wrong one counts,
+ * and the fifth wrong guess ends the code, so six digits cannot be walked
+ * through. A code kept for another account is left as it is.
+ *
+ * @param mixed  $store   by reference
+ * @param int    $user_id
+ * @param string $code    white space is ignored
+ * @param int    $now
+ * @return string '' when accepted, 'email_code' when wrong, 'email_expired'
+ *                when there is none to check (never sent, too old, used,
+ *                too many wrong guesses, another account's)
+ */
+function pg_passkey_email_code_check(&$store, $user_id, $code, $now)
+{
+    if (!is_array($store) || !isset($store['user_id'], $store['hash'], $store['time'], $store['misses'])
+        || ((int) $store['user_id'] !== (int) $user_id)) {
+        return 'email_expired';
+    }
+
+    if ((((int) $now - (int) $store['time']) > pg_passkey_email_code_lifetime())
+        || ((int) $store['time'] > (int) $now) || ((int) $store['misses'] >= 5)) {
+        $store = null;
+
+        return 'email_expired';
+    }
+
+    $code = preg_replace('/\s+/', '', (string) $code);
+
+    if (hash_equals((string) $store['hash'], hash('sha256', 'passkey-email-code:' . (int) $user_id . ':' . $code))) {
+        $store = null;
+
+        return '';
+    }
+
+    $store['misses'] = (int) $store['misses'] + 1;
+
+    if ($store['misses'] >= 5) {
+        $store = null;
+
+        return 'email_expired';
+    }
+
+    return 'email_code';
+}
+
 // ── Stored passkeys ─────────────────────────────────────────────────────────
 
 /**
@@ -473,6 +626,12 @@ function pg_passkeys_forget($user_id)
         return;
     }
 
+    // The sessions they opened end with them, as when one is removed.
+    if (pg_auth_tokens_have_passkey()) {
+        db("DELETE FROM auth_tokens WHERE user_id = '" . (int) $user_id . "' AND passkey_id > 0"
+            . (pg_auth_tokens_have_pin() ? " AND pinned = 0" : ''));
+    }
+
     db("DELETE FROM user_passkeys WHERE user_id = '" . (int) $user_id . "'");
 }
 
@@ -540,7 +699,121 @@ function pg_passkey_remove($user_id, $passkey_id)
 
     db("DELETE FROM user_passkeys WHERE id = '" . (int) $passkey_id . "' AND user_id = '" . (int) $user_id . "'");
 
-    return (mysqli_affected_rows(db::$con) === 1) ? $name : null;
+    if (mysqli_affected_rows(db::$con) !== 1) {
+        return null;
+    }
+
+    pg_passkey_sessions_end($user_id, $passkey_id);
+
+    // The last passkey of an account without an authenticator key takes its
+    // recovery codes along: there is no second step left for them to stand
+    // in for.
+    if ((pg_passkey_count($user_id) === 0) && pg_mfa_table_exists() && !pg_mfa_enabled($user_id)) {
+        pg_mfa_recovery_forget($user_id);
+    }
+
+    return $name;
+}
+
+/**
+ * Ends the sessions a passkey opened: their tokens go, and with them the
+ * sessions bound to them (pg_session_bind_token()), this browser's too when
+ * it signed in with that passkey. A synced passkey is one credential on every
+ * device of its cloud account, so they all go. A session an operator locked
+ * stays, as with "sign out of all devices". Silent before 11.0.46.
+ *
+ * @param int $user_id
+ * @param int $passkey_id
+ */
+function pg_passkey_sessions_end($user_id, $passkey_id)
+{
+    if (((int) $passkey_id <= 0) || !pg_auth_tokens_have_passkey()) {
+        return;
+    }
+
+    db("DELETE FROM auth_tokens
+        WHERE user_id = '" . (int) $user_id . "' AND passkey_id = '" . (int) $passkey_id . "'"
+        . (pg_auth_tokens_have_pin() ? " AND pinned = 0" : ''));
+}
+
+/**
+ * After a passkey was added: for an account without an authenticator key
+ * the passkey is now its second factor. Its first passkey turns the second
+ * step on, so the account's other remember-me tokens and API devices go, as
+ * when an authenticator key is turned on; and an account with no unused
+ * recovery code gets ten, its way in when the passkey is lost.
+ *
+ * @param int $user_id
+ * @return string[] the new recovery codes in plain text, to be shown once;
+ *                  none when the account has an authenticator key or codes
+ *                  left
+ */
+function pg_passkey_registered($user_id)
+{
+    if (!pg_mfa_table_exists() || pg_mfa_enabled($user_id)) {
+        return array();
+    }
+
+    if (pg_passkey_count($user_id) === 1) {
+        pg_mfa_revoke_other_sessions($user_id);
+    }
+
+    if (pg_mfa_recovery_remaining($user_id) > 0) {
+        return array();
+    }
+
+    return pg_mfa_recovery_regenerate($user_id);
+}
+
+/**
+ * E-mails the code an account without two-step verification types to add a
+ * passkey, to the address kept on the account, and keeps it in the session
+ * (pg_passkey_email_code_keep()). At most five codes an hour per account.
+ *
+ * @param array $account id, username, email
+ * @return string '' when sent, else 'email_none' (no address), 'email_limit'
+ *                or 'email_send'
+ */
+function pg_passkey_email_code_send($account)
+{
+    $email = trim((string) ($account['email'] ?? ''));
+
+    if (($email === '') || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return 'email_none';
+    }
+
+    if (function_exists('waf_rate_exceeded') && waf_rate_exceeded((string) (int) $account['id'], 'passkey-mail', 5, 3600)) {
+        return 'email_limit';
+    }
+
+    $code = pg_passkey_email_code_new();
+
+    $site = (defined('HOSTNAME_SETTING') && (HOSTNAME_SETTING !== '')) ? (string) HOSTNAME_SETTING : (string) ORGANIZATION_NAME;
+
+    // Sent now, not queued: the person waits for it on the page. Marked
+    // secret, so the code stays out of the failure log and notice.
+    $sent = email(array(
+        'to'                 => $email,
+        'from_name'          => ORGANIZATION_NAME,
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject'            => lang('Your code for adding a passkey'),
+        'body'               =>
+            lang(array('string' => 'Your code for adding a passkey to your account at {var:1}:', 'vars' => $site)) . "\n"
+            . "\n"
+            . $code . "\n"
+            . "\n"
+            . lang('It works for 10 minutes.') . "\n"
+            . "\n"
+            . lang('If you did not ask for it, change your password now: whoever asked for it knows your password and is signed in to your account.'),
+        'secret'             => true));
+
+    if (!$sent) {
+        return 'email_send';
+    }
+
+    pg_passkey_email_code_keep($_SESSION['software']['passkey_email_code'], (int) $account['id'], $code, time());
+
+    return '';
 }
 
 // ── Registration ────────────────────────────────────────────────────────────
@@ -694,15 +967,9 @@ function pg_passkey_register($account, $input, $name = '')
         return array('ok' => false, 'error' => 'duplicate');
     }
 
-    $values = array();
-
-    foreach ($row as $value) {
-        $values[] = "'" . e((string) $value) . "'";
-    }
-
     // Not db(): a failed statement there prints an HTML page, and the caller
-    // answers JSON.
-    if (!@mysqli_query(db::$con, "INSERT INTO user_passkeys (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', $values) . ")")) {
+    // answers JSON. Every value quoted, as before.
+    if (!db_q("INSERT INTO user_passkeys (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', array_fill(0, count($row), '?')) . ")", array_map('strval', array_values($row)))) {
         return array('ok' => false, 'error' => (mysqli_errno(db::$con) === 1062) ? 'duplicate' : 'storage');
     }
 
@@ -851,6 +1118,9 @@ function pg_passkey_signin_check($input, $user_id)
     if ($counted && (mysqli_affected_rows(db::$con) !== 1)) {
         return array('ok' => false, 'error' => 'sign_count');
     }
+
+    // The session about to be opened names this passkey.
+    pg_passkey_signin_mark($_SESSION['software']['signin_passkey'], (int) $row['user_id'], (int) $row['id'], time());
 
     return array(
         'ok'         => true,
@@ -1136,20 +1406,56 @@ function pg_passkey_refusal($error, $context)
  * What a person proves before changing the passkeys of their account, by
  * what the account has: its password (every account but a Google-only one,
  * algo 3, which has none) and, while two-step verification is on, a code
- * from the authenticator app or a recovery code. An account with neither
- * proves nothing beyond its session. Adding a passkey is offered only while
- * two-step verification is on, so adding always asks for the code.
+ * from the authenticator app or a recovery code. Adding a passkey to an
+ * account without two-step verification asks for a code sent to the
+ * account's e-mail address instead, so a stolen password alone cannot add
+ * the thief's passkey; removing one asks for no code then. An account with
+ * no password and no two-step verification removes with its session alone.
  *
  * @param int  $password_algo user.user_password_algo
  * @param bool $mfa_enabled   pg_mfa_enabled() of the account
- * @return array password, code: whether each is asked for
+ * @param bool $adding        true for adding a passkey, false for removing
+ * @return array password, code, email: whether each is asked for
  */
-function pg_passkey_reauth_fields($password_algo, $mfa_enabled)
+function pg_passkey_reauth_fields($password_algo, $mfa_enabled, $adding = false)
 {
     return array(
         'password' => ((int) $password_algo !== 3),
         'code'     => (bool) $mfa_enabled,
+        'email'    => $adding && !$mfa_enabled,
     );
+}
+
+/**
+ * The form that removes one passkey of the signed-in account
+ * (account_security.php, passkey_remove), asking for the proofs
+ * pg_passkey_reauth_fields() names. Drawn under each passkey and beside each
+ * session it opened (pg_account_security_section()).
+ *
+ * @param int    $passkey_id
+ * @param array  $proofs     pg_passkey_reauth_fields() of the account
+ * @param string $action_url account_security.php
+ * @param string $token      the CSRF field
+ * @param string $id_prefix  makes the field ids unique on the page
+ * @param string $button     the button's words
+ * @return string
+ */
+function pg_passkey_remove_form($passkey_id, $proofs, $action_url, $token, $id_prefix, $button)
+{
+    $id = (int) $passkey_id;
+    $field = function ($name, $label, $input) {
+        return '<label for="' . h($name) . '" style="display:block;margin-bottom:.25em">' . h($label) . '</label>' . $input;
+    };
+
+    return '<form method="post" action="' . h($action_url) . '" style="margin:.5em 0 1em" autocomplete="off">' . $token
+        . '<input type="hidden" name="pg_security_action" value="passkey_remove"/>'
+        . '<input type="hidden" name="passkey_id" value="' . $id . '"/>'
+        . '<p style="margin-bottom:.5em">' . h(lang('Removing it also signs out the sessions it opened. Delete it from your device or password manager as well.')) . '</p>'
+        . ($proofs['password'] ? $field($id_prefix . 'password_' . $id, lang('Current password'),
+            '<input type="password" id="' . h($id_prefix . 'password_' . $id) . '" name="current_password" class="software_input_password" required="required" autocomplete="current-password" style="margin-bottom:.5em"/><br/>') : '')
+        . ($proofs['code'] ? $field($id_prefix . 'code_' . $id, lang('Code from your authenticator app or a recovery code'),
+            '<input type="text" id="' . h($id_prefix . 'code_' . $id) . '" name="code" class="software_input_text" required="required" autocomplete="one-time-code" maxlength="20" spellcheck="false" style="margin-bottom:.5em"/><br/>') : '')
+        . '<button type="submit" class="software_input_submit_secondary">' . h($button) . '</button></form>';
 }
 
 /**
@@ -1160,11 +1466,12 @@ function pg_passkey_reauth_fields($password_algo, $mfa_enabled)
  * through passkey.php (assets/js/pg_passkey.js). That form is hidden until
  * its script finds a browser that can make passkeys.
  *
- * Adding is offered only while two-step verification is on: a passkey
- * answers the second step of a sign-in in place of the code, and only an
- * account with two-step verification is asked for one. The current password
- * (none for a Google-only account) and a code are asked for before the
- * browser makes the passkey, so a stolen session cannot plant one.
+ * The current password (none for a Google-only account) and a code are
+ * asked for before the browser makes the passkey, so a stolen session cannot
+ * plant one: with two-step verification on, a code from the authenticator
+ * app or a recovery code; without it, a code e-mailed to the account (the
+ * passkey then becomes its second factor, and the account gets recovery
+ * codes, shown once by the script).
  *
  * @param int    $user_id
  * @param int    $password_algo user.user_password_algo; 3 is a Google-only
@@ -1206,6 +1513,7 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
 
     $mfa = pg_mfa_table_exists() && pg_mfa_enabled($user_id);
     $proofs = pg_passkey_reauth_fields($password_algo, $mfa);
+    $add_proofs = pg_passkey_reauth_fields($password_algo, $mfa, true);
 
     $form = function ($action, $inner) use ($action_url, $token) {
         return '<form method="post" action="' . h($action_url) . '" style="margin:.5em 0 1em" autocomplete="off">' . $token
@@ -1228,7 +1536,9 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
     };
 
     $html = $heading
-        . '<p>' . h(lang('A passkey lets your fingerprint, face or screen lock, or a security key, stand in for the code from your authenticator app when you sign in.')) . '</p>';
+        . '<p>' . h($mfa
+            ? lang('A passkey lets your fingerprint, face or screen lock, or a security key, stand in for the code from your authenticator app when you sign in.')
+            : lang('A passkey lets your fingerprint, face or screen lock, or a security key, sign you in. Once the account has one, signing in with the password asks for it too.')) . '</p>';
 
     if ($count === 0) {
         $html .= '<p>' . h(lang('This account has no passkey.')) . '</p>';
@@ -1258,12 +1568,7 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
                     '<input type="text" id="pg_passkey_name_' . $id . '" name="name" class="software_input_text" maxlength="' . (int) PG_PASSKEY_NAME_MAX . '" value="' . h($name) . '" style="margin-bottom:.5em"/><br/>')
                 . '<button type="submit" class="software_input_submit_primary">' . h(lang('Save')) . '</button>');
 
-            $remove = $form('passkey_remove',
-                '<input type="hidden" name="passkey_id" value="' . $id . '"/>'
-                . '<p style="margin-bottom:.5em">' . h(lang('After removing it here, delete it from your device or password manager as well.')) . '</p>'
-                . ($proofs['password'] ? $password_input('pg_passkey_remove_password_' . $id) : '')
-                . ($proofs['code'] ? $code_input('pg_passkey_remove_code_' . $id) : '')
-                . '<button type="submit" class="software_input_submit_secondary">' . h(lang('Remove')) . '</button>');
+            $remove = pg_passkey_remove_form($id, $proofs, $action_url, $token, 'pg_passkey_remove_', lang('Remove'));
 
             $rows_html .=
                 '<tr><td style="padding:.4em .6em">' . h($name) . $synced
@@ -1288,8 +1593,8 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
         return $html . '<p>' . h(pg_passkey_refusal($ready['error'], 'register')) . '</p>';
     }
 
-    if (!$mfa) {
-        return $html . '<p>' . h(lang('Turn on two-step verification first; a passkey then stands in for its code.')) . '</p>';
+    if (!pg_mfa_table_exists()) {
+        return $html;
     }
 
     if ($count >= PG_PASSKEYS_MAX) {
@@ -1307,8 +1612,15 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
         . '<form id="pg_passkey_add" method="post" action="' . h($action_url) . '" style="margin:0 0 1em" autocomplete="off">' . $token
         . $field('pg_passkey_add_name', lang('Name'),
             '<input type="text" id="pg_passkey_add_name" name="name" class="software_input_text" maxlength="' . (int) PG_PASSKEY_NAME_MAX . '" placeholder="' . h(lang('My phone')) . '" style="margin-bottom:.5em"/><br/>')
-        . ($proofs['password'] ? $password_input('pg_passkey_add_password') : '')
-        . $code_input('pg_passkey_add_code')
+        . ($add_proofs['password'] ? $password_input('pg_passkey_add_password') : '')
+        . ($add_proofs['code'] ? $code_input('pg_passkey_add_code') : '')
+        . ($add_proofs['email']
+            ? $field('pg_passkey_add_email_code', lang('Code we e-mail you'),
+                '<input type="text" id="pg_passkey_add_email_code" name="email_code" class="software_input_text" required="required" inputmode="numeric" autocomplete="one-time-code" maxlength="12" spellcheck="false" style="margin-bottom:.5em"/> '
+                . '<button type="button" id="pg_passkey_send_code" class="software_input_submit_secondary">' . h(lang('Send the code')) . '</button><br/>')
+              . '<p id="pg_passkey_send_message" role="status" style="margin-bottom:.5em"></p>'
+              . '<p style="margin-bottom:.5em">' . h(lang('Once you add a passkey, signing in with your password also asks for it. You get recovery codes for when the passkey is lost.')) . '</p>'
+            : '')
         . '<button type="submit" class="software_input_submit_primary">' . h(lang('Add a passkey')) . '</button>'
         . '<div id="pg_passkey_add_message" class="error" role="alert" style="margin-top:.5em"></div>'
         . '</form></div>'
@@ -1329,24 +1641,51 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
             var button = form.querySelector("button[type=submit]");
             var notice = document.getElementById("pg_passkey_add_message");
             var texts = ' . json_encode(pg_passkey_add_texts(), $json) . ';
+            var url = ' . json_encode(PATH . SOFTWARE_DIRECTORY . '/passkey.php', $json | JSON_UNESCAPED_SLASHES) . ';
             block.style.display = "";
+            var send = document.getElementById("pg_passkey_send_code");
+            if (send) {
+                var sent = document.getElementById("pg_passkey_send_message");
+                send.addEventListener("click", function () {
+                    send.disabled = true;
+                    sent.textContent = "";
+                    notice.textContent = "";
+                    window.PgPasskey.sendEmailCode({ url: url, token: fields.namedItem("token").value }).then(function (message) {
+                        sent.textContent = message;
+                        send.disabled = false;
+                    }).catch(function (error) {
+                        notice.textContent = (error && error.message) || texts.failed;
+                        send.disabled = false;
+                    });
+                });
+            }
             form.addEventListener("submit", function (event) {
                 event.preventDefault();
                 button.disabled = true;
                 notice.textContent = "";
                 window.PgPasskey.register({
-                    url: ' . json_encode(PATH . SOFTWARE_DIRECTORY . '/passkey.php', $json | JSON_UNESCAPED_SLASHES) . ',
+                    url: url,
                     token: fields.namedItem("token").value,
                     name: fields.namedItem("name").value,
                     currentPassword: fields.namedItem("current_password") ? fields.namedItem("current_password").value : "",
-                    code: fields.namedItem("code").value
-                }).then(function () {
+                    code: fields.namedItem("code") ? fields.namedItem("code").value : "",
+                    emailCode: fields.namedItem("email_code") ? fields.namedItem("email_code").value : ""
+                }).then(function (passkey) {
+                    if (passkey.recoveryCodes.length) {
+                        window.PgPasskey.showRecoveryCodes(form, passkey.recoveryCodes, texts);
+                        return;
+                    }
                     window.location.reload();
                 }).catch(function (error) {
                     var code = error && error.code;
                     // A code is spent once passkey.php accepts it, so a
-                    // cancelled dialog needs the next one.
-                    fields.namedItem("code").value = "";
+                    // cancelled dialog needs the next one (a new e-mail for
+                    // the e-mailed code).
+                    ["code", "email_code"].forEach(function (name) {
+                        if (fields.namedItem(name)) {
+                            fields.namedItem(name).value = "";
+                        }
+                    });
                     button.disabled = false;
                     notice.textContent = (error && error.message)
                         || (((code === "NotAllowedError") || (code === "AbortError")) ? texts.cancelled
@@ -1363,11 +1702,17 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
  * The sentences the add a passkey script shows when the browser or the
  * server refuses: the classic section's and the account security widget's.
  *
- * @return array cancelled, duplicate, attempts, failed, unsupported
+ * @return array cancelled, duplicate, attempts, failed, unsupported, and
+ *               for the recovery codes (PgPasskey.showRecoveryCodes())
+ *               title, intro, download, continue
  */
 function pg_passkey_add_texts()
 {
     return array(
+        'title'       => lang('Save your recovery codes'),
+        'intro'       => lang('Each code signs you in once if you lose your passkey. Keep them somewhere safe; they are not shown again.'),
+        'download'    => lang('Download'),
+        'continue'    => lang('Continue'),
         'cancelled'   => lang('The passkey was not created. Please try again.'),
         'duplicate'   => pg_passkey_refusal('duplicate', 'register'),
         'attempts'    => pg_mfa_reauth_message('attempts'),
@@ -1380,10 +1725,14 @@ function pg_passkey_add_texts()
  * The script of the account security widget's add a passkey forms
  * (form[data-pg-passkey-add], wired by _pg_sec_apply_action_bindings()):
  * each form stays hidden until the browser can make passkeys, else a
- * sentence takes its place. On submit it asks passkey.php for the options
- * with the form's name, current_password and code, lets the browser make
- * the passkey and reloads the page; a refusal is shown in the form's
- * [data-pg-passkey-message] element, or in one added after its last
+ * sentence takes its place. A [data-pg-passkey-send] button in the form has
+ * passkey.php e-mail the code an account without two-step verification adds
+ * with; its sentence goes to the form's [data-pg-passkey-sent] element, or
+ * the message element. On submit it asks passkey.php for the options with
+ * the form's name, current_password, code and email_code, lets the browser
+ * make the passkey and reloads the page, or first shows the recovery codes
+ * the first passkey of such an account brings; a refusal is shown in the
+ * form's [data-pg-passkey-message] element, or in one added after its last
  * control.
  *
  * @return string
@@ -1419,6 +1768,22 @@ function pg_passkey_add_form_script()
                     form.appendChild(notice);
                 }
                 form.hidden = false;
+                var send = form.querySelector("[data-pg-passkey-send]");
+                if (send) {
+                    var sent = form.querySelector("[data-pg-passkey-sent]") || notice;
+                    send.addEventListener("click", function () {
+                        send.disabled = true;
+                        sent.textContent = "";
+                        notice.textContent = "";
+                        window.PgPasskey.sendEmailCode({ url: url, token: value("token") }).then(function (message) {
+                            sent.textContent = message;
+                            send.disabled = false;
+                        }).catch(function (error) {
+                            notice.textContent = (error && error.message) || texts.failed;
+                            send.disabled = false;
+                        });
+                    });
+                }
                 form.addEventListener("submit", function (event) {
                     event.preventDefault();
                     var button = form.querySelector("[type=submit]");
@@ -1431,16 +1796,24 @@ function pg_passkey_add_form_script()
                         token: value("token"),
                         name: value("name"),
                         currentPassword: value("current_password"),
-                        code: value("code")
-                    }).then(function () {
+                        code: value("code"),
+                        emailCode: value("email_code")
+                    }).then(function (passkey) {
+                        if (passkey && passkey.recoveryCodes && passkey.recoveryCodes.length) {
+                            window.PgPasskey.showRecoveryCodes(form, passkey.recoveryCodes, texts);
+                            return;
+                        }
                         window.location.reload();
                     }).catch(function (error) {
                         var code = error && error.code;
                         // A code is spent once passkey.php accepts it, so a
-                        // cancelled dialog needs the next one.
-                        if (fields.namedItem("code")) {
-                            fields.namedItem("code").value = "";
-                        }
+                        // cancelled dialog needs the next one (a new e-mail
+                        // for the e-mailed code).
+                        ["code", "email_code"].forEach(function (name) {
+                            if (fields.namedItem(name)) {
+                                fields.namedItem(name).value = "";
+                            }
+                        });
                         if (button) {
                             button.disabled = false;
                         }

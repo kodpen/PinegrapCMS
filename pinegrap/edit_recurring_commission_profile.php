@@ -43,8 +43,8 @@ $query =
         contacts.affiliate_name
     FROM recurring_commission_profiles
     LEFT JOIN contacts ON recurring_commission_profiles.affiliate_code = contacts.affiliate_code
-    WHERE recurring_commission_profiles.id = '" . escape($liveform->get_field_value('id')) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE recurring_commission_profiles.id = ?";
+$result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 $recurring_commission_profile = mysqli_fetch_assoc($result);
 
 // if the form has not just been submitted, then output form
@@ -122,11 +122,11 @@ if (!$_POST) {
     $query =
         "UPDATE recurring_commission_profiles
         SET
-            enabled = '" . escape($liveform->get_field_value('enabled')) . "',
-            last_modified_user_id = '" . $user['id'] . "',
+            enabled = ?,
+            last_modified_user_id = ?,
             last_modified_timestamp = UNIX_TIMESTAMP()
-        WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $liveform->get_field_value('enabled'), (string) $user['id'], (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'recurring commission profile ({var:1}) was modified','vars'=>$recurring_commission_profile['id'])) , $_SESSION['sessionusername']);
     

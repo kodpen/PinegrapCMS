@@ -423,9 +423,13 @@
 
         if (item.progress) {
             var share = k.el('span', 'ws-cb-progress');
-            var bar = k.el('span', 'ws-cb-progress-bar');
-            var fill = k.el('span');
+            var bar = k.el('span', 'progress ws-cb-progress-bar');
+            var fill = k.el('span', 'progress-bar');
 
+            bar.setAttribute('role', 'progressbar');
+            bar.setAttribute('aria-valuemin', '0');
+            bar.setAttribute('aria-valuemax', '100');
+            bar.setAttribute('aria-valuenow', String(item.progress.percent));
             fill.style.width = item.progress.percent + '%';
             bar.appendChild(fill);
             share.appendChild(bar);
@@ -443,16 +447,11 @@
         }
 
         if (item.assignees.length) {
-            var faces = k.el('span', 'ws-avatars ws-cb-faces');
+            var faces = k.avatarStack('ws-cb-faces', item.assignees, 4);
 
-            item.assignees.slice(0, 4).forEach(function (person) {
-                var face = k.avatar(person);
-                face.title = person.name;
-                faces.appendChild(face);
-            });
-
+            // The stack is row-reverse: the count goes in first to sit last.
             if (item.assignees.length > 4) {
-                faces.appendChild(k.el('span', 'ws-cb-more-faces', '+' + (item.assignees.length - 4)));
+                faces.insertBefore(k.el('span', 'ws-cb-more-faces', '+' + (item.assignees.length - 4)), faces.firstChild);
             }
 
             meta.appendChild(faces);

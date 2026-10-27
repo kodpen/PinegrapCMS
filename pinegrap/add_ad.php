@@ -131,8 +131,8 @@ if (!$_POST) {
         $query =
             "SELECT id
             FROM ads
-            WHERE (name = '" . escape($liveform->get_field_value('name')) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE (name = ?)";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'))) or output_error('Query failed.');
         
         // if the name is already in use by a different ad, then mark error
         if (mysqli_num_rows($result) > 0) {
@@ -165,17 +165,26 @@ if (!$_POST) {
             last_modified_user_id, 
             last_modified_timestamp)
         VALUES (
-            '" . escape($liveform->get_field_value('name')) . "',
-            '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('content'))) . "',
-            '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('caption'))) . "',
-            '" . escape($liveform->get_field_value('ad_region_id')) . "',
-            '" . escape($liveform->get_field_value('label')) . "',
-            '" . escape($liveform->get_field_value('sort_order')) . "',
-            '" . $user['id'] . "',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array(
+        (string) $liveform->get_field_value('name'),
+        (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('content')),
+        (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('caption')),
+        (string) $liveform->get_field_value('ad_region_id'),
+        (string) $liveform->get_field_value('label'),
+        (string) $liveform->get_field_value('sort_order'),
+        (string) $user['id'],
+        (string) $user['id'],
+    )) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'ad ({var:1}) was created','vars'=>$liveform->get_field_value('name') )), $_SESSION['sessionusername']);
 

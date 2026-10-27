@@ -247,12 +247,14 @@ if (!$_POST) {
                 // if this item is a product group, then prepare sql in a certain way
                 if ($item['type'] == 'product group') {
                     $table_name = 'product_groups';
-                    $sql_where = "id = '" . $item['id'] . "'";
+                    $sql_where = "id = ?";
+                    $where_values = array((string) $item['id']);
                     
                 // else this item is a product, so prepare sql in a different way
                 } else {
                     $table_name = 'products_groups_xref';
-                    $sql_where = "(product = '" . $item['id'] . "') AND (product_group = '" . $item['parent_product_group_id'] . "')";
+                    $sql_where = "(product = ?) AND (product_group = ?)";
+                    $where_values = array((string) $item['id'], (string) $item['parent_product_group_id']);
                 }
                 
                 // assume that the item should not be featured until we find out otherwise
@@ -269,11 +271,11 @@ if (!$_POST) {
                 $query =
                     "UPDATE $table_name
                     SET
-                        featured = '" . $featured . "',
-                        featured_sort_order = '" . escape($featured_sort_order) . "',
-                        new_date = '" . escape(prepare_form_data_for_input($liveform->get_field_value($new_date_field_name), 'date')) . "'
+                        featured = ?,
+                        featured_sort_order = ?,
+                        new_date = ?
                     WHERE $sql_where";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array_merge(array((string) $featured, (string) $featured_sort_order, (string) prepare_form_data_for_input($liveform->get_field_value($new_date_field_name), 'date')), $where_values)) or output_error('Query failed.');
             }
         }
     }
@@ -307,8 +309,8 @@ function get_items_that_can_be_featured_and_new($parent_product_group_id = 0, $l
             featured_sort_order,
             new_date
         FROM product_groups
-        WHERE parent_id = '" . escape($parent_product_group_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE parent_id = ?";
+    $result = db_q($query, array((string) $parent_product_group_id)) or output_error('Query failed.');
     
     while ($row = mysqli_fetch_assoc($result)) {
         // add product_group to items array
@@ -346,9 +348,9 @@ function get_items_that_can_be_featured_and_new($parent_product_group_id = 0, $l
             products_groups_xref.new_date
         FROM products_groups_xref
         LEFT JOIN products ON products_groups_xref.product = products.id
-        WHERE products_groups_xref.product_group = '" . escape($parent_product_group_id) . "'
+        WHERE products_groups_xref.product_group = ?
         ORDER BY name";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $parent_product_group_id)) or output_error('Query failed.');
     
     while ($row = mysqli_fetch_assoc($result)) {
         // add product to items array

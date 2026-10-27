@@ -105,7 +105,9 @@ function test_workspace_mcp_avatar_picker_entry_carries_the_identity()
 	pg_assert_same(false, $entry['agent'], 'answered by Pinegrap AI');
 	pg_assert_same($identity['avatar'], $entry['avatar'], 'the avatar it has everywhere');
 	pg_assert_same($catalogue['deepwiki']['icon'], $entry['icon'], 'the catalogue entry\'s icon');
-	pg_assert_same(array('alias', 'name', 'agent', 'avatar', 'icon'), array_keys($entry), 'nothing more reaches the page');
+	pg_assert_same($identity['initials'], $entry['initials'], 'the letters the Avatar draws');
+	pg_assert_same($identity['tone'], $entry['tone'], 'the tone the letters are drawn on');
+	pg_assert_same(array('alias', 'name', 'agent', 'avatar', 'initials', 'tone', 'icon'), array_keys($entry), 'nothing more reaches the page');
 
 	$agent = ws_mcp_boot_entry(array('id' => 15, 'alias' => 'tools', 'name' => 'Tools', 'url' => 'https://mcp.example.com/mcp', 'agent_tool' => 'ask'));
 

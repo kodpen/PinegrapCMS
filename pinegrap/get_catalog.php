@@ -76,8 +76,8 @@ function get_catalog($properties) {
                 $product_group_address_name = mb_substr(mb_substr($_GET['page'], mb_strpos($_GET['page'], '/')), 1);
                 
                 // get the product group id
-                $query = "SELECT id FROM product_groups WHERE address_name = '" . escape($product_group_address_name) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT id FROM product_groups WHERE address_name = ?";
+                $result = db_q($query, array((string) $product_group_address_name)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $current_product_group_id = $row['id'];
                 
@@ -100,8 +100,8 @@ function get_catalog($properties) {
                     full_description,
                     code
                 FROM product_groups
-                WHERE id = '" . escape($current_product_group_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+            $result = db_q($query, array((string) $current_product_group_id)) or output_error('Query failed.');
             
             // if a product group cannot be found, then output error
             if (mysqli_num_rows($result) == 0) {
@@ -125,7 +125,7 @@ function get_catalog($properties) {
                 && (strpos($code, '^^image_loop_start^^') !== false)
                 && (strpos($code, '^^image_loop_end^^') !== false)
             ) {
-                $image_results = mysqli_query(db::$con, "SELECT file_name FROM product_groups_images_xref WHERE product_group = '" . escape($current_product_group_id) . "'") or output_error('Query failed.');
+                $image_results = db_q("SELECT file_name FROM product_groups_images_xref WHERE product_group = ?", array((string) $current_product_group_id)) or output_error('Query failed.');
 
                 // Without attached images the code is output as it is.
                 if (mysqli_num_rows($image_results) != 0) {
@@ -166,8 +166,8 @@ function get_catalog($properties) {
         // If the catalog menu is turned on then output product group pick list
         if ($menu == '1') {
             // Get the parent product group's name
-            $query = "SELECT name FROM product_groups WHERE id = '" . escape($product_group_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT name FROM product_groups WHERE id = ?";
+            $result = db_q($query, array((string) $product_group_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $parent_product_group_name = $row['name'];
             
@@ -397,6 +397,10 @@ function get_catalog($properties) {
                     }
                 }
                 
+                // The price before the discount of every product the top,
+                // featured and new items show, read for them all at once.
+                $reference_prices = pg_price_reference_catalog_items(array_merge($featured_items, $new_items), $discounted_product_prices);
+
                 // if there is at least one featured item, then prepare top item and prepare to output top item heading for a featured item
                 if (count($featured_items) > 0) {
                     $top_item_type = 'featured';
@@ -504,6 +508,7 @@ function get_catalog($properties) {
                     }
                     
                     $output_top_item_price = '<div class="price">' . prepare_price_for_output($top_item['price'], $discounted, $discounted_price, 'html') . '</div>';
+                    $output_top_item_price .= pg_price_reference_html(isset($reference_prices[$top_item['id']]) ? $reference_prices[$top_item['id']] : null);
                 }
                 
                 $output_top_item_more_detail = '';
@@ -680,6 +685,7 @@ function get_catalog($properties) {
                                     }
 
                                     $output_price = '<div class="price">' . prepare_price_for_output($featured_item['price'], $discounted, $discounted_price, 'html') . '</div>';
+                                    $output_price .= pg_price_reference_html(isset($reference_prices[$featured_item['id']]) ? $reference_prices[$featured_item['id']] : null);
                                 }
                                 
                                 $output_edit_container_start = '';
@@ -848,6 +854,7 @@ function get_catalog($properties) {
                                     }
                                     
                                     $output_price = '<div class="price">' . prepare_price_for_output($new_item['price'], $discounted, $discounted_price, 'html') . '</div>';
+                                    $output_price .= pg_price_reference_html(isset($reference_prices[$new_item['id']]) ? $reference_prices[$new_item['id']] : null);
                                 }
                                 
                                 $output_edit_container_start = '';
@@ -962,9 +969,9 @@ function get_catalog($properties) {
                     display_type
                 FROM product_groups
                 WHERE
-                    (parent_id = '" . e($current_product_group_id) . "')
+                    (parent_id = ?)
                     AND (enabled = '1')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $current_product_group_id)) or output_error('Query failed.');
             
             // loop through all product groups in order to add them to array
             while ($row = mysqli_fetch_assoc($result)) {
@@ -1000,9 +1007,9 @@ function get_catalog($properties) {
                 FROM products_groups_xref
                 LEFT JOIN products ON products.id = products_groups_xref.product
                 WHERE
-                    (products_groups_xref.product_group = '" . escape($current_product_group_id) . "')
+                    (products_groups_xref.product_group = ?)
                     AND (products.enabled = '1')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $current_product_group_id)) or output_error('Query failed.');
             
             // loop through all products in order to add them to array
             while ($row = mysqli_fetch_assoc($result)) {
@@ -1050,6 +1057,10 @@ function get_catalog($properties) {
         
         // if there is at least one item and number_of_columns is greater than 0, output items
         if ((count($items) > 0) && ($number_of_columns > 0)) {
+            // The price before the discount of every product listed, read
+            // for the whole list at once.
+            $reference_prices = pg_price_reference_catalog_items($items, $discounted_product_prices);
+
             // initialize variable that will store output for item rows
             $output_item_rows = '';
             
@@ -1161,6 +1172,7 @@ function get_catalog($properties) {
                     }
                     
                     $output_price = '<div class="price">' . prepare_price_for_output($item['price'], $discounted, $discounted_price, 'html') . '</div>';
+                    $output_price .= pg_price_reference_html(isset($reference_prices[$item['id']]) ? $reference_prices[$item['id']] : null);
                 }
                 
                 $output_end_row = '';
@@ -1298,8 +1310,8 @@ function get_catalog($properties) {
             }
             
             // Get the editable product group name
-            $query = "SELECT name FROM product_groups WHERE id = '" . escape($editable_product_group_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT name FROM product_groups WHERE id = ?";
+            $result = db_q($query, array((string) $editable_product_group_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $editable_product_group_name = $row['name'];
 
@@ -1447,8 +1459,8 @@ function get_catalog($properties) {
                 $product_group_address_name = mb_substr(mb_substr($_GET['page'], mb_strpos($_GET['page'], '/')), 1);
                 
                 // get the product group id
-                $db_query = "SELECT id FROM product_groups WHERE address_name = '" . escape($product_group_address_name) . "'";
-                $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
+                $db_query = "SELECT id FROM product_groups WHERE address_name = ?";
+                $result = db_q($db_query, array((string) $product_group_address_name)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 if(isset($row)){
                     $current_product_group_id = $row['id'];
@@ -1477,8 +1489,8 @@ function get_catalog($properties) {
                     code,
                     image_name
                 FROM product_groups
-                WHERE id = '" . escape($current_product_group_id) . "'";
-            $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
+                WHERE id = ?";
+            $result = db_q($db_query, array((string) $current_product_group_id)) or output_error('Query failed.');
             
             // If a product group cannot be found, then output error.
             if (mysqli_num_rows($result) == 0) {
@@ -1507,7 +1519,7 @@ function get_catalog($properties) {
                 $code_footer = substr($code, strpos($code, '^^image_loop_end^^') + 18);
                 $code_content = '';
 
-                $image_results = mysqli_query(db::$con, "SELECT file_name FROM product_groups_images_xref WHERE product_group = '" . escape($current_product_group_id) . "'") or output_error('Query failed.');
+                $image_results = db_q("SELECT file_name FROM product_groups_images_xref WHERE product_group = ?", array((string) $current_product_group_id)) or output_error('Query failed.');
 
                 while ($image = mysqli_fetch_assoc($image_results)) {
                     $code_content .= str_replace('^^image_url^^', PATH . encode_url_path($image['file_name']), $code_content_raw);
@@ -1543,10 +1555,10 @@ function get_catalog($properties) {
                     display_type
                 FROM product_groups
                 WHERE
-                    (parent_id = '" . e($current_product_group_id) . "')
+                    (parent_id = ?)
                     AND (enabled = '1')";
 
-            $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
+            $result = db_q($db_query, array((string) $current_product_group_id)) or output_error('Query failed.');
             
             // loop through all product groups in order to add them to array
             while ($row = mysqli_fetch_assoc($result)) {
@@ -1585,9 +1597,9 @@ function get_catalog($properties) {
                 FROM products_groups_xref
                 LEFT JOIN products ON products.id = products_groups_xref.product
                 WHERE
-                    (products_groups_xref.product_group = '" . escape($current_product_group_id) . "')
+                    (products_groups_xref.product_group = ?)
                     AND (products.enabled = '1')";
-            $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
+            $result = db_q($db_query, array((string) $current_product_group_id)) or output_error('Query failed.');
            
             // loop through all products in order to add them to array
             while ($row = mysqli_fetch_assoc($result)) {
@@ -1639,8 +1651,8 @@ function get_catalog($properties) {
             }
             
             // Get the editable product group name
-            $db_query = "SELECT name FROM product_groups WHERE id = '" . escape($editable_product_group_id) . "'";
-            $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
+            $db_query = "SELECT name FROM product_groups WHERE id = ?";
+            $result = db_q($db_query, array((string) $editable_product_group_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $editable_product_group_name = $row['name'];
 
@@ -1658,8 +1670,20 @@ function get_catalog($properties) {
                 $catalog_detail_url = PATH . encode_url_path($catalog_detail_page_name) . '/';
             }
 
+            // The price before the discount of every product listed, read
+            // for the whole list at once, before prices turn into amounts.
+            $reference_prices = pg_price_reference_catalog_items($items, $discounted_product_prices);
+
             // Loop through the catalog items in order to prepare more info.
             foreach ($items as $key => $item) {
+                // The price before the discount ('' when none):
+                // reference_label, reference_price (the amount as text) and
+                // reference_price_info (the line the system layout prints).
+                $item_reference = (($item['type'] == 'product') && isset($reference_prices[$item['id']])) ? $reference_prices[$item['id']] : null;
+                $item['reference_label'] = pg_price_reference_label($item_reference);
+                $item['reference_price'] = ($item['reference_label'] !== '') ? prepare_price_for_output($item_reference['price'], false, '', 'plain_text', true, false) : '';
+                $item['reference_price_info'] = pg_price_reference_html($item_reference);
+
                 $item['url'] = '';
 
                 if (($item['type'] == 'product group') && ($item['display_type'] == 'browse')) {
@@ -1839,8 +1863,8 @@ function get_featured_and_new_items($parent_product_group_id, $items = array())
             WHERE
                 (display_type = 'browse')
                 OR (featured = '1')
-                OR ((new_date > '0000-00-00') AND (new_date <= '" . date('Y-m-d') . "'))";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                OR ((new_date > '0000-00-00') AND (new_date <= ?))";
+        $result = db_q($query, array((string) date('Y-m-d'))) or output_error('Query failed.');
         
         // loop through all product groups in order to add them to the array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -1884,9 +1908,9 @@ function get_featured_and_new_items($parent_product_group_id, $items = array())
                 AND
                 (
                     (products_groups_xref.featured = '1')
-                    OR ((products_groups_xref.new_date > '0000-00-00') AND (products_groups_xref.new_date <= '" . date('Y-m-d') . "'))
+                    OR ((products_groups_xref.new_date > '0000-00-00') AND (products_groups_xref.new_date <= ?))
                 )";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) date('Y-m-d'))) or output_error('Query failed.');
         
         // loop through all instances of products in order to add them to the array
         while ($row = mysqli_fetch_assoc($result)) {

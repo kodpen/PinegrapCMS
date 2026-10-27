@@ -530,19 +530,14 @@ function pg_audit($action, $entity_type, $entity_id = 0, array $before = array()
         'after_json'  => $row['after_json'],
     );
 
+    // A null goes in as NULL, everything else quoted, an int included.
     $values = array();
 
     foreach ($row as $value) {
-        if ($value === null) {
-            $values[] = 'NULL';
-        } elseif (is_int($value)) {
-            $values[] = "'" . $value . "'";
-        } else {
-            $values[] = "'" . e($value) . "'";
-        }
+        $values[] = ($value === null) ? null : (string) $value;
     }
 
-    return (bool) @mysqli_query(db::$con, "INSERT INTO audit_log (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', $values) . ")");
+    return (bool) db_q("INSERT INTO audit_log (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', array_fill(0, count($values), '?')) . ")", $values);
 }
 
 /**
@@ -665,6 +660,7 @@ function pg_audit_fetch_many($table, array $ids)
     }
 
     $key = $tables[$table]['id'];
+    $params = array();
 
     if ($key === '') {
         $sql = "SELECT * FROM `" . $table . "` LIMIT 1";
@@ -677,10 +673,86 @@ function pg_audit_fetch_many($table, array $ids)
             return array();
         }
 
-        $sql = "SELECT * FROM `" . $table . "` WHERE `" . $key . "` IN (" . implode(',', $ids) . ")";
+        $sql = "SELECT * FROM `" . $table . "` WHERE `" . $key . "` IN (" . implode(',', array_fill(0, count($ids), '?')) . ")";
+        $params = $ids;
     }
 
-    $result = @mysqli_query(db::$con, $sql);
+    return _pg_audit_fetch_sql($table, $key, $sql, $params);
+}
+
+/**
+ * Whether pg_audit_fetch_by() may read: a traced table keyed by id, a plain
+ * column name and a non-blank value (a blank one would match every row with
+ * the column empty, such as every contact without an address).
+ *
+ * @param string $table
+ * @param string $column
+ * @param string $value
+ * @return bool
+ */
+function pg_audit_by_column_ok($table, $column, $value)
+{
+    $tables = pg_audit_tables();
+
+    return isset($tables[$table]) && ($tables[$table]['id'] !== '')
+        && (preg_match('/^[a-z0-9_]+$/', (string) $column) === 1)
+        && (trim((string) $value) !== '');
+}
+
+/**
+ * Rows of a pg_audit_tables() table with a column equal to a value, keyed by
+ * id, for a statement that changes rows by that column rather than by id
+ * (every contact with one e-mail address). Record them afterwards with
+ * pg_audit_record_many(); rows the statement left as they were write nothing.
+ *
+ * @param string $table
+ * @param string $column
+ * @param string $value
+ * @return array  id => row
+ */
+function pg_audit_fetch_by($table, $column, $value)
+{
+    if (!pg_audit_by_column_ok($table, $column, $value) || !pg_audit_ready()) {
+        return array();
+    }
+
+    $key = pg_audit_tables()[$table]['id'];
+
+    return _pg_audit_fetch_sql($table, $key, "SELECT * FROM `" . $table . "` WHERE `" . $column . "` = ?", array((string) $value));
+}
+
+/**
+ * The before rows of records a request has just created, for
+ * pg_audit_record_many('create', …): an empty row per id.
+ *
+ * @param array $ids
+ * @return array  id => array()
+ */
+function pg_audit_created_rows(array $ids)
+{
+    $rows = array();
+
+    foreach ($ids as $id) {
+        if (is_numeric($id) && ((int) $id > 0)) {
+            $rows[(int) $id] = array();
+        }
+    }
+
+    return $rows;
+}
+
+/**
+ * Runs a read of a traced table and keys its rows as the trail compares them.
+ *
+ * @param string $table
+ * @param string $key    id column, '' for config
+ * @param string $sql
+ * @param array  $params values for the ? placeholders of $sql (db_q())
+ * @return array  id => row
+ */
+function _pg_audit_fetch_sql($table, $key, $sql, array $params = array())
+{
+    $result = db_q($sql, $params);
 
     if (!$result) {
         return array();

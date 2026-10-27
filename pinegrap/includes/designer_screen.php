@@ -168,6 +168,9 @@ function pg_designer_screen_render($ctx)
             'formSettings'          => function_exists('pg_cf_load_page_form_settings')
                                            ? pg_cf_load_page_form_settings((int)$p['page_id']) : array(),
             'access'                => $page_access,
+            // A page of a classic style just opened (?classic=1): its tree is
+            // not saved yet, so the tab starts unsaved and Save writes it.
+            'converted'             => !empty($p['converted']) ? 1 : 0,
         );
     }
     if (empty($js_pages)) {
@@ -219,6 +222,23 @@ function pg_designer_screen_render($ctx)
         );
         $active = 0;
     }
+    // One shared component opened on its own (edit_system_style.php
+    // ?component=): its one tab places the component and is never saved as
+    // a page; Save writes the component (designer_access.php,
+    // pg_designer_component_entry()).
+    $sd_component = (isset($ctx['component']) && is_array($ctx['component'])) ? $ctx['component'] : null;
+    if ($sd_component) {
+        $js_pages = array(array_merge($js_pages[0], array(
+            'key'        => 'c' . (int)$sd_component['id'],
+            'page_name'  => (string)$sd_component['name'],
+            'page_draft' => 0,
+            'tree'       => array('type' => 'root', 'props' => new stdClass(), 'children' => array(
+                array('type' => 'shared_ref', 'props' => array('sharedId' => (int)$sd_component['id'], 'sharedName' => (string)$sd_component['name']), 'children' => array()),
+            )),
+            'access'     => 'edit',
+        )));
+        $active = 0;
+    }
     $active_key = 'p' . $active;
     $found_active = false;
     foreach ($js_pages as $jp) { if ($jp['key'] === $active_key) { $found_active = true; break; } }
@@ -248,6 +268,8 @@ function pg_designer_screen_render($ctx)
         'styleName'     => (string)$style['name'],
         'activeKey'     => $active_key,
         'pages'         => $js_pages,
+        // A shared component opened on its own: Save writes only it.
+        'componentOnly' => $sd_component ? array('id' => (int)$sd_component['id'], 'name' => (string)$sd_component['name']) : null,
         'canSetHome'    => ((int)$user['role'] < 3),
         'noindexReady'  => (pg_page_noindex_ready() == TRUE),
         'apiUrl'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php',
@@ -270,6 +292,9 @@ function pg_designer_screen_render($ctx)
         // the same. Read only on a hosted site, which ignores the file.
         'layoutCode'    => ((int)$user['role'] <= 1),
         'layoutPages'   => $layout_pages,
+        // Of those, the custom form pages, whose layout converts into a
+        // custom_form widget placed beside the region (layout_code convert).
+        'layoutFormPages' => pg_layout_form_page_ids($layout_pages),
         'layoutReadOnly' => pg_hosted(),
         // ?layout=1 (the toolbar's Ctrl+G button, pg_layout_tab_param()):
         // the page whose layout tab opens once the editor is up, or 0.
@@ -424,6 +449,7 @@ function pg_designer_screen_render($ctx)
         <main id="content" style="padding:0; max-width:100%;">
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
+            ' . $liveform->get_warnings() . '
             <!-- disable_shortcut: the editor answers Ctrl+S itself, with what its
                  main button says on the page on screen (style_designer.js). -->
             <form id="style_designer_form" name="style_designer_form" class="disable_shortcut" action="' . $form_action . '" method="post" style="height:100%;">
@@ -477,7 +503,7 @@ function pg_designer_screen_render($ctx)
                          the header link and the browser back button all go through
                          the unsaved-changes guard. -->
                     <div class="sd-toolbar sd-toolbar-tabs">
-                        <div class="sd-toolbar-group sd-toolbar-pages">
+                        <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
                             <div class="pg-menu-wrap sd-tabs-add">
                                 <button type="button" class="sd-tabs-add-btn" data-bs-toggle="menu" aria-expanded="false" title="' . lang('Add Page') . '">
                                     <span class="bi bi-plus-lg"></span><span class="sd-tabs-add-txt">' . lang('Add Page') . '</span>
@@ -515,8 +541,8 @@ function pg_designer_screen_render($ctx)
                             <!-- The main action puts every page of the design on the
                                  site, so it says so. The label drops to the icon on
                                  narrow screens; the title still names it. -->
-                            <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . lang('Publish') . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>
-                            ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready()) ? '<!-- A draft page has two actions: the main button saves it
+                            <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . ($sd_component ? lang('Save') : lang('Publish')) . '"><span class="bi ' . ($sd_component ? 'bi-floppy' : 'bi-rocket-takeoff') . '" aria-hidden="true"></span><span class="sd-publish-txt">' . ($sd_component ? lang('Save') : lang('Publish')) . '</span></button>
+                            ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !$sd_component) ? '<!-- A draft page has two actions: the main button saves it
                                  (it stays a draft), this one puts it on the
                                  site. Hidden while the page on screen is on
                                  the site. -->
@@ -1549,6 +1575,9 @@ function pg_designer_components_card($user)
         } elseif (strpos($category, 'cregion:') === 0) {
             // Made from a classic designer region (pg_designer_region_component()).
             $source_cell = h(lang('Designer Region'));
+        } elseif (strpos($category, 'common_region:') === 0) {
+            // Made from a common region (pg_common_region_component()).
+            $source_cell = h(lang('Common Region'));
         } else {
             $source_cell = '<span class="fg-secondary">—</span>';
         }
@@ -2885,6 +2914,16 @@ function pg_designer_screen_post($ctx)
         $fail(array(lang('You do not have access to add a design.')));
     }
 
+    // A classic style opened in the editor (edit_system_style.php
+    // ?classic=1) becomes a visual design with this save
+    // (save_system_style()). Only a designer converts one; its page regions,
+    // system region and layout override stay as they were.
+    $converting = ($mode === 'edit' && $style_id > 0)
+        && ((string)db_value("SELECT style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") !== 'visual_designer');
+    if ($converting && !$can_write_design) {
+        $fail(array(lang('Only a designer can open a classic style in the visual designer.')));
+    }
+
     $style_data = array(
         'style_id'                          => $style_id,
         'name'                              => $style_name,
@@ -2929,6 +2968,15 @@ function pg_designer_screen_post($ctx)
             $fail(array(lang('The design could not be saved. Please try again.')));
         }
         log_activity(lang(array('string' => ($mode === 'edit' ? 'style ({var:1}) was modified' : 'style ({var:1}) was added'), 'vars' => array($style_name))), $_SESSION['sessionusername']);
+        // An update never changes a design's framework; a converted style
+        // takes the one the editor opened it with (custom: the theme keeps
+        // its own Bootstrap and scripts).
+        if ($converting) {
+            if (pg_style_framework_ready()) {
+                db("UPDATE style SET style_framework = '" . e(pg_design_framework_key($style_data['framework'])) . "' WHERE style_id = '$style_id'");
+            }
+            log_activity(lang(array('string' => 'style ({var:1}) was made a visual design', 'vars' => array($style_name))), $_SESSION['sessionusername']);
+        }
     }
 
     // ── Design-wide body classes: fold them onto the pages, once ──────────

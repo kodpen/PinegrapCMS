@@ -449,7 +449,7 @@
         var form = element('form', 'mpp-code-edit');
         var input = element('input', 'form-control form-control-sm');
         var save = element('button', 'btn btn-sm btn-solid theme-primary', label('save'));
-        var cancel = element('button', 'btn btn-sm btn-ghost', label('cancel'));
+        var cancel = element('button', 'btn btn-sm btn-text theme-secondary', label('cancel'));
 
         input.type = 'text';
         input.maxLength = 255;
@@ -631,7 +631,7 @@
     }
 
     function card(product) {
-        var button = element('button', 'mpp-pick');
+        var button = element('button', 'mpp-pick hover-lift');
 
         button.type = 'button';
 
@@ -885,7 +885,7 @@
             closeLabel: label('close')
         });
 
-        var cancel = element('button', 'btn btn-ghost', label('cancel'));
+        var cancel = element('button', 'btn btn-text theme-secondary', label('cancel'));
         var save = element('button', 'btn btn-solid theme-primary', label('save'));
 
         cancel.type = 'button';

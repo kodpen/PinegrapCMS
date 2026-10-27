@@ -330,7 +330,7 @@ foreach (array(
         continue;
     }
 
-    $output_chips .= '<a class="pg-chip' . (($key === $filter) ? ' active' : '') . '" href="' . h($url(array('filter' => $key, 'p' => 0))) . '">' . h($chip[0])
+    $output_chips .= '<a class="chip' . (($key === $filter) ? ' active' : '') . '" href="' . h($url(array('filter' => $key, 'p' => 0))) . '">' . h($chip[0])
         . (($chip[1] !== null) ? ' <span class="opacity-75">' . (int) $chip[1] . '</span>' : '') . '</a>';
 }
 
@@ -538,13 +538,13 @@ foreach ($glossary as $term) {
         . (((int) $term['case_sensitive'] === 1) ? ' <span class="badge badge-subtle theme-secondary fw-normal font-monospace">Aa</span>' : '')
         . (($term['note'] !== '') ? '<div class="fg-secondary">' . h($term['note']) . '</div>' : '')
         . '</div>'
-        . '<button type="button" class="btn btn-sm btn-ghost btn-icon pg-tr-term-edit" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></button>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary btn-icon pg-tr-term-edit" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></button>'
         . '<form method="post" action="translations_action.php" class="d-inline" onsubmit="return confirm(' . h(json_encode(lang('Remove this term from the glossary?'))) . ');">'
         . '<input type="hidden" name="action" value="glossary_delete"/>'
         . '<input type="hidden" name="language" value="' . h($language) . '"/>'
         . '<input type="hidden" name="id" value="' . (int) $term['id'] . '"/>'
         . get_token_field()
-        . '<button type="submit" class="btn btn-sm btn-ghost btn-icon fg-danger" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
+        . '<button type="submit" class="btn btn-sm btn-text theme-secondary btn-icon fg-danger" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
         . '</form>'
         . '</div>';
 }
@@ -729,12 +729,12 @@ echo pg_page_shell(array(
                 </button>
                 <ul class="menu">' . $output_language_menu . '</ul>
             </div>
-            <button type="button" class="btn btn-sm btn-ghost no-popover" id="pg_tr_update"' . ($engine['ready'] ? '' : ' disabled="disabled"') . ' data-bs-toggle="tooltip" title="' . h(($page_id > 0) ? lang('Scan this page and send its pending texts to the engine') : (($group !== '') ? lang('Scan these texts and send the pending ones to the engine') : lang('Scan every page and send the pending texts to the engine'))) . '">
+            <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="pg_tr_update"' . ($engine['ready'] ? '' : ' disabled="disabled"') . ' data-bs-toggle="tooltip" title="' . h(($page_id > 0) ? lang('Scan this page and send its pending texts to the engine') : (($group !== '') ? lang('Scan these texts and send the pending ones to the engine') : lang('Scan every page and send the pending texts to the engine'))) . '">
                 <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . (($page_id > 0) ? lang('Update this page') : (($group !== '') ? lang('Update these texts') : lang('Update translations'))) . '
             </button>
             <label class="visually-hidden" for="pg_tr_engine">' . lang('Translation engine') . '</label>
             <select class="form-control form-control-sm w-auto rounded-pill" id="pg_tr_engine" title="' . h(lang(array('string' => '{var:1} → {var:2} · engine', 'vars' => array($source, $language)))) . '">' . $output_engine_options . '</select>
-            ' . (($review_all_shown > 0) ? '<button type="button" class="btn btn-sm btn-ghost no-popover" id="pg_tr_review_all" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
+            ' . (($review_all_shown > 0) ? '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="pg_tr_review_all" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
                 <i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="opacity-75">' . (int) $review_all_shown . '</span>
             </button>' : '') . '
             <div class="pg-toolbar-grow pg-chips">' . $output_chips . '</div>
@@ -747,7 +747,7 @@ echo pg_page_shell(array(
                 <input type="search" name="q" class="form-control border-start-0 rounded-end-pill" value="' . h($search) . '" placeholder="' . h(lang('Search in the texts')) . '" autocomplete="off"/>
             </form>
             <div class="pg-menu-wrap">
-                <button class="btn btn-sm btn-ghost no-popover" type="button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <button class="btn btn-sm btn-text theme-secondary no-popover" type="button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                 <ul class="menu pg-menu-end">
                     <li><a class="menu-item" href="' . h($export_base) . '"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Export CSV') . '</a></li>
                     <li><a class="menu-item" href="' . h($export_base . '&pending=1') . '"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Export pending texts as CSV') . '</a></li>
@@ -796,7 +796,7 @@ echo pg_page_shell(array(
                 <div class="card mb-5" id="pg_tr_glossary">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Glossary') . '</span>
-                        <button type="button" class="btn btn-sm btn-ghost no-popover pg-tr-term-add" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('Add a term') . '</button>
+                        <button type="button" class="btn btn-sm btn-text theme-secondary no-popover pg-tr-term-add" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('Add a term') . '</button>
                     </div>
                     <div class="card-body py-3">' . $output_glossary . '</div>
                 </div>

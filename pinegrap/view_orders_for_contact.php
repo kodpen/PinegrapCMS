@@ -65,8 +65,8 @@ if (
 }
 
 // Get contact name and last name
-$query = "SELECT first_name, last_name FROM contacts WHERE id = '" . escape($id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT first_name, last_name FROM contacts WHERE id = ?";
+$result = db_q($query, array((string) $id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // Stop when there is no such contact (no id given, stale link, contact deleted
@@ -107,14 +107,14 @@ $sort_query = array('id' => $id);
 $sort_extras = h('&id=' . urlencode($id));
 
 // set where clause
-$where = "WHERE contact_id = '" . escape($id) . "' ";
+$where = "WHERE contact_id = ? ";
 
 
 // get total number of results for all screens, so that we can output links to different screens
 $query = "SELECT count(id) " .
          "FROM orders " .
          $where;
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $id)) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $number_of_results = $row[0];
 
@@ -124,7 +124,7 @@ $query = "SELECT id, order_number, total, order_date ".
          "FROM orders ".
          $where.
          "ORDER BY $order_by ";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $id)) or output_error('Query failed.');
 while ($row = mysqli_fetch_assoc($result)) {
     $row['total'] =                 sprintf("%01.2lf", $row['total'] / 100);
     $row['order_date'] = get_relative_time(array('timestamp' => $row['order_date']));

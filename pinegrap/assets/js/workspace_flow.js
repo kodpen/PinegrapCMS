@@ -124,6 +124,7 @@
         report: { icon: 'bi-bar-chart', name: 'fl_kind_report', into: true, out: ['done', 'failed'] },
         checkin: { icon: 'bi-person-check', name: 'fl_kind_checkin', into: true, out: ['done', 'failed'] },
         start_action: { icon: 'bi-alarm', name: 'fl_kind_start_action', into: true, out: ['done', 'failed'] },
+        start_flow: { icon: 'bi-diagram-3', name: 'fl_kind_start_flow', into: true, out: ['done', 'failed'] },
         change: { icon: 'bi-pencil-square', name: 'fl_kind_change', into: true, out: ['done', 'failed'] },
         lead: { icon: 'bi-person-vcard', name: 'fl_kind_lead', into: true, out: ['done', 'failed'] },
         approval: { icon: 'bi-patch-check', name: 'fl_kind_approval', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
@@ -143,7 +144,8 @@
         rejected: 'fl_on_rejected',
         expired: 'fl_on_expired',
         withdrawn: 'fl_on_withdrawn',
-        timeout: 'fl_on_timeout'
+        timeout: 'fl_on_timeout',
+        always: 'fl_on_always'
     };
 
     // What a share lets its holder do (ws_flow_share_levels()), lowest first.
@@ -172,6 +174,7 @@
         ['report', 'bi-bar-chart', 'fl_kind_report'],
         ['checkin', 'bi-person-check', 'fl_kind_checkin'],
         ['start_action', 'bi-alarm', 'fl_kind_start_action'],
+        ['start_flow', 'bi-diagram-3', 'fl_kind_start_flow'],
         ['change', 'bi-pencil-square', 'fl_kind_change'],
         ['lead', 'bi-person-vcard', 'fl_kind_lead'],
         ['approval', 'bi-patch-check', 'fl_kind_approval'],
@@ -192,6 +195,7 @@
         graph: null,        // what is drawn: the draft, or the live graph read-only
         edit: false,
         problems: [],
+        warnings: [],       // what may be published but a reader should know
         selected: null,     // { type: node | edge, id }
         view: { x: 40, y: 40, k: 1 },
         outline: false,
@@ -203,6 +207,7 @@
         saveError: '',
         conflict: '',
         refocus: '',
+        startFilter: '',    // the list narrowed to one way of starting, '' for all
         space: false,
         drag: null,
         pointers: {},
@@ -456,6 +461,10 @@
         }
 
         if (node.kind === 'post') {
+            if (config.channel_id === -1) {
+                return t('fl_post_meta_joined');
+            }
+
             var channel = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
 
             return channel ? t('fl_post_meta', channel.name) : t('fl_post_no_channel');
@@ -485,6 +494,12 @@
             }
 
             return place ? t('fl_post_meta', place.name) : t('fl_post_no_channel');
+        }
+
+        if (node.kind === 'start_flow') {
+            var chained = chainTargets().filter(function (item) { return item.id === config.flow_id; })[0];
+
+            return chained ? chained.name : (config.flow_id ? '#' + config.flow_id : t('fl_chain_none'));
         }
 
         if (node.kind === 'start_action') {
@@ -708,8 +723,14 @@
     function drawList() {
         K.clear(ui.listCol);
 
+        if (state.flows.length) {
+            ui.listCol.appendChild(startFilter());
+        }
+
         [[true, 'fl_list_mine'], [false, 'fl_list_shared']].forEach(function (part) {
-            var flows = state.flows.filter(function (flow) { return flow.mine === part[0]; });
+            var flows = state.flows.filter(function (flow) {
+                return flow.mine === part[0] && (!state.startFilter || flow.start === state.startFilter);
+            });
 
             if (!flows.length && !part[0]) {
                 return;
@@ -720,7 +741,7 @@
             var list = el('ul', 'list-unstyled mb-5');
 
             if (!flows.length) {
-                list.appendChild(el('li', 'small fg-secondary px-3', t('fl_none')));
+                list.appendChild(el('li', 'small fg-secondary px-3', t(state.startFilter ? 'fl_none_start' : 'fl_none')));
             }
 
             flows.forEach(function (flow) {
@@ -786,6 +807,33 @@
         }
     }
 
+    // The select that narrows the list to the flows started one way: at a
+    // time, by hand, on an event or when somebody joins a channel.
+    function startFilter() {
+        var wrap = el('div', 'px-3 mb-3');
+        var select = el('select', 'form-control form-control-sm');
+
+        [['', 'fl_start_all'], ['time', 'fl_kind_schedule'], ['manual', 'fl_kind_manual'], ['event', 'fl_kind_event'], ['join', 'fl_kind_join']].forEach(function (choice) {
+            var option = el('option', '', t(choice[1]));
+
+            option.value = choice[0];
+            option.selected = (choice[0] === state.startFilter);
+            select.appendChild(option);
+        });
+
+        select.setAttribute('aria-label', t('fl_start_filter'));
+        select.setAttribute('data-refocus', 'start-filter');
+        select.addEventListener('change', function () {
+            state.startFilter = select.value;
+            state.refocus = 'start-filter';
+            drawList();
+            refocus();
+        });
+        wrap.appendChild(select);
+
+        return wrap;
+    }
+
     function statusBadge(flow, small) {
         var text = t('fl_status_draft');
         var tone = 'secondary';
@@ -802,7 +850,7 @@
     }
 
     function listEntry(flow) {
-        var brief = { id: flow.id, name: flow.name, status: flow.status, access: flow.access, mine: flow.mine, channel_id: flow.channel_id, draft_rev: flow.draft_rev, version: flow.version };
+        var brief = { id: flow.id, name: flow.name, status: flow.status, access: flow.access, mine: flow.mine, channel_id: flow.channel_id, draft_rev: flow.draft_rev, version: flow.version, start: flow.start };
         var found = false;
 
         state.flows = state.flows.map(function (item) {
@@ -871,7 +919,9 @@
     }
 
     // The Scheduled actions section: the scheduled screen's list, cards and
-    // form (scheduledList() in workspace.js), New in the toolbar's first slot.
+    // form (scheduledList() in workspace.js). A new rule is made on the
+    // canvas: New flow takes the toolbar's first slot, and the list offers
+    // no New of its own; its cards still edit, duplicate and run.
     function showScheduled() {
         leaveFlow().then(function (go) {
             if (!go) {
@@ -895,7 +945,8 @@
             ui.stage.classList.add('d-none');
             ui.scheduled.classList.remove('d-none');
             ui.scheduled.appendChild(el('h2', 'h5 mb-5', t('sa_title')));
-            K.scheduledList(ui.scheduled, ui.bar);
+            newFlowButton();
+            K.scheduledList(ui.scheduled, ui.bar, { add: false });
             listToggle();
             drawList();
             refocus();
@@ -1552,6 +1603,7 @@
         // draft, read-only, of a flow never published.
         state.graph = graphOf(state.edit ? flow.draft : (flow.graph || flow.draft));
         state.problems = flow.problems || [];
+        state.warnings = flow.warnings || [];
         state.selected = null;
         state.dirty = false;
         state.saveError = '';
@@ -1866,11 +1918,14 @@
             ui.save.appendChild(retry);
         }
 
+        // Warnings alone open the list too, but leave Publish as it is.
+        var warned = state.warnings.length;
+
         K.clear(ui.problemButton);
-        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : 'btn-ghost');
-        ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : 'bi-check2-circle', 'me-1'));
-        ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : t('fl_no_problems')));
-        ui.problemButton.disabled = !count;
+        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : (warned ? 'btn-outline theme-warning' : 'btn-ghost'));
+        ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : (warned ? 'bi-exclamation-circle' : 'bi-check2-circle'), 'me-1'));
+        ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : (warned ? t('fl_warnings', warned) : t('fl_no_problems'))));
+        ui.problemButton.disabled = !count && !warned;
 
         if (!ui.publish) {
             return;
@@ -2047,7 +2102,7 @@
             // In a run, an arrow its box ended on was taken.
             var step = state.run ? stepOf(edge.from) : null;
 
-            if (step && (step.status === 'done') && (step.outcome === edge.on)) {
+            if (step && (step.status === 'done') && step.outcome && ((step.outcome === edge.on) || (edge.on === 'always'))) {
                 group.classList.add('wsf-edge-taken');
             }
 
@@ -2058,7 +2113,7 @@
 
             // An arrow taken when a task is cancelled, or a step failed, says
             // so on itself.
-            if ((edge.on === 'cancelled') || (edge.on === 'failed')) {
+            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always')) {
                 var label = svgEl('text', 'wsf-edge-label');
 
                 label.setAttribute('x', String(path.mx));
@@ -2168,6 +2223,8 @@
         var byNode = {};
         var byEdge = {};
 
+        var warnings = {};
+
         (state.run ? [] : state.problems).forEach(function (problem) {
             if (problem.node) {
                 (byNode[problem.node] = byNode[problem.node] || []).push(problem.text);
@@ -2178,13 +2235,21 @@
             }
         });
 
+        // A warning is told on its box, which is not outlined for it.
+        (state.run ? [] : state.warnings).forEach(function (warning) {
+            if (warning.node) {
+                (warnings[warning.node] = warnings[warning.node] || []).push(warning.text);
+            }
+        });
+
         Array.prototype.forEach.call(ui.root.querySelectorAll('[data-node]'), function (box) {
             var texts = byNode[box.getAttribute('data-node')];
+            var told = (texts || []).concat(warnings[box.getAttribute('data-node')] || []);
 
             box.classList.toggle('wsf-bad', !!texts);
 
             if (!state.run) {
-                box.title = texts ? texts.join('\n') : '';
+                box.title = told.join('\n');
             }
         });
 
@@ -2196,17 +2261,30 @@
     function drawProblems() {
         K.clear(ui.problemBox);
 
-        if (!state.edit || !state.problems.length) {
+        if (!state.edit || (!state.problems.length && !state.warnings.length)) {
             ui.problemBox.classList.add('d-none');
             return;
         }
 
-        ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_problems', state.problems.length)));
+        ui.problemBox.classList.toggle('wsf-warned', !state.problems.length);
 
+        if (state.problems.length) {
+            ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_problems', state.problems.length)));
+            ui.problemBox.appendChild(problemList(state.problems, 'wsf-problem', 'bi-exclamation-triangle'));
+        }
+
+        if (state.warnings.length) {
+            ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_warnings', state.warnings.length)));
+            ui.problemBox.appendChild(problemList(state.warnings, 'wsf-problem wsf-warning', 'bi-exclamation-circle'));
+        }
+    }
+
+    // A list of problems or warnings, each leading to its box or arrow.
+    function problemList(problems, className, icon) {
         var list = el('ul', 'list-unstyled mb-0');
 
-        state.problems.forEach(function (problem) {
-            var row = K.button('wsf-problem', problem.text, 'bi-exclamation-triangle');
+        problems.forEach(function (problem) {
+            var row = K.button(className, problem.text, icon);
 
             if (problem.node && nodeById(problem.node)) {
                 row.addEventListener('click', function () { select({ type: 'node', id: problem.node }, { reveal: true, focus: true }); });
@@ -2219,7 +2297,7 @@
             list.appendChild(el('li')).appendChild(row);
         });
 
-        ui.problemBox.appendChild(list);
+        return list;
     }
 
     // ── Settings ───────────────────────────────────────────────────────
@@ -2439,9 +2517,15 @@
             delayFields(box, node);
         }
 
+        if (node.kind === 'start_flow') {
+            chainFields(box, node);
+        }
+
         if (node.kind === 'approval') {
             approvalFields(box, node);
         }
+
+        retryFields(box, node);
 
         if (node.kind === 'schedule') {
             scheduleFields(box, node);
@@ -2654,10 +2738,11 @@
 
     // A post box: the channel the owner writes in and the message. The store
     // checks the owner may write there.
-    // The channels a step box may name, the first option for none, and one
-    // the person does not read named as such.
-    function channelPick(config, none) {
-        var channels = [[0, none]];
+    // The channels a step box may name, the first option for none, then the
+    // options given first ([value, label] pairs: the channel joined), and
+    // one the person does not read named as such.
+    function channelPick(config, none, first) {
+        var channels = [[0, none]].concat(first || []);
 
         (BOOT.channels || []).forEach(function (channel) {
             if (((channel.kind === 'public') || (channel.kind === 'private')) && !channel.archived) {
@@ -2672,9 +2757,16 @@
         return K.select(channels, config.channel_id || 0);
     }
 
+    // Whether the flow starts when somebody joins a channel: its post boxes
+    // may then write in the channel joined (-1), as the server allows
+    // (ws_flow_starts_on_join()).
+    function startsOnJoin() {
+        return state.graph.nodes.some(function (item) { return item.kind === 'join'; });
+    }
+
     function postFields(box, node) {
         var config = node.config;
-        var pick = channelPick(config, t('fl_post_pick'));
+        var pick = channelPick(config, t('fl_post_pick'), (startsOnJoin() || (config.channel_id === -1)) ? [[-1, t('fl_post_joined')]] : []);
 
         pick.addEventListener('change', function () {
             config.channel_id = parseInt(pick.value, 10) || 0;
@@ -2978,6 +3070,35 @@
     }
 
     // Another scheduled action, started now or some minutes later.
+    // The flows a box may start: those the person runs or changes, other
+    // than the one open; the server takes only a live one started by hand
+    // (ws_flow_chain_check()).
+    function chainTargets() {
+        var open = state.flow ? state.flow.id : 0;
+
+        return state.flows.filter(function (item) {
+            return (item.id !== open) && ((item.access === 'run') || (item.access === 'edit'));
+        });
+    }
+
+    // A box that starts another flow and goes on without waiting for it.
+    function chainFields(box, node) {
+        var config = node.config;
+        var options = [[0, t('fl_chain_pick')]].concat(chainTargets().map(function (item) { return [item.id, item.name]; }));
+
+        if (config.flow_id && !options.some(function (option) { return option[0] === config.flow_id; })) {
+            options.push([config.flow_id, '#' + config.flow_id]);
+        }
+
+        var pick = K.select(options, config.flow_id || 0);
+
+        pick.addEventListener('change', function () {
+            config.flow_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_chain_flow'), pick, t('fl_chain_help')));
+    }
+
     function startFields(box, node) {
         var config = node.config;
         var options = [[0, t('fl_start_pick')]].concat(stepLists().targets.map(function (item) { return [item.id, item.name]; }));
@@ -3046,6 +3167,43 @@
         });
         box.appendChild(field(t('fl_delay_amount'), amount, t('fl_delay_help')));
         box.appendChild(field(t('fl_delay_unit'), unit));
+    }
+
+    // How many times a step box tries again on its own after a failure,
+    // and the minutes before each try (ws_flow_retry_normalize()).
+    function retryFields(box, node) {
+        var retry = (FL.steps || {}).retry || {};
+
+        if ((retry.kinds || []).indexOf(node.kind) < 0) {
+            return;
+        }
+
+        var config = node.config;
+        var max = retry.max || 7;
+        var afterMax = retry.after_max || 10080;
+        var times = el('input', 'form-control form-control-sm wsf-number');
+        var after = el('input', 'form-control form-control-sm wsf-number');
+
+        times.type = 'number';
+        times.min = '0';
+        times.max = String(max);
+        times.step = '1';
+        times.value = String(config.retry || 0);
+        times.addEventListener('input', function () {
+            config.retry = clamp(parseInt(times.value, 10) || 0, 0, max);
+            refreshNode(node);
+        });
+        after.type = 'number';
+        after.min = '1';
+        after.max = String(afterMax);
+        after.step = '1';
+        after.value = (config.retry_after === '' || config.retry_after === undefined || config.retry_after === null) ? '' : String(config.retry_after);
+        after.addEventListener('input', function () {
+            config.retry_after = (after.value === '') ? '' : clamp(parseInt(after.value, 10) || 1, 1, afterMax);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_self_retry'), times, t('fl_self_retry_help')));
+        box.appendChild(field(t('fl_self_retry_after'), after, t('fl_self_retry_after_help')));
     }
 
     // An approval box: the channel it asks in, the people asked, the text,
@@ -3844,9 +4002,17 @@
         return box;
     }
 
+    // The outcomes an arrow may leave a box on: its own, and always for a
+    // box that is not a start (ws_flow_arrow_outcomes()).
+    function arrowOutcomes(node) {
+        var kind = kindOf(node);
+
+        return (kind.into && kind.out.length) ? kind.out.concat(['always']) : kind.out;
+    }
+
     function outcomeSelect(edge) {
         var from = nodeById(edge.from);
-        var pick = K.select((from ? kindOf(from).out : [edge.on]).map(function (on) { return [on, t(OUTCOMES[on] || 'fl_on_done')]; }), edge.on);
+        var pick = K.select((from ? arrowOutcomes(from) : [edge.on]).map(function (on) { return [on, t(OUTCOMES[on] || 'fl_on_done')]; }), edge.on);
 
         pick.className = 'form-control form-control-sm w-auto';
         pick.setAttribute('aria-label', onLabel(from));
@@ -4095,6 +4261,8 @@
             config = { rule: { type: 'workday' } };
         } else if (kind === 'delay') {
             config = { amount: 1, unit: 'hours' };
+        } else if (kind === 'start_flow') {
+            config = { flow_id: 0 };
         } else if (kind === 'approval') {
             config = { channel_id: 0, title: '', text: '', approvers: [], rule: 'any', closes_in: '' };
         } else if (kind === 'schedule') {
@@ -4292,6 +4460,7 @@
 
             if (state.flow === flow) {
                 state.problems = data.problems || [];
+                state.warnings = data.warnings || [];
 
                 // A run shown keeps the canvas; the draft's problems are
                 // drawn once it is closed.

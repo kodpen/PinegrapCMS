@@ -1,10 +1,10 @@
 ---
 name: waf-inflight-request-cap
-description: waf_inflight_* concurrent request cap on sensitive scripts: limit, 429 rule concurrent, file slots under data/temp, 120 s dead slot, fail-open, monitor mode.
+description: waf_inflight_* concurrent request cap on sensitive scripts: limit, 429 rule concurrent (no offence), file slots under data/temp, 120 s dead slot, fail-open, monitor mode.
 ---
 
 ## What does the concurrent request cap do?
-- A rate limit counts requests per minute; what fills the pool is connections open AT THE SAME TIME (SMTP-waiting `forgot_password.php`). On sensitive scripts at most `waf_inflight_limit` (default 3, 0 disables) requests per subject may be open; extra get 429, rule `concurrent`, category `rate`, an offence folded per minute (`waf-offence-fold-and-staff-address.md`).
+- A rate limit counts requests per minute; what fills the pool is connections open AT THE SAME TIME (SMTP-waiting `forgot_password.php`). On sensitive scripts at most `waf_inflight_limit` (default 3, 0 disables) requests per subject may be open; extra get 429, rule `concurrent`, category `rate`, logged but NO offence (owner, 2026-10-27, #2201; `workflow/decisions-made-waf.md`): an office behind one NAT address opens four forms at once, so the refusal must not lead to a ban.
 - Runs in the `init` phase with the same exemptions and the same `waf_rate_limit` switch as the sensitive rate limit. Subject = `waf_ip_subject()`.
 
 ## How is it implemented?

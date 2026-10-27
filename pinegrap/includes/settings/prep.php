@@ -230,6 +230,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $form_limit_domain_hour   = isset($row['form_limit_domain_hour']) ? (int)$row['form_limit_domain_hour'] : 0;
     $form_spam_blacklist      = isset($row['form_spam_blacklist']) ? (int)$row['form_spam_blacklist'] : 0;
 
+    // How long the audit trail keeps its lines (2026.11.0, 11.0.47).
+    $audit_retention_ready    = isset($row['audit_log_retention_years']);
+    $audit_retention_years    = $audit_retention_ready ? (int)$row['audit_log_retention_years'] : 2;
+
     // Security headers, the plain-text block log, the concurrency and ban
     // ceilings and the sign-in question arrive together in one upgrade step;
     // one column stands for the set, like waf_enabled above.
@@ -627,6 +631,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ? $legal_template
             : pg_legal_document_default_template($legal_type, lang(array('info' => true)));
     }
+    // The KVKK notice page and the explicit consent sentence (11.0.48).
+    $legal_kvkk_ready = array_key_exists('ecommerce_kvkk_page_id', $row);
+    $ecommerce_kvkk_page_id = (int) ($row['ecommerce_kvkk_page_id'] ?? 0);
+    $ecommerce_kvkk_consent_text = pg_config_text('ecommerce_kvkk_consent_text');
+    // Reference price rule (11.0.49): NULL or an unknown value reads as the
+    // default, so the card always has one option checked.
+    $reference_price_rule_ready = array_key_exists('ecommerce_reference_price_rule', $row);
+    $ecommerce_reference_price_rule = pg_price_reference_rule_from_input($row['ecommerce_reference_price_rule'] ?? null);
     $erp_open_account_payment_checked = ((int) ($row['erp_open_account_payment'] ?? 0) === 1) ? ' checked' : '';
 
     // ERP notices on the bell and the devices (4.91); the amount is kept in
@@ -1218,13 +1230,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $output_auto_bans = '';
 
     if ($waf_ip_columns) {
-        $auto_result = mysqli_query(
-            db::$con,
+        $auto_result = db_q(
             "SELECT ip_address, note, expires_at
              FROM banned_ip_addresses
-             WHERE source = 'auto' AND (expires_at = 0 OR expires_at > " . time() . ")
+             WHERE source = 'auto' AND (expires_at = 0 OR expires_at > ?)
              ORDER BY expires_at DESC
-             LIMIT 25"
+             LIMIT 25",
+            array(time())
         );
 
         if ($auto_result) {

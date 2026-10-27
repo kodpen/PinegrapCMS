@@ -1,6 +1,6 @@
 ---
 name: working-mode
-description: Working rules (2026-10-25) for every session: why they exist, one open PR, no stacked branches, no issues, PR size, queue limit, the changelog through the PR body, docs-only PRs outside the train
+description: Working rules (2026-10-25) for every session: why, one open PR, no stacked branches, issues only for decisions, PR size, queue limit, changelog through the PR body, docs-only PRs alone
 ---
 
 ## Why these rules?
@@ -12,7 +12,7 @@ description: Working rules (2026-10-25) for every session: why they exist, one o
 - From green CI to the next step: `session-lifecycle.md`.
 
 ## Are issues used?
-- No: no claim, hand-off, decision request or follow-up issue. A claim is a draft PR, a hand-off is the PR itself, and a question for the owner is asked in the session's reply and under `## Questions for the owner` in the PR body (`session-lifecycle.md`), kept in the plan file's open questions until the session's next PR records the answer.
+- Only for decision questions: an issue labelled `architect`, which the architect session decides with the owner (`architect.md`). No claim, hand-off or follow-up issue: a claim is a draft PR and a hand-off is the PR itself.
 
 ## How much checking, how many agents?
 - The tests of your area and what the change touches, no sandbox without a reason, no sub-agents or review chains: `session-checks.md`.
@@ -22,7 +22,7 @@ description: Working rules (2026-10-25) for every session: why they exist, one o
 
 ## When may nobody start a task?
 - While more than 15 PRs are open, drafts and `merge-train/*` PRs not counted (the command is in `CLAUDE.md`, Working mode 8). Checked before the draft PR that claims the task; a session whose work is done still marks its PR ready.
-- Only work the merging session can take holds a place: a PR waiting on the owner's answer goes back to draft until the answer comes (`session-lifecycle.md`).
+- Only work the merging session can take holds a place: a PR waiting on a decision goes back to draft until it comes (`session-lifecycle.md`, `architect.md`).
 - Each account's coordinator sets how many workers run (`coordinator.md`), and its workers hold at most 4 of the 15 places, so one fast account does not fill the queue for the others. Two sessions never hold the same plan or the same files.
 
 ## What about changelog.txt?

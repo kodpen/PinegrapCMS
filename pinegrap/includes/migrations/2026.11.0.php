@@ -76,6 +76,10 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_delivered_campaigns();    // 11.0.42
 	upgrade_2026_11_0_marketplace_map_code_bin(); // 11.0.44
 	upgrade_2026_11_0_shipment_lookup();        // 11.0.45
+	upgrade_2026_11_0_session_passkey();        // 11.0.46
+	upgrade_2026_11_0_audit_retention();        // 11.0.47
+	upgrade_2026_11_0_kvkk_notice();            // 11.0.48
+	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
 
 }
 
@@ -2424,6 +2428,20 @@ function upgrade_2026_11_0_marketplace_remote_products() {
 // passkey" button on the sign-in screens (PASSKEY_SIGNIN). Off by default: an
 // upgraded site keeps its sign-in screen as it is until a manager turns the
 // button on.
+// A session opened with a passkey names it (auth_tokens.passkey_id, 0 for any
+// other sign-in), so the account page can show it beside the session and
+// removing the passkey ends the sessions it opened. No foreign key: a token
+// row outlives nothing it points at, and a removed passkey takes its rows
+// along itself (pg_passkey_remove()).
+function upgrade_2026_11_0_session_passkey() {
+
+	install_add_column('auth_tokens', 'passkey_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('auth_tokens', 'idx_passkey', "INDEX idx_passkey (passkey_id)");
+
+	install_note('My Account › Security names the passkey a session was opened with; removing a passkey signs out the sessions it opened.');
+
+}
+
 function upgrade_2026_11_0_passkey_signin() {
 
 	install_add_column('config', 'passkey_signin', "TINYINT NOT NULL DEFAULT 0");
@@ -2505,6 +2523,19 @@ function upgrade_2026_11_0_marketplace_map_code_bin() {
 
 }
 
+// How long the audit trail keeps its lines (2026.11.0, 11.0.47;
+// includes/fn/privacy_retention.php, the Security screen's Audit Trail card).
+// Years, 2 by default; 0 keeps every line. The general job removes older
+// lines once a day, and the consent log's history past three years with
+// them (the newest answer of each person, channel and purpose stays).
+function upgrade_2026_11_0_audit_retention() {
+
+	install_add_column('config', 'audit_log_retention_years', "TINYINT UNSIGNED NOT NULL DEFAULT 2");
+
+	install_note('Privacy: the audit trail now keeps its lines for 2 years and the consent log its history for 3 years; the general job removes older lines once a day. The consent answer in force for each person is always kept. The audit trail period can be changed under Settings › Security › Audit Trail.');
+
+}
+
 // Guest parcel lookup (2026.11.0, 11.0.45; track_shipment.php,
 // includes/fn/shipment_lookup.php). No schema change: the step only tells the
 // operator the page exists and how to put it in front of customers, since no
@@ -2513,5 +2544,39 @@ function upgrade_2026_11_0_marketplace_map_code_bin() {
 function upgrade_2026_11_0_shipment_lookup() {
 
 	install_note('Shipping: customers without an account can now look up their parcels at track_shipment.php in the software folder (for example /pinegrap/track_shipment.php) with their order number and billing e-mail. It shows carrier, tracking number and status only, allows 10 lookups an hour per address, and appears where you link to it, for example from a menu item, the footer or the shipping e-mail.');
+
+}
+
+// The KVKK notice at checkout (2026.11.0, 11.0.48; includes/fn/legal_documents.php).
+// The page holding the store's KVKK notice (0: no notice link) on the config
+// row, and the explicit consent sentence (no row: no consent box) in
+// config_text, a name/value table for long settings texts
+// (includes/fn/config_text.php). The config row has no room left for another
+// TEXT column on MySQL 8.0 (tests/innodb_test.php keeps room for ten), and
+// the notice itself is a page of the site for the same reason. The answer is
+// kept in order_documents as type kvkk, which 11.0.1 created.
+function upgrade_2026_11_0_kvkk_notice() {
+
+	install_add_column('config', 'ecommerce_kvkk_page_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_create_table('config_text', "CREATE TABLE config_text (
+		name                VARCHAR(64) NOT NULL,
+		value               TEXT NULL,
+		PRIMARY KEY (name)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Checkout legal documents: a link to your KVKK notice page and an optional explicit consent box can be shown at checkout under Site Settings, Ecommerce, Legal Documents. Nothing changes until a page or a consent sentence is chosen there.');
+
+}
+
+// The rule behind the "price before the discount" (2026.11.0, 11.0.49;
+// includes/fn/price_history.php, Settings › Ecommerce › Reference Price).
+// TEXT, as every new config column (no VARCHAR on config); NULL reads as the
+// 30-day lowest, so the step writes no rows.
+function upgrade_2026_11_0_reference_price_rule() {
+
+	install_add_column('config', 'ecommerce_reference_price_rule', "TEXT DEFAULT NULL");
+
+	install_note('Ecommerce: Settings › Ecommerce › Reference Price now picks which price counts as the price before a discount: the lowest price of the last 30 days (the default), of the last 10 days, or the compare-at price entered on each product.');
 
 }

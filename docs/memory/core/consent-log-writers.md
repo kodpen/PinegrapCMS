@@ -19,7 +19,7 @@ description: Who writes consent_log rows: own e-mail marketing answers (sign-up,
 
 ## Who writes contract rows?
 - `pg_legal_documents_store()` (`includes/fn/legal_documents.php`, PR #2000), after the order's `order_documents` rows: one `granted` row per type both stored and accepted (`preinfo`, `contract`), source `checkout`, purpose = the type. Person from the order (`billing_email_address` as the token, `user_id`, `contact_id`); ip, user agent and `created_at` are the documents' own (`accepted_at`). Built by `pg_legal_documents_consent_events()` (tested in `tests/legal_documents_test.php`).
-- An unaccepted type writes nothing (no `refused` row: not ticking a box is no answer), nor does the repeat call the store ignores. `kvkk` waits on the KVKK checkbox (`plans/checkout-legal-documents.md`).
+- An unaccepted type writes nothing (no `refused` row: not ticking a box is no answer), nor does the repeat call the store ignores. `kvkk` when the optional KVKK consent box was ticked (commerce/checkout-kvkk-notice.md).
 
 The cookie notice's answers (channel `cookie`, source `banner`): `consent-log-cookie-notice.md`.
 

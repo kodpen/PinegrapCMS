@@ -31,8 +31,8 @@ if (is_scalar($_REQUEST['currency_id'] ?? null) && $_REQUEST['currency_id']) {
             "SELECT
                 code
             FROM currencies
-            WHERE id = '" . escape($_SESSION['ecommerce']['currency_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_SESSION['ecommerce']['currency_id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $currency_code = $row['code'] ?? '';
         
@@ -44,16 +44,16 @@ if (is_scalar($_REQUEST['currency_id'] ?? null) && $_REQUEST['currency_id']) {
                 $query = 
                     "UPDATE visitors
                     SET
-                        currency_code = '" . escape($currency_code) . "',
+                        currency_code = ?,
                         stop_timestamp = UNIX_TIMESTAMP()
-                    WHERE id = '" . escape($_SESSION['software']['visitor_id']) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $currency_code, (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
             }
             
             // if visitor has an order, update order with currency code
             if (isset($_SESSION['ecommerce']['order_id']) == true) {
-                $query = "UPDATE orders SET currency_code = '" . escape($currency_code) . "' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE orders SET currency_code = ? WHERE id = ?";
+                $result = db_q($query, array((string) $currency_code, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
             }
         }
     }

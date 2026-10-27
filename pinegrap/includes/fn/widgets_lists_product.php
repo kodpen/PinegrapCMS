@@ -26,6 +26,8 @@
 // The crumbs of the catalog path (catalog.crumbs) are the page's, not a
 // product's: their own family, keyed by ^^__has_breadcrumb^^ (1 when the
 // widget draws a path), so a list of them stands anywhere in the widget.
+// So are a listing's active attribute filters (catalog.active_filters),
+// keyed by ^^__has_active_attr_filters^^.
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
@@ -208,6 +210,61 @@ function pg_sw_list_crumb_sources()
             ),
         ),
     );
+}
+
+// The active filter source, in the shape of pg_sw_list_sources(): the
+// attribute filters a catalog listing applies, each a chip whose link
+// drops it, keyed by ^^__has_active_attr_filters^^ (1 when there are any),
+// so a list of them stands anywhere in the listing.
+function pg_sw_list_active_filter_sources()
+{
+    return array(
+        'catalog.active_filters' => array(
+            'family'       => 'filter_chips',
+            'key'          => '__has_active_attr_filters',
+            'label'        => lang('Active attribute filters'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__filter_chip_label', lang('Filter (attribute: option)')),
+                array('__filter_chip_url', lang('Address without the filter')),
+            ),
+        ),
+    );
+}
+
+// One active filter: its words ("Colour: Red") and the address of the
+// listing without it.
+function pg_sw_list_active_filter_row($label, $url)
+{
+    return array(
+        '__filter_chip_label' => (string)$label,
+        '__filter_chip_url'   => (string)$url,
+    );
+}
+
+// The active attribute filters of a listing ($active: attribute id =>
+// option id) as rows, in that order: the attribute's label and the
+// option's from $available (attribute id => attr_label, options of
+// option_id and option_label), "Attribute" and "#<option id>" for one
+// not read; $url_without(attribute id) gives the address without it.
+function pg_sw_list_active_filter_rows($active, $available, $url_without)
+{
+    $out = array();
+    foreach (is_array($active) ? $active : array() as $aid => $oid) {
+        $attr  = isset($available[$aid]) ? $available[$aid] : null;
+        $label = $attr ? $attr['attr_label'] : lang('Attribute');
+        $opt   = '';
+        foreach ($attr ? $attr['options'] : array() as $o) {
+            if ((int)$o['option_id'] === (int)$oid) {
+                $opt = $o['option_label'];
+                break;
+            }
+        }
+        if ($opt === '') $opt = '#' . $oid;
+        $out[] = pg_sw_list_active_filter_row($label . ': ' . $opt, call_user_func($url_without, $aid));
+    }
+    return $out;
 }
 
 // One crumb: its words, its address ('' for none) and its kind: 'link'

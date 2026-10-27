@@ -354,7 +354,7 @@ function pg_dashboard_widget_1($request, $user)
         // to switch to.
         $sm_menu =
             '<div class="pg-menu-wrap pg-smap-menu">'
-            . '<button type="button" class="btn btn-sm btn-ghost pg-smap-menu-btn" id="pg_smap_menu"'
+            . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-smap-menu-btn" id="pg_smap_menu"'
             . ' data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('Filter')) . '">'
             . '<i class="bi bi-sliders"></i></button>'
             . '<ul class="menu pg-menu-end">'

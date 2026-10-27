@@ -385,6 +385,10 @@ function generate_style_code_from_tree($tree, $style_name, $additional_body_clas
         $_body_extra_attrs = ' id="' . h($_root_id) . '"' . $_body_extra_attrs;
     }
 
+    // A classic style's title, kept on the root when it was converted: the
+    // title a page without one of its own shows (get_page_content.php).
+    $_root_title = isset($_root_props['title']) && is_string($_root_props['title']) ? h(trim($_root_props['title'])) : '';
+
     $code = '<!DOCTYPE html>
 
         <html lang="en">
@@ -393,7 +397,7 @@ function generate_style_code_from_tree($tree, $style_name, $additional_body_clas
 
                 <meta charset="utf-8">
 
-                <title></title>
+                <title>' . $_root_title . '</title>
 
                 <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -795,12 +799,16 @@ function _expand_shared_refs($html, $depth = 0, $ancestors = array())
         $replacements[$sid] = $rendered;
     }
 
-    // Single-pass replace using preg_replace_callback (stable, no re-scan of replacement text)
+    // Single-pass replace using preg_replace_callback (stable, no re-scan of replacement text).
+    // A placement marker stays before a system widget's marker, which reads it;
+    // before anything else it is dropped.
     return preg_replace_callback(
-        '/<!--pg-shared-ref:(\d+)-->/',
+        '/(<!--pg-placement:[A-Za-z0-9_-]*-->)?<!--pg-shared-ref:(\d+)-->/',
         function ($m) use ($replacements) {
-            $sid = (int)$m[1];
-            return isset($replacements[$sid]) ? $replacements[$sid] : '';
+            $sid = (int)$m[2];
+            if (!isset($replacements[$sid])) return '';
+            $is_widget = ($replacements[$sid] === '<!--pg-system-widget:' . $sid . '-->');
+            return ($is_widget ? $m[1] : '') . $replacements[$sid];
         },
         $html
     );
@@ -868,12 +876,16 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
     // (pg_img_responsive_html()). Not in an e-mail, which takes none. Rich
     // text written for the classic theme keeps its pictures in their column
     // on a Bootstrap 5 page through the same pass (pg_img_fluid_alias()).
-    $render = function ($m) use ($configs, $mode, $email) {
+    $render = function ($m, $placement = array()) use ($configs, $mode, $email) {
             $sid = (int)$m[1];
             if (!isset($configs[$sid])) return '';
 
             $cfg         = $configs[$sid];
             $region_type = isset($cfg['regionType']) ? $cfg['regionType'] : '';
+            // This placement may narrow what the widget shows (widgets_placement.php).
+            if ($placement) {
+                $cfg = pg_sw_placement_narrow(is_string($region_type) ? $region_type : '', $cfg, $placement, 'pg_sw_placement_group_within');
+            }
             $tree_json   = isset($cfg['_tree_json']) ? $cfg['_tree_json'] : '';
 
             // The widget points at a custom form via page.page_id. Field name evolved:
@@ -1113,6 +1125,14 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_shipping_method($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'order_form' — the classic order form: a product group's
+            // products put into the cart at once, posting to order_form.php
+            // (widgets_order_form.php).
+            if ($region_type === 'order_form') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_order_form($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'menu_region' — one of the site's menus, its items kept in
             // the menu screen (widgets_menu.php).
             if ($region_type === 'menu_region') {
@@ -1165,13 +1185,15 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
     // value condition is drawn between markers; the finish pass resolves
     // them on the widget's own output (widgets_finish.php).
     return preg_replace_callback(
-        '/<!--pg-system-widget:(\d+)-->/',
+        '/(?:<!--pg-placement:([A-Za-z0-9_-]*)-->)?<!--pg-system-widget:(\d+)-->/',
         function ($m) use ($render, $email, $configs) {
-            $sid   = (int)$m[1];
+            $sid       = (int)$m[2];
+            $placement = ($m[1] !== '') ? pg_sw_placement_decode($m[1]) : array();
+            $m         = array($m[0], $sid);
             $kind  = (isset($configs[$sid]['regionType']) && is_string($configs[$sid]['regionType'])) ? $configs[$sid]['regionType'] : '';
             $scope = pg_sw_finish_open(array('sid' => $sid, 'kind' => $kind, 'email' => $email));
             try {
-                $out = $render($m);
+                $out = $render($m, $placement);
             } finally {
                 pg_sw_finish_close();
             }
@@ -1198,6 +1220,41 @@ function pg_expand_nested_components($html, $mode = 'preview', $email = false)
         if (strpos($html, '<!--pg-system-widget:') !== false) {
             $html = _expand_system_widgets($html, $mode, $email);
         }
+    }
+    return $html;
+}
+
+// Returns a name that does not yet exist in shared_components (the panel's
+// create and rename, the region conversions).
+// If $desired is already taken, appends " [1]", " [2]", ... until a free slot is found.
+function _sc_unique_name($desired)
+{
+    $base = $desired;
+    $name = $base;
+    $i    = 1;
+    while (db_value("SELECT COUNT(*) FROM shared_components WHERE name = '" . e($name) . "'") > 0) {
+        $name = $base . ' [' . $i . ']';
+        $i++;
+    }
+    return $name;
+}
+
+/**
+ * The HTML of a shared component drawn where a classic <cregion> tag of a
+ * converted common region stands. The page's own passes for components,
+ * widgets and custom PHP have run by the time the common regions are
+ * replaced, so the component goes through them here.
+ *
+ * @param int    $sid    shared component id
+ * @param string $mode   page render mode
+ * @param bool   $email  drawn for an e-mail
+ * @return string
+ */
+function pg_common_region_component_html($sid, $mode = 'preview', $email = false)
+{
+    $html = pg_expand_nested_components('<!--pg-shared-ref:' . (int)$sid . '-->', $mode, $email);
+    if (strpos($html, '<!--pg-custom-php:') !== false) {
+        $html = _expand_custom_php($html);
     }
     return $html;
 }
@@ -1451,7 +1508,7 @@ function _sanitize_dynamic_placeholders(&$node)
  *
  * The keys that hold objects are known, so the empty ones are re-typed
  * before encoding: `props`, `props._bindings`, `props._bindParams` (a
- * link's page and values), `props._cf`, `props._cf.ids`. Real lists
+ * link's page and values), `props._cf`, `props._cf.ids`, `props.placement`. Real lists
  * (`children`, `_attrs`, `_styles`) are left as they are. Walks shared_ref
  * children too — a widget tree passes through here as well.
  */
@@ -1463,7 +1520,7 @@ function pg_designer_tree_objects(&$node)
             if (empty($node['props'])) {
                 $node['props'] = new stdClass();
             } else {
-                foreach (array('_bindings', '_bindParams', '_cf') as $k) {
+                foreach (array('_bindings', '_bindParams', '_cf', 'placement') as $k) {
                     if (isset($node['props'][$k]) && is_array($node['props'][$k]) && empty($node['props'][$k])) {
                         $node['props'][$k] = new stdClass();
                     }
@@ -2758,7 +2815,12 @@ function pg_designer_rename_design($style_id, $name, $user)
     return $out;
 }
 
-function pg_designer_load_pages($style_id, $style_name = '')
+/**
+ * $classic: the pages of a classic style about to be opened in the visual
+ * designer (pg_classic_style_design_open()), which are not design pages yet:
+ * every page naming the style, without the legacy same-name link.
+ */
+function pg_designer_load_pages($style_id, $style_name = '', $classic = false)
 {
     $style_id = (int)$style_id;
     if ($style_id <= 0) return array();
@@ -2794,12 +2856,12 @@ function pg_designer_load_pages($style_id, $style_name = '')
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
          WHERE page.page_style = '$style_id'
-           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
+           AND " . ($classic ? '1' : pg_page_visual_design_sql()) . pg_designer_not_binned_sql() . "
          ORDER BY page.page_id ASC");
     if (!is_array($rows)) $rows = array();
 
     // Legacy bridge: nothing linked, but a same-named system page exists.
-    if (empty($rows) && $style_name !== '') {
+    if (empty($rows) && $style_name !== '' && !$classic) {
         $orphan_id = (int)db_value(
             "SELECT page_id FROM page
              WHERE page_name = '" . e($style_name) . "'
@@ -3822,7 +3884,7 @@ function pg_designer_rebuild_page_code($after_id = 0, $seconds = 15)
  * `files` table in step. Extracted from edit_system_style.php so the
  * multi-page save can call it once per design instead of once per page.
  *
- * Errors are deliberately swallowed (@mysqli_query, not db()): this runs
+ * Errors are deliberately swallowed (db_q() returns false, not db()): this runs
  * inside an AJAX save whose JSON reply must not be polluted by an HTML error
  * page from output_error().
  */
@@ -3839,17 +3901,16 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
             if (!in_array($ext, array('css', 'js', 'json'))) continue;
             @file_put_contents(FILE_DIRECTORY_PATH . '/' . $asset['name'], $asset['content']);
             $size = (int)strlen($asset['content']);
-            $nm   = mysqli_real_escape_string(db::$con, $asset['name']);
-            $ex   = mysqli_real_escape_string(db::$con, $ext);
+            $nm   = (string) $asset['name'];
             $uid  = (int)$user_id;
-            $chk  = @mysqli_query(db::$con, "SELECT name FROM files WHERE name = '$nm' LIMIT 1");
+            $chk  = db_q("SELECT name FROM files WHERE name = ? LIMIT 1", array($nm));
             if ($chk && mysqli_num_rows($chk) === 0) {
-                @mysqli_query(db::$con,
+                db_q(
                     "INSERT INTO files (name, folder, description, type, size, user, timestamp)
-                     VALUES ('$nm', '0', '', '$ex', '$size', '$uid', UNIX_TIMESTAMP())");
+                     VALUES (?, '0', '', ?, ?, ?, UNIX_TIMESTAMP())", array($nm, (string) $ext, (string) $size, (string) $uid));
             } else {
-                @mysqli_query(db::$con,
-                    "UPDATE files SET size = '$size', timestamp = UNIX_TIMESTAMP() WHERE name = '$nm'");
+                db_q(
+                    "UPDATE files SET size = ?, timestamp = UNIX_TIMESTAMP() WHERE name = ?", array((string) $size, $nm));
             }
         }
     }
@@ -4349,7 +4410,7 @@ function _pg_widget_layout_css_once()
     $base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
           . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
           . '/assets/css/';
-    $v = '6';   // bump on layout css changes
+    $v = '7';   // bump on layout css changes
     return '<link rel="stylesheet" href="' . h($base) . 'pg_carousel_layout.css?v=' . $v . '">';
 }
 
@@ -4535,6 +4596,64 @@ function _pg_render_carousel_init_script($crl_id, $hover_zoom)
         . '})();</script>';
 }
 
+/**
+ * The layout of a sentence with values (a semantic element whose
+ * props._sentence is on): its words, and where each value stands. {var:N}
+ * marks the N-th child, the placeholder lang() strings and the translation
+ * check (pg_tr_tokens_of()) already know, so a translator moves it where
+ * the language needs it and a translation that drops it is refused. A child
+ * is drawn once, at its first placeholder; a placeholder without a child
+ * draws nothing; a child no placeholder names follows the words after a
+ * space, so nothing the design holds is lost. The editor's twin is
+ * _sdSentenceLayout().
+ *
+ * @param string $text  the sentence
+ * @param int    $count how many children the element has
+ * @return array of string (words) or int (the child's place, from 1)
+ */
+function pg_sentence_layout($text, $count)
+{
+    $parts = preg_split('/\{var:([1-9][0-9]?)\}/', (string)$text, -1, PREG_SPLIT_DELIM_CAPTURE);
+    $out = array();
+    $drawn = array();
+    foreach ($parts as $i => $part) {
+        if (!($i % 2)) {
+            if ($part !== '') $out[] = $part;
+            continue;
+        }
+        $n = (int)$part;
+        if ($n <= $count && !isset($drawn[$n])) {
+            $drawn[$n] = true;
+            $out[] = $n;
+        }
+    }
+    for ($n = 1; $n <= $count; $n++) {
+        if (isset($drawn[$n])) continue;
+        if ($out) $out[] = ' ';
+        $out[] = $n;
+    }
+    return $out;
+}
+
+/**
+ * The inside of a sentence with values, on one line: the words escaped,
+ * each child drawn where pg_sentence_layout() places it.
+ *
+ * @param string $text     the sentence, in the page's language
+ * @param array  $children the element's child nodes
+ * @param int    $depth
+ * @return string
+ */
+function pg_sentence_html($text, $children, $depth = 0)
+{
+    $children = array_values((array)$children);
+    $out = '';
+    foreach (pg_sentence_layout($text, count($children)) as $piece) {
+        $out .= is_int($piece) ? rtrim(_render_tree_node($children[$piece - 1], 0, $depth), "\n") : h($piece);
+    }
+    return $out;
+}
+
 function _render_tree_node($node, $indent = 0, $depth = 0)
 {
     if (!$node || !isset($node['type'])) return '';
@@ -4548,27 +4667,43 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
         return '<!--pg-active:begin-->' . _render_tree_node($node, $indent, $depth) . '<!--pg-active:end-->';
     }
 
-    // A value condition (_bindings.show_if, _bindParams.show_if) is wiring,
-    // never a prop. Inside a widget render the node is drawn between the
-    // markers the finish pass keeps or cuts (widgets_finish.php); one that
-    // cannot be evaluated draws nothing. Outside a widget the node draws as
-    // it is, so no saved page body ever holds a marker. Its compared text is
-    // read in the page's language, as the values it is compared with are;
-    // a node that holds a required form control is always drawn.
-    if (isset($node['props']['_bindings']['show_if'])) {
+    // A widget flag naming a value of the list row it is drawn in is a
+    // value condition on that value (pg_sw_list_flag_alias()).
+    $flag_alias = pg_sw_finish_active() ? pg_sw_list_flag_alias(isset($node['props']) ? $node['props'] : null) : null;
+    if ($flag_alias !== null && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
+        unset($node['props']['_bindings']['eo_visible_if']);
+        return pg_sw_finish_wrap(_render_tree_node($node, $indent, $depth), $flag_alias);
+    }
+
+    // Value conditions (_bindings.show_if and show_if_2, show_if_3, with
+    // their _bindParams) are wiring, never props. Inside a widget render the
+    // node is drawn between the markers the finish pass keeps or cuts
+    // (widgets_finish.php); one that cannot be evaluated draws nothing.
+    // Outside a widget the node draws as it is, unless every condition reads
+    // a fact of the visit (page_facts.php): then it stands between the page
+    // markers the stored body keeps and every request decides. The compared texts are read in the page's language, as
+    // the values they are compared with are; a node that holds a required
+    // form control is always drawn.
+    if (pg_sw_cond_present(isset($node['props']) ? $node['props'] : null)) {
         if (defined('FRONTEND_LANGUAGE')) {
             $node['props'] = pg_tr_condition_props($node['props'], $node['type']);
         }
-        $cond = pg_sw_cond_spec($node['props']);
+        $cond = pg_sw_cond_specs($node['props']);
         if ($cond !== null && pg_sw_cond_holds_required($node)) $cond = null;
-        unset($node['props']['_bindings']['show_if']);
-        if (isset($node['props']['_bindParams']) && is_array($node['props']['_bindParams'])) {
-            unset($node['props']['_bindParams']['show_if']);
+        foreach (pg_sw_cond_names() as $cond_name) {
+            unset($node['props']['_bindings'][$cond_name]);
+            if (isset($node['props']['_bindParams']) && is_array($node['props']['_bindParams'])) {
+                unset($node['props']['_bindParams'][$cond_name]);
+            }
         }
         if ($cond !== null && pg_sw_finish_active()
             && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
             if ($cond === false) return '';
             return pg_sw_finish_wrap(_render_tree_node($node, $indent, $depth), $cond);
+        }
+        if (!pg_sw_finish_active() && pg_page_fact_spec($cond)
+            && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
+            return pg_page_fact_wrap(_render_tree_node($node, $indent, $depth), $cond);
         }
     }
 
@@ -4756,6 +4891,10 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                 foreach ($children as $child) { $ws_inner .= rtrim(_render_tree_node($child, 0, $depth), "\n"); }
                 if (isset($props['text']) && $props['text'] !== '') $ws_inner .= h($props['text']);
                 $html .= $pad . '<' . $tag . $attrs . '>' . $ws_inner . '</' . $tag . '>' . "\n";
+            } elseif (!empty($props['_sentence'])) {
+                // A sentence with values: one translatable text whose
+                // {var:N} places the N-th child inline, on one line.
+                $html .= $pad . '<' . $tag . $attrs . '>' . pg_sentence_html(isset($props['text']) ? $props['text'] : '', $children, $depth) . '</' . $tag . '>' . "\n";
             } else {
                 $inner_text = isset($props['text']) && $props['text'] !== '' ? h($props['text']) : '';
                 if (!$children) {
@@ -4809,9 +4948,12 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             //
             // Marker format: `<!--pg-shared-ref:ID-->` (HTML comment — invisible in browsers,
             // regex-matchable on the server). See `_expand_shared_refs()` for the expander.
+            // A widget placement's own content values (widgets_placement.php)
+            // ride in a marker just before it; none without values.
             $sc_id = isset($props['sharedId']) ? (int)$props['sharedId'] : 0;
             if ($sc_id > 0) {
-                $html .= $pad . '<!--pg-shared-ref:' . $sc_id . '-->' . "\n";
+                $placement = pg_sw_placement_marker(isset($props['placement']) ? $props['placement'] : null);
+                $html .= $pad . $placement . '<!--pg-shared-ref:' . $sc_id . '-->' . "\n";
             }
             break;
     }

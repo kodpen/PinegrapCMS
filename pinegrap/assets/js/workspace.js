@@ -345,7 +345,7 @@
             document.body.appendChild(toastRoot);
         }
 
-        var box = el('div', 'toast align-items-center border-0 show text-bg-' + (kind || 'dark'));
+        var box = el('div', 'toast align-items-center border-0 text-bg-' + (kind || 'dark'));
         box.setAttribute('role', 'status');
 
         var row = el('div', 'd-flex');
@@ -361,12 +361,23 @@
         row.appendChild(text);
 
         var close = button('btn-close fg-white me-3 m-auto', '', '', t('close'));
-        close.addEventListener('click', function () { box.remove(); });
+        close.setAttribute('data-bs-dismiss', 'toast');
         row.appendChild(close);
         box.appendChild(row);
         toastRoot.appendChild(box);
 
-        setTimeout(function () { box.remove(); }, 5000);
+        // Bootstrap's Toast: hides after five seconds, pauses while hovered
+        // or focused, and the close button dismisses it.
+        var instance = window.pgUI ? pgUI.toast.get(box, { delay: 5000 }) : null;
+
+        if (instance) {
+            pgUI.toast.on(box, 'hidden', function () { box.remove(); });
+            instance.show();
+        } else {
+            box.classList.add('show');
+            close.addEventListener('click', function () { box.remove(); });
+            setTimeout(function () { box.remove(); }, 5000);
+        }
     }
 
     function fail(error) {
@@ -2351,24 +2362,78 @@
         return null;
     }
 
-    function avatar(personData, size) {
-        var img = el('img');
-        img.src = (personData && personData.avatar) ? personData.avatar : '';
-        img.alt = '';
-        img.loading = 'lazy';
+    // The eight tones a person's letters are drawn on, in the order
+    // pg_avatar_theme_class() gives them (includes/fn/contacts.php).
+    var AVATAR_THEMES = ['theme-primary', 'theme-info', 'theme-warning', 'theme-accent', 'theme-danger', 'theme-secondary', 'theme-success', 'theme-inverse'];
+
+    function avatarInitials(name) {
+        // A handle (@wiki) is drawn by its name, not by its sign.
+        var words = String(name || '').replace(/^[@#]+/, '').trim().split(/\s+/).filter(Boolean);
+
+        if (!words.length) {
+            return '?';
+        }
+
+        return (words[0].charAt(0) + ((words.length > 1) ? words[words.length - 1].charAt(0) : '')).toLocaleUpperCase();
+    }
+
+    // A person as a Bootstrap 6 Avatar, the twin of pg_avatar_markup(): the
+    // photo when there is one, else the letters on the person's tone; a login
+    // without a name is a grey rounded square. A picture of letters
+    // (data:image/svg+xml) is drawn as letters, so no <img> goes out without
+    // a real address. presence adds the online / away / offline dot.
+    function avatar(personData, size, presence) {
+        var data = personData || {};
+        var src = data.avatar ? String(data.avatar) : '';
+        var kind = data.avatar_kind || '';
+        var face = el('span', 'avatar');
+
+        if (src && (src.indexOf('data:image/svg+xml') !== 0) && (kind !== 'contact') && (kind !== 'user')) {
+            var img = el('img', 'avatar-img');
+            img.src = src;
+            img.alt = '';
+            img.loading = 'lazy';
+            face.appendChild(img);
+        } else {
+            if (kind === 'user') {
+                face.classList.add('avatar-subtle', 'theme-secondary', 'pg-avatar-user');
+            } else {
+                face.classList.add(AVATAR_THEMES[((parseInt(data.tone, 10) || 0) % 8 + 8) % 8]);
+            }
+
+            face.textContent = data.initials ? String(data.initials) : avatarInitials(data.name);
+        }
 
         if (size) {
-            img.style.width = size;
-            img.style.height = size;
+            face.style.setProperty('--bs-avatar-size', size);
         }
 
-        // A login without a name has a square of letters, not a circle
-        // (includes/workspace/people.php).
-        if (personData && personData.avatar_kind === 'user') {
-            img.style.borderRadius = '28%';
+        if (presence && (['online', 'away', 'offline'].indexOf(data.presence) !== -1)) {
+            face.appendChild(el('span', 'avatar-status status-' + data.presence));
         }
 
-        return img;
+        face.setAttribute('aria-hidden', 'true');
+
+        return face;
+    }
+
+    // Overlapping faces in an .avatar-stack. The stack is row-reverse (the
+    // last child sits leftmost and on top), so the faces go in backwards
+    // and the first person still reads first.
+    function avatarStack(className, people, max) {
+        var stack = el('span', 'avatar-stack ws-avatars' + (className ? ' ' + className : ''));
+
+        (people || []).slice(0, max || 4).reverse().forEach(function (person) {
+            var face = avatar(person);
+
+            if (person && person.name) {
+                face.title = person.name;
+            }
+
+            stack.appendChild(face);
+        });
+
+        return stack;
     }
 
     function params() {
@@ -3253,7 +3318,7 @@
     function partHelpers() {
         return {
             api: api, ask: ask, toast: toast, fail: fail, t: t, el: el, icon: icon, button: button,
-            clear: clear, select: select, avatar: avatar, nextId: nextId, debounce: debounce,
+            clear: clear, select: select, avatar: avatar, avatarStack: avatarStack, nextId: nextId, debounce: debounce,
             mcpConnect: mcpConnect,
             boot: function () { return BOOT; },
             openTask: function (taskId, onSaved) { taskDrawer.open(taskId, null, onSaved || taskDrawer.onSaved); }
@@ -3983,7 +4048,7 @@
             var text = el('div', 'ws-msg-body');
 
             row.setAttribute('data-ws-note', note.id);
-            face.className = 'ws-task-note-avatar';
+            face.classList.add('ws-task-note-avatar');
             row.appendChild(face);
 
             meta.appendChild(el('b', '', note.sender ? note.sender.name : ''));
@@ -5205,7 +5270,7 @@
     // their parts look like the rest of it.
     function featureHelpers() {
         return {
-            api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, clear: clear,
+            api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, avatarStack: avatarStack, clear: clear,
             offcanvas: offcanvas, showOffcanvas: showOffcanvas, hideOffcanvas: hideOffcanvas,
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
             richField: richField, peoplePicker: peoplePicker, homeCard: homeCard, touchScreen: touchScreen,
@@ -7551,9 +7616,7 @@
                 });
             }
 
-            var faces = el('span', 'ws-avatars ws-thread-faces');
-            (thread.people || []).slice(0, 4).forEach(function (person) { faces.appendChild(avatar(person)); });
-            bar.appendChild(faces);
+            bar.appendChild(avatarStack('ws-thread-faces', thread.people, 4));
 
             var text = el('span', 'ws-thread-bar-text');
             text.appendChild(el('b', '', t('th_bar', thread.title)));
@@ -7948,10 +8011,7 @@
 
             var actions = el('div', 'ws-head-actions');
             var faces = button('btn btn-sm btn-ghost d-inline-flex align-items-center gap-1', '', '', t('members'));
-            var stack = el('span', 'ws-avatars');
-
-            channel.members.slice(0, 4).forEach(function (member) { stack.appendChild(avatar(member)); });
-            faces.appendChild(stack);
+            faces.appendChild(avatarStack('', channel.members, 4));
             faces.appendChild(el('span', 'small', channel.members.length));
             faces.addEventListener('click', function () { self.showMembers(); });
             actions.appendChild(faces);
@@ -8186,6 +8246,11 @@
                 divider();
             }
 
+            if (channel.bulk_products && !channel.archived) {
+                item(t('bulk_make_products'), 'bi-box-seam', function () { self.bulkMakeProducts({}); });
+                divider();
+            }
+
             if (channel.joined) {
                 [['all', t('notify_all')], ['mentions', t('notify_mentions')], ['none', t('notify_none')]].forEach(function (option) {
                     item(option[1] + (channel.notify === option[0] ? ' ✓' : ''), option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
@@ -8322,8 +8387,6 @@
             if (BOOT.claude && channel.claude && channel.claude.available) {
                 var claudeRow = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 var claudeFace = avatar({ avatar: BOOT.claude.avatar }, '2rem');
-
-                claudeFace.style.borderRadius = '50%';
                 claudeRow.appendChild(claudeFace);
 
                 var claudeText = el('div', 'flex-grow-1');
@@ -8336,8 +8399,6 @@
             if (BOOT.ai && channel.ai && channel.ai.available) {
                 var aiRow = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 var aiFace = avatar({ avatar: BOOT.ai.avatar }, '2rem');
-
-                aiFace.style.borderRadius = '50%';
                 aiRow.appendChild(aiFace);
 
                 var aiText = el('div', 'flex-grow-1');
@@ -8350,8 +8411,7 @@
             channel.members.forEach(function (member) {
                 var row = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 onContext(row, function () { return personMenu(member); });
-                var memberFace = avatar(member, '2rem');
-                memberFace.style.borderRadius = '50%';
+                var memberFace = avatar(member, '2rem', true);
                 row.appendChild(personLink(memberFace, member));
                 var text = el('div', 'flex-grow-1');
                 text.appendChild(personLink(el('div', 'fw-semibold', member.name), member));
@@ -8724,6 +8784,17 @@
                         self.fileVersions(message, versions);
                     });
                     fileBox.appendChild(versions);
+                }
+
+                // A CSV or spreadsheet of the channel made into product
+                // drafts, for whoever may make products here.
+                if (self.channel && self.channel.bulk_products && /\.(csv|xlsx|xlsm|xls|ods)$/i.test(message.file.name || '')) {
+                    var makeProducts = button('ws-file-versions', t('bulk_make_products'), 'bi-box-seam');
+                    makeProducts.addEventListener('click', function (event) {
+                        event.stopPropagation();
+                        self.bulkMakeProducts({ message_id: message.id });
+                    });
+                    fileBox.appendChild(makeProducts);
                 }
 
                 main.appendChild(fileBox);
@@ -9976,6 +10047,40 @@
             });
         },
 
+        // Product drafts as one bulk card (bulk_sources.php): from a file of
+        // the channel, or from a list pasted into the question window. The
+        // card waits under a message of the person's own until they apply it.
+        bulkMakeProducts: function (source) {
+            var self = this;
+            var channel = self.channel;
+            var text = null;
+            var asked = Promise.resolve(true);
+
+            if (!source.message_id) {
+                text = el('textarea', 'form-control form-control-sm');
+                text.rows = 8;
+                text.placeholder = t('bulk_make_placeholder');
+                text.setAttribute('aria-label', t('bulk_make_products'));
+                asked = ask(t('bulk_make_intro'), t('bulk_make_go'), false, text);
+                window.setTimeout(function () { text.focus(); }, 200);
+            }
+
+            asked.then(function (yes) {
+                if (!yes || (text && !text.value.trim())) {
+                    return;
+                }
+
+                api('ws_bulk_create_propose', {
+                    channel_id: channel.id,
+                    message_id: source.message_id || 0,
+                    text: text ? text.value : ''
+                }).then(function (data) {
+                    toast(t('bulk_make_done', data.count) + ((data.ignored && data.ignored.length) ? ' ' + t('bulk_make_ignored', data.ignored.join(', ')) : ''), 'success');
+                    self.sync(true);
+                }).catch(fail);
+            });
+        },
+
         // Record changes an answer proposes: what each field holds and would
         // hold. Only the person who asked applies them, with their own rights.
         // A bulk change being applied: the next slice, one at a time, until
@@ -10150,7 +10255,7 @@
                     meter.appendChild(fill);
                     card.appendChild(meter);
                     card.appendChild(el('div', 'ws-draft-meta', (change.status === 'applying' ? t('bulk_running') + ' ' + t('bulk_progress', progress.done + progress.skipped + progress.failed, progress.total) + ' · ' : '')
-                        + t('bulk_result', progress.done, progress.skipped, progress.failed)));
+                        + t(change.bulk.create ? 'bulk_create_result' : 'bulk_result', progress.done, progress.skipped, progress.failed)));
 
                     (progress.errors || []).forEach(function (error) {
                         card.appendChild(el('div', 'small fg-emphasis-danger', error));
@@ -10175,7 +10280,7 @@
                     var apply = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('change_apply'), 'bi-check2');
 
                     apply.addEventListener('click', function () {
-                        var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : 'bulk_warning', change.bulk.total) : change.warning;
+                        var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : (change.bulk.create ? 'bulk_create_warning' : 'bulk_warning'), change.bulk.total) : change.warning;
                         var go = question ? ask(question, t('change_apply'), true) : Promise.resolve(true);
 
                         go.then(function (yes) {
@@ -10202,18 +10307,41 @@
                     actions.appendChild(apply);
                 }
 
-                // A drafted scheduled action opens in its form, filled in, for
-                // the one who asked; saved there, the card says so.
+                // A drafted scheduled action opens as a new flow of the one
+                // who asked, on the Flows canvas; what the flow keeps
+                // otherwise is told before it opens.
                 if (change.draft) {
-                    var open = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_draft_open'), 'bi-alarm');
+                    var open = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_draft_open'), 'bi-diagram-3');
 
                     open.addEventListener('click', function () {
-                        scheduledForm({ channel_id: change.draft.channel_id }, null, function () { self.sync(); }, {
-                            key: 'sentence',
-                            sentence: change.draft.sentence,
-                            data: JSON.parse(JSON.stringify(change.draft.data)),
-                            notes: change.draft.notes || [],
-                            change_id: change.id
+                        open.disabled = true;
+
+                        api('ws_flow_from_draft', { change_id: change.id }).then(function (result) {
+                            var go = function () {
+                                window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
+                            };
+
+                            if (!result.left || !result.left.length) {
+                                go();
+                                return;
+                            }
+
+                            var list = el('ul', 'mb-0');
+
+                            result.left.forEach(function (line) {
+                                list.appendChild(el('li', '', line));
+                            });
+
+                            ask(t('sa_draft_flow_left'), t('sa_draft_flow_see'), false, list).then(function (yes) {
+                                if (yes) {
+                                    go();
+                                } else {
+                                    self.sync();
+                                }
+                            });
+                        }).catch(function (error) {
+                            open.disabled = false;
+                            fail(error);
                         });
                     });
 
@@ -10282,9 +10410,13 @@
                     account.appendChild(off);
                     card.appendChild(account);
                 } else if (change.status === 'applied') {
-                    var done = el('div', 'ws-draft-done', t(change.action === 'draft' ? 'sa_draft_saved' : 'change_applied', change.decided_by, change.decided) + ' ');
+                    var done = el('div', 'ws-draft-done', t(change.action === 'draft' ? (change.flow_id ? 'sa_draft_flowed' : 'sa_draft_saved') : 'change_applied', change.decided_by, change.decided) + ' ');
 
-                    if (change.decision_id) {
+                    if (change.flow_id) {
+                        var flow = el('a', '', t('sa_draft_flow_see'));
+                        flow.href = CFG.urls.flows + '?flow=' + change.flow_id;
+                        done.appendChild(flow);
+                    } else if (change.decision_id) {
                         var see = el('a', '', t(change.action === 'draft' ? 'sa_draft_see' : 'change_see_decision'));
                         see.href = '#';
                         see.addEventListener('click', function (event) {
@@ -10626,11 +10758,7 @@
                 row.appendChild(el('span', 'ws-poll-label', option.label));
 
                 if (option.voters && option.voters.length) {
-                    var faces = el('span', 'ws-avatars ws-avatars-sm');
-
-                    option.voters.slice(0, 4).forEach(function (voter) {
-                        faces.appendChild(avatar(voter));
-                    });
+                    var faces = avatarStack('ws-avatars-sm', option.voters, 4);
 
                     row.title = option.voters.map(function (voter) { return voter.name; }).join(', ');
                     row.appendChild(faces);
@@ -13450,7 +13578,7 @@
 
                 (BOOT.people || []).forEach(function (member) {
                     if ((markup.indexOf('<@user:' + member.id + '>') === -1) && (fits(member.name) || fits(member.username))) {
-                        people.push({ label: member.name, meta: member.title, avatar: member.avatar, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
+                        people.push({ label: member.name, meta: member.title, avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
 
@@ -13744,7 +13872,7 @@
                 var mcpAliases = function () {
                     (BOOT.mcp || []).forEach(function (server) {
                         if (!needle || server.alias.indexOf(needle) === 0 || server.name.toLocaleLowerCase().indexOf(needle) !== -1) {
-                            items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t(server.agent ? 'mcp_meta_agent' : 'mcp_meta'), avatar: server.avatar || '', icon: server.icon || 'bi-plug', insert: '@' + server.alias + ' ' });
+                            items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t(server.agent ? 'mcp_meta_agent' : 'mcp_meta'), avatar: server.avatar || '', face: { avatar: server.avatar || '', initials: server.initials, tone: server.tone, name: server.alias }, icon: server.icon || 'bi-plug', insert: '@' + server.alias + ' ' });
                         }
                     });
                 };
@@ -13799,7 +13927,7 @@
 
                 BOOT.people.forEach(function (member) {
                     if (!needle || member.name.toLocaleLowerCase().indexOf(needle) !== -1 || member.username.toLocaleLowerCase().indexOf(needle) !== -1) {
-                        items.push({ label: member.name, meta: member.title, avatar: member.avatar, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
+                        items.push({ label: member.name, meta: member.title, avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
 
@@ -13838,7 +13966,7 @@
 
                 BOOT.people.forEach(function (member) {
                     if ((people.length < 5) && (!wanted || member.name.toLocaleLowerCase().indexOf(wanted) !== -1 || member.username.toLocaleLowerCase().indexOf(wanted) !== -1)) {
-                        people.push({ label: member.name, meta: t('notes_person'), avatar: member.avatar, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
+                        people.push({ label: member.name, meta: t('notes_person'), avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
             }
@@ -13939,10 +14067,7 @@
                 if (item.glyph) {
                     row.appendChild(el('span', 'ws-picker-emoji', item.glyph));
                 } else if (item.avatar) {
-                    var img = el('img');
-                    img.src = item.avatar;
-                    img.alt = '';
-                    row.appendChild(img);
+                    row.appendChild(avatar(item.face || { avatar: item.avatar, name: item.label }));
                 } else {
                     row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                 }
@@ -15090,10 +15215,7 @@
 
             var actions = el('div', 'ws-head-actions');
             var faces = button('btn btn-sm btn-ghost d-inline-flex align-items-center gap-1', '', '', t('th_people'));
-            var stack = el('span', 'ws-avatars');
-
-            (channel.members || []).slice(0, 4).forEach(function (member) { stack.appendChild(avatar(member)); });
-            faces.appendChild(stack);
+            faces.appendChild(avatarStack('', channel.members, 4));
             faces.appendChild(el('span', 'small', (channel.members || []).length));
             faces.addEventListener('click', function () { self.showPeople(); });
             actions.appendChild(faces);
@@ -15257,8 +15379,6 @@
             (channel.members || []).forEach(function (member) {
                 var row = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 var face = avatar(member, '2rem');
-
-                face.style.borderRadius = '50%';
                 row.appendChild(face);
                 row.appendChild(el('div', 'flex-grow-1 fw-semibold', member.name));
                 body.appendChild(row);
@@ -17153,14 +17273,17 @@
 
     // Every scheduled action, for staff, by state: the scheduled screen's
     // list and the Scheduled actions section of Flows (workspace_flow.js,
-    // through PGWsKit). New goes into bar; the list is read again while it
-    // is still on the page.
-    function scheduledList(body, bar) {
-        var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_new_long'), 'bi-plus-lg');
-        add.addEventListener('click', function () {
-            scheduledForm({}, null, function () { load(); });
-        });
-        bar.appendChild(add);
+    // through PGWsKit). New goes into bar, unless options.add is false: in
+    // Flows a new rule is a flow, started from New flow. The list is read
+    // again while it is still on the page.
+    function scheduledList(body, bar, options) {
+        if (!options || (options.add !== false)) {
+            var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_new_long'), 'bi-plus-lg');
+            add.addEventListener('click', function () {
+                scheduledForm({}, null, function () { load(); });
+            });
+            bar.appendChild(add);
+        }
 
         var filters = el('div', 'ws-sa-filters');
         var list = el('div', 'ws-sa-list');
@@ -17680,15 +17803,7 @@
                 row.appendChild(el('span', 'badge theme-danger', BOOT.priorities[task.priority]));
             }
 
-            var faces = el('span', 'ws-avatars');
-
-            task.assignees.slice(0, 4).forEach(function (member) {
-                var img = avatar(member);
-                img.title = member.name;
-                faces.appendChild(img);
-            });
-
-            row.appendChild(faces);
+            row.appendChild(avatarStack('', task.assignees, 4));
 
             if (task.can_edit && task.open) {
                 var done = button('btn btn-sm btn-ghost', '', 'bi-check2-circle', t('mark_done'));
@@ -18479,17 +18594,7 @@
                 chip.appendChild(task.upcoming ? icon('bi-arrow-repeat') : el('span', 'ws-status-dot ws-s-' + task.status));
                 chip.appendChild(el('span', 'ws-cal-task-title', task.title));
 
-                var faces = el('span', 'ws-avatars ws-avatars-sm');
-
-                (task.people || []).slice(0, 3).forEach(function (id) {
-                    var member = person(id);
-
-                    if (member) {
-                        faces.appendChild(avatar(member));
-                    }
-                });
-
-                chip.appendChild(faces);
+                chip.appendChild(avatarStack('ws-avatars-sm', (task.people || []).map(person).filter(Boolean), 3));
             }
 
             chip.title = task.upcoming
@@ -23122,6 +23227,7 @@
             button: button,
             select: select,
             avatar: avatar,
+            avatarStack: avatarStack,
             peoplePicker: peoplePicker,
             api: api,
             toast: toast,

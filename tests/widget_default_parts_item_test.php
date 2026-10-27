@@ -314,7 +314,7 @@ function test_widget_parts_item_blocks_placed_beats_pushed()
 
 	// No main loop (the cards placed): nothing.
 	$flat = json_encode(_pitem_node('root', array(), array(
-		_pitem_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__return_form'))),
+		_pitem_node('loop_area', array('source' => 'order.return_deliveries'), array()),
 		_pitem_node('semantic', array('tag' => 'a', '_bindings' => array('href' => '__legal_contract_url'))),
 	)));
 	pg_assert_same($flat, pg_sw_default_parts_apply($flat, 'order_view'), 'no main loop');
@@ -336,7 +336,7 @@ function test_widget_parts_item_editor_twin()
 		$b = strpos($js, $to, $a);
 		return substr($js, $a, $b + strlen($to) - $a);
 	};
-	$src = $cut("\n    var SD_OV_STATUS_CLASS_DEFAULTS = {", "\n    };\n")
+	$src = $cut("\n    var SD_COND_NAMES = ", ";\n") . $cut("\n    var SD_OV_STATUS_CLASS_DEFAULTS = {", "\n    };\n")
 		. $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n")
 		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
 		. $cut("\n    var SW_DEFAULT_TAILS = {", "\n    };\n")
@@ -344,7 +344,7 @@ function test_widget_parts_item_editor_twin()
 		. $cut("\n    var SW_DEFAULT_LOOP_TAILS = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartOrderTimeline', '_sdPartOrderStatusBadge',
 		'_sdPartPlaced', '_sdPartValue', '_sdPartItemLegend', '_sdPartItemLine', '_sdPartOrderItemForm', '_sdPartOrderItemGiftCard',
-		'_sdMainLoop', '_sdDefaultLoopTails', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
+		'_sdMainLoop', '_sdDefaultLoopTails', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnMoves', '_sdPartOrderReturnMoveSubmit', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$tree = _pitem_tree(array(

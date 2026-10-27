@@ -31,11 +31,11 @@ function _widget_cart_items()
 function test_widget_lists_cart_sources_and_rows()
 {
 	$sources = pg_sw_list_cart_sources();
-	pg_assert_same(array('cart.items'), array_keys($sources));
+	pg_assert_same(array('cart.items', 'cart.item_gift_cards', 'cart.item_schedule'), array_keys($sources));
 	pg_assert_same('__ship_to_key', $sources['cart.items']['key']);
-	pg_assert_same(array('cart.items'), array_keys(pg_sw_kind_lists('cart_link')));
-	pg_assert_same(array('cart.items'), array_keys(pg_sw_kind_lists('shopping_cart')));
-	pg_assert_same(array(), pg_sw_kind_lists('express_order'));
+	pg_assert_same(array('cart.items'), array_keys(pg_sw_kind_lists('cart_link')), 'a gift card list is the cart widget\'s');
+	pg_assert_same(array('cart.items', 'cart.item_gift_cards', 'cart.item_schedule'), array_keys(pg_sw_kind_lists('shopping_cart')));
+	pg_assert_same(array('cart.items', 'checkout.offers', 'checkout.suggestions', 'checkout.gift_cards', 'checkout.recipients'), array_keys(pg_sw_kind_lists('express_order')), 'nor the express order\'s');
 
 	$rows = pg_sw_list_cart_rows(_widget_cart_items());
 	$tokens = array();
@@ -45,7 +45,7 @@ function test_widget_lists_cart_sources_and_rows()
 	pg_assert_same(array('1', '2'), array_column($rows['cart.items'][5], '__item_id'), 'a recipient\'s lines');
 	pg_assert_same('SKU-2', $rows['cart.items'][0][1]['__item_image_alt'], 'the alt falls back to the name');
 	pg_assert_same('#', $rows['cart.items'][0][1]['__item_url'], 'no detail page: #');
-	pg_assert_same(array('cart.items' => array()), pg_sw_list_cart_rows(array()));
+	pg_assert_same(array('cart.items' => array(), 'cart.item_gift_cards' => array(), 'cart.item_schedule' => array()), pg_sw_list_cart_rows(array()));
 }
 
 // A mini cart in the cart link: the lines escaped once, the remove link

@@ -1289,9 +1289,9 @@ if (!$_POST) {
                              zones.name 
                           FROM zones 
                           LEFT JOIN products_zones_xref ON products_zones_xref.zone_id = zones.id 
-                          WHERE products_zones_xref.product_id = '" . escape($product_id) . "'
+                          WHERE products_zones_xref.product_id = ?
                           ORDER BY zones.name ASC";
-                $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
+                $result2 = db_q($query2, array((string) $product_id)) or output_error('Query failed.');
 
                 // loop through and prepare allowed zones
                 while($row2 = mysqli_fetch_assoc($result2)){
@@ -1617,7 +1617,7 @@ if (!$_POST) {
     // below before anything is copied, or an empty array for "Do not Change".
     function duplicate_products($id,$lettertodelete,$newletter,$option) {
         // get original product's info
-        $result = mysqli_query(db::$con, "SELECT * FROM products WHERE id = '" . escape($id) . "'") or output_error(lang('Query failed'));
+        $result = db_q("SELECT * FROM products WHERE id = ?", array((string) $id)) or output_error(lang('Query failed'));
         $row                   = mysqli_fetch_assoc($result);
         $original_product_name = $row['name'];
         $product_name          = get_unique_name(array(
@@ -2053,19 +2053,19 @@ if (!$_POST) {
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
         $new_product_id = mysqli_insert_id(db::$con);
         // get allowed zones for product that we are duplicating
-        $query          = "SELECT zone_id FROM products_zones_xref WHERE product_id = '" . escape($id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query          = "SELECT zone_id FROM products_zones_xref WHERE product_id = ?";
+        $result = db_q($query, array((string) $id)) or output_error(lang('Query failed.'));
         while ($row = mysqli_fetch_assoc($result)) {
             // insert row for allowed zone for new product
-            $query = "INSERT INTO products_zones_xref (product_id, zone_id) VALUES ($new_product_id, " . $row['zone_id'] . ")";
-            $result_2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $query = "INSERT INTO products_zones_xref (product_id, zone_id) VALUES (?, ?)";
+            $result_2 = db_q($query, array((int) $new_product_id, (int) $row['zone_id'])) or output_error(lang('Query failed.'));
         }
         // get form fields for this product and duplicate them
         // form_type pinned: template rows (product_id 0 since 2026.4) must not
         // be copied onto a duplicate, and a duplicate is a standalone product
         // rather than a variant generated from somebody's template.
-        $query = "SELECT * FROM form_fields WHERE (product_id = '" . escape($id) . "') AND (form_type = 'product')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT * FROM form_fields WHERE (product_id = ?) AND (form_type = 'product')";
+        $result = db_q($query, array((string) $id)) or output_error(lang('Query failed.'));
         while ($row = mysqli_fetch_assoc($result)) {
             // insert row for field for new product
             $query = "INSERT INTO form_fields (
@@ -2112,50 +2112,50 @@ if (!$_POST) {
     
                 VALUES (
     
-                    '" . e($row['form_type']) . "',
+                    ?,
     
-                    '" . $new_product_id . "',
+                    ?,
     
-                    '" . escape($row['name']) . "',
+                    ?,
     
-                    '" . escape($row['label']) . "',
+                    ?,
     
-                    '" . escape($row['type']) . "',
+                    ?,
     
-                    '" . escape($row['sort_order']) . "',
+                    ?,
     
-                    '" . escape($row['required']) . "',
+                    ?,
     
-                    '" . escape($row['information']) . "',
+                    ?,
     
-                    '" . escape($row['default_value']) . "',
+                    ?,
     
-                    '" . escape($row['use_folder_name_for_default_value']) . "',
+                    ?,
     
-                    '" . escape($row['size']) . "',
+                    ?,
     
-                    '" . escape($row['maxlength']) . "',
+                    ?,
     
-                    '" . escape($row['wysiwyg']) . "',
+                    ?,
     
-                    '" . escape($row['rows']) . "',
+                    ?,
     
-                    '" . escape($row['cols']) . "',
+                    ?,
     
-                    '" . escape($row['multiple']) . "',
+                    ?,
     
-                    '" . escape($row['spacing_above']) . "',
+                    ?,
     
-                    '" . escape($row['spacing_below']) . "',
+                    ?,
     
-                    '" . USER_ID . "',
+                    ?,
     
                     UNIX_TIMESTAMP())";
-            $result_2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $result_2 = db_q($query, array((string) $row['form_type'], (string) $new_product_id, (string) $row['name'], (string) $row['label'], (string) $row['type'], (string) $row['sort_order'], (string) $row['required'], (string) $row['information'], (string) $row['default_value'], (string) $row['use_folder_name_for_default_value'], (string) $row['size'], (string) $row['maxlength'], (string) $row['wysiwyg'], (string) $row['rows'], (string) $row['cols'], (string) $row['multiple'], (string) $row['spacing_above'], (string) $row['spacing_below'], (string) USER_ID)) or output_error(lang('Query failed.'));
             $new_form_field_id = mysqli_insert_id(db::$con);
             // get form field options
-            $query             = "SELECT * FROM form_field_options WHERE form_field_id = '" . $row['id'] . "'";
-            $result2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $query             = "SELECT * FROM form_field_options WHERE form_field_id = ?";
+            $result2 = db_q($query, array((string) $row['id'])) or output_error(lang('Query failed.'));
             $form_field_options = array();
             while ($row = mysqli_fetch_assoc($result2)) {
                 $form_field_options[] = $row;
@@ -2178,18 +2178,18 @@ if (!$_POST) {
     
                          VALUES (
     
-                            '" . $new_product_id . "',
+                            ?,
     
-                            '" . $new_form_field_id . "',
+                            ?,
     
-                            '" . escape($form_field_option['label']) . "',
+                            ?,
     
-                            '" . escape($form_field_option['value']) . "',
+                            ?,
     
-                            '" . $form_field_option['default_selected'] . "',
+                            ?,
     
-                            '" . $form_field_option['sort_order'] . "')";
-                $result2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                            ?)";
+                $result2 = db_q($query, array((string) $new_product_id, (string) $new_form_field_id, (string) $form_field_option['label'], (string) $form_field_option['value'], (string) $form_field_option['default_selected'], (string) $form_field_option['sort_order'])) or output_error(lang('Query failed.'));
             }
         }
         // Get submit form fields, in order to duplicate them.

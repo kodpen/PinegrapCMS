@@ -21,7 +21,9 @@ description: Real column names of orders and order_items (tax, shipping, user_id
 - Status enum: `'incomplete', 'complete', 'exported', 'cancelled'` (`'cancelled'` added 2026.1.26).
 
 ## What does the external API return for an order?
-- The single source is `api_order_present()` (`includes/api/resources/orders.php`), declared in `api_order_schema()`; read the fields there. Shape: `id`, `order_number`, `status`, `placed_at` (+ `placed_at_unix`), `customer`, `billing_address`, `totals` (`subtotal`, `discount`, `tax`, `shipping`, `surcharge`, `total`), `payment`, `offer_code`; a single read adds `items[]` and `shipments[]`.
+- The single source is `api_order_present()` (`includes/api/resources/orders.php`), declared in `api_order_schema()`; read the fields there. Shape: `id`, `order_number`, `status`, `placed_at` (+ `placed_at_unix`), `customer`, `billing_address`, `totals` (`subtotal`, `discount`, `tax`, `shipping`, `surcharge`, `total`), `payment`, `offer_code`, `type`, `cancelled_at`, `cancellation_reason`, `refund_status`, `modified_at` (+ `modified_at_unix`, from `last_modified_timestamp`, PR #2258); a single read adds `items[]` and `shipments[]`.
+- The list's status set, `sort=placed_desc`, `modified_since` and the writers that move `last_modified_timestamp`: `api/api-orders-list.md`.
+- `type` (`online`/`local`/`marketplace`), `cancelled_at`, `cancellation_reason`, `refund_status` (PR #2240): selected only where `pg_schema_has()` finds the column (`api_order_state_columns()`), null on a site without it, so a marketplace import or counter sale no longer reads as a paid web order.
 - `items[]`: two names answer two questions: `name` = the line's own copy (`order_items.product_name`, written at sale time, goes on the invoice); `catalogue_name` = today's catalogue (`products.name`, `null` if the product was deleted). `price` is per unit; `tax` is the LINE's tax (`order_items.tax_total`), never multiplied by the quantity. `ship_to_id` = the line's delivery (`shipments[].id`), `null` for a line sent to no address (POST /orders/{id}/returns names lines of one delivery).
 
 ## What did the item_number bug teach?

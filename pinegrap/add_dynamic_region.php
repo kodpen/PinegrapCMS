@@ -88,8 +88,8 @@ if (!isset($_POST['name'])) {
     $_POST['name'] = trim($_POST['name']);
     // insert row into region table
     $query = "INSERT INTO dregion (dregion_name, dregion_code, dregion_user, dregion_timestamp) "
-            ."VALUES ('" . escape($_POST['name'] ?? '') . "', '" . escape($_POST['code'] ?? '') . "', {$user['id']}, UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            ."VALUES (?, ?, ?, UNIX_TIMESTAMP())";
+    $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['code'] ?? ''), (int) $user['id'])) or output_error('Query failed');
 
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('dynamic region'),$_POST['name']))), $_SESSION['sessionusername']);
     $notice = lang(array('string'=>'{var:1} was created successfully','vars'=>lang('Dynamic Region') ));

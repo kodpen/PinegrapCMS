@@ -55,8 +55,8 @@ function get_order_preview($properties) {
                 discount_offer_id,
                 offline_payment_allowed
              FROM orders
-             WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             WHERE id = ?";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // A visitor who opens this page before anything is in the cart has no order yet,
@@ -84,8 +84,8 @@ function get_order_preview($properties) {
         $shipping = false;
 
         // get all ship tos
-        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = '$order_id' ORDER BY ship_to_id";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = ? ORDER BY ship_to_id";
+        $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
 
         $ship_tos = array();
 
@@ -156,9 +156,9 @@ function get_order_preview($properties) {
                         ship_tos.offer_id
                     FROM ship_tos
                     LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
-                    WHERE ship_tos.id = $ship_to_id";
+                    WHERE ship_tos.id = ?";
                 
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((int) $ship_to_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $ship_to_name = $row['ship_to_name'];
                 $salutation = $row['salutation'];
@@ -182,8 +182,8 @@ function get_order_preview($properties) {
                 $ship_to_offer_id = $row['offer_id'];
                 
                 // get country name
-                $query = "SELECT name FROM countries WHERE code = '" . escape($country) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT name FROM countries WHERE code = ?";
+                $result = db_q($query, array((string) $country)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $country = $row['name'];
                 
@@ -226,10 +226,10 @@ function get_order_preview($properties) {
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
                     WHERE
-                        (order_items.order_id = '$order_id')
-                        AND (order_items.ship_to_id = '$ship_to_id')
+                        (order_items.order_id = ?)
+                        AND (order_items.ship_to_id = ?)
                     ORDER BY order_items.id";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $order_id, (string) $ship_to_id)) or output_error('Query failed.');
 
                 $order_items = array();
 
@@ -813,8 +813,8 @@ function get_order_preview($properties) {
                         $shipping_description = 'Shipping Method: ' . $shipping_method_name;
 
                         // get arrival date information
-                        $query = "SELECT name, custom FROM arrival_dates WHERE id = '$arrival_date_id'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT name, custom FROM arrival_dates WHERE id = ?";
+                        $result = db_q($query, array((string) $arrival_date_id)) or output_error('Query failed.');
                         
                         // if an arrival date was selected, then prepare requested arrival date content
                         if (mysqli_num_rows($result) > 0) {
@@ -1097,9 +1097,9 @@ function get_order_preview($properties) {
                     old_balance,
                     givex
                 FROM applied_gift_cards
-                WHERE order_id = '$order_id'
+                WHERE order_id = ?
                 ORDER BY id ASC";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
 
             $applied_gift_cards = array();
             
@@ -1235,8 +1235,8 @@ function get_order_preview($properties) {
             // loop through each applied offer
             foreach ($applied_offers as $offer_id) {
                 // get offer data
-                $query = "SELECT code, description FROM offers WHERE id = '$offer_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT code, description FROM offers WHERE id = ?";
+                $result = db_q($query, array((string) $offer_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $offer_description = pg_offer_public_label($row);
                 
@@ -1277,8 +1277,8 @@ function get_order_preview($properties) {
                     po_number,
                     tax_exempt
                  FROM orders
-                 WHERE id = '$order_id'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE id = ?";
+        $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         // set billing information values
@@ -1311,8 +1311,8 @@ function get_order_preview($properties) {
                 custom_field_2_label,
                 custom_field_2_required
             FROM billing_information_pages
-            WHERE page_id = '" . escape($_SESSION['ecommerce']['billing_information_page_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) $_SESSION['ecommerce']['billing_information_page_id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         $custom_field_1_label = $row['custom_field_1_label'];
@@ -2659,9 +2659,9 @@ function get_order_preview($properties) {
                         (old_balance / 100) AS old_balance,
                         givex
                     FROM applied_gift_cards
-                    WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
+                    WHERE order_id = ?
                     ORDER BY id ASC";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                 
                 $total_gift_card_balance = 0;
 
@@ -2881,8 +2881,8 @@ function get_order_preview($properties) {
                     custom_field_1_label,
                     custom_field_2_label
                 FROM billing_information_pages
-                WHERE page_id = '" . e($_SESSION['ecommerce']['billing_information_page_id']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE page_id = ?";
+            $result = db_q($query, array((string) $_SESSION['ecommerce']['billing_information_page_id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
 
             $custom_field_1_label = $row['custom_field_1_label'];

@@ -43,8 +43,8 @@ $query =
         contacts.affiliate_name
     FROM commissions
     LEFT JOIN contacts ON commissions.affiliate_code = contacts.affiliate_code
-    WHERE commissions.id = '" . escape($liveform->get_field_value('id')) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE commissions.id = ?";
+$result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 $commission = mysqli_fetch_assoc($result);
 
 // if the form has not just been submitted, then output form
@@ -133,11 +133,11 @@ if (!$_POST) {
     $query =
         "UPDATE commissions
         SET
-            status = '" . escape($liveform->get_field_value('status')) . "',
-            last_modified_user_id = '" . $user['id'] . "',
+            status = ?,
+            last_modified_user_id = ?,
             last_modified_timestamp = UNIX_TIMESTAMP()
-        WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $liveform->get_field_value('status'), (string) $user['id'], (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'commission ({var:1}) was modified','vars'=>$commission['reference_code'])) , $_SESSION['sessionusername']);
     

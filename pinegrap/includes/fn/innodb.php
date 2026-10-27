@@ -688,15 +688,15 @@ function pg_innodb_row_estimate($table)
         return null;
     }
 
-    $result = @mysqli_query(db::$con,
+    $result = db_q(
         "SELECT
             COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, CHARACTER_OCTET_LENGTH,
             CHARACTER_SET_NAME, NUMERIC_PRECISION, NUMERIC_SCALE, IS_NULLABLE
         FROM information_schema.COLUMNS
         WHERE
             (TABLE_SCHEMA = DATABASE())
-            AND (TABLE_NAME = '" . mysqli_real_escape_string(db::$con, $table) . "')
-        ORDER BY ORDINAL_POSITION");
+            AND (TABLE_NAME = ?)
+        ORDER BY ORDINAL_POSITION", array((string) $table));
 
     if (!$result) {
         return null;
@@ -731,13 +731,13 @@ function pg_innodb_row_estimate($table)
 
     $has_primary_key = false;
 
-    $key_result = @mysqli_query(db::$con,
+    $key_result = db_q(
         "SELECT COUNT(*)
         FROM information_schema.TABLE_CONSTRAINTS
         WHERE
             (TABLE_SCHEMA = DATABASE())
-            AND (TABLE_NAME = '" . mysqli_real_escape_string(db::$con, $table) . "')
-            AND (CONSTRAINT_TYPE = 'PRIMARY KEY')");
+            AND (TABLE_NAME = ?)
+            AND (CONSTRAINT_TYPE = 'PRIMARY KEY')", array((string) $table));
 
     if ($key_result) {
         $key_row = mysqli_fetch_row($key_result);
@@ -986,8 +986,8 @@ function pg_innodb_convert_table($table, $options = array())
     }
 
     if (is_array($previous)) {
-        @mysqli_query(db::$con, "SET SESSION lock_wait_timeout = " . (int) $previous['lock_wait_timeout']);
-        @mysqli_query(db::$con, "SET SESSION sql_mode = '" . mysqli_real_escape_string(db::$con, (string) $previous['sql_mode']) . "'");
+        db_q("SET SESSION lock_wait_timeout = ?", array((int) $previous['lock_wait_timeout']));
+        db_q("SET SESSION sql_mode = ?", array((string) $previous['sql_mode']));
     }
 
     @unlink($marker_file);

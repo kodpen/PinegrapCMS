@@ -222,9 +222,9 @@ if (!$_POST) {
                     contact_field,
                     office_use_only
                  FROM form_fields
-                 WHERE page_id = '" . escape($page_id) . "'
+                 WHERE page_id = ?
                  ORDER BY sort_order";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
         $fields = array();
 
@@ -287,9 +287,9 @@ if (!$_POST) {
                                 value,
                                 default_selected
                              FROM form_field_options
-                             WHERE form_field_id = '" . $field['id'] . "'
+                             WHERE form_field_id = ?
                              ORDER BY sort_order";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $field['id'])) or output_error('Query failed.');
 
                     $options = array();
 
@@ -798,14 +798,14 @@ if (!$_POST) {
                 last_modified_user_id,
                 last_modified_timestamp)
             VALUES (
-                '" . escape($page_id) . "',
-                '" . $new_complete . "',
-                '" . $user['id'] . "',
-                '" . escape($reference_code) . "',
+                ?,
+                ?,
+                ?,
+                ?,
                 UNIX_TIMESTAMP(),
-                '" . $user['id'] . "',
+                ?,
                 UNIX_TIMESTAMP())";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $page_id, (string) $new_complete, (string) $user['id'], (string) $reference_code, (string) $user['id'])) or output_error('Query failed.');
 
         $form_id = mysqli_insert_id(db::$con);
 
@@ -854,15 +854,15 @@ if (!$_POST) {
                                 attachment,
                                 timestamp)
                              VALUES (
-                                '" . escape($file_name) . "',
-                                '" . escape($field['upload_folder_id']) . "',
-                                '" . escape($file_extension) . "',
-                                '" . escape($file_size) . "',
-                                '" . $user['id'] . "',
+                                ?,
+                                ?,
+                                ?,
+                                ?,
+                                ?,
                                 '0',
                                 '1',
                                 UNIX_TIMESTAMP())";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $file_name, (string) $field['upload_folder_id'], (string) $file_extension, (string) $file_size, (string) $user['id'])) or output_error('Query failed.');
 
                     $file_id = mysqli_insert_id(db::$con);
 
@@ -973,12 +973,12 @@ if (!$_POST) {
                                     name,
                                     type)
                                  VALUES (
-                                    '" . $form_id . "',
-                                    '" . $field['id'] . "',
-                                    '" . escape(prepare_form_data_for_input($value, $field['type'])) . "',
-                                    '" . escape($field['name']) . "',
-                                    '$form_data_type')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?)";
+                        $result = db_q($query, array((string) $form_id, (string) $field['id'], (string) prepare_form_data_for_input($value, $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
                     }
 
                 // else this field does not have multiple values
@@ -991,12 +991,12 @@ if (!$_POST) {
                                 name,
                                 type)
                              VALUES (
-                                '" . $form_id . "',
-                                '" . $field['id'] . "',
-                                '" . escape(prepare_form_data_for_input($liveform->get_field_value($field['id']), $field['type'])) . "',
-                                '" . escape($field['name']) . "',
-                                '$form_data_type')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                ?,
+                                ?,
+                                ?,
+                                ?,
+                                ?)";
+                    $result = db_q($query, array((string) $form_id, (string) $field['id'], (string) prepare_form_data_for_input($liveform->get_field_value($field['id']), $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
                 }
             }
         }

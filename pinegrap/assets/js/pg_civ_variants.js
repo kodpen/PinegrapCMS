@@ -280,6 +280,9 @@
                 else if (flag === 'can_notify' && ('out_of_stock' in p)) el.hidden = String(p.out_of_stock) !== '1';
             });
 
+            // 1c. Boxes marked "hide if empty" around a value just redrawn.
+            settleEmptyBoxes(scope);
+
             // 2. Refresh the carousel — rebuild slides + thumbnails from
             //    the new product's gallery. Walks all carousels inside
             //    the form scope.
@@ -523,6 +526,7 @@
                             setProp(el, prop, String(v));
                         });
                     });
+                    settleEmptyBoxes(scope);
                     // Stock-aware Add to Cart: disable when the API reports
                     // out_of_stock=1 (more authoritative than preloaded data).
                     if (parseInt(p.out_of_stock, 10) === 1) {
@@ -533,6 +537,53 @@
                 })
                 .catch(function () { /* ignore — preloaded data is the floor */ });
         }
+    }
+
+    /**
+     * Elements the design marked pg-hide-if-empty around a value the
+     * variant redraws ([data-pg-bind]), or that the server left waiting
+     * (data-pg-empty-wait): hidden while their value shows nothing, shown
+     * when it does, judged as the server judges them
+     * (pg_sw_hide_empty_fields()): the value is the first .pg-field-value
+     * inside, else the whole inside. The innermost first, so a box whose
+     * rows all emptied goes with them. One a variant flag shows or hides
+     * stays the flag's.
+     */
+    function settleEmptyBoxes(scope) {
+        var boxes = scope.querySelectorAll('.pg-hide-if-empty');
+        for (var i = boxes.length - 1; i >= 0; i--) {
+            var el = boxes[i];
+            if (el.hasAttribute('data-pg-variant-flag')) continue;
+            if (!el.hasAttribute('data-pg-empty-wait') && !el.hasAttribute('data-pg-bind') && !el.querySelector('[data-pg-bind]')) continue;
+            var value = (el.tagName === 'IMG') ? el : (el.querySelector('.pg-field-value') || el);
+            el.hidden = !showsSomething(value);
+            if (el.hidden) el.setAttribute('data-pg-empty-wait', '');
+        }
+    }
+
+    // Whether an element shows anything inside it (a picture: whether it
+    // has an address): words, a picture with an address, a video, a frame,
+    // a drawing, a link or a form control (pg_sw_has_content()). What is
+    // hidden does not count.
+    var SHOWN_TAGS = /^(VIDEO|AUDIO|IFRAME|OBJECT|EMBED|SVG|CANVAS|A|INPUT|SELECT|TEXTAREA|BUTTON)$/;
+    function showsSomething(el) {
+        if (el.tagName === 'IMG') return !!el.getAttribute('src');
+        for (var c = el.firstChild; c; c = c.nextSibling) {
+            if (c.nodeType === 3) {
+                if (c.nodeValue.replace(/\u00a0/g, ' ').trim() !== '') return true;
+                continue;
+            }
+            if (c.nodeType !== 1 || c.hidden) continue;
+            var tag = String(c.tagName).toUpperCase();
+            if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEMPLATE') continue;
+            if (SHOWN_TAGS.test(tag)) return true;
+            if (tag === 'IMG') {
+                if (c.getAttribute('src')) return true;
+                continue;
+            }
+            if (showsSomething(c)) return true;
+        }
+        return false;
     }
 
     /**

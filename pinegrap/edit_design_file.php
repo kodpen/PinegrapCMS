@@ -56,8 +56,8 @@ if (empty($_POST['name'])) {
             folder.folder_archived
         FROM files 
         LEFT JOIN folder ON files.folder = folder.folder_id
-        WHERE files.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE files.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_array($result);
     
     $file_name = $row['name'];
@@ -142,8 +142,8 @@ if (empty($_POST['name'])) {
         // if this is a CSS file, then output the CSS or Theme label and location
         if ($file_extension == 'css') {
             // check to see if this is a system theme
-            $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = '" . escape($_GET['id']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = ?";
+            $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
         
             // if this is a system theme then output the edit theme button
@@ -330,19 +330,19 @@ if (empty($_POST['name'])) {
     if (!empty($_POST['delete']))
     {
         // delete file row
-        $query = "DELETE FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result=mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "DELETE FROM files WHERE id = ?";
+        $result=db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         
         // check to see if this is a system theme
-        $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // if this is a system theme then delete it's css theme properties from the database
         if ($row[0] > 0) {
             // delete file's system css properties
-            $query = "DELETE FROM system_theme_css_rules WHERE file_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM system_theme_css_rules WHERE file_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         }
 
         db("DELETE FROM preview_styles WHERE theme_id = '" . escape($_POST['id'] ?? '') . "'");

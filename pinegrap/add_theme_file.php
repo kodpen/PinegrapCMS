@@ -261,16 +261,16 @@ if (!$_POST) {
                     theme,
                     timestamp)
                 VALUES (
-                    '" . escape($file_name) . "',
-                    '" . escape($liveform->get_field_value('folder')) . "',
-                    '" . escape($liveform->get_field_value('description')) . "',
+                    ?,
+                    ?,
+                    ?,
                     'css',
                     '0',
-                    '$user[id]',
+                    ?,
                     '1',
                     '1',
                     UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $file_name, (string) $liveform->get_field_value('folder'), (string) $liveform->get_field_value('description'), (string) $user['id'])) or output_error('Query failed.');
             $theme_id = mysqli_insert_id(db::$con);
             
             // insert the css template into the database
@@ -386,16 +386,16 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
                     theme,
                     timestamp)
                 VALUES (
-                    '" . escape($file_name) . "',
-                    '" . escape($liveform->get_field_value('folder')) . "',
-                    '" . escape($liveform->get_field_value('description')) . "',
+                    ?,
+                    ?,
+                    ?,
                     'css',
                     '0',
-                    '$user[id]',
+                    ?,
                     '1',
                     '1',
                     UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $file_name, (string) $liveform->get_field_value('folder'), (string) $liveform->get_field_value('description'), (string) $user['id'])) or output_error('Query failed.');
             $theme_id = mysqli_insert_id(db::$con);
             
             $data_list = '';
@@ -449,8 +449,8 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
                 region_type,
                 region_name
             FROM system_theme_css_rules 
-            WHERE file_id = '" . escape($theme_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE file_id = ?";
+        $result = db_q($query, array((string) $theme_id)) or output_error('Query failed.');
         while($row = mysqli_fetch_array($result)) {
             // if this is an ad region, then set the properties in the ad regions area of the array
             if ($row['region_type'] == 'ad') {
@@ -494,8 +494,8 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
         fclose($handle);
         
         // update the file size now that we have a file
-        $query = "UPDATE files SET size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)) . "' WHERE id = '" . $theme_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "UPDATE files SET size = ? WHERE id = ?";
+        $result = db_q($query, array((string) filesize(FILE_DIRECTORY_PATH . '/' . $file_name), (string) $theme_id)) or output_error('Query failed.');
         
         // if a new theme was created, then log the activity, output a message and then send the user to the theme designer
         if ($liveform->get_field_value('create_system_theme_option') == 'new') {
@@ -586,16 +586,16 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
                 theme,
                 timestamp)
             VALUES (
-                '" . escape($file_name) . "',
-                '" . escape($liveform->get_field_value('folder')) . "',
-                '" . escape($liveform->get_field_value('description')) . "',
-                '" . escape($file_extension) . "',
-                '" . escape($file_size) . "',
-                '$user[id]',
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
                 '1',
                 '1',
                 UNIX_TIMESTAMP())";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $file_name, (string) $liveform->get_field_value('folder'), (string) $liveform->get_field_value('description'), (string) $file_extension, (string) $file_size, (string) $user['id'])) or output_error('Query failed.');
         
         // if overwrite is true, then log the appropriate notice
         if ($overwrite == true) {

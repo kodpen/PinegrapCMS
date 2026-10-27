@@ -318,8 +318,25 @@ function ws_mcp_agent_identity($server, $server_id = 0, $catalogue = null)
             : PATH . SOFTWARE_DIRECTORY . '/assets/images/ws-ai.svg',
         'icon'      => $icon,
         'initials'  => $initials,
+        'tone'      => function_exists('pg_avatar_tone') ? pg_avatar_tone($initials, $seed) : 0,
         'seed'      => $seed,
         'catalogue' => $entry_key,
+    );
+}
+
+/**
+ * The picture, letters and tone of an MCP identity (ws_mcp_agent_identity()),
+ * the fields a sender brief draws its Avatar from.
+ *
+ * @param array $identity
+ * @return array avatar, initials, tone
+ */
+function ws_mcp_agent_face($identity)
+{
+    return array(
+        'avatar'   => (string) ($identity['avatar'] ?? ''),
+        'initials' => (string) ($identity['initials'] ?? ''),
+        'tone'     => (int) ($identity['tone'] ?? 0),
     );
 }
 
@@ -800,10 +817,10 @@ function ws_mcp_settings_custom($self_url, $kept, $full_form)
                     <input type="hidden" name="mcp_auth" value="' . h($kind) . '">
                     <div>
                         <label class="form-label small mb-1" for="ws_mcp_probe_alias">' . h(lang('Alias')) . '</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text">@</span>
-                            <input class="form-control" type="text" name="mcp_alias" id="ws_mcp_probe_alias" value="' . h($values['mcp_alias'] ?? '') . '" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off">
-                        </div>
+                        <label class="form-control form-control-sm form-adorn">
+                            <span class="form-adorn-text" aria-hidden="true">@</span>
+                            <input class="form-ghost" type="text" name="mcp_alias" id="ws_mcp_probe_alias" value="' . h($values['mcp_alias'] ?? '') . '" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off">
+                        </label>
                     </div>
                     ' . (($kind === 'bearer') ? '
                     <div class="ws-grow">

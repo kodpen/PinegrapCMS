@@ -1425,7 +1425,7 @@ function local_sale_render_customer($user)
         return '<div class="pg-sale-cust">'
             . '<span class="pg-sale-av" aria-hidden="true"><i class="bi bi-shop"></i></span>'
             . '<span class="pg-sale-who"><b>' . lang('Walk-in sale') . '</b><small>' . lang('No customer is recorded on the order') . '</small></span>'
-            . '<button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-cust="change">' . lang('Pick') . ' <kbd>F4</kbd></button>'
+            . '<button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-cust="change">' . lang('Pick') . ' <kbd>F4</kbd></button>'
             . '</div>';
     }
 
@@ -1450,8 +1450,8 @@ function local_sale_render_customer($user)
     return '<div class="pg-sale-cust">'
         . '<span class="pg-sale-av is-picked" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
         . '<span class="pg-sale-who"><b>' . h($customer['label']) . '</b><small>' . h(implode(' · ', array_filter($sub, 'strlen'))) . '</small></span>'
-        . '<button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-cust="change">' . lang('Change') . '</button>'
-        . '<button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-cust="clear" aria-label="' . h(lang('Remove the customer')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-cust="change">' . lang('Change') . '</button>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-cust="clear" aria-label="' . h(lang('Remove the customer')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
         . '</div>';
 }
 
@@ -1551,7 +1551,7 @@ function local_sale_render_ledger($user)
     }
 
     return '<div class="card pg-belge-block">' . $header
-        . '<button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-ledger="' . $account_id . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Account summary') . '</button></div>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-ledger="' . $account_id . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Account summary') . '</button></div>'
         . '<div class="card-body">'
         . '<div class="pg-sale-balance"><b class="' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</b><span class="fg-secondary">' . h($balance_side) . '</span></div>'
         . '<dl class="pg-sale-facts">' . $facts . '</dl>' . $warning
@@ -1781,7 +1781,7 @@ function local_sale_render_recent($user)
             . '<br><small class="fg-secondary">' . h(lang(array('string' => '{var:1} · {var:2} lines', 'vars' => array($who, (int) $row['item_count'])))) . '</small></div>'
             . '<div class="text-end fw-semibold">' . local_sale_money($row['total']) . '</div>'
             . '<div class="pg-sale-rs-acts">' . $invoice
-            . '<a class="btn btn-sm btn-ghost ms-auto" href="view_order.php?id=' . (int) $row['id'] . '" title="' . h(lang('View')) . '" aria-label="' . h(lang('View')) . '"><i class="bi bi-eye" aria-hidden="true"></i></a></div>'
+            . '<a class="btn btn-sm btn-text theme-secondary ms-auto" href="view_order.php?id=' . (int) $row['id'] . '" title="' . h(lang('View')) . '" aria-label="' . h(lang('View')) . '"><i class="bi bi-eye" aria-hidden="true"></i></a></div>'
             . '</div>';
     }
 

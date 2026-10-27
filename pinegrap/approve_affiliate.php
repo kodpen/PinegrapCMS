@@ -23,8 +23,8 @@ validate_contacts_access($user);
 $contact_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
 // try to find contact for supplied id
-$query = "SELECT id, email_address, affiliate_code FROM contacts WHERE id = '" . $contact_id . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT id, email_address, affiliate_code FROM contacts WHERE id = ?";
+$result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
 
 // if contact could not be found output error
 if (mysqli_num_rows($result) == 0) {
@@ -94,17 +94,17 @@ if ($existing_affiliate_code) {
 $query = "UPDATE contacts
          SET
             affiliate_approved = '1',
-            affiliate_code = '" . escape($affiliate_code) . "',
-            user = '" . $user['id'] . "',
+            affiliate_code = ?,
+            user = ?,
             timestamp = UNIX_TIMESTAMP()
-         WHERE id = '" . $contact_id . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+         WHERE id = ?";
+$result = db_q($query, array((string) $affiliate_code, (string) $user['id'], (string) $contact_id)) or output_error('Query failed.');
 
 // if there is a group offer, then determine if we need to add a key code for group offer for this affiliate
 if (AFFILIATE_GROUP_OFFER_ID != 0) {
     // check if offer exists and get offer code
-    $query = "SELECT code FROM offers WHERE id = '" . AFFILIATE_GROUP_OFFER_ID . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT code FROM offers WHERE id = ?";
+    $result = db_q($query, array((string) AFFILIATE_GROUP_OFFER_ID)) or output_error('Query failed.');
     
     // if an offer was found, then continue to check if a key code should be added for group offer
     if (mysqli_num_rows($result) > 0) {
@@ -115,9 +115,9 @@ if (AFFILIATE_GROUP_OFFER_ID != 0) {
             "SELECT id
             FROM key_codes
             WHERE
-                (code = '" . escape($affiliate_code) . "')
-                AND (offer_code = '" . escape($offer['code']) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (code = ?)
+                AND (offer_code = ?)";
+        $result = db_q($query, array((string) $affiliate_code, (string) $offer['code'])) or output_error('Query failed.');
         
         // if a key code does not already exist for this group offer and affiliate, then create key code
         if (mysqli_num_rows($result) == 0) {
@@ -129,12 +129,12 @@ if (AFFILIATE_GROUP_OFFER_ID != 0) {
                     user,
                     timestamp)
                 VALUES (
-                    '" . escape($affiliate_code) . "',
-                    '" . escape($offer['code']) . "',
+                    ?,
+                    ?,
                     '1',
-                    '" . $user['id'] . "',
+                    ?,
                     UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $affiliate_code, (string) $offer['code'], (string) $user['id'])) or output_error('Query failed.');
         }
     }
 }

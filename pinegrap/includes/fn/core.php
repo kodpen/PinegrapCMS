@@ -2838,7 +2838,10 @@ function get_time_picker_format()
 // The <script> tag of assets/js/pg_fields.js, which draws the panel's
 // data-pg-chips, data-pg-combobox, data-pg-date, data-pg-datetime and
 // data-pg-time fields; empty after the first call of a request, so every
-// part of a screen can ask for it.
+// part of a screen can ask for it. The tag carries the translated words the
+// widgets show: a chip's remove button, a combobox's search box and server
+// search status, and the
+// panel language a calendar names its months and days in.
 function pg_fields_script()
 {
     static $printed = false;
@@ -2849,7 +2852,7 @@ function pg_fields_script()
 
     $printed = true;
 
-    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '"></script>';
+    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '" data-pg-remove-label="' . h(lang('Remove')) . '" data-pg-search-label="' . h(lang('Search')) . '" data-pg-no-results-label="' . h(lang('No results found')) . '" data-pg-searching-label="' . h(lang('Searching…')) . '" data-pg-type-label="' . h(lang('Type to search...')) . '" data-pg-locale-label="' . h(lang(array('info' => ''))) . '"></script>';
 }
 
 
@@ -3758,20 +3761,20 @@ function who_is_online($check_time = 50)
             $user_id = (int) $_SESSION['sessionuserid'];
             $query = "UPDATE user
                       SET user_online_timestamp = UNIX_TIMESTAMP()
-                      WHERE user_id = '" . $user_id . "'
-                        AND (UNIX_TIMESTAMP() - user_online_timestamp) > " . $ct;
-            @mysqli_query(db::$con, $query);
+                      WHERE user_id = ?
+                        AND (UNIX_TIMESTAMP() - user_online_timestamp) > ?";
+            db_q($query, array((string) $user_id, (int) $ct));
             return;
         }
 
         // Fallback to username if user_id not stored in session
         if (isset($_SESSION['sessionusername']) && $_SESSION['sessionusername'] !== '') {
-            $username = escape($_SESSION['sessionusername']);
+            $username = (string) $_SESSION['sessionusername'];
             $query = "SELECT user_id, user_online_timestamp
                       FROM user
-                      WHERE user_username = '" . $username . "'
+                      WHERE user_username = ?
                       LIMIT 1";
-            $result = mysqli_query(db::$con, $query);
+            $result = db_q($query, array($username));
             if ($result && mysqli_num_rows($result) > 0) {
                 $row = mysqli_fetch_assoc($result);
                 $user_id = (int) $row['user_id'];
@@ -3779,8 +3782,8 @@ function who_is_online($check_time = 50)
                 if ((time() - $user_online_timestamp) > $ct) {
                     $update = "UPDATE user
                                SET user_online_timestamp = UNIX_TIMESTAMP()
-                               WHERE user_id = '" . $user_id . "'";
-                    @mysqli_query(db::$con, $update);
+                               WHERE user_id = ?";
+                    db_q($update, array((string) $user_id));
                 }
             }
         }
@@ -3801,8 +3804,8 @@ function who_is_online($check_time = 50)
  *   will be used as the user.
  * - Numeric identifier values (product_id, order_id, form_id, comment_id) are
  *   normalized to integers when provided; empty strings are left as empty.
- * - The function uses an escape() helper to sanitize values and inserts via
- *   mysqli_query against db::$con. The notification row sets 'readed' = 0 and
+ * - The function binds the values through db_q() placeholders and inserts
+ *   against db::$con. The notification row sets 'readed' = 0 and
  *   'timestamp' = UNIX_TIMESTAMP().
  * - Returns the inserted row ID on success or boolean false on failure.
  *
@@ -3899,7 +3902,7 @@ function create_notification($properties)
     $form_id = ($form_id === '' ? '' : (int) $form_id);
     $comment_id = ($comment_id === '' ? '' : (int) $comment_id);
 
-    // Prepare query (use existing escape() helper)
+    // Prepare query (values bound through db_q())
     $query = "INSERT INTO notifications (
                 action,
                 type,
@@ -3914,21 +3917,21 @@ function create_notification($properties)
                 readed,
                 timestamp
             ) VALUES (
-                '" . escape($action) . "',
-                '" . escape($type) . "',
-                '" . escape($title) . "',
-                '" . escape($product_id) . "',
-                '" . escape($form_id) . "',
-                '" . escape($order_id) . "',
-                '" . escape($comment_id) . "',
-                '" . escape($order_total) . "',
-                '" . escape($user) . "',
-                '" . escape($send_to) . "',
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
                 '0',
                 UNIX_TIMESTAMP()
             )";
 
-    $result = mysqli_query(db::$con, $query);
+    $result = db_q($query, array((string) $action, (string) $type, (string) $title, (string) $product_id, (string) $form_id, (string) $order_id, (string) $comment_id, (string) $order_total, (string) $user, (string) $send_to));
 
     if ($result === false) {
         return false;

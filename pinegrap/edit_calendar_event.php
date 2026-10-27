@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_form.php');
 $user = validate_user();
 validate_calendars_access($user);
 
@@ -51,8 +52,8 @@ if (validate_calendar_event_access($_REQUEST['id']) == false) {
 // in order to check if the user should be able to edit this calendar event
 if (($user['role'] == 3) && ($user['publish_calendar_events'] == FALSE)) {
     // check to see if the calendar event has been published
-    $query = "SELECT published FROM calendar_events WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT published FROM calendar_events WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     // if the event has been published then log and output error
@@ -136,8 +137,8 @@ if (!$_POST) {
                 product_id,
                 next_page_id
             FROM calendar_events
-            WHERE id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $liveform->assign_field_value('name', $row['name']);
@@ -183,8 +184,8 @@ if (!$_POST) {
         $query =
             "SELECT calendar_id
             FROM calendar_events_calendars_xref
-            WHERE calendar_event_id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         
         $selected_calendars = array();
         
@@ -205,8 +206,8 @@ if (!$_POST) {
         $query =
             "SELECT calendar_event_location_id
             FROM calendar_events_calendar_event_locations_xref
-            WHERE calendar_event_id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         
         $selected_calendar_event_locations = array();
         
@@ -237,9 +238,9 @@ if (!$_POST) {
             "SELECT number_of_remaining_spots
             FROM remaining_reservation_spots
             WHERE
-                (calendar_event_id = '" . escape($_GET['id']) . "')
-                AND (recurrence_number = '" . escape($recurrence_number) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (calendar_event_id = ?)
+                AND (recurrence_number = ?)";
+        $result = db_q($query, array((string) $_GET['id'], (string) $recurrence_number)) or output_error('Query failed.');
         
         // if a remaining spots record was found then use it to populate the remaining spots
         if (mysqli_num_rows($result) > 0) {
@@ -788,30 +789,30 @@ if (!$_POST) {
     // if calendar event was selected for delete
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
         // get calendar event name for log
-        $query = "SELECT name FROM calendar_events WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT name FROM calendar_events WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $calendar_event_name = $row['name'];
         
         // delete calendar event
-        $query = "DELETE FROM calendar_events WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM calendar_events WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete calendar event exceptions if any exist
-        $query = "DELETE FROM calendar_event_exceptions WHERE calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM calendar_event_exceptions WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete calendar event cross reference if any exist
-        $query = "DELETE FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM calendar_events_calendars_xref WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete calendar event & calendar event locations cross reference if any exist
-        $query = "DELETE FROM calendar_events_calendar_event_locations_xref WHERE calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM calendar_events_calendar_event_locations_xref WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete remaining spots data if any exists
-        $query = "DELETE FROM remaining_reservation_spots WHERE calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM remaining_reservation_spots WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('event'), $calendar_event_name) )), $_SESSION['sessionusername']);
         $liveform->remove_form();
@@ -824,445 +825,11 @@ if (!$_POST) {
     // else calendar event was not selected for delete
     } else {
         
-        $liveform->validate_required_field('name', lang('Name is required.'));
-
-        // If all day is enabled, then validate start and end date & time fields in a certain way.
-        if ($liveform->get_field_value('all_day') == 1) {
-            $liveform->validate_required_field('start_time', lang('Start Date is required.'));
-            $liveform->validate_required_field('end_time', lang('End Date is required.'));
-
-            // if there is not already an error for this field and submitted date is invalid, prepare error
-            if (($liveform->check_field_error('start_time') == false) && (validate_date($liveform->get_field_value('start_time')) == false)) {
-                $liveform->mark_error('start_time', lang('Please enter a valid start date.'));
-            }
-            
-            // if there is not already an error for this field and submitted date is invalid, prepare error
-            if (($liveform->check_field_error('end_time') == false) && (validate_date($liveform->get_field_value('end_time')) == false)) {
-                $liveform->mark_error('end_time', lang('Please enter a valid end date.'));
-            }
-            
-            // if start date and end date do not have errors and end date is less than start date, prepare error
-            if (
-                ($liveform->check_field_error('start_time') == false)
-                && ($liveform->check_field_error('end_time') == false)
-                && (prepare_form_data_for_input($liveform->get_field_value('end_time'), 'date') < prepare_form_data_for_input($liveform->get_field_value('start_time'), 'date'))
-            ) {
-                $liveform->mark_error('end_time', lang('Please enter an end date that is on or after the start date.'));
-            }
-
-            // If there are no errors for the start and end time, then add a time on to the date,
-            // for use later, because for all day we still technically store a full date and time (not just the date).
-            if (
-                ($liveform->check_field_error('start_time') == false)
-                && ($liveform->check_field_error('end_time') == false)
-            ) {
-                $start_time = $liveform->get_field_value('start_time') . ' 12:00 AM';
-                $end_time = $liveform->get_field_value('end_time') . ' 11:59 PM';
-            }
-
-        // Otherwise all day is disabled, so validate start and end date & time fields in a different way.
-        } else {
-            $liveform->validate_required_field('start_time', lang('Start Date &amp; Time is required.'));
-            $liveform->validate_required_field('end_time', lang('End Date & Time is required.'));
-
-            // if there is not already an error for this field and submitted date & time is invalid, prepare error
-            if (($liveform->check_field_error('start_time') == false) && (validate_date_and_time($liveform->get_field_value('start_time')) == false)) {
-                $liveform->mark_error('start_time', lang('Please enter a valid start date & time.'));
-            }
-            
-            // if there is not already an error for this field and submitted date & time is invalid, prepare error
-            if (($liveform->check_field_error('end_time') == false) && (validate_date_and_time($liveform->get_field_value('end_time')) == false)) {
-                $liveform->mark_error('end_time', lang('Please enter a valid end date & time.'));
-            }
-            
-            // if start time and end time do not have errors and end_time is less than or equal to start time, prepare error
-            if (
-                ($liveform->check_field_error('start_time') == false)
-                && ($liveform->check_field_error('end_time') == false)
-                && (prepare_form_data_for_input($liveform->get_field_value('end_time'), 'date and time') <= prepare_form_data_for_input($liveform->get_field_value('start_time'), 'date and time'))
-            ) {
-                $liveform->mark_error('end_time', lang('Please enter an end date & time that is after the start date & time.'));
-            }
-
-            // If there are no errors for the start and end time, then set the exact value they entered for the start and end time.
-            // We don't need to add a time because the user already entered that when all day is disabled.
-            if (
-                ($liveform->check_field_error('start_time') == false)
-                && ($liveform->check_field_error('end_time') == false)
-            ) {
-                $start_time = $liveform->get_field_value('start_time');
-                $end_time = $liveform->get_field_value('end_time');
-            }
-        }
-
-        // If recurrence is enabled then validate recurrence fields.
-        if ($liveform->get_field_value('recurrence') == 1) {
-            $liveform->validate_required_field('total_recurrence_number', lang('Repeat number is required when you enable Repeat.'));
-            $liveform->validate_required_field('recurrence_type', lang('Repeat type is required when you enable Repeat.'));
-
-            // If there is not already an error for the recurrence number field,
-            // and value is not a number greater than 0, then add error.
-            if (
-                ($liveform->check_field_error('total_recurrence_number') == false)
-                &&
-                (
-                    (is_numeric($liveform->get_field_value('total_recurrence_number')) == false)
-                    || ($liveform->get_field_value('total_recurrence_number') <= 0)
-                )
-            ) {
-                $liveform->mark_error('total_recurrence_number', lang('Please enter a valid number that is greater than 0 for the repeat number.'));
-            }
-
-            // If the user selected the event to repeat daily and did not select
-            // any days of the week, then output error.
-            if (
-                ($liveform->get_field_value('recurrence_type') == 'day')
-                && ($liveform->get_field_value('recurrence_day_sun') == 0)
-                && ($liveform->get_field_value('recurrence_day_mon') == 0)
-                && ($liveform->get_field_value('recurrence_day_tue') == 0)
-                && ($liveform->get_field_value('recurrence_day_wed') == 0)
-                && ($liveform->get_field_value('recurrence_day_thu') == 0)
-                && ($liveform->get_field_value('recurrence_day_fri') == 0)
-                && ($liveform->get_field_value('recurrence_day_sat') == 0)
-            ) {
-                $liveform->mark_error('recurrence_days_of_the_week', lang('Please select at least one day of the week for the daily repeat.'));
-            }
-
-            // If the recurrence type is set to month then validate month type.
-            if ($liveform->get_field_value('recurrence_type') == 'month') {
-                $liveform->validate_required_field('recurrence_month_type', lang('Repeat month type is required.'));
-            }
-        }
-
-        // If there are no errors for the schedule fields,
-        // then continue to check if there are any location conflicts.
-        if (
-            ($liveform->check_field_error('start_time') == false)
-            && ($liveform->check_field_error('end_time') == false)
-            && ($liveform->check_field_error('total_recurrence_number') == false)
-            && ($liveform->check_field_error('recurrence_type') == false)
-            && ($liveform->check_field_error('recurrence_days_of_the_week') == false)
-            && ($liveform->check_field_error('recurrence_month_type') == false)
-        ) {
-            // get all calendar event locations
-            $query =
-                "SELECT
-                    id,
-                    name
-                FROM calendar_event_locations
-                ORDER BY name";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            $calendar_event_locations = array();
-            
-            while ($row = mysqli_fetch_assoc($result)) {
-                $calendar_event_locations[] = $row;
-            }
-            
-            $calendar_event_location_selected = false;
-            
-            // loop through all calendar event locations in order to determine if one was selected
-            foreach ($calendar_event_locations as $calendar_event_location) {
-                // if a location was selected, take note
-                if ($liveform->get_field_value('calendar_event_location_' . $calendar_event_location['id']) == 1) {
-                    $calendar_event_location_selected = true;
-                    break;
-                }
-            }
-
-            // if a location was selected
-            if ($calendar_event_location_selected == true) {
-                // If the event is non-recurring
-                if ($liveform->get_field_value('recurrence') == 0) {
-                    foreach ($calendar_event_locations as $calendar_event_location) {
-                        // if a location was selected, take note
-                        if ($liveform->get_field_value('calendar_event_location_' . $calendar_event_location['id']) == 1) {
-                            $check_availability = check_calendar_event_location_availability($calendar_event_location['id'], $start_time, $end_time, escape($liveform->get_field_value('id')));
-                            if ($check_availability != 'available') {
-                                if (validate_calendar_event_access($check_availability) == false) {
-                                    $existing_calendar_name_statement = '';
-                                } else {
-                                    $query =
-                                        "SELECT name
-                                        FROM calendar_events
-                                        WHERE id = '" . escape($check_availability) . "'";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                                    
-                                    $row = mysqli_fetch_assoc($result);
-                                    
-                                    $existing_calendar_name_statement = lang(array('string'=>' by the event, {var:1}','vars'=>h($row['name'])));
-                                }
-                                $liveform->mark_error('calendar_event_location_' . $calendar_event_location['id'], lang(array('string'=>'The location, {var:1}, is already in use during this time{var:2}. Please choose a different time or location.','vars'=>array(h($calendar_event_location['name']),$existing_calendar_name_statement) )) );
-                            }
-                        }
-                    }
-                // Else, The user created a recurring event
-                } else {
-                    // get calendar event exceptions
-                    $query =
-                        "SELECT
-                            recurrence_number
-                        FROM calendar_event_exceptions
-                        WHERE
-                            calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-                    $result = mysqli_query(db::$con, $query);
-                    
-                    $calendar_event_exceptions = array();
-                    
-                    while ($row = mysqli_fetch_assoc($result)) {
-                        $calendar_event_exceptions[] = $row['recurrence_number'];
-                    }
-                    
-                    $event_start_date_and_time = escape(prepare_form_data_for_input($start_time, 'date and time'));
-                    $event_end_date_and_time = escape(prepare_form_data_for_input($end_time, 'date and time'));
-
-                    $recurrence_number = $liveform->get_field_value('total_recurrence_number');
-                    $recurrence_type = $liveform->get_field_value('recurrence_type');
-                    $recurrence_day_sun = $liveform->get_field_value('recurrence_day_sun');
-                    $recurrence_day_mon = $liveform->get_field_value('recurrence_day_mon');
-                    $recurrence_day_tue = $liveform->get_field_value('recurrence_day_tue');
-                    $recurrence_day_wed = $liveform->get_field_value('recurrence_day_wed');
-                    $recurrence_day_thu = $liveform->get_field_value('recurrence_day_thu');
-                    $recurrence_day_fri = $liveform->get_field_value('recurrence_day_fri');
-                    $recurrence_day_sat = $liveform->get_field_value('recurrence_day_sat');
-                    $recurrence_month_type = $liveform->get_field_value('recurrence_month_type');
-                    
-                    // split event start date and time into parts
-                    $event_start_date_and_time_parts = explode(' ', $event_start_date_and_time);
-                    $event_start_date = $event_start_date_and_time_parts[0];
-                    $event_start_time = $event_start_date_and_time_parts[1];
-                    
-                    // split event end date and time into parts
-                    $event_end_date_and_time_parts = explode(' ', $event_end_date_and_time);
-                    $event_end_time = $event_end_date_and_time_parts[1];
-                    
-                    // if recurrence number is greater than zero, then split event start date into parts, that we will use later
-                    if ($recurrence_number > 0) {
-                        $event_start_date_parts = explode('-', $event_start_date);
-                        $event_start_year = $event_start_date_parts[0];
-                        $event_start_month = $event_start_date_parts[1];
-                        $event_start_day = $event_start_date_parts[2];
-
-                        // If this is a monthly event and the month type is "day of the week",
-                        // then determine which week in the month the event is on.
-                        // If the week is 1-4 then we will use that, however if the week is 5,
-                        // then we interpret that as the last week.
-                        if (
-                            ($recurrence_type == 'month')
-                            && ($recurrence_month_type == 'day_of_the_week')
-                        ) {
-                            $day_of_the_week = date('l', strtotime($event_start_date));
-                            $first_day_of_the_month_timestamp = strtotime($event_start_year . '-' . $event_start_month . '-01');
-
-                            $week = '';
-
-                            // Create a loop in order to determine which week event falls on.
-                            // We only loop through 4 weeks, because we are going to set "last" below for 5th week.
-                            for ($week_index = 0; $week_index <= 3; $week_index++) {
-                                // If the event is in this week, then remember the week number and break out of this loop.
-                                if ($event_start_date == date('Y-m-d', strtotime('+' . $week_index . ' week ' . $day_of_the_week, $first_day_of_the_month_timestamp))) {
-                                    $week = $week_index + 1;
-                                    break;
-                                }
-                            }
-
-                            // If a week was not found, then that means it falls on the 5th week,
-                            // so set it to be the last week.
-                            if ($week == '') {
-                                $week = 'last';
-                            }
-                        }
-                    }
-                    
-                    // loop in order to check the availability of each recurrence
-                    for ($i = 0; $i <= $recurrence_number; $i++) {
-                        $halt_on_exception = '0';
-                        if (count($calendar_event_exceptions) > 0) {
-                            if (in_array($i, $calendar_event_exceptions)) {
-                                $halt_on_exception = '1';
-                            } else {
-                                $halt_on_exception = '0';
-                            }
-                        }
-                        
-                        // if recurrence number is greater than 0, then adjust event start date
-                        if ($i > 0) {
-                            // adjust event start date depending on recurrence type
-                            switch ($recurrence_type) {
-                                // Daily
-                                case 'day':
-                                    $count = 0;
-
-                                    // Loop through days in the future until we find a date that is valid
-                                    // based on the valid days of the week that were selected.
-                                    while (true) {
-                                        $new_time = strtotime('+1 day', strtotime($event_start_date));
-                                        $event_start_date = date('Y-m-d', $new_time);
-                                        $day_of_the_week = strtolower(date('D', $new_time));
-
-                                        // If this day of the week is valid for this calendar event,
-                                        // then we have found a valid date, so break out of the loop.
-                                        if (${'recurrence_day_' . $day_of_the_week} == 1) {
-                                            break;
-                                        }
-
-                                        $count++;
-
-                                        // If we have already looped 7 times, then something is wrong,
-                                        // so break out of this loop and the recurrence loop above.
-                                        // This should never happen but is added just in case in order to
-                                        // prevent an endless loop.
-                                        if ($count == 7) {
-                                            break 3;
-                                        }
-                                    }
-
-                                    break;
-                                    
-                                // Weekly
-                                case 'week':
-                                    $new_time = mktime(0, 0, 0, $event_start_month, $event_start_day + (7 * $i), $event_start_year);
-                                    $event_start_date = date('Y', $new_time) . '-' . date('m', $new_time) . '-' . date('d', $new_time);
-                                    break;
-                                
-                                // Monthly
-                                case 'month':
-                                    switch ($recurrence_month_type) {
-                                        case 'day_of_the_month':
-                                            $new_time = mktime(0, 0, 0, $event_start_month + $i, 1, $event_start_year);
-                                            $new_event_start_year = date('Y', $new_time);
-                                            $new_event_start_month = date('m', $new_time);
-                                            $new_event_start_day = $event_start_day;
-
-                                            // if date is not valid, then get last date for month
-                                            if (checkdate($new_event_start_month, $new_event_start_day, $new_event_start_year) == false) {
-                                                $new_event_start_day = date('t', mktime(0, 0, 0, $new_event_start_month, 1, $new_event_start_year));
-                                            }
-
-                                            $event_start_date = $new_event_start_year . '-' . $new_event_start_month . '-' . $new_event_start_day;
-
-                                            break;
-
-                                        case 'day_of_the_week':
-                                            $first_day_of_the_month_timestamp = mktime(0, 0, 0, $event_start_month + $i, 1, $event_start_year);
-
-                                            // If the week is 1-4 then find the date in a certain way.
-                                            if ($week != 'last') {
-                                                $week_index = $week - 1;
-
-                                                $new_time = strtotime('+' . $week_index . ' week ' . $day_of_the_week, $first_day_of_the_month_timestamp);
-
-                                            // Otherwise the week is last, so find the date in a different way.
-                                            } else {
-                                                $last_day_of_the_month_timestamp = strtotime(date('Y-m-t', $first_day_of_the_month_timestamp));
-
-                                                // If the last day of the month happens to be the right day of the week,
-                                                // then thats that day that we want.
-                                                if (date('l', $last_day_of_the_month_timestamp) == $day_of_the_week) {
-                                                    $new_time = $last_day_of_the_month_timestamp;
-
-                                                // Otherwise find the day of the week that we want in the last week of the month.
-                                                } else {
-                                                    $new_time = strtotime('last ' . $day_of_the_week, $last_day_of_the_month_timestamp);
-                                                }
-                                            }
-
-                                            $event_start_date = date('Y-m-d', $new_time);
-
-                                            break;
-                                    }
-
-                                    break;
-                                
-                                // Yearly
-                                case 'year':
-                                    $new_event_start_year = $event_start_year + $i;
-                                    $new_event_start_month = $event_start_month;
-                                    $new_event_start_day = $event_start_day;
-                                    
-                                    // if date is not valid, then get last date for month
-                                    if (checkdate($new_event_start_month, $new_event_start_day, $new_event_start_year) == false) {
-                                        $new_event_start_day = date('t', mktime(0, 0, 0, $new_event_start_month, 1, $new_event_start_year));
-                                    }
-                                    
-                                    $event_start_date = $new_event_start_year . '-' . $new_event_start_month . '-' . $new_event_start_day;
-                                    break;
-                            }
-                        }
-
-                        if ($halt_on_exception == '0') {
-                            // Add the time to the start and end date.
-                            $event_start_date_and_time = $event_start_date . ' ' . $event_start_time;
-                            $event_end_date_and_time = $event_start_date . ' ' . $event_end_time;
-                            
-                            foreach ($calendar_event_locations as $calendar_event_location) {
-                                // if a location was selected, take note
-                                if ($liveform->get_field_value('calendar_event_location_' . $calendar_event_location['id']) == 1) {
-                                    // Check the rooms availability
-                                    $check_availability = check_calendar_event_location_availability($calendar_event_location['id'],$event_start_date_and_time,$event_end_date_and_time,escape($liveform->get_field_value('id')));
-                                    
-                                    if ($check_availability != 'available') {
-                                        if (validate_calendar_event_access($check_availability) == false) {
-                                            $existing_calendar_name_statement = '';
-                                        } else {
-                                            $query =
-                                                "SELECT name
-                                                FROM calendar_events
-                                                WHERE id = '" . escape($check_availability) . "'";
-                                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                                            
-                                            $row = mysqli_fetch_assoc($result);
-                                            
-                                            $existing_calendar_name_statement = lang(array('string'=>' by the event, {var:1}','vars'=>h($row['name'])));
-                                        }
-                                        
-                                        $liveform->mark_error('calendar_event_location_' . $calendar_event_location['id'], lang(array('string'=>'The location, {var:1}, is already in use during this time{var:2}. Please choose a different time or location.','vars'=>array(h($calendar_event_location['name']),$existing_calendar_name_statement) )) );
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // get all calendars
-        $query =
-            "SELECT id
-            FROM calendars
-            ORDER BY name";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        $calendars = array();
-        
-        // loop through all calendars in order to build array
-        while ($row = mysqli_fetch_assoc($result)) {
-            $calendars[] = $row;
-        }
-        
-        $calendar_selected = false;
-        
-        // loop through all calendars
-        foreach ($calendars as $calendar) {
-            // if a calendar was selected and the user has access to the calendar, take note
-            if (($liveform->get_field_value('calendar_' . $calendar['id']) == 1) && (validate_calendar_access($calendar['id']) == true)) {
-                $calendar_selected = true;
-                break;
-            }
-        }
-        
-        // if no calendars were selected, then output error
-        if ($calendar_selected == false) {
-            $liveform->mark_error('', lang('Please select at least one calendar.'));
-        }
-        
-        // if reservations is enabled, then validate required fields
-        if ($liveform->get_field_value('reservations') == 1) {
-            $liveform->validate_required_field('reserve_button_label', lang('Reserve Button Label is required.'));
-            $liveform->validate_required_field('product_id', lang('Reservation Product is required.'));
-            $liveform->validate_required_field('next_page_id', lang('Next Page is required.'));
-        }
+        $checked = pg_calendar_event_form_validate($liveform, $liveform->get_field_value('id'));
+        $start_time = $checked['start_time'];
+        $end_time = $checked['end_time'];
+        $calendars = $checked['calendars'];
+        $calendar_event_locations = $checked['calendar_event_locations'];
         
         // if there is an error, forward user back to edit calendar event screen
         if ($liveform->check_form_errors() == true) {
@@ -1290,8 +857,8 @@ if (!$_POST) {
                 UNIX_TIMESTAMP(start_time) as start_time,
                 UNIX_TIMESTAMP(end_time) as end_time
             FROM calendar_events
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         $row = mysqli_fetch_assoc($result);
         $new_start_time = strtotime(prepare_form_data_for_input($start_time, 'date and time'));
@@ -1301,8 +868,8 @@ if (!$_POST) {
         if (($new_start_time != $row['start_time'])
             || ($new_end_time != $row['end_time'])) {
             // delete calendar event exceptions (if any)
-            $query = "DELETE FROM calendar_event_exceptions WHERE calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM calendar_event_exceptions WHERE calendar_event_id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         }
 
         // If recurrence was disabled then set recurrence number to 0,
@@ -1314,7 +881,7 @@ if (!$_POST) {
         // if notes has real content, then use notes content
         if ((strip_tags(escape($liveform->get_field_value('notes'))) != '')
             && (strip_tags(escape($liveform->get_field_value('notes'))) != '&nbsp;')) {
-                $notes = escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('notes')));
+                $notes = prepare_rich_text_editor_content_for_input($liveform->get_field_value('notes'));
                 
         // else notes does not have real content, so set to empty string
         } else {
@@ -1322,53 +889,89 @@ if (!$_POST) {
         }
 
         $sql_update_publish_columns = '';
+        $publish_values = array();
         
         // If the user has access to publish calendar events then allow
         // publish fields to be updated
         if (($user['role'] < 3) || ($user['publish_calendar_events'] == 'yes')) {
             $sql_update_publish_columns =
-                "published = '" . e($liveform->get('published')) . "',
-                unpublish_days = '" . e($liveform->get('unpublish_days')) . "',";
+                "published = ?,
+                unpublish_days = ?,";
+            $publish_values = array((string) $liveform->get('published'), (string) $liveform->get('unpublish_days'));
         }
         
         // update calendar event
         $query =
             "UPDATE calendar_events
             SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
+                name = ?,
                 $sql_update_publish_columns
-                short_description = '" . escape($liveform->get_field_value('short_description')) . "',
-                full_description = '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('full_description'))) . "',
-                notes = '" . $notes . "',
-                all_day = '" . escape($liveform->get_field_value('all_day')) . "',
-                start_time = '" . escape(prepare_form_data_for_input($start_time, 'date and time')) . "',
-                end_time = '" . escape(prepare_form_data_for_input($end_time, 'date and time')) . "',
-                show_start_time = '" . escape($liveform->get_field_value('show_start_time')) . "',
-                show_end_time = '" . escape($liveform->get_field_value('show_end_time')) . "',
-                recurrence = '" . escape($liveform->get_field_value('recurrence')) . "',
-                recurrence_number = '" . escape($liveform->get_field_value('total_recurrence_number')) . "',
-                recurrence_type = '" . escape($liveform->get_field_value('recurrence_type')) . "',
-                recurrence_day_sun = '" . escape($liveform->get_field_value('recurrence_day_sun')) . "',
-                recurrence_day_mon = '" . escape($liveform->get_field_value('recurrence_day_mon')) . "',
-                recurrence_day_tue = '" . escape($liveform->get_field_value('recurrence_day_tue')) . "',
-                recurrence_day_wed = '" . escape($liveform->get_field_value('recurrence_day_wed')) . "',
-                recurrence_day_thu = '" . escape($liveform->get_field_value('recurrence_day_thu')) . "',
-                recurrence_day_fri = '" . escape($liveform->get_field_value('recurrence_day_fri')) . "',
-                recurrence_day_sat = '" . escape($liveform->get_field_value('recurrence_day_sat')) . "',
-                recurrence_month_type = '" . escape($liveform->get_field_value('recurrence_month_type')) . "',
-                location = '" . escape($liveform->get_field_value('location')) . "',
-                reservations = '" . escape($liveform->get_field_value('reservations')) . "',
-                separate_reservations = '" . escape($liveform->get_field_value('separate_reservations')) . "',
-                limit_reservations = '" . escape($liveform->get_field_value('limit_reservations')) . "',
-                number_of_initial_spots = '" . escape($liveform->get_field_value('number_of_initial_spots')) . "',
-                no_remaining_spots_message = '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('no_remaining_spots_message'))) . "',
-                reserve_button_label = '" . escape($liveform->get_field_value('reserve_button_label')) . "',
-                product_id = '" . escape($liveform->get_field_value('product_id')) . "',
-                next_page_id = '" . escape($liveform->get_field_value('next_page_id')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                short_description = ?,
+                full_description = ?,
+                notes = ?,
+                all_day = ?,
+                start_time = ?,
+                end_time = ?,
+                show_start_time = ?,
+                show_end_time = ?,
+                recurrence = ?,
+                recurrence_number = ?,
+                recurrence_type = ?,
+                recurrence_day_sun = ?,
+                recurrence_day_mon = ?,
+                recurrence_day_tue = ?,
+                recurrence_day_wed = ?,
+                recurrence_day_thu = ?,
+                recurrence_day_fri = ?,
+                recurrence_day_sat = ?,
+                recurrence_month_type = ?,
+                location = ?,
+                reservations = ?,
+                separate_reservations = ?,
+                limit_reservations = ?,
+                number_of_initial_spots = ?,
+                no_remaining_spots_message = ?,
+                reserve_button_label = ?,
+                product_id = ?,
+                next_page_id = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array_merge(
+            array((string) $liveform->get_field_value('name')),
+            $publish_values,
+            array(
+                (string) $liveform->get_field_value('short_description'),
+                (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('full_description')),
+                (string) $notes,
+                (string) $liveform->get_field_value('all_day'),
+                (string) prepare_form_data_for_input($start_time, 'date and time'),
+                (string) prepare_form_data_for_input($end_time, 'date and time'),
+                (string) $liveform->get_field_value('show_start_time'),
+                (string) $liveform->get_field_value('show_end_time'),
+                (string) $liveform->get_field_value('recurrence'),
+                (string) $liveform->get_field_value('total_recurrence_number'),
+                (string) $liveform->get_field_value('recurrence_type'),
+                (string) $liveform->get_field_value('recurrence_day_sun'),
+                (string) $liveform->get_field_value('recurrence_day_mon'),
+                (string) $liveform->get_field_value('recurrence_day_tue'),
+                (string) $liveform->get_field_value('recurrence_day_wed'),
+                (string) $liveform->get_field_value('recurrence_day_thu'),
+                (string) $liveform->get_field_value('recurrence_day_fri'),
+                (string) $liveform->get_field_value('recurrence_day_sat'),
+                (string) $liveform->get_field_value('recurrence_month_type'),
+                (string) $liveform->get_field_value('location'),
+                (string) $liveform->get_field_value('reservations'),
+                (string) $liveform->get_field_value('separate_reservations'),
+                (string) $liveform->get_field_value('limit_reservations'),
+                (string) $liveform->get_field_value('number_of_initial_spots'),
+                (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('no_remaining_spots_message')),
+                (string) $liveform->get_field_value('reserve_button_label'),
+                (string) $liveform->get_field_value('product_id'),
+                (string) $liveform->get_field_value('next_page_id'),
+                (string) $user['id'],
+                (string) $liveform->get_field_value('id'))
+        )) or output_error('Query failed.');
         
         foreach ($calendars as $calendar) {
             if (validate_calendar_access($calendar['id']) == true) {
@@ -1378,9 +981,9 @@ if (!$_POST) {
                         "SELECT calendar_event_id
                         FROM calendar_events_calendars_xref
                         WHERE 
-                            (calendar_event_id = '" . escape($liveform->get_field_value('id')) . "') AND 
-                            (calendar_id = '" . $calendar['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            (calendar_event_id = ?) AND 
+                            (calendar_id = ?)";
+                    $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar['id'])) or output_error('Query failed.');
                     
                     if (mysqli_num_rows($result) == 0) {
                         $query =
@@ -1388,18 +991,18 @@ if (!$_POST) {
                                 calendar_event_id,
                                 calendar_id)
                             VALUES (
-                                '" . escape($liveform->get_field_value('id')) . "',
-                                '" . $calendar['id'] . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                ?,
+                                ?)";
+                        $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar['id'])) or output_error('Query failed.');
                     }
                 // Else, the current calendar was not selected for the calendar event, so remove it from the database.
                 } else {
                     $query =
                         "DELETE FROM calendar_events_calendars_xref
                         WHERE
-                            (calendar_event_id = '" . escape($liveform->get_field_value('id')) . "')
-                            AND (calendar_id = '" . $calendar['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            (calendar_event_id = ?)
+                            AND (calendar_id = ?)";
+                    $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar['id'])) or output_error('Query failed.');
                 }
             }
         }
@@ -1414,9 +1017,9 @@ if (!$_POST) {
                         calendar_event_id
                     FROM calendar_events_calendar_event_locations_xref
                     WHERE 
-                        (calendar_event_id = '" . escape($liveform->get_field_value('id')) . "') AND 
-                        (calendar_event_location_id = '" . $calendar_event_location['id'] . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (calendar_event_id = ?) AND 
+                        (calendar_event_location_id = ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar_event_location['id'])) or output_error('Query failed.');
                 // If not, then add it!
                 if (mysqli_num_rows($result) == 0) {
                     $query =
@@ -1424,18 +1027,18 @@ if (!$_POST) {
                             calendar_event_id,
                             calendar_event_location_id)
                         VALUES (
-                            '" . escape($liveform->get_field_value('id')) . "',
-                            '" . $calendar_event_location['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar_event_location['id'])) or output_error('Query failed.');
                 }
             // Else, the location was not selected so remove it if it was previously.
             } else {
                 $query =
                     "DELETE FROM calendar_events_calendar_event_locations_xref
                     WHERE
-                        (calendar_event_id = '" . escape($liveform->get_field_value('id')) . "')
-                        AND (calendar_event_location_id = '" . $calendar_event_location['id'] . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (calendar_event_id = ?)
+                        AND (calendar_event_location_id = ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar_event_location['id'])) or output_error('Query failed.');
             }
         }
         
@@ -1456,9 +1059,9 @@ if (!$_POST) {
             $query =
                 "DELETE FROM remaining_reservation_spots
                 WHERE
-                    (calendar_event_id = '" . escape($liveform->get_field_value('id')) . "')
-                    AND (recurrence_number = '" . escape($liveform->get_field_value('recurrence_number')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (calendar_event_id = ?)
+                    AND (recurrence_number = ?)";
+            $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $liveform->get_field_value('recurrence_number'))) or output_error('Query failed.');
             
             // insert record for remaining spots
             $query =
@@ -1467,10 +1070,14 @@ if (!$_POST) {
                     recurrence_number,
                     number_of_remaining_spots)
                 VALUES (
-                    '" . escape($liveform->get_field_value('id')) . "',
-                    '" . escape($liveform->get_field_value('recurrence_number')) . "',
-                    '" . escape($liveform->get_field_value('number_of_remaining_spots')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?,
+                    ?)";
+            $result = db_q($query, array(
+                (string) $liveform->get_field_value('id'),
+                (string) $liveform->get_field_value('recurrence_number'),
+                (string) $liveform->get_field_value('number_of_remaining_spots'))) or output_error('Query failed.');
+
         }
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('Event'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);

@@ -125,8 +125,8 @@ if (!empty($_POST['orders'])) {
                 LEFT JOIN user ON orders.user_id = user.user_id
                 LEFT JOIN contacts ON orders.contact_id = contacts.id
                 WHERE ((orders.status = 'complete') OR (orders.status = 'exported'))
-                AND orders.id = '" . escape($order_id) . "'";
-                $result=mysqli_query(db::$con, $query) or output_error('Query failed.');
+                AND orders.id = ?";
+                $result=db_q($query, array((string) $order_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_array($result);
                 $billing_first_name = $row['billing_first_name'];
                 $billing_last_name = $row['billing_last_name'];
@@ -220,12 +220,12 @@ if (!empty($_POST['orders'])) {
                     order_items.quantity as quantity,
                     order_items.offer_action_id as offer_action_id
                 FROM order_items
-                WHERE order_id = '" . escape($order_id) . "'";
+                WHERE order_id = ?";
 
                 //align all lines to left
                 $objPHPExcel1->getActiveSheet()->getStyle('A' . $i_obj_1 . ':S' . $i_obj_1)->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
 
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
                 if($result){
                     while($order_item = mysqli_fetch_assoc($result)) {
                         $order_item_product_id = $order_item['product_id'];
@@ -462,8 +462,8 @@ if (!empty($_POST['orders'])) {
                         card_number,
                         card_verification_number
                     FROM orders
-                    WHERE id = '" . escape($order_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $card_number = $row['card_number'];
                 $card_verification_number = $row['card_verification_number'];
@@ -515,10 +515,10 @@ if (!empty($_POST['orders'])) {
                     $query =
                         "UPDATE orders
                         SET
-                            card_number = '" . escape($card_number) . "',
-                            card_verification_number = '" . escape($card_verification_number) . "'
-                        WHERE id = '" . escape($order_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            card_number = ?,
+                            card_verification_number = ?
+                        WHERE id = ?";
+                    $result = db_q($query, array((string) $card_number, (string) $card_verification_number, (string) $order_id)) or output_error('Query failed.');
 
                     pg_audit_record('update', 'orders', $order_id, $audit_before);
 

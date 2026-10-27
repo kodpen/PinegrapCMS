@@ -129,8 +129,8 @@ function get_custom_form_screen_content($properties) {
                 $user = validate_user();
                 
                 // get folder id that custom form is in, in order to check if user has edit access to custom form
-                $query = "SELECT page_folder FROM page WHERE page_id = '$current_page_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT page_folder FROM page WHERE page_id = ?";
+                $result = db_q($query, array((string) $current_page_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $folder_id = $row['page_folder'];
                 
@@ -142,8 +142,8 @@ function get_custom_form_screen_content($properties) {
                         "SELECT contacts.member_id
                         FROM user
                         LEFT JOIN contacts ON user.user_contact = contacts.id
-                        WHERE user.user_id = '" . $user['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        WHERE user.user_id = ?";
+                    $result = db_q($query, array((string) $user['id'])) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $member_id = $row['member_id'];
                     

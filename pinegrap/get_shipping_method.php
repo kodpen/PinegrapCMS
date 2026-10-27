@@ -117,8 +117,8 @@ function get_shipping_method($properties) {
         $address_verified = $recipient['address_verified'];
         
         // get country name
-        $query = "SELECT name FROM countries WHERE code = '" . escape($country_code) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT name FROM countries WHERE code = ?";
+        $result = db_q($query, array((string) $country_code)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $country = h($row['name']);
         
@@ -166,8 +166,8 @@ function get_shipping_method($properties) {
             ' . $country;
 
         // get arrival date information
-        $query = "SELECT name, custom FROM arrival_dates WHERE id = '$arrival_date_id'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT name, custom FROM arrival_dates WHERE id = ?";
+        $result = db_q($query, array((string) $arrival_date_id)) or output_error('Query failed.');
 
         // if an arrival date was selected, prepare requested arrival date area
         if (mysqli_num_rows($result) > 0) {
@@ -224,9 +224,9 @@ function get_shipping_method($properties) {
                     products.extra_shipping_cost
                  FROM order_items
                  LEFT JOIN products ON products.id = order_items.product_id
-                 WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND order_items.ship_to_id = '" . escape($_GET['ship_to_id']) . "'
+                 WHERE order_items.order_id = ? AND order_items.ship_to_id = ?
                  ORDER BY order_items.id ASC";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $_GET['ship_to_id'])) or output_error('Query failed.');
 
         $order_items = array();
 
@@ -398,8 +398,8 @@ function get_shipping_method($properties) {
                     // see if this zone is allowed for this shipping method
                     $query = "SELECT shipping_method_id
                              FROM shipping_methods_zones_xref
-                             WHERE (shipping_method_id = $shipping_method_id) AND (zone_id = '$zone_id')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                             WHERE (shipping_method_id = ?) AND (zone_id = ?)";
+                    $result = db_q($query, array((int) $shipping_method_id, (string) $zone_id)) or output_error('Query failed.');
 
                     // if this zone is allowed for this shipping method, remember that
                     if (mysqli_num_rows($result) > 0) {
@@ -521,9 +521,9 @@ function get_shipping_method($properties) {
                         FROM shipping_cutoffs
                         LEFT JOIN arrival_dates ON shipping_cutoffs.arrival_date_id = arrival_dates.id
                         WHERE
-                            (arrival_dates.arrival_date = '" . escape($arrival_date) . "')
-                            AND (shipping_cutoffs.shipping_method_id = '$shipping_method_id')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            (arrival_dates.arrival_date = ?)
+                            AND (shipping_cutoffs.shipping_method_id = ?)";
+                    $result = db_q($query, array((string) $arrival_date, (string) $shipping_method_id)) or output_error('Query failed.');
                     
                     // if there is a shipping cut-off, then determine if this shipping method is valid by looking at the cut-off date & time
                     if (mysqli_num_rows($result) > 0) {
@@ -561,8 +561,8 @@ function get_shipping_method($properties) {
 
         // if form has not been filled out yet, get recipient data in order to populate fields
         if ($form->field_in_session('shipping_method') == false) {
-            $query = "SELECT shipping_method_id FROM ship_tos WHERE id = '" . escape($_GET['ship_to_id']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT shipping_method_id FROM ship_tos WHERE id = ?";
+            $result = db_q($query, array((string) $_GET['ship_to_id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
 
             // set field values
@@ -602,8 +602,8 @@ function get_shipping_method($properties) {
                         item_rate_first_item_excluded,
                         protected
                     FROM shipping_methods
-                    WHERE id = '$shipping_method_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $shipping_method_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $shipping_method_name = $row['name'];
                 $shipping_method_description = $row['description'];
@@ -629,13 +629,13 @@ function get_shipping_method($properties) {
                 foreach ($zones as $zone_id) {
                     $query = "SELECT shipping_method_id
                              FROM shipping_methods_zones_xref
-                             WHERE (shipping_method_id = '$shipping_method_id') AND (zone_id = '$zone_id')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                             WHERE (shipping_method_id = ?) AND (zone_id = ?)";
+                    $result = db_q($query, array((string) $shipping_method_id, (string) $zone_id)) or output_error('Query failed.');
 
                     if (mysqli_num_rows($result) > 0) {
                         // get zone info
-                        $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = '$zone_id'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = ?";
+                        $result = db_q($query, array((string) $zone_id)) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
 
                         $zone_base_rate = $row['base_rate'];
@@ -1098,8 +1098,8 @@ function get_shipping_method($properties) {
                     // see if this zone is allowed for this shipping method
                     $query = "SELECT shipping_method_id
                              FROM shipping_methods_zones_xref
-                             WHERE (shipping_method_id = $shipping_method_id) AND (zone_id = '$zone_id')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                             WHERE (shipping_method_id = ?) AND (zone_id = ?)";
+                    $result = db_q($query, array((int) $shipping_method_id, (string) $zone_id)) or output_error('Query failed.');
 
                     // if this zone is allowed for this shipping method, remember that
                     if (mysqli_num_rows($result) > 0) {
@@ -1221,9 +1221,9 @@ function get_shipping_method($properties) {
                         FROM shipping_cutoffs
                         LEFT JOIN arrival_dates ON shipping_cutoffs.arrival_date_id = arrival_dates.id
                         WHERE
-                            (arrival_dates.arrival_date = '" . e($requested_arrival_date) . "')
-                            AND (shipping_cutoffs.shipping_method_id = '$shipping_method_id')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            (arrival_dates.arrival_date = ?)
+                            AND (shipping_cutoffs.shipping_method_id = ?)";
+                    $result = db_q($query, array((string) $requested_arrival_date, (string) $shipping_method_id)) or output_error('Query failed.');
                     
                     // if there is a shipping cut-off, then determine if this shipping method is valid by looking at the cut-off date & time
                     if (mysqli_num_rows($result) > 0) {
@@ -1303,8 +1303,8 @@ function get_shipping_method($properties) {
                         item_rate_first_item_excluded,
                         protected
                     FROM shipping_methods
-                    WHERE id = '$shipping_method_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $shipping_method_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $shipping_method_name = $row['name'];
                 $shipping_method_description = $row['description'];
@@ -1330,13 +1330,13 @@ function get_shipping_method($properties) {
                 foreach ($zones as $zone_id) {
                     $query = "SELECT shipping_method_id
                              FROM shipping_methods_zones_xref
-                             WHERE (shipping_method_id = '$shipping_method_id') AND (zone_id = '$zone_id')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                             WHERE (shipping_method_id = ?) AND (zone_id = ?)";
+                    $result = db_q($query, array((string) $shipping_method_id, (string) $zone_id)) or output_error('Query failed.');
 
                     if (mysqli_num_rows($result) > 0) {
                         // get zone info
-                        $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = '$zone_id'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = ?";
+                        $result = db_q($query, array((string) $zone_id)) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
 
                         $zone_base_rate = $row['base_rate'];

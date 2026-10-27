@@ -1032,14 +1032,15 @@ function pg_signin_identity_add($user_id, $provider_key, $subject, $email)
 
     // Not db(): a request that tied the same identity a moment earlier would
     // turn the unique key into a fatal error page instead of a refusal.
-    return (bool) @mysqli_query(db::$con,
+    return (bool) db_q(
         "INSERT INTO user_identities SET
-            user_id = '" . (int) $user_id . "',
-            provider = '" . e($provider_key) . "',
-            subject = '" . e($subject) . "',
-            email = '" . e(pg_connect_clip($email)) . "',
+            user_id = ?,
+            provider = ?,
+            subject = ?,
+            email = ?,
             created_timestamp = UNIX_TIMESTAMP(),
-            last_used_timestamp = UNIX_TIMESTAMP()");
+            last_used_timestamp = UNIX_TIMESTAMP()",
+        array((string) (int) $user_id, (string) $provider_key, (string) $subject, (string) pg_connect_clip($email)));
 }
 
 /**

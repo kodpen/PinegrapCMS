@@ -83,7 +83,7 @@ function test_workspace_flow_approval_config()
 		'other'      => 1,
 	));
 
-	pg_assert_same(array('channel_id' => 4, 'title' => 'Price change', 'text' => 'Ten per cent off', 'approvers' => array(5, 7), 'rule' => 'all', 'closes_in' => 48), $config);
+	pg_assert_same(array('channel_id' => 4, 'title' => 'Price change', 'text' => 'Ten per cent off', 'approvers' => array(5, 7), 'rule' => 'all', 'closes_in' => 48, 'retry' => 0, 'retry_after' => ''), $config);
 
 	$empty = ws_flow_config_normalize('approval', array('rule' => 'most', 'closes_in' => 'soon'));
 

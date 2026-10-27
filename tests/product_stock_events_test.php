@@ -228,7 +228,7 @@ function product_stock_events_test_case($code, $label)
 // flags a product it empties and announces product.updated on a real change.
 function test_product_stock_explorer_quick_edit_announces_the_change()
 {
-	$code = product_stock_events_test_case(product_stock_events_test_source('view_folder_and_files_f.php'), 'explorer_catalog_quick_edit');
+	$code = product_stock_events_test_function('includes/explorer/handle_catalog_edit.php', 'pg_explorer_handle_catalog_quick_edit');
 
 	pg_assert_true($code !== '', 'quick edit handler found');
 	pg_assert_contains('pg_product_stock_changed(', $code);
@@ -378,7 +378,7 @@ function test_product_stock_checkout_reads_the_stock_before_the_decrement()
 {
 	$block = product_stock_events_test_block(product_stock_events_test_source('submit_order.php'), '$stock_left = array();', "'checkout');");
 	$select = strpos($block, "SELECT inventory, inventory_quantity FROM products WHERE id = '");
-	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - '");
+	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - ?)");
 
 	pg_assert_true($block !== '', 'the checkout stock block is found');
 	pg_assert_true($select !== false, 'the stock is read again in the loop');

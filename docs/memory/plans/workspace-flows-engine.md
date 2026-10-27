@@ -28,14 +28,14 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 ## Drivers, budgets, limits?
 - `ws_scheduled_run()` (ws_tick, both jobs) calls `ws_flow_advance()` before its early returns; `ws_scheduled_due()` sees due steps (job.php's gate).
 - Time budget: no box starts after 10 s in ws_tick, 25 s in a job; 3 boxes a run per request.
-- A run's events carry its depth (`ws_event_depth()`); `pg_event_record()` will too (today only `ws_event()`).
+- Done (PR #2325): events of a run, step boxes and `pg_event_record()` included, carry its depth (`workspace-flows-event-depth.md`).
 - `WS_FLOW_*`: 100 boxes, 200 box runs a run, 60 starts a flow an hour, 500 open runs, result 16 KB, finished runs kept 30 days.
 
 ## Shared steps and idempotency?
-- Built (F4a): steps.php, workspace/workspace-flows-steps.md. Left: change, row save `effect` at once; a stale begun step fails and its owner retries or skips it (F5a). Webhook: `Idempotency-Key` from run, node, pass.
+- Built (F4a): steps.php, workspace/workspace-flows-steps.md; webhook `Idempotency-Key` from run, node, pass (`ws_step_idempotency_key()`). Left: change, row save `effect` at once; a stale begun step fails and its owner retries or skips it (F5a).
 
 ## API and MCP?
-- /workspace/flows, /{id}, /publish, /resume (`ws_api_own_words_only()`, `'mcp' => false`), /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip; `dry_run`; `workspace:read`, `:write`.
+- Built (workspace-flows-runner.md); /resume, /versions: PR #2234 (workspace-flows-versions.md). More: plans/workspace-flows-api.md.
 
 ## Where to start?
 - Built: F1 #1503, F3a #1551 (workspace-flows-runner.md).

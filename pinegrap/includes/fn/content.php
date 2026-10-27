@@ -237,6 +237,216 @@ function pg_common_regions_from_rows(array $names, array $rows)
     return $regions;
 }
 
+/**
+ * The shared component category that marks a component made from a common
+ * region (pg_common_region_component()); the classic <cregion> tag of that
+ * region draws the component from then on.
+ *
+ * @param int $cregion_id
+ * @return string
+ */
+function pg_common_region_component_category($cregion_id)
+{
+    return 'common_region:' . (int) $cregion_id;
+}
+
+/**
+ * The shared components that draw converted common regions, read once per
+ * request like pg_common_regions(): one query for the ids no earlier call
+ * asked about.
+ *
+ * @param array $cregion_ids  common region ids
+ * @return array  cregion_id => shared component id, 0 for a region that is
+ *                not converted
+ */
+function pg_common_region_components(array $cregion_ids)
+{
+    static $read = array();
+
+    return pg_common_region_components_read($read, $cregion_ids, 'db_items');
+}
+
+/**
+ * pg_common_region_components() with the request's store and the query
+ * runner passed in. Of several components made from one region (a second
+ * conversion after the first row's category was changed by hand) the one
+ * with the lowest id draws it, as the conversion gives that one back.
+ *
+ * @param array    $read   cregion_id => component id or 0, filled in place
+ * @param array    $ids    common region ids
+ * @param callable $fetch  runs a SELECT and returns its rows (db_items())
+ * @return array  cregion_id => component id or 0, for every id asked for
+ */
+function pg_common_region_components_read(array &$read, array $ids, $fetch)
+{
+    $wanted = array();
+
+    foreach ($ids as $id) {
+        $id = (int) $id;
+
+        if (($id > 0) && !array_key_exists($id, $read)) {
+            $wanted[$id] = "'" . pg_common_region_component_category($id) . "'";
+        }
+    }
+
+    foreach (array_chunk($wanted, 100, true) as $chunk) {
+        foreach (array_keys($chunk) as $id) {
+            $read[$id] = 0;
+        }
+
+        $rows = call_user_func($fetch,
+            "SELECT id, category
+            FROM shared_components
+            WHERE
+                category IN (" . implode(', ', $chunk) . ")
+                AND ((system_region_config IS NULL) OR (system_region_config = ''))
+            ORDER BY id");
+
+        foreach ((is_array($rows) ? $rows : array()) as $row) {
+            $id = (int) substr((string) $row['category'], strlen('common_region:'));
+
+            if (isset($read[$id]) && ($read[$id] === 0)) {
+                $read[$id] = (int) $row['id'];
+            }
+        }
+    }
+
+    $out = array();
+
+    foreach ($ids as $id) {
+        $id = (int) $id;
+        $out[$id] = isset($read[$id]) ? $read[$id] : 0;
+    }
+
+    return $out;
+}
+
+/**
+ * The common regions made shared components, every one of them: the screens
+ * that list or write region rows leave these out (user grants, find and
+ * replace, the image editor). One query, kept for the request.
+ *
+ * @return int[]  cregion ids
+ */
+function pg_common_region_converted_ids()
+{
+    static $ids = null;
+
+    if ($ids === null) {
+        $rows = pg_schema_has('shared_components')
+            ? db_values("SELECT category FROM shared_components
+                WHERE
+                    category LIKE 'common\\_region:%'
+                    AND ((system_region_config IS NULL) OR (system_region_config = ''))")
+            : array();
+        $ids = pg_common_region_ids_from_categories(is_array($rows) ? $rows : array());
+    }
+
+    return $ids;
+}
+
+/**
+ * The region ids named by shared component categories of the
+ * "common_region:<id>" form; any other category is passed over.
+ *
+ * @param array $categories
+ * @return int[]  ids, each once, in ascending order
+ */
+function pg_common_region_ids_from_categories(array $categories)
+{
+    $ids = array();
+
+    foreach ($categories as $category) {
+        if (preg_match('/^common_region:([1-9][0-9]*)$/', (string) $category, $m)) {
+            $ids[(int) $m[1]] = (int) $m[1];
+        }
+    }
+
+    ksort($ids);
+
+    return array_values($ids);
+}
+
+/**
+ * An SQL condition leaving the converted common regions out, '1' when there
+ * are none.
+ *
+ * @param string $column  the cregion id column as the query names it
+ * @return string
+ */
+function pg_common_region_not_converted_sql($column = 'cregion_id')
+{
+    $ids = pg_common_region_converted_ids();
+
+    return $ids ? '(' . $column . ' NOT IN (' . implode(',', $ids) . '))' : '1';
+}
+
+/**
+ * The shared components that print a page region, directly or through a
+ * component they place: a page placing one still reads its page region
+ * rows. Read once per request.
+ *
+ * @return int[]
+ */
+function pg_page_region_component_ids()
+{
+    static $ids = null;
+
+    if ($ids !== null) {
+        return $ids;
+    }
+
+    $ids = array();
+    $new = array_map('intval', (array) db_values("SELECT id FROM shared_components
+        WHERE tree_json LIKE '%\"regionType\":\"page\"%'"));
+
+    // Components placing one of those, until none is added (nesting is
+    // shallow; the bound only stops a loop written by hand).
+    for ($round = 0; $new && $round < 10; $round++) {
+        foreach ($new as $id) {
+            $ids[$id] = $id;
+        }
+        $like = array();
+        foreach ($new as $id) {
+            $like[] = "tree_json LIKE '%\"sharedId\":$id,%'";
+            $like[] = "tree_json LIKE '%\"sharedId\":$id}%'";
+            $like[] = "tree_json LIKE '%\"sharedId\":\"$id\"%'";
+        }
+        $new = array_diff(array_map('intval', (array) db_values("SELECT id FROM shared_components
+            WHERE " . implode(' OR ', $like))), $ids);
+    }
+
+    $ids = array_values($ids);
+    sort($ids);
+
+    return $ids;
+}
+
+/**
+ * An SQL condition keeping the page regions their page still draws: a page
+ * whose content moved into its designer tree saves a tree that prints no
+ * <pregion> tag and places no component printing one, and its rows are no
+ * longer read. A classic page has no tree of its own; a row of no page is
+ * kept as it was. '1' before the column exists.
+ *
+ * @param string $column  the pregion page column as the query names it
+ * @return string
+ */
+function pg_page_region_read_sql($column = 'pregion_page')
+{
+    if (!pg_multi_page_design_ready()) {
+        return '1';
+    }
+
+    $none = "page_tree_code NOT LIKE '%<pregion>%'";
+    foreach (pg_page_region_component_ids() as $id) {
+        $none .= " AND page_tree_code NOT LIKE '%<!--pg-shared-ref:" . (int) $id . "-->%'";
+    }
+
+    return "($column NOT IN (SELECT page_id FROM page
+                WHERE page_tree_code IS NOT NULL AND page_tree_code <> '' AND $none))";
+}
+
 // Outputs dynamic menu system using values from the database.
 // We don't currently support multiple menu items being set as the current menu item
 // because it causes problems for the accordion menu.  The logic for the accordion menu
@@ -2819,7 +3029,8 @@ function get_checkboxes_for_items_user_can_edit($item_type, $selected_ids = arra
                 cregion_name as name';
             $sql_where = '
 
-                WHERE cregion_designer_type = "no"';
+                WHERE cregion_designer_type = "no"
+                AND ' . pg_common_region_not_converted_sql() . '';
             break;
         case 'shared_components':
             // The visual designer's components a designer opened to content

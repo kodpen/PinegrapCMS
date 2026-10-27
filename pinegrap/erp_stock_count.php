@@ -170,10 +170,10 @@ pg_page_shell([
                 <div class="card-body row g-3 align-items-end">
                     <div class="col-12 md:col-6">
                         <label class="form-label" for="code">' . lang('Barcode or product code') . '</label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text"><i class="bi bi-upc-scan" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" id="code" name="code" maxlength="100" autofocus required />
-                        </div>
+                        <label class="form-control form-control-lg form-adorn">
+                            <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-upc-scan"></i></span>
+                            <input type="text" class="form-ghost" id="code" name="code" maxlength="100" autofocus required />
+                        </label>
                     </div>
                     <div class="col-6 md:col-2">
                         <label class="form-label" for="quantity">' . lang('Quantity') . '</label>

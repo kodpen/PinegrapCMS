@@ -26,8 +26,8 @@ $liveform = new liveform('email_a_friend');
 $liveform->add_fields_to_session();
 
 // Check current page to make sure it is an email a friend page, in order to make sure that a visitor is allowed to use the e-mail a friend feature
-$query = "SELECT page_folder FROM page WHERE (page_id = '" . escape($liveform->get_field_value('current_page_id')) . "') AND (page_type = 'email a friend')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT page_folder FROM page WHERE (page_id = ?) AND (page_type = 'email a friend')";
+$result = db_q($query, array((string) $liveform->get_field_value('current_page_id'))) or output_error('Query failed.');
 
 // if the page does not exist or it is not an e-mail a friend page, then log activity and output error
 if (mysqli_num_rows($result) == 0) {
@@ -80,8 +80,8 @@ if ($liveform->check_form_errors() == false) {
     // if the visitor does not have edit rights to the page's folder, then check to see if the user has reached the usage limit for this feature
     if ($edit_rights == false) {
         // Check log table to see how many times this visitor has used this feature in the last day
-        $query = "SELECT COUNT(log_id) FROM log WHERE (log_description LIKE '%e-mailed a link%') AND (log_timestamp > (UNIX_TIMESTAMP() - 86400)) AND (log_ip = '" . escape($_SERVER['REMOTE_ADDR']) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT COUNT(log_id) FROM log WHERE (log_description LIKE '%e-mailed a link%') AND (log_timestamp > (UNIX_TIMESTAMP() - 86400)) AND (log_ip = ?)";
+        $result = db_q($query, array((string) $_SERVER['REMOTE_ADDR'])) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // if the user has reached the limit of ten e-mails in a day, then do not allow user to send email and output error message.
@@ -160,8 +160,8 @@ log_activity($from_email_address . ' e-mailed a link (' . $link_url . ') to a fr
 $query =
     "SELECT next_page_id
     FROM email_a_friend_pages
-    WHERE page_id = '" . escape($liveform->get_field_value('current_page_id')) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE page_id = ?";
+$result = db_q($query, array((string) $liveform->get_field_value('current_page_id'))) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $next_page_id = $row['next_page_id'];
 

@@ -115,22 +115,28 @@ if (!$_POST) {
                 user,
                 timestamp)
             VALUES (
-                '" . escape($_POST['name'] ?? '') . "',
-                '" . escape($_POST['code'] ?? '') . "',
-                '" . e($_POST['zip_code_required'] ?? '') . "',
-                '" . escape($_POST['transit_adjustment_days'] ?? '') . "',
-                '" . escape($_POST['default_selected'] ?? '') . "',
-                '" . $user['id'] . "',
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
                 UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array(
+        (string) ($_POST['name'] ?? ''),
+        (string) ($_POST['code'] ?? ''),
+        (string) ($_POST['zip_code_required'] ?? ''),
+        (string) ($_POST['transit_adjustment_days'] ?? ''),
+        (string) ($_POST['default_selected'] ?? ''),
+        (string) $user['id'])) or output_error('Query failed.');
 
     $country_id = mysqli_insert_id(db::$con);
 
     // if default selected was checked, then turn value off for all other countries
     if ($_POST['default_selected'] == 1) {
         // update country
-        $query = "UPDATE countries SET default_selected = 0 WHERE id != $country_id";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "UPDATE countries SET default_selected = 0 WHERE id != ?";
+        $result = db_q($query, array((int) $country_id)) or output_error('Query failed.');
     }
 
     log_activity( lang(array('string'=>'country ({var:1}) was created','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);

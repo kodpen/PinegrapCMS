@@ -163,7 +163,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Menu Sequence Region' => lang('Menu Sequence Region'),
         'System Region' => lang('System Region'),
         'Use Page' => lang('Use Page'),
-        'Edit Cell Properties' => lang('Edit Cell Properties'),
         'Please select a region name.' => lang('Please select a region name.'),
         'Please add one "Use Page" system region before continuing.' => lang('Please add one "Use Page" system region before continuing.'),
         'Your browser does not support secure key generation. Please use a modern browser.' => lang('Your browser does not support secure key generation. Please use a modern browser.'),
@@ -265,8 +264,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/bootstrap-6/css/bootstrap.min.css') . '"/>
     <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '") layer(vendor);</style>
     <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.css") layer(vendor);</style>
-    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2.min.css") layer(vendor);</style>
-    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2-bootstrap-5-theme.min.css") layer(vendor);</style>
     <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/material-icons/material-icons.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/material-icons/material-icons.css') . '") layer(vendor);</style>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.min.js"></script>
@@ -275,7 +272,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery_datatables_checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/lazy.min.js"></script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/multiselect-checkbox/jquery-multiselect-checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/json2/json.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
@@ -2150,7 +2146,7 @@ function output_header($properties = false)
                 <ul class="navbar-nav">
                     ' . $output_menu_mode_button . '
 
-                    <li class="nav-item">
+                    <li class="nav-item pg-brand-item">
                         <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php"' . $output_parent_target . ' class="nav-link rounded-pill fw-bolder">
                             ' . $output_logo . '
                         </a>
@@ -2318,6 +2314,13 @@ function pg_account_menu($user, $options = array())
             : $software_url . '/assets/images/person1.png';
     }
 
+    // The same person as a Bootstrap 6 Avatar: letters on their tone, not
+    // the picture of letters, wherever the panel draws them.
+    $avatar = array(
+        'avatar'      => $has_photo ? $picture : '',
+        'avatar_kind' => $has_photo ? 'photo' : ($named ? 'contact' : 'user'),
+    ) + pg_avatar_letters(pg_initials($first_name, $last_name, $username), (string) USER_ID);
+
     $roles = array(
         '0' => lang('administrator'),
         '1' => lang('designer'),
@@ -2342,7 +2345,7 @@ function pg_account_menu($user, $options = array())
     // Only an administrator may open a user record, so only they get a link.
     // The close button is for the phone sheet, which covers the screen.
     $identity = '
-                                <span class="pg-um-avatar"><img src="' . h($picture) . '" alt="" width="44" height="44"></span>
+                                ' . pg_avatar_markup($avatar, '', 'pg-um-avatar') . '
                                 <span class="pg-um-idtext">
                                     <span class="pg-um-name">' . h($display_name) . '</span>
                                     <span class="pg-um-sub">' . ($named ? '<span class="pg-um-login">' . h($username) . '</span>' : '') . '<span class="pg-um-role">' . h($role) . '</span></span>
@@ -2524,7 +2527,7 @@ function pg_account_menu($user, $options = array())
                     <li class="nav-item pg-menu-wrap no-arrow pg-account">
                         <button type="button" id="user_menu_toggle" class="btn btn-solid theme-secondary pg-acctbtn pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="user_menu" title="' . h(lang('My Menu')) . '">
                             <span class="pg-avwrap">
-                                <span class="pg-avatar"><img src="' . h($picture) . '" alt="" width="28" height="28"></span>' . $badge . '
+                                ' . pg_avatar_markup($avatar, '', 'pg-avatar') . '' . $badge . '
                             </span>
                             <span class="pg-acctname d-none lg:d-inline">' . h($display_name) . '</span>
                             <i class="bi bi-chevron-down pg-chev" aria-hidden="true"></i>
@@ -4893,8 +4896,8 @@ function get_toolbar_page_row($page_id)
             folder.folder_archived
         FROM page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
-        WHERE page.page_id = '" . escape($page_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page.page_id = ?";
+    $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
     $cache[$key] = mysqli_fetch_assoc($result);
     return $cache[$key];
 }

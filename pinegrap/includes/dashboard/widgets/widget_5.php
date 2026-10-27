@@ -217,13 +217,13 @@ function pg_dashboard_widget_5($request, $user)
         $twelve_months_ago = mktime(0, 0, 0, (int) date('n') - 12, 1, (int) date('Y'));
 
         $pm_map = array();
-        $res    = @mysqli_query(
-            db::$con,
+        $res    = db_q(
             "SELECT DATE_FORMAT(stat_date, '%Y-%m') AS ym, SUM(new_visitors) AS cnt
              FROM visitor_stats_hourly
-             WHERE stat_date >= '" . e(date('Y-m-d', $twelve_months_ago)) . "'
-               AND stat_date <  '" . e(date('Y-m-d', $month_start)) . "'
-             GROUP BY ym"
+             WHERE stat_date >= ?
+               AND stat_date <  ?
+             GROUP BY ym",
+            array((string) date('Y-m-d', $twelve_months_ago), (string) date('Y-m-d', $month_start))
         );
         if ($res) {
             while ($r = @mysqli_fetch_assoc($res))

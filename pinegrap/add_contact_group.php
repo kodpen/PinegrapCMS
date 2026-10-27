@@ -138,8 +138,8 @@ if (!$_POST) {
     $query =
         "SELECT id
         FROM contact_groups
-        WHERE (name = '" . escape($liveform->get_field_value('name')) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE (name = ?)";
+    $result = db_q($query, array((string) $liveform->get_field_value('name'))) or output_error('Query failed.');
     
     // if name is already in use by a different contact group, prepare error and forward user back to screen
     if (mysqli_num_rows($result) > 0) {
@@ -162,15 +162,22 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES (
-            '" . escape($liveform->get_field_value('name')) . "',
-            '" . escape($liveform->get_field_value('email_subscription')) . "',
-            '" . escape($liveform->get_field_value('email_subscription_type')) . "',
-            '" . escape($liveform->get_field_value('description')) . "',
-            '" . $user['id'] . "',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array(
+        (string) $liveform->get_field_value('name'),
+        (string) $liveform->get_field_value('email_subscription'),
+        (string) $liveform->get_field_value('email_subscription_type'),
+        (string) $liveform->get_field_value('description'),
+        (string) $user['id'],
+        (string) $user['id'],
+    )) or output_error('Query failed.');
 
     
     log_activity(lang(array('string'=>'contact group (name: {var:1}) was created','vars'=>$liveform->get_field_value('name') )), $_SESSION['sessionusername']);

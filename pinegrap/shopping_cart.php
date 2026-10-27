@@ -85,8 +85,8 @@ if (!empty($_POST['quick_add'])) {
                 inventory_quantity,
                 backorder
             FROM products
-            WHERE id = '" . escape($_POST['quick_add_product_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['quick_add_product_id'] ?? ''))) or output_error('Query failed.');
         
         // if quick add product was found, continue
         if (mysqli_num_rows($result) > 0) {
@@ -239,8 +239,8 @@ $query =
         products.submit_form_quantity_type
     FROM order_items
     LEFT JOIN products ON order_items.product_id = products.id
-    WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE order_items.order_id = ?";
+$result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
 $order_items = array();
 
@@ -288,8 +288,8 @@ foreach ($order_items as $order_item) {
             
         // else donation is greater than zero, so update order item price with donation amount
         } else {
-            $query = "UPDATE order_items SET price = '" . escape($donation_amount) . "' WHERE id = '" . $order_item['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE order_items SET price = ? WHERE id = ?";
+            $result = db_q($query, array((string) $donation_amount, (string) $order_item['id'])) or output_error('Query failed.');
         }
     
     // else this order item is not a donation; a form without its quantity box
@@ -305,8 +305,8 @@ foreach ($order_items as $order_item) {
 
         // else if quantity is a positive integer and new quantity is different from old quantity, update quantity for product
         } elseif ((preg_match("/^\d+$/", $_POST['quantity'][$order_item['id']]) == true) && ($_POST['quantity'][$order_item['id']] != $order_item['quantity'])) {
-            $query = "UPDATE order_items SET quantity = '" . escape($_POST['quantity'][$order_item['id']]) . "' WHERE id = '" . $order_item['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE order_items SET quantity = ? WHERE id = ?";
+            $result = db_q($query, array((string) $_POST['quantity'][$order_item['id']], (string) $order_item['id'])) or output_error('Query failed.');
             
             $new_quantity = $_POST['quantity'][$order_item['id']];
             
@@ -317,8 +317,8 @@ foreach ($order_items as $order_item) {
                     ship_tos.complete
                 FROM order_items
                 LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
-                WHERE order_items.id = '" . $order_item['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE order_items.id = ?";
+            $result = db_q($query, array((string) $order_item['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             $ship_to_id = $row['ship_to_id'];
@@ -450,11 +450,11 @@ foreach ($order_items as $order_item) {
             $query =
                 "UPDATE order_items
                 SET
-                    recurring_payment_period = '" . escape($recurring_payment_period) . "',
-                    recurring_number_of_payments = '" . escape($recurring_number_of_payments) . "',
-                    recurring_start_date = '" . escape($recurring_start_date) . "'
-                WHERE id = '" . $order_item['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    recurring_payment_period = ?,
+                    recurring_number_of_payments = ?,
+                    recurring_start_date = ?
+                WHERE id = ?";
+            $result = db_q($query, array((string) $recurring_payment_period, (string) $recurring_number_of_payments, (string) $recurring_start_date, (string) $order_item['id'])) or output_error('Query failed.');
         }
 
         // If this order item is a gift card, then save gift card data.
@@ -538,8 +538,8 @@ foreach ($order_items as $order_item) {
         // if the order item has a form, then save form data
         if ($order_item['form'] == 1) {
             // delete existing form data for this order item, so that we can easily insert new data
-            $query = "DELETE FROM form_data WHERE (order_item_id = '" . $order_item['id'] . "') AND (order_item_id != '0')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM form_data WHERE (order_item_id = ?) AND (order_item_id != '0')";
+            $result = db_q($query, array((string) $order_item['id'])) or output_error('Query failed.');
             
             // get fields for this product form
             $query =
@@ -552,9 +552,9 @@ foreach ($order_items as $order_item) {
                     wysiwyg,
                     multiple
                 FROM form_fields
-                WHERE (product_id = '" . $order_item['product_id'] . "') AND (form_type = 'product') AND (type != 'information')
+                WHERE (product_id = ?) AND (form_type = 'product') AND (type != 'information')
                 ORDER BY sort_order";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $order_item['product_id'])) or output_error('Query failed.');
             
             $form_fields = array();
             
@@ -699,14 +699,14 @@ foreach ($order_items as $order_item) {
                                         name,
                                         type)
                                     VALUES (
-                                        '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
-                                        '" . $order_item['id'] . "',
-                                        '$quantity_number',
-                                        '" . $form_field['id'] . "',
-                                        '" . escape(prepare_form_data_for_input($value, $form_field['type'])) . "',
-                                        '" . escape($form_field['name']) . "',
-                                        '$form_data_type')";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                        ?,
+                                        ?,
+                                        ?,
+                                        ?,
+                                        ?,
+                                        ?,
+                                        ?)";
+                                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $order_item['id'], (string) $quantity_number, (string) $form_field['id'], (string) prepare_form_data_for_input($value, $form_field['type']), (string) $form_field['name'], (string) $form_data_type)) or output_error('Query failed.');
                             }
 
                         // else this field does not have multiple values
@@ -722,14 +722,14 @@ foreach ($order_items as $order_item) {
                                     name,
                                     type)
                                 VALUES (
-                                    '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
-                                    '" . $order_item['id'] . "',
-                                    '$quantity_number',
-                                    '" . $form_field['id'] . "',
-                                    '" . escape(prepare_form_data_for_input($liveform->get_field_value($html_field_name), $form_field['type'])) . "',
-                                    '" . escape($form_field['name']) . "',
-                                    '$form_data_type')";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?)";
+                            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $order_item['id'], (string) $quantity_number, (string) $form_field['id'], (string) prepare_form_data_for_input($liveform->get_field_value($html_field_name), $form_field['type']), (string) $form_field['name'], (string) $form_data_type)) or output_error('Query failed.');
                         }
                     }
                 }
@@ -742,6 +742,7 @@ foreach ($order_items as $order_item) {
 if (isset($_POST['special_offer_code'])) {
 
     $sql_affiliate_code = "";
+    $affiliate_code_values = array();
 
     $special_offer_code = $liveform->get('special_offer_code');
     
@@ -764,8 +765,8 @@ if (isset($_POST['special_offer_code'])) {
                 offers.end_date,
                 offers.scope
             FROM offers
-            WHERE offers.code = '" . e($offer_code ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE offers.code = ?";
+        $result = db_q($query, array((string) ($offer_code ?? ''))) or output_error('Query failed.');
         
         // if an offer was found for special offer code, then continue to check if there is an active offer
         if (mysqli_num_rows($result) > 0) {
@@ -823,8 +824,8 @@ if (isset($_POST['special_offer_code'])) {
                         } else {
                             // if the ship tos have not been retrieved yet, then get them
                             if ($ship_tos_retrieved == FALSE) {
-                                $query = "SELECT id FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $query = "SELECT id FROM ship_tos WHERE order_id = ?";
+                                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                                 $ship_tos = mysqli_fetch_items($result);
                                 $ship_tos_retrieved = TRUE;
                             }
@@ -893,8 +894,8 @@ if (isset($_POST['special_offer_code'])) {
         // if the affiliate program is enabled
         // then check if the special offer code is also an affiliate code, so we can set affiliate code for visitor and order
         if (AFFILIATE_PROGRAM == TRUE) {
-            $query = "SELECT id FROM contacts WHERE (affiliate_code = '" . escape($special_offer_code) . "') AND (affiliate_approved = '1')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM contacts WHERE (affiliate_code = ?) AND (affiliate_approved = '1')";
+            $result = db_q($query, array((string) $special_offer_code)) or output_error('Query failed.');
             
             // if an affiliate was found then the special offer code is a valid affiliate code, so set affiliate code for visitor and order
             if (mysqli_num_rows($result) > 0) {
@@ -905,13 +906,14 @@ if (isset($_POST['special_offer_code'])) {
                     
                     // (a bot, or a post without a page view first, has no visitor record)
                     if (!empty($_SESSION['software']['visitor_id'])) {
-                        $query = "UPDATE visitors SET affiliate_code = '" . escape($special_offer_code) . "' WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "UPDATE visitors SET affiliate_code = ? WHERE id = ?";
+                        $result = db_q($query, array((string) $special_offer_code, (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
                     }
                 }
                 
                 // prepare to update affiliate code for order
-                $sql_affiliate_code = ", affiliate_code = '" . escape($special_offer_code) . "'";
+                $sql_affiliate_code = ", affiliate_code = ?";
+                $affiliate_code_values = array((string) $special_offer_code);
             }
         }
     }
@@ -919,10 +921,10 @@ if (isset($_POST['special_offer_code'])) {
     $query =
         "UPDATE orders
         SET
-            special_offer_code = '" . escape($special_offer_code) . "'
+            special_offer_code = ?
             $sql_affiliate_code
-        WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array_merge(array((string) $special_offer_code), $affiliate_code_values, array((string) ($_SESSION['ecommerce']['order_id'] ?? '')))) or output_error('Query failed.');
 }
 
 update_order_item_prices();
@@ -935,8 +937,8 @@ if ((ECOMMERCE_OFFLINE_PAYMENT == TRUE) && (isset($_SESSION['sessionusername']) 
     
     // if the user is at least a manager or if the user has access to set offline payment, then update offline payment allowed for order
     if (($user['role'] < 3) || ($user['set_offline_payment'] == TRUE)) {
-        $query = "UPDATE orders SET offline_payment_allowed = '" . escape($liveform->get_field_value('offline_payment_allowed')) . "' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "UPDATE orders SET offline_payment_allowed = ? WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('offline_payment_allowed')), (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
     }
 }
 
@@ -972,17 +974,17 @@ foreach ($order_items as $order_item) {
             "SELECT id
             FROM order_items
             WHERE
-                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
-                AND (product_id = '" . $order_item['required_product'] . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (order_id = ?)
+                AND (product_id = ?)";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $order_item['required_product'])) or output_error('Query failed.');
 
         // if required product is not in cart, add product to cart and add notice, so user knows that required product was added to cart
         if (mysqli_num_rows($result) == 0) {
             // get information about required product
             // products.name is the item code; the shopper knows the product by
             // its short description, which is what the cart lists as well.
-            $query = "SELECT name, short_description FROM products WHERE id = '" . $order_item['required_product'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT name, short_description FROM products WHERE id = ?";
+            $result = db_q($query, array((string) $order_item['required_product'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $required_product_name = ($row['short_description'] != '') ? $row['short_description'] : $row['name'];
 
@@ -1007,10 +1009,10 @@ $query = "SELECT
          FROM order_items
          LEFT JOIN products ON order_items.product_id = products.id
          WHERE
-            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+            (order_items.order_id = ?)
             AND (order_items.ship_to_id > 0)
             AND (order_items.price <= 0)";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
 $free_order_items = array();
 
@@ -1024,10 +1026,10 @@ foreach ($free_order_items as $key => $value) {
     $query = "SELECT id
              FROM order_items
              WHERE
-                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
-                AND (ship_to_id = '" . $free_order_items[$key]['ship_to_id'] . "')
+                (order_id = ?)
+                AND (ship_to_id = ?)
                 AND (price > 0)";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $free_order_items[$key]['ship_to_id'])) or output_error('Query failed.');
     
     // if a non-free order item could not be found, add error
     if (mysqli_num_rows($result) == 0) {
@@ -1095,8 +1097,8 @@ if ($express_order_name) {
     }
 
     // find out if billing information is complete (we will use this later is several places)
-    $query = "SELECT billing_complete FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT billing_complete FROM orders WHERE id = ?";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $billing_complete = $row['billing_complete'];
 
@@ -1104,8 +1106,8 @@ if ($express_order_name) {
     $query = "SELECT order_items.id " .
              "FROM order_items " .
              "LEFT JOIN products ON products.id = order_items.product_id " .
-             "WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND products.shippable = 1";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             "WHERE order_items.order_id = ? AND products.shippable = 1";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
     // if there is at least one product in cart that is shippable
     if (mysqli_num_rows($result) > 0) {
@@ -1125,8 +1127,8 @@ if ($express_order_name) {
         $ship_tos = array();
         
         // get completed ship tos
-        $query = "SELECT id, address_1, state, zip_code, country, arrival_date, shipping_method_id FROM ship_tos WHERE (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (complete = 1)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT id, address_1, state, zip_code, country, arrival_date, shipping_method_id FROM ship_tos WHERE (order_id = ?) AND (complete = 1)";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
         
         while ($row = mysqli_fetch_assoc($result)) {
             $ship_tos[] = $row;
@@ -1160,9 +1162,9 @@ if ($express_order_name) {
                         products.extra_shipping_cost
                      FROM order_items
                      LEFT JOIN products ON products.id = order_items.product_id
-                     WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND order_items.ship_to_id = '$ship_to_id'
+                     WHERE order_items.order_id = ? AND order_items.ship_to_id = ?
                      ORDER BY order_items.id ASC";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_id)) or output_error('Query failed.');
 
             $order_items = array();
 
@@ -1193,14 +1195,14 @@ if ($express_order_name) {
                 $query = "SELECT id
                          FROM shipping_methods
                          WHERE
-                            (id = '$shipping_method_id')
+                            (id = ?)
                             AND (status = 'enabled')
                             AND (start_time <= NOW())
                             AND (end_time >= NOW())
                             " . get_protected_shipping_method_filter() . "
                             AND (available_on_" . $day_of_week . " = '1')
                             AND ((available_on_" . $day_of_week . "_cutoff_time = '00:00:00') OR (available_on_" . $day_of_week . "_cutoff_time > CURRENT_TIME()))";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $shipping_method_id)) or output_error('Query failed.');
                 
                 // if shipping method is still valid
                 if (mysqli_num_rows($result) > 0) {
@@ -1224,9 +1226,9 @@ if ($express_order_name) {
                             FROM shipping_cutoffs
                             LEFT JOIN arrival_dates ON shipping_cutoffs.arrival_date_id = arrival_dates.id
                             WHERE
-                                (arrival_dates.arrival_date = '" . escape($arrival_date) . "')
-                                AND (shipping_cutoffs.shipping_method_id = '$shipping_method_id')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                (arrival_dates.arrival_date = ?)
+                                AND (shipping_cutoffs.shipping_method_id = ?)";
+                        $result = db_q($query, array((string) $arrival_date, (string) $shipping_method_id)) or output_error('Query failed.');
                         
                         // if there is a shipping cut-off, then determine if this shipping method is valid by looking at the cut-off date & time
                         if (mysqli_num_rows($result) > 0) {
@@ -1294,8 +1296,8 @@ if ($express_order_name) {
                             item_rate,
                             item_rate_first_item_excluded
                          FROM shipping_methods
-                         WHERE id = '$shipping_method_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                         WHERE id = ?";
+                $result = db_q($query, array((string) $shipping_method_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
 
                 $shipping_method_service = $row['service'];
@@ -1321,14 +1323,14 @@ if ($express_order_name) {
                 foreach ($zones as $zone_id) {
                     $query = "SELECT shipping_method_id
                              FROM shipping_methods_zones_xref
-                             WHERE (shipping_method_id = '$shipping_method_id') AND (zone_id = '$zone_id')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                             WHERE (shipping_method_id = ?) AND (zone_id = ?)";
+                    $result = db_q($query, array((string) $shipping_method_id, (string) $zone_id)) or output_error('Query failed.');
 
                     // if this zone is allowed for selected shipping method, get zone info
                     if (mysqli_num_rows($result) > 0) {
                         // get zone info
-                        $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = '$zone_id'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT base_rate, primary_weight_rate, secondary_weight_rate, item_rate FROM zones WHERE id = ?";
+                        $result = db_q($query, array((string) $zone_id)) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
 
                         $zone_base_rate = $row['base_rate'];
@@ -1428,8 +1430,8 @@ if ($express_order_name) {
                         
                         // update shipping cost column for order item record
                         $shipping_cost_for_item_per_unit = round($shipping_cost_for_item / $quantity);
-                        $query = "UPDATE order_items SET shipping = '$shipping_cost_for_item_per_unit' WHERE id = '" . $order_item['id'] . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "UPDATE order_items SET shipping = ? WHERE id = ?";
+                        $result = db_q($query, array((string) $shipping_cost_for_item_per_unit, (string) $order_item['id'])) or output_error('Query failed.');
                     }
                 }
                 
@@ -1455,25 +1457,25 @@ if ($express_order_name) {
                 $query =
                     "UPDATE ship_tos
                     SET
-                        shipping_cost = '$shipping_cost',
-                        original_shipping_cost = '$original_shipping_cost',
-                        offer_id = '" . (int) ($offer['id'] ?? 0) . "'
-                    WHERE id = '$ship_to_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        shipping_cost = ?,
+                        original_shipping_cost = ?,
+                        offer_id = ?
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $shipping_cost, (string) $original_shipping_cost, (string) (int) ($offer['id'] ?? 0), (string) $ship_to_id)) or output_error('Query failed.');
                     
             // else the ship to has problems, so we will mark it incomplete,
             // and that will force the user to go through the shipping screens for this ship to again
             } else {
-                $query = "UPDATE ship_tos SET complete = '0' WHERE id = '$ship_to_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE ship_tos SET complete = '0' WHERE id = ?";
+                $result = db_q($query, array((string) $ship_to_id)) or output_error('Query failed.');
             }
         }
 
         /* end: update completed ship tos */
         
         // get first ship to id that is not complete, so we can forward user to correct shipping address & arrival page
-        $query = "SELECT id FROM ship_tos WHERE (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (complete = 0) ORDER BY id LIMIT 1";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT id FROM ship_tos WHERE (order_id = ?) AND (complete = 0) ORDER BY id LIMIT 1";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
         
         // if an incomplete ship to was found, forward user to shipping address & arrival page for ship to
         if (mysqli_num_rows($result) > 0) {
@@ -1483,8 +1485,8 @@ if ($express_order_name) {
         // else all ship tos are complete, so send user to billing information or order preview screen   
         } else {
             // find out if billing information is complete
-            $query = "SELECT billing_complete FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT billing_complete FROM orders WHERE id = ?";
+            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $billing_complete = $row['billing_complete'];
             
@@ -1502,8 +1504,8 @@ if ($express_order_name) {
     // so send user to billing information or order preview screen
     } else {
         // find out if billing information is complete
-        $query = "SELECT billing_complete FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT billing_complete FROM orders WHERE id = ?";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $billing_complete = $row['billing_complete'];
 
@@ -1526,7 +1528,7 @@ if ($express_order_name) {
                  SET
                     order_checked_out = '1',
                     stop_timestamp = UNIX_TIMESTAMP()
-                 WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE id = ?";
+        $result = db_q($query, array((string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
     }
 }
