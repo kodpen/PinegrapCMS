@@ -1,6 +1,6 @@
 ---
 name: workspace-tag-card
-description: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), plan step 9a): which bodies, what the card shows, rights, where it is drawn, what stays text
+description: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text
 ---
 
 ## Which messages get a card?

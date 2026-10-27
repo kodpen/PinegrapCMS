@@ -26,7 +26,7 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8, 11, 9a done, 4, 5 partly; answers 
 6. Slash inserts in notes, done: #2009 (workspace/workspace-notes-slash-inserts.md).
 7. Smart paste, no schema, done: #2018 (workspace/workspace-editor-smart-paste.md).
 8. Small aids, no schema, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #2115 (workspace/workspace-colon-emoji.md).
-9. Objects, no schema. 9a lone tag as a card, done: #PRNUM (workspace/workspace-tag-card.md). 9b checklist item to task (`ws_command_parse_task()`).
+9. Objects, no schema. 9a lone tag as a card, done: #2150 (workspace/workspace-tag-card.md). 9b checklist item to task (`ws_command_parse_task()`).
 10. Saved replies with `{customer}`, `{order}`, schema, ask first: `;` picker, API with dry run; team ones need a right column (five ladder files, `pg_user_has_ws_columns()`).
 11. Rewrite with AI, no schema, done: #2141, target `ws_message` (workspace/workspace-ai-rewrite.md).
 12. Later: callouts, toggles, dictation, mermaid, find/replace; no GIF, video.
