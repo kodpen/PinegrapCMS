@@ -118,12 +118,13 @@ function test_bs6_map_light_and_dark()
 	pg_assert_same('fg-white', bs6_test_tokens('btn-close-white'), 'the v6 close icon is drawn in currentcolor');
 	pg_assert_same('pg-display-4', bs6_test_tokens('display-4'));
 	pg_assert_same('pg-lead', bs6_test_tokens('lead'));
+	pg_assert_same('pg-alert-dismissible', bs6_test_tokens('alert-dismissible'));
 	pg_assert_same('btn btn-solid theme-primary', bs6_convert_class_list('btn btn-primary dropdown-menu-right')['value'], 'a Bootstrap 4 class goes');
 }
 
 function test_bs6_map_reviews_and_untouched()
 {
-	foreach (array('alert-dark', 'alert-dismissible', 'needs-validation', 'd-print-none',
+	foreach (array('alert-dark', 'needs-validation', 'd-print-none',
 		'modal', 'modal-dialog', 'offcanvas-end', 'dropdown-menu', 'dropdown-toggle', 'form-check-input',
 		'form-switch', 'btn-check', 'accordion-button', 'form-range', 'opacity-50-hover', 'link-primary',
 		'text-opacity-75') as $token) {
