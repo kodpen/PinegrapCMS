@@ -289,7 +289,7 @@ function test_bs6_targets_exist_in_dist()
 		'order-lg-1', 'row-cols-md-3', 'd-md-none', 'd-lg-flex', 'flex-md-row', 'justify-content-md-between',
 		'align-items-lg-center', 'text-md-end', 'float-lg-end', 'p-md-3', 'mb-lg-0', 'g-md-4', 'gap-lg-2', 'container-sm',
 		'navbar-expand-lg', 'table-responsive-md', 'list-group-horizontal-md', 'sticky-md-top',
-		'text-dark', 'text-light', 'bg-light', 'bg-dark', 'text-bg-light', 'text-bg-dark', 'alert-light', 'btn-light', 'btn-dark', 'border-dark',
+		'text-dark', 'text-light', 'bg-light', 'bg-dark', 'text-bg-light', 'text-bg-dark', 'alert-light', 'btn-light', 'btn-dark', 'border-dark', 'border-light',
 	);
 
 	foreach ($inputs as $input) {
