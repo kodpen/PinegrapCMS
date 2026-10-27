@@ -198,13 +198,14 @@ function test_widget_parts_cart_gift_card_controls_are_the_systems()
 function test_widget_parts_cart_gift_card_placed_beats_pushed()
 {
 	$tree = json_decode(pg_sw_default_parts_apply(json_encode(_pcgc_tree()), 'shopping_cart'), true);
-	pg_assert_same(2, count($tree['children'][0]['children']), 'the row, then the part');
+	pg_assert_same(3, count($tree['children'][0]['children']), 'the row, then the part and the schedule\'s');
+	pg_assert_same('cart.item_gift_cards', $tree['children'][0]['children'][1]['children'][0]['props']['source']);
 	$json = json_encode($tree);
 	pg_assert_same($json, pg_sw_default_parts_apply($json, 'shopping_cart'), 'a tree with its part is left as it is');
 	$own = json_encode(_pcgc_tree(array(_pcgc_node('loop_area', array('source' => 'cart.item_gift_cards'), array(
 		_pcgc_node('semantic', array('tag' => 'input', '_bindings' => array('value' => 'gift_card_email'))),
 	)))));
-	pg_assert_same($own, pg_sw_default_parts_apply($own, 'shopping_cart'), 'a row listing the cards itself gets no second copy');
+	pg_assert_same(1, substr_count(pg_sw_default_parts_apply($own, 'shopping_cart'), 'cart.item_gift_cards'), 'a row listing the cards itself gets no second copy');
 }
 
 // The editor's part (style_designer.js) is the server's.
@@ -225,9 +226,11 @@ function test_widget_parts_cart_gift_card_editor_twin()
 	};
 	$src = $cut("\n    var SD_COND_NAMES = ", ";\n") . $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n")
 		. $cut("\n    var SW_DEFAULT_LOOP_TAILS = {", "\n    };\n")
-		. $cut("\n    var SW_CART_GIFT_CARD_CONTROLS = {", "\n    };\n");
+		. $cut("\n    var SW_CART_GIFT_CARD_CONTROLS = {", "\n    };\n")
+		. $cut("\n    var SW_CART_SCHEDULE_CONTROLS = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartPlaced', '_sdPartItemLegend',
-		'_sdPartCartGiftCardField', '_sdPartCartItemGiftCard', '_sdMainLoop', '_sdDefaultLoopTails') as $fn) {
+		'_sdPartCartGiftCardField', '_sdPartCartItemGiftCard', '_sdPartCartScheduleField', '_sdPartCartItemSchedule',
+		'_sdMainLoop', '_sdDefaultLoopTails') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$tree = _pcgc_tree(array(_pcgc_node('content', array('contentType' => 'paragraph', 'text' => '^^__item_gift_card_html^^'))));
@@ -236,6 +239,7 @@ function test_widget_parts_cart_gift_card_editor_twin()
 		. "function createNode(type, props, children) { return { _id: gid(), type: type, props: props || {}, children: children || [] }; }\n";
 	$script = 'var tree = ' . json_encode($tree) . ', bare = ' . json_encode(_pcgc_tree()) . ";\n"
 		. "var changed = _sdDefaultParts(tree, 'shopping_cart', null);\n"
+		. "_sdDefaultLoopTails(tree, 'shopping_cart', null);\n"
 		. "var tail = _sdDefaultLoopTails(bare, 'shopping_cart', null);\n"
 		. "console.log(JSON.stringify({ changed: changed, tail: tail, again: _sdDefaultParts(tree, 'shopping_cart', null) || _sdDefaultLoopTails(tree, 'shopping_cart', null), tree: tree, bare: bare }));\n";
 	$file = @tempnam(sys_get_temp_dir(), 'pgparts');

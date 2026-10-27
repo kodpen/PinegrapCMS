@@ -26,7 +26,6 @@ description: Plan (2026-10-26, issue #1989): legitimate traffic must not end in 
 
 ## What is left?
 - `status=429` on the DENY line of `pg_cf_throttle_log()` (`includes/fn/custom_form.php` ~4166), the one `data/firewall.log` writer without it: one line, held by #1997 while that PR edits the file.
-- The memory still to carry Q6: `…-questions.md`, `…-findings-lockout.md`, `waf/waf-login-throttle.md` ("no screen releases the address lock": Allow and the allow list do), `workflow/decisions-made-waf.md` (the decision with its reason).
 
 ## Where to start?
-- The memory line is free to claim (`[plan:waf-legit-traffic-auto-ban] leftover — <topic>`); the `status=429` line waits for #1997. With both in, the lasting content is in `waf/` and `workflow/` and the plan files are deleted.
+- Nothing to claim until #1997 lands; then `[plan:waf-legit-traffic-auto-ban] leftover — <topic>` for the `status=429` line. With it in, the lasting content is in `waf/` and `workflow/` and the plan files are deleted.
