@@ -5,7 +5,8 @@
  * Workspace - flows in the external API: the owner's flows, the live ones
  * of the channels they read and the ones shared with them, drafting a flow
  * (create and change its draft), publishing, pausing, resuming and deleting
- * it, its published versions read and one brought back into the draft; its
+ * it, its published versions read and one brought back into the draft, the
+ * kinds of box it is built from and its draft looked at before publishing; its
  * runs: starting one, reading them and cancelling one; and its shares:
  * reading them, sharing it and taking a share back. The checks are the
  * store's, the runner's and the shares' own (includes/workspace/flows.php,
@@ -770,6 +771,97 @@ function ws_api_flow_versions_restore($params)
     }
 
     api_ok(ws_api_flow_answer($viewer, $flow['id']));
+}
+
+/* ---------------------------------------------------------------------------
+   What a flow is built from, and a draft looked at (flow_catalogue.php)
+   --------------------------------------------------------------------------- */
+
+// One kind of box, as ws_flow_kind_catalogue() gives it.
+function ws_api_flow_kind_present($kind)
+{
+    return array(
+        'kind'     => (string) $kind['kind'],
+        'label'    => (string) $kind['label'],
+        'starts'   => (bool) $kind['starts'],
+        'step'     => (bool) $kind['step'],
+        'outcomes' => $kind['outcomes'],
+        'outputs'  => $kind['outputs'],
+        'texts'    => $kind['texts'],
+        'settings' => $kind['settings'],
+    );
+}
+
+// What ws_api_flow_kind_present() returns.
+function ws_api_flow_kind_schema()
+{
+    return array(
+        'kind'     => 'string',
+        'label'    => 'string',
+        'starts'   => 'boolean',
+        'step'     => 'boolean',
+        'outcomes' => 'string[]',
+        'outputs'  => array(array('key' => 'string', 'type' => 'string', 'label' => 'string', 'mode' => 'string?')),
+        'texts'    => 'string[]',
+        'settings' => array(array('key' => 'string', 'type' => 'string', 'blank' => 'boolean', 'of' => 'string?', 'values' => 'string[]?')),
+    );
+}
+
+// The catalogue says nothing of the site's records or people, so every
+// application with workspace:read reads it, and an assistant drafts from it.
+function ws_api_flow_kinds_list($params)
+{
+    ws_api_viewer();
+    ws_api_flows_ready();
+
+    $kinds = array_map('ws_api_flow_kind_present', ws_flow_kind_catalogue());
+
+    api_ok_list($kinds, count($kinds));
+}
+
+// A draft looked at as publishing would look at it, as GET
+// /workspace/flows/{id}/validate answers it.
+function ws_api_flow_validation_present($flow, $result)
+{
+    return array(
+        'id'             => (int) $flow['id'],
+        'draft_rev'      => (int) $flow['draft_rev'],
+        'publishable'    => (bool) $result['publishable'],
+        'checked_rights' => (bool) $result['checked_rights'],
+        'refusal'        => ((string) $result['refusal'] !== '') ? (string) $result['refusal'] : null,
+        'problems'       => array_map('ws_api_flow_problem_present', $result['problems']),
+    );
+}
+
+// What ws_api_flow_validation_present() returns.
+function ws_api_flow_validation_schema()
+{
+    return array(
+        'id'             => 'integer',
+        'draft_rev'      => 'integer',
+        'publishable'    => 'boolean',
+        'checked_rights' => 'boolean',
+        'refusal'        => 'string?',
+        'problems'       => 'WorkspaceFlowProblem[]',
+    );
+}
+
+// Nothing is written, and the owner's rights are what an assistant drafting
+// for them needs to know before the person publishes: a tool, read scope.
+function ws_api_flows_validate($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $result = ws_flow_validate($viewer, $flow);
+
+    if (!$result['ok']) {
+        ws_api_flow_refused($result);
+    }
+
+    api_ok(ws_api_flow_validation_present($flow, $result));
 }
 
 function ws_api_flows_delete($params)
