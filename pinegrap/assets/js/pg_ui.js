@@ -12,8 +12,8 @@
  * the markup, not every caller.
  *
  * Components are named by their Bootstrap 6 kind: 'dialog', 'drawer', 'menu',
- * 'tooltip', 'popover', 'collapse', 'tab', 'toast', 'chips', 'combobox', 'datepicker' (the
- * last two Bootstrap 6 only: under 5 their get() answers null). A target is an element, a jQuery object or
+ * 'tooltip', 'popover', 'collapse', 'tab', 'toast', 'chips', 'combobox', 'datepicker'
+ * (the last three Bootstrap 6 only: under 5 their get() answers null). A target is an element, a jQuery object or
  * a selector.
  *
  *   pgUI.ready(fn)                    after Bootstrap's script has run
