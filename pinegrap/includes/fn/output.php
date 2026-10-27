@@ -2150,7 +2150,7 @@ function output_header($properties = false)
                 <ul class="navbar-nav">
                     ' . $output_menu_mode_button . '
 
-                    <li class="nav-item">
+                    <li class="nav-item pg-brand-item">
                         <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php"' . $output_parent_target . ' class="nav-link rounded-pill fw-bolder">
                             ' . $output_logo . '
                         </a>
