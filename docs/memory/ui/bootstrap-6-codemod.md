@@ -1,6 +1,6 @@
 ---
 name: bootstrap-6-codemod
-description: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: contexts read, what is rewritten or reported, sizes converted once, file and function scope
+description: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: contexts read, what is rewritten or reported, sizes converted once, scope, how the switch keeps the v5 look
 ---
 
 ## What do the tools do?
@@ -18,3 +18,9 @@ description: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: co
 ## Which files and functions?
 - `bs6_scope_kind()`: `panel` files are converted, `includes/fn/output.php` among them (all panel markup); `site` stays on 5.3.8; `shared` files (`forms.php`, `liveform.class.php`, …) by hand. Editor: `style_designer.js` outside `/* @pg-site-output */` and `designer_screen.php`; the switch converts only the editor's own dialogs (canvas code names v5 classes as data).
 - `bs6_site_functions()`: functions of panel files that site renderers call (returns list, passkeys account section, …) stay v5; `tests/bs6_site_output_test.php` finds new ones.
+
+## How does the switch keep today's look?
+- `bs6_switch_tokens.php`: a `--pg-*` token declared from a v5 variable takes the v6 one; a rule still reading a v5 variable reads the token. An unlayered `:root, [data-bs-theme]` block at the end of backend.src.css sets v6's colour, neutral and size variables from the palette and v5: v6 declares its root variables unlayered, so a layered override loses.
+- Shell rules at the top of the custom layer keep v5's metrics: buttons, cards (block body, own margins), badges, nav, headings, labels, checks, `input.btn-check`, breadcrumb divider, accordion, top-aligned dialogs (`pg-dialog-centered` for v5's centred ones). Icon font sheets sit in the vendor layer.
+- Trap: a rule in `@layer custom` beats any Bootstrap component rule, whatever the specificity.
+- Classes built from a v5 stem (`'text-' . $tone`) are rewritten when the code shows every value (`bs6_switch_stems.php`); a lone class string in PHP code, or in a choice joined to a class string, takes the whole v6 list.
