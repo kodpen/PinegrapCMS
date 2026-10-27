@@ -20,7 +20,7 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 5. PR #1790 (workspace/workspace-followups.md): `ws_followup_task_open()`, "Remind me" on the card; next callers: quote expiry (plans/workspace-quotes.md), ERP overdue (plans/workspace-phase3-leftovers.md 4).
 6. PR #2092 (workspace/workspace-crm-lead-intake.md): lead step `ws_scheduled_lead()` and box `lead` on `form.submitted`: contact by `forms.contact_id`, else e-mail; reuses a channel from `ws_customer_channels()` or opens one with `builtin:new_customer`; `WS_SCHEDULED_LEAD_HOURLY`; duplicates left to view_contacts.php, `merge_contacts()`.
 7. Merge, behaviour change, ask first: `merge_contacts()` re-points (question 2) by one list (proposed) of every `contact_id` holder, shared with erasure (plans/privacy-data-pack-audit-log.md step 4), with `cart_quotes` (proposed), workflow-table cells.
-8. Contacts in the audit trail: panel, API, Workspace, erasure PR #2170; left: core/audit-trail-contacts.md "not hooked".
+8. Contacts in the audit trail: panel, API, Workspace, erasure PR #2170; sync, import, İYS #NNNN; storefront left.
 9. More tag sources, schema, ask first: `ws_refs.source_type` ENUM to VARCHAR (notes, workflow table rows `wtable_row`); `ws_record_refs()` (reads non-messages as tasks) checks `ws_note_access()` or `ws_wtable_*` (new) access per source, or personal notes and tables leak into "where was this record talked about"; next free Workspace label.
 10. Later, schema: custom fields, pipelines (question 1) [9]. Candidates: calendar visit (`ws_events.kind` visit), "no order in N days", `lead_source` from `referral_sources`.
 
@@ -34,4 +34,4 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 - 4. Summary route (2): per channel (a), as built.
 
 ## Where to start?
-- 7, 9, 10 ask first; 8's rest: core/audit-trail-contacts.md "not hooked".
+- 7, 9, 10 ask first; 8's storefront writers wait on an owner question (core/audit-trail-contacts.md "not hooked").

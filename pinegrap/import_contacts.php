@@ -197,6 +197,10 @@ if (!$_POST) {
 
     $imported_contacts = 0;
 
+    // Contacts created and not yet in the audit trail: written in batches, so
+    // a large file neither reads every new row at once nor one at a time.
+    $audit_created = array();
+
     // loops through all rows of data in CSV file
     while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
         // Assume that this line does not have a value,
@@ -254,6 +258,8 @@ if (!$_POST) {
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         }
                     }
+
+                    $audit_created[] = $contact_id;
                     
                     $imported_contacts++;
                     
@@ -308,6 +314,8 @@ if (!$_POST) {
                         
                         $contact_id = mysqli_insert_id(db::$con);
 
+                        $audit_created[] = $contact_id;
+
                         $imported_contacts++;
                     }
                     
@@ -329,9 +337,16 @@ if (!$_POST) {
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 }
             }
+
+            if (count($audit_created) >= 200) {
+                pg_audit_record_many('create', 'contacts', pg_audit_created_rows($audit_created));
+                $audit_created = array();
+            }
         }
     }
     fclose($handle);
+
+    pg_audit_record_many('create', 'contacts', pg_audit_created_rows($audit_created));
     
     log_activity(lang(array('string'=>'{var:1} contacts were imported','vars'=>pg_format_number($imported_contacts, 0))), $_SESSION['sessionusername']);
     
