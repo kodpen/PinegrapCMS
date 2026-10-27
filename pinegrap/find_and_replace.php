@@ -63,7 +63,9 @@ $all_table_defs = [
         'name_column'  => 'cregion_name',
         'extra_select' => [],
         'extra_join'   => '',
-        'base_where'   => "cregion_designer_type = 'no'",
+        // A region made a shared component draws the component; its row
+        // is no longer read.
+        'base_where'   => "cregion_designer_type = 'no' AND " . pg_common_region_not_converted_sql(),
         'columns'      => ['cregion_content'],
         'edit_url'     => 'edit_common_region.php?id={cregion_id}',
         'url_raw'      => false,

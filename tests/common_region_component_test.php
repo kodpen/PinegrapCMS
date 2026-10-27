@@ -110,3 +110,12 @@ function test_designer_component_style_choice()
 	pg_assert_same(4, pg_designer_component_style(0, array(), $designs), 'else the first visual design');
 	pg_assert_same(0, pg_designer_component_style(5, $placed, array()), 'none without a visual design');
 }
+
+function test_common_region_ids_from_categories()
+{
+	pg_assert_same(array(3, 12), pg_common_region_ids_from_categories(array(
+		'common_region:12', 'cregion:5', 'common_region:3', 'common_region:3', 'common_region:0',
+		'common_region:x', 'template:a', '', 'common_region:7 ',
+	)), 'only well-formed common region categories, each once, in order');
+	pg_assert_same(array(), pg_common_region_ids_from_categories(array()));
+}
