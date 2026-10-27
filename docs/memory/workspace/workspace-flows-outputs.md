@@ -23,3 +23,9 @@ description: Values a flow box gives later boxes (data-passing D1, D2): outputs 
 
 ## What does the canvas get?
 - `ws_flow_js_config()` `outputs`: kind => declared list (report: `message_id` only; its counts follow from `steps.metrics` and the box config). Used by the reference check (D4) and the value picker (D6); no canvas UI reads it yet.
+
+## What does each destination do with a filled value?
+- Message (post body; task title, description; report title; check-in question; approval title, text): stored as written, `ws_render_body()` escapes the HTML when it draws it, but a `<@user:N>` / `<#order:N>` in it became a real mention or record tag (bell rings, ws_refs row, approval record).
+- E-mail box: plain text (`format` plain_text; a page body is never filled); PHPMailer encodes the subject. Task e-mail: subject and intro escaped where the HTML is written (`h()`, `nl2br(h())`, `ws_scheduled_digest_html()`); escaping in the fill would show `&amp;lt;`.
+- Webhook: `json_encode()` makes the text one JSON string in every format (values come from `json_decode()`, so valid UTF-8). The chat formats read markup: Slack/Google Chat `<!channel>`, `<@U…>`, `<url|label>`; Discord `<@id>`, `@everyone`, `@here`.
+- Notify: an inbox text shown as text. Line fields (`lines` of `ws_step_kinds()`): control characters become a space after the fill.
