@@ -19407,11 +19407,106 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
 .wsf-edge-line.wsf-arrow-hold {
   marker-end: none;
 }
+/* Data threads (drawData()): 1 px from a value's dot under the box that
+   gives it to the chip of the field under the box that reads it, in its
+   type's colour, threads of one type a few tones apart. The tones are the
+   dark canvas's; the light one takes deeper ones. */
+.wsf-tone-number-0 { --wsf-tone: #2f6fcc; }
+.wsf-tone-number-1 { --wsf-tone: #5a8fdd; }
+.wsf-tone-number-2 { --wsf-tone: #1d56a8; }
+.wsf-tone-text-0 { --wsf-tone: #a8760f; }
+.wsf-tone-text-1 { --wsf-tone: #c08f2e; }
+.wsf-tone-text-2 { --wsf-tone: #8c6200; }
+html[data-bs-theme="dark"] .wsf-tone-number-0 { --wsf-tone: #6ea8ff; }
+html[data-bs-theme="dark"] .wsf-tone-number-1 { --wsf-tone: #9cc4ff; }
+html[data-bs-theme="dark"] .wsf-tone-number-2 { --wsf-tone: #4d8fe8; }
+html[data-bs-theme="dark"] .wsf-tone-text-0 { --wsf-tone: #e9b44c; }
+html[data-bs-theme="dark"] .wsf-tone-text-1 { --wsf-tone: #f5cf7d; }
+html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 .wsf-thread {
   fill: none;
-  stroke: #e9b44c;
+  stroke: var(--wsf-tone, #a8760f);
   stroke-width: 1;
   pointer-events: none;
+}
+.wsf-thread-skipped {
+  stroke-dasharray: 4 3;
+}
+/* Placed from the box's outer edges (drawData()), so the box's 1 px border
+   and 4 px kind edge are taken back. */
+.wsf-data {
+  position: absolute;
+  top: calc(100% - 8px);
+  margin-left: -4px;
+  display: flex;
+  align-items: center;
+  height: 18px;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.wsf-data-field {
+  width: 76px;
+  padding: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid var(--wsf-tone);
+  border-radius: 999px;
+  background: var(--pg-bg-body);
+  color: var(--pg-fg-2);
+}
+.wsf-data-field.wsf-data-bad {
+  border-color: var(--pg-danger);
+  color: var(--pg-danger);
+}
+.wsf-data-out {
+  width: 84px;
+  gap: 3px;
+  color: var(--pg-fg-2);
+}
+.wsf-data-ring {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--wsf-tone);
+  border-radius: 50%;
+  background: var(--pg-bg-body);
+  color: var(--wsf-tone);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+.wsf-data-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wsf-thread.wsf-dim,
+.wsf-data.wsf-dim {
+  opacity: .25;
+}
+.wsf-threads-off .wsf-thread,
+.wsf-threads-off .wsf-data {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wsf-thread,
+  .wsf-data {
+    transition: opacity 120ms ease-out;
+  }
+}
+.wsf-outline-reads {
+  margin: var(--ws-space-1) 0 var(--ws-space-2);
+  color: var(--pg-fg-2);
+}
+.wsf-outline-read-icon {
+  margin-right: var(--ws-space-1);
+  color: var(--wsf-tone);
+}
+.wsf-outline-reads .wsf-data-bad,
+.wsf-outline-reads .wsf-data-bad .wsf-outline-read-icon {
+  color: var(--pg-danger);
 }
 .wsf-setup {
   position: absolute;

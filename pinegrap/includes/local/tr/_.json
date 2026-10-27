@@ -1073,6 +1073,7 @@
     "{var:1} rate": "{var:1} oranı",
     "{var:1} rate of the fee (%)": "Vade farkının {var:1} oranı (%)",
     "{var:1} reacted with {var:2}": "{var:1}: {var:2}",
+    "{var:1} reads {var:2}": "{var:1}: {var:2} değerini okur",
     "{var:1} receivable(s) are still open a month past the reminder threshold, {var:2} in total.": "{var:1} alacak hatırlatma eşiğini bir ay geçmiş ve hâlâ açık, toplam {var:2}.",
     "{var:1} receivable(s) passed the reminder threshold and {var:2} are still open a month past it, {var:3} in total.": "{var:1} alacak hatırlatma eşiğini geçti, {var:2} alacak eşiği bir ay geçmiş ve hâlâ açık; toplam {var:3}.",
     "{var:1} receivable(s) passed the reminder threshold, {var:2} in total.": "{var:1} alacak hatırlatma eşiğini geçti, toplam {var:2}.",

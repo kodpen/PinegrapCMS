@@ -2037,6 +2037,8 @@ function ws_flow_js_strings()
         'fl_fit'              => lang('Fit to the screen'),
         'fl_outline'          => lang('Outline view'),
         'fl_outline_help'     => lang('The boxes in the order of their arrows, each with its settings. Everything the canvas does can be done here too.'),
+        'fl_threads'          => lang('Data threads'),
+        'fl_thread_line'      => ws_js_template('{var:1} reads {var:2}', 2),
         'fl_new'              => lang('New flow'),
         'fl_list_mine'        => lang('My flows'),
         'fl_list_shared'      => lang('Shared with me and my channels'),
