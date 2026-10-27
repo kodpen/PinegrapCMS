@@ -24,7 +24,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 
 - D6 value picker: done (#2461), see workspace/workspace-flows-value-picker.md. Threads, fork, value boxes: workspace-flows-data-threads.md.
 
-- D7 conditions on values: done (#PRNUM), see workspace/workspace-flows-condition-values.md.
+- D7 conditions on values: done (#2496), see workspace/workspace-flows-condition-values.md.
 
 - D8 AI drafts: F8 of workspace-flows.md, after D1 and D4 (rules below).
 
