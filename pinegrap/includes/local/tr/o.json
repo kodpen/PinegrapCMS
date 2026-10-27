@@ -497,6 +497,7 @@
     "Only the one who wrote a note can delete it.": "Notu yalnız yazan silebilir.",
     "Only the one who wrote a note can pin it.": "Notu yalnız yazan sabitleyebilir.",
     "Only the one who wrote a note can share it.": "Notu yalnız yazan paylaşabilir.",
+    "Only the one who wrote the time, or staff, can change it.": "Süreyi yalnızca yazan kişi veya personel değiştirebilir.",
     "Only the one who wrote the time, or staff, can delete it.": "Süreyi yalnız yazan kişi ya da yöneticiler silebilir.",
     "Only the other languages are listed; an element bound to \"{var}\" shows the current one.": "Yalnız öteki diller listelenir; geçerli dili \"{var}\" alanına bağlanan öğe gösterir.",
     "Only the other languages are listed; the current one is shown by ^^__current_language_label^^.": "Yalnız öteki diller listelenir; geçerli dili ^^__current_language_label^^ gösterir.",

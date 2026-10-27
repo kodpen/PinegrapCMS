@@ -167,6 +167,8 @@ function ws_openapi_objects()
         'WorkspaceCommand'         => 'ws_api_command_schema',
         'WorkspaceCommandArgument' => 'ws_api_command_argument_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
+        'WorkspaceTimeEntry'      => 'ws_api_task_time_range_schema',
+        'WorkspaceTimeTask'       => 'ws_api_task_time_task_schema',
         'WorkspaceApproval'       => 'ws_api_approval_schema',
         'WorkspaceThread'           => 'ws_api_thread_schema',
         'WorkspaceScheduledMessage' => 'ws_api_scheduled_message_schema',
@@ -1606,6 +1608,43 @@ function ws_api_routes()
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.tasks.time.update',
+            'method'      => 'POST',
+            'path'        => '/workspace/tasks/{id}/time/{entry_id}/update',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_task_time_update',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTaskTime',
+            'summary'     => 'Change an entry of time',
+            'description' => 'Changes only the fields sent, for whoever may delete the entry: the owner\'s own, or anybody\'s for an owner who is staff (403 otherwise). An entry on an ERP invoice draft is refused with 422 until the tie is undone, and so is a timer still running (stop it first). It has an address of its own because POST /workspace/tasks/{id}/time/{entry_id} deletes the entry. Not announced as an event.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'minutes', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100000),
+                array('name' => 'worked_on', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD, today or earlier.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'null or an empty text clears it.'),
+                array('name' => 'billable', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the time may go on an invoice of the channel\'s customer.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.time.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/time',
+            'scope'       => 'tasks:read',
+            'handler'     => 'ws_api_time_list',
+            'returns'     => array('list' => 'WorkspaceTimeEntry', 'total_minutes' => 'integer'),
+            'summary'     => 'The owner\'s own time across tasks',
+            'description' => 'Every entry of time the owner of the application wrote between two site days, on any task, newest day first, as My time on the tasks screen reads it: a stopped timer or minutes written by hand, and a timer still running with running true and minutes 0 (on the day it was started). task names the task; a task the owner can no longer see keeps its id with an empty title and visible false. total_minutes is the sum of the whole range, not of the page. Page with next_cursor.',
+            'params'      => array(
+                array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD: the first day, in the site\'s time zone. The Monday of the week of to when left out.'),
+                array('name' => 'to', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD: the last day, included; 92 days at most from from. Today when left out.'),
+                array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 250),
             ),
         ),
 
