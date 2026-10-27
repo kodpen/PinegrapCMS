@@ -23,8 +23,9 @@
  * An editor instance (see pgCeCreate) offers getValue / setValue,
  * setLanguage, setReadOnly, setTheme, goTo and scrollTo, the search panel,
  * format (CSS, JavaScript and JSON; Shift+Alt+F in both keymaps), an
- * optional minimap beside the scroll bar (`minimap`, setMinimap), tracked
- * ranges that follow the text as it is edited (track / tracked / trackedAt)
+ * optional minimap beside the scroll bar (`minimap`, setMinimap /
+ * hasMinimap), tracked ranges that follow the text as it is edited (track /
+ * tracked / trackedAt)
  * and locks: ranges no edit may touch, each with optional "islands" inside
  * it that stay editable. A lock without islands is read-only as a whole; a
  * lock with islands lets only the islands change (an attribute's value, an
@@ -995,6 +996,8 @@
             opts.minimap = !!on;
             view.dispatch({ effects: minimapComp.reconfigure(_minimapExtension(cm, opts.minimap)) });
         };
+        // Whether the minimap is on: the editor's option, else the page default.
+        inst.hasMinimap = function () { return _minimapOn(opts); };
         // 'dark' | 'light', while the editor is open: the panel's colour
         // scheme switch pushes it to every editor on the page.
         inst.setTheme = function (name) {
