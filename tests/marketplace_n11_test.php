@@ -457,6 +457,48 @@ function test_marketplace_n11_remote_products_knows_the_last_page()
 	pg_assert_true($empty['data']['last'], 'an empty page is the end');
 }
 
+function test_marketplace_n11_remote_products_reads_the_n11_warehouse_too()
+{
+	$calls = array();
+
+	$body = n11_test_product_page(array(
+		array('stockCode' => 'OWN-1', 'status' => 'Active', 'saleStatus' => 'On_Sale', 'sender' => 'SELLER'),
+		array('stockCode' => 'DEPO-1', 'status' => 'Active', 'saleStatus' => 'On_Sale', 'sender' => 'N11'),
+	), 0, 1, true);
+
+	$result = mp_n11_remote_products(n11_test_account(), 0, n11_test_fixed_transport(200, $body, $calls));
+
+	pg_assert_contains('&sender=ALL', $calls[0]['url'], 'the default (SELLER) leaves the warehouse out');
+	pg_assert_same('Active/On_Sale', $result['data']['products'][0]['status']);
+	pg_assert_same('Active/On_Sale/N11_Warehouse', $result['data']['products'][1]['status'], 'a warehouse product is marked');
+}
+
+function test_marketplace_n11_warehouse_products_get_their_price_but_not_stock()
+{
+	$rows = array(
+		array('remote_code' => 'OWN-1', 'tracked' => 1, 'quantity' => 4, 'price_major' => 10),
+		array('remote_code' => 'DEPO-1', 'tracked' => 1, 'quantity' => 9, 'price_major' => 20),
+	);
+
+	$both = mp_n11_stock_price_skus(array('push_stock' => 1, 'push_price' => 1), $rows, array('DEPO-1' => true));
+
+	pg_assert_same(4, $both['skus'][0]['quantity']);
+	pg_assert_false(isset($both['skus'][1]['quantity']), 'the n11 warehouse keeps that stock');
+	pg_assert_same('20.00', $both['skus'][1]['salePrice'], 'its price is still the seller\'s');
+
+	$stock = mp_n11_stock_price_skus(array('push_stock' => 1, 'push_price' => 0), $rows, array('DEPO-1' => true));
+
+	pg_assert_same(array('OWN-1'), array_map(function ($sku) { return $sku['stockCode']; }, $stock['skus']),
+		'nothing left to send for it on a stock-only account');
+	pg_assert_same(1, $stock['warehouse']);
+
+	$exact = mp_n11_stock_price_skus(array('push_stock' => 1, 'push_price' => 0), array(
+		array('remote_code' => 'depo-1', 'tracked' => 1, 'quantity' => 2, 'price_major' => 0),
+	), array('DEPO-1' => true));
+
+	pg_assert_same(2, $exact['skus'][0]['quantity'], 'codes are compared byte for byte, as the catalogue keeps them');
+}
+
 // n11's city is the province and its district the town within it: the store
 // keeps the town as the city and the province as the state, the way the
 // checkout's Turkish address does.
