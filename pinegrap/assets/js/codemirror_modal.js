@@ -44,6 +44,9 @@
     var _editor    = null;   // PgCodeEditor instance
     var _titleEl   = null;
     var _saveBtn   = null;
+    var _formatBtn = null;
+    var _minimapBtn = null;
+    var _minimap   = null;   // the toggle's last choice on this page; null: page default
     var _opts      = null;   // current call's options
     var _didSave   = false;  // guard: distinguish Save click from dismiss
     var _opening   = 0;      // the call the bundle is being fetched for
@@ -61,23 +64,23 @@
         if (_modalEl) return;
 
         var html =
-            '<div class="modal fade" id="pgCodeEditorModal" tabindex="-1" aria-labelledby="pgCodeEditorTitle" aria-hidden="true">' +
-                '<div class="modal-dialog modal-xl modal-dialog-scrollable">' +
-                    '<div class="modal-content" style="height:85vh;">' +
-                        '<div class="modal-header">' +
-                            '<h5 class="modal-title" id="pgCodeEditorTitle">' + _h(_t('Code Editor')) + '</h5>' +
-                            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + _h(_t('Close')) + '"></button>' +
+            '<dialog class="dialog dialog-xl dialog-scrollable" id="pgCodeEditorModal" aria-labelledby="pgCodeEditorTitle" style="height:85vh;">' +
+                '<div class="dialog-header">' +
+                            '<h5 class="dialog-title" id="pgCodeEditorTitle">' + _h(_t('Code Editor')) + '</h5>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + _h(_t('Close')) + '"></button>' +
                         '</div>' +
-                        '<div class="modal-body p-0 d-flex flex-column" style="overflow:hidden;min-height:0;">' +
+                        '<div class="dialog-body p-0 d-flex flex-column" style="overflow:hidden;min-height:0;">' +
                             '<div id="pgCodeEditorHost" class="pg-code-editor" style="flex:1 1 auto;min-height:0;"></div>' +
                         '</div>' +
-                        '<div class="modal-footer">' +
-                            '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' + _h(_t('Cancel')) + '</button>' +
-                            '<button type="button" class="btn btn-primary" id="pgCodeEditorSave">' + _h(_t('Save')) + '</button>' +
+                        '<div class="dialog-footer">' +
+                            '<div class="me-auto d-flex gap-3">' +
+                                '<button type="button" class="btn btn-outline theme-secondary d-none" id="pgCodeEditorFormat" title="Shift+Alt+F">' + _h(_t('Format code')) + '</button>' +
+                                '<button type="button" class="btn btn-outline theme-secondary" id="pgCodeEditorMinimap" aria-pressed="false">' + _h(_t('Minimap')) + '</button>' +
+                            '</div>' +
+                            '<button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog">' + _h(_t('Cancel')) + '</button>' +
+                            '<button type="button" class="btn btn-solid theme-primary" id="pgCodeEditorSave">' + _h(_t('Save')) + '</button>' +
                         '</div>' +
-                    '</div>' +
-                '</div>' +
-            '</div>';
+                    '</dialog>';
 
         var wrap = document.createElement('div');
         wrap.innerHTML = html;
@@ -87,6 +90,24 @@
         _host     = _modalEl.querySelector('#pgCodeEditorHost');
         _titleEl  = _modalEl.querySelector('#pgCodeEditorTitle');
         _saveBtn  = _modalEl.querySelector('#pgCodeEditorSave');
+        _formatBtn = _modalEl.querySelector('#pgCodeEditorFormat');
+        _minimapBtn = _modalEl.querySelector('#pgCodeEditorMinimap');
+
+        _formatBtn.addEventListener('click', function () {
+            if (!_editor) return;
+            _editor.format();
+            _editor.focus();
+        });
+
+        // The choice holds for the next opens on this page as well: each open
+        // builds a fresh editor.
+        _minimapBtn.addEventListener('click', function () {
+            if (!_editor) return;
+            _minimap = !_editor.hasMinimap();
+            _editor.setMinimap(_minimap);
+            _syncMinimap();
+            _editor.focus();
+        });
 
         _saveBtn.addEventListener('click', function () {
             if (!_opts || !_editor) return;
@@ -106,8 +127,7 @@
             // A fresh editor per open: the language and the text are the call's.
             if (_editor) { _editor.destroy(); _editor = null; }
             _modalEl.classList.remove('pg-code-editor-full');
-            var dlg = _modalEl.querySelector('.modal-dialog');
-            if (dlg) dlg.classList.remove('modal-fullscreen');
+            _modalEl.classList.remove('dialog-fullscreen');
             _opts = null;
         });
     }
@@ -126,18 +146,28 @@
         return 'html';
     }
 
+    // The facade formats CSS, JavaScript and JSON only.
+    function _formats(mode) {
+        return _language(mode) !== 'html';
+    }
+
+    // The toggle shows the editor's state: pressed while the minimap is on.
+    function _syncMinimap() {
+        var on = !!(_editor && _editor.hasMinimap());
+        _minimapBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        _minimapBtn.classList.toggle('active', on);
+    }
+
     function _toggleFullscreen() {
-        var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
-        if (dlg) dlg.classList.toggle('modal-fullscreen');
+        if (_modalEl) _modalEl.classList.toggle('dialog-fullscreen');
         return true;
     }
 
     // Escape leaves the full window first; only the next one cancels the
     // dialog (the editor stops an Escape it used before the modal hears it).
     function _leaveFullscreen() {
-        var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
-        if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;
-        dlg.classList.remove('modal-fullscreen');
+        if (!_modalEl || !_modalEl.classList.contains('dialog-fullscreen')) return false;
+        _modalEl.classList.remove('dialog-fullscreen');
         return true;
     }
 
@@ -160,6 +190,7 @@
         // The button says what it does. "Save" is wrong when the dialog
         // hands its content on to a next step rather than storing it.
         _saveBtn.textContent = opts.saveLabel || _t('Save');
+        _formatBtn.classList.toggle('d-none', !!opts.readonly || !_formats(opts.mode));
 
         pgUI.dialog.show(_modalEl, { backdrop: 'static', keyboard: true });
 
@@ -177,12 +208,14 @@
                 placeholder: opts.placeholder || '',
                 phrases: window.PgCodeEditorPhrases || null,
                 labels: { syntaxError: _t('Syntax error') },
+                minimap: _minimap,
                 keys: [
                     { key: 'Mod-s', run: function () { _saveBtn.click(); return true; } },
                     { key: 'F11', run: _toggleFullscreen },
                     { key: 'Escape', run: _leaveFullscreen }
                 ]
             });
+            _syncMinimap();
             setTimeout(function () { if (_editor && !opts.readonly) _editor.focus(); }, 50);
         };
         var onShown = function () {

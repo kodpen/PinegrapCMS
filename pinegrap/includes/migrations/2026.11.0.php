@@ -69,7 +69,17 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_note_sources(); // 11.0.86
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
 	upgrade_2026_11_0_audit_feed_tokens();      // 11.0.38
-	upgrade_2026_11_0_paypal_checkout();        // 11.0.39
+	upgrade_2026_11_0_erp_efatura_threshold();  // 11.0.61
+	upgrade_2026_11_0_contact_iys_status();     // 11.0.39
+	upgrade_2026_11_0_marketplace_remote_products(); // 11.0.40
+	upgrade_2026_11_0_passkey_signin();        // 11.0.41
+	upgrade_2026_11_0_delivered_campaigns();    // 11.0.42
+	upgrade_2026_11_0_marketplace_map_code_bin(); // 11.0.44
+	upgrade_2026_11_0_shipment_lookup();        // 11.0.45
+	upgrade_2026_11_0_session_passkey();        // 11.0.46
+	upgrade_2026_11_0_audit_retention();        // 11.0.47
+	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
+	upgrade_2026_11_0_paypal_checkout();        // 11.0.50
 
 }
 
@@ -983,6 +993,22 @@ function upgrade_2026_11_0_erp_auto_invoice() {
 	install_add_column('config', 'erp_auto_invoice_min_total', "BIGINT NOT NULL DEFAULT 0");
 
 	install_note('ERP: the invoice the ERP issues on its own for a paid or shipped web order can now be kept to buyers with a tax number and to orders from an amount up, under Site Settings, Ecommerce, ERP. Both are off until set there.');
+
+}
+
+// The two e-Fatura thresholds the ERP weighs the calendar year's gross sales
+// against (includes/erp/efatura_threshold.php): sales over the internet and
+// every sale. A seller that reaches one must join e-Fatura from the seventh
+// month of the next year. Settings, not code, because the tax authority moves
+// them from year to year. Minor units of the base currency, BIGINT like the
+// ERP's other amounts; they start at the amounts in force for 2026 (500 Bin TL
+// and 3 Milyon TL), and 0 switches a warning off.
+function upgrade_2026_11_0_erp_efatura_threshold() {
+
+	install_add_column('config', 'erp_efatura_web_threshold', "BIGINT UNSIGNED NOT NULL DEFAULT 50000000");
+	install_add_column('config', 'erp_efatura_general_threshold', "BIGINT UNSIGNED NOT NULL DEFAULT 300000000");
+
+	install_note('ERP: System Status warns when the year\'s sales come near the e-Fatura threshold (500 Bin TL over the internet, 3 Milyon TL in all) and names the month the move falls due. The amounts are under ERP Settings; 0 switches a warning off.');
 
 }
 
@@ -2317,7 +2343,223 @@ function upgrade_2026_11_0_audit_feed_tokens() {
 
 }
 
-// The PayPal Checkout payment driver on the Orders v2 API (2026.11.0, 11.0.39;
+// The İYS e-mail status of a contact (2026.11.0, 11.0.39; includes/iys/).
+//
+// iys_email_status is what İYS (İleti Yönetim Sistemi) last said about the
+// contact's address on the e-mail channel: '' not known, 'approved' or
+// 'refused', written by the daily İYS job when it pushes a consent or pulls a
+// refusal. A commercial campaign skips a refused address while the İYS e-mail
+// switch is on. A VARCHAR, not an ENUM, so a state added later needs no step.
+// Added in place where the server can; contacts grows with every form and
+// order, so elsewhere the table is copied once (install_heavy_tables()).
+function upgrade_2026_11_0_contact_iys_status() {
+
+	$columns = array(
+		'iys_email_status' => "VARCHAR(16) NOT NULL DEFAULT ''",
+	);
+
+	if (!install_add_columns_instant('contacts', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('contacts', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Contacts: a column keeps what İYS last said about each address on the e-mail channel. It stays empty until an İYS account is set up.');
+
+}
+
+// A marketplace's own catalogue, kept for matching (2026.11.0, 11.0.40;
+// includes/api/outbound/remote_products.php).
+//
+// One row per product the store sells on the marketplace, read from the
+// marketplace a page at a time when the operator asks. remote_code is what a
+// marketplace_product_map row for it would carry (n11: the seller's stock
+// code), so a match is that row written. The suggestion columns hold which
+// shop product the row most likely is, with its score, reason and whether it
+// is sure; dismissed says the operator answered that the shop does not sell
+// it. fetched_timestamp is the read that last saw the row: a read that ends
+// removes the rows it did not see, the products the store took off there.
+//
+// remote_code compares byte for byte. The seller types these codes, and under
+// the table's case- and accent-blind collation "ABC-1" and "abc-1", or
+// "ŞAPKA-01" and "SAPKA-01", were one row: the second product's title,
+// barcode and price overwrote the first's under the first's code, and a match
+// accepted on that row sent a shop product's stock to the wrong listing.
+//
+// The unique key covers the first 191 characters of the code, for the same
+// reason marketplace_product_map.idx_code does: the whole column is past the
+// index limit of the older row formats.
+function upgrade_2026_11_0_marketplace_remote_products() {
+
+	install_create_table('marketplace_remote_products', "CREATE TABLE marketplace_remote_products (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		account_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		remote_code          VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
+		remote_id            VARCHAR(64) NOT NULL DEFAULT '',
+		group_code           VARCHAR(255) NOT NULL DEFAULT '',
+		barcode              VARCHAR(64) NOT NULL DEFAULT '',
+		title                VARCHAR(500) NOT NULL DEFAULT '',
+		image_url            TEXT NULL,
+		price                INT NOT NULL DEFAULT 0,
+		quantity             INT NOT NULL DEFAULT 0,
+		remote_status        VARCHAR(60) NOT NULL DEFAULT '',
+		suggested_product_id INT UNSIGNED NOT NULL DEFAULT 0,
+		suggestion_score     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		suggestion_reason    VARCHAR(20) NOT NULL DEFAULT '',
+		suggestion_sure      TINYINT NOT NULL DEFAULT 0,
+		dismissed            TINYINT NOT NULL DEFAULT 0,
+		fetched_timestamp    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_code (account_id, remote_code(191)),
+		KEY idx_suggested (account_id, suggested_product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Marketplaces: the products a store sells on a marketplace can be read in and matched to this shop\'s products in bulk, with suggestions, on the new Marketplace products screen.');
+
+}
+
+// Sign-in with a passkey alone (2026.11.0, 11.0.41; includes/fn/passkeys.php).
+//
+// config.passkey_signin is the Security card's switch for the "Sign in with a
+// passkey" button on the sign-in screens (PASSKEY_SIGNIN). Off by default: an
+// upgraded site keeps its sign-in screen as it is until a manager turns the
+// button on.
+// A session opened with a passkey names it (auth_tokens.passkey_id, 0 for any
+// other sign-in), so the account page can show it beside the session and
+// removing the passkey ends the sessions it opened. No foreign key: a token
+// row outlives nothing it points at, and a removed passkey takes its rows
+// along itself (pg_passkey_remove()).
+function upgrade_2026_11_0_session_passkey() {
+
+	install_add_column('auth_tokens', 'passkey_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('auth_tokens', 'idx_passkey', "INDEX idx_passkey (passkey_id)");
+
+	install_note('My Account › Security names the passkey a session was opened with; removing a passkey signs out the sessions it opened.');
+
+}
+
+function upgrade_2026_11_0_passkey_signin() {
+
+	install_add_column('config', 'passkey_signin', "TINYINT NOT NULL DEFAULT 0");
+
+	install_note('Settings › Security: a switch offers sign-in with a passkey alone on the sign-in screens. It starts off.');
+
+}
+
+// A campaign made from an order_delivered profile copies the profile's action
+// into email_campaigns.action. 11.0.20 widened only the profiles' enum, so
+// such a campaign was stored with action ''. The list is read first and only
+// widened, so a value another step added stays; the default and the null rule
+// are kept as they are.
+function upgrade_2026_11_0_delivered_campaigns() {
+
+	$action = install_column_info('email_campaigns', 'action');
+
+	if (!$action) {
+
+		return;
+
+	}
+
+	if (strpos((string) $action['Type'], "'order_delivered'") !== false) {
+
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'email_campaigns.action order_delivered')));
+
+	} else {
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		$values = $matches[1];
+		$values[] = 'order_delivered';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column('email_campaigns', 'action', $definition);
+
+	}
+
+	install_note('E-mail campaigns: a campaign started by an "order delivered" profile now keeps its action, and the order shipped and order delivered e-mails can show ^^tracking_numbers^^, ^^carrier_name^^ and ^^tracking_url^^.');
+
+}
+
+// marketplace_product_map.remote_code compares byte for byte (2026.11.0,
+// 11.0.44; includes/api/outbound/orders.php, product_matches.php).
+//
+// Under the table's case- and accent-blind collation "ABC-1" and "abc-1" were
+// one code: an order line for one was matched to the product mapped under the
+// other, and stock went to the wrong listing. utf8mb4_bin, as
+// marketplace_remote_products.remote_code already is. The order import still
+// falls back to the case-blind match when exactly one mapping answers, and the
+// shop view's search names the case-blind collation itself.
+//
+// The type and default stay as 2026.4.4 made them; idx_code (191 characters)
+// is rebuilt by the MODIFY. A column already in utf8mb4_bin is left alone.
+function upgrade_2026_11_0_marketplace_map_code_bin() {
+
+	if (install_table_exists('marketplace_product_map')) {
+
+		$column = db_item("SHOW FULL COLUMNS FROM marketplace_product_map WHERE Field = 'remote_code'");
+
+		if (is_array($column) && isset($column['Collation']) && ($column['Collation'] === 'utf8mb4_bin')) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'marketplace_product_map.remote_code (utf8mb4_bin)')));
+
+		} else {
+
+			install_modify_column('marketplace_product_map', 'remote_code',
+				"VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT ''", false);
+
+		}
+
+	}
+
+	install_note('Marketplaces: product codes that differ only in upper and lower case are now told apart, so an order is matched to the right product.');
+
+}
+
+// How long the audit trail keeps its lines (2026.11.0, 11.0.47;
+// includes/fn/privacy_retention.php, the Security screen's Audit Trail card).
+// Years, 2 by default; 0 keeps every line. The general job removes older
+// lines once a day, and the consent log's history past three years with
+// them (the newest answer of each person, channel and purpose stays).
+function upgrade_2026_11_0_audit_retention() {
+
+	install_add_column('config', 'audit_log_retention_years', "TINYINT UNSIGNED NOT NULL DEFAULT 2");
+
+	install_note('Privacy: the audit trail now keeps its lines for 2 years and the consent log its history for 3 years; the general job removes older lines once a day. The consent answer in force for each person is always kept. The audit trail period can be changed under Settings › Security › Audit Trail.');
+
+}
+
+// Guest parcel lookup (2026.11.0, 11.0.45; track_shipment.php,
+// includes/fn/shipment_lookup.php). No schema change: the step only tells the
+// operator the page exists and how to put it in front of customers, since no
+// menu or page links to it on its own. The "Kargo Yola Çıktı" e-mail of the
+// Turkish starter site is left as it is.
+function upgrade_2026_11_0_shipment_lookup() {
+
+	install_note('Shipping: customers without an account can now look up their parcels at track_shipment.php in the software folder (for example /pinegrap/track_shipment.php) with their order number and billing e-mail. It shows carrier, tracking number and status only, allows 10 lookups an hour per address, and appears where you link to it, for example from a menu item, the footer or the shipping e-mail.');
+
+}
+
+// The rule behind the "price before the discount" (2026.11.0, 11.0.49;
+// includes/fn/price_history.php, Settings › Ecommerce › Reference Price).
+// TEXT, as every new config column (no VARCHAR on config); NULL reads as the
+// 30-day lowest, so the step writes no rows.
+function upgrade_2026_11_0_reference_price_rule() {
+
+	install_add_column('config', 'ecommerce_reference_price_rule', "TEXT DEFAULT NULL");
+
+	install_note('Ecommerce: Settings › Ecommerce › Reference Price now picks which price counts as the price before a discount: the lowest price of the last 30 days (the default), of the last 10 days, or the compare-at price entered on each product.');
+
+}
+
+// The PayPal Checkout payment driver on the Orders v2 API (2026.11.0, 11.0.50;
 // includes/payments/paypal.php).
 //
 // orders.payment_method is an ENUM and the connection runs without strict

@@ -97,6 +97,13 @@ function get_set_password($properties) {
             $strong_password_help = '';
         }
 
+        // The Strength meter only on the built-in screen (no page), drawn in
+        // the panel chrome on Bootstrap 6; a site page runs 5.3.8.
+        $strength_meter = '';
+        if (!$page_id) {
+            $strength_meter = pg_password_strength_meter('new_password', STRONG_PASSWORD) . pg_password_strength_script();
+        }
+
         $form->set('new_password', 'required', true);
 
         if (PASSWORD_HINT) {
@@ -115,6 +122,7 @@ function get_set_password($properties) {
             'form' => $form,
             'attributes' => $attributes,
             'strong_password_help' => $strong_password_help,
+            'strength_meter' => $strength_meter,
             'email' => (is_array($user) ? $user['email'] : ''),
             'system' => $system));
 

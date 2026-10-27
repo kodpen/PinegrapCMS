@@ -65,6 +65,27 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
+    // ── The operator's own address ──────────────────────────────────────
+    //
+    // Checked before anything is written: a block entry covering the address
+    // this request comes from (a mistyped range, an ISP's /8, 0.0.0.0/0 left
+    // from a test) shuts the operator out of this screen in every mode and at
+    // the ban shield, and never expires. An allow entry covering the address
+    // wins at request time, so it makes the save safe.
+    $waf_own_ip = function_exists('waf_client_ip') ? waf_client_ip() : '';
+    $waf_own_blocks = pg_waf_own_address_blocks(
+        $waf_own_ip,
+        preg_split('/[\r\n,;]+/', (string) post_value('banned_ip_addresses')),
+        preg_split('/[\r\n,;]+/', (string) post_value('allowed_ip_addresses')));
+
+    if ($waf_own_blocks) {
+        $liveform->mark_error('banned_ip_addresses', lang(array(
+            'string' => 'Nothing was saved: these blocked IP addresses cover your own address {var:1}: {var:2}. Remove them, or add your address to the allowed IP addresses.',
+            'vars'   => array(h($waf_own_ip), h(implode(', ', $waf_own_blocks))))));
+
+        return;
+    }
+
     // ── Country restriction (2026.4.10) ─────────────────────────────────
     //
     // Checked before anything is written: a list with a code that names no
@@ -259,9 +280,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // Normalised on the way in: trimmed, lower-cased, de-duplicated - the list
     // is matched case-insensitively, and a tidy list is one an operator can
     // still read a year from now.
-    $bea_column = @mysqli_query(db::$con, "SHOW COLUMNS FROM config LIKE 'banned_email_addresses'");
-
-    if ($bea_column && (mysqli_num_rows($bea_column) > 0)) {
+    if (pg_schema_has('config', 'banned_email_addresses')) {
         $bea_entries = array();
 
         foreach (preg_split('/[\r\n,;]+/', (string) post_value('banned_email_addresses')) as $bea_entry) {
@@ -392,13 +411,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 $query = "INSERT INTO banned_ip_addresses
                             (ip_address, list_type, source, created_at)
                           VALUES
-                            ('" . escape($entry) . "', '" . escape($list_type) . "', 'manual', " . time() . ")
+                            (?, ?, 'manual', ?)
                           ON DUPLICATE KEY UPDATE created_at = VALUES(created_at)";
+                $query_values = array((string) $entry, (string) $list_type, time());
             } else {
-                $query = "INSERT INTO banned_ip_addresses (ip_address) VALUES('" . escape($entry) . "')";
+                $query = "INSERT INTO banned_ip_addresses (ip_address) VALUES(?)";
+                $query_values = array((string) $entry);
             }
 
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, $query_values) or output_error('Query failed.');
         }
     }
 

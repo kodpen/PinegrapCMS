@@ -34,7 +34,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * UX-bar keys (rendered after the shell):
  *   primary_button: ['label' => '...', 'url' => '...', 'icon' => 'bi-plus-lg', 'variant' => 'primary']
  *   actions: [ same shape as primary_button, rendered as secondary buttons ]
- *   action_bar_class: extra CSS class for the wrapping div (default "mb-3")
+ *   action_bar_class: extra CSS class for the wrapping div (default "mb-5")
  *
  * @param array $properties
  * @return string Page-shell HTML up to the point where the caller opens <main>.
@@ -85,7 +85,7 @@ function pg_tour_ready()
         return $ready;
     }
 
-    $ready = (db_item("SHOW COLUMNS FROM user LIKE 'tours_seen'")) ? true : false;
+    $ready = pg_schema_has('user', 'tours_seen');
 
     return $ready;
 }

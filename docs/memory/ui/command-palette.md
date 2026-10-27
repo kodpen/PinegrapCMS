@@ -12,5 +12,5 @@ description: Panel search box (Ctrl+K): where the chips come from, how text is m
 - It started when the maintenance card listed "503" among its keywords: `pg_settings_keywords()` drops repeats through array keys, and PHP turns the key "503" into the integer 503. It now returns `strval`s (`tests/settings_keywords_test.php`), and `normalizeTR()` reads `String(s)` so a stray number cannot stop the matcher again (#590).
 
 ## How does a chip open a dialog instead of a screen?
-- A settings chip opens the settings after the search box has gone: see `settings-modal-navigation.md` (two modals at once leave a second backdrop).
-- The "Keyboard Shortcuts" chip (keys klavye, kısayol, keyboard, shortcut) has the address `#keyboard-shortcuts`; the chip handler opens `window.pgShowShortcuts()` in the same `hidden.bs.modal` way (`account-menu.md`).
+- A settings chip opens the settings after the search box has gone: the chip hides the search dialog and opens the settings in its `hidden` handler (`pgUI.dialog.on(…, 'hidden', …, {once: true})`, `settings-modal-navigation.md`).
+- The "Keyboard Shortcuts" chip (keys klavye, kısayol, keyboard, shortcut) has the address `#keyboard-shortcuts`; the chip handler opens `window.pgShowShortcuts()` in the same `hidden` way (`account-menu.md`).

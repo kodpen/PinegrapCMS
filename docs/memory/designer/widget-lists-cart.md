@@ -1,10 +1,12 @@
 ---
 name: widget-lists-cart
 description: The cart as a list (W11): cart.items in the cart link (mini cart) and the cart widget, its key, tokens, where rows are read, the editor's mini cart starter, what is left
+module: widgets_lists_cart
 ---
 
 ## What does the cart list give?
 - `cart.items` (`includes/fn/widgets_lists_cart.php`, engine [[widget-lists]]), family `cart`, offered by `cart_link` (a mini cart in a header's dropdown or offcanvas) and `shopping_cart` (a read-only summary beside the cart's own editable rows). Lines saved for later are left out (`pg_order_item_active_sql()`).
+- `cart.item_gift_cards` (shopping_cart only) draws a gift card line's controls ([[widget-default-parts-cart-gift-card]]); `cart.item_schedule` a line's payment schedule controls ([[widget-default-parts-cart-schedule]]).
 - Opt-in: a tree without it renders byte-identical; the cart's loop and its recipient and recurring bands stay.
 
 ## Which key and tokens?
@@ -18,4 +20,4 @@ description: The cart as a list (W11): cart.items in the cart link (mini cart) a
 - Palette "Lists in a record": Products in the cart; `_sdOrderListStarter('cart.items')` lands a flush list group: a 48px picture, the display name linked, quantity × price, a × remove link with an aria-label. Never in the cart widget's item loop (amber band there).
 
 ## What is not done yet?
-- Recipients of the cart as a list, totals per recipient, gift cards applied, the express order's lists (W24) and an update without a page load (the mini cart is drawn per request). A browser round is owed.
+- The express order offers `cart.items` too, beside its own lists ([[widget-lists-checkout]]). Totals per recipient and an update without a page load (the mini cart is drawn per request) are not done. A browser round is owed.

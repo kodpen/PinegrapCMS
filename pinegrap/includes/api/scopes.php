@@ -397,7 +397,8 @@ function api_owner_scopes($owner) {
 
 		// The health report names the firewall's state, which jobs stopped
 		// moving, how much disk is gone and which files fail their integrity
-		// check. That is the operator's own diagnostic detail, so the right to
+		// check; the audit trail beside it holds every change with its values
+		// before and after. That is the operator's own detail, so the right to
 		// hand it to a machine sits with the same roles that may hand out
 		// events.
 		$scopes[] = 'system:read';
@@ -487,7 +488,7 @@ function api_assistant_scopes(array $groups, array $leave_out = array()) {
 // The reads an assistant's key is made without. Neither assistant needs them:
 // the owner's own bell and devices, codes a shopper could redeem, spendable
 // gift card codes, who did what from which address, and the firewall and
-// file integrity state. An administrator can still add any of them to the key
+// file integrity state with the audit trail. An administrator can still add any of them to the key
 // in Application Access.
 function api_assistant_scopes_left_out() {
 

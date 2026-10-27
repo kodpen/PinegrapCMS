@@ -9,7 +9,7 @@ description: External API product name (SKU) rule on create and update (trimmed,
 
 ## Why on update too?
 - Before (issue #874, fixed by PR #1027) the update wrote `name` like any text column: another product's name gave 200 and two products of one name (`import_products.php` and other lookups by name then cannot tell which is meant); `""` gave 200 and an empty name. The create already refused both.
-- The product screen does not run `get_unique_name()` on edit (`pg_pb_update_product()`), only to avoid renaming a product to `NAME[1]` on every save; its form requires the name. Not a decision to allow duplicates.
+- The product screen refuses a taken code on create and on edit too (`product-code-unique.md`).
 
 ## What bounds do the dimensions have?
 - `weight`, `length`, `width`, `height` are `decimal(12,4) unsigned`. Both product routes declare `'min' => 0, 'max' => 99999999.9999` (`includes/api/schema.php`); the router answers 422 outside it. Before, the update declared neither: `-5` gave 200 and stored 0 (the non-strict session clamps an unsigned column), and on both routes a figure past the top was stored as the top.

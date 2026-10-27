@@ -7,6 +7,7 @@ Table structures and SQL pitfalls.
 ## Key rules
 
 <!-- key-rules:start -->
+- New code runs a query with values through `db_q($sql, array($v, …))` (`?` placeholders), not `mysqli_query()`; it returns `false` on failure like `mysqli_query()`, so keep the caller's check (`db-q-placeholder-helper.md`).
 - Escape every value with `e()`; in LIKE write `e(escape_like($v))`: `escape_like()` alone escapes no quote and is an SQL injection (`db-helpers-and-error-contract.md`).
 - Never compare an INT column with `''` (every row that belongs to nothing matches) or a DATE column with `''` (use `'0000-00-00'`); check a LEFT JOIN id first (`sql-silent-wrong-results.md`).
 - Read with a one-shape helper (`db_value`, `db_values`, `db_item`, `db_items`): `db()`'s answer changes with the row count, so a loop over it breaks on one row (`db-helpers-and-error-contract.md`).
@@ -26,7 +27,27 @@ Table structures and SQL pitfalls.
 - config-table-no-varchar.md: Rule that the config table gets no new VARCHAR columns (TEXT only), with the InnoDB row-size reasons and the test that enforces it.
 - content-tables.md: Columns, joins and edit-screen URLs for page, pregion, cregion, dregion, forms/form_data, style, ads and comments; the form_data.id vs forms.id trap.
 - date-column-empty-comparison.md: Why DATE columns (ship_date, expiration_date, arrival_date) must be compared to '0000-00-00' and never to '', and what happens under strict mode and PHP 8.1.
-- db-helpers-and-error-contract.md: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() returns false (mysqli_report OFF).
+- db-helpers-and-error-contract.md: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() and db_q() return false.
+- db-q-converted-access.md: Sign-in, access check, contact merge and designer asset files converted to db_q() (fn/auth, fn/contacts, fn/designer, the forms.php clauses): PR, special cases, what stayed raw, guard test.
+- db-q-converted-campaigns-visitor-report.md: E-mail campaign files and the visitor report converted to db_q() (PR #2331): how values are passed, what stayed raw and why, the guard test.
+- db-q-converted-catalog-forms.md: get_catalog.php, get_photo_gallery.php and custom_form.php converted to db_q() (PR #2291): how values are passed, what stayed raw and why, the guard test.
+- db-q-converted-comments-search.md: Users list, user delete, account profile, comment add/edit, site search and sitemap files converted to db_q(): PR, special cases, what stayed raw and why, guard test.
+- db-q-converted-commerce.md: Cart, checkout, form, order and product screen files converted to db_q(): PR, special cases, what stayed raw and why, guard tests.
+- db-q-converted-contacts-forms.md: Contact, contact group, form field and submitted form panel screens converted to db_q() (PRs #2299, #2316): what stayed raw and why, guard test.
+- db-q-converted-core-logs.md: Price history, core callers, calendar, mail, not-found log, db maintenance and backup restore functions converted to db_q(): PR, special cases, what stayed raw, guard test.
+- db-q-converted-editors-explorer-waf.md: Theme and file editors, custom style, explorer panel, page form and firewall log screen converted to db_q() (PR #2333): special cases, what stayed raw and why, guard test.
+- db-q-converted-files.md: Content files converted to db_q() (get_page_content, content, seo, get_page): PR, how values are passed, what stayed raw and why, guard tests; the conversion rules.
+- db-q-converted-front.md: Front-end files converted to db_q() (shopping cart, form item view, view order, email preferences, watchers, affiliate sign-up): PR, clauses with values, what stayed raw, guard test.
+- db-q-converted-order-front.md: Order preview, receipts, shipping address step, reorder, retrieve order and remove item converted to db_q(): special cases, what stayed raw, guard test.
+- db-q-converted-panel-content.md: Folder, page copy, calendar event, image editor and theme designer screens converted to db_q(): PR, optional SQL pieces with their values, what stayed raw, guard test.
+- db-q-converted-panel-menus-calendars.md: Region, menu, form list view and calendar panel screens converted to db_q(): PR, optional SQL pieces with their values, what stayed raw, guard test.
+- db-q-converted-panel-styles.md: Calendar location, calendar event copy, ad, login and common region, style, design file, menu item, field and file screens converted to db_q(): PR, special cases, what stayed raw and why, guard test.
+- db-q-converted-panel.md: Panel screens converted to db_q() (user screens edit_user, add_user, import_users; page screens edit_pages, edit_page): PR, special cases, what stayed raw and why, guard test.
+- db-q-converted-shipping-import.md: Shipping, zone, arrival date, commission, commerce settings and product import files converted to db_q() (PR #2314): how values are passed, what stayed raw and why, the guard test.
+- db-q-converted-small-front.md: Address book, e-mail preferences, form views, catalog detail, order form and other small front files converted to db_q(): special cases, what stayed raw, guard test.
+- db-q-converted-visitor-settings.md: Visitor text, retention and partition functions, InnoDB checks, output, comment counters, settings and widgets 8 and 23 on db_q(): PR, special cases, what stayed raw, test.
+- db-q-converted-zones-currencies-jobs.md: Tax zone, state, currency, add, order edit and payment job screens converted to db_q(): PR, bare ids bound as int, what stayed raw, guard test.
+- db-q-placeholder-helper.md: db_q($sql, $params) and its binder pg_db_bind(): how each ? is filled, what is refused, why it returns false like mysqli_query() instead of ending the request, the new-code rule.
 - files-type-column-width.md: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager reads the kind from the name instead; which views still read the column
 - menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep
 - orders-table-write-traps.md: Three traps when INSERTing into orders (reference_code, payment_method ENUM, order_date), the next_order_number table lock and where it is taken, and the orders.type values and list filter.

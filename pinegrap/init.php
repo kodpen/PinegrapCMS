@@ -437,6 +437,9 @@ define('REMEMBER_ME_DEVICE_LIMIT_STRICT', (int) ($row['remember_me_device_limit_
 // Two-step sign-in: accounts whose role is <= this value must have a second
 // factor; 99 (also before the 8.40 upgrade adds the column) means none must.
 define('MFA_REQUIRED_ROLE', (int) ($row['mfa_required_role'] ?? 99));
+// Sign-in with a passkey alone offered on the sign-in screens; off before the
+// upgrade adds the column.
+define('PASSKEY_SIGNIN', (int) ($row['passkey_signin'] ?? 0));
 define('MOBILE', $row['mobile']);
 define('SEARCH_TYPE', $row['search_type']);
 define('SOCIAL_NETWORKING', $row['social_networking']);
@@ -688,6 +691,11 @@ define('ERP_AUTO_INVOICE_ON', $row['erp_auto_invoice_on'] ?? 'off');
 // Off and 0 until the step has run.
 define('ERP_AUTO_INVOICE_TAX_NUMBER_ONLY', isset($row['erp_auto_invoice_tax_number_only']) ? (int) $row['erp_auto_invoice_tax_number_only'] : 0);
 define('ERP_AUTO_INVOICE_MIN_TOTAL', isset($row['erp_auto_invoice_min_total']) ? (int) $row['erp_auto_invoice_min_total'] : 0);
+// The e-Fatura thresholds (2026.11.0, 11.0.61) in minor units of the base
+// currency: sales over the internet and every sale. 0 (off) until the step
+// has run.
+define('ERP_EFATURA_WEB_THRESHOLD', isset($row['erp_efatura_web_threshold']) ? (int) $row['erp_efatura_web_threshold'] : 0);
+define('ERP_EFATURA_GENERAL_THRESHOLD', isset($row['erp_efatura_general_threshold']) ? (int) $row['erp_efatura_general_threshold'] : 0);
 define('ERP_DEFAULT_CASH_ACCOUNT_ID', isset($row['erp_default_cash_account_id']) ? (int) $row['erp_default_cash_account_id'] : 0);
 // The account a counter sale with no customer is billed to (4.59); 0 = none named.
 define('ERP_WALKIN_ACCOUNT_ID', isset($row['erp_walkin_account_id']) ? (int) $row['erp_walkin_account_id'] : 0);
@@ -980,7 +988,7 @@ if (!empty($_SERVER['HTTP_HOST'])) {
     // screen re-issues it as None for a payment gateway's return
     // (pg_session_cookie_allow_cross_site()). The setting exists from 7.3.
     if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
-        ini_set('session.cookie_samesite', 'Lax');
+        ini_set('session.cookie_samesite', 'Lax'); // phpcs:ignore PHPCompatibility.IniDirectives.NewIniDirectives.session_cookie_samesiteFound -- guarded by version_compare() above
     }
 
     // The id in the cookie must be one this server issued: with strict mode
@@ -1023,6 +1031,13 @@ initialize_user();
 // needs to know whether the request comes from an authenticated designer
 // (who edits HTML, JavaScript and SQL for a living) or from a stranger.
 waf_run('init');
+
+// Ban notices waf.php queued without a database or mail (includes/fn/
+// waf_notice.php): sent by this request, and by the general job, which loads
+// this file too. One file check when nothing is queued.
+if (function_exists('pg_waf_ban_notice_send')) {
+    pg_waf_ban_notice_send();
+}
 
 // Page cache: a write by a signed-in user or an API client may change what
 // pages show, so every stored page is made old once the request ends

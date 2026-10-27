@@ -170,6 +170,56 @@ function ws_message_quotes_map($viewer, $message_ids)
 }
 
 /**
+ * Everything a forward to a channel is checked against before anything is
+ * written, shared by the panel and the external API (its dry run included):
+ * the messages, the channel they go to and the words above them.
+ *
+ * @param array  $viewer
+ * @param int[]  $message_ids
+ * @param array  $target  the channel it goes to
+ * @param string $comment
+ * @param array  $options app_id: the application it is written as, 0 for the person
+ * @return array ok, error, field (message_ids | channel | text), rows, channel (the one they come from)
+ */
+function ws_forward_to_channel_check($viewer, $message_ids, $target, $comment = '', $options = array())
+{
+    $fail = function ($error, $field) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'rows' => array(), 'channel' => null);
+    };
+
+    if (!ws_forwards_ready()) {
+        return $fail(lang('The workspace is not installed yet: the database has to be updated first.'), '');
+    }
+
+    $picked = ws_forward_pick($viewer, $message_ids);
+
+    if (!$picked['ok']) {
+        return $fail($picked['error'], 'message_ids');
+    }
+
+    if (!is_array($target) || !ws_can_post_channel($viewer, $target) || ((int) $target['archived_at'] > 0)) {
+        return $fail(lang('Choose a channel you can write in.'), 'channel');
+    }
+
+    // What the team says to each other is not carried into a room a guest
+    // reads.
+    if ((string) $target['kind'] === 'guest') {
+        return $fail(lang('Messages cannot be forwarded into a room with a guest.'), 'channel');
+    }
+
+    $checked = ws_message_send_check($viewer, $target, (string) $comment, array(
+        'forwards' => count($picked['rows']),
+        'app_id'   => (int) ($options['app_id'] ?? 0),
+    ));
+
+    if (!$checked['ok']) {
+        return $fail($checked['error'], 'text');
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'rows' => $picked['rows'], 'channel' => $picked['channel']);
+}
+
+/**
  * Forwards messages to another channel: a message there with a copy of each,
  * and the person's own words above them if they wrote any.
  *
@@ -177,31 +227,21 @@ function ws_message_quotes_map($viewer, $message_ids)
  * @param int[]  $message_ids
  * @param array  $target  the channel it goes to
  * @param string $comment
+ * @param array  $options app_id: the application it is written as, 0 for the person
  * @return array ok, error, message_id
  */
-function ws_forward_to_channel($viewer, $message_ids, $target, $comment = '')
+function ws_forward_to_channel($viewer, $message_ids, $target, $comment = '', $options = array())
 {
-    if (!ws_forwards_ready()) {
-        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'), 'message_id' => 0);
-    }
-
-    $picked = ws_forward_pick($viewer, $message_ids);
+    $picked = ws_forward_to_channel_check($viewer, $message_ids, $target, $comment, $options);
 
     if (!$picked['ok']) {
         return array('ok' => false, 'error' => $picked['error'], 'message_id' => 0);
     }
 
-    if (!is_array($target) || !ws_can_post_channel($viewer, $target) || ((int) $target['archived_at'] > 0)) {
-        return array('ok' => false, 'error' => lang('Choose a channel you can write in.'), 'message_id' => 0);
-    }
-
-    // What the team says to each other is not carried into a room a guest
-    // reads.
-    if ((string) $target['kind'] === 'guest') {
-        return array('ok' => false, 'error' => lang('Messages cannot be forwarded into a room with a guest.'), 'message_id' => 0);
-    }
-
-    $sent = ws_message_send($viewer, $target, (string) $comment, array('forwards' => count($picked['rows'])));
+    $sent = ws_message_send($viewer, $target, (string) $comment, array(
+        'forwards' => count($picked['rows']),
+        'app_id'   => (int) ($options['app_id'] ?? 0),
+    ));
 
     if (!$sent['ok']) {
         return array('ok' => false, 'error' => $sent['error'], 'message_id' => 0);

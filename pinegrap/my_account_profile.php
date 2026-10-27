@@ -88,15 +88,15 @@ if (!$_POST) {
     // if an error does not exist
     if ($liveform->check_form_errors() == false) {
         // get user information
-        $query = "SELECT user_id, user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "SELECT user_id, user_contact FROM user WHERE user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');
         $row = mysqli_fetch_assoc($result);
         $user_id = $row['user_id'];
         $contact_id = $row['user_contact'];
 
         // look for contact
-        $query = "SELECT id FROM contacts WHERE id = '" . $contact_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "SELECT id FROM contacts WHERE id = ?";
+        $result = db_q($query, array((string) $contact_id)) or output_error('Query failed');
 
         // Only update tax fields if they were submitted in the form.
         $sql_profile_tax = '';
@@ -156,25 +156,25 @@ if (!$_POST) {
                         user,
                         timestamp)
                      VALUES (
-                        '" . escape($liveform->get_field_value('salutation')) . "',
-                        '" . escape($liveform->get_field_value('first_name')) . "',
-                        '" . escape($liveform->get_field_value('last_name')) . "',
-                        '" . escape($liveform->get_field_value('suffix')) . "',
-                        '" . escape($liveform->get_field_value('company')) . "',
-                        '" . escape($liveform->get_field_value('title')) . "',
-                        '" . escape($liveform->get_field_value('business_address_1')) . "',
-                        '" . escape($liveform->get_field_value('business_address_2')) . "',
-                        '" . escape($liveform->get_field_value('business_city')) . "',
-                        '" . escape($liveform->get_field_value('business_state')) . "',
-                        '" . escape($liveform->get_field_value('business_zip_code')) . "',
-                        '" . escape($liveform->get_field_value('business_phone')) . "',
-                        '" . escape($liveform->get_field_value('business_fax')) . "',
-                        '" . escape($liveform->get_field_value('business_country')) . "',
-                        '" . escape($liveform->get_field_value('home_phone')) . "',
-                        '" . escape($liveform->get_field_value('mobile_phone')) . "',
-                        '$user_id',
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
                         UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            $result = db_q($query, array((string) ($liveform->get_field_value('salutation')), (string) ($liveform->get_field_value('first_name')), (string) ($liveform->get_field_value('last_name')), (string) ($liveform->get_field_value('suffix')), (string) ($liveform->get_field_value('company')), (string) ($liveform->get_field_value('title')), (string) ($liveform->get_field_value('business_address_1')), (string) ($liveform->get_field_value('business_address_2')), (string) ($liveform->get_field_value('business_city')), (string) ($liveform->get_field_value('business_state')), (string) ($liveform->get_field_value('business_zip_code')), (string) ($liveform->get_field_value('business_phone')), (string) ($liveform->get_field_value('business_fax')), (string) ($liveform->get_field_value('business_country')), (string) ($liveform->get_field_value('home_phone')), (string) ($liveform->get_field_value('mobile_phone')), (string) $user_id)) or output_error('Query failed');
 
             // get contact id so we can connect user to contact
             $contact_id = mysqli_insert_id(db::$con);
@@ -190,9 +190,9 @@ if (!$_POST) {
                         contact_id,
                         contact_group_id)
                     VALUES (
-                        '" . $contact_id . "',
-                        '" . REGISTRATION_CONTACT_GROUP_ID . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $contact_id, (string) REGISTRATION_CONTACT_GROUP_ID)) or output_error('Query failed.');
             }
         }
 

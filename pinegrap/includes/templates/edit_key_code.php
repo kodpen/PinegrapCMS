@@ -21,11 +21,11 @@ if (!defined('PG_INIT_LOADED')) {
     <div class="row">
         <div class="col-12">
 			<?=$liveform->get_messages()?>
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 col-sm-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 sm:col-12 text-center md:text-start">
                     <nav class="navigation" aria-label="breadcrumb">
-                        <ol class="breadcrumb justify-content-center justify-content-md-start "> 
-                            <li class="breadcrumb-item"><a class="link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_key_codes.php"><?=lang('All Key Codes')?></a></li>
+                        <ol class="breadcrumb justify-content-center md:justify-content-start "> 
+                            <li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_key_codes.php"><?=lang('All Key Codes')?></a></li>
                             <li class="breadcrumb-item active" aria-current="page"><?php if ($screen == 'create'): ?><?=lang('Create Key Code')?><?php else: ?><?=lang('Edit Key Code')?><?php endif ?></li>
                         </ol> 
                     </nav>
@@ -47,14 +47,14 @@ if (!defined('PG_INIT_LOADED')) {
 				<?php endif ?>
                 <div class="row">
                     <div class="col-12">
-                        <div class="card my-4">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 <?=lang('Main Informations')?>
                             </div>
                             <div class="card-body">
                                 <div class="row">
 									<?php if ($screen == 'create'): ?>
-                                    	<div class="col-12 col-md-4 my-2">
+                                    	<div class="col-12 md:col-4 my-3">
 											<label for="quantity" class="form-label "><?=lang('Quantity')?></label>
                                             <div class="input-group number-controls">
                                                 
@@ -76,7 +76,7 @@ if (!defined('PG_INIT_LOADED')) {
 											<div class="text-end form-text"><?=lang('Increase Quantity to Create Multiple Key Codes')?></div>
                                     	</div>
 									<?php endif ?>
-                                    <div class="col-12 col-md-4 my-2 collapse show" id="code_row">
+                                    <div class="col-12 md:col-4 my-3 collapse show" id="code_row">
                                         <label for="code" class="form-label"><?=lang('Key Code')?></label>
                                         <?=$liveform->output_field(array(
 											'type' => 'text',
@@ -87,7 +87,7 @@ if (!defined('PG_INIT_LOADED')) {
 										<div class="invalid-feedback"><?=lang('Required Area')?></div>
 										<div class="text-end form-text"><?=lang('New Key Code for Redemption & Order Reporting')?></div>
                                     </div>
-                                    <div class="col-12 col-md-4 my-2">
+                                    <div class="col-12 md:col-4 my-3">
                                         <label for="offer_code" class="form-label"><?=lang('Offer Code')?></label>
                                         <?=$liveform->output_field(array(
 											'type' => 'text',
@@ -103,24 +103,24 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 					</div>
                     <div class="col-12">
-                        <div class="card my-4">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 <?=lang('Availability')?>
                             </div>
                             <div class="card-body">
                                 <div class="row">
-									<div class="col-12 my-2">
-                                        <div class="form-check form-switch">
+									<div class="col-12 my-3">
+                                        <div class="form-field">
 										<?=$liveform->output_field(array(
 											'type' => 'checkbox',
 											'id' => 'enabled',
 											'name' => 'enabled',
 											'value' => '1',
-											'class' => 'form-check-input'))?>
-                                            <label class="form-check-label" for="enabled"><?=lang('Enabled')?></label>
+											'class' => 'check'))?>
+                                            <label class="" for="enabled"><?=lang('Enabled')?></label>
                                         </div>
                                     </div>
-									<div class="col-12 col-md-6 col-lg-4 my-2">
+									<div class="col-12 md:col-6 lg:col-4 my-3">
                                          <label for="expiration_date" class="form-label"><?=lang('Expiration Date')?></label>
                                          <?=$liveform->output_field(array(
 											'type' => 'text',
@@ -133,7 +133,7 @@ if (!defined('PG_INIT_LOADED')) {
 										<div class="text-end form-text"><?=lang('leave blank for no expiration')?></div>
 										<?=get_date_picker_format() . pg_fields_script()?>
                                     </div>
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="notes" class="form-label"><?=lang('Notes')?></label>
 										<?=$liveform->output_field(array(
 											'type' => 'textarea',
@@ -146,44 +146,44 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 					</div>
                     <div class="col-12">
-                        <div class="card my-4">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 <?=lang('Other Options')?>
                             </div>
                             <div class="card-body">
                                 <div class="row">
-									<div class="col-12 my-2">
-                                        <div class="form-check form-switch">
+									<div class="col-12 my-3">
+                                        <div class="form-field">
 										<?=$liveform->output_field(array(
 											'type' => 'checkbox',
 											'id' => 'single_use',
 											'name' => 'single_use',
 											'value' => '1',
-											'class' => 'form-check-input'))?>
-                                            <label class="form-check-label" for="single_use"><?=lang('Single-Use')?></label>
+											'class' => 'check'))?>
+                                            <label class="" for="single_use"><?=lang('Single-Use')?></label>
 											<div class="form-text"><?=lang('Prevent Code from Being Used in Multiple Orders')?></div>
 											
                                         </div>
                                     </div>
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label class="form-label" for=""><?=lang('Report')?></label>
-                                        <div class="form-check">
+                                        <div class="form-field">
 											<?=$liveform->output_field(array(
 												'type' => 'radio',
 												'id' => 'report_key_code',
 												'name' => 'report',
 												'value' => 'key_code',
-												'class' => 'form-check-input'))?>
-                                            <label class="form-check-label" for="report_key_code"><?=lang('Key Code')?></label>
+												'class' => 'radio'))?>
+                                            <label class="" for="report_key_code"><?=lang('Key Code')?></label>
                                         </div>
-                                        <div class="form-check">
+                                        <div class="form-field">
 											<?=$liveform->output_field(array(
 												'type' => 'radio',
 												'id' => 'report_offer_code',
 												'name' => 'report',
 												'value' => 'offer_code',
-												'class' => 'form-check-input'))?>
-                                            <label class="form-check-label" for="report_offer_code"><?=lang('Offer Code')?></label>
+												'class' => 'radio'))?>
+                                            <label class="" for="report_offer_code"><?=lang('Offer Code')?></label>
                                         </div>
 										<div class="form-text"><?=lang('Code for Order Reporting & Exporting')?></div>
                                     </div>
@@ -192,12 +192,12 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 					</div>
 				</div>
-				<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+				<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                     <div class="container">
                         <div class=" btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-success "><span class="material-icons me-2"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
+                            <button type="submit" id="save_button" name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-solid theme-success "><span class="material-icons me-3"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
                             <?php if ($screen == 'edit'): ?>
-								<button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('key code'))))?>"><span class="material-icons me-2">delete</span><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
+								<button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('key code'))))?>"><span class="material-icons me-3">delete</span><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
 							<?php endif ?>
 						</div>
                     </div>

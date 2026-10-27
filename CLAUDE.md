@@ -13,8 +13,9 @@ needs. The detail is in memory files, opened when a task needs them.
   the symptom it fixed, the PR number), goes into `docs/memory/<folder>/`:
   English, one topic per file, at most 4 KB, `## …?` questions with short
   answers, frontmatter `---` / `name: <file name without .md>` /
-  `description: <one line>` / `---`. Stale text is corrected or deleted,
-  never kept beside a "now" note.
+  `description: <one line>` / optional `module: <includes/fn modules>` /
+  `---`. Stale text is corrected or deleted, never kept beside a "now"
+  note.
 - Plans are files in `docs/memory/plans/`: remaining work, decisions, open
   questions, where to start. A finished plan moves its lasting decisions to
   the topic folder and is deleted.
@@ -46,7 +47,7 @@ finding: it lists decisions already made.
 
 ## Project in two lines
 
-PHP CMS (PHP 7.1–8.5, MySQL/MariaDB via `mysqli`, Bootstrap 5 + jQuery). Code
+PHP CMS (PHP 7.1–8.5, MySQL/MariaDB via `mysqli`, Bootstrap 6 in the panel, 5.3.8 on sites, + jQuery). Code
 lives under `pinegrap/`; paths in memory are relative to it. Open version
 **2026.11.0** (`docs/memory/release/release-status.md`); versions are
 `YYYY.M.PATCH`, month without a leading zero (`release/version-numbering.md`).
@@ -114,8 +115,9 @@ the merging session, `coordinator.md` for coordinators.
    file and end: a long session pays for its whole context on every wake.
 7. **Shared hot files.** A PR never edits `changelog.txt`: its body names the
    `[NEW]` line or the `[SCHEME]` item. Translation keys go in only with
-   `php tools/tr_add.php` (`core/lang-files.md`). Generated indexes,
-   `.min.js` bundles and `core/fn-module-map-additions.md`: append only.
+   `php tools/tr_add.php` (`core/lang-files.md`). Generated indexes and
+   `.min.js` bundles: append only. A new `includes/fn/` module is named in
+   the `module:` field of its memory file (`core/fn-modules.md` is generated).
 8. **Queue limit.** While more than 15 PRs are open, drafts and
    `merge-train/*` not counted, nobody starts a new task (checked before the
    claim); finished work is still marked ready. A PR waiting on the owner's
@@ -189,6 +191,7 @@ php tools/check_bindings.php    # designer dropdown tokens against renderer
 php tools/check_api_schema.php  # external API fields against the schema
 php tools/test.php [filter]     # tests/*_test.php (pure functions)
 php tools/check_copies.php      # only the intended get_file.php copies
+php tools/check_bs6.php --strict  # no Bootstrap 5 left in panel markup
 php tools/build_js.php --check  # .min.js bundles match their sources
 php tools/build_code_editor.php --check  # code editor bundle matches tools/code_editor/
 php tools/memory_index.php --check  # memory index matches its files

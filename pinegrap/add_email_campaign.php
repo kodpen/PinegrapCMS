@@ -33,8 +33,8 @@ if (!$_POST) {
         $output_format_plain_text_checked = '';
         $output_format_html_checked = ' checked="checked"';
 
-        $query = "SELECT page_name, page_folder FROM page WHERE page_id = '" . escape($_GET['page_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT page_name, page_folder FROM page WHERE page_id = ?";
+        $result = db_q($query, array((string) $_GET['page_id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         // A page that no longer exists (stale link, hand-typed URL) leaves
         // these empty, as before, without the PHP notices.
@@ -134,9 +134,9 @@ if (!$_POST) {
                 $output_contact_group_rows .=
                     '<tr>
                         <td>' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</td>
-                        <td style="text-align: center"><div class="form-check  form-check-inline"><input class="form-check-input" type="radio" name="contact_group_' . $id . '" value="ignored" class="radio" checked="checked" /></div></td>
-                        <td style="text-align: center"><div class="form-check  form-check-inline"><input class="form-check-input" type="radio" name="contact_group_' . $id . '" value="included" class="radio" /></div></td>
-                        <td style="text-align: center"><div class="form-check  form-check-inline"><input class="form-check-input" type="radio" name="contact_group_' . $id . '" value="excluded" class="radio" /></div></td>
+                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="ignored" class="radio" checked="checked" /></div></td>
+                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="included" class="radio" /></div></td>
+                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="excluded" class="radio" /></div></td>
                     </tr>';
             }
         }
@@ -145,7 +145,7 @@ if (!$_POST) {
     // if there is at least one contact group to show, then prepare to output contact groups
     if ($output_contact_group_rows != '') {
         $output_contact_groups =
-            '<div class="alert alert-primary"><p>' . lang('Send message to all Subscribers in my selected Contact Groups') . '</p></div>
+            '<div class="alert theme-primary"><p>' . lang('Send message to all Subscribers in my selected Contact Groups') . '</p></div>
             <div style="margin-bottom: 1.5em">
                 <table class="table">
                     <tr>
@@ -158,7 +158,7 @@ if (!$_POST) {
                 </table>
             </div>';
     } else {
-        $output_contact_groups = '<div class="alert alert-danger"><p>' . lang('You do not have access to any contact groups with subscribers.') . '</p></div>';
+        $output_contact_groups = '<div class="alert theme-danger"><p>' . lang('You do not have access to any contact groups with subscribers.') . '</p></div>';
     }
     
     // only set when the e-mail campaign job is available, but always output below
@@ -168,13 +168,13 @@ if (!$_POST) {
     if (email_campaign_job_enabled()) {
         $output_start_time =
             '<div class="col-12">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('E-Mail Message Delivery Schedule') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                 <label class="form-label" for="start_time">' . lang('Send at this Date & Time') . '</label>
                                 <input value="" type="text" maxlength="19" class="form-control" id="start_time" name="start_time" data-pg-datetime />
                                 <div class="text-end form-text">' . lang('Leave blank to send as soon as possible.') . '</div>
@@ -211,13 +211,13 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('E-Mail Message') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="subject" class="form-label">' . lang('Subject') . '</label>
                                             <input type="text" name="subject" placeholder="' . lang('Subject') . '" maxlength="255" id="subject" class="form-control" />
                                         </div>
@@ -225,15 +225,15 @@ if (!$_POST) {
                                             <div class="col-12">
                                                 <label class="form-label">' . lang('Format') . '</label>
                                             </div>
-                                            <div class="form-check  form-check-inline">
-                                                <input class="form-check-input collapse-switcher" type="radio" id="format_plain_text" name="format" value="plain_text" data-bs-target="#email_format_plain_text_row"' . $output_format_plain_text_checked . ' />
+                                            <div class="form-field  d-inline-grid me-5">
+                                                <input class="radio collapse-switcher" type="radio" id="format_plain_text" name="format" value="plain_text" data-bs-target="#email_format_plain_text_row"' . $output_format_plain_text_checked . ' />
                                                 <label for="format_plain_text">' . lang('Plain Text') . '</label> 
                                             </div>
-                                            <div class="form-check  form-check-inline">
-                                                <input class="form-check-input collapse-switcher" type="radio" id="format_html" name="format" value="html"  data-bs-target="#email_format_html_row"' . $output_format_html_checked . '/>
+                                            <div class="form-field  d-inline-grid me-5">
+                                                <input class="radio collapse-switcher" type="radio" id="format_html" name="format" value="html"  data-bs-target="#email_format_html_row"' . $output_format_html_checked . '/>
                                                 <label for="format_html">' . lang('HTML') . '</label>
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="email_format_plain_text_row">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="email_format_plain_text_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
@@ -244,15 +244,15 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100"  id="email_format_html_row">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100"  id="email_format_html_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
-                                                        <div class="col-12 col-sm-8 my-1">
+                                                        <div class="col-12 sm:col-8 my-1">
                                                             <label class="form-label" for="page_id">' . lang('Page') . '</label>
-                                                            <select class="form-select collapse-if-selected" id="page_id" name="page_id" onchange="document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';" data-bs-target="#body_preview_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . $output_page_options . '</select>
+                                                            <select class="form-control collapse-if-selected" id="page_id" name="page_id" onchange="document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';" data-bs-target="#body_preview_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . $output_page_options . '</select>
                                                         </div>
-                                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="body_preview_row">
+                                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                             <div class="popover-body">
                                                                 <div class="row">
@@ -272,21 +272,21 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('E-Mail Message To My Contact Groups') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             ' . $output_contact_groups . '
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="alert alert-secondary row justify-content-between">
+                                        <div class="col-12 my-3">
+                                            <div class="alert theme-secondary row justify-content-between">
                                                 <div class="col-auto">
                                                 <p>' . lang('Also send message to the following e-mail address') . ': </p>
                                                 </div>
-                                                <div class="col-12 col-6 col-lg-4">
+                                                <div class="col-12 col-6 lg:col-4">
                                                     <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
                                                 </div>
                                             </div>
@@ -296,23 +296,23 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('E-Mail Message From') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-sm-6 col-xl-12 my-2">
+                                        <div class="col-12 sm:col-6 xl:col-12 my-3">
                                             <label class="form-label" for="from_name">' . lang('From Name') . '</label>
                                             <input value="' . h(ORGANIZATION_NAME) . '" type="text" class="form-control" id="from_name" name="from_name" />
                                         </div>
                                         <div class="col-12">
                                             <div class="row">
-                                                <div class="col-12 col-sm-6 col-xl-4 my-2">
+                                                <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                     <label class="form-label" for="from_email_address">' . lang('From E-mail Address') . '</label>
                                                     <input value="' . h($user['email_address']) .'" type="text" class="form-control text-end" id="from_email_address" name="from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                                 </div>
-                                                <div class="col-12 col-sm-6 col-xl-4 my-2">
+                                                <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                     <label class="form-label" for="reply_email_address">' . lang('Reply to E-mail Address') . '</label>
                                                     <input value="' . h($user['email_address']) .'" type="text" class="form-control text-end" id="reply_email_address" name="reply_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                                 </div>
@@ -324,21 +324,21 @@ if (!$_POST) {
                         </div>
                         ' . $output_start_time . '
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Purpose') . ' (' . lang('as defined by the CAN-SPAM Act') . ')
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 my-5">
                                             <label class="form-label">' . lang('Purpose') . '</label>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="purpose" id="purpose_commercial" value="commercial" checked="checked">
-                                                <label class="form-check-label" for="purpose_commercial">' . lang('Commercial') . ' (' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . ')</label>
+                                            <div class="form-field">
+                                                <input class="radio" type="radio" name="purpose" id="purpose_commercial" value="commercial" checked="checked">
+                                                <label class="" for="purpose_commercial">' . lang('Commercial') . ' (' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . ')</label>
                                             </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="purpose" id="purpose_transactional" value="transactional">
-                                                <label class="form-check-label" for="purpose_transactional">' . lang('Transactional') . ' (' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ')</label>
+                                            <div class="form-field">
+                                                <input class="radio" type="radio" name="purpose" id="purpose_transactional" value="transactional">
+                                                <label class="" for="purpose_transactional">' . lang('Transactional') . ' (' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ')</label>
                                             </div>
                                         </div>
                                     </div>
@@ -346,10 +346,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -376,8 +376,8 @@ if (!$_POST) {
         }
 
         // get folder id for selected page in order to check if user has access to view content in folder
-        $query = "SELECT page_folder FROM page WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT page_folder FROM page WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $folder_id = $row['page_folder'];
         
@@ -416,8 +416,8 @@ if (!$_POST) {
                 $query =
                     "SELECT email_subscription
                     FROM contact_groups
-                    WHERE id = '" . escape($contact_group_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $email_subscription = $row['email_subscription'];
                 
@@ -433,14 +433,14 @@ if (!$_POST) {
                         LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
                         LEFT JOIN opt_in ON (contacts_contact_groups_xref.contact_id = opt_in.contact_id) AND (contacts_contact_groups_xref.contact_group_id = opt_in.contact_group_id)
                         WHERE
-                            (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_group_id) . "')
+                            (contacts_contact_groups_xref.contact_group_id = ?)
                             AND (contacts.opt_in = 1)
                             AND (
                                 (opt_in.opt_in = 1)
                                 OR (opt_in.opt_in IS NULL)
                             )
                             AND (contacts.email_address != '')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
                     
                 // else this is not a subscription contact group
                 } else {
@@ -452,10 +452,10 @@ if (!$_POST) {
                         FROM contacts_contact_groups_xref
                         LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
                         WHERE
-                            (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_group_id) . "')
+                            (contacts_contact_groups_xref.contact_group_id = ?)
                             AND (contacts.opt_in = 1)
                             AND (contacts.email_address != '')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
                 }
                 
                 // loop through all contact e-mail addresses
@@ -492,9 +492,9 @@ if (!$_POST) {
                     FROM contacts_contact_groups_xref
                     LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
                     WHERE
-                        (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_group_id) . "')
+                        (contacts_contact_groups_xref.contact_group_id = ?)
                         AND (contacts.email_address != '')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
                 
                 // loop through all contact e-mail addresses
                 while ($row = mysqli_fetch_assoc($result)) {
@@ -521,21 +521,21 @@ if (!$_POST) {
                 // determine if entered e-mail address is already in use by a contact
                 $query = "SELECT id
                          FROM contacts
-                         WHERE email_address = '" . escape($_POST['entered_email_address'] ?? '') . "'";
-                $result_contacts = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                         WHERE email_address = ?";
+                $result_contacts = db_q($query, array((string) ($_POST['entered_email_address'] ?? ''))) or output_error('Query failed.');
 
                 // determine if entered e-mail address is already in use by a user
                 $query = "SELECT user_id
                          FROM user
-                         WHERE user_email = '" . escape($_POST['entered_email_address'] ?? '') . "'";
-                $result_users = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                         WHERE user_email = ?";
+                $result_users = db_q($query, array((string) ($_POST['entered_email_address'] ?? ''))) or output_error('Query failed.');
 
                 // if entered e-mail address is not in use by a contact or a user, create contact for entered e-mail address
                 if ((mysqli_num_rows($result_contacts) == 0) && (mysqli_num_rows($result_users) == 0)) {
                     $query = "INSERT INTO contacts
                              (email_address, user, timestamp)
-                             VALUES ('" . escape($_POST['entered_email_address'] ?? '') . "', '" . $user['id'] . "', UNIX_TIMESTAMP())";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                             VALUES (?, ?, UNIX_TIMESTAMP())";
+                    $result = db_q($query, array((string) ($_POST['entered_email_address'] ?? ''), (string) $user['id'])) or output_error('Query failed.');
                 }
             }
 
@@ -704,20 +704,20 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES (
-            '" . escape($_POST['from_name'] ?? '') . "',
-            '" . escape($_POST['from_email_address'] ?? '') . "',
-            '" . escape($_POST['reply_email_address'] ?? '') . "',
-            '" . escape($_POST['subject'] ?? '') . "',
-            '" . escape($_POST['format'] ?? '') . "',
-            '" . escape($body) . "',
-            '" . escape($_POST['page_id'] ?? '') . "',
-            '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
-            '" . e($_POST['purpose'] ?? '') . "',
-            '" . $user['id'] . "',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['from_name'] ?? ''), (string) ($_POST['from_email_address'] ?? ''), (string) ($_POST['reply_email_address'] ?? ''), (string) ($_POST['subject'] ?? ''), (string) ($_POST['format'] ?? ''), (string) $body, (string) ($_POST['page_id'] ?? ''), (string) prepare_form_data_for_input($_POST['start_time'], 'date and time'), (string) ($_POST['purpose'] ?? ''), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
     
     $email_campaign_id = mysqli_insert_id(db::$con);
     
@@ -736,10 +736,10 @@ if (!$_POST) {
                 email_address,
                 contact_id)
             VALUES (
-                '$email_campaign_id',
-                '" . escape($email_address) . "',
-                '" . $contact_id . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                ?,
+                ?,
+                ?)";
+        $result = db_q($query, array((string) $email_campaign_id, (string) $email_address, (string) $contact_id)) or output_error('Query failed.');
     }
     
     // loop through included contact groups in order to store contacts groups that were included in this e-mail campaign
@@ -750,10 +750,10 @@ if (!$_POST) {
                 email_campaign_id,
                 type)
             VALUES (
-                '" . escape($contact_group_id) . "',
-                '$email_campaign_id',
+                ?,
+                ?,
                 'included')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $contact_group_id, (string) $email_campaign_id)) or output_error('Query failed.');
     }
     
     // loop through excluded contact groups in order to store contacts groups that were excluded in this e-mail campaign
@@ -764,10 +764,10 @@ if (!$_POST) {
                 email_campaign_id,
                 type)
             VALUES (
-                '" . escape($contact_group_id) . "',
-                '$email_campaign_id',
+                ?,
+                ?,
                 'excluded')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $contact_group_id, (string) $email_campaign_id)) or output_error('Query failed.');
     }
 
     $log_page = '';

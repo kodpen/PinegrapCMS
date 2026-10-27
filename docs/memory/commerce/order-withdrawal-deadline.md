@@ -5,7 +5,7 @@ description: Last day of an order's right of withdrawal: latest delivery's windo
 
 ## Where is it shown?
 - My Account order view (order view widget): `__withdrawal_deadline` (date text in the widget's own date format) with the flags `has_withdrawal_deadline`, `withdrawal_deadline_estimated` (only while still open) and `withdrawal_ended`. The starter tree prints it in the Legal Documents card, under the document links.
-- A layout that binds neither document link gets `pg_legal_documents_order_view_block()` after the widget; that card carries the line (`pg_legal_withdrawal_text()`) unless the layout binds `__withdrawal_deadline` somewhere itself.
+- A layout that binds neither document link is given the legal documents card at its end; it carries the line (`__withdrawal_text`, the `pg_legal_withdrawal_text()` sentence) unless the layout binds `__withdrawal_deadline` somewhere itself ([[widget-default-parts-order]]).
 - Panel order screen: a "Right of withdrawal until" row in the Legal Documents card (`pg_legal_documents_panel_card()`), marked Estimated or Ended. Both cards appear only while the order keeps a document copy; the token works in any layout.
 - Never in the receipt e-mail: it leaves before anything ships, so it would only carry a guess.
 

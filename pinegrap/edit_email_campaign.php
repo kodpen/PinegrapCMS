@@ -34,8 +34,8 @@ if ($user['role'] == 3) {
     $query =
         "SELECT created_user_id
         FROM email_campaigns
-        WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $created_user_id = $row['created_user_id'];
     
@@ -73,8 +73,8 @@ if (!$_POST) {
         LEFT JOIN email_campaign_profiles ON email_campaigns.email_campaign_profile_id = email_campaign_profiles.id
         LEFT JOIN orders ON email_campaigns.order_id = orders.id
         LEFT JOIN user ON user.user_id = email_campaigns.created_user_id
-        WHERE email_campaigns.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE email_campaigns.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $type = $row['type'];
@@ -113,7 +113,7 @@ if (!$_POST) {
         $output_button_bar =
             '<nav id="button_bar" class="navigation " aria-label="Button Bar">
                 <div class=" btn-group btn-group-sm flex-wrap">
-                    <a class="btn btn-link link-secondary py-0 mb-2 " href="send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;"><span class="material-icons me-1">send</span>' . lang('Send Campaign') . '</a>
+                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;"><span class="material-icons me-1">send</span>' . lang('Send Campaign') . '</a>
                 </div>
             </nav>';
     }
@@ -159,10 +159,10 @@ if (!$_POST) {
         
         $output_status_options .= '<option value="cancelled"' . $cancelled_status . '>' . lang('Cancelled') . '</option>';
         
-        $output_status = '<select id="status" name="status" class="form-select">' .  $output_status_options . '</select>';
+        $output_status = '<select id="status" name="status" class="form-control">' .  $output_status_options . '</select>';
         
         $output_subject = '<input value="' . h($subject) . '" type="text" name="subject" placeholder="' . lang('Subject') . '" maxlength="255" id="subject" class="form-control" />';
-        $output_bcc_email_address = '<div class="row"><div class="col-12 col-md-auto"><input value="' . h($bcc_email_address) . '" type="text" class="form-control text-end" id="bcc_email_address" name="bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"></div></div>';
+        $output_bcc_email_address = '<div class="row"><div class="col-12 md:col-auto"><input value="' . h($bcc_email_address) . '" type="text" class="form-control text-end" id="bcc_email_address" name="bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"></div></div>';
         $output_from_name = '<input value="' . h($from_name) . '" type="text" class="form-control" id="from_name" name="from_name" />';
         $output_from_email_address = '<input value="' . h($from_email_address) . '" type="text" class="form-control text-end" id="from_email_address" name="from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>';
         $output_reply_email_address = '<input value="' . h($reply_email_address) . '" type="text" class="form-control text-end" id="reply_email_address" name="reply_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>';
@@ -180,20 +180,20 @@ if (!$_POST) {
         }
 
         $output_purpose =
-            '<div class="form-check">
-                <input class="form-check-input" type="radio" name="purpose" id="purpose_commercial" value="commercial"' . $purpose_commercial_checked . '>
-                <label class="form-check-label" for="purpose_commercial">' . lang('Commercial') . ' (' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . ')</label>
+            '<div class="form-field">
+                <input class="radio" type="radio" name="purpose" id="purpose_commercial" value="commercial"' . $purpose_commercial_checked . '>
+                <label class="" for="purpose_commercial">' . lang('Commercial') . ' (' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . ')</label>
             </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="purpose" id="purpose_transactional" value="transactional"' . $purpose_transactional_checked . '>
-                <label class="form-check-label" for="purpose_transactional">' . lang('Transactional') . ' (' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ')</label>
+            <div class="form-field">
+                <input class="radio" type="radio" name="purpose" id="purpose_transactional" value="transactional"' . $purpose_transactional_checked . '>
+                <label class="" for="purpose_transactional">' . lang('Transactional') . ' (' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ')</label>
             </div>';
 
         $output_buttons =
-            '<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+            '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                 <div class="container">
                     <div class=" btn-group flex-wrap justify-content-center">
-                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                     </div>
                 </div>
             </nav>';
@@ -232,8 +232,8 @@ if (!$_POST) {
 
         if ($order_reference_code) {
             $output_order =
-                '<div class="col-12 col-sm-6 col-xl my-2">
-                    <div class="alert border-4 alert-secondary" role="alert">
+                '<div class="col-12 sm:col-6 xl:col my-3">
+                    <div class="alert border-4 theme-secondary" role="alert">
                         <h4 class="alert-heading">' . lang('Order') . '</h4>
                         <p><a href="view_order.php?id=' . $order_id . '">' . $order_reference_code . '</a></p>
                     </div>
@@ -241,8 +241,8 @@ if (!$_POST) {
         }
 
         $output_auto_campaign =
-            '<div class="col-12 col-sm-6 col-xl my-2">
-                <div class="alert border-4 alert-secondary" role="alert">
+            '<div class="col-12 sm:col-6 xl:col my-3">
+                <div class="alert border-4 theme-secondary" role="alert">
                     <h4 class="alert-heading">' . lang('Profile') . '</h4>
                     <p><a href="edit_email_campaign_profile.php?id=' . $email_campaign_profile_id . '">' . h($email_campaign_profile_name) . '</a></p>
                 </div>
@@ -252,14 +252,14 @@ if (!$_POST) {
     }
     
     // get total number of recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_email_recipients = $row[0];
     
     // get total number of complete recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = '" . escape($_GET['id']) . "') AND (complete = '1')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = ?) AND (complete = '1')";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_completed_email_recipients = $row[0];
     
@@ -283,7 +283,7 @@ if (!$_POST) {
                 AND (failed = '1')");
 
         if ($number_of_failed_email_recipients > 0) {
-            $output_failed_email_recipients = '<p class="small text-danger mb-0">' . lang(array('string' => '{var:1} could not be delivered', 'vars' => array(pg_format_number($number_of_failed_email_recipients, 0)))) . '</p>';
+            $output_failed_email_recipients = '<p class="small fg-danger mb-0">' . lang(array('string' => '{var:1} could not be delivered', 'vars' => array(pg_format_number($number_of_failed_email_recipients, 0)))) . '</p>';
         }
     }
 
@@ -319,9 +319,9 @@ if (!$_POST) {
                     contact_groups_email_campaigns_xref.type
                 FROM contact_groups_email_campaigns_xref
                 LEFT JOIN contact_groups ON contact_groups_email_campaigns_xref.contact_group_id = contact_groups.id
-                WHERE contact_groups_email_campaigns_xref.email_campaign_id = '" . escape($_GET['id']) . "'
+                WHERE contact_groups_email_campaigns_xref.email_campaign_id = ?
                 ORDER BY contact_groups.name ASC";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
             
             $output_included_contact_groups = '';
             $output_excluded_contact_groups = '';
@@ -360,8 +360,8 @@ if (!$_POST) {
             }
             
             // get entered e-mail address
-            $query = "SELECT email_address FROM email_recipients WHERE (email_campaign_id = '" . escape($_GET['id']) . "') AND (contact_id = '0')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT email_address FROM email_recipients WHERE (email_campaign_id = ?) AND (contact_id = '0')";
+            $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
             
             // if an entered e-mail address was found, then prepare to output it
             if (mysqli_num_rows($result) > 0) {
@@ -375,24 +375,24 @@ if (!$_POST) {
 
             $output_to_rows =
                 '<div class="col-12">
-                    <div class="card my-4">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                    <div class="card my-7">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                             ' . lang('E-Mail Message To My Contact Groups') . '
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-12 my-2">
-                                    <div class="alert alert-primary">
+                                <div class="col-12 my-3">
+                                    <div class="alert theme-primary">
                                         <p>' . lang('Send message to all Subscribers in my selected Contact Groups') . '</p>
                                         <p>' . $output_included_contact_groups . '</p>
                                     </div>
 
-                                    <div class="alert alert-warning">
+                                    <div class="alert theme-warning">
                                         <p>' . lang('But don\'t send message to any Subscribers that also exist in any of the following Contact Groups') . '</p>
                                         <p>' . $output_excluded_contact_groups . '</p>
                                     </div>
 
-                                    <div class="alert alert-secondary ">
+                                    <div class="alert theme-secondary ">
                                         <p>' . lang('Also send message to the following e-mail address') . '</p>
                                         <p>' . $output_entered_email_address . '</p>
                                     </div>
@@ -410,18 +410,18 @@ if (!$_POST) {
 
             $output_to_rows =
                 '<div class="col-12">
-                    <div class="card my-4">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                    <div class="card my-7">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                             ' . lang('E-Mail Message To') . '
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-12 my-2">
-                                    <div class="alert alert-primary">
+                                <div class="col-12 my-3">
+                                    <div class="alert theme-primary">
                                         <p>' . lang('To') . '</p>
                                         <p>' . h($to_email_address) . '</p>
                                     </div>
-                                    <div class="alert alert-secondary ">
+                                    <div class="alert theme-secondary ">
                                         <p>' . lang('BCC E-mail Address') . '</p>
                                         <p>' . $output_bcc_email_address . '</p>
                                     </div>
@@ -441,13 +441,13 @@ if (!$_POST) {
     if (email_campaign_job_enabled()) {
         $output_start_time_rows =
             '<div class="col-12">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('E-Mail Message Delivery Schedule') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                 <label class="form-label" for="start_time">' . lang('Send at this Date & Time') . '</label>
                                 ' . $output_start_time . '
                             </div>
@@ -473,8 +473,8 @@ if (!$_POST) {
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         <p>' . lang(array('string'=>'Created {var:1} by {var:2}.','vars'=>array( get_relative_time(array('timestamp' => $created_timestamp)),h($creator_username) ))) . '</p>
                         ' . $output_button_bar . '
@@ -483,14 +483,14 @@ if (!$_POST) {
                 ' . $output_form_start . '
                 <div class="row">
 
-                    <div class="col-12 col-sm-6 col-xl my-2">
-                        <div class="alert border-4 alert-secondary" role="alert">
+                    <div class="col-12 sm:col-6 xl:col my-3">
+                        <div class="alert border-4 theme-secondary" role="alert">
                             <h4 class="alert-heading">' . lang('Status') . '</h4>
                             <p class="mb-0">' . $output_status . '</p>
                         </div>
                     </div>
-                    <div class="col-12 col-sm-6 col-xl my-2">
-                        <div class="alert border-4 alert-secondary" role="alert">
+                    <div class="col-12 sm:col-6 xl:col my-3">
+                        <div class="alert border-4 theme-secondary" role="alert">
                             <h4 class="alert-heading">' . lang('Progress') . '</h4>
                             <p>' . $output_progress_percentage . '% (' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ' ' . lang('subscribers') . ')</p>
                             ' . $output_failed_email_recipients . '
@@ -498,21 +498,21 @@ if (!$_POST) {
                     </div> 
                     ' . $output_auto_campaign . '
                     <div class="col-12">
-                        <div class="card my-4">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('E-Mail Message') . '
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="subject" class="form-label">' . lang('Subject') . '</label>
                                         ' . $output_subject . '
                                     </div> 
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="format" class="form-label">' . lang('Format') . '</label>
                                         <p>' . $output_format . '</p>
                                     </div> 
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <p for="subject" class="form-label">' . lang('Body') . '</p>
                                         ' . $output_body . '
                                     </div> 
@@ -522,23 +522,23 @@ if (!$_POST) {
                     </div>
                     ' . $output_to_rows . '
                     <div class="col-12">
-                        <div class="card my-4">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('E-Mail Message From') . '
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-12 col-sm-6 col-xl-12 my-2">
+                                    <div class="col-12 sm:col-6 xl:col-12 my-3">
                                         <label class="form-label" for="from_name">' . lang('From Name') . '</label>
                                         ' . $output_from_name . '
                                     </div>
                                     <div class="col-12">
                                         <div class="row">
-                                            <div class="col-12 col-sm-6 col-xl-4 my-2">
+                                            <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                 <label class="form-label" for="from_email_address">' . lang('From E-mail Address') . '</label>
                                                 ' . $output_from_email_address . '
                                             </div>
-                                            <div class="col-12 col-sm-6 col-xl-4 my-2">
+                                            <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                 <label class="form-label" for="reply_email_address">' . lang('Reply to E-mail Address') . '</label>
                                                 ' . $output_reply_email_address . '
                                             </div>
@@ -550,13 +550,13 @@ if (!$_POST) {
                     </div>
                     ' . $output_start_time_rows . '
                     <div class="col-12">
-                        <div class="card my-4">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                             ' . lang('Purpose') . ' (' . lang('as defined by the CAN-SPAM Act') . ')
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-12 my-3">
+                                    <div class="col-12 my-5">
                                         <label class="form-label">' . lang('Purpose') . '</label>
                                         ' . $output_purpose . '
                                     </div>
@@ -584,8 +584,8 @@ if (!$_POST) {
             subject,
             format
         FROM email_campaigns
-        WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $type = $row['type'];

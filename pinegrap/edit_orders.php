@@ -125,8 +125,8 @@ if (!empty($_POST['orders'])) {
                 LEFT JOIN user ON orders.user_id = user.user_id
                 LEFT JOIN contacts ON orders.contact_id = contacts.id
                 WHERE ((orders.status = 'complete') OR (orders.status = 'exported'))
-                AND orders.id = '" . escape($order_id) . "'";
-                $result=mysqli_query(db::$con, $query) or output_error('Query failed.');
+                AND orders.id = ?";
+                $result=db_q($query, array((string) $order_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_array($result);
                 $billing_first_name = $row['billing_first_name'];
                 $billing_last_name = $row['billing_last_name'];
@@ -220,12 +220,12 @@ if (!empty($_POST['orders'])) {
                     order_items.quantity as quantity,
                     order_items.offer_action_id as offer_action_id
                 FROM order_items
-                WHERE order_id = '" . escape($order_id) . "'";
+                WHERE order_id = ?";
 
                 //align all lines to left
                 $objPHPExcel1->getActiveSheet()->getStyle('A' . $i_obj_1 . ':S' . $i_obj_1)->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
 
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
                 if($result){
                     while($order_item = mysqli_fetch_assoc($result)) {
                         $order_item_product_id = $order_item['product_id'];
@@ -462,8 +462,8 @@ if (!empty($_POST['orders'])) {
                         card_number,
                         card_verification_number
                     FROM orders
-                    WHERE id = '" . escape($order_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $card_number = $row['card_number'];
                 $card_verification_number = $row['card_verification_number'];
@@ -515,10 +515,10 @@ if (!empty($_POST['orders'])) {
                     $query =
                         "UPDATE orders
                         SET
-                            card_number = '" . escape($card_number) . "',
-                            card_verification_number = '" . escape($card_verification_number) . "'
-                        WHERE id = '" . escape($order_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            card_number = ?,
+                            card_verification_number = ?
+                        WHERE id = ?";
+                    $result = db_q($query, array((string) $card_number, (string) $card_verification_number, (string) $order_id)) or output_error('Query failed.');
 
                     pg_audit_record('update', 'orders', $order_id, $audit_before);
 
@@ -640,6 +640,129 @@ if (!empty($_POST['orders'])) {
                 $liveform_view_orders->add_error(
                     lang(array(
                         'string' => '{var:1} order(s) could not be cancelled',
+                        'vars'   => array(pg_format_number($bulk_failed, 0)),
+                    ))
+                );
+            }
+
+            break;
+
+        // Mark the selected orders shipped without a tracking number: every
+        // address gets today's ship date and its lines are shipped in full,
+        // and the customer gets the shipping e-mail, through update_order(),
+        // the order screen's own save. No parcel is
+        // recorded, so a marked order still counts as unshipped for the
+        // customer's cancel gate. Orders that cannot or need not be marked are
+        // skipped and counted (pg_shipping_bulk_mark_skip()).
+        case 'mark_shipped':
+
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_import.php');
+            require_once(PG_FUNCTIONS_DIR . '/update_order.php');
+
+            $bulk_marked = 0;
+            $bulk_skipped = array('cancelled' => 0, 'incomplete' => 0, 'no_address' => 0, 'shipped' => 0, 'shipped_in_full' => 0);
+            $bulk_failed = 0;
+            $today = date('Y-m-d');
+
+            foreach ($_POST['orders'] as $order_id) {
+
+                $order_id = (int) $order_id;
+
+                $status = db_value("SELECT status FROM orders WHERE id = '" . $order_id . "'");
+
+                if ($status === null || $status === false) {
+                    $bulk_failed++;
+                    continue;
+                }
+
+                $recipients = db_items(
+                    "SELECT id, ship_date, delivery_date FROM ship_tos
+                    WHERE order_id = '" . $order_id . "' ORDER BY id");
+
+                $items = array();
+                $left = false;
+
+                foreach ($recipients as $recipient) {
+                    $items[$recipient['id']] = db_items(
+                        "SELECT id, quantity, shipped_quantity FROM order_items
+                        WHERE ship_to_id = '" . (int) $recipient['id'] . "' AND order_id = '" . $order_id . "'");
+
+                    $left = $left || pg_shipping_bulk_mark_left($items[$recipient['id']]);
+                }
+
+                $skip = pg_shipping_bulk_mark_skip((string) $status, count($recipients), _order_has_shipped($order_id), $left);
+
+                if ($skip !== '') {
+                    $bulk_skipped[$skip]++;
+                    continue;
+                }
+
+                $request = array();
+
+                foreach ($recipients as $recipient) {
+                    $request[] = pg_shipping_bulk_mark_recipient($recipient, $items[$recipient['id']], $today);
+                }
+
+                $outcome = update_order(array('order' => array('id' => $order_id, 'recipients' => $request)));
+
+                if (is_array($outcome) && (($outcome['status'] ?? '') === 'success')) {
+                    $bulk_marked++;
+                } else {
+                    $bulk_failed++;
+                }
+            }
+
+            if ($bulk_marked > 0) {
+                log_activity(
+                    lang(array(
+                        'string' => '{var:1} order(s) were marked shipped',
+                        'vars'   => array(pg_format_number($bulk_marked, 0)),
+                    )),
+                    $_SESSION['sessionusername']
+                );
+            }
+
+            $liveform_view_orders = new liveform('view_orders');
+            $liveform_view_orders->add_notice(
+                lang(array(
+                    'string' => '{var:1} order(s) were marked shipped',
+                    'vars'   => array(pg_format_number($bulk_marked, 0)),
+                ))
+            );
+
+            foreach ($bulk_skipped as $reason => $count) {
+
+                if ($count <= 0) {
+                    continue;
+                }
+
+                $vars = array(pg_format_number($count, 0));
+
+                switch ($reason) {
+                    case 'cancelled':
+                        $message = lang(array('string' => '{var:1} order(s) were cancelled and skipped', 'vars' => $vars));
+                        break;
+                    case 'incomplete':
+                        $message = lang(array('string' => '{var:1} order(s) were never completed and skipped', 'vars' => $vars));
+                        break;
+                    case 'no_address':
+                        $message = lang(array('string' => '{var:1} order(s) have no shipping address and were skipped', 'vars' => $vars));
+                        break;
+                    case 'shipped_in_full':
+                        $message = lang(array('string' => '{var:1} order(s) were already shipped in full and skipped', 'vars' => $vars));
+                        break;
+                    default:
+                        $message = lang(array('string' => '{var:1} order(s) already have a tracking number and were skipped', 'vars' => $vars));
+                        break;
+                }
+
+                $liveform_view_orders->add_warning($message);
+            }
+
+            if ($bulk_failed > 0) {
+                $liveform_view_orders->add_error(
+                    lang(array(
+                        'string' => '{var:1} order(s) could not be marked shipped',
                         'vars'   => array(pg_format_number($bulk_failed, 0)),
                     ))
                 );

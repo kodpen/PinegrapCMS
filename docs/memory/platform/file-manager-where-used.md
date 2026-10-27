@@ -4,7 +4,7 @@ description: The file manager's "Where used" (explorer_file_usage): the sources 
 ---
 
 ## What does "Where used" scan?
-- `case 'explorer_file_usage'` in `view_folder_and_files_f.php`, on demand only (the pane's button and the item menu, `loadFileUsage()` in `view_folders.php`): the columns have no index that helps, fine for a button and not for a listing. The file must be in a folder the person sees (`pg_explorer_folder_visible()`); an ERP document is refused before.
+- `pg_explorer_handle_file_usage()` in `includes/explorer/handle_file_usage.php` (the `explorer_file_usage` case of `pg_explorer_handle()`), on demand only (the pane's button and the item menu, `loadFileUsage()` in `view_folders.php`): the columns have no index that helps, fine for a button and not for a listing. The file must be in a folder the person sees (`pg_explorer_folder_visible()`); an ERP document is refused before.
 - `files.name` is the address, so a LIKE on the name runs over: page regions (`pregion_content`, named by their page), common regions, dynamic regions, pages (`page_tree_code`, `page_tree_json`), styles (code, head, tree, custom CSS and JS), shared components (no link: no screen of their own); with commerce on products and product groups; with ads on ads. Columns are probed with `SHOW COLUMNS` first, so a missing column or table is skipped. Settings (`og_default_image`, `organization_logo`, `app_icon`) are matched whole.
 
 ## How does the Workspace count?

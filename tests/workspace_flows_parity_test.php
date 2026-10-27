@@ -4,7 +4,7 @@
  *
  * Scheduled actions move into Flows with nothing lost: every key a scheduled
  * action has (what it is made of and what the form sends for it, its
- * "when", the events, the conditions, the twelve steps, each option they
+ * "when", the events, the conditions, the thirteen steps, each option they
  * read and the values one takes from a list, the fields a change writes,
  * the webhook's body, the outcomes, the chain limits and the caps written
  * as numbers, what starts and runs it, the placeholders, the states, the
@@ -1009,7 +1009,8 @@ function workspace_flows_parity_rule_cases()
 }
 
 // What an action is made of: the keys the form sends (data.key, read by
-// ws_scheduled_input() and ws_scheduled_save()), those of a follow-up
+// ws_scheduled_input(), ws_scheduled_save() and ws_scheduled_save_check()),
+// those of a follow-up
 // (follow.key), the row the check gives back to be written (row.key) and
 // the columns ws_scheduled_decode() reads as JSON (column.key).
 function workspace_flows_parity_read_action()
@@ -1017,7 +1018,7 @@ function workspace_flows_parity_read_action()
 	$input = workspace_flows_parity_source('ws_scheduled_input');
 	$out = array();
 
-	foreach (array_merge(workspace_flows_parity_reads($input, 'data'), workspace_flows_parity_reads(workspace_flows_parity_source('ws_scheduled_save'), 'data')) as $key) {
+	foreach (array_merge(workspace_flows_parity_reads($input, 'data'), workspace_flows_parity_reads(workspace_flows_parity_source('ws_scheduled_save'), 'data'), workspace_flows_parity_reads(workspace_flows_parity_source('ws_scheduled_save_check'), 'data')) as $key) {
 		$out[] = 'data.' . $key;
 	}
 
@@ -1998,15 +1999,6 @@ function workspace_flows_parity_read_routes()
 	return $out;
 }
 
-// The external API's routes of scheduled actions: the route ids of
-// includes/workspace/api_scheduled.php.
-function workspace_flows_parity_read_api_routes()
-{
-	preg_match_all("/'id'\s*=>\s*'(workspace\.scheduled_actions\.[a-z_]+)'/", workspace_flows_parity_file('includes/workspace/api_scheduled.php'), $ids);
-
-	return array_values(array_unique($ids[1]));
-}
-
 // What the form sends and the routes take: the keys request() of
 // scheduledForm() in workspace.js builds (scheduledForm.key), and those each
 // route of scheduled actions reads from the request
@@ -2261,7 +2253,7 @@ function workspace_flows_parity_prefixed($prefix, $words)
 function workspace_flows_parity_groups()
 {
 	return array(
-		'action'              => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_action', 'the $data and follow-up keys of ws_scheduled_input() and ws_scheduled_save(), the row it gives back, the columns of ws_scheduled_decode()'),
+		'action'              => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_action', 'the $data and follow-up keys of ws_scheduled_input(), ws_scheduled_save() and ws_scheduled_save_check(), the row it gives back, the columns of ws_scheduled_decode()'),
 		'request'             => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_request', 'request() of scheduledForm() in workspace.js and the $request keys of the scheduled actions\' routes in includes/workspace/actions.php'),
 		'when'                => array('When', array(3), 'workspace_flows_parity_read_when', 'the "when" kinds of ws_scheduled_input()'),
 		'repeats'             => array('When', array(3), 'workspace_flows_parity_read_repeats', 'ws_scheduled_repeats()'),
@@ -2302,7 +2294,6 @@ function workspace_flows_parity_groups()
 		'ai_drafts'           => array('Entry points', array(1, 4), 'workspace_flows_parity_read_ai_drafts', 'Pinegrap AI\'s tool in ai.php and the functions that treat, mark or write a draft of the kind scheduled'),
 		'links_in'            => array('Links in', array(1), 'workspace_flows_parity_read_links_in', 'ws_inbox_describe(), ws_nav_groups(), workspace.js, ws_tour_steps()'),
 		'inbox_kinds'         => array('API', array(5), 'workspace_flows_parity_read_inbox_kinds', 'the inbox route of includes/workspace/api.php'),
-		'api_routes'          => array('API', array(5), 'workspace_flows_parity_read_api_routes', 'the route ids of includes/workspace/api_scheduled.php'),
 	);
 }
 
@@ -2343,7 +2334,7 @@ function workspace_flows_parity_table()
 			array(array('scheduledForm.follow', 'ws_scheduled_save.follow', 'ws_scheduled_preview.follow'), 1, 'the form: the follow-ups by outcome'),
 			array(array('scheduledForm.then_action', 'ws_scheduled_save.then_action', 'ws_scheduled_preview.then_action'), 'form', 'the one follow-up the form sends on a site without the 5.85 chains, which the check takes as a follow-up on done'),
 			array(array('scheduledForm.channel_id', 'scheduledForm.note_id', 'ws_scheduled_save.channel_id', 'ws_scheduled_save.note_id', 'ws_scheduled_preview.channel_id', 'ws_scheduled_preview.note_id'), 1, 'where it lives: the channel it was opened in (composer, @ai draft, Duplicate) or the note'),
-			array(array('scheduledForm.draft_change_id', 'ws_scheduled_save.draft_change_id'), 1, '@ai draft Open: saving the new action marks the draft\'s card applied (ws_scheduled_draft_saved())'),
+			array(array('scheduledForm.draft_change_id', 'ws_scheduled_save.draft_change_id'), 1, 'a form opened with a draft\'s change id marks the draft\'s card applied on Save (ws_scheduled_draft_saved()); the card opens a flow since slice 4c2, the form retires in slice 5'),
 			array(array('ws_scheduled_list.status', 'ws_scheduled_list.channel_id'), 1, 'Scheduled actions section in Flows: the list by state chip, or one channel\'s'),
 			array(array('ws_scheduled_get.id'), 1, 'History on the card'),
 			array(array('ws_scheduled_draft.text', 'ws_scheduled_draft.channel_id'), 1, 'the form: the AI sentence, for the channel it is opened in'),
@@ -2352,7 +2343,7 @@ function workspace_flows_parity_table()
 		),
 		'when' => array(
 			array(array('at'), 3, 'schedule trigger box on the anchor'),
-			array(array('trigger'), 3, 'by hand or chain only trigger box on the anchor (no time of its own)'),
+			array(array('trigger'), 3, 'a flow started by hand, or by another flow\'s start a flow box (ws_flow_chain_start())'),
 			array(array('join'), 3, 'join trigger box on the anchor: a start per newcomer, unarchived public or private channels (ws_scheduled_greets())'),
 			array(array('event'), 3, 'event trigger box on the anchor'),
 		),
@@ -2438,6 +2429,7 @@ function workspace_flows_parity_table()
 			array(array('change'), 3, 'change box (steps.php)'),
 			array(array('approval'), 3, 'approval box, the flows\' own'),
 			array(array('checkin'), 3, 'check-in box (steps.php)'),
+			array(array('lead'), 3, 'lead box (steps.php): a submitted form\'s customer into a channel, reused or opened with the New customer template'),
 		),
 		'step_options' => array(
 			array(array('post.channel_id'), 3, 'post box: a channel, or the channel joined (-1)'),
@@ -2453,11 +2445,13 @@ function workspace_flows_parity_table()
 			array(array('web_check.days'), 3, 'web check box: certificate days left (ssl)'),
 			array(workspace_flows_parity_prefixed('report', 'title metrics channel_id to'), 3, 'report box: title, counts, channel and addresses'),
 			array(workspace_flows_parity_prefixed('report.metrics', 'key param'), 3, 'report box: each count by its key, with its channel or threshold'),
-			array(array('trigger.target_id'), 3, 'start box: the action or flow started; itself again is a retry'),
+			array(array('trigger.target_id'), 3, 'start box: the action or flow started; itself again is a step box\'s own retry (retry, retry_after: up to WS_FLOW_RETRY_MAX more tries, minutes before each)'),
 			array(array('trigger.delay'), 3, 'delay box, the flows\' own: minutes before the start'),
 			array(workspace_flows_parity_prefixed('change', 'record action id fields'), 3, 'change box: kind, update or delete, record, fields'),
 			array(workspace_flows_parity_prefixed('approval', 'channel_id title text approvers rule'), 3, 'approval box: channel, title, text, people asked, rule'),
+			array(array('approval.closes_at'), 3, 'approval box: its deadline, closes_in hours from when the box runs (the flows\' own; the scheduled form sets none)'),
 			array(workspace_flows_parity_prefixed('checkin', 'channel_id question'), 3, 'check-in box: channel, question'),
+			array(workspace_flows_parity_prefixed('lead', 'private user_ids'), 3, 'lead box: a private channel, the people put in a channel it opens'),
 		),
 		'step_option_values' => array(
 			array(array('web_check.mode=status'), 3, 'web check box: the answer (redirect, contains, slowest answer)'),
@@ -2488,19 +2482,21 @@ function workspace_flows_parity_table()
 		'webhook_body' => array(
 			array(workspace_flows_parity_prefixed('generic', 'event site action.name action.run text result status source at'), 3, 'webhook box: the same body (an outside contract: n8n, Zapier)'),
 			array(array('generic.action.id'), 5, 'converted anchor keeps its id, so action.id does not change'),
+			array(array('generic.flow'), 3, 'webhook box: which flow, run and box called (flows only)'),
 			array(array('text.text', 'discord.content'), 3, 'webhook box: the chat message'),
 		),
 		'outcomes' => array(
 			array(array('done'), 3, 'arrow on done'),
-			array(array('failed', 'skipped', 'always'), 3, 'arrows on failed, skipped and always'),
+			array(array('failed', 'skipped', 'always'), 3, 'arrows on failed (a step box\'s own), skipped (a condition box\'s no) and always (ws_flow_edge_takes(): any end of the box)'),
 		),
 		'limits' => array(
 			array(array('WS_SCHEDULED_CHAIN_DEPTH=8'), 3, 'depth through flow runs and their events: at most 8 follow one another'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY=60'), 3, 'anchor: 60 starts an hour (chain, join, event)'),
-			array(array('WS_SCHEDULED_MAX_FOLLOW=5'), 3, 'at most 5 outcome arrows, done in order; one failing fails a good run'),
+			array(array('WS_SCHEDULED_MAX_FOLLOW=5'), 3, 'outcome arrows: a box has as many as it needs, each box after it a box of the run; one that fails without an arrow on failed or always fails the run'),
 			array(array('WS_SCHEDULED_MIN_MINUTES=5'), 3, 'schedule trigger box: every 5 minutes at the most'),
 			array(array('WS_SCHEDULED_MAX_RECIPIENTS=20'), 3, 'email box and report box: 20 addresses'),
 			array(array('WS_SCHEDULED_LOCK=600'), 3, 'anchor: a run holds it 10 minutes (running_at)'),
+			array(array('WS_SCHEDULED_LEAD_HOURLY=20'), 3, 'lead box: at most 20 customer channels opened an hour by the owner'),
 			array(array('WS_SCHEDULED_BATCH=5'), 3, 'driver: ws_scheduled_run() takes 5 anchors a request by default (ws_tick, job.php); the Workspace job asks for 20 (see starts)'),
 		),
 		'caps' => array(
@@ -2523,14 +2519,16 @@ function workspace_flows_parity_table()
 		'limit_uses' => array(
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_events_start'), 3, 'event trigger box: an event at depth 8 starts nothing'),
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_scheduled_start'), 3, 'start box: refused at depth 8'),
+			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_flow_chain_refusal', 'WS_SCHEDULED_CHAIN_DEPTH in ws_flow_chain_refusal_text'), 3, 'start a flow box: a run whose box starts another flow is refused at depth 8, and says so'),
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_scheduled_run'), 3, 'driver: rounds of starts that wait for nothing in one run'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_events_start'), 3, 'event trigger box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_joined'), 3, 'join trigger box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_start'), 3, 'start box: 60 starts an hour'),
-			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_input'), 3, 'at most 5 outcome arrows'),
+			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_input'), 3, 'outcome arrows: no cap of 5 in a flow, whose boxes are bounded by WS_FLOW_MAX_NODES'),
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_scheduled_js_config', 'WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_js_config'), 'form', 'what the form tells about the limits; the canvas has its own (WS_FLOW_*)'),
 			array(array('ws_event_depth in ws_scheduled_execute'), 3, 'depth through flow runs: a run hands its depth to the events it causes'),
 			array(array('ws_event_depth in ws_event'), 3, 'depth through events: a Workspace event carries the depth of the run that caused it'),
+			array(array('ws_event_depth in ws_step_run'), 3, 'depth through step boxes: a flow\'s step says its run\'s depth while it works, so the Workspace and site events it causes carry it'),
 		),
 		'starts' => array(
 			array(array('ws_scheduled_run() in includes/workspace/actions.php ws_handle_action case \'ws_tick\''), 3, 'driver: an open screen\'s ws_tick runs what is due, anchors too'),
@@ -2550,7 +2548,7 @@ function workspace_flows_parity_table()
 			array(array('{{date}}', '{{time}}', '{{weekday}}', '{{name}}', '{{run}}', '{{count:<key>}}'), 3, 'every box text (ws_scheduled_fill())'),
 			array(array('{{count:<key>:<param>}}'), 3, 'every box text: a count with its channel or threshold ({{count:stock_low:5}} of the stock template)'),
 			array(array('{{result}}', '{{status}}'), 3, 'outcome arrows: what the step did and how it went'),
-			array(array('{{source}}', '{{source_result}}'), 3, 'start box: the action that started this one'),
+			array(array('{{source}}', '{{source_result}}'), 3, 'start box: the action that started this one; in a flow a start a flow box started, that flow and the sentence of the box before it (ws_step_trigger_context())'),
 			array(array('{{newcomer}}', '{{newcomer_name}}', '{{channel}}'), 3, 'join trigger box: who joined, where'),
 			array(array('{{event}}', '{{record}}', '{{record_title}}', '{{record_link}}', '{{record_status}}', '{{customer}}', '{{actor}}', '{{message}}', '{{amount}}', '{{form_fields}}'), 3, 'event trigger box: what happened, to what (ws_events_fill_values())'),
 		),
@@ -2615,10 +2613,9 @@ function workspace_flows_parity_table()
 			array(array('order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event'), 1, 'scheduledForm() event templates, kept in the form (canvas starters come in slice 4)'),
 		),
 		'entry_points' => array(
-			array(array('{} in scheduledList()'), 1, 'New on the list, in the Scheduled actions section of Flows'),
+			array(array('{} in scheduledList()'), 1, 'New on the list of the scheduled screen; the Scheduled actions section of Flows hides it ({ add: false }) and offers New flow instead (slice 4a)'),
 			array(array('{ channel_id: self.channel.id } in action() in composer()'), 1, 'composer insert menu (not in discussions) still opens the form'),
 			array(array('{ note_id: current.id } in toolbar() in startNotes()'), 1, 'note toolbar (note edit right) still opens the form'),
-			array(array('{ channel_id: change.draft.channel_id } (sentence) in changesNode()'), 1, '@ai draft Open still opens the form, its draft_change_id sent on Save (see request)'),
 			array(array('context in scheduledForm()', 'context (sentence) in fill() in saSentenceBox()'), 1, 'inside the form: a template picked, an AI sentence filled in'),
 			array(array('null in scheduledCard()'), 1, 'Edit on the card'),
 			array(array('null in scheduledGraph()'), 2, 'Edit on the canvas view: the same form, the action drawn again once saved'),
@@ -2629,7 +2626,9 @@ function workspace_flows_parity_table()
 			array(array('draft kind scheduled in ws_scheduled_draft_ai_store'), 4, 'AI drafts on the canvas: Pinegrap AI\'s drafts kept under its answer'),
 			array(array('draft kind scheduled in ws_changes_map', 'draft kind scheduled in ws_scheduled_draft_change_entry', 'draft kind scheduled in ws_api_change_fields_present', 'draft kind scheduled in ws_api_change_record_present'), 4, 'AI drafts on the canvas: a draft of the kind scheduled waits on its card and in the API\'s list of drafts'),
 			array(array('draft kind scheduled in ws_change_apply_check'), 4, 'AI drafts on the canvas: a draft is saved where it is opened, never applied as a change'),
-			array(array('draft kind scheduled in ws_scheduled_draft_saved'), 1, '@ai draft Open: the action saved from the form marks the draft\'s card applied'),
+			array(array('draft kind scheduled in ws_scheduled_draft_saved'), 1, 'an action saved from a form opened with a draft marks the draft\'s card applied; the card opens a flow since slice 4c2'),
+			array(array('draft kind scheduled in ws_scheduled_draft_flow_open'), 4, 'AI drafts on the canvas (4c2): a draft card opens as a new flow (ws_flow_graph_from_scheduled()) and is marked applied with the flow'),
+			array(array('draft kind scheduled in ws_changes_input', 'draft kind scheduled in ws_scheduled_draft_proposal_row'), 4, 'AI drafts on the canvas: an application\'s proposed draft, rehearsed by the save\'s check and kept as Pinegrap AI\'s are'),
 		),
 		'links_in' => array(
 			array(array('?view=scheduled'), 1, 'staff land on the Scheduled actions section of Flows, their Messages tab kept; others on Scheduled messages'),
@@ -2647,11 +2646,6 @@ function workspace_flows_parity_table()
 			array(array('scheduled_notice'), 5, 'kept for a converted anchor, with its text'),
 			array(array('scheduled_failed'), 5, 'kept for a converted anchor'),
 			array(array('scheduled_message'), 'form', 'a scheduled message\'s line: scheduled messages are not moved into Flows'),
-		),
-		'api_routes' => array(
-			array(array('workspace.scheduled_actions.list', 'workspace.scheduled_actions.get'), 5, 'GET /workspace/flows and /workspace/flow-runs for a converted anchor; an action not converted stays listed (anchors never are)'),
-			array(array('workspace.scheduled_actions.pause'), 5, 'POST /workspace/flows/{id}/pause for a converted anchor'),
-			array(array('workspace.scheduled_actions.cancel'), 5, 'a converted anchor is cancelled with its flow (deleting or pausing the flow)'),
 		),
 	);
 }
@@ -2726,12 +2720,12 @@ function test_workspace_flows_parity_every_key_is_mapped()
 }
 
 // Twelve steps, the same in the form's check and in the run.
-function test_workspace_flows_parity_twelve_steps()
+function test_workspace_flows_parity_thirteen_steps()
 {
 	$run = workspace_flows_parity_read_steps();
 	$input = array_keys(workspace_flows_parity_cases(workspace_flows_parity_source('ws_scheduled_action_input')));
 
-	pg_assert_same(12, count($run), 'ws_scheduled_do() has 12 steps');
+	pg_assert_same(13, count($run), 'ws_scheduled_do() has 13 steps');
 	sort($run);
 	sort($input);
 	pg_assert_same($run, $input, 'ws_scheduled_action_input() checks the steps ws_scheduled_do() runs');
@@ -2897,4 +2891,25 @@ function test_workspace_flows_parity_whole_action_uses()
 
 		pg_assert_contains('$action is used whole', $thrown, 'refused: ' . $code);
 	}
+}
+
+// In Flows a new rule is made on the canvas: the Scheduled actions section
+// puts New flow in the toolbar and asks the list for no New of its own;
+// the list still offers New where it is called without options.
+function test_workspace_flows_parity_scheduled_section_new_is_a_flow()
+{
+	$flow = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$start = strpos($flow, 'function showScheduled(');
+
+	pg_assert_true($start !== false, 'showScheduled() in workspace_flow.js');
+
+	$body = substr($flow, $start, strpos($flow, "\n    }\n", $start) - $start);
+
+	pg_assert_true(strpos($body, 'newFlowButton();') !== false, 'New flow in the section\'s toolbar');
+	pg_assert_true(strpos($body, 'K.scheduledList(ui.scheduled, ui.bar, { add: false });') !== false, 'the list without its New');
+
+	$channels = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_true(strpos($channels, 'function scheduledList(body, bar, options) {') !== false);
+	pg_assert_true(strpos($channels, "if (!options || (options.add !== false)) {") !== false, 'New stays where no options are given');
 }

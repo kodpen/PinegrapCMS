@@ -398,16 +398,6 @@ function test_returns_badge_class()
 	pg_assert_contains('text-bg-secondary', pg_return_badge_class('unknown'));
 }
 
-// The order view widget's block for older layouts keeps its card shell.
-function test_returns_block_html()
-{
-	pg_assert_same('', pg_return_block_html('', ''), 'nothing to show');
-
-	$html = pg_return_block_html('<p>L</p>', '<p>F</p>');
-	pg_assert_same(0, strpos($html, '<div class="container pb-4 pg-ov-returns-block"><div class="card">'), 'card shell');
-	pg_assert_contains('<p>L</p><p>F</p>', $html, 'list, then form');
-}
-
 // The classic order view prints a long date as plain text: the builders
 // escape the dates, so a <time> element would show as text.
 function test_returns_classic_date()

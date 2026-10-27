@@ -66,30 +66,9 @@ function pg_currency_rates_http_get($url)
         return (!empty($result['ok']) && ((int) $result['status'] === 200)) ? (string) $result['body'] : false;
     }
 
-    if (!function_exists('curl_init')) {
-        return false;
-    }
+    $answer = pg_curl_run('GET', $url, array('timeout' => 10));
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt_array($ch, array(
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 10,
-        CURLOPT_FOLLOWLOCATION => false,
-    ));
-
-    if (function_exists('pg_curl_tls')) {
-        pg_curl_tls($ch);
-    } else {
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-    }
-
-    $response = curl_exec($ch);
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    unset($ch);
-
-    return (($response !== false) && ($status === 200)) ? (string) $response : false;
+    return ($answer['status'] === 200) ? $answer['body'] : false;
 }
 
 /**
@@ -169,13 +148,7 @@ function pg_currency_rates_fetch($base_code, array $codes)
  */
 function pg_currency_rates_table_exists()
 {
-    static $exists = null;
-
-    if ($exists === null) {
-        $exists = (count((array) db_items("SHOW TABLES LIKE 'currency_rates'")) > 0);
-    }
-
-    return $exists;
+    return pg_schema_has('currency_rates');
 }
 
 /**

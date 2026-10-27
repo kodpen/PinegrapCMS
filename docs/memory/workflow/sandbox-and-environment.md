@@ -12,6 +12,9 @@ description: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/set
 - The Bootstrap 6 panel plan's screenshot rounds are the other use (owner, 2026-10-25): B1b, the B8 rehearsals and the form-adorn pilot (`plans/bootstrap-6-panel.md`). A screen's look is a path no unit test reaches; the images are never committed.
 - Say in the PR when no running instance was set up and what could not be verified.
 
+## How does the sandbox serve theme files?
+- PHP's built-in server runs `tools/sandbox_router.php` as its router, the part the root `.htaccess` plays in production: an existing file or folder is served as is, `data/` and `includes/` (and `.git`, `..`) answer 403, everything else (theme CSS, logos and other files from the `files` table, friendly URLs) runs `pinegrap/router.php` with `SCRIPT_NAME` set to it. Without it those files answered 404 and pages opened unstyled (PR #2222).
+
 ## What is dev.pinegrap.com?
 - The owner's Windows PC: IIS 10 behind cloudflared, MySQL 8.0, no mail server, no AI key. Cloud sessions cannot reach it (or kodpen.com / pinegrap.com).
 - Its PHP: `C:\PHP` = 8.5.11 x64 NTS, for the site and on PATH (from 2026-10-25); OpenSSL 3.5.8 with no `openssl.cnf`. The full unit suite passes there (#1669, #1678), so `git push` runs the pre-push hook as anywhere: a failure there is real, no `--no-verify`.

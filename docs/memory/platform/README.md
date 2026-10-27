@@ -8,7 +8,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 
 <!-- key-rules:start -->
 - Pass every user-sourced value placed after `HOSTNAME` (Location, `go()`, href, `window.location`) through `pg_safe_redirect_path()`; never write your own check (`redirect-after-hostname.md`).
-- Give every new outgoing cURL call `pg_curl_tls()` and `pinegrap_user_agent()`; never retry without verification (`update-tls-verification.md`).
+- Give every new outgoing cURL call `pg_curl_tls()` and `pinegrap_user_agent()` (`pg_curl_run()` does both for a fixed host); never retry without verification (`update-tls-verification.md`).
 - Call `pg_post_body_discarded()` right after `init.php` in every new form-POST script, never in a JSON endpoint; compare sizes with `pg_ini_bytes()` (`upload-limits-and-empty-post.md`).
 - Never call `lang()` or other `functions.php` code in `router.php`, the firewall's router phase or `get_file.php`; use `waf_text()` / `get_file_text()` (`router-no-functions-php.md`).
 - Guard every function a host may disable with `function_exists()` and treat its answer as optional, above all on the install and upgrade path (`disable-functions-rule.md`).
@@ -27,6 +27,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 
 ## Files
 
+- accessibility-compliance.md: Why Pinegrap has accessibility and consent tools (Circular 2025/10, EU Accessibility Act, KVKK cookie guide), which piece covers what, and what is left for later
 - accessibility-report.md: Accessibility report (seo_a11y_job.php, includes/fn/a11y.php, view_accessibility.php): server-side WCAG 2.2 checks, a11y_ codes in seo_issue, the resumable pass, screen, PDF, API filter
 - backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
@@ -35,6 +36,8 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus
+- curl-run-callers.md: Which outgoing calls use pg_curl_run(), what moving each changed (VERIFYHOST, proxy, http refused, TLS settings), which stay raw and why.
+- curl-run-wrapper.md: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the opt-in address rule and allow_http, where its callers are listed.
 - design-template-install-at-setup.md: Install wizard step "Site Tasarımı": two-request template install, StyleDesigner.starterTree() API, home/staff keys, starter removal and preview lists.
 - disable-functions-rule.md: Shared hosts remove functions via disable_functions; in PHP 8 they throw Error, so guard with function_exists() and treat their output as optional.
 - dkim-key-in-file-manager.md: dkim.key never leaves the server through the panel (no view, archive, copy, rename, channel copy, designer read) and only staff may give a file that name; pg_file_withheld(), pg_file_name_reserved()
@@ -56,7 +59,10 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - image-files-left-alone.md: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), ICC profile GD cannot carry (PR #1267, #1345); how each is told and handled
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
+- import-design-fetch.md: How the design importer fetches a page (import_design.php): each hop one api_http_request() with opt-in options, the 5-hop walk and the stream fallback kept, what changed with the move
 - install-command-line.md: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
+- iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
+- iys-settings-card.md: The İYS card of Settings › Communication (includes/iys/settings.php): fields, save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
 - language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
 - license-check.md: When the panel's licence check (license_check() in includes/fn/output.php) asks the licence server: once per session, 12 hours after an answer, 15 minutes after a failed attempt, once per request
 - maintenance-mode-end-time.md: How Settings › General reads the maintenance end time (the zone of the same save) and when a passed end time refuses the save (only switching on or a new end)
@@ -90,6 +96,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - short-link-names.md: Short link names (2026.11.0): the name rule, a pasted old address as a name, how a request finds its link (as it came, then in the stored form), IIS name recovery, how two names compare.
 - short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 - sms-netgsm-driver.md: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send and msgheader calls, answer codes, when a send may be retried or is uncertain, refused vs could-not-ask, own cURL call
+- sms-order-messages.md: Order SMS (received, shipped, delivered) and back in stock: templates in connect_apps sms_templates, events off by default, where each is queued, references, what is not texted
 - sms-outbox-queue.md: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, SMS tab
 - sms-provider-layer.md: SMS layer (PR #600): pg_sms_send() rules and kinds, account in connect_apps sms_<key> (no schema), demo sites, the Communication › SMS card and its save decision, test message
 - structured-data-open-graph.md: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json_encode only, custom JSON-LD, merchant parts, OG image resolvers, SEO card key.
@@ -99,7 +106,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-backup-rollback.md: Backup a software update or repair writes before replacing files (pre-update-*.zip) and the rollback on Repair Software: contents, hash record, effect on files and config.version
 - update-channel-stable-beta.md: Update channel (stable/beta): config key, the three channel functions all callers must use, download_assistant stays stable, switching, version format.
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
-- update-tls-verification.md: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS; gateways and carriers use it, Stripe, iyzico and the package download do not.
+- update-tls-verification.md: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS; gateways, carriers and the package download use it, Stripe and iyzico do not.
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes.
 - windows-folder-is-writable.md: Ask pg_dir_writable(), never is_writable(), about a folder: PHP on Windows reads its read-only attribute (OneDrive, Explorer), which stops nothing; where it bit, how each check asks now
 - zip-entry-declared-size.md: A zip entry is read no further than its archive declares: streams via pg_zip_entry_uri(), whole entries via pg_zip_entry_contents(), ZIP imports via pg_zip_import_open(), .ods checked

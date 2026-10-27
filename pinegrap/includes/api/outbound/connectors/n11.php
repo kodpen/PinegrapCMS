@@ -58,7 +58,8 @@ function mp_n11_connector() {
 		'request_collection' => 'mp_n11_request_collection',
 		'category_tree'    => 'mp_n11_category_tree',
 		'category_attributes' => 'mp_n11_category_attributes',
-		'create_listings'  => 'mp_n11_create_listings'
+		'create_listings'  => 'mp_n11_create_listings',
+		'remote_products'  => 'mp_n11_remote_products'
 	);
 
 }
@@ -297,7 +298,8 @@ function mp_n11_category_tree_bytes() {
 // $rows is what mp_product_row() built, one per product. Answers a task handle
 // in data['task_id']; the batch is not finished until read_task() says so.
 //
-// What is sent per SKU is decided here rather than by the caller:
+// What is sent per SKU is decided here (mp_n11_stock_price_skus()) rather
+// than by the caller:
 //
 //   stockCode is the product's code on their side, and it is the only field
 //   that identifies the row. A product mapped to the wrong code updates
@@ -314,6 +316,9 @@ function mp_n11_category_tree_bytes() {
 //   marketplace prices by hand over there - most do, because the commission
 //   makes them different from the shelf price - turns price off and this sends
 //   quantity alone.
+//
+//   A product n11 ships from its own warehouse gets its price only: that
+//   stock is n11's to keep.
 function mp_n11_push_stock_price($account, $rows) {
 
 	$rows = (array) $rows;
@@ -331,64 +336,33 @@ function mp_n11_push_stock_price($account, $rows) {
 
 	}
 
-	$with_price = !empty($account['push_price']);
-	$with_stock = !empty($account['push_stock']);
-
-	if (!$with_price && !$with_stock) {
+	if (empty($account['push_price']) && empty($account['push_stock'])) {
 
 		return mp_error(lang('This account sends neither stock nor price.'));
 
 	}
 
-	$skus = array();
+	$codes = array();
 
 	foreach ($rows as $row) {
 
-		$code = trim((string)$row['remote_code']);
-
-		if ($code === '') {
-
-			continue;
-
-		}
-
-		$sku = array('stockCode' => $code);
-
-		// A product that does not track stock has no quantity to send, and
-		// sending zero is not the same as saying nothing: it takes the listing
-		// off sale. A shop selling a service or a download this way would have
-		// found every one of them at zero on the marketplace, permanently.
-		if ($with_stock && !empty($row['tracked'])) {
-
-			$sku['quantity'] = (int) $row['quantity'];
-
-		}
-
-		if ($with_price) {
-
-			// Two decimal places with a point, which is their format. The shop
-			// keeps minor units, so this is the one place the hundred lives.
-			$price = number_format((float)$row['price_major'], 2, '.', '');
-
-			$sku['listPrice']    = $price;
-			$sku['salePrice']    = $price;
-			$sku['currencyType'] = mp_n11_currency();
-
-		}
-
-		// Nothing left to say about this one: it does not track stock and this
-		// account does not send prices.
-		if (count($sku) === 1) {
-
-			continue;
-
-		}
-
-		$skus[] = $sku;
+		$codes[] = trim((string)$row['remote_code']);
 
 	}
 
+	$built = mp_n11_stock_price_skus($account, $rows, mp_n11_warehouse_codes($account, $codes));
+
+	$skus = $built['skus'];
+
 	if (!$skus) {
+
+		// Only n11 warehouse stock was left to send, which is n11's: nothing
+		// to say, and nothing wrong either (the rows are closed as done).
+		if ($built['warehouse'] > 0) {
+
+			return mp_ok(array('task_id' => '', 'sent' => 0));
+
+		}
 
 		return mp_error(lang('None of these products has anything to send: no code, or no stock and no price.'));
 
@@ -408,6 +382,123 @@ function mp_n11_push_stock_price($account, $rows) {
 	}
 
 	return mp_n11_task_handle($result['data'], count($skus));
+
+}
+
+// The skus of one price-stock-update request, and how many products the n11
+// warehouse holds the stock of. $warehouse maps a stock code to true for a
+// product n11 ships from its warehouse: only the price of such a product is
+// the seller's to change (developer.n11.com, n11depom), so its quantity is
+// never sent, and on an account that sends stock alone it has nothing to
+// send. Codes are compared byte for byte, as the catalogue keeps them.
+//
+// Answers skus (stockCode, and quantity and/or the prices) and warehouse.
+function mp_n11_stock_price_skus($account, $rows, $warehouse = array()) {
+
+	$with_price = !empty($account['push_price']);
+	$with_stock = !empty($account['push_stock']);
+
+	$skus = array();
+	$held = 0;
+
+	foreach ((array) $rows as $row) {
+
+		$code = trim((string)$row['remote_code']);
+
+		if ($code === '') {
+
+			continue;
+
+		}
+
+		$sku = array('stockCode' => $code);
+
+		$in_warehouse = isset($warehouse[$code]);
+
+		if ($in_warehouse && $with_stock) {
+
+			$held++;
+
+		}
+
+		// A product that does not track stock has no quantity to send, and
+		// sending zero is not the same as saying nothing: it takes the listing
+		// off sale. A shop selling a service or a download this way would have
+		// found every one of them at zero on the marketplace, permanently.
+		if ($with_stock && !empty($row['tracked']) && !$in_warehouse) {
+
+			$sku['quantity'] = (int) $row['quantity'];
+
+		}
+
+		if ($with_price) {
+
+			// Two decimal places with a point, which is their format. The shop
+			// keeps minor units, so this is the one place the hundred lives.
+			$price = number_format((float)$row['price_major'], 2, '.', '');
+
+			$sku['listPrice']    = $price;
+			$sku['salePrice']    = $price;
+			$sku['currencyType'] = mp_n11_currency();
+
+		}
+
+		// Nothing left to say about this one: it does not track stock (or n11
+		// keeps it) and this account does not send prices.
+		if (count($sku) === 1) {
+
+			continue;
+
+		}
+
+		$skus[] = $sku;
+
+	}
+
+	return array('skus' => $skus, 'warehouse' => $held);
+
+}
+
+// Which of $codes the account's catalogue, as last read on the marketplace
+// products screen, lists as shipped from the n11 warehouse: code => true. A
+// store whose catalogue was never read, or a site without the table, gets an
+// empty list and every quantity is sent, as before.
+function mp_n11_warehouse_codes($account, $codes) {
+
+	$list = array();
+
+	foreach ((array) $codes as $code) {
+
+		$code = (string) $code;
+
+		if ($code !== '') {
+
+			$list[$code] = "'" . e($code) . "'";
+
+		}
+
+	}
+
+	if (!$list) {
+
+		return array();
+
+	}
+
+	$rows = db_items("SELECT remote_code FROM marketplace_remote_products
+		WHERE (account_id = '" . e((int) $account['id']) . "')
+		  AND (remote_code IN (" . implode(',', $list) . "))
+		  AND (CONCAT('/', remote_status, '/') LIKE '%/N11\\_Warehouse/%')");
+
+	$held = array();
+
+	foreach (is_array($rows) ? $rows : array() as $row) {
+
+		$held[(string) $row['remote_code']] = true;
+
+	}
+
+	return $held;
 
 }
 
@@ -879,6 +970,12 @@ function mp_n11_package($entry) {
 }
 
 // One of their addresses in the importer's shape.
+//
+// Their city is the province and their district the town within it; the
+// store keeps the town as the city and the province as the state, the way a
+// Turkish address is entered at checkout. Only an order being created reads
+// this (mp_order_ship_to() inserts the address once), so orders imported
+// earlier keep the two the other way round.
 function mp_n11_address($entry, $key) {
 
 	$address = (isset($entry[$key]) && is_array($entry[$key])) ? $entry[$key] : array();
@@ -909,8 +1006,8 @@ function mp_n11_address($entry, $key) {
 		'name'      => $read(array('fullName', 'firstName')),
 		'address_1' => $read(array('address', 'addressText', 'fullAddress')),
 		'address_2' => $read(array('neighborhood', 'address2')),
-		'city'      => $read(array('city', 'cityName')),
-		'state'     => $read(array('district', 'districtName', 'town')),
+		'city'      => $read(array('district', 'districtName', 'town')),
+		'state'     => $read(array('city', 'cityName')),
 		'zip'       => $read(array('postalCode', 'zipCode')),
 		'country'   => $read(array('country', 'countryName')),
 		'phone'     => $read(array('gsm', 'phone', 'mobilePhone'))
@@ -1438,5 +1535,130 @@ function mp_n11_currency() {
 	}
 
 	return 'TL';
+
+}
+
+/* ------------------------------------------------------- their catalogue */
+
+// One page of the products the store sells on n11, for matching them to the
+// shop's (includes/api/outbound/remote_products.php).
+//
+// GET /ms/product-query with no filter lists the seller's products a page at
+// a time, pages counted from 0, at most 250 a page. A hundred are asked for:
+// every product comes with its whole description, and 250 long descriptions
+// run to megabytes. sender=ALL: the default (SELLER) leaves out what n11
+// ships from its own warehouse, and those are the store's products too. Each
+// one comes with its sender; a warehouse product is marked N11_Warehouse in
+// its status, which the stock push reads (mp_n11_warehouse_codes()).
+//
+// A product without a stock code is left out: the stock code is what a match
+// is written with and what stock is sent to.
+//
+// Answers data: products (remote_code, remote_id, group_code, barcode, title,
+// image_url, price in minor units as sold there, quantity, status), page,
+// pages, total, last.
+function mp_n11_remote_products($account, $page, $transport = null) {
+
+	$page = max(0, (int) $page);
+
+	$result = mp_n11_call($account, 'GET',
+		'/ms/product-query?page=' . $page . '&size=' . mp_n11_remote_page_size() . '&sender=ALL',
+		null, 8388608, $transport);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	$data = $result['data'];
+
+	$content = (isset($data['content']) && is_array($data['content'])) ? $data['content'] : array();
+
+	$products = array();
+
+	foreach ($content as $entry) {
+
+		if (!is_array($entry)) {
+
+			continue;
+
+		}
+
+		$code = isset($entry['stockCode']) ? trim((string) $entry['stockCode']) : '';
+
+		if ($code === '') {
+
+			continue;
+
+		}
+
+		$image = '';
+
+		foreach ((isset($entry['imageUrls']) && is_array($entry['imageUrls'])) ? $entry['imageUrls'] : array() as $url) {
+
+			// Shown on a panel served over https, so only an https address of
+			// theirs is kept.
+			if (is_string($url) && preg_match('#^https://[^\s"<>]+$#i', $url)) {
+
+				$image = $url;
+
+				break;
+
+			}
+
+		}
+
+		$status = array();
+
+		foreach (array('status', 'saleStatus') as $field) {
+
+			if (isset($entry[$field]) && is_scalar($entry[$field]) && (string) $entry[$field] !== '') {
+
+				$status[] = (string) $entry[$field];
+
+			}
+
+		}
+
+		if (isset($entry['sender']) && ((string) $entry['sender'] === 'N11')) {
+
+			$status[] = 'N11_Warehouse';
+
+		}
+
+		$products[] = array(
+			'remote_code' => $code,
+			'remote_id'   => isset($entry['n11ProductId']) && is_scalar($entry['n11ProductId']) ? (string) $entry['n11ProductId'] : '',
+			'group_code'  => isset($entry['productMainId']) && is_scalar($entry['productMainId']) ? trim((string) $entry['productMainId']) : '',
+			'barcode'     => isset($entry['barcode']) && is_scalar($entry['barcode']) ? trim((string) $entry['barcode']) : '',
+			'title'       => isset($entry['title']) && is_scalar($entry['title']) ? trim((string) $entry['title']) : '',
+			'image_url'   => $image,
+			'price'       => mp_n11_minor($entry, 'salePrice'),
+			'quantity'    => isset($entry['quantity']) ? (int) $entry['quantity'] : 0,
+			'status'      => implode('/', $status)
+		);
+
+	}
+
+	$pages = isset($data['totalPages']) ? (int) $data['totalPages'] : 0;
+
+	// Their own flag, an empty page, or the page count, whichever says so
+	// first: the documentation names the empty page as the end.
+	$last = !empty($data['last']) || !$content || (($pages > 0) && ($page + 1 >= $pages));
+
+	return mp_ok(array(
+		'products' => $products,
+		'page'     => $page,
+		'pages'    => $pages,
+		'total'    => isset($data['totalElements']) ? (int) $data['totalElements'] : count($products),
+		'last'     => $last
+	));
+
+}
+
+function mp_n11_remote_page_size() {
+
+	return 100;
 
 }

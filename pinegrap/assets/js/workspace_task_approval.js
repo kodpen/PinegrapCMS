@@ -33,10 +33,10 @@
     };
 
     var OUTCOMES = {
-        approved: 'bi-patch-check-fill text-success',
-        rejected: 'bi-patch-exclamation-fill text-danger',
-        expired: 'bi-hourglass-bottom text-body-secondary',
-        withdrawn: 'bi-slash-circle text-body-secondary'
+        approved: 'bi-patch-check-fill fg-success',
+        rejected: 'bi-patch-exclamation-fill fg-danger',
+        expired: 'bi-hourglass-bottom fg-secondary',
+        withdrawn: 'bi-slash-circle fg-secondary'
     };
 
     // Today as the date field reads it, in the reader's own time.
@@ -65,12 +65,12 @@
             var row = el('div', 'ws-task-approvals-person ws-approval-' + who.decision);
             var face = h.avatar(who);
 
-            face.className = 'ws-approval-face';
+            face.classList.add('ws-approval-face');
             row.appendChild(face);
             row.appendChild(el('span', 'ws-approval-name', who.name));
 
             if (who.guest) {
-                row.appendChild(el('span', 'badge rounded-pill text-bg-light ws-approval-guest', t('apv_guest_badge')));
+                row.appendChild(el('span', 'badge rounded-pill badge-subtle theme-secondary ws-approval-guest', t('apv_guest_badge')));
 
                 var detail = [who.email, who.audit].filter(function (part) { return part; }).join(' · ');
 
@@ -111,7 +111,7 @@
             var box = el('div', 'ws-task-approvals-item');
             var head = el('div', 'ws-task-approvals-item-head');
 
-            head.appendChild(h.icon(item.open ? 'bi-patch-question text-warning' : (OUTCOMES[item.outcome] || OUTCOMES.withdrawn)));
+            head.appendChild(h.icon(item.open ? 'bi-patch-question fg-warning' : (OUTCOMES[item.outcome] || OUTCOMES.withdrawn)));
             head.appendChild(el('span', 'fw-semibold ws-grow text-truncate', item.title));
             head.appendChild(el('span', 'ws-task-links-tag', item.state + ((item.open && item.closes) ? ' · ' + t('apv_closes_on', item.closes) : '')));
             box.appendChild(head);
@@ -132,7 +132,7 @@
         function form(ask) {
             var box = el('div', 'ws-task-approvals-form');
             var field = function (label, input, help) {
-                var row = el('div', 'mb-2');
+                var row = el('div', 'mb-3');
                 var caption = el('label', 'form-label small mb-1', label);
 
                 input.id = h.nextId('ws-tap-');
@@ -161,9 +161,9 @@
             var mail = input('email', 255);
             var text = el('textarea', 'form-control form-control-sm');
             var date = input('date', 10);
-            var grid = el('div', 'row g-2');
-            var nameCell = el('div', 'col-sm-5');
-            var mailCell = el('div', 'col-sm-7');
+            var grid = el('div', 'row g-3');
+            var nameCell = el('div', 'sm:col-5');
+            var mailCell = el('div', 'sm:col-7');
 
             mail.autocomplete = 'off';
             text.rows = 3;
@@ -179,11 +179,11 @@
             box.appendChild(grid);
             box.appendChild(field(t('tap_text'), text, t('tap_text_help')));
             box.appendChild(field(t('tap_deadline'), date, t('tap_deadline_help')));
-            box.appendChild(el('div', 'form-text mb-2', t('tap_help')));
+            box.appendChild(el('div', 'form-text mb-3', t('tap_help')));
 
             var buttons = el('div', 'd-flex gap-1 justify-content-end');
             var cancel = h.button('btn btn-sm btn-ghost', t('cancel'));
-            var send = h.button('btn btn-sm btn-primary rounded-pill px-3', t('tap_send'), 'bi-send');
+            var send = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('tap_send'), 'bi-send');
 
             cancel.addEventListener('click', function () {
                 box.remove();
@@ -227,7 +227,7 @@
             wrap.appendChild(head);
 
             if (!data.items.length) {
-                wrap.appendChild(el('div', 'small text-body-secondary mt-1', t('tap_none')));
+                wrap.appendChild(el('div', 'small fg-secondary mt-1', t('tap_none')));
             }
 
             data.items.forEach(function (item) {
@@ -235,7 +235,7 @@
             });
 
             if (data.can_ask) {
-                var ask = h.button('btn btn-sm btn-outline-secondary mt-2', t('tap_ask'), 'bi-envelope-paper');
+                var ask = h.button('btn btn-sm btn-outline theme-secondary mt-3', t('tap_ask'), 'bi-envelope-paper');
 
                 ask.addEventListener('click', function () {
                     var opened = form(ask);

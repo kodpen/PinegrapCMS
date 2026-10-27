@@ -27,6 +27,9 @@
  *   dynamic_region_code              a dynamic region's PHP code, read and
  *                                    saved from the visual designer's code
  *                                    tab
+ *   layout_code                      a page's custom layout (PHP), read,
+ *                                    regenerated and saved from the visual
+ *                                    designer's code tab
  *
  * Called by pg_panel_dispatch() (includes/panel/actions.php); see that file
  * for the contract.
@@ -327,14 +330,9 @@ function pg_panel_get_items_in_style($request, $action)
 
 function pg_panel_get_layout($request, $action)
 {
-    $layout = db_item(
-        "SELECT
-                page_id AS id,
-                page_name AS name,
-                layout_modified AS modified
-            FROM page
-            WHERE page_id = '" . escape($request['layout']['id']) . "'"
-    );
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+
+    $layout = pg_layout_read(isset($request['layout']['id']) ? $request['layout']['id'] : '');
 
     // If a layout was not found then respond with an error.
     if (!$layout) {
@@ -347,18 +345,14 @@ function pg_panel_get_layout($request, $action)
         exit();
     }
 
-    if ($layout['modified']) {
-        $layout['content'] = @file_get_contents(LAYOUT_DIRECTORY_PATH . '/' . $layout['id'] . '.php');
-
-    } else {
-        require_once(PG_FUNCTIONS_DIR . '/generate_layout_content.php');
-
-        $layout['content'] = generate_layout_content($layout['id']);
-    }
-
     $response = array(
         'status' => 'success',
-        'layout' => $layout
+        'layout' => array(
+            'id' => $layout['id'],
+            'name' => $layout['name'],
+            'modified' => $layout['modified'],
+            'content' => $layout['content'],
+        )
     );
 
     echo encode_json($response);
@@ -590,69 +584,17 @@ function pg_panel_update_layout($request, $action)
 {
     validate_token();
 
-    // A custom layout is a PHP file that the page render includes as it
-    // stands, so a hosted site neither writes nor uses one.
-    if (pg_hosted()) {
-        echo encode_json(array(
-            'status' => 'error',
-            'message' => lang('Custom layouts are not available on this site.')
-        ));
-        exit();
-    }
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
 
-    $layout = db_item(
-        "SELECT
-                page_id AS id,
-                page_name AS name
-            FROM page
-            WHERE page_id = '" . e($request['layout']['id']) . "'"
+    $result = pg_layout_save(
+        isset($request['layout']['id']) ? $request['layout']['id'] : '',
+        isset($request['layout']['content']) && is_string($request['layout']['content']) ? $request['layout']['content'] : ''
     );
 
-    // If a layout was not found then respond with an error.
-    if (!$layout) {
-        $response = array(
-            'status' => 'error',
-            'message' => 'Layout could not be found.'
-        );
-
-        echo encode_json($response);
+    if (!$result['ok']) {
+        echo encode_json(array('status' => 'error', 'message' => $result['message']));
         exit();
     }
-
-    require_once(PG_FUNCTIONS_DIR . '/generate_layout_content.php');
-
-    // If the saved layout matches the generated layout, then mark
-    // that the layout has not been modified and delete layout file.
-    // We strip white-spaces, because we had issues where possibly
-    // new lines characters were different in the generated content from
-    // the code editor's content.
-    if (preg_replace('/\s+/', '', $request['layout']['content']) === preg_replace('/\s+/', '', generate_layout_content($request['layout']['id']))) {
-        // If a layout file exists, then delete it.
-        if (file_exists(LAYOUT_DIRECTORY_PATH . '/' . $layout['id'] . '.php')) {
-            unlink(LAYOUT_DIRECTORY_PATH . '/' . $layout['id'] . '.php');
-        }
-
-        $modified = 0;
-
-        // Otherwise the layout content is unique, so save content to file system.
-    } else {
-        @file_put_contents(LAYOUT_DIRECTORY_PATH . '/' . $layout['id'] . '.php', $request['layout']['content']);
-
-        $modified = 1;
-    }
-
-    // Update the page to mark whether the layout has been modified or not,
-    // so that we don't auto-generate the layout anymore when changes are made to the form.
-    db(
-        "UPDATE page
-            SET
-                layout_modified = '$modified',
-                page_user = '" . USER_ID . "',
-                page_timestamp = UNIX_TIMESTAMP()
-            WHERE page_id = '" . e($request['layout']['id']) . "'"
-    );
-
-    log_activity('layout for page (' . $layout['name'] . ') was modified');
 
     $response = array('status' => 'success');
 
@@ -1310,6 +1252,40 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
+        // The canvas's read-only picture of a classic page's system region
+        // drawn by its custom layout, as the server draws it for the
+        // signed-in user (pg_layout_region_preview()). The layout editor's
+        // right (role 1 or better), as layout_code asks; '' for a page that
+        // draws no custom layout.
+        case 'legacy_region_preview':
+            if ((int)$user['role'] > 1) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+            respond(array(
+                'status' => 'success',
+                'html'   => pg_layout_region_preview(isset($request['page_id']) ? (int)$request['page_id'] : 0),
+            ));
+            break;
+
+        // A page's own regions as blocks of its tree, one per page region
+        // node the editor counts on it (pg_page_region_blocks()). Placing
+        // them changes the page's structure: the designer's right, as the
+        // other region conversions ask. Nothing is written here; the page's
+        // Save does.
+        case 'page_regions_import':
+            $pr_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            if ((int)$user['role'] > 1) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            if ($pr_page <= 0 || !db_value("SELECT page_id FROM page WHERE page_id = '$pr_page' LIMIT 1")) {
+                respond(array('status' => 'error', 'message' => lang('Record not found.')));
+            }
+            require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
+            $pr = pg_page_region_blocks($pr_page, isset($request['count']) ? (int)$request['count'] : 0);
+            respond(array('status' => 'success', 'blocks' => $pr['blocks'], 'warnings' => $pr['warnings']));
+            break;
+
         // A page the user may not know is drawn as an unsaved one: a
         // comments widget then shows no thread of it. The comment settings
         // are the page's as the editor holds them, saved or not, on a page
@@ -1910,6 +1886,77 @@ function pg_panel_dynamic_region_code($request, $action)
         log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('dynamic region'), $region['name']))), $_SESSION['sessionusername']);
 
         respond(array('status' => 'success'));
+    }
+
+    respond(array('status' => 'error', 'message' => lang('Invalid action.')));
+}
+
+function pg_panel_layout_code($request, $action)
+{
+    // The visual designer's code tab of a page's custom layout (the page's
+    // system region opens it). The layout is a PHP file the page render
+    // includes, so the right is the one the classic layout editor
+    // (page_designer.php?type=layout, get_layout, update_layout) has: the
+    // general gate's role 1 or better, checked here again.
+
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    validate_token();
+    $user = validate_user();
+
+    if ((int) $user['role'] > 1) {
+        respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+
+    $page_id = isset($request['page_id']) ? $request['page_id'] : '';
+    $page = (pg_layout_file_name($page_id) !== '')
+        ? db_item("SELECT page_type AS type, layout_type FROM page WHERE page_id = '" . (int) $page_id . "'")
+        : false;
+
+    if (!$page) {
+        respond(array('status' => 'error', 'message' => lang('Record not found.')));
+    }
+
+    // Only a page that draws a custom layout has one to edit.
+    if (($page['layout_type'] !== 'custom') || !check_if_page_type_supports_layout($page['type'])) {
+        respond(array('status' => 'error', 'message' => lang('This page does not use a custom layout.')));
+    }
+
+    $sub = isset($request['sub_action']) ? $request['sub_action'] : '';
+
+    if ($sub === 'read') {
+        $layout = pg_layout_read($page_id);
+
+        respond(array(
+            'status' => 'success',
+            'content' => $layout ? (string) $layout['content'] : '',
+            'modified' => $layout ? (int) $layout['modified'] : 0,
+            'read_only' => pg_hosted(),
+        ));
+    }
+
+    // The generated layout, for the editor to show; nothing is saved until
+    // the tab is.
+    if ($sub === 'regenerate') {
+        respond(array('status' => 'success', 'content' => (string) pg_layout_generated((int) $page_id)));
+    }
+
+    if ($sub === 'save') {
+        if (!isset($request['content']) || !is_string($request['content'])) {
+            respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+        }
+
+        $result = pg_layout_save($page_id, $request['content']);
+
+        if (!$result['ok']) {
+            respond(array('status' => 'error', 'message' => $result['message']));
+        }
+
+        respond(array('status' => 'success', 'modified' => (int) $result['modified']));
     }
 
     respond(array('status' => 'error', 'message' => lang('Invalid action.')));

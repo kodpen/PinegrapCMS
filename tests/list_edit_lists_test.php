@@ -129,7 +129,7 @@ function test_list_edit_key_code_cells_follow_the_enabled_flag()
 
 	$cells = pg_key_code_list_cells($key_code, $today);
 
-	pg_assert_contains('status_enabled text-success', $cells['code']['class'], 'a working code is green');
+	pg_assert_contains('status_enabled fg-success', $cells['code']['class'], 'a working code is green');
 	pg_assert_contains('chart_label', $cells['code']['class'], 'the code stays the row label');
 	pg_assert_false(isset($cells['code']['html']), 'the code itself is not redrawn');
 	pg_assert_contains('task_alt', $cells['enabled']['html'], 'enabled is marked');
@@ -139,7 +139,7 @@ function test_list_edit_key_code_cells_follow_the_enabled_flag()
 	$key_code['last_modified_username'] = null;
 	$cells = pg_key_code_list_cells($key_code, $today);
 
-	pg_assert_contains('status_disabled text-danger', $cells['code']['class'], 'a disabled code is red');
+	pg_assert_contains('status_disabled fg-danger', $cells['code']['class'], 'a disabled code is red');
 	pg_assert_same('', $cells['enabled']['html'], 'disabled has no mark');
 	pg_assert_false(strpos($cells['last_modified']['html'], ' by ') !== false, 'nobody named when the change has no user');
 }

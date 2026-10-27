@@ -334,18 +334,14 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
     }
 
     $options = array(
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HEADER         => true,
-        CURLOPT_FOLLOWLOCATION => false,
-        CURLOPT_CONNECTTIMEOUT => 8,
-        CURLOPT_TIMEOUT        => max(5, (int) $timeout),
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_SSL_VERIFYHOST => 2,
-        CURLOPT_USERAGENT      => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (workspace-ai)',
+        'response_headers' => true,
+        'connect_timeout'  => 8,
+        'timeout'          => max(5, (int) $timeout),
+        'user_agent'       => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (workspace-ai)',
     );
 
     if ($method === 'POST') {
-        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
+        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0); // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined()
         $json = json_encode($payload, $flags);
 
         if ($json === false) {
@@ -353,34 +349,21 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
             return $out;
         }
 
-        $options[CURLOPT_POST] = true;
-        $options[CURLOPT_POSTFIELDS] = $json;
+        $options['body'] = $json;
         $headers[] = 'Content-Type: application/json';
     }
 
-    $options[CURLOPT_HTTPHEADER] = $headers;
+    $options['headers'] = $headers;
 
-    $curl = curl_init(WS_AI_ENDPOINT . $path);
+    $answer = pg_curl_run($method, WS_AI_ENDPOINT . $path, $options);
 
-    curl_setopt_array($curl, $options);
+    $out['http'] = $answer['status'];
+    $out['errno'] = $answer['errno'];
+    $out['error'] = $answer['error'];
 
-    // The root certificate list the operator set for every outgoing call.
-    if (defined('CURL_CA_BUNDLE') && (CURL_CA_BUNDLE !== '') && is_file(CURL_CA_BUNDLE)) {
-        curl_setopt($curl, CURLOPT_CAINFO, CURL_CA_BUNDLE);
-    }
-
-    $raw = curl_exec($curl);
-    $header_size = (int) curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-
-    $out['http'] = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-    $out['errno'] = (int) curl_errno($curl);
-    $out['error'] = (string) curl_error($curl);
-
-    unset($curl);
-
-    if (is_string($raw)) {
-        $out['headers'] = substr($raw, 0, $header_size);
-        $out['body'] = (string) substr($raw, $header_size);
+    if ($answer['errno'] === 0) {
+        $out['headers'] = $answer['headers'];
+        $out['body'] = $answer['body'];
         $out['json'] = json_decode($out['body'], true);
     }
 
@@ -1501,7 +1484,7 @@ function ws_ai_step($row)
         $name = $call['function']['name'];
 
         if (!$call['valid']) {
-            $state['messages'][] = ws_ai_tool_message($call['id'], array('error' => 'The arguments were not valid JSON. Call the tool again with valid JSON.'));
+            $state['messages'][] = ws_ai_tool_message($call['id'], null, 'The arguments were not valid JSON. Call the tool again with valid JSON.');
             $page_trouble = $page_trouble || (strpos($name, 'page_') === 0);
             continue;
         }
@@ -1522,22 +1505,19 @@ function ws_ai_step($row)
                     $ran[] = array('tool' => $written['name'], 'result' => ws_ai_tool_run($row, $state, $written['name'], $written['args']));
                 }
 
-                $state['messages'][] = ws_ai_tool_message($call['id'], array(
-                    'error' => 'The answer had tool calls written into its text. They were made now; their results are in "ran". Fix what they report, then call answer again with only the words for the person, no tool calls in them.',
-                    'ran'   => $ran,
-                ));
+                $state['messages'][] = ws_ai_tool_message($call['id'], array('ran' => $ran), 'The answer had tool calls written into its text. They were made now; their results are in "ran" below. Fix what they report, then call answer again with only the words for the person, no tool calls in them.');
                 continue;
             }
 
             if ($page_trouble && ($steps < WS_AI_MAX_STEPS - 2)) {
-                $state['messages'][] = ws_ai_tool_message($call['id'], array('error' => 'A page tool above answered with an error or a warning. Fix that first, then call answer again.'));
+                $state['messages'][] = ws_ai_tool_message($call['id'], null, 'A page tool above answered with an error or a warning. Fix that first, then call answer again.');
                 continue;
             }
 
             // A scheduled action asked for in the same turn is drafted
             // first: the answer would come before its draft.
             if (!empty($state['scheduled_todo']) && ($steps < WS_AI_MAX_STEPS - 2)) {
-                $state['messages'][] = ws_ai_tool_message($call['id'], array('error' => 'The scheduled action is drafted first. Call answer again once you are told how it came out.'));
+                $state['messages'][] = ws_ai_tool_message($call['id'], null, 'The scheduled action is drafted first. Call answer again once you are told how it came out.');
                 continue;
             }
 
@@ -1746,7 +1726,7 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
     }
 
     if ($call_id !== '') {
-        $state['messages'][] = ws_ai_tool_message($call_id, array('error' => $result['error']));
+        $state['messages'][] = ws_ai_tool_message($call_id, null, (string) $result['error']);
     } else {
         $state['messages'][] = array('role' => 'assistant', 'content' => $content);
         $state['messages'][] = array('role' => 'user', 'content' => 'That could not be written: ' . $result['error'] . ' Call the answer tool.');
@@ -2076,7 +2056,7 @@ function ws_ai_text_answer($content)
  */
 function ws_ai_save($row, $state, $steps)
 {
-    $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
+    $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0); // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined()
 
     db("UPDATE ws_ai_requests SET ai_state = '" . e((string) json_encode($state, $flags)) . "', ai_steps = '" . (int) $steps . "',
             ai_attempts = 0, sent_at = '" . time() . "'
@@ -2101,22 +2081,37 @@ function ws_ai_clean($text)
 }
 
 /**
- * A tool's answer as the model reads it.
+ * A tool's answer as the model reads it. What the tool returned - records,
+ * pages, what people wrote - goes inside a data block (pg_ai_data_block()),
+ * cut at 12,000 characters; the site's own words about the call (arguments
+ * that were not valid, an answer held back) go before it, where they still
+ * tell the model what to do.
  *
  * @param string $call_id
- * @param mixed  $data
+ * @param mixed  $data null when the note says everything
+ * @param string $note the site's own words
  * @return array
  */
-function ws_ai_tool_message($call_id, $data)
+function ws_ai_tool_message($call_id, $data, $note = '')
 {
-    $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
-    $text = is_string($data) ? $data : (string) json_encode($data, $flags);
+    $out = array();
 
-    if (mb_strlen($text) > 12000) {
-        $text = mb_substr($text, 0, 12000) . ' …[cut]';
+    if ((string) $note !== '') {
+        $out[] = (string) $note;
     }
 
-    return array('role' => 'tool', 'tool_call_id' => (string) $call_id, 'content' => $text);
+    if ($data !== null) {
+        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0); // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined()
+        $text = is_string($data) ? $data : (string) json_encode($data, $flags);
+
+        if (mb_strlen($text) > 12000) {
+            $text = mb_substr($text, 0, 12000) . ' …[cut]';
+        }
+
+        $out[] = pg_ai_data_block('tool answer', $text);
+    }
+
+    return array('role' => 'tool', 'tool_call_id' => (string) $call_id, 'content' => implode("\n", $out));
 }
 
 /**
@@ -2509,7 +2504,7 @@ function ws_ai_change_out($change)
 
     if (in_array($change['action'], array('add', 'remove'), true)) {
         $out['product_ids'] = array_values((array) ($change['product_ids'] ?? array()));
-    } elseif ($change['action'] !== 'delete') {
+    } elseif (!in_array($change['action'], array('delete', 'invoice'), true)) {
         $out['fields'] = (array) ($change['fields'] ?? array());
     }
 
@@ -2544,7 +2539,7 @@ function ws_ai_propose_change($row, &$state, $args)
         $field = substr($field, strrpos($field, '.') + 1);
     }
 
-    if (!in_array($action, array('update', 'create', 'delete', 'add', 'remove'), true)) {
+    if (!in_array($action, array('update', 'create', 'delete', 'add', 'remove', 'invoice'), true)) {
         $action = 'update';
     }
 
@@ -2607,7 +2602,7 @@ function ws_ai_propose_change($row, &$state, $args)
         if (empty($change['product_ids'])) {
             return array('error' => 'Give the product ids in value, separated by commas.');
         }
-    } elseif ($action !== 'delete') {
+    } elseif (($action !== 'delete') && ($action !== 'invoice')) {
         if (($field === '') || !ws_change_field($types[$type], $field)) {
             return array('error' => 'Name the field to set. A ' . $type . ' has these fields: ' . implode(', ', array_keys(ws_change_fields_for($types[$type], $action))) . '.');
         }
@@ -2653,7 +2648,7 @@ function ws_ai_propose_change($row, &$state, $args)
  * @param array $row
  * @param array $state the conversation, by reference
  * @param array $args  type, action, scope, group_id, search, ids, only_empty, field,
- *                     operation, value, instruction, values, round, reason
+ *                     operation, value, instruction, values, round, rows, reason
  * @return array what the model is told
  */
 function ws_ai_propose_bulk($row, &$state, $args)
@@ -2665,10 +2660,15 @@ function ws_ai_propose_bulk($row, &$state, $args)
     $asker = ws_ai_viewer((int) $row['requested_by']);
     $bulk = array();
 
-    foreach (array('type', 'action', 'scope', 'group_id', 'search', 'ids', 'only_empty', 'field', 'operation', 'value', 'instruction', 'values', 'round') as $key) {
+    foreach (array('type', 'action', 'scope', 'group_id', 'search', 'ids', 'only_empty', 'field', 'operation', 'value', 'instruction', 'values', 'round', 'rows') as $key) {
         if (isset($args[$key]) && ($args[$key] !== '')) {
             $bulk[$key] = $args[$key];
         }
+    }
+
+    // New products come as a JSON list in a string, as values do.
+    if (isset($bulk['rows']) && is_string($bulk['rows'])) {
+        $bulk['rows'] = json_decode($bulk['rows'], true);
     }
 
     $bulk['type'] = strtolower(trim((string) ($bulk['type'] ?? '')));
@@ -2688,7 +2688,9 @@ function ws_ai_propose_bulk($row, &$state, $args)
     return array(
         'ok'      => true,
         'matched' => $checked['matched'],
-        'note'    => 'Proposed, not done: it reaches ' . $checked['matched'] . ' records and the person who asked applies it. Then call answer, saying what you propose and how many records it reaches.',
+        'note'    => ((($bulk['action'] ?? '') === 'create')
+            ? 'Proposed, not done: it makes ' . $checked['matched'] . ' new products, off sale unless a row sets enabled, when the person who asked applies it. Then call answer, saying what you propose and how many products it makes.'
+            : 'Proposed, not done: it reaches ' . $checked['matched'] . ' records and the person who asked applies it. Then call answer, saying what you propose and how many records it reaches.'),
     );
 }
 
@@ -3030,6 +3032,10 @@ function ws_ai_changes_guide($asker, $channel_id)
                 return ' (the whole list, as a list of lines)';
             case 'erp_lines':
                 return ' (a JSON list of line objects: product_id, description, quantity, unit, unit_price in minor units, discount_rate, tax_rate, tax2_rate, withholding_code, withholding_rate; a line with a product_id takes the product\'s name and VAT rate when they are left out, any other needs description and tax_rate)';
+            case 'variants':
+                return ' (a JSON list of variant objects, one product each: name (its SKU), short_description, gtin, attributes (a list of {attribute_id, option_id}, one per attribute), price in minor units (left out: priced by price_rules from price), quantity (its stock))';
+            case 'price_rules':
+                return ' (a JSON list of {attribute_id, mode (set, multiply or adjust), options: a list of {option_id, amount in minor units, or factor, or percent}}; at most one attribute sets the price)';
             case 'answers':
                 return ' (an object of field name => new answer, only the ones to change)';
             default:
@@ -3072,7 +3078,13 @@ function ws_ai_changes_guide($asker, $channel_id)
 
         // Added whole: the lines are one field, given at once.
         if ($key === 'erp_quote') {
-            $line .= '. A new one is a sales quote (never a cart quote) and needs account_id and lines; give lines in one call, the whole list';
+            $line .= '. A new one is a sales quote (never a cart quote) and needs account_id and lines; give lines in one call, the whole list. invoice turns an open, expired or accepted quote (its id, no field) into an invoice draft dated today at the prices quoted';
+        }
+
+        // Added whole: the rows are one field, given at once.
+        if ($key === 'variant_set') {
+            $line .= '. A new one is a product group shown as one item with a variant picker and a product per row; give variants (at least two) in one call, the whole list. '
+                . ws_ai_variant_attributes_guide();
         }
 
         $lines[] = $line . '.';
@@ -3083,9 +3095,40 @@ function ws_ai_changes_guide($asker, $channel_id)
     }
 
     return "Records whose changes you may propose (type (actions): fields):\n" . implode("\n", $lines) . "\n"
-        . 'action is update when left out; create takes id 0, delete no field. The stock of a product is changed with type stock, field quantity and the product\'s id. A channel change takes the id of this channel and the whole summary as it should read. '
+        . 'action is update when left out; create takes id 0, delete and invoice no field. The stock of a product is changed with type stock, field quantity and the product\'s id. A channel change takes the id of this channel and the whole summary as it should read. '
         . 'Asked to rename a product, change name and short_description both where both hold the old name. '
         . 'A deleted product, product group, page or file goes to the Recycle Bin; a deleted contact, offer or calendar event is gone for good.';
+}
+
+/**
+ * The shop's attributes and their options with their ids, for the rows of a
+ * variant set: Pinegrap AI reads no attribute anywhere else. At most 20
+ * attributes of 40 options each.
+ *
+ * @return string
+ */
+function ws_ai_variant_attributes_guide()
+{
+    $attributes = (array) db_items("SELECT id, name, label FROM product_attributes ORDER BY name LIMIT 20");
+
+    if (empty($attributes)) {
+        return 'The shop has no product attributes yet, so no variant set can be proposed: they are made under Product Attributes first';
+    }
+
+    $parts = array();
+
+    foreach ($attributes as $attribute) {
+        $options = array();
+
+        foreach ((array) db_items("SELECT id, label FROM product_attribute_options WHERE product_attribute_id = '" . (int) $attribute['id'] . "' ORDER BY sort_order, id LIMIT 40") as $option) {
+            $options[] = $option['label'] . ' ' . (int) $option['id'];
+        }
+
+        $name = ((string) $attribute['label'] !== '') ? $attribute['label'] : $attribute['name'];
+        $parts[] = $name . ' (attribute_id ' . (int) $attribute['id'] . '; option_id: ' . implode(', ', $options) . ')';
+    }
+
+    return 'The shop\'s attributes: ' . implode('; ', $parts);
 }
 
 /**
@@ -3233,13 +3276,13 @@ function ws_ai_start($row)
             return array('ok' => false, 'error' => lang('The note could not be found.'), 'state' => null);
         }
 
-        $parts[] = 'The note "' . (string) $note['title'] . '", as written (formulas shown with their values):';
-        $parts[] = ws_ai_text($asker, (string) $note['body'], null, 12000);
+        $parts[] = 'The note, as written (formulas shown with their values):';
+        $parts[] = pg_ai_data_block('note', 'Title: ' . (string) $note['title'] . "\n\n" . ws_ai_text($asker, (string) $note['body'], null, 12000));
         $parts[] = '';
         $request_text = ws_ai_text($asker, (string) $row['note_text'], null, 2000);
 
         $parts[] = 'The line of the note that asks you:';
-        $parts[] = $request_text;
+        $parts[] = pg_ai_data_block('request', $request_text);
     } elseif ((int) ($row['task_id'] ?? 0) > 0) {
         // A run on a task (delegation.php): the task is the context, with its
         // channel when it has one the assistant may be asked in.
@@ -3262,28 +3305,30 @@ function ws_ai_start($row)
         $parts[] = $context['delegated']
             ? 'The task, handed to you. The people on it stay responsible for it:'
             : 'The task. A note on it asks you; it is not handed to you:';
-        $parts[] = (string) json_encode($present, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $parts[] = pg_ai_data_block('task', (string) json_encode($present, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
         $parts[] = '';
 
         // The channel's words go along only to somebody who reads the channel:
         // a person on a task of a private channel may not be in it.
         if ($channel && ws_can_read_channel($asker, $channel)) {
-            $parts[] = ws_ai_channel_context($asker, $channel, ($tries > 0) ? 10 : 20, ($tries > 0) ? 200 : 300, ($tries > 0) ? 800 : 2000);
+            $parts[] = pg_ai_data_block('channel', ws_ai_channel_context($asker, $channel, ($tries > 0) ? 10 : 20, ($tries > 0) ? 200 : 300, ($tries > 0) ? 800 : 2000));
             $parts[] = '';
         }
 
         $parts[] = 'People in the workspace:';
-        $parts[] = ws_ai_team_text();
+        $parts[] = pg_ai_data_block('people', ws_ai_team_text());
         $parts[] = '';
 
         if (!empty($context['earlier'])) {
             $parts[] = 'What the assistants were asked on this task before, and what they answered:';
+            $earlier = array();
 
             foreach ($context['earlier'] as $item) {
-                $parts[] = '- ' . $item['asked_by'] . ' asked ' . $item['agent'] . ': ' . (($item['instruction'] !== '') ? mb_substr($item['instruction'], 0, 600) : '(the task itself)')
+                $earlier[] = '- ' . $item['asked_by'] . ' asked ' . $item['agent'] . ': ' . (($item['instruction'] !== '') ? mb_substr($item['instruction'], 0, 600) : '(the task itself)')
                     . (($item['answer'] !== '') ? "\n  Answer: " . mb_substr($item['answer'], 0, 1200) : "\n  Not done: " . $item['error']);
             }
 
+            $parts[] = pg_ai_data_block('earlier answers', implode("\n", $earlier));
             $parts[] = 'Carry the work on from there.';
             $parts[] = '';
         }
@@ -3291,7 +3336,7 @@ function ws_ai_start($row)
         $request_text = ws_ai_text($asker, (string) $row['note_text'], null, 2000);
 
         $parts[] = 'The instruction of ' . ws_person_name($asker['id']) . ':';
-        $parts[] = ($request_text !== '') ? $request_text : '(none: work on the task as its title, description and notes say)';
+        $parts[] = ($request_text !== '') ? pg_ai_data_block('request', $request_text) : '(none: work on the task as its title, description and notes say)';
 
         if ($request_text === '') {
             $request_text = (string) $task['title'] . ' ' . (string) $task['description'];
@@ -3317,7 +3362,7 @@ function ws_ai_start($row)
         // reads a long prompt slowly, and a call that ran out of time is
         // tried again with less.
         $tries = (int) ($row['ai_attempts'] ?? 0);
-        $parts[] = ws_ai_channel_context($asker, $channel, ($tries > 0) ? 15 : 30, ($tries > 0) ? 250 : 400, ($tries > 1) ? 1000 : (($tries > 0) ? 2000 : 3500));
+        $parts[] = pg_ai_data_block('channel', ws_ai_channel_context($asker, $channel, ($tries > 0) ? 15 : 30, ($tries > 0) ? 250 : 400, ($tries > 1) ? 1000 : (($tries > 0) ? 2000 : 3500)));
         $parts[] = '';
 
         // A discussion (threads.php) talks over one message of a channel:
@@ -3327,13 +3372,13 @@ function ws_ai_start($row)
         $parent = $thread ? ws_thread_parent_channel($channel) : null;
 
         if ($about && $parent && ((int) $about['deleted_at'] === 0)) {
-            $parts[] = 'This is a discussion about message ' . (int) $about['id'] . ' of the channel #' . $parent['name'] . ', by ' . ws_ai_author($about) . ': '
-                . ws_ai_text($asker, (string) $about['body'], null, 2000);
+            $parts[] = 'This is a discussion about message ' . (int) $about['id'] . ' of the channel #' . $parent['name'] . ':';
+            $parts[] = pg_ai_data_block('message', ws_ai_author($about) . ': ' . ws_ai_text($asker, (string) $about['body'], null, 2000));
             $parts[] = 'Decisions marked and tasks opened here go into #' . $parent['name'] . ' as well.';
             $parts[] = '';
         }
         $parts[] = 'People in the workspace:';
-        $parts[] = ws_ai_team_text();
+        $parts[] = pg_ai_data_block('people', ws_ai_team_text());
         $parts[] = '';
 
         // Written as a reply (to one of the assistant's answers, say): the
@@ -3341,7 +3386,8 @@ function ws_ai_start($row)
         $parent = ((int) $message['parent_id'] > 0) ? ws_message($message['parent_id']) : null;
 
         if ($parent && ((int) $parent['deleted_at'] === 0)) {
-            $parts[] = 'The request answers message ' . (int) $parent['id'] . ' by ' . ws_ai_author($parent) . ': ' . ws_ai_text($asker, (string) $parent['body'], null, 2000);
+            $parts[] = 'The request answers message ' . (int) $parent['id'] . ':';
+            $parts[] = pg_ai_data_block('message', ws_ai_author($parent) . ': ' . ws_ai_text($asker, (string) $parent['body'], null, 2000));
             $parts[] = 'Carry the conversation on from there.';
             $parts[] = '';
         }
@@ -3349,7 +3395,7 @@ function ws_ai_start($row)
         $request_text = ws_ai_text($asker, (string) $message['body'], null, 4000);
 
         $parts[] = 'The request (message ' . (int) $message['id'] . '):';
-        $parts[] = $request_text;
+        $parts[] = pg_ai_data_block('request', $request_text);
     }
 
     $parts[] = '';
@@ -3486,19 +3532,20 @@ function ws_ai_tools($row)
     if (!$note) {
         $tools[] = $tool('propose_change', 'Propose a new value for one field of a record, only when the request asks to change, add or delete records. Call it once per field; calls for the same record make one change. The person who asked applies it with one click.', array(
             'type'   => array('type' => 'string', 'description' => 'The kind of record, from the list in the instructions.'),
-            'action' => array('type' => 'string', 'enum' => array('update', 'create', 'delete', 'add', 'remove')),
+            'action' => array('type' => 'string', 'enum' => array('update', 'create', 'delete', 'add', 'remove', 'invoice')),
             'id'     => array('type' => 'integer', 'description' => 'The record id, as read; 0 for create.'),
-            'field'  => array('type' => 'string', 'description' => 'The field to set; empty for delete; product_ids for add and remove.'),
-            'value'  => array('type' => 'string', 'description' => 'The new value as text; a list as comma-separated items; a sales quote\'s lines as a JSON list of line objects.'),
+            'field'  => array('type' => 'string', 'description' => 'The field to set; empty for delete and invoice; product_ids for add and remove.'),
+            'value'  => array('type' => 'string', 'description' => 'The new value as text; a list as comma-separated items; a sales quote\'s lines, or a variant set\'s variants and price_rules, as a JSON list of objects.'),
             'reason' => array('type' => 'string', 'description' => 'One line on why.'),
         ), array('type', 'action'));
     }
 
     if (!$note && !$task) {
         if (function_exists('ws_bulk_ready') && ws_bulk_ready()) {
-            $tools[] = $tool('propose_bulk_change', 'Propose one change for many records at once (every product, the products of a group, the pages whose meta description is empty...). The person who asked sees how many records it reaches and applies it.', array(
+            $tools[] = $tool('propose_bulk_change', 'Propose one change for many records at once (every product, the products of a group, the pages whose meta description is empty...), or many new products at once (action create with rows). The person who asked sees how many records it reaches and applies it.', array(
                 'type'        => array('type' => 'string', 'enum' => ws_bulk_types()),
-                'action'      => array('type' => 'string', 'enum' => array('update', 'delete')),
+                'action'      => array('type' => 'string', 'enum' => array('update', 'delete', 'create')),
+                'rows'        => array('type' => 'string', 'description' => 'create (type product): a JSON list of objects, one per new product, of the fields a new product takes (name, short_description, price in minor units...); at most ' . WS_BULK_CREATE_MAX . '.'),
                 'scope'       => array('type' => 'string', 'enum' => array('all', 'group', 'search', 'ids')),
                 'group_id'    => array('type' => 'integer', 'description' => 'For scope group: a product group id.'),
                 'search'      => array('type' => 'string', 'description' => 'For scope search: a word of the name.'),
@@ -4272,7 +4319,7 @@ function ws_ai_settings_card($self_url, $viewer)
 
     foreach (ws_ai_required_scopes() as $scope) {
         $has = $app && in_array($scope, $app['scopes'], true);
-        $scope_rows .= '<li><i class="bi ' . ($has ? 'bi-check-circle text-success' : 'bi-x-circle text-danger') . ' me-1" aria-hidden="true"></i><code>' . h($scope) . '</code></li>';
+        $scope_rows .= '<li><i class="bi ' . ($has ? 'bi-check-circle fg-success' : 'bi-x-circle fg-danger') . ' me-1" aria-hidden="true"></i><code>' . h($scope) . '</code></li>';
     }
 
     $readable = array();
@@ -4284,11 +4331,11 @@ function ws_ai_settings_card($self_url, $viewer)
     }
 
     if (empty($missing)) {
-        $state = '<span class="badge text-bg-success">' . h(lang('Ready')) . '</span>';
+        $state = '<span class="badge theme-success">' . h(lang('Ready')) . '</span>';
     } elseif (!$config['enabled']) {
-        $state = '<span class="badge text-bg-secondary">' . h(lang('Off')) . '</span>';
+        $state = '<span class="badge theme-secondary">' . h(lang('Off')) . '</span>';
     } else {
-        $state = '<span class="badge text-bg-warning">' . h(lang('Not ready')) . '</span>';
+        $state = '<span class="badge theme-warning">' . h(lang('Not ready')) . '</span>';
     }
 
     $status_list = '';
@@ -4319,26 +4366,26 @@ function ws_ai_settings_card($self_url, $viewer)
                 <i class="bi ' . h($line['icon']) . '" aria-hidden="true"></i>
                 <div class="ws-grow">
                     ' . $where . '
-                    <span class="text-body-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>
+                    <span class="fg-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>
                     <div class="small">' . h($line['label']) . '</div>
                 </div>
             </li>';
     }
 
     if ($recent === '') {
-        $recent = '<li class="text-body-secondary small">' . h(lang('Nobody has asked Pinegrap AI yet.')) . '</li>';
+        $recent = '<li class="fg-secondary small">' . h(lang('Nobody has asked Pinegrap AI yet.')) . '</li>';
     }
 
     $steps = array(
         array(
             lang('An application for Pinegrap AI'),
             lang('Press Create Pinegrap AI\'s key above: it makes the application Pinegrap AI writes through, without a secret, so it cannot sign in anywhere. To use another application, make it in Application Access, apart from Claude\'s, and choose it under Use another application.'),
-            '<a class="btn btn-sm btn-outline-secondary" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
+            '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
         ),
         array(
             lang('The licence key'),
             lang('Enter the subscription key of your Pinegrap Premium licence under Settings › General. It is checked against the site\'s address: a key that does not match or has expired does not work.'),
-            '<a class="btn btn-sm btn-outline-secondary" href="' . h($base . pg_settings_link('general', 'pgset-software')) . '"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Settings › General')) . '</a>',
+            '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($base . pg_settings_link('general', 'pgset-software')) . '"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Settings › General')) . '</a>',
         ),
         array(
             lang('Try it'),
@@ -4353,7 +4400,7 @@ function ws_ai_settings_card($self_url, $viewer)
         $guide .= '
             <li class="ws-claude-step">
                 <div class="fw-semibold">' . h($step[0]) . '</div>
-                <div class="small text-body-secondary mb-2">' . h($step[1]) . '</div>
+                <div class="small fg-secondary mb-3">' . h($step[1]) . '</div>
                 ' . $step[2] . '
             </li>';
     }
@@ -4367,10 +4414,10 @@ function ws_ai_settings_card($self_url, $viewer)
         require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
 
         $key_block = '
-                        <form method="post" action="' . h($self_url) . '#ws-ai" class="ws-claude-key mb-4">
+                        <form method="post" action="' . h($self_url) . '#ws-ai" class="ws-claude-key mb-7">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="ai_key_create">
-                            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')) . '</button>
+                            <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')) . '</button>
                             <div class="form-text">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It has no secret and cannot sign in anywhere: Pinegrap AI runs inside this site.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>
                         </form>';
     } elseif ($admin) {
@@ -4381,67 +4428,67 @@ function ws_ai_settings_card($self_url, $viewer)
         $doors = (array) db_item("SELECT kind, api_secret_hash, api_secret_prev_hash, api_secret_prev_expires FROM api_apps WHERE id = '" . (int) $app['id'] . "'");
 
         $key_block = '
-                        <div class="ws-claude-key mb-4">
-                            <div class="small fw-semibold mb-1">' . h(lang('The application Pinegrap AI writes through')) . ': ' . h($app['name']) . ' <span class="text-body-secondary">#' . (int) $app['id'] . '</span></div>
-                            <div class="small text-body-secondary">' . h(api_app_can_sign_in($doors, time())
+                        <div class="ws-claude-key mb-7">
+                            <div class="small fw-semibold mb-1">' . h(lang('The application Pinegrap AI writes through')) . ': ' . h($app['name']) . ' <span class="fg-secondary">#' . (int) $app['id'] . '</span></div>
+                            <div class="small fg-secondary">' . h(api_app_can_sign_in($doors, time())
                                 ? lang('Pinegrap AI uses only this application\'s name and permissions; its key and secret are not needed here.')
                                 : lang('It cannot sign in anywhere and needs no secret: Pinegrap AI runs inside this site.')) . '</div>
                         </div>';
     }
 
     return '
-        <div class="card mt-4" id="ws-ai">
-            <div class="card-header d-flex align-items-center gap-2">
+        <div class="card mt-7" id="ws-ai">
+            <div class="card-header d-flex align-items-center gap-3">
                 <h2 class="h6 mb-0 ws-grow"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . h(lang('Pinegrap AI in the channels')) . '</h2>
                 ' . $state . '
             </div>
             <div class="card-body">
-                <div class="row g-4">
-                    <div class="col-lg-7">
+                <div class="row g-7">
+                    <div class="lg:col-7">
                         ' . $key_block . '
                         <form method="post" action="' . h($self_url) . '#ws-ai">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="ai">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" name="ai_enabled" value="1" id="ws_ai_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '>
-                                <label class="form-check-label" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
+                            <div class="form-field mb-5">
+                                <div class="switch"><input class="" type="checkbox" name="ai_enabled" value="1" id="ws_ai_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
+                                <label class="" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
                                 <div class="form-text">' . h(lang('The model at ai.pinegrap.com answers, with the site\'s subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.')) . '</div>
                             </div>
-                            <details class="mb-3">
+                            <details class="mb-5">
                                 <summary class="small fw-semibold">' . h(lang('Use another application')) . '</summary>
-                                <div class="mt-2">
+                                <div class="mt-3">
                                     <label class="form-label" for="ws_ai_app_id">' . h(lang('The application Pinegrap AI writes through')) . '</label>
-                                    <select class="form-select form-select-sm" name="ai_app_id" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
-                                    <ul class="list-unstyled small mt-2 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
+                                    <select class="form-control form-control-sm" name="ai_app_id" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
+                                    <ul class="list-unstyled small mt-3 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
                                     <div class="form-text">' . h(empty($readable)
                                         ? lang('It reads no records: Pinegrap AI sees the channels and the tasks only.')
                                         : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable))) . '.') . ' ' . h(lang('It reads with the rights of the person who asked, never more.')) . '</div>
                                 </div>
                             </details>
-                            <div class="mb-3">
+                            <div class="mb-5">
                                 <div class="form-label mb-1">' . h(lang('Licence')) . '</div>
                                 <div class="form-text mt-0">' . h(lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')) . ' <a href="' . h($base . pg_settings_link('general', 'pgset-software')) . '">' . h(lang('Settings › General')) . '</a></div>
                             </div>
-                            ' . ($admin ? '<button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
+                            ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
                         </form>
-                        <details class="mt-4 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
+                        <details class="mt-7 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
                             <summary class="fw-semibold">' . h(lang('How to connect it')) . '</summary>
-                            <ol class="ws-claude-steps mt-3">' . $guide . '</ol>
+                            <ol class="ws-claude-steps mt-5">' . $guide . '</ol>
                         </details>
                     </div>
-                    <div class="col-lg-5">
+                    <div class="lg:col-5">
                         <div class="ws-claude-status">
                             <div class="small fw-semibold mb-1">' . h(lang('Licence')) . '</div>
-                            <div class="mb-3"><span class="badge text-bg-' . h($license['tone']) . ' text-wrap text-start">' . h($license['label']) . '</span></div>
-                            ' . (($config['model'] !== '') ? '<div class="small text-body-secondary mb-3">' . h(lang('Model')) . ': <code>' . h($config['model']) . '</code></div>' : '') . '
-                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-3">' . $status_list . '</ul>' : '') . '
-                            ' . (($config['error'] !== '') ? '<div class="alert alert-danger small py-2">' . h($config['error']) . '</div>' : '') . '
-                            ' . (($config['hold_until'] > time()) ? '<div class="alert alert-warning small py-2">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
+                            <div class="mb-5"><span class="badge theme-' . h($license['tone']) . ' text-wrap text-start">' . h($license['label']) . '</span></div>
+                            ' . (($config['model'] !== '') ? '<div class="small fg-secondary mb-5">' . h(lang('Model')) . ': <code>' . h($config['model']) . '</code></div>' : '') . '
+                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $status_list . '</ul>' : '') . '
+                            ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '') . '
+                            ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
                             ' . ($admin && $config['license_set'] ? '
-                            <form method="post" action="' . h($self_url) . '#ws-ai" class="mb-3">
+                            <form method="post" action="' . h($self_url) . '#ws-ai" class="mb-5">
                                 ' . get_token_field() . '
                                 <input type="hidden" name="ws_action" value="ai_test">
-                                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')) . '</button>
+                                <button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')) . '</button>
                                 <div class="form-text">' . h(lang('Checks the licence and asks the model for a one-word answer; it may take up to a minute.')) . '</div>
                             </form>' : '') . '
                             <div class="small fw-semibold mb-1">' . h(lang('The latest requests')) . '</div>

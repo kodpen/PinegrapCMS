@@ -38,7 +38,8 @@ function test_widget_conditions_vectors()
 }
 
 // The vectors leave out a single separator with three digits after it:
-// the site language decides those, and the editor's twin cannot know it.
+// the site language decides those (the editor's twin is checked on them
+// with each decimal point in widget_condition_eval_test.php).
 function test_widget_conditions_vectors_language_free()
 {
 	$ops = pg_sw_cond_ops();
@@ -250,9 +251,9 @@ function test_widget_conditions_spec()
 // Tokens a renderer looks for, builds as a block or rewrites per node.
 function test_widget_conditions_denied_tokens()
 {
-	foreach (array('__variant_picker', '__filter_chips', '__filters_button', '__filters_offcanvas', '__clear_filters_button',
+	foreach (array('__variant_picker', '__filters_button', '__filters_offcanvas', '__clear_filters_button',
 		'__edit_url', '__comment_edit_url', '__empty_message', '__page_link', '__page_link_0', '__link_label', '__link_label_3',
-		'__item_form_data_html', '__breadcrumb_html', '__price_block_html', '__comment_message_html', '__EDIT_URL') as $token) {
+		'__item_form_data_html', '__group_tree_html', '__price_block_html', '__comment_message_html', '__EDIT_URL') as $token) {
 		pg_assert_false(pg_sw_cond_token_allowed($token), $token);
 		pg_assert_false(pg_sw_cond_spec(array('_bindings' => array('show_if' => $token))), 'spec ' . $token);
 	}
@@ -303,11 +304,8 @@ function test_widget_conditions_placement_checks_skip_conditions()
 	$cart    = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
 	pg_assert_contains("strpos(pg_sw_cond_tree_json(\$tree_decoded), 'not_logged_in')", $widgets);
 	pg_assert_contains("strpos(pg_sw_cond_tree_json(\$tree_decoded), '__not_found_message')", $widgets);
-	// The order view's blocks ask pg_sw_placed(), which reads the tree
+	// The order view's cards ask pg_sw_placed(), which reads the tree
 	// without its conditions (widget_default_parts_test.php).
-	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__legal_preinfo_url', '__legal_contract_url'))", $widgets);
-	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__withdrawal_deadline'))", $widgets);
-	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__return_form', '__returns'))", $widgets);
 	pg_assert_contains('$json = pg_sw_cond_tree_json($tree);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php'));
 	pg_assert_contains("strpos(pg_sw_cond_tree_json((string)\$tree_json), '\"has_items\"')", $cart);
 	foreach (array($widgets, $cart) as $i => $source) {

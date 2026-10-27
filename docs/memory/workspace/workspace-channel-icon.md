@@ -29,5 +29,5 @@ description: A Workspace channel's own icon (ws_channels.icon, 11.0.81): the cur
 ## What does the API do?
 - `workspace.channels.create` / `.update` take `color` (enum `ws_palette_hexes()`, nullable) and `icon` (enum of the list, nullable; empty brings back the kind icon); the dry run names them. `WorkspaceChannel` has `color` (hex or null), `icon` (drawn class), `icon_chosen`. MCP tools follow the routes. No channel webhook exists; none was added.
 
-## What is left?
-- Templates carrying an icon and colour (`ws_template_apply()`), groups with icons: docs/memory/plans/workspace-channel-icons.md.
+## What about templates and groups?
+- Templates: workspace-channel-icon-templates.md. Group icons: not until asked.

@@ -75,11 +75,11 @@ if ($user['id'] == '') {
 
     exit;
 
-// The password was right, but the account asks for a second step that
-// ShipWorks has no way to give. Not counted as a failure (it was not a
+// The password was right, but the account asks for a second step (a code
+// or a passkey) that ShipWorks has no way to give. Not counted as a failure (it was not a
 // guess); the text is plain English like the other errors here, because it
 // is ShipWorks that shows it.
-} else if (pg_mfa_enabled((int) $user['id'])) {
+} else if (pg_mfa_has_factor((int) $user['id'])) {
     pg_login_throttle_pass($shipworks_username);
 
     print
@@ -401,7 +401,7 @@ switch ($_REQUEST['action']) {
 
                 // If the status of this order is complete, then update the status to be exported.
                 if ($order['status'] == 'complete') {
-                    db("UPDATE orders SET status = 'exported' WHERE id = '" . $order['id'] . "'");
+                    db("UPDATE orders SET status = 'exported', " . pg_order_touch_sql() . " WHERE id = '" . $order['id'] . "'");
                 }
             }
         }

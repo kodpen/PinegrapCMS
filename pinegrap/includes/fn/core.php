@@ -294,6 +294,100 @@ function pg_db_run($query)
     return $result;
 }
 
+/**
+ * Fills each ? of $sql with the next value of $params, in order (keys are
+ * ignored): a string is quoted and passed through $escape, an int or a
+ * finite float is written bare, a bool as 1 or 0, null as NULL. Every ? in
+ * the template is a placeholder, also one inside a quoted literal; a ? inside
+ * a bound value is never expanded again. This is text building, not a
+ * prepared statement.
+ *
+ * Returns null when the number of placeholders and values differ, or when a
+ * value is an array, an object, INF or NAN.
+ *
+ * @param string $sql
+ * @param array $params
+ * @param callable $escape escapes a string for a single-quoted SQL literal
+ * @return string|null
+ */
+function pg_db_bind($sql, array $params, $escape)
+{
+    $pieces = explode('?', $sql);
+    $params = array_values($params);
+
+    if (count($pieces) - 1 !== count($params)) {
+        return null;
+    }
+
+    $bound = $pieces[0];
+
+    foreach ($params as $index => $value) {
+        if ($value === null) {
+            $literal = 'NULL';
+        } elseif (is_bool($value)) {
+            $literal = $value ? '1' : '0';
+        } elseif (is_int($value)) {
+            $literal = (string) $value;
+        } elseif (is_float($value)) {
+            if (!is_finite($value)) {
+                return null;
+            }
+            // var_export() ignores the locale, which a string cast follows
+            // before PHP 8 (a comma as the decimal point).
+            $literal = var_export($value, true);
+        } elseif (is_string($value)) {
+            $literal = "'" . call_user_func($escape, $value) . "'";
+        } else {
+            return null;
+        }
+
+        $bound .= $literal . $pieces[$index + 1];
+    }
+
+    return $bound;
+}
+
+/**
+ * Runs a query whose values are given as ? placeholders:
+ * db_q("SELECT id FROM page WHERE name = ? AND folder = ?", array($name, $folder_id)).
+ * See pg_db_bind() for how each value is written.
+ *
+ * A drop-in for a raw mysqli_query(): it returns the mysqli result (a result
+ * set, or true for a statement) and false when the query fails, when there is
+ * no connection, or when the values do not fit the template (logged). It does
+ * not end the request, so the caller keeps its own check
+ * (`or output_error(...)`, `if (!$result)`). It is counted with the helpers in
+ * pg_db_stats().
+ *
+ * @param string $sql
+ * @param array $params
+ * @return mysqli_result|bool
+ */
+function db_q($sql, array $params = array())
+{
+    $query = pg_db_bind($sql, $params, 'escape');
+
+    if ($query === null) {
+        error_log('Pinegrap: db_q() values do not fit the placeholders of: ' . $sql);
+        return false;
+    }
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $counters = &pg_db_counters();
+
+    $started = microtime(true);
+
+    $result = @mysqli_query(db::$con, $query);
+
+    $counters['count']++;
+    $counters['ms'] += (microtime(true) - $started) * 1000;
+
+    return $result;
+}
+
 // Use this to run any type of general db query (e.g. select, insert, update, etc.).
 function db($query)
 {
@@ -2744,7 +2838,9 @@ function get_time_picker_format()
 // The <script> tag of assets/js/pg_fields.js, which draws the panel's
 // data-pg-chips, data-pg-combobox, data-pg-date, data-pg-datetime and
 // data-pg-time fields; empty after the first call of a request, so every
-// part of a screen can ask for it.
+// part of a screen can ask for it. The tag carries the translated words the
+// widgets show: a chip's remove button, a combobox's search box, and the
+// panel language a calendar names its months and days in.
 function pg_fields_script()
 {
     static $printed = false;
@@ -2755,7 +2851,7 @@ function pg_fields_script()
 
     $printed = true;
 
-    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '"></script>';
+    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '" data-pg-remove-label="' . h(lang('Remove')) . '" data-pg-search-label="' . h(lang('Search')) . '" data-pg-no-results-label="' . h(lang('No results found')) . '" data-pg-locale-label="' . h(lang(array('info' => ''))) . '"></script>';
 }
 
 
@@ -3664,20 +3760,20 @@ function who_is_online($check_time = 50)
             $user_id = (int) $_SESSION['sessionuserid'];
             $query = "UPDATE user
                       SET user_online_timestamp = UNIX_TIMESTAMP()
-                      WHERE user_id = '" . $user_id . "'
-                        AND (UNIX_TIMESTAMP() - user_online_timestamp) > " . $ct;
-            @mysqli_query(db::$con, $query);
+                      WHERE user_id = ?
+                        AND (UNIX_TIMESTAMP() - user_online_timestamp) > ?";
+            db_q($query, array((string) $user_id, (int) $ct));
             return;
         }
 
         // Fallback to username if user_id not stored in session
         if (isset($_SESSION['sessionusername']) && $_SESSION['sessionusername'] !== '') {
-            $username = escape($_SESSION['sessionusername']);
+            $username = (string) $_SESSION['sessionusername'];
             $query = "SELECT user_id, user_online_timestamp
                       FROM user
-                      WHERE user_username = '" . $username . "'
+                      WHERE user_username = ?
                       LIMIT 1";
-            $result = mysqli_query(db::$con, $query);
+            $result = db_q($query, array($username));
             if ($result && mysqli_num_rows($result) > 0) {
                 $row = mysqli_fetch_assoc($result);
                 $user_id = (int) $row['user_id'];
@@ -3685,8 +3781,8 @@ function who_is_online($check_time = 50)
                 if ((time() - $user_online_timestamp) > $ct) {
                     $update = "UPDATE user
                                SET user_online_timestamp = UNIX_TIMESTAMP()
-                               WHERE user_id = '" . $user_id . "'";
-                    @mysqli_query(db::$con, $update);
+                               WHERE user_id = ?";
+                    db_q($update, array((string) $user_id));
                 }
             }
         }
@@ -3707,8 +3803,8 @@ function who_is_online($check_time = 50)
  *   will be used as the user.
  * - Numeric identifier values (product_id, order_id, form_id, comment_id) are
  *   normalized to integers when provided; empty strings are left as empty.
- * - The function uses an escape() helper to sanitize values and inserts via
- *   mysqli_query against db::$con. The notification row sets 'readed' = 0 and
+ * - The function binds the values through db_q() placeholders and inserts
+ *   against db::$con. The notification row sets 'readed' = 0 and
  *   'timestamp' = UNIX_TIMESTAMP().
  * - Returns the inserted row ID on success or boolean false on failure.
  *
@@ -3805,7 +3901,7 @@ function create_notification($properties)
     $form_id = ($form_id === '' ? '' : (int) $form_id);
     $comment_id = ($comment_id === '' ? '' : (int) $comment_id);
 
-    // Prepare query (use existing escape() helper)
+    // Prepare query (values bound through db_q())
     $query = "INSERT INTO notifications (
                 action,
                 type,
@@ -3820,21 +3916,21 @@ function create_notification($properties)
                 readed,
                 timestamp
             ) VALUES (
-                '" . escape($action) . "',
-                '" . escape($type) . "',
-                '" . escape($title) . "',
-                '" . escape($product_id) . "',
-                '" . escape($form_id) . "',
-                '" . escape($order_id) . "',
-                '" . escape($comment_id) . "',
-                '" . escape($order_total) . "',
-                '" . escape($user) . "',
-                '" . escape($send_to) . "',
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
                 '0',
                 UNIX_TIMESTAMP()
             )";
 
-    $result = mysqli_query(db::$con, $query);
+    $result = db_q($query, array((string) $action, (string) $type, (string) $title, (string) $product_id, (string) $form_id, (string) $order_id, (string) $comment_id, (string) $order_total, (string) $user, (string) $send_to));
 
     if ($result === false) {
         return false;
@@ -4149,11 +4245,82 @@ function pg_lang_source($code, $local = null)
     return is_file($local . '/' . $code . '.json') ? $local . '/' . $code . '.json' : null;
 }
 
+// Every file language $source (a folder of shards or a single file) is read
+// from, file name => array(mtime, size), for pg_lang_cache_signature().
+function pg_lang_source_stats($source)
+{
+    $files = is_dir($source) ? glob(rtrim($source, '/\\') . '/*.json') : array($source);
+    $stats = array();
+
+    foreach ((is_array($files) ? $files : array()) as $file) {
+        $stat = @stat($file);
+
+        if (is_array($stat)) {
+            $stats[basename($file)] = array($stat['mtime'], $stat['size']);
+        }
+    }
+
+    return $stats;
+}
+
+// The map in compiled cache file $path when it was built from files with
+// $signature; null when there is no such file, it does not parse, or the
+// language files changed since it was written.
+function pg_lang_cache_read($path, $signature)
+{
+    if (!is_file($path)) {
+        return null;
+    }
+
+    try {
+        $data = @include $path;
+    } catch (Throwable $e) {
+        return null;
+    }
+
+    if (!is_array($data) || !isset($data['signature'], $data['map']) || !is_array($data['map'])
+        || ((string) $data['signature'] !== (string) $signature)) {
+        return null;
+    }
+
+    return $data['map'];
+}
+
+// Writes the compiled cache of $map to $path through a temporary file and
+// rename(), so a request never includes a half-written file, and drops the
+// old copy from opcache (which may not check file times at all). false when
+// the folder is missing or not writable: lang() then decodes the JSON each
+// request, as it did before the cache.
+function pg_lang_cache_write($path, $signature, array $map)
+{
+    $dir = dirname($path);
+
+    if (!is_dir($dir) || !is_writable($dir)) {
+        return false;
+    }
+
+    if (!pg_lang_write_file($path, pg_lang_cache_text($signature, $map))) {
+        return false;
+    }
+
+    if (function_exists('opcache_invalidate')) {
+        @opcache_invalidate($path, true);
+    }
+
+    return true;
+}
+
 // The wording of language $code as lang() reads it, key => text, from where
 // pg_lang_source() finds it. Every reader of a language file goes through
 // here, so none of them can read a stale single file beside the folder.
 // array() when the language has no file, or its single file does not decode.
-function pg_lang_map($code, $local = null)
+//
+// Decoding the Turkish shards (about 2.8 MB of JSON) costs every request
+// tens of milliseconds, so the map is also compiled into a PHP array in
+// $temp (by default data/temp) and read from there while its signature
+// matches the language files' names, times and sizes. A caller that names
+// its own $local gets the cache only when it names a $temp as well.
+function pg_lang_map($code, $local = null, $temp = null)
 {
     $source = pg_lang_source($code, $local);
 
@@ -4161,9 +4328,29 @@ function pg_lang_map($code, $local = null)
         return array();
     }
 
+    $cache = (($local === null) || ($temp !== null)) ? pg_lang_cache_path($code, $temp) : null;
+    $signature = '';
+
+    if ($cache !== null) {
+        $signature = pg_lang_cache_signature(pg_lang_source_stats($source));
+        $map = pg_lang_cache_read($cache, $signature);
+
+        if ($map !== null) {
+            return $map;
+        }
+    }
+
     $map = is_dir($source) ? pg_lang_read_folder($source) : @json_decode((string) @file_get_contents($source), true);
 
-    return is_array($map) ? $map : array();
+    if (!is_array($map)) {
+        return array();
+    }
+
+    if ($cache !== null) {
+        pg_lang_cache_write($cache, $signature, $map);
+    }
+
+    return $map;
 }
 
 // Software localization / translation helper.

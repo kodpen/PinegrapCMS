@@ -1,6 +1,6 @@
 ---
 name: workspace-followups
-description: Workspace follow-ups (followups.php, PR #1790): ws_followup_task_open() opens a tagged task on a channel or for a person, reminded on its day; "Remind me" on the customer card; callers to come
+description: Workspace follow-ups (followups.php, #1790): ws_followup_task_open() opens a tagged, reminded task; "Remind me" on the customer card; quote expiry and overdue receivable jobs
 ---
 
 ## What is a follow-up?
@@ -19,8 +19,9 @@ description: Workspace follow-ups (followups.php, PR #1790): ws_followup_task_op
 - An empty title is "Follow up: <channel name>": whoever sees the task reads the channel already. The customer's name is never written in: a reader without the right sees the customer only by kind and number.
 - The answer is the task's number and due label; the card says "Reminder set" with Open task (the drawer).
 
-## Who else will call it?
-- Sales quote expiry (plans/workspace-quotes.md slice 6) and ERP overdue receivables (plans/workspace-phase3-leftovers.md item 4): act as the quote's `created_by` or the chosen person, tag the record, `$once` true, choose `remind_minutes` or null.
+## Who else calls it?
+- Sales quote expiry (#1826, `erp_quote_expiry_followups()`, off unless `ERP_QUOTE_EXPIRY_FOLLOWUP`): as the quote's `created_by`, on the account's customer channel, `$once` true (erp/erp-alerts.md).
+- Overdue receivables (#1860, `erp_overdue_followups()`, off unless `ERP_OVERDUE_FOLLOWUP`): as `ERP_OVERDUE_FOLLOWUP_USER` or the invoice's `created_by`, on the account's customer channel, `$once` true (erp/erp-overdue-reminders.md).
 
 ## Is there an API route?
 - No new one: `POST /workspace/tasks` already takes `refs`, `channel_id`, `assignees`, `due_date`, `due_time`, `remind_minutes` (workspace-api-task-reminder.md).

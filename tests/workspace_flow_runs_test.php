@@ -713,7 +713,7 @@ function test_workspace_flow_runs_adopted_task_is_looked_at_at_once()
 {
 	$task = ws_flow_runs_test_source('ws_flow_step_task');
 
-	pg_assert_contains('$adopted ? $now : $now + WS_FLOW_RECHECK', $task);
+	pg_assert_contains('$adopted ? $now : ws_flow_timeout_next_look($now, $timeout_at)', $task);
 
 	$find = ws_flow_runs_test_source('ws_flow_step_task_find');
 
@@ -911,4 +911,55 @@ function test_workspace_flow_runs_each_end_is_its_own_line()
 
 	pg_assert_contains("empty(\$data['separate'])", $notify);
 	pg_assert_true(strpos($notify, "empty(\$data['separate'])") < strpos($notify, 'if ($existing > 0)'), 'the same line is looked for only without it');
+}
+
+// An arrow on always leaves a box however it ended, as a scheduled action's
+// follow-up on always: every box with outcomes has it, a start box and the
+// end do not.
+function test_workspace_flow_runs_always_is_an_outcome_of_every_box()
+{
+	$kinds = ws_flow_kinds();
+
+	pg_assert_same(array('done', 'cancelled', 'timeout', 'always'), ws_flow_arrow_outcomes($kinds['task']));
+	pg_assert_same(array('next'), ws_flow_arrow_outcomes($kinds['manual']));
+	pg_assert_same(array(), ws_flow_arrow_outcomes($kinds['end']));
+
+	pg_assert_true(ws_flow_edge_takes('always', 'cancelled'));
+	pg_assert_true(ws_flow_edge_takes('done', 'done'));
+	pg_assert_false(ws_flow_edge_takes('done', 'cancelled'));
+	pg_assert_false(ws_flow_edge_takes('always', ''), 'a box without an outcome took no arrow');
+
+	$codes = function ($graph) {
+		return array_map(function ($problem) {
+			return $problem['code'] . ':' . $problem['node'];
+		}, ws_flow_graph_check($graph));
+	};
+
+	pg_assert_same(array(), $codes(ws_flow_runs_test_graph(
+		array('start' => 'manual', 'a' => 'task', 'stop' => 'end'),
+		array(array('start', 'a', 'next'), array('a', 'stop', 'always'))
+	)));
+	pg_assert_same(array('bad_outcome:start'), $codes(ws_flow_runs_test_graph(
+		array('start' => 'manual', 'a' => 'task'),
+		array(array('start', 'a', 'always'))
+	)));
+}
+
+// The box after an arrow on always is ready whatever the box before ended
+// on; a failure an arrow on always takes is routed, so the box is done.
+function test_workspace_flow_runs_walk_always()
+{
+	$graph = ws_flow_runs_test_graph(
+		array('start' => 'manual', 'a' => 'task', 'b' => 'task'),
+		array(array('start', 'a', 'next'), array('a', 'b', 'always'))
+	);
+
+	pg_assert_same(array('b'), ws_flow_walk($graph, ws_flow_runs_test_steps(array('start' => 'done:next', 'a' => 'done:done')))['ready']);
+	pg_assert_same(array('b'), ws_flow_walk($graph, ws_flow_runs_test_steps(array('start' => 'done:next', 'a' => 'done:cancelled')))['ready']);
+	pg_assert_same(array('b'), ws_flow_walk($graph, ws_flow_runs_test_steps(array('start' => 'done:next', 'a' => 'done:timeout')))['ready']);
+	pg_assert_same(array('b'), ws_flow_walk($graph, ws_flow_runs_test_steps(array('start' => 'done:next', 'a' => 'failed:')))['skipped'], 'a box that failed blocks what follows');
+
+	pg_assert_true(ws_flow_outcome_routed($graph, 'a', 'cancelled'));
+	pg_assert_true(ws_flow_outcome_routed($graph, 'a', 'timeout'));
+	pg_assert_false(ws_flow_outcome_routed($graph, 'start', 'failed'));
 }

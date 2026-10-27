@@ -1,3 +1,7 @@
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 /* ============================================
    Pinegrap Style Designer — Visual Page Builder
    Bootstrap Studio-like drag & drop interface
@@ -253,7 +257,7 @@
 .sd-tab-color:focus-visible { outline: 1px solid var(--sd-accent, #58a6ff); outline-offset: 1px; }
 .sd-tab-color-dot { display: inline-block; flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: var(--sd-tg, #8b949e); }
 /* Narrow screens: the chip keeps its dot and its count. */
-@media (max-width: 991.98px) {
+@media (max-width: 1023.98px) {
     .sd-tab-group-name { display: none; }
     .sd-tab-group-name:has(> .sd-tab-rename) { display: block; }
     .sd-tab-group .sd-tab-group-count { display: inline-block; }
@@ -278,7 +282,7 @@
    strip next to it is what gives way and scrolls. */
 .sd-toolbar-pages { flex: 0 0 auto; gap: .2rem; padding-right: .35rem; border-right: 1px solid var(--sd-panel-border); }
 .sd-toolbar-actions { flex: 0 0 auto; margin-left: auto; }
-@media (max-width: 991.98px) {
+@media (max-width: 1023.98px) {
     .sd-tabs-add-txt { display: none; }
 }
 /* All pages: the list after the strip, shown while the strip overflows. */
@@ -836,7 +840,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     box-shadow: none;
 }
 /* Visible chevron for the dark theme (Bootstrap's default light SVG disappears on a dark background) */
-.sd-prop-control select.form-select,
+.sd-prop-control select:is(select.form-control),
 .sd-prop-control select,
 .sd-sp-row > select,
 .sd-sp-bp-item > select {
@@ -865,7 +869,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-sp-bp-item > select option { background: var(--sd-panel-bg); color: var(--sd-text); }
 .sd-prop-control textarea { resize:vertical; min-height:60px; font-family:monospace; font-size:.7rem; height: auto; }
 /* Also applies to a select inside an input-group (href file picker etc.) */
-.sd-prop-control .input-group > select.form-select { height: 28px; }
+.sd-prop-control .input-group > select:is(select.form-control) { height: 28px; }
 /* Normalize input-group corner radius to match other panel inputs */
 .sd-prop-control .input-group {
     --bs-border-radius: 3px;
@@ -946,7 +950,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-cp-trigger {
     display: flex; align-items: center; gap: 6px;
     width: 100%; text-align: left;
-    border-radius: var(--bs-border-radius-sm, 0.25rem) !important;
+    border-radius: var(--pg-radius-sm, 0.25rem) !important;
     /* .form-select-sm already provides compact height, chevron, padding via .sd-prop-control rules. */
 }
 .sd-cp-label {
@@ -2288,6 +2292,31 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     margin-right: .35rem;
 }
 .sd-code-url:focus { outline: none; border-color: var(--sd-accent); }
+/* Search in all tabs: a field and the hits by tab, under the strip */
+.sd-code-find { flex-shrink: 0; max-height: 45%; display: flex; flex-direction: column; background: #15171b; border-bottom: 1px solid var(--sd-panel-border); }
+.sd-code-find-row { display: flex; align-items: center; gap: .25rem; padding: .2rem .4rem; color: var(--sd-text-muted); font-size: .66rem; }
+.sd-code-find-input {
+    flex: 1; min-width: 6rem; height: 22px;
+    background: #0f1115; color: var(--sd-text);
+    border: 1px solid rgba(255,255,255,.14); border-radius: 3px;
+    font-size: .7rem; padding: .1rem .4rem;
+}
+.sd-code-find-input:focus { outline: none; border-color: var(--sd-accent); }
+.sd-code-find-opt {
+    background: transparent; border: 1px solid transparent; border-radius: 3px;
+    color: var(--sd-text-muted); font-size: .66rem; line-height: 1; padding: .2rem .3rem; cursor: pointer;
+}
+.sd-code-find-opt:hover { color: var(--sd-text); }
+.sd-code-find-opt.active { color: #6ea8fe; background: rgba(13,110,253,.18); border-color: rgba(13,110,253,.5); }
+.sd-code-find-count { white-space: nowrap; margin: 0 .2rem; }
+.sd-code-find-results { overflow: auto; min-height: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .68rem; }
+.sd-code-find-tab { display: flex; align-items: center; gap: .3rem; padding: .2rem .5rem; color: var(--sd-text); font-family: inherit; font-weight: 600; }
+.sd-code-find-n { margin-left: auto; color: var(--sd-text-muted); font-weight: 400; }
+.sd-code-find-hit { display: flex; gap: .5rem; padding: .1rem .5rem .1rem 1.2rem; color: var(--sd-text-muted); cursor: pointer; white-space: nowrap; }
+.sd-code-find-hit:hover, .sd-code-find-hit.active { background: rgba(255,255,255,.06); color: var(--sd-text); }
+.sd-code-find-ln { min-width: 2.2rem; text-align: right; opacity: .6; }
+.sd-code-find-text { overflow: hidden; text-overflow: ellipsis; white-space: pre; }
+.sd-code-find-text mark { padding: 0; color: inherit; background: rgba(255,193,7,.35); }
 .sd-code-panes { flex: 1; min-height: 0; position: relative; }
 .sd-code-pane { display: none; height: 100%; min-height: 0; }
 .sd-code-pane-active { display: block; }
@@ -2519,22 +2548,22 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     align-items: baseline;
     gap: .5rem;
     padding: .65rem .25rem .4rem;
-    background: var(--bs-modal-bg, var(--bs-body-bg, #fff));
+    background: var(--bs-dialog-bg, var(--pg-bg-body, #fff));
     font-weight: 600;
     font-size: .9rem;
-    color: var(--bs-body-emphasis-color, var(--bs-body-color, #212529));
-    border-bottom: 1px solid var(--bs-border-color-translucent, var(--bs-border-color, #dee2e6));
+    color: var(--pg-fg-emphasis, var(--pg-fg-body, #212529));
+    border-bottom: 1px solid var(--pg-border-color-translucent, var(--pg-border-color, #dee2e6));
     margin-bottom: .5rem;
 }
 .sd-icon-cat-count {
     font-size: .72rem;
     font-weight: 500;
-    color: var(--bs-secondary-color, #6c757d);
+    color: var(--pg-fg-2, #6c757d);
 }
 .sd-icon-empty {
     padding: 3rem 1rem;
     text-align: center;
-    color: var(--bs-secondary-color, #6c757d);
+    color: var(--pg-fg-2, #6c757d);
     font-size: .85rem;
 }
 
@@ -2638,7 +2667,7 @@ body.sd-resizing * { cursor: col-resize !important; }
 /* ── Settings Modal (Bootstrap modal with dark theme) ── */
 .sd-settings-btn { padding: .25rem .45rem; }
 
-.sd-settings-modal-dark .modal-dialog { max-width: 560px; }
+.sd-settings-modal-dark.dialog { --bs-dialog-width: 560px; }
 .sd-settings-modal-dark .sd-modal-content {
     background: #22262b;
     border: 1px solid #14171a;
@@ -2650,7 +2679,7 @@ body.sd-resizing * { cursor: col-resize !important; }
     padding: .6rem 1rem;
     color: var(--sd-text);
 }
-.sd-settings-modal-dark .sd-modal-header .modal-title {
+.sd-settings-modal-dark .sd-modal-header .dialog-title {
     font-size: .82rem;
     font-weight: 700;
     letter-spacing: .04em;
@@ -2757,7 +2786,7 @@ body.sd-resizing * { cursor: col-resize !important; }
    data-bs-theme="dark", which gives the switches, the close button and the
    tag field their dark variants; these colours are the designer's own. */
 #styleSettingsModal .form-control,
-#styleSettingsModal .form-select,
+#styleSettingsModal :is(select.form-control),
 #styleSettingsModal textarea.form-control,
 #sdMakeTemplateModal .form-control {
     background-color: #0d1117;
@@ -2767,7 +2796,7 @@ body.sd-resizing * { cursor: col-resize !important; }
 #styleSettingsModal .form-control::placeholder,
 #sdMakeTemplateModal .form-control::placeholder { color: #6e7681; }
 #styleSettingsModal .form-control:focus,
-#styleSettingsModal .form-select:focus,
+#styleSettingsModal :is(select.form-control):focus,
 #styleSettingsModal textarea.form-control:focus,
 #sdMakeTemplateModal .form-control:focus {
     background-color: #0d1117;
@@ -2775,7 +2804,7 @@ body.sd-resizing * { cursor: col-resize !important; }
     border-color: #58a6ff;
     box-shadow: 0 0 0 .25rem rgba(88,166,255,.15);
 }
-#styleSettingsModal .form-select option { background: #1e2127; }
+#styleSettingsModal :is(select.form-control) option { background: #1e2127; }
 #styleSettingsModal .form-text,
 #styleSettingsModal small.form-text {
     color: #8b949e;
@@ -2785,13 +2814,13 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 /* A value that is shown, not set (framework, template). */
 #styleSettingsModal .form-control[readonly] { background-color: transparent; color: #8b949e; }
-#styleSettingsModal .form-check-input { background-color: #0d1117; border-color: #484f58; cursor: pointer; }
-#styleSettingsModal .form-check-input:checked { background-color: #1f6feb; border-color: #1f6feb; }
-#styleSettingsModal .form-check-input:disabled { opacity: .35; cursor: default; }
-/* The tag field's typing box sits inside the dark box, not on white. */
-#styleSettingsModal .tagin-input { background: transparent; color: #c9d1d9; }
-#styleSettingsModal .tagin-input::placeholder { color: #6e7681; }
-#styleSettingsModal .tagin-tag { background: #21262d; border-color: #30363d; color: #c9d1d9; }
+#styleSettingsModal :is(.check, .radio) { background-color: #0d1117; border-color: #484f58; cursor: pointer; }
+#styleSettingsModal :is(.check, .radio):checked { background-color: #1f6feb; border-color: #1f6feb; }
+#styleSettingsModal :is(.check, .radio):disabled { opacity: .35; cursor: default; }
+/* The chips field sits in the dark box, not on white. */
+#styleSettingsModal .pg-chips { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+#styleSettingsModal .pg-chips > .form-ghost::placeholder { color: #6e7681; }
+#styleSettingsModal .pg-chips > .chip { background: #21262d; border-color: #30363d; color: #c9d1d9; }
 #styleSettingsModal .btn-outline-light {
     --bs-btn-color: #c9d1d9;
     --bs-btn-border-color: #30363d;
@@ -3084,17 +3113,19 @@ body.sd-resizing * { cursor: col-resize !important; }
     gap: .3rem;
     margin-bottom: .3rem;
 }
-.sd-bcp-mid-val {
-    font-size: .65rem;
-    color: var(--sd-text-muted, #999);
-    white-space: nowrap;
-    flex: 0 0 1.8rem;
-    text-align: right;
-}
 .sd-bcp-mid-row .form-range {
-    height: .8rem;
-    padding: 0;
     flex: 1;
+}
+/* A Range in the inspector: not boxed like the other inputs, and a bubble
+   in the accent colour, as the dark tooltip would vanish on the dark panel */
+.sd-prop-control .form-range-input {
+    padding: 0;
+    background-color: transparent;
+    border: 0;
+}
+:is(.sd-prop-control, .sd-bcp-mid-row) .form-range-bubble {
+    --bs-tooltip-bg: var(--sd-accent);
+    --bs-tooltip-color: #fff;
 }
 /* Options row (shape/pos in radial) */
 .sd-bcp-opt-row {
@@ -3107,7 +3138,7 @@ body.sd-resizing * { cursor: col-resize !important; }
     font-size: .65rem;
     padding: .1rem .35rem;
 }
-.sd-bcp-opt-row .form-select-sm {
+.sd-bcp-opt-row :is(select.form-control-sm) {
     font-size: .65rem;
     height: 1.5rem;
     padding: .1rem .5rem .1rem .25rem;
@@ -3250,7 +3281,7 @@ body.sd-resizing * { cursor: col-resize !important; }
 /* Narrow screens used to stack the three panels on top of each other, which
    left the canvas a letterbox. Docking (below) replaces that: the side
    panels leave the flow and slide over the canvas instead. */
-@media (max-width:992px) { :root { --sd-left-width:190px; --sd-right-width:240px; } }
+@media (max-width:1024px) { :root { --sd-left-width:190px; --sd-right-width:240px; } }
 
 /* ========================= COMMAND PALETTE ========================= */
 .sd-cp-overlay {
@@ -5671,8 +5702,8 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-panel-bottom.sd-docked .sd-bp-quad.sd-dock-open .sd-dock-caret { transform: rotate(180deg); opacity: 1; }
 
 /* ===================== SETTINGS MODAL ===================== */
-/* The largest dialog from 992px up (modal-xl), the whole screen below it
-   (modal-fullscreen-lg-down). Every size lives here, not in the markup: an
+/* The largest dialog from 1024px up (dialog-xl), the whole screen below it
+   (lg-down:dialog-fullscreen). Every size lives here, not in the markup: an
    inline size beats any media query. The dialog keeps one height whatever
    pane is open, so a pane switch never moves the buttons, and only the
    pane scrolls: every flex item of that chain carries min-height: 0. */
@@ -5680,12 +5711,12 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-settings-header,
 .sd-settings-footer { flex-shrink: 0; border-color: #30363d; }
 .sd-settings-main { display: flex; flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
-@media (min-width: 992px) {
+@media (min-width: 1024px) {
     /* The window minus Bootstrap's own 1.75rem margins, at most 56rem:
        on a tall screen the dialog stays a dialog. */
-    .sd-settings-dialog .sd-settings-content { height: min(calc(100vh - 3.5rem), 56rem); }
+    .sd-settings-dialog.sd-settings-content { height: min(calc(100vh - 3.5rem), 56rem); }
     @supports (height: 100dvh) {
-        .sd-settings-dialog .sd-settings-content { height: min(calc(100dvh - 3.5rem), 56rem); }
+        .sd-settings-dialog.sd-settings-content { height: min(calc(100dvh - 3.5rem), 56rem); }
     }
 }
 
@@ -5753,8 +5784,8 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-set-warn { display: block; margin-top: .35rem; color: #d29922; }
 .sd-set-ctrl { min-width: 0; }
 .sd-set-switch { grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 1.25rem; }
-.sd-set-switch .form-check { min-height: 0; margin: .1rem 0 0; }
-.sd-set-switch .form-check-input { width: 2.4em; height: 1.25em; margin-top: 0; }
+.sd-set-switch .form-field { min-height: 0; margin: .1rem 0 0; }
+.sd-set-switch :is(.check, .radio) { width: 2.4em; height: 1.25em; margin-top: 0; }
 .sd-set-value { padding: .3rem 0; font-size: .82rem; color: #c9d1d9; }
 .sd-set-status { margin-top: .45rem; font-size: .75rem; color: #8b949e; overflow-wrap: anywhere; }
 .sd-set-status:empty { display: none; }
@@ -5780,7 +5811,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 
 /* Head code: a plain monospace box until the code editor takes its place. */
-#styleSettingsModal .sd-code-field { font-family: var(--bs-font-monospace); font-size: .78rem; }
+#styleSettingsModal .sd-code-field { font-family: var(--pg-font-mono); font-size: .78rem; }
 .sd-settings-code { height: 14rem; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
 
 /* Who may open the page: a word for the folder's access, then a sentence. */
@@ -5817,7 +5848,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    stay reachable by thumb: labels drop to their icons (the title attribute
    still names them), the view bar wraps instead of running off the canvas,
    and the settings rail becomes a strip above the form. */
-@media (max-width: 991.98px) {
+@media (max-width: 1023.98px) {
 
     /* ── Page toolbar ── */
     /* This strip does not scroll (the Add Page dropdown needs
@@ -5878,7 +5909,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    nothing to do — a wider canvas only overflows, and the handles need a
    mouse. createCanvasIframe() resets the canvas to full width under the
    same query. */
-@media (max-width: 767.98px), (hover: none) and (pointer: coarse) and (max-width: 991.98px) {
+@media (max-width: 767.98px), (hover: none) and (pointer: coarse) and (max-width: 1023.98px) {
     .sd-bp-bar .sd-bp-bar-left { display: none; }
     .sd-resize-handle,
     .sd-resize-handle-bottom,
@@ -5898,7 +5929,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     font-weight: 600;
     white-space: nowrap;
 }
-@media (max-width: 991.98px) {
+@media (max-width: 1023.98px) {
     #sd-ajax-save.sd-publish-btn,
     #sd-publish-page.sd-publish-btn { width: 32px; padding: 0; }
     #sd-ajax-save .sd-publish-txt,
@@ -6051,7 +6082,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 12px; margin-bottom: 8px; }
 .sd-th-field { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: #8b949e; margin: 0; }
 .sd-th-field-wide { margin-bottom: 10px; }
-.sd-th-field .form-select, .sd-th-field .form-control { background-color: #161b22; color: #c9d1d9; border-color: #30363d; }
+.sd-th-field :is(select.form-control), .sd-th-field .form-control { background-color: #161b22; color: #c9d1d9; border-color: #30363d; }
 .sd-th-color { display: flex; gap: 6px; align-items: center; }
 .sd-th-color input[type=color] { width: 36px; height: 30px; padding: 2px; border: 1px solid #30363d; border-radius: 6px; background: #161b22; cursor: pointer; }
 .sd-th-color .form-control { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -6074,7 +6105,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 .sd-ai-btn.sd-ai-busy .sd-ai-btn-dot { display: block; }
 @keyframes sd-ai-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
-@media (max-width: 1199.98px) { .sd-ai-btn-txt { display: none; } .sd-ai-btn { width: 32px; padding: 0; } }
+@media (max-width: 1279.98px) { .sd-ai-btn-txt { display: none; } .sd-ai-btn { width: 32px; padding: 0; } }
 
 .sd-ai-panel {
     position: fixed; right: 16px; bottom: 88px; z-index: 1065;
@@ -6170,13 +6201,13 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-tr-src { color: var(--sd-text-muted, #8a939e); white-space: pre-wrap; word-break: break-word; max-height: 4.6em; overflow: auto; margin-bottom: .3rem; }
 .sd-tr-lang { margin-top: .4rem; }
 .sd-tr-head { display: flex; align-items: center; gap: .35rem; margin-bottom: .2rem; }
-.sd-tr-code { font-family: var(--bs-font-monospace); font-size: .65rem; padding: 0 .3rem; border-radius: .25rem; background: rgba(var(--sd-accent-rgb), .18); }
+.sd-tr-code { font-family: var(--pg-font-mono); font-size: .65rem; padding: 0 .3rem; border-radius: .25rem; background: rgba(var(--sd-accent-rgb), .18); }
 .sd-tr-label { opacity: .85; }
 .sd-tr-state { margin-left: auto; font-size: .65rem; opacity: .8; }
-.sd-tr-reviewed { color: var(--bs-success); }
-.sd-tr-pending { color: var(--bs-warning); }
+.sd-tr-reviewed { color: var(--pg-success); }
+.sd-tr-pending { color: var(--pg-warning); }
 .sd-tr-input { font-size: .75rem; resize: vertical; }
-.sd-tr-inline { font-family: var(--bs-font-monospace); font-size: .7rem; }
+.sd-tr-inline { font-family: var(--pg-font-mono); font-size: .7rem; }
 .sd-tr-actions { display: flex; align-items: center; gap: .25rem; margin-top: .2rem; }
 .sd-tr-actions .btn { --bs-btn-padding-y: .05rem; --bs-btn-padding-x: .45rem; --bs-btn-font-size: .7rem; }
 .sd-tr-screen { display: inline-block; margin-top: .55rem; font-size: .7rem; }
@@ -6219,7 +6250,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 #sd-ajax-save.sd-publish-draft + .sd-publish-more #sd-publish-more { background: #373e47; border-color: #545d68; }
 #sd-ajax-save.sd-publish-draft:hover,
 #sd-ajax-save.sd-publish-draft + .sd-publish-more #sd-publish-more:hover { background: #444c56; }
-@media (max-width: 991.98px) {
+@media (max-width: 1023.98px) {
     .sd-publish-more { margin-left: -2px; }
 }
 
@@ -6280,3 +6311,5 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-inner-attr input:first-child { flex: 0 0 38%; }
 .sd-inner-acts { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .sd-inner-acts .btn { text-align: left; white-space: normal; }
+
+}

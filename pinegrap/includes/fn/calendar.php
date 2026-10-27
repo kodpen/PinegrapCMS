@@ -91,10 +91,10 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                 // If we are in softwares backend, then prepare items that only appear in the backend
                 if ($user) {
                     $output_date_selection = '
-                    <div class="btn-group my-2">
-                        <a href="?date=' . h($decrease_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline-primary" class="previous">&lt;</a> 
-                        <a href="?date" class="btn btn-outline-primary this_month">' . lang('This Month') . '</a>
-                        <a href="?date=' . h($increase_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline-primary" class="next">&gt;</a>
+                    <div class="btn-group my-3">
+                        <a href="?date=' . h($decrease_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary" class="previous">&lt;</a> 
+                        <a href="?date" class="btn btn-outline theme-primary this_month">' . lang('This Month') . '</a>
+                        <a href="?date=' . h($increase_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary" class="next">&gt;</a>
                     </div>
                     <span class="fw-bolder">' . h(lang(date('F', $start_timestamp))) . ' ' . h(date('Y', $start_timestamp)) . '</span>';
                 } else {
@@ -155,9 +155,9 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                         )) . '
                     </span><br/>
                     <div class="btn-group">
-                        <a href="?date=' . h($decrease_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline-primary">&lt;</a> 
-                        <a href="?date" class="btn btn-outline-primary this_week">' . lang('This Week') . '</a>
-                        <a href="?date=' . h($increase_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline-primary">&gt;</a> 
+                        <a href="?date=' . h($decrease_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary">&lt;</a> 
+                        <a href="?date" class="btn btn-outline theme-primary this_week">' . lang('This Week') . '</a>
+                        <a href="?date=' . h($increase_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary">&gt;</a> 
                     </div> ';
                 } else {
                     // else this is for a front-end view
@@ -211,7 +211,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                 }
                 // if this is for a back-end view then set the update button class
                 if ($user) {
-                    $output_calendar_pick_list = '<select name="calendar_id" class="form-select my-1" onchange="submit_form(\'form\')">' . $output_calendar_options . '</select>';
+                    $output_calendar_pick_list = '<select name="calendar_id" class="form-control my-1" onchange="submit_form(\'form\')">' . $output_calendar_options . '</select>';
                 } else {
                     // else this is for a front-end view
                     $output_calendar_pick_list = '<select name="calendar_id" class="software_select">' . $output_calendar_options . '</select>';
@@ -252,26 +252,26 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
 
                 $output_update_calendar_view_form = '
                     <div class="card-header">
-                        <div class="calendar_view row my-2">
-                            <div class="col-12 col-md-12 col-lg-6 text-center text-lg-start">
+                        <div class="calendar_view row my-3">
+                            <div class="col-12 md:col-12 lg:col-6 text-center lg:text-start">
                                 ' . $output_date_selection . '
                             </div>
-                            <div class="col-12 col-md-12 col-lg-6 text-center text-lg-start">
+                            <div class="col-12 md:col-12 lg:col-6 text-center lg:text-start">
                                 <form id="form" method="get" class="row justify-content-end">
                                     <input type="hidden" name="date" value="' . h($date) . '">
-                                    <div class="col-12 col-md-4 col-lg-3 align-self-center">
+                                    <div class="col-12 md:col-4 lg:col-3 align-self-center">
                                         ' . $output_calendar_pick_list . '
                                     </div>
-                                    <div class="col-12 col-md-4 col-lg-3 align-self-center">
-                                        <select name="view" class="form-select my-1" onchange="submit_form(\'form\')">
+                                    <div class="col-12 md:col-4 lg:col-3 align-self-center">
+                                        <select name="view" class="form-control my-1" onchange="submit_form(\'form\')">
                                             <option value="monthly"' . $output_view_monthly_selected . '>' . lang('Monthly') . '</option>
                                             <option value="weekly"' . $output_view_weekly_selected . '>' . lang('Weekly') . '</option>
                                         </select>
                                     </div>
-                                    <div class="col-12 col-md-4 col-lg-6 align-self-center">
+                                    <div class="col-12 md:col-4 lg:col-6 align-self-center">
                                         <div class="input-group">
                                             <div class="input-group-text my-1">' . lang('Status') . ':</div>
-                                            <select name="status" class="form-select my-1" onchange="submit_form(\'form\')"><option value=""' . $all_selected . '>-' . lang('All') . '-</option><option value="published"' . $published_selected . '>' . lang('Published') . '</option><option value="not_published"' . $not_published_selected . '>*' . lang('Not Published') . '</option></select>
+                                            <select name="status" class="form-control my-1" onchange="submit_form(\'form\')"><option value=""' . $all_selected . '>-' . lang('All') . '-</option><option value="published"' . $published_selected . '>' . lang('Published') . '</option><option value="not_published"' . $not_published_selected . '>*' . lang('Not Published') . '</option></select>
                                         </div>
                                     </div>
                                 </form>
@@ -661,8 +661,8 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
             if (!$user) {
                 // If this event has not already been processed, then get calendars that this event is assigned to.
                 if (isset($calendar_events_calendars[$event['id']]) == false) {
-                    $query = "SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . $event['id'] . "'";
-                    $result = mysqli_query(db::$con, $query);
+                    $query = "SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = ?";
+                    $result = db_q($query, array((string) $event['id']));
                     $calendar_events_calendars[$event['id']] = array();
                     while ($row = mysqli_fetch_assoc($result)) {
                         $calendar_events_calendars[$event['id']][] = $row['calendar_id'];
@@ -1119,7 +1119,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
             $output_weekly_class = '';
             // if this is for a back-end view then set the update button class
             if ($user) {
-                $output_weekly_class = ' p-2';
+                $output_weekly_class = ' p-3';
             }
 
             // if monthly or backend screen (null)
@@ -1498,8 +1498,8 @@ function get_calendar_event($event_id, $recurrence_number)
 
         LEFT JOIN products ON calendar_events.product_id = products.id
 
-        WHERE calendar_events.id = '" . escape($event_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE calendar_events.id = ?";
+    $result = db_q($query, array((string) $event_id)) or output_error(lang('Query failed.'));
     // if calendar event could not be found, then return false
     if (mysqli_num_rows($result) == 0) {
         return false;
@@ -1561,10 +1561,10 @@ function get_calendar_event($event_id, $recurrence_number)
 
             WHERE
 
-                (calendar_event_id = '" . escape($event_id) . "')
+                (calendar_event_id = ?)
 
-                AND (recurrence_number = '" . escape($sql_recurrence_number) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (recurrence_number = ?)";
+        $result = db_q($query, array((string) $event_id, (string) $sql_recurrence_number)) or output_error(lang('Query failed.'));
         // if a remaining spots record was found then use it to populate the remaining spots
         if (mysqli_num_rows($result) > 0) {
             $row = mysqli_fetch_assoc($result);
@@ -1583,10 +1583,10 @@ function get_calendar_event($event_id, $recurrence_number)
 
         LEFT JOIN calendar_event_locations ON calendar_events_calendar_event_locations_xref.calendar_event_location_id = calendar_event_locations.id
 
-        WHERE calendar_event_id = '" . escape($event_id) . "'
+        WHERE calendar_event_id = ?
 
         ORDER BY calendar_event_locations.name";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $event_id)) or output_error(lang('Query failed.'));
     $calendar_locations = "";
     // Add each location to the main location list that will be output to the front end soon
     while ($row = mysqli_fetch_assoc($result)) {

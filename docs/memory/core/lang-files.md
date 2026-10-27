@@ -1,6 +1,7 @@
 ---
 name: lang-files
 description: Turkish wording as sorted shards in includes/local/tr/: why, layout, pg_lang_map() the one reader, old tr.json on updated sites, tr_add.php, tr_resolve.php, check_lang.php, speed
+module: lang_files
 ---
 
 ## Why shards?
@@ -28,6 +29,6 @@ description: Turkish wording as sorted shards in includes/local/tr/: why, layout
 - Each shard against `pg_lang_shard_problems()` (an object of strings, each key in its own shard, the exact form, so no key twice), duplicates with lines (`pg_json_duplicate_keys()`), the keys through `pg_lang_read_folder()`. A folder and a `tr.json` side by side fail.
 
 ## Is reading 28 files slower?
-- Measured at the conversion (PHP 8.4 64-bit, Windows, 100 runs): about 20 ms for the folder against 16 ms for the single file, mostly the 28 file opens. No cache was added for it; a compiled cache for either form is step 5 of [[merge-flow-tools]].
+- Measured at the conversion (PHP 8.4 64-bit, Windows, 100 runs): about 20 ms for the folder against 16 ms for the single file, mostly the 28 file opens. A compiled cache removes the cost for either form: [[lang-compiled-cache]].
 
 Related: docs/memory/core/translation-rules.md

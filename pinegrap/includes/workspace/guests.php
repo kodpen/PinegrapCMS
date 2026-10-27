@@ -202,7 +202,7 @@ function ws_guest_sender($guest_id)
             'avatar_kind' => 'contact',
             'presence' => 'offline',
             'guest'    => true,
-        );
+        ) + (function_exists('pg_avatar_letters') ? pg_avatar_letters(pg_initials($name, ''), 'guest' . $guest_id) : array());
     }
 
     return $cache[$guest_id];
@@ -971,8 +971,8 @@ function ws_guest_clean_text($text)
 }
 
 /**
- * A message as the guest reads it: the words with bold, italics and
- * strike-through, line breaks and plain links; a person tagged by name, a
+ * A message as the guest reads it: the words with bold, italics,
+ * strike-through and highlights, line breaks and plain links; a person tagged by name, a
  * record by its kind, nothing that leads into the panel.
  *
  * @param string $body
@@ -1023,7 +1023,7 @@ function ws_guest_render($body)
 
         // Addresses are set aside first, so the marks below cannot reach into
         // them; then the marks the staff's screen reads the same way
-        // (render.php): **bold**, _italics_, ~~strike-through~~.
+        // (render.php): **bold**, _italics_, ~~strike-through~~, ==highlight==.
         $links = array();
         $html = preg_replace_callback('#https?://[^\s<>"]{2,500}#i', function ($match) use (&$links) {
             $url = rtrim($match[0], '.,;:!?)');
@@ -1035,6 +1035,7 @@ function ws_guest_render($body)
         $html = preg_replace('/\*\*([^*\n]{1,300})\*\*/', '<strong>$1</strong>', $html);
         $html = preg_replace('/~~([^~\n]{1,300})~~/', '<del>$1</del>', $html);
         $html = preg_replace('/(?<![\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])/u', '<em>$1</em>', $html);
+        $html = preg_replace('/(?<!=)==(?=\S)([^=\n]{1,300}?)(?<=\S)==(?!=)/u', '<mark>$1</mark>', $html);
 
         $html = preg_replace_callback("/\x01([0-9]+)\x01/", function ($match) use ($links) {
             return $links[(int) $match[1]] ?? '';
@@ -1187,6 +1188,9 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             'staff'     => $staff,
             'name'      => (string) ($sender['name'] ?? ''),
             'avatar'    => (string) ($sender['avatar'] ?? ''),
+            'avatar_kind' => (string) ($sender['avatar_kind'] ?? ''),
+            'initials'  => (string) ($sender['initials'] ?? ''),
+            'tone'      => (int) ($sender['tone'] ?? 0),
             'html'      => $staff ? ws_render_body((string) $row['body'], $refs, $checks[$id] ?? array(), $can_tick) : ws_guest_render($row['body']),
             'time'      => date('d.m.Y H:i', (int) $row['created_at']),
             'edited'    => ((int) $row['edited_at'] > 0),
@@ -1630,7 +1634,8 @@ function ws_guest_state($context, $signature = '')
 
     foreach (ws_people(array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members
         WHERE channel_id = '" . (int) $channel['id'] . "' ORDER BY joined_at"))) as $person) {
-        $staff[] = array('name' => (string) $person['name'], 'avatar' => (string) $person['avatar']);
+        $staff[] = array('name' => (string) $person['name'], 'avatar' => (string) $person['avatar'], 'avatar_kind' => (string) $person['avatar_kind'],
+            'initials' => (string) $person['initials'], 'tone' => (int) $person['tone']);
     }
 
     $shared = !ws_channel_is_guest($channel);

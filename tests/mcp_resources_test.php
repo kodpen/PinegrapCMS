@@ -126,6 +126,7 @@ function test_mcp_resources_parse_fixed_and_templates()
 {
 	pg_assert_same(array('kind' => 'my_day', 'arguments' => array()), pg_mcp_resource_parse('pinegrap://workspace/my-day'));
 	pg_assert_same(array('kind' => 'channel_context', 'arguments' => array('id' => '5')), pg_mcp_resource_parse('pinegrap://workspace/channels/5/context'));
+	pg_assert_same(array('kind' => 'channel_customer', 'arguments' => array('id' => '5')), pg_mcp_resource_parse('pinegrap://workspace/channels/5/customer'));
 	pg_assert_same(array('kind' => 'record_refs', 'arguments' => array('type' => 'order', 'id' => '1045')), pg_mcp_resource_parse('pinegrap://workspace/refs/order/1045'));
 	pg_assert_same(array('kind' => 'record_refs', 'arguments' => array('type' => 'user_account', 'id' => '7')), pg_mcp_resource_parse('pinegrap://workspace/refs/user_account/7'), 'an underscore in the type');
 	pg_assert_same('123456789012345678', pg_mcp_resource_parse('pinegrap://workspace/channels/123456789012345678/context')['arguments']['id'], 'eighteen digits');
@@ -149,6 +150,7 @@ function test_mcp_resources_parse_refuses_what_names_nothing()
 		'pinegrap://workspace/channels//context'                     => 'no id',
 		'pinegrap://workspace/channels/{id}/context'                 => 'the template itself',
 		'pinegrap://workspace/channels/1234567890123456789/context'  => 'more digits than an id has',
+		'pinegrap://workspace/channels/0/customer'                   => 'customer of channel 0',
 		'pinegrap://workspace/refs/order/0'                          => 'record id 0',
 		'pinegrap://workspace/refs/Order/5'                          => 'a type in capitals',
 		'pinegrap://workspace/refs/order1/5'                         => 'a digit in the type',
@@ -158,6 +160,7 @@ function test_mcp_resources_parse_refuses_what_names_nothing()
 		'pinegrap://workspace/my-day/'                               => 'a trailing slash',
 		'pinegrap://workspace/my-day/today'                          => 'a part after a fixed resource',
 		'pinegrap://workspace/channels/5/context/extra'              => 'a part after a template',
+		'pinegrap://workspace/channels/5/customer/history'           => 'the customer history is no resource',
 		'pinegrap://workspace/channels/5'                            => 'a part missing',
 		'pinegrap://workspace/channels/5/context/../../my-day'       => 'dot segments',
 		'pinegrap://workspace/refs/order'                            => 'no record id',
@@ -169,6 +172,7 @@ function test_mcp_resources_parse_refuses_what_names_nothing()
 		'pinegrap://workspace/channels/5%2Fcontext'                  => 'an encoded slash',
 		'pinegrap://workspace/my%2Dday'                              => 'an encoded hyphen',
 		'pinegrap://workspace/channels/5/context?limit=100'          => 'a query',
+		'pinegrap://workspace/channels/5/customer?x=1'               => 'a query after the customer',
 		'pinegrap://workspace/my-day#top'                            => 'a fragment',
 		"pinegrap://workspace/my-day\n"                              => 'a trailing newline',
 		' pinegrap://workspace/my-day'                               => 'a leading space',
@@ -201,13 +205,14 @@ function test_mcp_resources_uri_is_built_from_its_template()
 	pg_assert_same('pinegrap://workspace/my-day', pg_mcp_resource_uri('my_day', array()));
 	pg_assert_same('pinegrap://workspace/channels/7/context', pg_mcp_resource_uri('channel_context', array('id' => '7')));
 	pg_assert_same('pinegrap://workspace/channels/7/context', pg_mcp_resource_uri('channel_context', array('id' => 7)), 'a number');
+	pg_assert_same('pinegrap://workspace/channels/7/customer', pg_mcp_resource_uri('channel_customer', array('id' => '7')));
 	pg_assert_same('pinegrap://workspace/refs/invoice/3', pg_mcp_resource_uri('record_refs', array('type' => 'invoice', 'id' => '3')));
 	pg_assert_same('', pg_mcp_resource_uri('channel_context', array('id' => '0')), 'a value its variable does not take');
 	pg_assert_same('', pg_mcp_resource_uri('channel_context', array('id' => '7/../8')), 'a value with a slash');
 	pg_assert_same('', pg_mcp_resource_uri('channel_context', array()), 'a value missing');
 	pg_assert_same('', pg_mcp_resource_uri('nothing', array()), 'an unknown kind');
 
-	foreach (array('pinegrap://workspace/my-day', 'pinegrap://workspace/channels/42/context', 'pinegrap://workspace/refs/erp_quote/9') as $uri) {
+	foreach (array('pinegrap://workspace/my-day', 'pinegrap://workspace/channels/42/context', 'pinegrap://workspace/channels/42/customer', 'pinegrap://workspace/refs/erp_quote/9') as $uri) {
 		$found = pg_mcp_resource_parse($uri);
 		pg_assert_same($uri, pg_mcp_resource_uri($found['kind'], $found['arguments']), 'parsed and built back: ' . $uri);
 	}
@@ -268,10 +273,10 @@ function test_mcp_resources_list_follows_the_routes_offered()
 
 	$templates = pg_mcp_resource_templates_list($routes);
 
-	pg_assert_same(array('pinegrap://workspace/channels/{id}/context', 'pinegrap://workspace/refs/{type}/{id}'), array_column($templates, 'uriTemplate'));
-	pg_assert_same(array('application/json', 'application/json'), array_column($templates, 'mimeType'));
+	pg_assert_same(array('pinegrap://workspace/channels/{id}/context', 'pinegrap://workspace/channels/{id}/customer', 'pinegrap://workspace/refs/{type}/{id}'), array_column($templates, 'uriTemplate'));
+	pg_assert_same(array('application/json', 'application/json', 'application/json'), array_column($templates, 'mimeType'));
 
-	foreach (array('my_day', 'channel_context', 'record_refs') as $key) {
+	foreach (array('my_day', 'channel_context', 'channel_customer', 'record_refs') as $key) {
 		pg_assert_true(pg_mcp_resource_route($key, $routes) !== null, $key . ' is read through its route');
 	}
 
@@ -291,8 +296,14 @@ function test_mcp_resources_left_out_with_their_route()
 	// A route that is no tool is no resource either.
 	$routes = mcp_resources_test_routes(array('workspace:read'), mcp_resources_test_schema_with('workspace.channels.context', array('mcp' => false)));
 
-	pg_assert_same(array('pinegrap://workspace/refs/{type}/{id}'), array_column(pg_mcp_resource_templates_list($routes), 'uriTemplate'));
+	pg_assert_same(array('pinegrap://workspace/channels/{id}/customer', 'pinegrap://workspace/refs/{type}/{id}'), array_column(pg_mcp_resource_templates_list($routes), 'uriTemplate'));
 	pg_assert_same(null, pg_mcp_resource_route('channel_context', $routes));
+
+	$routes = mcp_resources_test_routes(array('workspace:read'), mcp_resources_test_schema_with('workspace.channels.customer', array('mcp' => false)));
+
+	pg_assert_same(array('pinegrap://workspace/channels/{id}/context', 'pinegrap://workspace/refs/{type}/{id}'), array_column(pg_mcp_resource_templates_list($routes), 'uriTemplate'));
+	pg_assert_same(null, pg_mcp_resource_route('channel_customer', $routes));
+	pg_assert_true(pg_mcp_resource_route('channel_context', $routes) !== null, 'the context stays');
 
 	$routes = mcp_resources_test_routes(array('workspace:read'), mcp_resources_test_schema_with('workspace.my_day.get', array('mcp' => false)));
 
@@ -646,5 +657,5 @@ function test_mcp_instructions_carry_the_safety_rules()
 	pg_assert_contains('creates, changes, sends or deletes something, tell the person what it will do and wait for their yes', $text, 'writes and deletes are confirmed');
 	pg_assert_contains('call it with dry_run: true first', $text, 'dry_run first');
 	pg_assert_contains('Never copy what these tools return into another tool', $text, 'nothing copied to other tools');
-	pg_assert_same(10, count(pg_mcp_instructions_rules()), 'the assistant\'s seven and three of its own');
+	pg_assert_same(11, count(pg_mcp_instructions_rules()), 'the assistant\'s eight and three of its own');
 }

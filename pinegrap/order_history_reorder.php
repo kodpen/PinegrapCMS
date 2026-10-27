@@ -29,8 +29,8 @@ $query =
         user_id,
         status
     FROM orders
-    WHERE id = '" . escape($old_order_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    WHERE id = ?";
+$result = db_q($query, array((string) $old_order_id)) or output_error(lang('Query failed.'));
 
 // if the order was not found, output error
 if (mysqli_num_rows($result) == 0) {
@@ -47,8 +47,8 @@ $query =
         user_id,
         user_contact
     FROM user
-    WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    WHERE user_username = ?";
+$result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_assoc($result);
 $user_id = $row['user_id'];
 $contact_id = $row['user_contact'];
@@ -93,21 +93,35 @@ $query =
     VALUES (
         UNIX_TIMESTAMP(),
         UNIX_TIMESTAMP(),
-        '$user_id',
-        '$contact_id',
-        '$reference_code',
-        '" . escape(get_tracking_code()) . "',
-        '" . e($_SESSION['software']['utm_source'] ?? '') . "',
-        '" . e($_SESSION['software']['utm_medium'] ?? '') . "',
-        '" . e($_SESSION['software']['utm_campaign'] ?? '') . "',
-        '" . e($_SESSION['software']['utm_term'] ?? '') . "',
-        '" . e($_SESSION['software']['utm_content'] ?? '') . "',
-        '" . escape(get_affiliate_code()) . "',
-        '" . escape($_SESSION['software']['http_referer'] ?? '') . "',
-        IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0),
-        '" . escape(VISITOR_CURRENCY_CODE) . "',
-        '" . $offline_payment_allowed . "')";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        IFNULL(INET_ATON(?), 0),
+        ?,
+        ?)";
+$result = db_q($query, array(
+    (string) $user_id,
+    (string) $contact_id,
+    (string) $reference_code,
+    (string) get_tracking_code(),
+    (string) ($_SESSION['software']['utm_source'] ?? ''),
+    (string) ($_SESSION['software']['utm_medium'] ?? ''),
+    (string) ($_SESSION['software']['utm_campaign'] ?? ''),
+    (string) ($_SESSION['software']['utm_term'] ?? ''),
+    (string) ($_SESSION['software']['utm_content'] ?? ''),
+    (string) get_affiliate_code(),
+    (string) ($_SESSION['software']['http_referer'] ?? ''),
+    (string) $_SERVER['REMOTE_ADDR'],
+    (string) VISITOR_CURRENCY_CODE,
+    (string) $offline_payment_allowed)) or output_error(lang('Query failed.'));
 $new_order_id = mysqli_insert_id(db::$con);
 
 $order_switched = false;
@@ -128,11 +142,11 @@ $query =
     FROM order_items
     LEFT JOIN products ON order_items.product_id = products.id
     WHERE
-        (order_items.order_id = '" . escape($old_order_id) . "')
+        (order_items.order_id = ?)
         AND (order_items.ship_to_id = '0')
         AND (products.id IS NOT NULL)
         AND (order_items.added_by_offer = '0')";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+$result = db_q($query, array((string) $old_order_id)) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_row($result);
 
 // if there is at least one unshippable order item, add empty ship to to ship tos array
@@ -146,8 +160,8 @@ $query =
         id,
         ship_to_name
     FROM ship_tos
-    WHERE order_id = '" . escape($old_order_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    WHERE order_id = ?";
+$result = db_q($query, array((string) $old_order_id)) or output_error(lang('Query failed.'));
 
 while($row = mysqli_fetch_assoc($result)) {
     $ship_tos[] = $row;
@@ -168,12 +182,12 @@ foreach ($ship_tos as $ship_to) {
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE
-            (order_items.order_id = '" . escape($old_order_id) . "')
-            AND (order_items.ship_to_id = '" . $ship_to['id'] . "')
+            (order_items.order_id = ?)
+            AND (order_items.ship_to_id = ?)
             AND (products.id IS NOT NULL)
             AND (products.enabled = '1')
             AND (order_items.added_by_offer = '0')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $old_order_id, (string) $ship_to['id'])) or output_error(lang('Query failed.'));
     
     // add order items to array
     $order_items = array();
@@ -191,9 +205,9 @@ foreach ($ship_tos as $ship_to) {
                     order_id,
                     ship_to_name)
                 VALUES (
-                    '$new_order_id',
-                    '" . escape($ship_to['ship_to_name']) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    ?,
+                    ?)";
+            $result = db_q($query, array((string) $new_order_id, (string) $ship_to['ship_to_name'])) or output_error(lang('Query failed.'));
             $new_ship_to_id = mysqli_insert_id(db::$con);
             
         // else this ship to is not a real ship to, so set ship to id to 0
@@ -221,13 +235,19 @@ foreach ($ship_tos as $ship_to) {
                     quantity,
                     price)
                 VALUES (
-                    '$new_order_id',
-                    '$new_ship_to_id',
-                    '" . $order_item['product_id'] . "',
-                    '" . $order_item['product_name'] . "',
-                    '" . $order_item['quantity'] . "',
-                    '" . $price . "')";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?)";
+            $result = db_q($query, array(
+                (string) $new_order_id,
+                (string) $new_ship_to_id,
+                (string) $order_item['product_id'],
+                (string) $order_item['product_name'],
+                (string) $order_item['quantity'],
+                (string) $price)) or output_error(lang('Query failed.'));
         }
     }
 }
@@ -238,13 +258,13 @@ if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
     $query =
         "UPDATE visitors
         SET
-            order_id = '" . $new_order_id . "',
+            order_id = ?,
             order_created = '1',
             stop_timestamp = UNIX_TIMESTAMP()
         WHERE
-            (id = '" . $_SESSION['software']['visitor_id'] . "')
+            (id = ?)
             AND (order_created = '0')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $new_order_id, (string) $_SESSION['software']['visitor_id'])) or output_error(lang('Query failed.'));
 }
 
 include_once('liveform.class.php');
@@ -252,8 +272,8 @@ include_once('liveform.class.php');
 // if there is a retrieve order next page set, then prepare notice for page
 if (ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) {
     // get page type for page, in order to determine which liveform to set
-    $query = "SELECT page_type FROM page WHERE page_id = '" . escape(ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT page_type FROM page WHERE page_id = ?";
+    $result = db_q($query, array((string) ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $page_type = $row['page_type'];
     

@@ -33,6 +33,20 @@ if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE) {
 // "not found" screen instead of PHP notices from the unchecked row below or
 // an error page.
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+
+// ?component=<id>: one shared component opened on its own, drawn in a design
+// that places it (pg_designer_component_entry()). A content editor granted
+// the component needs no folder right for it; Save writes the component only.
+$component = null;
+if (!$_POST && isset($_GET['component']) && is_scalar($_GET['component'])) {
+    $component = pg_designer_component_entry((int) $_GET['component'], $user, $id);
+    if (!is_array($component)) {
+        output_error(h($component) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 403);
+    }
+    $id = $component['style_id'];
+    $_REQUEST['id'] = $id;
+}
+
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM style WHERE style_id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
@@ -150,13 +164,14 @@ if (!$_POST) {
         'mode'           => 'edit',
         'style_id'       => $style_id,
         'style'          => $style,
-        'pages'          => $pages,
-        'active_page_id' => $active,
+        'pages'          => $component ? array() : $pages,
+        'component'      => $component,
+        'active_page_id' => $component ? 0 : $active,
         'liveform'       => $liveform,
         'user'           => $user,
         'send_to'        => $liveform->get_field_value('send_to'),
         'from_pages'     => $from_pages,
-        'delete_button'  => $delete_button,
+        'delete_button'  => $component ? '' : $delete_button,
         // ?new_page / ?pick_page / ?copy_page from the design chooser.
         'start_action'   => pg_designer_start_action($user, $style_id),
     ));

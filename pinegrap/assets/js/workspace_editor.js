@@ -6,15 +6,16 @@
  *
  * The box stays a chat box: one field, Enter sends, Shift+Enter starts a new
  * line. What it knows about formatting shows only when asked for: select a
- * few words and a small bar offers bold, italic, strikethrough, code and a
- * link; double-click a link to change or remove it. People and records picked
- * with @ and # sit in the text as chips, and a table, a checklist or a block
- * of code sits in it as a card that opens its window again when clicked.
+ * few words and a small bar offers bold, italic, strikethrough, highlight,
+ * code and a link; double-click a link to change or remove it. People and
+ * records picked with @ and # sit in the text as chips, and a table, a
+ * checklist or a block of code sits in it as a card that opens its window
+ * again when clicked.
  *
  * Messages are still stored as the light markup the server draws
- * (includes/workspace/render.php): **bold**, _italic_, ~~struck~~, `code`,
- * [text](address), tables with pipes, "- [ ]" items, ``` fences, and tags as
- * <@user:12> / <#order:1045>. This file turns the box into that text and back.
+ * (includes/workspace/render.php): **bold**, _italic_, ~~struck~~,
+ * ==highlighted==, `code`, [text](address), tables with pipes, "- [ ]"
+ * items, ``` fences, and tags as <@user:12> / <#order:1045>. This file turns the box into that text and back.
  *
  * The marks are made here on the nodes themselves (format()), never with
  * document.execCommand(), and the rows of tools under a box (the channel's,
@@ -171,8 +172,14 @@
     }
 
     // One line of text as nodes: tags, code, links, emphasis.
+    //
+    // A highlight is the server's pair rule, (?<!=)==(?=\S)([^=\n]{1,300}?)
+    // (?<=\S)==(?!=): its words hold no =, so the first = after them closes
+    // it. The sign before it is a group of its own rather than a lookbehind,
+    // which older browsers cannot read (a syntax error stops the whole
+    // bundle); the start of what is left of the line is never after a =.
     function inlineNodes(text, labels, parent) {
-        var pattern = /(<[@#][a-z_]+:[0-9]{1,10}>)|`([^`\n]{1,300})`|\[([^\]\n]{1,300})\]\(((?:https?:\/\/|mailto:)[^\s()<>"]{1,1000})\)|\*\*([^*\n]{1,300})\*\*|~~([^~\n]{1,300})~~|(^|[^\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])/u;
+        var pattern = /(<[@#][a-z_]+:[0-9]{1,10}>)|`([^`\n]{1,300})`|\[([^\]\n]{1,300})\]\(((?:https?:\/\/|mailto:)[^\s()<>"]{1,1000})\)|\*\*([^*\n]{1,300})\*\*|~~([^~\n]{1,300})~~|(^|[^\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])|(^|[^=])==([^=\s](?:[^=\n]{0,298}[^=\s])?)==(?!=)/u;
         var rest = String(text || '');
         var guard = 0;
 
@@ -184,7 +191,7 @@
                 break;
             }
 
-            var lead = (match[7] !== undefined) ? match[7] : '';
+            var lead = (match[7] !== undefined) ? match[7] : ((match[9] !== undefined) ? match[9] : '');
             var before = rest.slice(0, match.index) + lead;
 
             if (before !== '') {
@@ -208,6 +215,10 @@
                 var struck = el('s');
                 inlineNodes(match[6], labels, struck);
                 parent.appendChild(struck);
+            } else if (match[10] !== undefined) {
+                var marked = el('mark');
+                inlineNodes(match[10], labels, marked);
+                parent.appendChild(marked);
             } else {
                 var italic = el('i');
                 inlineNodes(match[8], labels, italic);
@@ -242,6 +253,15 @@
 
     function fenceClose(line) {
         return /^\s*```\s*$/.test(line);
+    }
+
+    // A table cell is a formula when it starts with =, unless it starts with
+    // a highlight (==x==, the pair rule of inlineNodes()): the twin of
+    // ws_calc_is_formula() (includes/workspace/calc.php).
+    function isFormula(value) {
+        var text = String((value === undefined || value === null) ? '' : value).trim();
+
+        return (text.charAt(0) === '=') && !/^==[^=\s](?:[^=\n]{0,298}[^=\s])?==(?!=)/.test(text);
     }
 
     function tableRow(line) {
@@ -316,7 +336,7 @@
         return {
             markup: parts.markup,
             attach: function (win) {
-                var wrap = el('div', 'ws-block-title-field mb-2');
+                var wrap = el('div', 'ws-block-title-field mb-3');
                 var label = el('label', 'form-label small mb-1', t('block_title'));
 
                 field = el('input', 'form-control form-control-sm');
@@ -337,7 +357,191 @@
         };
     }
 
-    // A text split into lines of words and the blocks among them.
+    // Lists and quotes: blocks of the box (<ul>, <ol>, <blockquote> straight
+    // in it), an item a line (<li>, a <div> in a quote). One level: an item
+    // holds no list. An item read from a stored text keeps the mark it was
+    // written with (data-ws-mark), so a line nobody touched is written back
+    // as it was ("* " stays "* ", its indentation stays).
+    var LISTS = {
+        bullet: { tool: 'bullets', tag: 'UL', item: 'LI', className: 'ws-list', mark: '- ' },
+        number: { tool: 'numbers', tag: 'OL', item: 'LI', className: 'ws-list', mark: '1. ' },
+        quote: { tool: 'quote', tag: 'BLOCKQUOTE', item: 'DIV', className: 'ws-quote', mark: '> ' }
+    };
+
+    // One line as an item of a list or a line of a quote, or null: the twin
+    // of ws_list_line() (includes/workspace/render.php). mark is the line
+    // up to its words, words the rest as written. [^\n] and the explicit
+    // white space stand for PCRE's "." and "\S", which JavaScript reads
+    // wider.
+    function listLine(line) {
+        var text = String(line || '');
+        var rtrim = function (words) { return words.replace(/[ \t\n\r\0\x0B]+$/, ''); };
+        var shape = function (kind, number, indent, words) {
+            return { kind: kind, number: number, indent: indent.length, text: rtrim(words), mark: text.slice(0, text.length - words.length), words: words };
+        };
+        var match = /^([ \t]*)>(?:[ \t]+([^\n]*))?$/.exec(text);
+
+        if (match) {
+            return shape('quote', 0, match[1], match[2] || '');
+        }
+
+        if (/^[ \t]*[-*][ \t]\[[ xX]\](?:[ \t]|$)/.test(text) || /^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$/.test(text)) {
+            return null;
+        }
+
+        match = /^([ \t]*)[-*][ \t]+([^ \t\n\x0B\f\r][^\n]*)$/.exec(text);
+
+        if (match) {
+            return shape('bullet', 0, match[1], match[2]);
+        }
+
+        match = /^([ \t]*)([1-9][0-9]{0,2})\.[ \t]+([^ \t\n\x0B\f\r][^\n]*)$/.exec(text);
+
+        return match ? shape('number', parseInt(match[2], 10), match[1], match[3]) : null;
+    }
+
+    // The lines of running text grouped into text and lists: the twin of
+    // ws_text_blocks(). Only a shape that cannot have meant anything else is
+    // a list; every other shape stays text, as the server draws it. lines:
+    // each line, or null for one that ends a paragraph (a block's).
+    function textBlocks(lines) {
+        var out = [];
+        var count = lines.length;
+        var blank = function (line) { return (line === null) || (String(line).trim() === ''); };
+        var text = function (index) {
+            var last = out[out.length - 1];
+
+            if (last && (last.kind === 'text')) {
+                last.lines.push(index);
+            } else {
+                out.push({ kind: 'text', lines: [index] });
+            }
+        };
+        var i = 0;
+
+        while (i < count) {
+            if (blank(lines[i])) {
+                text(i++);
+                continue;
+            }
+
+            var end = i;
+
+            while ((end + 1 < count) && !blank(lines[end + 1])) {
+                end++;
+            }
+
+            var first = null;
+            var items = [];
+            var k;
+
+            for (k = i; (k <= end) && (first === null); k++) {
+                if (listLine(lines[k])) {
+                    first = k;
+                }
+            }
+
+            if (first !== null) {
+                var lead = listLine(lines[first]);
+
+                for (k = first; k <= end; k++) {
+                    var item = listLine(lines[k]);
+
+                    if (!item || (item.kind !== lead.kind) || ((lead.kind !== 'quote') && (item.indent !== lead.indent))
+                        || ((item.kind === 'number') && (item.number !== items.length + 1))) {
+                        items = [];
+                        break;
+                    }
+
+                    items.push(item);
+                }
+
+                if (((lead.kind === 'number') && (items.length < 2))
+                    || ((lead.kind === 'quote') && (items.map(function (one) { return one.text; }).join('') === ''))) {
+                    items = [];
+                }
+            }
+
+            if (!items.length) {
+                first = end + 1;
+            }
+
+            for (k = i; k < first; k++) {
+                text(k);
+            }
+
+            if (items.length) {
+                var at = [];
+
+                for (k = first; k <= end; k++) {
+                    at.push(k);
+                }
+
+                out.push({ kind: items[0].kind, lines: at, items: items });
+            }
+
+            i = end + 1;
+        }
+
+        return out;
+    }
+
+    // A list written back, an item a line. items: { mark, words }, words as
+    // markup. An item keeps its mark; one the box made takes the mark of the
+    // item before it (its indent too, which the server needs to see one
+    // list), numbers are counted again from 1, an empty item is left out, a
+    // line break in an item makes an item of its own. In a quote an empty
+    // line stays between two lines with words.
+    function listMarkup(kind, items) {
+        var lines = [];
+        var model = '';
+
+        (items || []).forEach(function (item) {
+            if (item.mark) {
+                model = model || item.mark;
+            }
+        });
+
+        model = model || LISTS[kind].mark;
+
+        items.forEach(function (item) {
+            var mark = item.mark || model;
+
+            String(item.words).replace(/\n+$/, '').split('\n').forEach(function (words) {
+                if (words.trim() === '') {
+                    if (kind === 'quote') {
+                        lines.push({ empty: item.mark || '>' });
+                    }
+
+                    return;
+                }
+
+                if (kind === 'number') {
+                    var parts = /^([ \t]*)([0-9]+)\.([ \t]+)$/.exec(mark) || ['', '', '1', ' '];
+                    var number = lines.length + 1;
+
+                    mark = (parseInt(parts[2], 10) === number) ? mark : parts[1] + number + '.' + parts[3];
+                }
+
+                // A lone ">" read from a quote takes a space before words.
+                lines.push(mark + (/[ \t]$/.test(mark) ? '' : ' ') + words);
+                model = mark;
+            });
+        });
+
+        while (lines.length && lines[0].empty) {
+            lines.shift();
+        }
+
+        while (lines.length && lines[lines.length - 1].empty) {
+            lines.pop();
+        }
+
+        return lines.map(function (line) { return line.empty || line; }).join('\n');
+    }
+
+    // A text split into lines of words and the blocks among them; the lines
+    // of a list or a quote one block.
     function parseBlocks(markup) {
         var lines = String(markup || '').replace(/\r\n?/g, '\n').split('\n');
         var out = [];
@@ -399,7 +603,603 @@
             out.push({ kind: 'text', markup: line });
         }
 
+        var lines = out.map(function (block) { return (block.kind === 'text') ? block.markup : null; });
+        var grouped = [];
+
+        textBlocks(lines).forEach(function (group) {
+            if (group.kind === 'text') {
+                group.lines.forEach(function (index) { grouped.push(out[index]); });
+                return;
+            }
+
+            grouped.push({
+                kind: 'list',
+                list: group.kind,
+                markup: group.lines.map(function (index) { return lines[index]; }).join('\n'),
+                items: group.items
+            });
+        });
+
+        return grouped;
+    }
+
+    // ── Pasted HTML → markup ───────────────────────────────────────────
+    //
+    // What another program puts on the clipboard as HTML (a page, Word,
+    // Google Docs, a sheet) is read in a detached document and walked here:
+    // only its words and the marks the box stores come over, written as the
+    // stored markup, which the box then reads as it reads a saved text. No
+    // element, attribute or style of the HTML reaches the box; a link keeps
+    // only an http(s) or mailto address. The walk reads nodeType, nodeName,
+    // nodeValue, childNodes and getAttribute() only, so a test can hand it
+    // any tree.
+
+    // Elements whose content is no words of the text: dropped whole.
+    var PASTE_DROP = /^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT|IFRAME|FRAME|FRAMESET|OBJECT|EMBED|HEAD|TITLE|META|LINK|BASE|SVG|MATH|CANVAS|AUDIO|VIDEO|IMG|PICTURE|SOURCE|INPUT|BUTTON|SELECT|TEXTAREA|OPTION)$/;
+
+    // Elements that stand on lines of their own.
+    var PASTE_BLOCKS = /^(P|DIV|H[1-6]|LI|BLOCKQUOTE|TR|TD|TH|CAPTION|THEAD|TBODY|TFOOT|SECTION|ARTICLE|ASIDE|HEADER|FOOTER|NAV|MAIN|ADDRESS|FIGURE|FIGCAPTION|DL|DT|DD|HR|BODY|HTML|CENTER|DETAILS|SUMMARY|FIELDSET|LEGEND|FORM)$/;
+
+    // The addresses a link may keep: the link rule of inlineNodes().
+    var PASTE_LINK = /^(?:https?:\/\/|mailto:)[^\s()<>"]{1,1000}$/;
+
+    var PASTE_MARKS = ['bold', 'italic', 'strike', 'highlight'];
+
+    // What an element's style attribute says of the marks: Google Docs marks
+    // with font-weight and font-style on spans (its outer <b> says normal),
+    // Word with background and mso-highlight, and Word's list paragraphs
+    // carry mso-list (their bullet in a span of mso-list:Ignore).
+    function pasteStyle(node) {
+        var style = String((node.getAttribute && node.getAttribute('style')) || '').toLowerCase();
+        var read = function (name) {
+            var match = new RegExp('(?:^|;)\\s*' + name + '\\s*:\\s*([^;]+)').exec(style);
+
+            return match ? match[1].trim() : '';
+        };
+        var weight = read('font-weight');
+        var slant = read('font-style');
+        var space = read('white-space');
+        var list = read('mso-list');
+        var colour = (read('background-color') || read('background')).replace(/\s*([(),])\s*/g, '$1').split(/\s+/)[0];
+        var marker = read('mso-highlight');
+
+        return {
+            bold: /^(bold|bolder|[6-9]00)$/.test(weight) ? true : (/^(normal|lighter|[1-5]00)$/.test(weight) ? false : null),
+            italic: /^(italic|oblique)/.test(slant) ? true : ((slant === 'normal') ? false : null),
+            strike: /line-through/.test(read('text-decoration') + ' ' + read('text-decoration-line')),
+            highlight: (!!marker && marker !== 'none') || (/^(#|rgb|hsl|[a-z]+$)/.test(colour)
+                && ['transparent', 'none', 'inherit', 'initial', 'unset', 'white', 'window', '#fff', '#ffffff', 'rgb(255,255,255)', 'rgba(0,0,0,0)', 'rgba(255,255,255,1)'].indexOf(colour) === -1),
+            keep: space ? /^pre/.test(space) : null,
+            ignore: list === 'ignore',
+            list: !!list && list !== 'ignore'
+        };
+    }
+
+    // The marks an element puts on what it holds; its style wins over its
+    // tag (Google Docs' <b style="font-weight:normal"> holds the whole text).
+    function pasteMarks(name, style, ctx) {
+        var next = { bold: ctx.bold, italic: ctx.italic, strike: ctx.strike, highlight: ctx.highlight, keep: ctx.keep, href: ctx.href };
+
+        if (/^(B|STRONG|H[1-6])$/.test(name)) {
+            next.bold = true;
+        }
+
+        if (/^(I|EM|CITE|DFN|VAR)$/.test(name)) {
+            next.italic = true;
+        }
+
+        next.bold = (style.bold === null) ? next.bold : style.bold;
+        next.italic = (style.italic === null) ? next.italic : style.italic;
+        next.strike = next.strike || style.strike || /^(S|STRIKE|DEL)$/.test(name);
+        next.highlight = next.highlight || style.highlight || (name === 'MARK');
+        next.keep = (style.keep === null) ? next.keep : style.keep;
+
+        return next;
+    }
+
+    // The words of an element as written: white space kept, a <br> or a
+    // block a new line (code, a Word list's bullet).
+    function pasteWords(node) {
+        if (node.nodeType === 3) {
+            return String(node.nodeValue || '').replace(/ /g, ' ').replace(/\r\n?/g, '\n');
+        }
+
+        var name = (node.nodeType === 1) ? String(node.nodeName).toUpperCase() : '';
+
+        if (!name || PASTE_DROP.test(name)) {
+            return '';
+        }
+
+        if (name === 'BR') {
+            return '\n';
+        }
+
+        var words = '';
+
+        Array.prototype.forEach.call(node.childNodes || [], function (child) {
+            words += pasteWords(child);
+        });
+
+        return (PASTE_BLOCKS.test(name) && words !== '' && words.slice(-1) !== '\n') ? words + '\n' : words;
+    }
+
+    // Runs side by side with the same marks and link written as one, then
+    // each link around the marked words it holds.
+    function pasteRunsMarkup(runs) {
+        var merged = [];
+
+        runs.forEach(function (run) {
+            var last = merged[merged.length - 1];
+            var same = !!last && !last.code && !run.code && (last.href === run.href) && PASTE_MARKS.every(function (key) { return last[key] === run[key]; });
+
+            if (same) {
+                last.text += run.text;
+            } else {
+                merged.push({ text: run.text, code: run.code, href: run.href, bold: run.bold, italic: run.italic, strike: run.strike, highlight: run.highlight });
+            }
+        });
+
+        var out = '';
+        var i = 0;
+
+        while (i < merged.length) {
+            var href = merged[i].href;
+            var inner = '';
+
+            for (; i < merged.length && merged[i].href === href; i++) {
+                inner += pasteRunMarkup(merged[i]);
+            }
+
+            out += href ? pasteLink(inner, href) : inner;
+        }
+
         return out;
+    }
+
+    // One run's words in its marks. A mark whose sign is in the words is
+    // left off, as serializeNode() does for a highlight: the stored text
+    // could not be read back.
+    function pasteRunMarkup(run) {
+        var text = run.text;
+
+        if (run.code) {
+            var core = text.trim();
+            var lead = /^\s*/.exec(text)[0];
+
+            if (core !== '' && core.length <= 300 && !/[`\n]/.test(core)) {
+                return lead + '`' + core + '`' + text.slice(lead.length + core.length);
+            }
+
+            return text;
+        }
+
+        if (/^\s*$/.test(text)) {
+            return text;
+        }
+
+        var signs = { highlight: ['=', '=='], strike: ['~', '~~'], italic: ['_', '_'], bold: ['*', '**'] };
+
+        ['highlight', 'strike', 'italic', 'bold'].forEach(function (key) {
+            if (run[key] && text.indexOf(signs[key][0]) === -1) {
+                text = wrapLines(text, signs[key][1]);
+            }
+        });
+
+        return text;
+    }
+
+    function pasteLink(inner, href) {
+        var lead = /^\s*/.exec(inner)[0];
+        var core = inner.replace(/\s+/g, ' ').trim();
+
+        if (core === '' || core.length > 300 || /[[\]]/.test(core)) {
+            return inner;
+        }
+
+        return lead + '[' + core + '](' + href + ')' + (/\s$/.test(inner) ? ' ' : '');
+    }
+
+    // The words gathered so far as lines. Runs of white space alone (the
+    // gaps between the source's tags) make no line; a no-break space or a
+    // <br> does (Word's empty paragraph).
+    function pasteFlush(out) {
+        var runs = out.runs;
+        var keep = out.keep;
+
+        out.runs = [];
+        out.keep = false;
+
+        if (!runs.some(function (run) { return run.solid; })) {
+            return;
+        }
+
+        pasteRunsMarkup(runs).replace(/\n$/, '').split('\n').forEach(function (line) {
+            out.lines.push(keep ? line.replace(/\s+$/, '') : line.trim());
+        });
+
+        out.wordList = null;
+    }
+
+    function pasteOut() {
+        return { lines: [], runs: [], keep: false, wordList: null };
+    }
+
+    // The words of a part (an item, a cell) on one line.
+    function pasteLine(nodes, ctx) {
+        var sub = pasteOut();
+
+        nodes.forEach(function (node) { pasteWalk(node, sub, ctx); });
+        pasteFlush(sub);
+
+        return sub.lines.join(' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function pasteWalk(node, out, ctx) {
+        if (node.nodeType === 3) {
+            var raw = String(node.nodeValue || '');
+            var text = raw.replace(/ /g, ' ');
+
+            text = ctx.keep ? text.replace(/\r\n?/g, '\n') : text.replace(/\s+/g, ' ');
+
+            if (text !== '') {
+                out.runs.push({ text: text, solid: /[^\s]| /.test(raw), code: false, href: ctx.href, bold: ctx.bold, italic: ctx.italic, strike: ctx.strike, highlight: ctx.highlight });
+                out.keep = out.keep || ctx.keep;
+            }
+
+            return;
+        }
+
+        var name = (node.nodeType === 1) ? String(node.nodeName).toUpperCase() : '';
+
+        if (!name || PASTE_DROP.test(name)) {
+            return;
+        }
+
+        var style = pasteStyle(node);
+
+        if (style.ignore) {
+            return;
+        }
+
+        if (name === 'BR') {
+            out.runs.push({ text: '\n', solid: true, code: false, href: ctx.href, bold: false, italic: false, strike: false, highlight: false });
+            return;
+        }
+
+        var inner = pasteMarks(name, style, ctx);
+        var children = Array.prototype.slice.call(node.childNodes || []);
+
+        if (name === 'A') {
+            var href = String(node.getAttribute('href') || '').trim();
+
+            inner.href = PASTE_LINK.test(href) ? href : ctx.href;
+        }
+
+        if (/^(CODE|KBD|SAMP|TT)$/.test(name)) {
+            var code = pasteWords(node).replace(/\s+/g, ' ');
+
+            if (code !== '') {
+                out.runs.push({ text: code, solid: /\S/.test(code), code: true, href: inner.href, bold: false, italic: false, strike: false, highlight: false });
+            }
+
+            return;
+        }
+
+        if (name === 'PRE') {
+            pasteFlush(out);
+
+            var lines = pasteWords(node).replace(/\n+$/, '').split('\n');
+
+            if (lines.join('') !== '') {
+                Array.prototype.push.apply(out.lines, lines.some(function (line) { return /^\s*```/.test(line); }) ? lines : ['```'].concat(lines, ['```']));
+            }
+
+            return;
+        }
+
+        if (name === 'UL' || name === 'OL') {
+            pasteFlush(out);
+            pasteItems(node, out, inner, { numbered: name === 'OL', count: 0 });
+            return;
+        }
+
+        if (name === 'BLOCKQUOTE') {
+            pasteFlush(out);
+
+            var quote = pasteOut();
+
+            children.forEach(function (child) { pasteWalk(child, quote, inner); });
+            pasteFlush(quote);
+            quote.lines.forEach(function (line) { out.lines.push(line === '' ? '>' : '> ' + line); });
+            return;
+        }
+
+        if (name === 'TABLE') {
+            pasteFlush(out);
+
+            var table = pasteTableRows(pasteRows(node, inner));
+
+            if (table !== '') {
+                Array.prototype.push.apply(out.lines, table.split('\n'));
+                return;
+            }
+        }
+
+        // A Word list paragraph: its bullet tells a numbered list from a
+        // bulleted one; paragraphs one after another make one list.
+        if (style.list) {
+            pasteFlush(out);
+
+            var bullet = '';
+
+            (function find(at) {
+                Array.prototype.forEach.call(at.childNodes || [], function (child) {
+                    if (!bullet && child.nodeType === 1) {
+                        if (pasteStyle(child).ignore) {
+                            bullet = pasteWords(child).trim() || ' ';
+                        } else {
+                            find(child);
+                        }
+                    }
+                });
+            })(node);
+
+            var numbered = /^\(?[0-9A-Za-z]{1,3}[.)]/.test(bullet);
+            var words = pasteLine(children, inner);
+            var list = (out.wordList && out.wordList.numbered === numbered) ? out.wordList : { numbered: numbered, count: 0 };
+
+            if (words !== '') {
+                out.lines.push((numbered ? (++list.count) + '. ' : '- ') + words);
+            }
+
+            out.wordList = list;
+            return;
+        }
+
+        if (name === 'LI') {
+            pasteFlush(out);
+            pasteItem(node, out, inner, { numbered: false, count: 0 });
+            return;
+        }
+
+        var block = PASTE_BLOCKS.test(name);
+
+        if (block) {
+            pasteFlush(out);
+        }
+
+        children.forEach(function (child) { pasteWalk(child, out, inner); });
+
+        if (block) {
+            pasteFlush(out);
+        }
+    }
+
+    // A list's items, one level: a list inside an item goes on as items of
+    // the same list (the box keeps one level).
+    function pasteItems(node, out, ctx, list) {
+        Array.prototype.forEach.call(node.childNodes || [], function (child) {
+            var name = (child.nodeType === 1) ? String(child.nodeName).toUpperCase() : '';
+
+            if (name === 'LI') {
+                pasteItem(child, out, pasteMarks(name, pasteStyle(child), ctx), list);
+            } else if (name === 'UL' || name === 'OL') {
+                pasteItems(child, out, ctx, list);
+            }
+        });
+    }
+
+    function pasteItem(item, out, ctx, list) {
+        var check = pasteCheck(item);
+        var part = [];
+        var emit = function () {
+            var words = pasteLine(part, ctx);
+
+            part = [];
+
+            if (words === '') {
+                return;
+            }
+
+            if (check !== null) {
+                out.lines.push('- [' + (check ? 'x' : ' ') + '] ' + words);
+            } else {
+                out.lines.push((list.numbered ? (++list.count) + '. ' : '- ') + words);
+            }
+        };
+
+        Array.prototype.forEach.call(item.childNodes || [], function (child) {
+            var name = (child.nodeType === 1) ? String(child.nodeName).toUpperCase() : '';
+
+            if (name === 'UL' || name === 'OL') {
+                emit();
+                pasteItems(child, out, ctx, list);
+            } else {
+                part.push(child);
+            }
+        });
+
+        emit();
+    }
+
+    // An item of a checklist: aria-checked on the item (Google Docs), or a
+    // checkbox in it before any list inside it (GitHub, Notion, the web).
+    // null for an ordinary item.
+    function pasteCheck(item) {
+        var aria = item.getAttribute('aria-checked');
+
+        if (aria === 'true' || aria === 'false') {
+            return aria === 'true';
+        }
+
+        var found = null;
+
+        (function find(at) {
+            Array.prototype.forEach.call(at.childNodes || [], function (child) {
+                var name = (child.nodeType === 1) ? String(child.nodeName).toUpperCase() : '';
+
+                if (found !== null || !name || name === 'UL' || name === 'OL') {
+                    return;
+                }
+
+                if (name === 'INPUT' && String(child.getAttribute('type') || '').toLowerCase() === 'checkbox') {
+                    found = child.getAttribute('checked') !== null;
+                } else {
+                    find(child);
+                }
+            });
+        })(item);
+
+        return found;
+    }
+
+    // The rows of a table, each a list of its cells' words.
+    function pasteRows(table, ctx) {
+        var rows = [];
+
+        (function find(at) {
+            Array.prototype.forEach.call(at.childNodes || [], function (child) {
+                var name = (child.nodeType === 1) ? String(child.nodeName).toUpperCase() : '';
+
+                if (name === 'TR') {
+                    var cells = [];
+
+                    Array.prototype.forEach.call(child.childNodes || [], function (cell) {
+                        var kind = (cell.nodeType === 1) ? String(cell.nodeName).toUpperCase() : '';
+
+                        if (kind === 'TD' || kind === 'TH') {
+                            cells.push(pasteLine(Array.prototype.slice.call(cell.childNodes || []), pasteMarks(kind, pasteStyle(cell), ctx)));
+                        }
+                    });
+
+                    rows.push(cells);
+                } else if (/^(THEAD|TBODY|TFOOT)$/.test(name)) {
+                    find(child);
+                }
+            });
+        })(table);
+
+        return rows;
+    }
+
+    // Rows of cells as the box's table, its first row the head; '' when it
+    // is no table the table window can hold (a layout table of one column,
+    // one row, or more than the window's 12 columns and 200 rows).
+    function pasteTableRows(rows) {
+        rows = rows.filter(function (row) { return row.some(function (cell) { return cell !== ''; }); });
+
+        var width = rows.reduce(function (most, row) { return Math.max(most, row.length); }, 0);
+
+        if (rows.length < 2 || rows.length > 201 || width < 2 || width > 12) {
+            return '';
+        }
+
+        var line = function (cells) {
+            var all = cells.slice();
+
+            while (all.length < width) {
+                all.push('');
+            }
+
+            return '| ' + all.map(function (cell) { return String(cell).replace(/\s+/g, ' ').trim().replace(/\|/g, '\\|'); }).join(' | ') + ' |';
+        };
+        var rule = [];
+
+        while (rule.length < width) {
+            rule.push('---');
+        }
+
+        return [line(rows[0]), '| ' + rule.join(' | ') + ' |'].concat(rows.slice(1).map(line)).join('\n');
+    }
+
+    // A whole pasted document (its body) as the stored markup: empty lines
+    // run together, an empty line after a list that words follow (the
+    // server draws a list only where nothing follows it in its paragraph).
+    function pasteMarkup(root) {
+        var out = pasteOut();
+
+        pasteWalk(root, out, { bold: false, italic: false, strike: false, highlight: false, keep: false, href: '' });
+        pasteFlush(out);
+
+        var lines = [];
+        var fence = false;
+
+        out.lines.forEach(function (line) {
+            var last = lines.length ? lines[lines.length - 1] : null;
+
+            if (fence || (fenceOpen(line) !== null)) {
+                fence = !(fence && fenceClose(line));
+                lines.push(line);
+                return;
+            }
+
+            if (line === '' && (last === null || last === '')) {
+                return;
+            }
+
+            if (line !== '' && last && listLine(last) && !listLine(line)) {
+                lines.push('');
+            }
+
+            lines.push(line);
+        });
+
+        while (lines.length && lines[lines.length - 1] === '') {
+            lines.pop();
+        }
+
+        return lines.join('\n');
+    }
+
+    // A range copied from a sheet (Excel, Google Sheets, LibreOffice): rows
+    // of tab-separated cells, two rows at least, every row as wide; as the
+    // box's table, or '' for any other text.
+    function pasteSheet(text) {
+        var lines = String(text || '').replace(/\r\n?/g, '\n').replace(/\n+$/, '').split('\n');
+        var width = lines[0].split('\t').length;
+
+        if (lines.length < 2 || width < 2 || lines.some(function (line) { return line.split('\t').length !== width; })) {
+            return '';
+        }
+
+        return pasteTableRows(lines.map(function (line) { return line.split('\t'); }));
+    }
+
+    // A pasted text that is one address alone, which links the words it is
+    // pasted over; '' for any other text.
+    function pastedUrl(text) {
+        var url = String(text || '').trim();
+
+        return PASTE_LINK.test(url) ? url : '';
+    }
+
+    // The blocks of a stored text (parseBlocks()) as the box's nodes.
+    function markupNodes(blocks, labels) {
+        var fragment = document.createDocumentFragment();
+
+        blocks.forEach(function (block, index) {
+            if (block.kind === 'text') {
+                inlineNodes(block.markup, labels, fragment);
+
+                if (index < blocks.length - 1) {
+                    fragment.appendChild(el('br'));
+                }
+            } else if (block.kind === 'list') {
+                // A list ends its line itself: no break after it.
+                var list = el(LISTS[block.list].tag.toLowerCase(), LISTS[block.list].className);
+
+                block.items.forEach(function (one) {
+                    list.appendChild(fillEmpty(inlineNodes(one.words, labels, itemNode(block.list, one.mark))));
+                });
+
+                fragment.appendChild(list);
+            } else {
+                fragment.appendChild(blockNode(block.kind, block.markup));
+                fragment.appendChild(el('br'));
+            }
+        });
+
+        return fragment;
     }
 
     // ── Nodes → markup ─────────────────────────────────────────────────
@@ -453,6 +1253,21 @@
             return singleLine ? '' : lead + block + '\n';
         }
 
+        var kind = listKind(node);
+
+        if (kind && !singleLine) {
+            var items = Array.prototype.map.call(node.childNodes, function (item) {
+                return { mark: (item.nodeType === 1) ? (item.getAttribute('data-ws-mark') || '') : '', words: serializeNode(item, '', false) };
+            });
+            var written = listMarkup(kind, items);
+            var start = (sofar === '' || /\n$/.test(sofar)) ? '' : '\n';
+
+            // Words straight after a list would end it on the server, which
+            // draws a list only where nothing follows it in its paragraph:
+            // an empty line keeps it one.
+            return (written === '') ? start : start + written + '\n' + (wordsAfter(node) ? '\n' : '');
+        }
+
         var tag = node.tagName;
 
         if (tag === 'BR') {
@@ -485,6 +1300,12 @@
             return wrapLines(inner, '~~');
         }
 
+        // Words holding a = cannot be read back as one highlight: they are
+        // written without its signs.
+        if (tag === 'MARK') {
+            return (inner.indexOf('=') === -1) ? wrapLines(inner, '==') : inner;
+        }
+
         // Spaces at either end stay outside the marks, as with emphasis.
         if (tag === 'CODE') {
             var code = (node.textContent || '').replace(/[\n\u00a0]/g, ' ').replace(/\u200b/g, '').replace(/`/g, '\'');
@@ -511,6 +1332,33 @@
         }
 
         return inner;
+    }
+
+    // Which list an element of the box is (bullet, number, quote), or ''.
+    function listKind(node) {
+        if (!node || (node.nodeType !== 1)) {
+            return '';
+        }
+
+        for (var kind in LISTS) {
+            if (Object.prototype.hasOwnProperty.call(LISTS, kind) && (LISTS[kind].tag === node.tagName)) {
+                return kind;
+            }
+        }
+
+        return '';
+    }
+
+    // The next line-filling node after a list: a line break, a card or
+    // nothing ends its line anyway.
+    function wordsAfter(list) {
+        var next = list.nextSibling;
+
+        while (next && (((next.nodeType === 3) && (next.nodeValue.replace(/\u200b/g, '') === '')) || ((next.nodeType === 1) && next.hasAttribute('data-ws-skip')))) {
+            next = next.nextSibling;
+        }
+
+        return !!next && !((next.nodeType === 1) && ((next.tagName === 'BR') || next.classList.contains('ws-rich-block')));
     }
 
     function serialize(root, singleLine) {
@@ -650,25 +1498,26 @@
         card.classList.add('ws-rich-block-shown');
     }
 
-    // ── Marks: bold, italic, strikethrough, code, links ────────────────
+    // ── Marks: bold, italic, strikethrough, highlight, code, links ─────
     //
     // Made on the nodes themselves rather than with document.execCommand():
     // the browsers' commands differ (<b> or <strong>, spans with styles),
     // keep undo steps of their own that the box's history cannot follow, and
     // are deprecated. Only what the markup carries is made: <b>, <i>, <s>,
-    // <code> and <a href>; <strong>, <em>, <del> from elsewhere are read as
+    // <mark>, <code> and <a href>; <strong>, <em>, <del> from elsewhere are read as
     // the same marks.
 
     var MARKS = {
         bold: { tag: 'b', match: /^(B|STRONG)$/ },
         italic: { tag: 'i', match: /^(I|EM)$/ },
         strike: { tag: 's', match: /^(S|STRIKE|DEL)$/ },
+        highlight: { tag: 'mark', match: /^MARK$/ },
         code: { tag: 'code', match: /^CODE$/ },
         link: { tag: 'a', match: /^A$/ }
     };
 
     // The marks a caret with nothing selected keeps for what is typed next.
-    var TYPED_MARKS = ['bold', 'italic', 'strike'];
+    var TYPED_MARKS = ['bold', 'italic', 'strike', 'highlight'];
 
     function markName(node) {
         if (!node || node.nodeType !== 1) {
@@ -1016,6 +1865,19 @@
         }
 
         var spot = range.cloneRange();
+        var lastItem = (range.startContainer === surface) ? boundaryItem(surface, range.startContainer, range.startOffset) : null;
+
+        // A caret straight after a list that ends the box types into its
+        // last item.
+        if (lastItem) {
+            spot.selectNodeContents(lastItem);
+            spot.collapse(false);
+
+            if (isBreak(lastItem.lastChild)) {
+                spot.setStartBefore(lastItem.lastChild);
+                spot.collapse(true);
+            }
+        }
 
         if (outer) {
             var tail = document.createRange();
@@ -1175,7 +2037,7 @@
     // and the ones waiting there, a selection by whether all its words carry
     // them.
     function marksAt(surface, range) {
-        var state = { bold: false, italic: false, strike: false, code: false, link: false };
+        var state = { bold: false, italic: false, strike: false, highlight: false, code: false, link: false };
 
         if (!surface || !range || !surface.contains(range.startContainer) || !surface.contains(range.endContainer)) {
             return state;
@@ -1214,7 +2076,8 @@
             return true;
         }
 
-        if (range.collapsed) {
+        // One <code> holds no line: none is made over two items.
+        if (range.collapsed || (itemAt(surface, range.startContainer) !== itemAt(surface, range.endContainer))) {
             return false;
         }
 
@@ -1403,6 +2266,429 @@
         return changed(surface, function () { return applyMark(surface, name); });
     }
 
+    // ── Lists and quotes in the box ────────────────────────────────────
+    //
+    // A line of the box is an item, or the box's own children up to a <br>.
+    // Lists are made and taken apart on the nodes, never with execCommand():
+    // the browsers' list commands nest, restyle and keep undo steps of their
+    // own.
+
+    function itemNode(kind, mark) {
+        var item = el(LISTS[kind].item.toLowerCase());
+
+        if (mark) {
+            item.setAttribute('data-ws-mark', mark);
+        }
+
+        return item;
+    }
+
+    function isBreak(node) {
+        return !!node && (node.nodeType === 1) && (node.tagName === 'BR');
+    }
+
+    function indexIn(node) {
+        return Array.prototype.indexOf.call(node.parentNode.childNodes, node);
+    }
+
+    // Words, a chip or a card in a piece of the box.
+    function hasWords(node) {
+        return ((node.textContent || '').replace(/[\s ​]/g, '') !== '')
+            || !!(node.querySelector && node.querySelector('[data-token], .ws-rich-block'));
+    }
+
+    // An item with nothing in it keeps a line break for the caret to stand on.
+    function fillEmpty(item) {
+        if (!hasWords(item) && !item.querySelector('br')) {
+            item.appendChild(el('br'));
+        }
+
+        return item;
+    }
+
+    // The item of a list a node is in, or null.
+    function itemAt(surface, node) {
+        for (var at = node; at && (at !== surface); at = at.parentNode) {
+            if ((at.nodeType === 1) && at.parentNode && (at.parentNode.parentNode === surface) && listKind(at.parentNode)) {
+                return at;
+            }
+        }
+
+        return null;
+    }
+
+    // The item a boundary stands in. One right after a list that ends the box
+    // is drawn, and typed into, at the end of its last item.
+    function boundaryItem(surface, container, offset) {
+        var item = itemAt(surface, container);
+
+        if (item || (container !== surface)) {
+            return item;
+        }
+
+        var before = surface.childNodes[offset - 1];
+
+        return (listKind(before) && !surface.childNodes[offset]) ? before.lastElementChild : null;
+    }
+
+    function atItemStart(item, range) {
+        if (!item.contains(range.startContainer)) {
+            return false;
+        }
+
+        var head = document.createRange();
+
+        head.setStart(item, 0);
+        head.setEnd(range.startContainer, range.startOffset);
+
+        return plainOf(head.cloneContents()).replace(/​/g, '') === '';
+    }
+
+    // The lines of the box in order: { item }, or { nodes, br } for a line
+    // of its own children (fixed when it holds a card or a block of the
+    // browser's, which no list takes); after a final break an empty line.
+    function boxLines(surface) {
+        var all = [];
+        var line = null;
+
+        Array.prototype.forEach.call(surface.childNodes, function (child) {
+            if (listKind(child)) {
+                line = null;
+                Array.prototype.forEach.call(child.children, function (item) { all.push({ item: item }); });
+                return;
+            }
+
+            if (!line) {
+                line = { nodes: [], br: null };
+                all.push(line);
+            }
+
+            if (isBreak(child)) {
+                line.br = child;
+                line = null;
+                return;
+            }
+
+            if ((child.nodeType === 1) && (child.classList.contains('ws-rich-block') || BLOCKS.test(child.tagName))) {
+                line.fixed = true;
+            }
+
+            line.nodes.push(child);
+        });
+
+        if (!line && (!all.length || !all[all.length - 1].item)) {
+            all.push({ nodes: [], br: null });
+        }
+
+        return all;
+    }
+
+    // Which of boxLines() a boundary of the selection stands on.
+    function lineIndex(surface, all, container, offset) {
+        var item = boundaryItem(surface, container, offset);
+        var node = container;
+
+        if (!item && (container === surface)) {
+            var before = surface.childNodes[offset - 1];
+
+            node = (before && !isBreak(before) && !listKind(before)) ? before : (surface.childNodes[offset] || null);
+            item = listKind(node) ? node.firstElementChild : null;
+        }
+
+        for (var i = 0; i < all.length; i++) {
+            var line = all[i];
+
+            if (item ? (line.item === item) : (line.nodes && node && line.nodes.concat(line.br ? [line.br] : []).some(function (one) { return one === node || one.contains(node); }))) {
+                return i;
+            }
+        }
+
+        return all.length - 1;
+    }
+
+    // The selection by its nodes, put back once they have moved: a range
+    // inside a node taken out of the box would be lost.
+    function holdSelection() {
+        var range = selectionRange();
+        var end = function (container, offset) {
+            return (container.nodeType === 3) ? { node: container, offset: offset } : { node: container.childNodes[offset] || null, parent: container };
+        };
+
+        return range ? { start: end(range.startContainer, range.startOffset), end: end(range.endContainer, range.endOffset), backward: selectionBackward() } : null;
+    }
+
+    function putSelection(surface, held, fallback) {
+        var spot = function (one) {
+            if (one.node) {
+                if (!surface.contains(one.node) || (one.node === surface)) {
+                    return null;
+                }
+
+                return (one.node.nodeType === 3) ? [one.node, Math.min(one.offset, one.node.nodeValue.length)] : [one.node.parentNode, indexIn(one.node)];
+            }
+
+            return (surface.contains(one.parent) && ((one.parent === surface) || one.parent.parentNode)) ? [one.parent, one.parent.childNodes.length] : null;
+        };
+        var start = held ? spot(held.start) : null;
+        var end = held ? spot(held.end) : null;
+
+        if (!start || !end) {
+            start = end = fallback;
+        }
+
+        if (start) {
+            select(start[0], start[1], end[0], end[1], held && held.backward);
+        }
+    }
+
+    // A line made an item: it joins a list of its kind just before it, and
+    // one just after it joins too. Answers the item.
+    function toItem(surface, line, kind) {
+        var spot = document.createTextNode('');
+        var item = itemNode(kind, '');
+
+        surface.insertBefore(spot, line.nodes[0] || line.br || null);
+        line.nodes.forEach(function (node) { item.appendChild(node); });
+
+        if (line.br) {
+            line.br.remove();
+        }
+
+        var list = spot.previousSibling;
+
+        if (listKind(list) !== kind) {
+            list = el(LISTS[kind].tag.toLowerCase(), LISTS[kind].className);
+            surface.insertBefore(list, spot);
+        }
+
+        list.appendChild(fillEmpty(item));
+
+        var next = spot.nextSibling;
+
+        if (listKind(next) === kind) {
+            while (next.firstChild) {
+                list.appendChild(next.firstChild);
+            }
+
+            next.remove();
+        }
+
+        spot.remove();
+
+        return item;
+    }
+
+    // An item taken out of its list as a line of the box, the items after it
+    // a list of their own below it. Answers the line ({ nodes, br }).
+    function liftItem(surface, item) {
+        var list = item.parentNode;
+
+        if (item.nextElementSibling) {
+            var rest = list.cloneNode(false);
+
+            while (item.nextSibling) {
+                rest.appendChild(item.nextSibling);
+            }
+
+            surface.insertBefore(rest, list.nextSibling);
+        }
+
+        var next = list.nextSibling;
+        var nodes = hasWords(item) ? Array.prototype.slice.call(item.childNodes) : [];
+
+        // The break an item ends with is no line of its own.
+        while (nodes.length && isBreak(nodes[nodes.length - 1])) {
+            nodes.pop();
+        }
+
+        nodes.forEach(function (node) { surface.insertBefore(node, next); });
+        item.remove();
+
+        if (!list.children.length) {
+            list.remove();
+        }
+
+        // A break ends the line before it and this one, unless a list ends
+        // it; an empty line is a break of its own.
+        var first = nodes[0] || next;
+        var before = first ? first.previousSibling : surface.lastChild;
+        var br = null;
+
+        if (before && !isBreak(before) && !listKind(before)) {
+            surface.insertBefore(el('br'), first || null);
+        }
+
+        if (!nodes.length || (next && !listKind(next))) {
+            br = el('br');
+            surface.insertBefore(br, next);
+        }
+
+        return { nodes: nodes, br: br };
+    }
+
+    function lineStart(surface, line) {
+        var first = line.nodes[0] || line.br;
+
+        return first ? [surface, indexIn(first)] : null;
+    }
+
+    // The toolbar's bullets, numbers and quote: the lines the selection
+    // touches made items of that kind, or, when all of them are already,
+    // lines again. Cards and blocks stay as they are.
+    function toggleList(surface, kind) {
+        var range = selectionRange();
+
+        if (!range || !surface.contains(range.startContainer) || !surface.contains(range.endContainer)) {
+            return false;
+        }
+
+        var all = boxLines(surface);
+        var from = lineIndex(surface, all, range.startContainer, range.startOffset);
+        var to = range.collapsed ? from : lineIndex(surface, all, range.endContainer, range.endOffset);
+        var lines = all.slice(from, to + 1).filter(function (line) { return !line.fixed; });
+        var same = function (line) { return !!line.item && (listKind(line.item.parentNode) === kind); };
+        var off = lines.length && lines.every(same);
+        var held = holdSelection();
+        var fallback = null;
+
+        if (!lines.length) {
+            return false;
+        }
+
+        lines.forEach(function (line) {
+            if (same(line) && !off) {
+                return;
+            }
+
+            var lifted = line.item ? liftItem(surface, line.item) : line;
+
+            if (off) {
+                fallback = fallback || lineStart(surface, lifted);
+                return;
+            }
+
+            var item = toItem(surface, lifted, kind);
+
+            fallback = fallback || [item, 0];
+        });
+
+        putSelection(surface, held, fallback);
+
+        return true;
+    }
+
+    // Enter in an item: the words after the caret go on in a new item of
+    // the same mark; an empty item ends the list there. A selection goes
+    // first: over two items it leaves both, the caret at the later one.
+    function itemEnter(surface) {
+        var range = selectionRange();
+        var item = range ? boundaryItem(surface, range.startContainer, range.startOffset) : null;
+
+        if (!item) {
+            return false;
+        }
+
+        if (!range.collapsed) {
+            var last = boundaryItem(surface, range.endContainer, range.endOffset);
+
+            range.deleteContents();
+
+            if (last && (last !== item) && last.parentNode && item.parentNode) {
+                fillEmpty(item);
+                select(fillEmpty(last), 0, last, 0);
+                return true;
+            }
+
+            range = selectionRange();
+        }
+
+        if (!hasWords(item)) {
+            var line = liftItem(surface, item);
+            var spot = lineStart(surface, line);
+
+            select(spot[0], spot[1], spot[0], spot[1]);
+            return true;
+        }
+
+        var tail = document.createRange();
+        var next = item.cloneNode(false);
+
+        if (item.contains(range.startContainer)) {
+            tail.setStart(range.startContainer, range.startOffset);
+        } else {
+            tail.setStart(item, item.childNodes.length);
+        }
+
+        tail.setEnd(item, item.childNodes.length);
+        next.appendChild(tail.extractContents());
+        item.parentNode.insertBefore(fillEmpty(next), item.nextSibling);
+        fillEmpty(item);
+        select(next, 0, next, 0);
+
+        return true;
+    }
+
+    // The caret taken out of the marks around it, the mark split there, so
+    // that what goes in next (a person or record picked) stands between its
+    // halves: in <code> a chip was lost, in bold its mark showed as
+    // characters. Answers where to insert: { parent, before }.
+    function outOfMarks(surface, range) {
+        var node = range.startContainer;
+        var offset = range.startOffset;
+        var outer = null;
+
+        for (var at = node; at && (at !== surface) && !(at.parentNode && listKind(at.parentNode)); at = at.parentNode) {
+            if (markName(at)) {
+                outer = at;
+            }
+        }
+
+        if (outer) {
+            var tail = document.createRange();
+            var copy = outer.cloneNode(false);
+            var parent = outer.parentNode;
+
+            tail.setStart(node, offset);
+            tail.setEnd(outer, outer.childNodes.length);
+            copy.appendChild(tail.extractContents());
+
+            if (filled(copy)) {
+                parent.insertBefore(copy, outer.nextSibling);
+            }
+
+            var after = outer.nextSibling;
+
+            if (!filled(outer)) {
+                outer.remove();
+            }
+
+            return { parent: parent, before: after };
+        }
+
+        if (node.nodeType === 3) {
+            return { parent: node.parentNode, before: (offset === 0) ? node : ((offset < node.nodeValue.length) ? node.splitText(offset) : node.nextSibling) };
+        }
+
+        return { parent: node, before: node.childNodes[offset] || null };
+    }
+
+    // A selection from the box's first words to its last.
+    function wholeBox(surface, range) {
+        if (!range || range.collapsed || !surface.contains(range.startContainer) || !surface.contains(range.endContainer)) {
+            return false;
+        }
+
+        var head = document.createRange();
+        var tail = document.createRange();
+
+        head.setStart(surface, 0);
+        head.setEnd(range.startContainer, range.startOffset);
+        tail.setStart(range.endContainer, range.endOffset);
+        tail.setEnd(surface, surface.childNodes.length);
+
+        return !hasWords(head.cloneContents()) && !hasWords(tail.cloneContents());
+    }
+
     // ── The format bar and the link tip ────────────────────────────────
 
     var bar = null;
@@ -1424,9 +2710,9 @@
     // Kept in the modal when a surface is in one: its focus trap would take
     // the focus back from a box outside it.
     function floatingHost(surface) {
-        var modal = surface ? surface.closest('.modal') : null;
+        var modal = surface ? surface.closest('.dialog') : null;
 
-        return modal ? (modal.querySelector('.modal-content') || modal) : document.body;
+        return modal || document.body;
     }
 
     function place(box, rect, below) {
@@ -1494,6 +2780,7 @@
             ['bold', 'bi-type-bold', t('fmt_bold')],
             ['italic', 'bi-type-italic', t('fmt_italic')],
             ['strike', 'bi-type-strikethrough', t('fmt_strike')],
+            ['highlight', 'bi-highlighter', t('fmt_highlight')],
             ['code', 'bi-code', t('fmt_code')],
             ['link', 'bi-link-45deg', t('fmt_link')]
         ].forEach(function (entry) {
@@ -1532,31 +2819,57 @@
         barTimer = window.setTimeout(showBar, 140);
     }
 
+    // The words a link shows, from the tip's Text field (typed), the words
+    // it was filled with (shown: the selection's or the link's own, '' at a
+    // caret) and the address. null when the shown words are kept as they
+    // are, with their marks and chips; else what is typed on one line, or
+    // the address when the field is left empty.
+    function linkText(typed, shown, url) {
+        var text = String(typed).replace(/\s+/g, ' ').trim();
+        var before = String(shown).replace(/\s+/g, ' ').trim();
+
+        if ((before !== '') && (text === before)) {
+            return null;
+        }
+
+        return text || String(url).replace(/^mailto:/, '');
+    }
+
     // The link tip: for a new link over the selection, or for the link that
-    // was double-clicked.
+    // was double-clicked. Its Text field holds the words the link shows.
     function openLink(surface, anchor) {
         var range = selectionRange();
         var saved = range ? range.cloneRange() : null;
         var backward = selectionBackward();
         var rect = anchor ? anchor.getBoundingClientRect() : (range ? range.getBoundingClientRect() : surface.getBoundingClientRect());
+        var shown = anchor ? anchor.textContent : ((saved && surface.contains(saved.commonAncestorContainer)) ? saved.toString() : '');
 
         hideBar();
         hideTip();
 
         tip = el('div', 'ws-link-tip shadow');
 
-        var form = el('form', 'd-flex align-items-center gap-1');
+        var form = el('form', 'd-flex flex-column gap-1');
+        var words = el('input', 'form-control form-control-sm');
+        var line = el('div', 'd-flex align-items-center gap-1');
         var input = el('input', 'form-control form-control-sm');
+
+        words.type = 'text';
+        words.placeholder = t('link_text');
+        words.setAttribute('aria-label', t('link_text'));
+        words.value = shown.replace(/\s+/g, ' ').trim();
+        form.appendChild(words);
 
         input.type = 'text';
         input.placeholder = t('link_placeholder');
         input.setAttribute('aria-label', t('fmt_link'));
         input.value = anchor ? (anchor.getAttribute('href') || '') : '';
-        form.appendChild(input);
+        line.appendChild(input);
+        form.appendChild(line);
 
-        var save = button('btn btn-sm btn-primary', '', 'bi-check2', t('link_save'));
+        var save = button('btn btn-sm btn-solid theme-primary', '', 'bi-check2', t('link_save'));
         save.type = 'submit';
-        form.appendChild(save);
+        line.appendChild(save);
 
         if (anchor) {
             var open = button('btn btn-sm btn-ghost', '', 'bi-box-arrow-up-right', t('link_open'));
@@ -1567,7 +2880,7 @@
                     window.open(url, '_blank', 'noopener');
                 }
             });
-            form.appendChild(open);
+            line.appendChild(open);
 
             var unlink = button('btn btn-sm btn-ghost', '', 'bi-link', t('link_remove'));
             unlink.addEventListener('click', function () {
@@ -1582,7 +2895,7 @@
                 hideTip();
                 surface.focus();
             });
-            form.appendChild(unlink);
+            line.appendChild(unlink);
         }
 
         form.addEventListener('submit', function (event) {
@@ -1597,6 +2910,8 @@
                 return;
             }
 
+            var text = linkText(words.value, shown, url);
+
             changed(surface, function () {
                 if (anchor) {
                     if (!anchor.parentNode) {
@@ -1604,6 +2919,11 @@
                     }
 
                     anchor.setAttribute('href', url);
+
+                    if (text !== null) {
+                        anchor.textContent = text;
+                    }
+
                     return true;
                 }
 
@@ -1617,12 +2937,14 @@
                 selection.removeAllRanges();
                 selection.addRange(saved);
 
-                if (!saved.collapsed) {
+                if (!saved.collapsed && (text === null)) {
                     return linkRange(surface, saved, url, backward);
                 }
 
-                var link = el('a', '', url.replace(/^mailto:/, ''));
+                // New words replace the selection, if any, as one link.
+                var link = el('a', '', text);
                 link.href = url;
+                saved.deleteContents();
                 saved.insertNode(link);
                 saved.setStartAfter(link);
                 saved.collapse(true);
@@ -1636,7 +2958,7 @@
             surface.focus();
         });
 
-        input.addEventListener('keydown', function (event) {
+        form.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 event.preventDefault();
                 event.stopPropagation();
@@ -1717,16 +3039,124 @@
         }
     }, true);
 
+    // A shortcut ('Control+Shift+X') as the toolbar titles write it:
+    // Ctrl+Shift+X, or ⌘Shift+X on a Mac.
+    function keyLabel(keys, mac) {
+        var label = String(keys).replace(/Control\+/g, 'Ctrl+');
+
+        return mac ? label.replace(/Ctrl\+/g, '⌘') : label;
+    }
+
+    // What the shortcut sheet lists, as [keys, label key]: the marks, undo
+    // and redo, Enter as the box takes it (enterSends: the composer's Enter
+    // sends) where the box is an Editor, and the sheet itself.
+    function shortcutRows(enterSends, editor) {
+        var rows = [
+            ['Control+B', 'fmt_bold'],
+            ['Control+I', 'fmt_italic'],
+            ['Control+Shift+X', 'fmt_strike'],
+            ['Control+Shift+H', 'fmt_highlight'],
+            ['Control+E', 'fmt_code'],
+            ['Control+K', 'fmt_link'],
+            ['Control+Z', 'keys_undo'],
+            ['Control+Y', 'keys_redo']
+        ];
+
+        if (editor) {
+            rows.push(['Enter', enterSends ? 'keys_send' : 'keys_newline']);
+            rows.push(['Shift+Enter', 'keys_newline']);
+        }
+
+        rows.push(['Control+/', 'keys_title']);
+
+        return rows;
+    }
+
+    // The shortcut sheet (Ctrl+/), by the surface; Escape or its close
+    // button takes the focus back to the surface, at the caret it had.
+    function openKeys(surface) {
+        var range = selectionRange();
+        var saved = (range && surface.contains(range.startContainer)) ? range.cloneRange() : null;
+        var editor = surface.wsEditor || null;
+        var rows = shortcutRows(!!(editor && editor.options.onEnter && !touchScreen()), !!editor);
+
+        hideBar();
+        hideTip();
+
+        tip = el('div', 'ws-link-tip ws-keys-sheet shadow');
+        tip.setAttribute('role', 'dialog');
+        tip.setAttribute('aria-label', t('keys_title'));
+        tip.tabIndex = -1;
+
+        var back = function () {
+            hideTip();
+            surface.focus();
+
+            if (saved) {
+                var selection = window.getSelection();
+
+                selection.removeAllRanges();
+                selection.addRange(saved);
+            }
+        };
+
+        var head = el('div', 'd-flex align-items-center justify-content-between gap-3 mb-1');
+        var close = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('keys_close'));
+
+        head.appendChild(el('strong', 'small', t('keys_title')));
+        close.addEventListener('click', back);
+        head.appendChild(close);
+        tip.appendChild(head);
+
+        var table = el('table', 'table table-sm small mb-0');
+        var body = el('tbody');
+
+        rows.forEach(function (row) {
+            var tr = el('tr');
+            var keys = el('td', 'text-nowrap');
+
+            keys.appendChild(el('kbd', '', keyLabel(row[0], MAC)));
+            tr.appendChild(keys);
+            tr.appendChild(el('td', '', t(row[1])));
+            body.appendChild(tr);
+        });
+
+        table.appendChild(body);
+        tip.appendChild(table);
+
+        tip.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                back();
+            }
+        });
+
+        floatingHost(surface).appendChild(tip);
+        place(tip, surface.getBoundingClientRect(), false);
+        tip.focus();
+    }
+
     // Keyboard shortcuts in any writing surface: Ctrl+B, Ctrl+I,
-    // Ctrl+Shift+X, Ctrl+E (code) and Ctrl+K (link), Cmd on a Mac.
+    // Ctrl+Shift+X, Ctrl+Shift+H (highlight), Ctrl+E (code), Ctrl+K (link)
+    // and Ctrl+/ (the shortcut sheet), Cmd on a Mac.
     function shortcut(surface, event) {
         if (!(event.ctrlKey || event.metaKey) || event.altKey) {
             return false;
         }
 
         var key = String(event.key || '').toLowerCase();
+
+        // "/" is a shifted key on many layouts (Shift+7 on Turkish Q).
+        if ((key === '/') || (event.code === 'NumpadDivide')) {
+            event.preventDefault();
+            event.stopPropagation();
+            openKeys(surface);
+
+            return true;
+        }
         var keys = { b: 'bold', i: 'italic', e: 'code', k: 'link' };
-        var name = Object.prototype.hasOwnProperty.call(keys, key) ? keys[key] : (((key === 'x') && event.shiftKey) ? 'strike' : '');
+        var name = Object.prototype.hasOwnProperty.call(keys, key) ? keys[key] : (((key === 'x') && event.shiftKey) ? 'strike' : (((key === 'h') && event.shiftKey) ? 'highlight' : ''));
 
         if (!name) {
             return false;
@@ -1740,19 +3170,68 @@
         return true;
     }
 
-    // Plain text only: formatting pasted from elsewhere would not survive as
-    // markup anyway. Files are left to the conversation's own paste handler.
-    function pastePlain(event, singleLine) {
+    // A paste into a surface. A one-line field, a table cell and Ctrl+Shift+V
+    // take plain text; a writing box reads the clipboard first (pasteSmart()).
+    // Files are left to the conversation's own paste handler, except in a box
+    // that takes pictures (a note): one pasted without words goes to it.
+    function paste(surface, event, singleLine) {
         var data = event.clipboardData;
+        var editor = singleLine ? null : (surface.wsEditor || null);
+        var plain = surface.wsPlainPaste;
 
-        if (!data || (data.files && data.files.length)) {
+        surface.wsPlainPaste = false;
+
+        if (!data) {
             return;
+        }
+
+        var text = String(data.getData('text/plain') || '').replace(/\r\n?/g, '\n');
+        var files = Array.prototype.slice.call(data.files || []);
+
+        if (files.length) {
+            var take = editor ? editor.options.pasteFiles : null;
+            var pictures = files.filter(function (file) { return /^image\//.test(file.type || ''); });
+
+            if (!take) {
+                return;
+            }
+
+            // Words beside a picture (Word puts one of the text itself) are
+            // pasted as words.
+            if (text.trim() === '') {
+                if (pictures.length) {
+                    event.preventDefault();
+                    take(pictures);
+                }
+
+                return;
+            }
         }
 
         event.preventDefault();
 
-        var text = String(data.getData('text/plain') || '').replace(/\r\n?/g, '\n');
+        if (editor && !plain && editor.pasteSmart(text, String(data.getData('text/html') || ''))) {
+            return;
+        }
 
+        pastePlain(text, singleLine);
+    }
+
+    // HTML from the clipboard as the stored markup, read in a detached
+    // document: DOMParser runs no script and loads nothing, and the document
+    // is never put in the page.
+    function pasteHtml(html) {
+        try {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+
+            return (doc && doc.body) ? pasteMarkup(doc.body) : '';
+        } catch (error) {
+            return '';
+        }
+    }
+
+    // Plain text at the caret, line by line.
+    function pastePlain(text, singleLine) {
         if (singleLine) {
             command('insertText', text.replace(/\s*\n\s*/g, ' '));
             return;
@@ -1783,6 +3262,8 @@
         surface.classList.add('ws-rich-surface');
 
         surface.addEventListener('keydown', function (event) {
+            // Ctrl+Shift+V (Cmd on a Mac) pastes plain text, as before.
+            surface.wsPlainPaste = (event.ctrlKey || event.metaKey) && event.shiftKey && (String(event.key || '').toLowerCase() === 'v');
             shortcut(surface, event);
         });
 
@@ -1828,7 +3309,7 @@
         });
 
         surface.addEventListener('paste', function (event) {
-            pastePlain(event, singleLine);
+            paste(surface, event, singleLine);
         });
 
         surface.addEventListener('drop', function (event) {
@@ -1876,6 +3357,8 @@
         self.savedBackward = false;
         self.history = { states: [], at: -1, timer: 0, pending: false, since: 0, quiet: false };
         self.watchers = [];
+        self.slash = null;
+        self.slashSkip = -1;
 
         var node = el('div', 'ws-rich form-control');
         node.contentEditable = 'true';
@@ -1897,6 +3380,7 @@
 
             self.tidy();
             self.fenceCheck();
+            self.slashCheck(event);
 
             if (self.options.previews) {
                 clearTimeout(self.previewTimer);
@@ -1910,6 +3394,18 @@
 
         // Undo and redo from the menu or the keyboard of the browser.
         node.addEventListener('beforeinput', function (event) {
+            // Select all and delete in a box with a list left an empty item
+            // behind: the box is emptied instead.
+            if (/^delete/.test(event.inputType || '') && node.querySelector('ul, ol, blockquote') && wholeBox(node, selectionRange())) {
+                event.preventDefault();
+                self.change(function () {
+                    node.innerHTML = '';
+                    select(node, 0, node, 0);
+                    return true;
+                });
+                return;
+            }
+
             if (event.inputType === 'historyUndo' || event.inputType === 'historyRedo') {
                 event.preventDefault();
 
@@ -1922,11 +3418,15 @@
         });
 
         node.addEventListener('keydown', function (event) {
-            if (self.historyKey(event)) {
+            if (self.historyKey(event) || self.slashKey(event)) {
                 return;
             }
 
             if (self.options.onKeydown && self.options.onKeydown(event)) {
+                return;
+            }
+
+            if (self.listKey(event)) {
                 return;
             }
 
@@ -1940,10 +3440,19 @@
                 return;
             }
 
+            // In an item the list goes on: Shift+Enter in the composer, whose
+            // Enter sends.
             event.preventDefault();
+
+            if (self.listEnter()) {
+                return;
+            }
+
             lineBreak();
             self.tidy();
         });
+
+        node.addEventListener('mousedown', function () { self.slashClose(); });
 
         node.addEventListener('click', function (event) {
             var card = event.target.closest ? event.target.closest('.ws-rich-block') : null;
@@ -1975,6 +3484,8 @@
         node.addEventListener('blur', function () {
             var range = selectionRange();
 
+            self.slashClose();
+
             if (range && node.contains(range.startContainer)) {
                 self.savedRange = range.cloneRange();
                 self.savedBackward = selectionBackward();
@@ -1991,7 +3502,7 @@
 
         isEmpty: function () {
             return (this.node.textContent || '').replace(/[\s ​]/g, '') === ''
-                && !this.node.querySelector('[data-token], .ws-rich-block');
+                && !this.node.querySelector('[data-token], .ws-rich-block, ul, ol, blockquote');
         },
 
         // An emptied box keeps no stray <br>, so the placeholder shows again.
@@ -2267,9 +3778,10 @@
         },
 
         /**
-         * A mark on the selection, or off it: bold, italic, strike, code or
-         * link (the link tip). With nothing selected bold, italic and strike
-         * wait for what is typed next at the caret. Made on the nodes, never
+         * A mark on the selection, or off it: bold, italic, strike,
+         * highlight, code or link (the link tip). With nothing selected bold,
+         * italic, strike and highlight wait for what is typed next at the
+         * caret. Made on the nodes, never
          * with document.execCommand(), and kept as a step of the box's undo.
          */
         format: function (name) {
@@ -2290,7 +3802,7 @@
         },
 
         // Which marks the caret or the selection has ({ bold, italic, strike,
-        // code, link }); where the selection is elsewhere, the caret the box
+        // highlight, code, link }); where the selection is elsewhere, the caret the box
         // kept when it was left, which a button acts on.
         formatState: function () {
             var range = selectionRange();
@@ -2299,7 +3811,102 @@
                 range = (this.savedRange && this.node.contains(this.savedRange.startContainer)) ? this.savedRange : null;
             }
 
-            return marksAt(this.node, range);
+            var state = marksAt(this.node, range);
+            var item = range ? boundaryItem(this.node, range.startContainer, range.startOffset) : null;
+
+            Object.keys(LISTS).forEach(function (kind) {
+                var name = LISTS[kind].tool;
+
+                state[name] = !!item && (listKind(item.parentNode) === kind);
+            });
+
+            return state;
+        },
+
+        // A list or a quote (bullets, numbers, quote) on the lines of the
+        // selection, or off them; a step of the box's undo.
+        list: function (name) {
+            var self = this;
+            var kind = Object.keys(LISTS).filter(function (one) { return LISTS[one].tool === name; })[0];
+
+            if (!kind) {
+                return false;
+            }
+
+            self.restore();
+
+            return self.change(function () { return toggleList(self.node, kind); });
+        },
+
+        // Shift+Tab, and Backspace at an item's start, take the item out of
+        // its list; Tab puts a line straight after a list back into it.
+        // Elsewhere Tab moves the focus: there is no level below an item.
+        // true when handled.
+        listKey: function (event) {
+            var self = this;
+            var range = selectionRange();
+
+            if (!range || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || !self.node.contains(range.startContainer)
+                || ((event.key !== 'Tab') && (event.key !== 'Backspace'))) {
+                return false;
+            }
+
+            var item = boundaryItem(self.node, range.startContainer, range.startOffset);
+
+            if ((event.key === 'Tab') && !event.shiftKey) {
+                var all = boxLines(self.node);
+                var line = item ? null : all[lineIndex(self.node, all, range.startContainer, range.startOffset)];
+                var first = line ? (line.nodes[0] || line.br) : null;
+                var list = first ? first.previousSibling : null;
+
+                if (!line || line.fixed || !listKind(list)) {
+                    return false;
+                }
+
+                event.preventDefault();
+                self.change(function () {
+                    var held = holdSelection();
+
+                    putSelection(self.node, held, [toItem(self.node, line, listKind(list)), 0]);
+                    return true;
+                });
+
+                return true;
+            }
+
+            if (!item || !((event.key === 'Tab') || (!event.shiftKey && range.collapsed && atItemStart(item, range)))) {
+                return false;
+            }
+
+            event.preventDefault();
+            self.change(function () {
+                var held = holdSelection();
+
+                putSelection(self.node, held, lineStart(self.node, liftItem(self.node, item)));
+                return true;
+            });
+
+            return true;
+        },
+
+        // Whether the caret stands in an item of a list or a quote.
+        inListItem: function () {
+            var range = selectionRange();
+
+            return !!range && this.node.contains(range.startContainer) && !!boundaryItem(this.node, range.startContainer, range.startOffset);
+        },
+
+        // Enter in an item (itemEnter()); true when the caret was in one.
+        listEnter: function () {
+            var self = this;
+
+            if (!self.inListItem()) {
+                return false;
+            }
+
+            self.change(function () { return itemEnter(self.node); });
+
+            return true;
         },
 
         // Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z (Cmd on a Mac), whatever the
@@ -2347,19 +3954,7 @@
             }
 
             node.innerHTML = '';
-
-            blocks.forEach(function (block, index) {
-                if (block.kind === 'text') {
-                    inlineNodes(block.markup, labels, node);
-
-                    if (index < blocks.length - 1) {
-                        node.appendChild(el('br'));
-                    }
-                } else {
-                    node.appendChild(blockNode(block.kind, block.markup));
-                    node.appendChild(el('br'));
-                }
-            });
+            node.appendChild(markupNodes(blocks, labels));
 
             this.tidy();
             this.caretToEnd();
@@ -2501,9 +4096,18 @@
             }
 
             if (item.token) {
-                var holder = el('span');
-                holder.appendChild(chipNode(item.token, item.shown, item.icon || ''));
-                command('insertHTML', holder.innerHTML + ' ');
+                var range = selectionRange();
+                var chip = chipNode(item.token, item.shown, item.icon || '');
+                var space = document.createTextNode('\u00a0');
+
+                range.deleteContents();
+
+                var spot = outOfMarks(this.node, range);
+
+                spot.parent.insertBefore(chip, spot.before);
+                spot.parent.insertBefore(space, chip.nextSibling);
+                select(space, 1, space, 1);
+                this.node.dispatchEvent(new Event('input', { bubbles: true }));
             } else if (item.text) {
                 command('insertText', item.text);
             } else if (!selection.isCollapsed) {
@@ -2541,12 +4145,28 @@
         insertBlock: function (kind, markup) {
             this.restore();
 
-            var before = this.beforeCaret();
-            var holder = el('span');
+            // A card stands on a line of its own, below a list it was put in.
+            var caret = selectionRange();
+            var item = caret ? boundaryItem(this.node, caret.startContainer, caret.startOffset) : null;
 
-            holder.appendChild(blockNode(kind, markup));
+            if (item) {
+                // As nodes: insertHTML at the box level next to a list is
+                // drawn into the list.
+                var list = item.parentNode;
+                var card = blockNode(kind, markup);
+                var end = el('br');
 
-            command('insertHTML', ((before !== '' && !/\n$/.test(before)) ? '<br>' : '') + holder.innerHTML + '<br>');
+                this.node.insertBefore(card, list.nextSibling);
+                this.node.insertBefore(end, card.nextSibling);
+                select(this.node, indexIn(end) + 1, this.node, indexIn(end) + 1);
+            } else {
+                var before = this.beforeCaret();
+                var holder = el('span');
+
+                holder.appendChild(blockNode(kind, markup));
+
+                command('insertHTML', ((before !== '' && !/\n$/.test(before)) ? '<br>' : '') + holder.innerHTML + '<br>');
+            }
 
             // A line after the card to write on.
             if (!this.node.lastChild || this.node.lastChild.nodeType !== 1 || this.node.lastChild.tagName !== 'BR') {
@@ -2562,6 +4182,122 @@
 
             this.tidy();
             this.node.dispatchEvent(new Event('input', { bubbles: true }));
+        },
+
+        /**
+         * What the clipboard holds, pasted as the box would write it: one
+         * address over selected words links them, a range from a sheet or a
+         * table alone opens the table window filled with it, HTML comes in
+         * as the box's marks, lists, quotes, code and tables. false leaves
+         * the paste to plain text.
+         */
+        pasteSmart: function (text, html) {
+            var url = pastedUrl(text);
+
+            if (url && this.linkSelection(url)) {
+                return true;
+            }
+
+            var markup = pasteSheet(text) || (html ? pasteHtml(html) : '');
+
+            if (markup === '') {
+                return false;
+            }
+
+            var blocks = parseBlocks(markup);
+
+            if (blocks.length === 1 && blocks[0].kind === 'table') {
+                this.pasteTable(blocks[0].markup);
+                return true;
+            }
+
+            return this.insertMarkup(blocks);
+        },
+
+        linkSelection: function (url) {
+            var node = this.node;
+            var range = selectionRange();
+
+            if (!range || range.collapsed || !node.contains(range.startContainer) || !node.contains(range.endContainer) || range.toString().trim() === '') {
+                return false;
+            }
+
+            var backward = selectionBackward();
+
+            return this.change(function () { return linkRange(node, range, url, backward); });
+        },
+
+        // A pasted table, in the table window before it is put in the box.
+        pasteTable: function (markup) {
+            var self = this;
+            var range = selectionRange();
+
+            if (range && self.node.contains(range.startContainer)) {
+                self.savedRange = range.cloneRange();
+                self.savedBackward = false;
+            }
+
+            openTable(markup, function (result) {
+                if (result) {
+                    self.insertBlock('table', result);
+                }
+            }, {
+                fresh: true,
+                insertLabel: (self.options.slashInserts && self.options.slashInserts.insertLabel) || '',
+                scope: function () { return self.markup(); }
+            });
+        },
+
+        // Pasted blocks in place of the selection, as the box reads a stored
+        // text. Lists and cards stand on lines of their own: below the list
+        // the caret is in, or after a line break when words stand before the
+        // caret.
+        insertMarkup: function (blocks) {
+            var self = this;
+            var node = self.node;
+
+            return self.change(function () {
+                var range = selectionRange();
+
+                if (!range || !node.contains(range.startContainer)) {
+                    self.caretToEnd();
+                    range = selectionRange();
+                }
+
+                range.deleteContents();
+
+                var words = blocks.every(function (block) { return block.kind === 'text'; });
+                var fragment = markupNodes(blocks, {});
+                var last = fragment.lastChild;
+                var item = words ? null : boundaryItem(node, range.startContainer, range.startOffset);
+
+                if (!last) {
+                    return false;
+                }
+
+                if (words) {
+                    range.insertNode(fragment);
+                } else if (item) {
+                    node.insertBefore(fragment, item.parentNode.nextSibling);
+                } else {
+                    var head = self.beforeCaret();
+                    var spot = outOfMarks(node, range);
+
+                    if (head !== '' && !/\n$/.test(head)) {
+                        fragment.insertBefore(el('br'), fragment.firstChild);
+                    }
+
+                    if (spot.parent === node) {
+                        node.insertBefore(fragment, spot.before);
+                    } else {
+                        node.appendChild(fragment);
+                    }
+                }
+
+                select(last.parentNode, indexIn(last) + 1, last.parentNode, indexIn(last) + 1);
+
+                return true;
+            });
         },
 
         editBlock: function (card) {
@@ -2713,6 +4449,234 @@
                     self.insertBlock('code', markup);
                 }
             });
+        },
+
+        // Whether the caret stands where a typed suggestion may not go: a
+        // selection, outside the box, in code, a link, a table cell or a
+        // card.
+        caretBlocked: function () {
+            var range = selectionRange();
+
+            if (!range || !range.collapsed || !this.node.contains(range.startContainer)) {
+                return true;
+            }
+
+            var element = (range.startContainer.nodeType === 1) ? range.startContainer : range.startContainer.parentNode;
+
+            return !!(element && element.closest && element.closest('code, a, td, th, .ws-rich-block, [data-ws-skip]'));
+        },
+
+        // "/" in a note's box (options.slashInserts) lists the inserts that
+        // match the word typed after it (slashInserts()). Not while a word is
+        // composed, nor in code, a link or a card; "//" leaves one "/" and no
+        // list; Escape leaves the "/" as typed, a space closes it.
+        slashCheck: function (event) {
+            var range = selectionRange();
+
+            if (!this.options.slashInserts || (event && event.isComposing) || this.node.wsComposing || !range) {
+                this.slashClose();
+                return;
+            }
+
+            var blocked = this.caretBlocked();
+            var labels = {};
+
+            SLASH.forEach(function (name) { labels[name] = t(TOOLS[name].label); });
+
+            var found = slashInserts(this.beforeCaret(), blocked, labels);
+
+            if (found && found.plain) {
+                var open = this.slash && (this.slash.start === found.start);
+
+                this.slashClose();
+
+                if (open) {
+                    this.slashSkip = found.start;
+                    this.replaceTyped(2, { text: '/' });
+                }
+
+                return;
+            }
+
+            if (!found || (found.start === this.slashSkip)) {
+                this.slashSkip = found ? this.slashSkip : -1;
+                this.slashClose();
+                return;
+            }
+
+            this.slashDraw(found, labels, range);
+        },
+
+        // The list under the caret: no row chosen while nothing is typed
+        // after the "/", so Enter still breaks the line; the first row once
+        // a word is typed.
+        slashDraw: function (found, labels, range) {
+            var self = this;
+            var box = (self.slash && self.slash.box) || el('div', 'ws-picker ws-slash');
+            var list = el('div', 'ws-picker-list');
+
+            self.slash = { box: box, start: found.start, word: found.word, names: found.names, index: (found.word === '') ? -1 : 0, rows: [] };
+            box.textContent = '';
+            box.id = box.id || ('ws-slash-' + Math.random().toString(36).slice(2));
+            box.setAttribute('role', 'listbox');
+            box.setAttribute('aria-label', t('slash_inserts'));
+
+            found.names.forEach(function (name, index) {
+                var row = el('button', 'ws-picker-item');
+
+                row.type = 'button';
+                row.id = box.id + '-' + name;
+                row.setAttribute('role', 'option');
+                row.appendChild(icon(TOOLS[name].icon));
+                row.appendChild(el('span', 'ws-picker-label', labels[name].replace(/\s*\(.*\)\s*$/, '')));
+                row.addEventListener('mousedown', function (event) { event.preventDefault(); });
+                row.addEventListener('click', function () {
+                    self.slash.index = index;
+                    self.slashPick();
+                });
+                list.appendChild(row);
+                self.slash.rows.push(row);
+            });
+
+            box.appendChild(list);
+
+            if (!box.parentNode) {
+                floatingHost(self.node).appendChild(box);
+            }
+
+            self.node.setAttribute('aria-expanded', 'true');
+            self.node.setAttribute('aria-controls', box.id);
+            self.slashMark();
+
+            var rect = range.getBoundingClientRect();
+
+            if (!rect.height) {
+                rect = self.node.getBoundingClientRect();
+            }
+
+            var top = rect.bottom + 4;
+
+            if ((top + box.offsetHeight > window.innerHeight - 8) && (rect.top - box.offsetHeight - 4 >= 8)) {
+                top = rect.top - box.offsetHeight - 4;
+            }
+
+            box.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - box.offsetWidth - 8)) + 'px';
+            box.style.top = Math.max(8, top) + 'px';
+        },
+
+        // The chosen insert: the "/word" typed goes, then the tool acts as
+        // its button does. A list or quote is one step of the box's undo
+        // with the word's removal, so one Ctrl+Z brings the "/word" back;
+        // the highlight waits for the next letters; a card's window opens
+        // and puts the card in where the word was.
+        slashPick: function () {
+            var self = this;
+            var slash = self.slash;
+            var name = slash ? slash.names[slash.index] : null;
+            var spec = name ? TOOLS[name] : null;
+
+            self.slashClose();
+
+            if (!spec) {
+                return;
+            }
+
+            var remove = function () {
+                var selection = window.getSelection();
+
+                self.node.focus();
+
+                for (var i = 0; i < slash.word.length + 1; i++) {
+                    selection.modify('extend', 'backward', 'character');
+                }
+
+                var range = selectionRange();
+
+                range.deleteContents();
+                select(range.startContainer, range.startOffset, range.startContainer, range.startOffset);
+
+                return true;
+            };
+
+            if (spec.list) {
+                self.change(function () {
+                    remove();
+                    toggleList(self.node, spec.list);
+                    return true;
+                });
+            } else if (spec.mark) {
+                self.change(remove);
+                applyMark(self.node, spec.mark);
+                self.notify();
+            } else {
+                self.change(remove);
+                self.savedRange = selectionRange() ? selectionRange().cloneRange() : null;
+                insertFrom(self, spec.block, (typeof self.options.slashInserts === 'object') ? self.options.slashInserts : {});
+            }
+        },
+
+        slashMark: function () {
+            var slash = this.slash;
+
+            slash.rows.forEach(function (row, index) {
+                row.classList.toggle('active', index === slash.index);
+                row.setAttribute('aria-selected', (index === slash.index) ? 'true' : 'false');
+            });
+
+            if (slash.index >= 0) {
+                this.node.setAttribute('aria-activedescendant', slash.rows[slash.index].id);
+                slash.rows[slash.index].scrollIntoView({ block: 'nearest' });
+            } else {
+                this.node.removeAttribute('aria-activedescendant');
+            }
+        },
+
+        slashClose: function () {
+            if (this.slash) {
+                this.slash.box.remove();
+                this.slash = null;
+                this.node.removeAttribute('aria-expanded');
+                this.node.removeAttribute('aria-controls');
+                this.node.removeAttribute('aria-activedescendant');
+            }
+        },
+
+        // Arrows choose, Enter or Tab inserts the chosen row, Escape closes
+        // and leaves the "/" as typed; a caret moved sideways closes. true
+        // when handled.
+        slashKey: function (event) {
+            var slash = this.slash;
+
+            if (!slash || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) {
+                return false;
+            }
+
+            if ((event.key === 'ArrowDown') || (event.key === 'ArrowUp')) {
+                event.preventDefault();
+                slash.index = (slash.index + ((event.key === 'ArrowDown') ? 1 : slash.rows.length - 1 + ((slash.index < 0) ? 1 : 0))) % slash.rows.length;
+                this.slashMark();
+                return true;
+            }
+
+            if (((event.key === 'Enter') || (event.key === 'Tab')) && !event.shiftKey && (slash.index >= 0)) {
+                event.preventDefault();
+                this.slashPick();
+                return true;
+            }
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                this.slashSkip = slash.start;
+                this.slashClose();
+                return true;
+            }
+
+            if (['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', 'Tab'].indexOf(event.key) !== -1) {
+                this.slashClose();
+            }
+
+            return false;
         }
     };
 
@@ -2725,13 +4689,66 @@
         bold: { icon: 'bi-type-bold', label: 'tool_bold', keys: 'Control+B', mark: 'bold' },
         italic: { icon: 'bi-type-italic', label: 'tool_italic', keys: 'Control+I', mark: 'italic' },
         strike: { icon: 'bi-type-strikethrough', label: 'tool_strike', keys: 'Control+Shift+X', mark: 'strike' },
+        highlight: { icon: 'bi-highlighter', label: 'tool_highlight', keys: 'Control+Shift+H', mark: 'highlight' },
         code: { icon: 'bi-code', label: 'tool_code', keys: 'Control+E', mark: 'code' },
         link: { icon: 'bi-link-45deg', label: 'tool_link', keys: 'Control+K', mark: 'link' },
+        bullets: { icon: 'bi-list-ul', label: 'tool_bullets', list: 'bullet' },
+        numbers: { icon: 'bi-list-ol', label: 'tool_numbers', list: 'number' },
+        quote: { icon: 'bi-quote', label: 'tool_quote', list: 'quote' },
         checklist: { icon: 'bi-ui-checks', label: 'tool_checklist', block: 'checklist' },
         table: { icon: 'bi-table', label: 'tool_table', block: 'table' },
         calc: { icon: 'bi-calculator', label: 'tool_calc', block: 'calc' },
         codeblock: { icon: 'bi-code-slash', label: 'tool_codeblock', block: 'code' }
     };
+
+    // What "/" offers in a note's box (options.slashInserts), in order: the
+    // box's own tools, which do the insert. No heading or rule: the server
+    // draws neither.
+    var SLASH = ['bullets', 'numbers', 'quote', 'checklist', 'table', 'calc', 'codeblock', 'highlight'];
+
+    // A word in plain and in Turkish lower case: "İşaretle" and "işa" meet
+    // only in Turkish, "Italic" and "ita" only in plain.
+    function slashFold(text) {
+        return [String(text).toLowerCase(), String(text).toLocaleLowerCase('tr')];
+    }
+
+    // The "/" list at the caret: what is written before it (chips as
+    // U+FFFC), whether the caret stands where nothing may be inserted (code,
+    // a link, a card), and the tools' labels. A "/" at a line's start or
+    // after a space opens it; a word of a label or a tool's name beginning
+    // with the word typed after it keeps an insert. Answers null (no list),
+    // { start, plain: true } for "//", which types a plain "/", or
+    // { start, word, names }.
+    function slashInserts(before, blocked, labels) {
+        if (blocked) {
+            return null;
+        }
+
+        var plain = /(^|[\s\uFFFC])\/\/$/.exec(before);
+
+        if (plain) {
+            return { start: before.length - 2, plain: true };
+        }
+
+        var match = /(^|[\s\uFFFC])\/([^\s\/\uFFFC]{0,20})$/.exec(before);
+
+        if (!match) {
+            return null;
+        }
+
+        var typed = slashFold(match[2]);
+        var names = SLASH.filter(function (name) {
+            var words = (name + ' ' + String(labels[name] || '').replace(/\s*\(.*\)\s*$/, '')).split(/\s+/);
+
+            return words.some(function (word) {
+                var folded = slashFold(word);
+
+                return (folded[0].indexOf(typed[0]) === 0) || (folded[1].indexOf(typed[1]) === 0);
+            });
+        });
+
+        return names.length ? { start: before.length - match[2].length - 1, word: match[2], names: names } : null;
+    }
 
     var MAC = /Mac|iPhone|iPad|iPod/.test((navigator && navigator.platform) || '');
 
@@ -2763,7 +4780,8 @@
      *
      * items, in order, each one of:
      *   - the name of one of the box's own tools: undo, redo, bold, italic,
-     *     strike, code, link, checklist, table, calc, codeblock;
+     *     strike, highlight, code, link, bullets, numbers, quote, checklist, table,
+     *     calc, codeblock;
      *   - a node the caller made (attach, emoji, voice, send), put in as it is;
      *   - an array of those, drawn as a group of options.groupClass.
      * options: className (the row's class), groupClass, label (the row's name
@@ -2807,6 +4825,11 @@
                 pressed[spec.mark] = node;
             }
 
+            if (spec.list) {
+                node.setAttribute('aria-pressed', 'false');
+                pressed[name] = node;
+            }
+
             if ((name === 'undo') || (name === 'redo')) {
                 steps[name] = node;
             }
@@ -2818,6 +4841,8 @@
                     editor.redo();
                 } else if (spec.mark) {
                     editor.format(spec.mark);
+                } else if (spec.list) {
+                    editor.list(name);
                 } else {
                     insertFrom(editor, spec.block, opts);
                 }
@@ -2908,13 +4933,10 @@
     // ── Design windows ─────────────────────────────────────────────────
 
     function modal(title, size) {
-        var node = el('div', 'modal fade ws-designer');
-        node.tabIndex = -1;
-        node.setAttribute('aria-hidden', 'true');
-        node.innerHTML = '<div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down ' + (size || 'modal-lg') + '"><div class="modal-content">'
-            + '<div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
-            + '<div class="modal-body"></div><div class="modal-footer"></div></div></div>';
-        node.querySelector('.modal-title').textContent = title;
+        var node = el('dialog', 'dialog ws-designer dialog-scrollable sm-down:dialog-fullscreen ' + (size || 'dialog-lg'));
+        node.innerHTML = '<div class="dialog-header"><h5 class="dialog-title"></h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
+            + '<div class="dialog-body"></div><div class="dialog-footer"></div>';
+        node.querySelector('.dialog-title').textContent = title;
         node.querySelector('.btn-close').setAttribute('aria-label', t('close'));
         document.body.appendChild(node);
 
@@ -2928,8 +4950,8 @@
 
         return {
             node: node,
-            body: node.querySelector('.modal-body'),
-            footer: node.querySelector('.modal-footer'),
+            body: node.querySelector('.dialog-body'),
+            footer: node.querySelector('.dialog-footer'),
             show: function () { if (instance) { instance.show(); } },
             hide: function () { if (instance) { instance.hide(); } }
         };
@@ -2957,7 +4979,7 @@
                 return;
             }
 
-            var entry = button('btn btn-link link-body-emphasis text-start text-decoration-none ws-ctx-item' + (item.danger ? ' ws-ctx-danger' : ''), item.label, item.icon);
+            var entry = button('btn btn-link pg-link-body-emphasis text-start text-decoration-none ws-ctx-item' + (item.danger ? ' ws-ctx-danger' : ''), item.label, item.icon);
             entry.disabled = !!item.disabled;
             entry.addEventListener('mousedown', function (event) { event.preventDefault(); });
             entry.addEventListener('click', function () {
@@ -2999,10 +5021,10 @@
 
     function footerButtons(win, isNew, onSave, insertLabel) {
         var cancel = button('btn btn-sm btn-ghost', t('cancel'));
-        cancel.setAttribute('data-bs-dismiss', 'modal');
+        cancel.setAttribute('data-bs-dismiss', 'dialog');
         win.footer.appendChild(cancel);
 
-        var save = button('btn btn-sm btn-primary rounded-pill px-3', isNew ? (insertLabel || t('insert_to_message')) : t('update_block'), 'bi-check2');
+        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', isNew ? (insertLabel || t('insert_to_message')) : t('update_block'), 'bi-check2');
         save.addEventListener('click', onSave);
         win.footer.appendChild(save);
     }
@@ -3068,7 +5090,7 @@
             model.align.push('');
         }
 
-        var win = modal(t('designer_table'), 'modal-xl');
+        var win = modal(t('designer_table'), 'dialog-xl');
 
         titling.attach(win);
         var tools = el('div', 'ws-table-tools');
@@ -3093,7 +5115,7 @@
         win.body.appendChild(sheetBar);
         win.body.appendChild(wrap);
         wrap.appendChild(table);
-        win.body.appendChild(el('div', 'form-text mt-2', t('table_hint')));
+        win.body.appendChild(el('div', 'form-text mt-3', t('table_hint')));
         win.body.appendChild(el('div', 'form-text', t('table_formula_hint')));
 
         // What a cell holds: its formula while it shows the value, its
@@ -3121,7 +5143,7 @@
             var raw = cellValue(cell);
             var found = results[gridRow(row) + ':' + column];
 
-            if (!/^\s*=/.test(raw) || !found) {
+            if (!isFormula(raw) || !found) {
                 if (cell.hasAttribute('data-raw')) {
                     cell.textContent = raw;
                     cell.removeAttribute('data-raw');
@@ -3158,7 +5180,7 @@
                 formulaInput.value = raw;
             }
 
-            resultBox.textContent = (/^\s*=/.test(raw) && found) ? '= ' + found.display : '';
+            resultBox.textContent = (isFormula(raw) && found) ? '= ' + found.display : '';
             resultBox.classList.toggle('ws-sheet-error-text', !!(found && found.error));
             resultBox.title = (found && found.error) ? found.error : '';
 
@@ -3196,8 +5218,9 @@
             }
         });
 
-        // Formulas (cells starting with =) worked out as they are typed, by the
-        // code that works them out in the message itself.
+        // Formulas (cells starting with =, not a highlight) worked out as
+        // they are typed, by the code that works them out in the message
+        // itself.
         var calcTimer = 0;
         var calcSerial = 0;
 
@@ -3206,7 +5229,7 @@
 
             var grid = [model.head].concat(model.rows);
             var formulas = grid.some(function (row) {
-                return row.some(function (value) { return /^\s*=/.test(String(value)); });
+                return row.some(isFormula);
             });
 
             if (!formulas || !CFG.api_url) {
@@ -3408,7 +5431,7 @@
                 var numbers = model.rows.some(function (cells) {
                     var value = String(cells[column] || '').replace(/[₺$€£]|\bTL\b/g, '').trim();
 
-                    return /^=/.test(value) || figure.test(value);
+                    return isFormula(value) || figure.test(value);
                 });
 
                 return numbers ? '=' + calcName('SUM') + '(' + sheetLetter(column) + '2:' + sheetLetter(column) + last + ')' : '';
@@ -3420,7 +5443,7 @@
 
             model.rows.push(row);
             draw();
-            focusCell(model.rows.length - 1, Math.max(0, row.findIndex(function (value) { return value !== '' && value.charAt(0) === '='; })));
+            focusCell(model.rows.length - 1, Math.max(0, row.findIndex(isFormula)));
         }
 
         // The formula of the cell copied to the cells under it, its row
@@ -3438,7 +5461,7 @@
             var column = current.column;
             var source = (row >= 0 && model.rows[row]) ? String(model.rows[row][column] || '') : '';
 
-            if (!/^\s*=/.test(source)) {
+            if (!isFormula(source)) {
                 formulaInput.classList.add('is-invalid');
                 window.setTimeout(function () { formulaInput.classList.remove('is-invalid'); }, 1200);
                 return;
@@ -3544,7 +5567,7 @@
                 event.preventDefault();
                 current.row = row;
                 current.column = column;
-                menu(event.clientX, event.clientY, cellMenuItems(row, column), win.node.querySelector('.modal-content'));
+                menu(event.clientX, event.clientY, cellMenuItems(row, column), win.node);
             });
 
             holder.appendChild(cell);
@@ -3635,7 +5658,7 @@
             formulas.addEventListener('click', function () {
                 var box = formulas.getBoundingClientRect();
 
-                menu(box.left, box.bottom + 4, patternItems(), win.node.querySelector('.modal-content'));
+                menu(box.left, box.bottom + 4, patternItems(), win.node);
             });
             tools.appendChild(formulas);
 
@@ -3668,7 +5691,7 @@
 
         draw();
 
-        footerButtons(win, !(typeof markup === 'string' && markup), function () {
+        footerButtons(win, !!options.fresh || !(typeof markup === 'string' && markup), function () {
             read();
 
             var escape = function (value) { return String(value).replace(/\|/g, '\\|'); };
@@ -3712,7 +5735,7 @@
             items = [{ checked: false, text: '' }, { checked: false, text: '' }];
         }
 
-        var win = modal(t('designer_checklist'), 'modal-lg');
+        var win = modal(t('designer_checklist'), 'dialog-lg');
 
         titling.attach(win);
         var list = el('div', 'ws-check-edit');
@@ -3743,7 +5766,7 @@
 
         function makeRow(item) {
             var row = el('div', 'ws-check-edit-row');
-            var box = el('input', 'form-check-input');
+            var box = el('input', 'check');
 
             box.type = 'checkbox';
             box.checked = !!item.checked;
@@ -3869,10 +5892,10 @@
             code = lines.slice(1, fenceClose(lines[lines.length - 1]) ? -1 : undefined).join('\n');
         }
 
-        var win = modal(t('designer_code'), 'modal-lg');
+        var win = modal(t('designer_code'), 'dialog-lg');
 
         titling.attach(win);
-        var row = el('div', 'd-flex align-items-center gap-2 mb-2');
+        var row = el('div', 'd-flex align-items-center gap-3 mb-3');
         var label = el('label', 'form-label mb-0 small', t('code_language'));
         var input = el('input', 'form-control form-control-sm ws-code-language');
         var listId = 'ws-code-languages-' + Date.now();
@@ -4061,7 +6084,7 @@
         }
 
         var settings = calcOptions(info);
-        var win = modal(t('designer_calc'), 'modal-lg');
+        var win = modal(t('designer_calc'), 'dialog-lg');
 
         titling.attach(win);
 
@@ -4152,7 +6175,7 @@
                         }
                     }
                 };
-            }), win.node.querySelector('.modal-content'));
+            }), win.node);
         });
 
         tool('bi-plus-slash-minus', t('calc_functions'), '', function (node) {
@@ -4167,7 +6190,7 @@
                         put(entry.name + '(' + selected + ')', entry.name.length + 1 + selected.length);
                     }
                 };
-            }), win.node.querySelector('.modal-content'));
+            }), win.node);
         });
 
         gap();
@@ -4202,7 +6225,7 @@
                         put(heading + '\n' + text + close, 0, name.length);
                     }
                 };
-            }), win.node.querySelector('.modal-content'));
+            }), win.node);
         });
 
         tool('bi-eye-slash', t('calc_hide'), t('calc_hide_help'), function () {
@@ -4238,7 +6261,7 @@
 
         // How the values are shown.
         var settingsRow = el('div', 'ws-calc-settings');
-        var decimals = el('select', 'form-select form-select-sm');
+        var decimals = el('select', 'form-control form-control-sm');
         var unit = el('input', 'form-control form-control-sm');
         var decimalsId = 'ws-calc-decimals-' + Date.now();
 
@@ -4267,7 +6290,7 @@
 
         win.body.appendChild(tools);
         win.body.appendChild(settingsRow);
-        win.body.appendChild(el('div', 'form-text mt-0 mb-2', t('calc_hint')));
+        win.body.appendChild(el('div', 'form-text mt-0 mb-3', t('calc_hint')));
         win.body.appendChild(area);
         win.body.appendChild(namesRow);
         win.body.appendChild(shown);

@@ -315,16 +315,16 @@ function test_comments_widget_email_thread_flags()
 // Stars as characters: mail clients drop inline SVG.
 function test_comments_widget_email_stars_text()
 {
-	if (!comments_widget_email_test_has('pg_comments_stars_text_html')) {
+	if (!comments_widget_email_test_has('pg_comments_stars_text')) {
 		return;
 	}
 
-	pg_assert_same('<span class="pg-comment-stars" role="img" aria-label="Rated 4 out of 5">&#9733;&#9733;&#9733;&#9733;&#9734;</span>', pg_comments_stars_text_html(4), 'four of five');
-	pg_assert_same('<span class="pg-comment-stars" role="img" aria-label="Rated 1 out of 5">&#9733;&#9734;&#9734;&#9734;&#9734;</span>', pg_comments_stars_text_html('1'), 'one, as digits');
-	pg_assert_same(5, substr_count(pg_comments_stars_text_html(5), '&#9733;'), 'five filled');
+	pg_assert_same("\u{2605}\u{2605}\u{2605}\u{2605}\u{2606}", pg_comments_stars_text(4), 'four of five');
+	pg_assert_same("\u{2605}\u{2606}\u{2606}\u{2606}\u{2606}", pg_comments_stars_text('1'), 'one, as digits');
+	pg_assert_same(str_repeat("\u{2605}", 5), pg_comments_stars_text(5), 'five filled');
 
 	foreach (array(0, 6, '4x', null, true, -1, '', array(4), 4.5) as $bad) {
-		pg_assert_same('', pg_comments_stars_text_html($bad), 'no stars for ' . var_export($bad, true));
+		pg_assert_same('', pg_comments_stars_text($bad), 'no stars for ' . var_export($bad, true));
 	}
 }
 
@@ -413,7 +413,6 @@ function test_comments_widget_email_row_values()
 	pg_assert_same('24 October 2026 10:01', $values['__comment_seller_reply_date'], 'the store\'s reply date as given');
 	pg_assert_same('https://example.com/my%20photo.jpg', $values['__comment_file_url'], 'the file on the site\'s address');
 	pg_assert_same(0, strpos($values['__comment_file_url'], $site), 'absolute');
-	pg_assert_same(pg_comments_stars_text_html(4), $values['__comment_stars_html'], 'text stars');
 
 	foreach (array('__comment_staff_name', '__comment_edit_url', '__comment_status') as $key) {
 		pg_assert_same('', $values[$key], $key . ' is empty');
@@ -421,7 +420,6 @@ function test_comments_widget_email_row_values()
 
 	$plain = pg_comments_email_row_values($row, array(), $site, array());
 	pg_assert_same('', $plain['__comment_file_url'], 'no file flag, no file');
-	pg_assert_same('', $plain['__comment_stars_html'], 'no rating flag, no stars');
 	pg_assert_same('', $plain['__comment_date'], 'no date given');
 	pg_assert_same('', $plain['__comment_seller_reply_date'], 'no reply date given');
 	pg_assert_same('', pg_comments_email_row_values($row, array('comment_has_file' => true), array('x'), array())['__comment_file_url'], 'no file link without the site\'s address');
@@ -525,7 +523,9 @@ function test_comments_widget_email_draw_data_file_and_stars()
 		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
 		. 'require ' . var_export(__FILE__, true) . ";\n"
 		. "\$data = comments_widget_email_test_data(array('comment' => array('rating' => '4', 'file_name' => 'a b.pdf', 'file_size' => '2048'), 'page' => array('comments_rating' => '1', 'comments_allow_file_attachments' => '1')));\n"
-		. "list(\$html) = comments_widget_email_test_drawn(pg_comments_default_tree(), \$data);\n"
+		// The widget door gives an e-mail the stars as characters.
+		. "\$tree = json_decode(pg_sw_default_parts_apply(json_encode(pg_comments_default_tree()), 'comments', array(), true), true);\n"
+		. "list(\$html) = comments_widget_email_test_drawn(\$tree, \$data);\n"
 		. "echo json_encode(array('values' => \$data['rows'][0]['values'], 'flags' => \$data['thread_flags'], 'html' => \$html));\n");
 
 	$out = array();
@@ -543,10 +543,10 @@ function test_comments_widget_email_draw_data_file_and_stars()
 	pg_assert_same('https://example.com/a%20b.pdf', $res['values']['__comment_file_url'], 'the file on the site\'s absolute address, not /site/');
 	pg_assert_same('a b.pdf', $res['values']['__comment_file_name'], 'its name');
 	pg_assert_same('2 KB', $res['values']['__comment_file_size'], 'its size');
-	pg_assert_same(pg_comments_stars_text_html(4), $res['values']['__comment_stars_html'], 'text stars');
+	pg_assert_same(pg_comments_stars_text(4), $res['values']['__comment_stars_text'], 'text stars');
 	pg_assert_true($res['flags']['rating_on'] && $res['flags']['files_on'], 'the thread page\'s features');
 	pg_assert_contains('href="https://example.com/a%20b.pdf"', $res['html'], 'the attachment link');
-	pg_assert_contains('&#9733;&#9733;&#9733;&#9733;&#9734;', $res['html'], 'the stars');
+	pg_assert_contains("\u{2605}\u{2605}\u{2605}\u{2605}\u{2606}", $res['html'], 'the stars');
 	pg_assert_false(strpos($res['html'], '<svg'), 'no drawing');
 	pg_assert_false(strpos($res['html'], '/site/'), 'no relative link');
 }
@@ -1037,8 +1037,8 @@ function comments_widget_email_test_fold($body, $var)
 function test_comments_widget_email_mail_functions_folded_back()
 {
 	$frozen = array(
-		'send_comment_email_to_custom_form_submitter' => array('$comments_submitter_email_page_id', 'c8310a63128602a260e7e1327116fbed583dc38a', 5373),
-		'send_comment_email_to_watchers' => array('$comments_watcher_email_page_id', 'b6a7c7faa7e3fd4883fb2e4040e8506fbb0d5786', 6673),
+		'send_comment_email_to_custom_form_submitter' => array('$comments_submitter_email_page_id', 'a69c5fc2598c95c5fdca3731fa0060cbdeba4aa5', 5354),
+		'send_comment_email_to_watchers' => array('$comments_watcher_email_page_id', 'fd3294726eb673f6f37deba39b8b9627ea58ac53', 6627),
 	);
 
 	foreach ($frozen as $fn => $want) {

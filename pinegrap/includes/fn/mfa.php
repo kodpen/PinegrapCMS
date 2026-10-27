@@ -292,6 +292,26 @@ function pg_mfa_recovery_normalize($code)
 }
 
 /**
+ * What a typed second-step code is: six digits (spaces aside) are a TOTP
+ * code, anything that normalizes to eight characters is a recovery code
+ * (XXXX-XXXX), the rest is neither. The verify screen also reads it to come
+ * back in the mode the refused code was typed in.
+ *
+ * @param string $code
+ * @return string 'totp', 'recovery' or ''.
+ */
+function pg_mfa_code_kind($code)
+{
+    $code = (string) $code;
+
+    if (preg_match('/^[0-9]{6}$/D', preg_replace('/\s+/', '', $code))) {
+        return 'totp';
+    }
+
+    return (strlen(pg_mfa_recovery_normalize($code)) === 8) ? 'recovery' : '';
+}
+
+/**
  * How a recovery code is stored: SHA-256 of its normalized form. The codes
  * carry 40 random bits and are compared by exact lookup, so a fast unsalted
  * hash is enough to keep a database dump from yielding usable codes.
@@ -418,6 +438,53 @@ function pg_mfa_enabled($user_id)
 }
 
 /**
+ * Whether the account has a passkey that can answer the second step: one is
+ * kept and passkeys work on this site. On a site that cannot run a ceremony
+ * (plain http, an IP address, no table) a passkey cannot be asked for, so it
+ * does not count; an authenticator key or the required-role setup still do.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_mfa_has_passkey($user_id)
+{
+    return function_exists('pg_passkeys_available') && pg_passkeys_available()
+        && (pg_passkey_count($user_id) > 0);
+}
+
+/**
+ * Whether the account has any second factor sign-in asks for: an
+ * authenticator key or a passkey.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_mfa_has_factor($user_id)
+{
+    return pg_mfa_enabled($user_id) || pg_mfa_has_passkey($user_id);
+}
+
+/**
+ * The step a sign-in owes: 'verify' when the account has an authenticator
+ * key or a passkey, 'setup' when its role requires a factor and it has
+ * neither, '' when nothing is owed. A passkey satisfies the required role
+ * as a key does.
+ *
+ * @param bool $totp_on  pg_mfa_enabled()
+ * @param bool $passkey  pg_mfa_has_passkey()
+ * @param bool $required pg_mfa_required_for_user()
+ * @return string
+ */
+function pg_mfa_gate_mode($totp_on, $passkey, $required)
+{
+    if ($totp_on || $passkey) {
+        return 'verify';
+    }
+
+    return $required ? 'setup' : '';
+}
+
+/**
  * Accounts whose role is at or below this value must have a second factor;
  * 99 means no role is required to.
  *
@@ -521,17 +588,14 @@ function pg_mfa_pending_clear()
 // the browser in on its next request through initialize_user() with no code
 // asked. Returns false when nothing is owed and the caller carries on;
 // otherwise it stashes the verified identity as a short-lived pending record
-// and sends the visitor to mfa.php without returning. 'setup' mode is for an
-// account whose role must have a second factor and has none yet.
+// and sends the visitor to mfa.php without returning. 'verify' asks for a
+// code or a passkey; 'setup' mode is for an account whose role must have a
+// second factor and has neither yet.
 function pg_mfa_gate($user_id, $username, $send_to, $remember, $origin)
 {
-    $mode = '';
-
-    if (pg_mfa_enabled($user_id)) {
-        $mode = 'verify';
-    } elseif (pg_mfa_required_for_user($user_id)) {
-        $mode = 'setup';
-    }
+    $totp_on = pg_mfa_enabled($user_id);
+    $passkey = !$totp_on && pg_mfa_has_passkey($user_id);
+    $mode = pg_mfa_gate_mode($totp_on, $passkey, !$totp_on && !$passkey && pg_mfa_required_for_user($user_id));
 
     if ($mode === '') {
         return false;
@@ -652,8 +716,10 @@ function pg_mfa_confirm_setup($user_id, $code)
 }
 
 /**
- * Remove the account's second factor and recovery codes, and revoke its
- * other remember-me tokens and its API devices.
+ * Remove the account's authenticator key, and revoke its other remember-me
+ * tokens and its API devices. The recovery codes go too, unless the account
+ * keeps a passkey: the passkey stays its second factor, and the codes stay
+ * its way in when the passkey is lost.
  *
  * @param int $user_id
  */
@@ -664,9 +730,24 @@ function pg_mfa_disable($user_id)
     }
 
     db("DELETE FROM user_mfa WHERE user_id = '" . (int) $user_id . "'");
-    db("DELETE FROM user_mfa_recovery WHERE user_id = '" . (int) $user_id . "'");
+
+    if (!function_exists('pg_passkey_count') || (pg_passkey_count($user_id) === 0)) {
+        pg_mfa_recovery_forget($user_id);
+    }
 
     pg_mfa_revoke_other_sessions($user_id);
+}
+
+/**
+ * Remove the account's recovery codes. Silent before the upgrade.
+ *
+ * @param int $user_id
+ */
+function pg_mfa_recovery_forget($user_id)
+{
+    if (pg_mfa_table_exists()) {
+        db("DELETE FROM user_mfa_recovery WHERE user_id = '" . (int) $user_id . "'");
+    }
 }
 
 /**
@@ -720,11 +801,14 @@ function pg_mfa_reset($user_id)
 {
     pg_mfa_disable($user_id);
     pg_passkeys_forget($user_id);
+    pg_mfa_recovery_forget($user_id);
 }
 
 /**
  * Check a code typed at the second step: six digits are a TOTP code,
- * anything that normalizes to eight characters is a recovery code.
+ * anything that normalizes to eight characters is a recovery code. An
+ * account whose only second factor is a passkey has recovery codes and no
+ * TOTP key, so only a recovery code can pass for it.
  *
  * Both are consumed with a conditional UPDATE whose affected-row count
  * decides, so two requests racing with the same code cannot both pass: the
@@ -737,14 +821,22 @@ function pg_mfa_reset($user_id)
  */
 function pg_mfa_verify_code($user_id, $code)
 {
-    if (!pg_mfa_enabled($user_id)) {
+    $totp_on = pg_mfa_enabled($user_id);
+
+    if (!$totp_on && !pg_mfa_has_passkey($user_id)) {
         return false;
     }
 
     $code = (string) $code;
-    $digits = preg_replace('/\s+/', '', $code);
+    $kind = pg_mfa_code_kind($code);
 
-    if (preg_match('/^[0-9]{6}$/D', $digits)) {
+    if ($kind === 'totp') {
+
+        $digits = preg_replace('/\s+/', '', $code);
+
+        if (!$totp_on) {
+            return false;
+        }
 
         $row = pg_mfa_row($user_id);
         $secret = pg_mfa_secret_decode($row['totp_secret']);
@@ -760,7 +852,7 @@ function pg_mfa_verify_code($user_id, $code)
         return (mysqli_affected_rows(db::$con) === 1) ? 'totp' : false;
     }
 
-    if (strlen(pg_mfa_recovery_normalize($code)) !== 8) {
+    if ($kind !== 'recovery') {
         return false;
     }
 
@@ -849,7 +941,8 @@ function pg_mfa_attempt_clear($user_id)
  * @param string $code
  * @return string '' when every proof was accepted, otherwise the refusal:
  *                'attempts', 'locked', 'password' or 'code'
- *                (pg_mfa_reauth_message() words it).
+ *                (pg_mfa_reauth_message() words it, and the e-mailed code's
+ *                'email_code' and 'email_expired' of passkey.php).
  */
 function pg_mfa_reauth_refusal($user_id, $username, $current_password, $code)
 {
@@ -893,7 +986,8 @@ function pg_mfa_reauth_refusal($user_id, $username, $current_password, $code)
 /**
  * The sentence a refusal of pg_mfa_reauth_refusal() is shown as.
  *
- * @param string $refusal 'attempts', 'locked', 'password', 'code' or ''
+ * @param string $refusal 'attempts', 'locked', 'password', 'code',
+ *                        'email_code', 'email_expired' or ''
  * @param int    $minutes how long a sign-in lockout lasts; 0 reads it from
  *                        the throttle settings (60 where they cannot be read)
  * @return string '' for ''
@@ -918,6 +1012,12 @@ function pg_mfa_reauth_message($refusal, $minutes = 0)
 
         case 'password':
             return lang('The password you entered is incorrect. Please remember that passwords are case sensitive.');
+
+        case 'email_code':
+            return lang('That code was not accepted. Enter the code from the latest e-mail we sent you.');
+
+        case 'email_expired':
+            return lang('The code has expired or was used already. Send a new code and try again.');
     }
 
     return lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.');

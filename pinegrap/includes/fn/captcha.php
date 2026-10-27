@@ -352,25 +352,14 @@ function pg_captcha_verify_request($provider, $site_key, $secret, $token, $ip)
         $fields['sitekey'] = $site_key;
     }
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $definition['verify']);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($fields, '', '&'));
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    pg_curl_tls($ch);
-
-    $body = curl_exec($ch);
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = ($body === false) ? curl_error($ch) : '';
-
-    // A no-op since PHP 8.0 and deprecated in 8.5.
-    if (PHP_VERSION_ID < 80000) {
-        curl_close($ch); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated -- guarded by PHP_VERSION_ID above
-    }
+    $answer = pg_curl_run('POST', $definition['verify'], array(
+        'body'            => http_build_query($fields, '', '&'),
+        'connect_timeout' => 5,
+        'timeout'         => 10,
+    ));
+    $body = $answer['body'];
+    $status = $answer['status'];
+    $error = $answer['error'];
 
     $outcome = pg_captcha_verify_outcome($status, $body);
 
@@ -561,7 +550,7 @@ function pg_captcha_settings_fields()
     $html = '
                                         <div class="col-12">
                                             <label for="captcha_provider" class="form-label">' . lang('CAPTCHA Type') . '</label>
-                                            <select name="captcha_provider" id="captcha_provider" class="form-select pg-f-md">' . $options . '</select>
+                                            <select name="captcha_provider" id="captcha_provider" class="form-control pg-f-md">' . $options . '</select>
                                             <div class="form-text">' . lang('The built-in question needs no account. Turnstile and hCaptcha draw their own check and are verified with the provider when the form is sent; when the provider cannot be reached or refuses the keys, the form is not accepted and the visitor is asked to try again. Staff never see a CAPTCHA.') . '</div>
                                         </div>';
 
@@ -585,7 +574,7 @@ function pg_captcha_settings_fields()
 
     if ($warning !== '') {
         $html .= '
-                                        <div class="col-12"><div class="alert alert-warning mb-0">' . $warning . '</div></div>';
+                                        <div class="col-12"><div class="alert theme-warning mb-0">' . $warning . '</div></div>';
     }
 
     foreach (pg_captcha_providers() as $key => $definition) {
@@ -618,7 +607,7 @@ function pg_captcha_settings_provider_fields($provider, $definition, $app)
                                             <div class="form-text mt-0">' . lang(array(
                                                 'string' => 'Enter the site key and secret key of a {var:1} widget made for this site\'s domain. Saving checks them with the provider. To remove the keys from this site, choose another type and empty the site key.',
                                                 'vars'   => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</div>
-                                            <div class="row gy-3 mt-0">
+                                            <div class="row gy-5 mt-0">
                                                 <div class="pg-f-md">
                                                     <label for="' . h($name) . 'site_key" class="form-label">' . lang('Site Key') . '</label>
                                                     <input type="text" name="' . h($name) . 'site_key" id="' . h($name) . 'site_key" class="form-control" value="' . h($app['site_key']) . '" maxlength="255" autocomplete="off"/>

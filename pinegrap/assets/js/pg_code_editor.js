@@ -11,16 +11,21 @@
  * feature added later (a completion source, a lint, a keymap, Emmet) is
  * registered here once and reaches every editor.
  *
- *   PgCodeEditor.configure({ bundle: url, phrases: {...} })   once per page
+ *   PgCodeEditor.configure({ bundle: url, phrases: {...},     once per page
+ *                            minimap: bool })
  *   PgCodeEditor.open(host, opts).then(function (ed) { ... })  load + create
  *   PgCodeEditor.attach(textarea, opts)                        like fromTextArea
  *   PgCodeEditor.addCompletionSource(language, source)         registry
  *   PgCodeEditor.addCompletionRanker(language, ranker)         registry
  *   PgCodeEditor.addExtension(function (opts) { return ext })  registry
+ *   PgCodeEditor.findAll(text, query)                          hits, no editor
  *
  * An editor instance (see pgCeCreate) offers getValue / setValue,
- * setLanguage, setReadOnly, setTheme, goTo and scrollTo, the search panel, tracked
- * ranges that follow the text as it is edited (track / tracked / trackedAt)
+ * setLanguage, setReadOnly, setTheme, goTo and scrollTo, the search panel,
+ * format (CSS, JavaScript and JSON; Shift+Alt+F in both keymaps), an
+ * optional minimap beside the scroll bar (`minimap`, setMinimap /
+ * hasMinimap), tracked ranges that follow the text as it is edited (track /
+ * tracked / trackedAt)
  * and locks: ranges no edit may touch, each with optional "islands" inside
  * it that stay editable. A lock without islands is read-only as a whole; a
  * lock with islands lets only the islands change (an attribute's value, an
@@ -47,7 +52,8 @@
 
     var _cfg = {
         bundle: '',          // URL of cm6.bundle.js; derived from this script's URL when empty
-        phrases: null        // engine texts: { 'Find': '…', 'Replace': '…', … }
+        phrases: null,       // engine texts: { 'Find': '…', 'Replace': '…', … }
+        minimap: false       // page default of opts.minimap
     };
     var _loading = null;     // Promise while the bundle is on its way
     var _completions = {};   // language → [source]
@@ -70,6 +76,7 @@
         opts = opts || {};
         if (typeof opts.bundle === 'string' && opts.bundle) _cfg.bundle = opts.bundle;
         if (opts.phrases && typeof opts.phrases === 'object') _cfg.phrases = opts.phrases;
+        if (typeof opts.minimap === 'boolean') _cfg.minimap = opts.minimap;
     }
 
     function isLoaded() {
@@ -708,6 +715,52 @@
         });
     }
 
+    // The text formatted by the bundle's js-beautify with the editor's indent
+    // unit, or null when the language has no formatter (HTML: the designer's
+    // page view is printed by its emitter already) or the formatter failed.
+    // JSON goes through the JavaScript formatter, which keeps its quotes.
+    function _formatText(cm, lang, text, unit) {
+        var fn = (lang === 'css') ? cm.format.css : ((lang === 'javascript' || lang === 'json') ? cm.format.js : null);
+        if (!fn) return null;
+        unit = String(unit || '    ');
+        var tab = (unit.indexOf('\t') !== -1);
+        try {
+            return fn(String(text), {
+                indent_size: tab ? 1 : unit.length,
+                indent_char: tab ? '\t' : ' ',
+                indent_with_tabs: tab,
+                eol: '\n',
+                end_with_newline: /\n$/.test(text),
+                preserve_newlines: true,
+                max_preserve_newlines: 2
+            });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // The minimap is opt-in: the editor's own `minimap` option, else the page
+    // default from configure().
+    function _minimapOn(opts) {
+        return (typeof opts.minimap === 'boolean') ? opts.minimap : _cfg.minimap;
+    }
+
+    // The bundle's minimap beside the scroll bar, or nothing. Lines are drawn
+    // as blocks (cheaper than characters on a long page) and the viewport
+    // overlay shows only while the pointer is over the minimap.
+    function _minimapExtension(cm, on) {
+        if (!on || !cm.minimap || !cm.minimap.showMinimap) return [];
+        return cm.minimap.showMinimap.of({
+            create: function () {
+                var dom = document.createElement('div');
+                dom.className = 'pg-ce-minimap';
+                return { dom: dom };
+            },
+            displayText: 'blocks',
+            showOverlay: 'mouse-over'
+        });
+    }
+
     // ── Instance ─────────────────────────────────────────────────────────
     function pgCeCreate(host, opts) {
         if (!isLoaded()) throw new Error('PgCodeEditor.create() before the bundle loaded; use PgCodeEditor.open().');
@@ -720,7 +773,7 @@
         var inst = {};
         var langComp = new S.Compartment(), readOnlyComp = new S.Compartment(), wrapComp = new S.Compartment();
         var completionsComp = new S.Compartment(), lintComp = new S.Compartment(), keymapComp = new S.Compartment();
-        var themeComp = new S.Compartment();
+        var themeComp = new S.Compartment(), minimapComp = new S.Compartment();
         var useVscode = (opts.keymap !== 'default');
         var lockHitAt = 0;
         var destroyed = false;
@@ -750,7 +803,7 @@
         };
 
         function keymapExtensions() {
-            var list = [];
+            var list = [V.keymap.of([{ key: 'Shift-Alt-f', run: function () { return inst.format(); } }])];
             if (useVscode) {
                 list.push(V.keymap.of(cm.vscodeKeymap));
             } else {
@@ -801,6 +854,7 @@
             // and the search panel work, only changes are refused.
             readOnlyComp.of(S.EditorState.readOnly.of(!!opts.readOnly)),
             wrapComp.of(opts.lineWrapping ? V.EditorView.lineWrapping : []),
+            minimapComp.of(_minimapExtension(cm, _minimapOn(opts))),
             fields.trackedField,
             fields.lockField,
             fields.decorations,
@@ -875,6 +929,33 @@
                 annotations: [S.Transaction.addToHistory.of(false)]
             });
         };
+        // Formats the whole text (_formatText). Only the part that differs is
+        // replaced, in one change through the lock filter: one undo step that
+        // onChange hears like typing. The cursor stays before the same
+        // non-blank character. False when the language has no formatter, the
+        // editor is read-only or a lock covers the part that would change.
+        inst.format = function () {
+            if (view.state.readOnly) return false;
+            var text = view.state.doc.toString();
+            var out = _formatText(cm, lang, text, view.state.facet(L.indentUnit));
+            if (out === null) return false;
+            if (out === text) return true;
+            var from = 0, toA = text.length, toB = out.length;
+            while (from < toA && from < toB && text.charCodeAt(from) === out.charCodeAt(from)) from++;
+            while (toA > from && toB > from && text.charCodeAt(toA - 1) === out.charCodeAt(toB - 1)) { toA--; toB--; }
+            if (!inst.canEdit(from, toA)) return false;
+            var head = view.state.selection.main.head, seen = 0, at = 0;
+            for (var i = 0; i < head; i++) if (!/\s/.test(text.charAt(i))) seen++;
+            while (at < out.length && (seen > 0 || /\s/.test(out.charAt(at)))) { if (!/\s/.test(out.charAt(at))) seen--; at++; }
+            var refused = inst._refused;
+            view.dispatch({
+                changes: { from: from, to: toA, insert: out.slice(from, toB) },
+                selection: { anchor: Math.min(at, out.length) },
+                userEvent: 'input.format',
+                scrollIntoView: true
+            });
+            return inst._refused === refused;
+        };
         // The engine's syntax tree of the whole document (parsed to the end
         // when it is not yet), for callers that read the structure back.
         inst.syntaxTree = function () {
@@ -911,6 +992,12 @@
         inst.setLineWrapping = function (on) {
             view.dispatch({ effects: wrapComp.reconfigure(on ? V.EditorView.lineWrapping : []) });
         };
+        inst.setMinimap = function (on) {
+            opts.minimap = !!on;
+            view.dispatch({ effects: minimapComp.reconfigure(_minimapExtension(cm, opts.minimap)) });
+        };
+        // Whether the minimap is on: the editor's option, else the page default.
+        inst.hasMinimap = function () { return _minimapOn(opts); };
         // 'dark' | 'light', while the editor is open: the panel's colour
         // scheme switch pushes it to every editor on the page.
         inst.setTheme = function (name) {
@@ -1064,6 +1151,43 @@
         return inst;
     }
 
+    // Every match of a search in a text, without an editor: a screen that
+    // searches several editors at once (the designer's file tabs) reads
+    // their texts and lists the hits itself. `query` is the search panel's
+    // { search, caseSensitive, regexp, wholeWord } or a plain string. A
+    // regexp is read per line for ^ and $, as the search panel reads it;
+    // an empty match (^, a*) is skipped. A hit is { from, to, text, line
+    // (1-based), col, lineFrom, lineText }; at most `limit` hits (1000),
+    // `truncated` when more were left out; an invalid pattern gives `error`
+    // and no hits.
+    function findAll(text, query, limit) {
+        text = String(text == null ? '' : text);
+        var q = (query && typeof query === 'object') ? query : { search: String(query == null ? '' : query) };
+        var out = { matches: [], truncated: false, error: null };
+        var search = String(q.search == null ? '' : q.search);
+        if (search === '') return out;
+        limit = (limit > 0) ? limit : 1000;
+        var re;
+        try {
+            re = new RegExp(q.regexp ? search : search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gm' + (q.caseSensitive ? '' : 'i'));
+        } catch (e) {
+            out.error = e && e.message ? e.message : String(e);
+            return out;
+        }
+        var word = /[\w\u00c0-\uffff]/;
+        var line = 1, lineFrom = 0, nl = text.indexOf('\n'), m;
+        while ((m = re.exec(text)) !== null) {
+            if (m[0] === '') { re.lastIndex++; continue; }
+            var from = m.index, to = from + m[0].length;
+            if (q.wholeWord && ((from > 0 && word.test(text.charAt(from - 1))) || (to < text.length && word.test(text.charAt(to))))) continue;
+            if (out.matches.length >= limit) { out.truncated = true; break; }
+            while (nl !== -1 && nl < from) { line++; lineFrom = nl + 1; nl = text.indexOf('\n', lineFrom); }
+            out.matches.push({ from: from, to: to, text: m[0], line: line, col: from - lineFrom, lineFrom: lineFrom,
+                               lineText: text.slice(lineFrom, nl === -1 ? text.length : nl) });
+        }
+        return out;
+    }
+
     // load() + create(): the way a screen opens an editor.
     function open(host, opts) {
         return load().then(function () { return pgCeCreate(host, opts); });
@@ -1141,6 +1265,7 @@
         addCompletionSource: addCompletionSource,
         addCompletionRanker: addCompletionRanker,
         addExtension: addExtension,
+        findAll: findAll,
         normalizeLanguage: _normLanguage
     };
 })();

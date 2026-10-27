@@ -83,7 +83,7 @@ if (!$_POST) {
         $output_edit_button = '
         <nav id="button_bar" class="navigation " aria-label="Button Bar">
             <div class=" btn-group flex-wrap">
-                <a class="btn btn-primary"  href="#" id="edit_button" onclick="document.getElementById(\'button_bar\').style.display = \'none\'; document.getElementById(\'edit_form\').style.display = \'block\'; return false;" ><span class="material-icons me-1">edit</span>' . lang('Edit') . '</a>
+                <a class="btn btn-solid theme-primary"  href="#" id="edit_button" onclick="document.getElementById(\'button_bar\').style.display = \'none\'; document.getElementById(\'edit_form\').style.display = \'block\'; return false;" ><span class="material-icons me-1">edit</span>' . lang('Edit') . '</a>
             </div>
         </nav>';
         $output_edit_form_style = 'display: none';
@@ -116,8 +116,8 @@ if (!$_POST) {
                 summarize_by_3,
                 order_by_3
             FROM order_reports
-            WHERE id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $output_order_report_name = $row['name'];
@@ -254,9 +254,9 @@ if (!$_POST) {
                 dynamic_value,
                 dynamic_value_attribute
             FROM order_report_filters
-            WHERE order_report_id = '" . escape($_GET['id']) . "'
+            WHERE order_report_id = ?
             ORDER BY id";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         
         while ($row = mysqli_fetch_assoc($result)) {
             // get field type
@@ -464,14 +464,14 @@ if (!$_POST) {
     
     // else the user is editing an order report, so prepare cancel button to hide edit form and show edit button
     } else {
-        $output_cancel_button = '<button type="button" name="cancel" value="Cancel" onclick="document.getElementById(\'button_bar\').style.display = \'block\'; document.getElementById(\'edit_form\').style.display = \'none\';" class="btn my-1 btn-secondary"><span class="material-icons me-2">close</span><span class="pg-btn-label" >' . lang(array('string'=>'Cancel Edit') ) . '</span></button>';
+        $output_cancel_button = '<button type="button" name="cancel" value="Cancel" onclick="document.getElementById(\'button_bar\').style.display = \'block\'; document.getElementById(\'edit_form\').style.display = \'none\';" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">close</span><span class="pg-btn-label" >' . lang(array('string'=>'Cancel Edit') ) . '</span></button>';
     }
 
     $output_delete_button = '';
     
     // if user is editing an existing order report, then prepare to output delete button
     if (isset($_GET['id']) == true) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order report')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order report')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
     // The date changer is left out when the report filters on the order date.
@@ -653,7 +653,7 @@ if (!$_POST) {
 
 
         $output_date_changer = '
-        <div class="row justify-content-center justify-content-md-end">
+        <div class="row justify-content-center md:justify-content-end">
             <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">
                 <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_order_report.php?start_month=' . $decrease_year['start_month'] . '&start_day=' . $decrease_year['start_day'] . '&start_year=' . $decrease_year['start_year'] . '&stop_month=' . $decrease_year['stop_month'] . '&stop_day=' . $decrease_year['stop_day'] . '&stop_year=' . $decrease_year['stop_year'] . $output_date_changer_query_string_id . '"><</a>
                 <a class="btn py-0 px-1 border-bottom border-top" href="view_order_report.php?start_month=' . $current_year['start_month'] . '&start_day=' . $current_year['start_day'] . '&start_year=' . $current_year['start_year'] . '&stop_month=' . $current_year['stop_month'] . '&stop_day=' . $current_year['stop_day'] . '&stop_year=' . $current_year['stop_year'] . $output_date_changer_query_string_id . '">' . lang('Year') . '</a>
@@ -675,8 +675,8 @@ if (!$_POST) {
                 <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_order_report.php?start_month=' . $increase_day['start_month'] . '&start_day=' . $increase_day['start_day'] . '&start_year=' . $increase_day['start_year'] . '&stop_month=' . $increase_day['stop_month'] . '&stop_day=' . $increase_day['stop_day'] . '&stop_year=' . $increase_day['stop_year'] . $output_date_changer_query_string_id . '">></a>
             </div>    
         </div>
-        <p class="text-center text-md-end p-0 m-0">
-            <span class="badge text-dark fw-light border-2">    ' . $output_date_range . '</span>
+        <p class="text-center md:text-end p-0 m-0">
+            <span class="badge fg-black fw-light border-2">    ' . $output_date_range . '</span>
         </p>';
     }
     
@@ -1289,8 +1289,8 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         ' . $output_edit_button . '
                     </div>
@@ -1301,38 +1301,38 @@ if (!$_POST) {
                     ' . $output_hidden_id_field . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
+                            <div class="card my-7">
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-sm-4 my-2">
+                                        <div class="col-12 sm:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Order Report Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <h4 class="fw-bold text-muted">' . lang('Order Report Layout') . '</h4>
+                                        <div class="col-12 my-3">
+                                            <h4 class="fw-bold fg-secondary">' . lang('Order Report Layout') . '</h4>
                                         </div>
-                                        <div class="col-12 col-lg-8 my-2">
-                                            <div class="input-group-text row my-2">
-                                                <div class="col-12 col-md">' . lang('Summarize by') . '</div>
-                                                <div class="col-12 col-md">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_1', 'class'=>'form-select', 'options'=>$summarize_by_options)) . '</div>
-                                                <div class="col-12 col-md">' . lang('order by') . '</div>
-                                                <div class="col-12 col-md">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_1', 'class'=>'form-select', 'options'=>$order_by_options)) . '</div>
+                                        <div class="col-12 lg:col-8 my-3">
+                                            <div class="input-group-text row my-3">
+                                                <div class="col-12 md:col">' . lang('Summarize by') . '</div>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_1', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
+                                                <div class="col-12 md:col">' . lang('order by') . '</div>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_1', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
                                             </div>
-                                            <div class="input-group-text row my-2">
-                                                <div class="col-12 col-md">' . lang('and then by') . '</div>
-                                                <div class="col-12 col-md">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_2', 'class'=>'form-select', 'options'=>$summarize_by_options)) . '</div>
-                                                <div class="col-12 col-md">' . lang('order by') . '</div>
-                                                <div class="col-12 col-md">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_2', 'class'=>'form-select', 'options'=>$order_by_options)) . '</div>
+                                            <div class="input-group-text row my-3">
+                                                <div class="col-12 md:col">' . lang('and then by') . '</div>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_2', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
+                                                <div class="col-12 md:col">' . lang('order by') . '</div>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_2', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
                                             </div>
-                                            <div class="input-group-text row my-2">
-                                                <div class="col-12 col-md">' . lang('and finally by') . '</div>
-                                                <div class="col-12 col-md">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_3', 'class'=>'form-select', 'options'=>$summarize_by_options)) . '</div>
-                                                <div class="col-12 col-md">' . lang('order by') . '</div>
-                                                <div class="col-12 col-md">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_3', 'class'=>'form-select', 'options'=>$order_by_options)) . '</div>
+                                            <div class="input-group-text row my-3">
+                                                <div class="col-12 md:col">' . lang('and finally by') . '</div>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_3', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
+                                                <div class="col-12 md:col">' . lang('order by') . '</div>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_3', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <h4 class="fw-bold text-muted">' . lang('Order Report Filters') . '</h4>
+                                        <div class="col-12 my-3">
+                                            <h4 class="fw-bold fg-secondary">' . lang('Order Report Filters') . '</h4>
                                         </div>
                                         <script type="text/javascript" language="JavaScript 1.2">
                                             //We add new language data to translate object
@@ -1359,7 +1359,7 @@ if (!$_POST) {
                                             window.onload = initialize_filters;
                                         </script>
                                         <div>
-                                            <a href="javascript:void(0)" onclick="create_filter()" class="button btn btn-primary">' . lang('Add Filter') . '</a>
+                                            <a href="javascript:void(0)" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</a>
                                         </div>
                                         <div class="table-responsive">
                                             <table id="filter_table" class="chart_no_hover table">
@@ -1375,10 +1375,10 @@ if (!$_POST) {
                                                 <tbody></tbody>
                                             </table>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'detail', 'id'=>'detail', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                <label class="form-check-label" for="detail">' . lang('Show Detail (Include Order Session Information)') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'detail', 'id'=>'detail', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                <label class="" for="detail">' . lang('Show Detail (Include Order Session Information)') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -1386,26 +1386,26 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save & Run') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save & Run') ) . '</span></button>
                                 ' . $output_cancel_button . $output_delete_button . '
                             </div>
                         </div>
                     </nav>
                 </form>
-                <div class="row mb-2 flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-8 text-center text-md-start"></div> 
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-4 ">
-                        <div class="row justify-content-center justify-content-md-end">
+                <div class="row mb-3 flex-wrap">
+                    <div class="col-12 sm:col-12 md:col-6 xl:col-8 text-center md:text-start"></div> 
+                    <div class="col-12 sm:col-12 md:col-6 xl:col-4 ">
+                        <div class="row justify-content-center md:justify-content-end">
                             <div class="col-auto">
                                 ' . $output_date_changer . '
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative table-responsive">
                         <table class="table table-striped table-hover">
                             <thead>
@@ -1723,18 +1723,18 @@ if (!$_POST) {
     // if the user selected to delete this order report, then delete it
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
         // get order report name for log
-        $query = "SELECT name FROM order_reports WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT name FROM order_reports WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $order_report_name = $row['name'];
         
         // delete order report
-        $query = "DELETE FROM order_reports WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM order_reports WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete order report filters
-        $query = "DELETE FROM order_report_filters WHERE order_report_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM order_report_filters WHERE order_report_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'order report ({var:1}) was deleted','vars'=>$order_report_name)), $_SESSION['sessionusername']);
         $liveform->remove_form();
@@ -1763,9 +1763,9 @@ if (!$_POST) {
             "SELECT id
             FROM order_reports
             WHERE
-                (name = '" . escape($liveform->get_field_value('name')) . "')
-                AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (name = ?)
+                AND (id != ?)";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // if name is already in use, prepare error and forward user back to previous screen
         if (mysqli_num_rows($result) > 0) {
@@ -1793,19 +1793,19 @@ if (!$_POST) {
                     last_modified_user_id,
                     last_modified_timestamp)
                 VALUES (
-                    '" . escape($liveform->get_field_value('name')) . "',
-                    '" . escape($liveform->get_field_value('detail')) . "',
-                    '" . escape($liveform->get_field_value('summarize_by_1')) . "',
-                    '" . escape($liveform->get_field_value('order_by_1')) . "',
-                    '" . escape($liveform->get_field_value('summarize_by_2')) . "',
-                    '" . escape($liveform->get_field_value('order_by_2')) . "',
-                    '" . escape($liveform->get_field_value('summarize_by_3')) . "',
-                    '" . escape($liveform->get_field_value('order_by_3')) . "',
-                    '" . $user['id'] . "',
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
                     UNIX_TIMESTAMP(),
-                    '" . $user['id'] . "',
+                    ?,
                     UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('detail'), (string) $liveform->get_field_value('summarize_by_1'), (string) $liveform->get_field_value('order_by_1'), (string) $liveform->get_field_value('summarize_by_2'), (string) $liveform->get_field_value('order_by_2'), (string) $liveform->get_field_value('summarize_by_3'), (string) $liveform->get_field_value('order_by_3'), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
             
             $id = mysqli_insert_id(db::$con);
             $query_string_id = '?id=' . $id;
@@ -1815,22 +1815,22 @@ if (!$_POST) {
             $query =
                 "UPDATE order_reports
                 SET
-                    name = '" . escape($liveform->get_field_value('name')) . "',
-                    detail = '" . escape($liveform->get_field_value('detail')) . "',
-                    summarize_by_1 = '" . escape($liveform->get_field_value('summarize_by_1')) . "',
-                    order_by_1 = '" . escape($liveform->get_field_value('order_by_1')) . "',
-                    summarize_by_2 = '" . escape($liveform->get_field_value('summarize_by_2')) . "',
-                    order_by_2 = '" . escape($liveform->get_field_value('order_by_2')) . "',
-                    summarize_by_3 = '" . escape($liveform->get_field_value('summarize_by_3')) . "',
-                    order_by_3 = '" . escape($liveform->get_field_value('order_by_3')) . "',
-                    last_modified_user_id = '" . $user['id'] . "',
+                    name = ?,
+                    detail = ?,
+                    summarize_by_1 = ?,
+                    order_by_1 = ?,
+                    summarize_by_2 = ?,
+                    order_by_2 = ?,
+                    summarize_by_3 = ?,
+                    order_by_3 = ?,
+                    last_modified_user_id = ?,
                     last_modified_timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('detail'), (string) $liveform->get_field_value('summarize_by_1'), (string) $liveform->get_field_value('order_by_1'), (string) $liveform->get_field_value('summarize_by_2'), (string) $liveform->get_field_value('order_by_2'), (string) $liveform->get_field_value('summarize_by_3'), (string) $liveform->get_field_value('order_by_3'), (string) $user['id'], (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
             
             // delete order report filters
-            $query = "DELETE FROM order_report_filters WHERE order_report_id = '" . escape($liveform->get_field_value('id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM order_report_filters WHERE order_report_id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         }
         
         $order_date_filter_exists = false;
@@ -1873,13 +1873,13 @@ if (!$_POST) {
                         dynamic_value,
                         dynamic_value_attribute)
                     VALUES (
-                        '" . escape($id) . "',
-                        '" . escape($liveform->get_field_value('filter_' . $i . '_field')) . "',
-                        '" . escape($liveform->get_field_value('filter_' . $i . '_operator')) . "',
-                        '" . escape(prepare_form_data_for_input($liveform->get_field_value('filter_' . $i . '_value'), $field_type)) . "',
-                        '" . escape($dynamic_value) . "',
-                        '" . escape($dynamic_value_attribute) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $id, (string) $liveform->get_field_value('filter_' . $i . '_field'), (string) $liveform->get_field_value('filter_' . $i . '_operator'), (string) prepare_form_data_for_input($liveform->get_field_value('filter_' . $i . '_value'), $field_type), (string) $dynamic_value, (string) $dynamic_value_attribute)) or output_error('Query failed.');
             }
         }
         

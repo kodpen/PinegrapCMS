@@ -50,8 +50,8 @@ if (!$_POST) {
             activated_desktop_theme,
             activated_mobile_theme
         FROM files
-        WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_array($result);
 
     $file_name = $row['name'];
@@ -87,8 +87,8 @@ if (!$_POST) {
                 region_type,
                 region_name
             FROM system_theme_css_rules 
-            WHERE file_id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE file_id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         while($row = mysqli_fetch_array($result)) {
             // for each value in the row
             foreach ($row as $key => $value) {
@@ -116,19 +116,19 @@ if (!$_POST) {
         }
 
         // check to see if this is a system theme
-        $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // if this is a system theme then output the edit theme button
         if ($row[0] > 0) {
-            $output_edit_theme_button = '<button type="button" class="btn my-1 btn-outline-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/theme_designer.php?id=' . urlencode($_GET['id']) . '&clear_theme_designer_session=true')) . '\'">' . lang('Edit Theme') . '</button>';
-            $output_export_button = '<button type="button" class="btn my-1 btn-outline-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . urlencode($_GET['id']) . '&export=true')) . '\'">' . lang('Export') . '</button>';
+            $output_edit_theme_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/theme_designer.php?id=' . urlencode($_GET['id']) . '&clear_theme_designer_session=true')) . '\'">' . lang('Edit Theme') . '</button>';
+            $output_export_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . urlencode($_GET['id']) . '&export=true')) . '\'">' . lang('Export') . '</button>';
             $output_download_file_button = '';
         } else {
-            $output_edit_theme_button = '<button type="button" class="btn my-1 btn-outline-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'">' . lang('Edit CSS') . '</button>';
+            $output_edit_theme_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'">' . lang('Edit CSS') . '</button>';
             $output_export_button = '';
-            $output_download_file_button = '<button type="button" class="btn my-1 btn-outline-secondary" onclick="window.open(\'' . h(escape_javascript(PATH . encode_url_path($file_name))) . '\')">' . lang('Download File') . '</button>';
+            $output_download_file_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.open(\'' . h(escape_javascript(PATH . encode_url_path($file_name))) . '\')">' . lang('Download File') . '</button>';
         }
 
         // A theme recorded here but missing from the disk says so before it is
@@ -136,7 +136,7 @@ if (!$_POST) {
         $output_file_missing = '';
 
         if (!is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
-            $output_file_missing = '<div class="alert alert-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
+            $output_file_missing = '<div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
         }
 
         print
@@ -156,10 +156,10 @@ if (!$_POST) {
                     <div class="col-12">
                         ' . $liveform->output_errors() . '
                         ' . $liveform->output_notices() . $output_file_missing . '
-                        <div class="row mb-2 flex-wrap">
-                            <div class="col-12 text-center text-md-start">
+                        <div class="row mb-3 flex-wrap">
+                            <div class="col-12 text-center md:text-start">
                                 <h2 class="d-inline-block text-break"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank">' . h($file_name) . '</a></h2>
-                                <p class="text-muted small">' . lang('Page Style Head Tag') . ': ' . h('<stylesheet></stylesheet>') . '</p>
+                                <p class="fg-secondary small">' . lang('Page Style Head Tag') . ': ' . h('<stylesheet></stylesheet>') . '</p>
                             </div>
                         </div>
                 <form action="edit_theme_file.php" method="post">
@@ -193,22 +193,22 @@ if (!$_POST) {
                         </tr>
                         <tr>
                             <td><label for="activated_desktop_theme">' . lang('Activate for Desktop') . ':</label></td>
-                            <td>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_desktop_theme', 'id'=>'activated_desktop_theme', 'value'=>'1', 'class'=>'checkbox')) . '</td>
+                            <td>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_desktop_theme', 'id'=>'activated_desktop_theme', 'value'=>'1', 'class'=>'checkbox check')) . '</td>
                         </tr>
                         <tr>
                             <td><label for="activated_mobile_theme">' . lang('Activate for Mobile') . ':</label></td>
-                            <td>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_mobile_theme', 'id'=>'activated_mobile_theme', 'value'=>'1', 'class'=>'checkbox')) . '</td>
+                            <td>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_mobile_theme', 'id'=>'activated_mobile_theme', 'value'=>'1', 'class'=>'checkbox check')) . '</td>
                         </tr>
                     </table>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                         <div class="container">
                             <div class="btn-group flex-wrap justify-content-center">
-                                <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                <button type="button" class="btn my-1 btn-outline-secondary" onclick="window.location=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'">' . lang('Cancel') . '</button>
+                                <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                <button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'">' . lang('Cancel') . '</button>
                                 ' . $output_edit_theme_button . '
                                 ' . $output_export_button . '
                                 ' . $output_download_file_button . '
-                                <button type="submit" name="delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('theme')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('theme')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -236,8 +236,8 @@ if (!$_POST) {
             activated_desktop_theme,
             activated_mobile_theme
         FROM files
-        WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $original_name = $row['name'];
@@ -249,12 +249,12 @@ if (!$_POST) {
     // if file was selected for delete
     if (!empty($_POST['delete'])) {
         // delete file row
-        $query = "DELETE FROM files WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result=mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "DELETE FROM files WHERE id = ?";
+        $result=db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed');
         
         // delete file's system css properties
-        $query = "DELETE FROM system_theme_css_rules WHERE file_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result=mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM system_theme_css_rules WHERE file_id = ?";
+        $result=db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 
         db("DELETE FROM preview_styles WHERE theme_id = '" . escape($liveform->get_field_value('id')) . "'");
         
@@ -355,8 +355,8 @@ if (!$_POST) {
                     SET activated_desktop_theme = '0'
                     WHERE
                         (activated_desktop_theme = '1')
-                        AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        AND (id != ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
             }
         }
 
@@ -410,8 +410,8 @@ if (!$_POST) {
                     SET activated_mobile_theme = '0'
                     WHERE
                         (activated_mobile_theme = '1')
-                        AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        AND (id != ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
             }
         }
 
@@ -419,17 +419,17 @@ if (!$_POST) {
         $query =
             "UPDATE files 
             SET 
-                name = '" . escape($name) . "',
-                folder = '" . escape($liveform->get_field_value('folder')) . "', 
-                description = '" . escape($liveform->get_field_value('description')) . "',
-                type = '" . escape($file_extension) . "',
-                activated_desktop_theme = '" . escape($liveform->get_field_value('activated_desktop_theme')) . "',
-                activated_mobile_theme = '" . escape($liveform->get_field_value('activated_mobile_theme')) . "',
+                name = ?,
+                folder = ?, 
+                description = ?,
+                type = ?,
+                activated_desktop_theme = ?,
+                activated_mobile_theme = ?,
                 timestamp = UNIX_TIMESTAMP(),
-                user = '" . $user['id'] . "'
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
+                user = ?
+            WHERE id = ?";
         
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $name, (string) $liveform->get_field_value('folder'), (string) $liveform->get_field_value('description'), (string) $file_extension, (string) $liveform->get_field_value('activated_desktop_theme'), (string) $liveform->get_field_value('activated_mobile_theme'), (string) $user['id'], (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // Rename the file when its name changed and it is on the disk. A theme
         // recorded here but missing from the disk has nothing to rename (that

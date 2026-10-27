@@ -38,38 +38,11 @@ function pg_dashboard_widget_14($request, $user)
             $request['private_label'] = PRIVATE_LABEL;
             $data = encode_json($request);
             $REQUEST = 'get';
-            $ch = curl_init();
-            // Identify this installation on outgoing requests. Sent with no
-            // User-Agent, a request looks like an anonymous client to the receiving
-            // server's firewall and gets rejected — which is how Pinegrap ended up
-            // blocking its own licence and update checks.
-            curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-            curl_setopt($ch, CURLOPT_URL, 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST . '&SECRET=' . SUBSCRIPTION_ID);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-            // Verify the certificate. See pg_curl_tls() for why this matters most
-            // on the update and licence channel.
-            pg_curl_tls($ch);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-            curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-                'Content-Type: application/json',
-                'Content-Length: ' . strlen($data)
-            ));
-            // if there is a proxy address, then send cURL request through proxy
-            if (PROXY_ADDRESS != '') {
-                curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-                curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-                curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-            }
-            $response = curl_exec($ch);
-            $curl_errno = curl_errno($ch);
-            $curl_error = curl_error($ch);
-            unset($ch);
+            // pg_curl_run() sends this installation's User-Agent (without one
+            // the licence server's firewall refused the request), verifies the
+            // certificate through pg_curl_tls() and uses PROXY_ADDRESS.
+            $answer = pg_curl_run('POST', 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST . '&SECRET=' . SUBSCRIPTION_ID, pg_license_request_options($data, 0));
+            $response = $answer['body'];
             $data = decode_json($response);
 
             // The remote service can be unreachable or answer with something that is not JSON,
@@ -170,15 +143,15 @@ function pg_dashboard_widget_14($request, $user)
                     $opacity = '';
                 }
                 return '
-                <div class="px-2 py-2 border-bottom' . $opacity . '">
+                <div class="px-3 py-3 border-bottom' . $opacity . '">
                     <div class="d-flex justify-content-between align-items-start mb-1">
-                        <div class="d-flex align-items-center overflow-hidden me-2">
-                            <i class="bi ' . $bs_icon . ' me-2 flex-shrink-0" style="color:' . $color . ';font-size:15px"></i>
+                        <div class="d-flex align-items-center overflow-hidden me-3">
+                            <i class="bi ' . $bs_icon . ' me-3 flex-shrink-0" style="color:' . $color . ';font-size:15px"></i>
                             <span class="fw-semibold text-truncate" style="font-size:13px">' . h($heading) . '</span>
                         </div>
                         <span class="badge rounded-pill flex-shrink-0" style="background:' . $color . '22;color:' . $color . ';font-size:10px;white-space:nowrap">' . $badge_text . '</span>
                     </div>'
-                    . ($subline ? '<small class="text-muted d-block mb-1" style="padding-left:23px">' . h($subline) . '</small>' : '') .
+                    . ($subline ? '<small class="fg-secondary d-block mb-1" style="padding-left:23px">' . h($subline) . '</small>' : '') .
                     '<div class="rounded-pill ms-1" style="height:4px;background:#e5e7eb;overflow:hidden">
                         <div class="rounded-pill h-100" style="width:' . $pct . '%;background:' . $color . '"></div>
                     </div>

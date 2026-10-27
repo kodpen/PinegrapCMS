@@ -301,3 +301,32 @@ function test_workspace_calc_a_written_share_shows_as_one()
 	pg_assert_same(0.2, $lines[1]['value'], 'the value stays the share');
 	pg_assert_same('20', $lines[2]['display'], 'a line using it is a figure');
 }
+
+function test_workspace_calc_inline_reads_a_highlighted_figure()
+{
+	$plain = ws_calc_inline('Kira 15.000 + aidat 750 =');
+	$marked = ws_calc_inline('Kira ==15.000== + aidat 750 =');
+
+	pg_assert_same(15750.0, (float) ws_calc_inline('Kira 15000 + aidat 750 =')['value'], 'the plain line');
+	pg_assert_same((float) $plain['value'], (float) $marked['value'], 'a highlighted figure adds up the same');
+	pg_assert_same(5.0, (float) ws_calc_inline('==2== + ==3== =')['value'], 'two highlighted figures');
+}
+
+// A cell starting with a highlight (==x==) is words, not a formula; "==A1"
+// stays the formula it was (a syntax error), "=A2+B2" adds up.
+function test_workspace_calc_highlighted_cell_is_not_a_formula()
+{
+	$grid = ws_calc_grid(array(array('A', 'B'), array('1', '2'), array('==A1', '=A2+B2'), array('==x== y', ' ==5==')), array());
+
+	pg_assert_true($grid[2][0]['formula'], '==A1 is still a formula');
+	pg_assert_same('syntax', $grid[2][0]['error'], 'with the error it had');
+	pg_assert_same(3.0, (float) $grid[2][1]['value'], '=A2+B2 adds up');
+	pg_assert_false($grid[3][0]['formula'], 'a highlight is words');
+	pg_assert_same('==x== y', $grid[3][0]['display'], 'shown as written');
+	pg_assert_false($grid[3][1]['formula'], 'spaces before it too');
+	pg_assert_same(5.0, (float) $grid[3][1]['value'], 'a highlighted figure is still a figure');
+
+	pg_assert_false(ws_calc_has_formula(array(array('==x==', 'a'))), 'a table with highlights only has no formula');
+	pg_assert_true(ws_calc_has_formula(array(array('==x==', '=1+1'))), 'one with a formula has');
+	pg_assert_true(ws_calc_has_formula(array(array('==A1'))), '==A1 counts as before');
+}

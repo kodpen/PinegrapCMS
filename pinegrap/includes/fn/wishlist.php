@@ -689,7 +689,7 @@ function pg_wishlist_write_throttled()
     }
 
     if (function_exists('waf_text_log')) {
-        waf_text_log('DENY', $ip, array('rule' => 'rate-wishlist'));
+        waf_text_log('DENY', $ip, array('status' => 429, 'rule' => 'rate-wishlist'));
     }
 
     return true;

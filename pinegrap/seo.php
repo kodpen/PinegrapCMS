@@ -1439,14 +1439,14 @@ function pg_seo_impact_value($score, $views)
 function pg_seo_render_impact($row)
 {
     if (!isset($row['seo_impact']) || ($row['seo_impact'] === null)) {
-        return '<span class="text-body-secondary">&ndash;</span>';
+        return '<span class="fg-secondary">&ndash;</span>';
     }
 
     $views = (int) ($row['seo_views'] ?? 0);
 
     return
         '<span class="fw-semibold">' . (int) $row['seo_impact'] . '</span>'
-        . '<div class="small text-body-secondary">'
+        . '<div class="small fg-secondary">'
         . h(lang(array('string' => '{var:1} views', 'vars' => $views)))
         . '</div>';
 }
@@ -2287,9 +2287,9 @@ function pg_seo_render_bar($row)
 {
     if (!pg_seo_row_scored($row)) {
         return
-            '<div class="d-flex align-items-center gap-2 mt-1" style="max-width:170px" title="' . h(lang('SEO score has not been calculated yet.')) . '">
+            '<div class="d-flex align-items-center gap-3 mt-1" style="max-width:170px" title="' . h(lang('SEO score has not been calculated yet.')) . '">
                 <div class="progress flex-grow-1" style="height:3px"><div class="progress-bar bg-secondary opacity-25" style="width:100%"></div></div>
-                <small class="text-secondary fw-semibold">&mdash;</small>
+                <small class="fg-secondary fw-semibold">&mdash;</small>
             </div>';
     }
 
@@ -2311,10 +2311,10 @@ function pg_seo_render_bar($row)
     }
 
     $bar_class = ($color['class'] !== '') ? ' bg-' . $color['class'] : '';
-    $text_class = ($color['class'] !== '') ? ' text-' . $color['class'] : '';
+    $text_class = ($color['class'] !== '') ? ' fg-' . $color['class'] : '';
 
     return
-        '<div class="d-flex align-items-center gap-2 mt-1" style="max-width:170px" title="' . h($title) . '">
+        '<div class="d-flex align-items-center gap-3 mt-1" style="max-width:170px" title="' . h($title) . '">
             <div class="progress flex-grow-1" style="height:3px"><div class="progress-bar' . $bar_class . '" style="' . h($bar_style) . '"></div></div>
             <small class="fw-semibold' . $text_class . '"' . $text_style . '>' . $score . '</small>
         </div>';
@@ -2645,7 +2645,7 @@ function pg_seo_render_checklist($row, $type = '', $id = 0)
     $color = pg_seo_score_color($score);
     $bar_class = ($color['class'] !== '') ? ' bg-' . $color['class'] : '';
     $bar_style = 'width:' . $score . '%' . (($color['style'] !== '') ? ';background-color:' . $color['style'] : '');
-    $text_class = ($color['class'] !== '') ? ' text-' . $color['class'] : '';
+    $text_class = ($color['class'] !== '') ? ' fg-' . $color['class'] : '';
     $text_style = ($color['style'] !== '') ? ' style="color:' . $color['style'] . '"' : '';
 
     // Speed rows are kept apart from the rest. They describe how the page is
@@ -2657,18 +2657,18 @@ function pg_seo_render_checklist($row, $type = '', $id = 0)
 
     foreach ($analysis['checks'] as $check) {
         if ($check['s'] == 'ok') {
-            $icon = '<span class="bi bi-check-circle-fill text-success me-2"></span>';
+            $icon = '<span class="bi bi-check-circle-fill fg-success me-3"></span>';
         } elseif ($check['s'] == 'warn') {
-            $icon = '<span class="bi bi-exclamation-triangle-fill text-warning me-2"></span>';
+            $icon = '<span class="bi bi-exclamation-triangle-fill fg-warning me-3"></span>';
         } else {
-            $icon = '<span class="bi bi-x-circle-fill text-danger me-2"></span>';
+            $icon = '<span class="bi bi-x-circle-fill fg-danger me-3"></span>';
         }
 
         $output_row =
-            '<div class="d-flex align-items-center py-1 border-bottom border-light">
+            '<div class="d-flex align-items-center py-1 border-bottom border-subtle">
                 ' . $icon . '
                 <span class="flex-grow-1 small">' . h(pg_seo_check_label($check)) . '</span>
-                <span class="small text-body-secondary ms-2">' . (int) $check['e'] . '/' . (int) $check['w'] . '</span>
+                <span class="small fg-secondary ms-3">' . (int) $check['e'] . '/' . (int) $check['w'] . '</span>
             </div>';
 
         if (strpos((string) $check['c'], 'speed_') === 0) {
@@ -2707,7 +2707,7 @@ function pg_seo_render_checklist($row, $type = '', $id = 0)
 
     if ($output_speed_rows !== '') {
         $output_speed_rows =
-            '<div class="fw-semibold small text-uppercase text-body-secondary mt-3 mb-1">' . lang('Page Speed') . '</div>'
+            '<div class="fw-semibold small text-uppercase fg-secondary mt-5 mb-1">' . lang('Page Speed') . '</div>'
             . $output_speed_rows;
     }
 
@@ -2719,24 +2719,24 @@ function pg_seo_render_checklist($row, $type = '', $id = 0)
         $issues = pg_seo_load_issues($type, $id);
 
         if ($issues) {
-            $output_issues = '<div class="fw-semibold small text-uppercase text-body-secondary mt-3 mb-1">' . lang('HTML Structure') . '</div>';
+            $output_issues = '<div class="fw-semibold small text-uppercase fg-secondary mt-5 mb-1">' . lang('HTML Structure') . '</div>';
 
             foreach ($issues as $issue) {
                 if ($issue['severity'] == 'error') {
-                    $icon = '<span class="bi bi-x-circle-fill text-danger me-2"></span>';
+                    $icon = '<span class="bi bi-x-circle-fill fg-danger me-3"></span>';
                 } elseif ($issue['severity'] == 'warning') {
-                    $icon = '<span class="bi bi-exclamation-triangle-fill text-warning me-2"></span>';
+                    $icon = '<span class="bi bi-exclamation-triangle-fill fg-warning me-3"></span>';
                 } else {
-                    $icon = '<span class="bi bi-dash-circle text-body-secondary me-2"></span>';
+                    $icon = '<span class="bi bi-dash-circle fg-secondary me-3"></span>';
                 }
 
                 $source_label = function_exists('pg_seo_source_label') ? pg_seo_source_label($issue['source']) : '';
                 $output_source = ($source_label !== '')
-                    ? '<span class="badge text-bg-light fw-normal ms-2">' . h($source_label) . '</span>'
+                    ? '<span class="badge badge-subtle theme-secondary fw-normal ms-3">' . h($source_label) . '</span>'
                     : '';
 
                 $output_issues .=
-                    '<div class="d-flex align-items-center py-1 border-bottom border-light">
+                    '<div class="d-flex align-items-center py-1 border-bottom border-subtle">
                         ' . $icon . '
                         <span class="flex-grow-1 small"' . (($issue['detail'] !== '') ? ' title="' . h($issue['detail']) . '"' : '') . '>'
                             . h(pg_seo_issue_label($issue['code'], $issue['occurrences'], $issue['detail'])) . '</span>
@@ -2751,14 +2751,14 @@ function pg_seo_render_checklist($row, $type = '', $id = 0)
     // this record. The name and the edit link that get_seo_analysis.php puts
     // above it are deliberately outside: they do not change.
     return
-        '<div class="mt-2 pg_seo_panel_wrap">
-            <div class="d-flex align-items-center gap-2 mb-2">
+        '<div class="mt-3 pg_seo_panel_wrap">
+            <div class="d-flex align-items-center gap-3 mb-3">
                 <span class="fw-bold' . $text_class . '"' . $text_style . '>' . $score . '/100</span>
                 <div class="progress flex-grow-1" style="height:6px"><div class="progress-bar' . $bar_class . '" style="' . h($bar_style) . '"></div></div>
             </div>
             ' . $output_groups . '
-            <div class="form-text mt-0 mb-2">' . lang('The score below reflects the last saved values.') . '</div>
-            <div class="fw-semibold small text-uppercase text-body-secondary mb-1">' . lang('Content & Meta') . '</div>
+            <div class="form-text mt-0 mb-3">' . lang('The score below reflects the last saved values.') . '</div>
+            <div class="fw-semibold small text-uppercase fg-secondary mb-1">' . lang('Content & Meta') . '</div>
             ' . $output_rows . '
             ' . $output_issues . '
             ' . $output_speed_rows . '
@@ -2790,15 +2790,15 @@ function pg_seo_render_run_buttons($type, $id)
     // The HTML half has nothing to offer without the extension that parses it.
     if (class_exists('DOMDocument') && pg_seo_structure_schema_ready()) {
         $structure =
-            '<button type="button" class="btn btn-sm btn-outline-secondary pg-seo-run"
+            '<button type="button" class="btn btn-sm btn-outline theme-secondary pg-seo-run"
                 data-seo-url="' . $base . '&amp;action=structure"
                 title="' . h(lang('Renders this record and examines the resulting HTML. Slower than the score.')) . '">
                 <span class="bi bi-code-slash me-1"></span>' . lang('Analyze HTML') . '</button>';
     }
 
     return
-        '<div class="d-flex flex-wrap gap-2 mt-3">
-            <button type="button" class="btn btn-sm btn-outline-secondary pg-seo-run"
+        '<div class="d-flex flex-wrap gap-3 mt-5">
+            <button type="button" class="btn btn-sm btn-outline theme-secondary pg-seo-run"
                 data-seo-url="' . $base . '&amp;action=score"
                 title="' . h(lang('Recalculates this record\'s score from its current field values.')) . '">
                 <span class="bi bi-arrow-repeat me-1"></span>' . lang('Refresh score') . '</button>
@@ -2876,11 +2876,11 @@ function pg_seo_render_group_row($label, $score, $weight)
     $bar_style = 'width:' . (int) $score . '%' . (($color['style'] !== '') ? ';background-color:' . $color['style'] : '');
 
     return
-        '<div class="d-flex align-items-center gap-2 mb-1">
-            <span class="small text-body-secondary" style="min-width:110px">' . h($label) . '</span>
+        '<div class="d-flex align-items-center gap-3 mb-1">
+            <span class="small fg-secondary" style="min-width:110px">' . h($label) . '</span>
             <div class="progress flex-grow-1" style="height:4px"><div class="progress-bar' . $bar_class . '" style="' . h($bar_style) . '"></div></div>
             <span class="small fw-semibold" style="min-width:28px;text-align:right">' . (int) $score . '</span>
-            <span class="small text-body-secondary">%' . (int) $weight . '</span>
+            <span class="small fg-secondary">%' . (int) $weight . '</span>
         </div>';
 }
 
@@ -2891,13 +2891,13 @@ function pg_seo_render_group_row($label, $score, $weight)
 function pg_seo_render_detail_offcanvas()
 {
     return
-    '<div class="offcanvas offcanvas-end" tabindex="-1" id="pg_seo_offcanvas" aria-labelledby="pg_seo_offcanvas_title" style="width:420px;max-width:100%">
-        <div class="offcanvas-header border-bottom">
-            <h5 class="offcanvas-title" id="pg_seo_offcanvas_title"><span class="bi bi-graph-up-arrow me-2"></span>' . lang('SEO Detail') . '</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>
+    '<dialog class="drawer drawer-end" id="pg_seo_offcanvas" aria-labelledby="pg_seo_offcanvas_title" style="width:420px;max-width:100%">
+        <div class="drawer-header border-bottom">
+            <h5 class="drawer-title" id="pg_seo_offcanvas_title"><span class="bi bi-graph-up-arrow me-3"></span>' . lang('SEO Detail') . '</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
         </div>
-        <div class="offcanvas-body" id="pg_seo_offcanvas_body"></div>
-    </div>' . pg_seo_render_run_script() . '
+        <div class="drawer-body" id="pg_seo_offcanvas_body"></div>
+    </dialog>' . pg_seo_render_run_script() . '
     <script>
     document.addEventListener("click", function (event) {
         var trigger = event.target.closest(".pg-seo-open");
@@ -2911,13 +2911,13 @@ function pg_seo_render_detail_offcanvas()
         var offcanvas_element = document.getElementById("pg_seo_offcanvas");
         var body = document.getElementById("pg_seo_offcanvas_body");
 
-        body.innerHTML = "<div class=\"text-center py-4\"><div class=\"spinner-border text-primary\" role=\"status\"></div></div>";
+        body.innerHTML = "<div class=\"text-center py-7\"><div class=\"spinner-border fg-primary\" role=\"status\"></div></div>";
         pgUI.drawer.show(offcanvas_element);
 
         fetch(trigger.getAttribute("data-seo-url"), {credentials: "same-origin"})
             .then(function (response) { return response.text(); })
             .then(function (html) { body.innerHTML = html; })
-            .catch(function () { body.innerHTML = "<div class=\"text-danger\">" + ' . json_encode(lang('An error occurred')) . ' + "</div>"; });
+            .catch(function () { body.innerHTML = "<div class=\"fg-danger\">" + ' . json_encode(lang('An error occurred')) . ' + "</div>"; });
     });
     </script>';
 }
@@ -2927,7 +2927,7 @@ function pg_seo_render_detail_offcanvas()
 function pg_seo_render_badge($row)
 {
     if (!pg_seo_row_scored($row)) {
-        return '<span class="badge text-bg-secondary opacity-50" title="' . h(lang('SEO score has not been calculated yet.')) . '">&mdash;</span>';
+        return '<span class="badge theme-secondary opacity-50" title="' . h(lang('SEO score has not been calculated yet.')) . '">&mdash;</span>';
     }
 
     $score = (int) $row['seo_score'];
@@ -2936,7 +2936,7 @@ function pg_seo_render_badge($row)
     $title = $labels ? implode(' · ', $labels) : lang('No SEO problems were found.');
 
     if ($color['class'] !== '') {
-        return '<span class="badge text-bg-' . $color['class'] . '" title="' . h($title) . '">' . $score . '</span>';
+        return '<span class="badge theme-' . $color['class'] . '" title="' . h($title) . '">' . $score . '</span>';
     }
 
     return '<span class="badge" style="background-color:' . $color['style'] . '" title="' . h($title) . '">' . $score . '</span>';

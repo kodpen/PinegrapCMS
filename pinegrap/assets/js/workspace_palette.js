@@ -196,13 +196,11 @@
         }
 
         ui = {};
-        ui.node = el('div', 'modal fade ws-palette');
+        ui.node = el('dialog', 'dialog dialog-lg ws-palette ws-palette-dialog');
         ui.node.id = 'ws-palette';
-        ui.node.tabIndex = -1;
         ui.node.setAttribute('aria-label', t('pal_open'));
 
-        var dialog = el('div', 'modal-dialog modal-lg ws-palette-dialog');
-        var content = el('div', 'modal-content');
+        var content = ui.node;
         var head = el('div', 'ws-palette-head');
 
         head.appendChild(icon('bi-search', 'ws-palette-glass'));
@@ -241,8 +239,6 @@
         content.appendChild(ui.live);
 
         content.appendChild(el('div', 'ws-palette-foot', t('pal_hint')));
-        dialog.appendChild(content);
-        ui.node.appendChild(dialog);
         document.body.appendChild(ui.node);
 
         ui.input.addEventListener('input', function () {
@@ -450,7 +446,7 @@
         row.setAttribute('aria-selected', 'false');
 
         if ((item.type === 'person') && item.avatar && k) {
-            var face = k.avatar({ avatar: item.avatar, avatar_kind: item.avatar_kind }, '1.6rem');
+            var face = k.avatar({ avatar: item.avatar, avatar_kind: item.avatar_kind, initials: item.initials, tone: item.tone, name: item.title }, '1.6rem');
             face.classList.add('ws-palette-face');
             row.appendChild(face);
         } else {
@@ -482,7 +478,7 @@
         row.appendChild(main);
 
         if (item.date) {
-            row.appendChild(el('span', 'ws-palette-date' + (item.overdue ? ' text-danger' : ''), item.date));
+            row.appendChild(el('span', 'ws-palette-date' + (item.overdue ? ' fg-danger' : ''), item.date));
         }
 
         // A colleague: the conversation with them, and their account where

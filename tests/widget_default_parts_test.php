@@ -76,12 +76,15 @@ function _parts_classes($html)
 
 // $tree given its parts as the widget door does, drawn and finished as the
 // order view draws it, the step rows published under the whole order.
-function _parts_render($tree, $static = array(), $cfg = array(), $email = false)
+function _parts_render($tree, $static = array(), $cfg = array(), $email = false, $flags = array())
 {
 	$json = pg_sw_default_parts_apply(json_encode($tree), 'order_view', $cfg, $email);
+	$tree = json_decode($json, true);
+	// The order view's flags; a card added after it shows only by its own.
+	_eo_apply_visibility_bindings($tree, $flags);
 	$scope = pg_sw_finish_open(array('sid' => 44, 'kind' => 'order_view', 'email' => $email));
 	try {
-		$html = trim(_render_tree_node(json_decode($json, true), 0, 0));
+		$html = trim(_render_tree_node($tree, 0, 0));
 		pg_sw_list_publish('order', pg_sw_list_order_rows(array(), array(), array(), _parts_events()));
 		$html = pg_sw_sweep_tokens(pg_sw_fill_longest($html, $static + array('__ship_to_key' => '0')));
 	} finally {
@@ -109,8 +112,12 @@ function test_widget_parts_placed()
 
 function test_widget_parts_apply_leaves_other_trees()
 {
-	$tree = json_encode(_parts_tree(array(_parts_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__order_no'))))));
-	pg_assert_same($tree, pg_sw_default_parts_apply($tree, 'order_view'), 'no old token: as it is');
+	$tree = json_encode(_parts_tree(array(
+		_parts_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__order_no'))),
+		_parts_node('loop_area', array('source' => 'order.return_deliveries'), array()),
+		_parts_node('semantic', array('tag' => 'a', '_bindings' => array('href' => '__legal_contract_url'))),
+	)));
+	pg_assert_same($tree, pg_sw_default_parts_apply($tree, 'order_view'), 'no old token, the cards placed: as it is');
 	$timeline = json_encode(_parts_tree(array(_parts_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__timeline'))))));
 	pg_assert_same($timeline, pg_sw_default_parts_apply($timeline, 'cart'), 'a kind without parts: as it is');
 	pg_assert_same('not json __timeline', pg_sw_default_parts_apply('not json __timeline', 'order_view'), 'broken JSON: as it is');
@@ -119,7 +126,7 @@ function test_widget_parts_apply_leaves_other_trees()
 function test_widget_parts_order_timeline_matches_the_old_block()
 {
 	$host = array('tag' => 'div', 'cssClass' => 'card-body', 'customName' => 'Timeline (HTML)', '_bindings' => array('text' => '__timeline', 'eo_visible_if' => 'has_timeline'));
-	$new = _parts_render(_parts_tree(array(_parts_node('semantic', $host))));
+	$new = _parts_render(_parts_tree(array(_parts_node('semantic', $host))), array(), array(), false, array('has_timeline' => true));
 	$old = '<div class="card-body">' . _parts_old_timeline_html(_parts_events()) . '</div>';
 
 	pg_assert_same(_parts_visible($old), _parts_visible($new), 'same words in the same order');
@@ -201,10 +208,13 @@ function test_widget_parts_editor_twin()
 		$b = strpos($js, $to, $a);
 		return substr($js, $a, $b + strlen($to) - $a);
 	};
-	$src = $cut("\n    var SD_OV_STATUS_CLASS_DEFAULTS = {", "\n    };\n")
+	$src = $cut("\n    var SD_COND_NAMES = ", ";\n") . $cut("\n    var SD_OV_STATUS_CLASS_DEFAULTS = {", "\n    };\n")
 		. $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n")
-		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n");
-	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartOrderTimeline', '_sdPartOrderStatusBadge') as $fn) {
+		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
+		. $cut("\n    var SW_DEFAULT_TAILS = {", "\n    };\n")
+		. $cut("\n    var SD_RETURN_BADGE_CLASSES = {", "\n    };\n");
+	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartOrderTimeline', '_sdPartOrderStatusBadge',
+		'_sdPartPlaced', '_sdPartValue', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$tree = _parts_tree(array(
@@ -214,6 +224,9 @@ function test_widget_parts_editor_twin()
 		)),
 		_parts_node('content', array('contentType' => 'heading', 'tag' => 'H3', 'text' => '^^__timeline^^')),
 		_parts_node('component', array('componentType' => 'badge', 'text' => '^^__order_status_badge^^')),
+		// A condition places nothing: both cards and the withdrawal line come.
+		_parts_node('semantic', array('tag' => 'p', '_bindings' => array('show_if' => '__returns'), '_bindParams' => array('show_if' => array('op' => 'not_empty')))),
+		_parts_node('semantic', array('tag' => 'p', '_bindings' => array('show_if' => '__withdrawal_deadline'))),
 	));
 	$cfg = array('regionType' => 'order_view', 'status_class_pending' => 'badge <b> text-bg-info', 'status_class_shipped' => '');
 	$stubs = "var _n = 0; function gid() { return 'n' + (++_n); }\n"
@@ -221,7 +234,8 @@ function test_widget_parts_editor_twin()
 		. "function createNode(type, props, children) { return { _id: gid(), type: type, props: props || {}, children: children || [] }; }\n";
 	$script = 'var tree = ' . json_encode($tree) . ";\n"
 		. 'var changed = _sdDefaultParts(tree, "order_view", ' . json_encode($cfg) . ");\n"
-		. "console.log(JSON.stringify({ changed: changed, again: _sdDefaultParts(tree, 'order_view', null), tree: tree }));\n";
+		. 'var tails = _sdDefaultTails(tree, "order_view", ' . json_encode($cfg) . ");\n"
+		. "console.log(JSON.stringify({ changed: changed && tails, again: _sdDefaultParts(tree, 'order_view', null) || _sdDefaultTails(tree, 'order_view', null), tree: tree }));\n";
 	$file = @tempnam(sys_get_temp_dir(), 'pgparts');
 	if ($file === false) return;
 	file_put_contents($file, $stubs . $src . $script);
@@ -259,4 +273,105 @@ function _parts_norm($node)
 	}
 	ksort($node);
 	return $node;
+}
+
+// The legal documents card as the order view added it before the part.
+function _parts_old_legal_html($urls, $withdrawal)
+{
+	$types = pg_legal_document_types();
+	$items = '';
+	foreach ($urls as $type => $url) {
+		if ($url !== '') $items .= '<li><a href="' . h($url) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a></li>';
+	}
+	if ($items === '') return '';
+	return '<div class="container pb-4 pg-ov-legal-documents"><div class="card">'
+		. '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Legal Documents')) . '</h6></div>'
+		. '<div class="card-body"><ul class="list-unstyled mb-0">' . $items . '</ul>'
+		. (($withdrawal !== '') ? '<p class="small text-muted mt-2 mb-0">' . h($withdrawal) . '</p>' : '')
+		. '</div></div></div>';
+}
+
+// The returns card as the order view added it before the part.
+function _parts_old_returns_html($list, $form)
+{
+	return '<div class="container pb-4 pg-ov-returns-block"><div class="card">'
+		. '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Returns')) . '</h6></div>'
+		. '<div class="card-body">' . $list . $form . '</div></div></div>';
+}
+
+// The links of a fragment: address, window and rel, in order.
+function _parts_links($html)
+{
+	preg_match_all('/<a href="([^"]*)" target="([^"]*)" rel="([^"]*)"/', $html, $m, PREG_SET_ORDER);
+	return array_map(function ($l) { return array_slice($l, 1); }, $m);
+}
+
+// The form fields of a fragment: names in order.
+function _parts_fields($html)
+{
+	preg_match_all('/<(?:input|select|textarea|button)\b[^>]*\bname="([^"]*)"/', $html, $m);
+	return $m[1];
+}
+
+// A layout from before the cards existed gets both after it, returns first,
+// showing what the old blocks showed: the same words, classes, links and
+// form fields, the withdrawal line under the links.
+function test_widget_parts_order_tail_cards_match_the_old_blocks()
+{
+	$layout = _parts_tree(array(_parts_node('semantic', array('tag' => 'p', 'cssClass' => 'lead', 'text' => 'Thanks'))));
+	$urls = array('preinfo' => '/p/legal_document.php?order_id=7&type=preinfo', 'contract' => '/p/legal_document.php?order_id=7&type=contract');
+	$line = 'Last day of the right of withdrawal: 03.11.2026 <est>';
+	// The requests are a list of their own, without rows here
+	// (widget_default_parts_returns_test.php).
+	$list = '';
+	// The request form is a part of its own, without rows here
+	// (widget_default_parts_order_forms_test.php).
+	$form = '';
+	$static = array(
+		'__legal_preinfo_url' => h($urls['preinfo']), '__legal_contract_url' => h($urls['contract']),
+		'__withdrawal_text' => h($line), '__returns' => $list, '__return_form' => $form,
+	);
+	$flags = array('has_legal_documents' => true, 'has_legal_preinfo' => true, 'has_legal_contract' => true,
+		'has_withdrawal_deadline' => true, 'show_returns_card' => true);
+	$new = _parts_render($layout, $static, array(), false, $flags);
+	$old = '<p class="lead">Thanks</p>' . _parts_old_returns_html($list, $form) . _parts_old_legal_html($urls, $line);
+
+	pg_assert_same(_parts_visible($old), _parts_visible($new), 'same words in the same order');
+	pg_assert_same(_parts_classes($old), _parts_classes($new), 'same classes in the same order');
+	pg_assert_same(_parts_links($old), _parts_links($new), 'same links, new window');
+	pg_assert_same(array(), _parts_fields($new), 'no request form without a delivery to ask for');
+	pg_assert_contains('&lt;est&gt;', $new, 'the line escaped once');
+
+	// The contract alone, no deadline, returns off: what the old blocks drew.
+	$flags = array('has_legal_documents' => true, 'has_legal_contract' => true);
+	$new = _parts_render($layout, $static, array(), false, $flags);
+	$old = '<p class="lead">Thanks</p>' . _parts_old_legal_html(array('preinfo' => '', 'contract' => $urls['contract']), '');
+	pg_assert_same(_parts_visible($old), _parts_visible($new), 'one link: same words');
+	pg_assert_same(_parts_classes($old), _parts_classes($new), 'one link: same classes');
+	pg_assert_same(_parts_links($old), _parts_links($new), 'one link');
+
+	// Nothing kept, returns off (the receipt e-mail): no card.
+	pg_assert_same('<p class="lead">Thanks</p>', _parts_render($layout, $static), 'no card');
+}
+
+// A layout that shows the last day itself gets the card without the line;
+// one that places a card's token gets no copy of that card.
+function test_widget_parts_order_tail_cards_placed_beats_pushed()
+{
+	$own_day = _parts_tree(array(_parts_node('semantic', array('tag' => 'span', '_bindings' => array('text' => '__withdrawal_deadline')))));
+	$tree = json_decode(pg_sw_default_parts_apply(json_encode($own_day), 'order_view'), true);
+	pg_assert_same(3, count($tree['children']), 'the layout, then both cards');
+	pg_assert_false(strpos(json_encode($tree), '__withdrawal_text') !== false, 'no second withdrawal line');
+
+	$own_link = _parts_tree(array(_parts_node('semantic', array('tag' => 'a', 'text' => 'Contract', '_bindings' => array('href' => '__legal_contract_url')))));
+	$tree = json_decode(pg_sw_default_parts_apply(json_encode($own_link), 'order_view'), true);
+	pg_assert_same(2, count($tree['children']), 'the layout and the returns card');
+	pg_assert_contains('pg-ov-returns-block', json_encode($tree), 'the returns card');
+
+	$again = pg_sw_default_parts_apply(json_encode($tree), 'order_view');
+	pg_assert_same(json_encode($tree), $again, 'a tree with its cards is left as it is');
+
+	// A template's placeholder, left for the editor's starter, gets nothing.
+	$placeholder = json_encode(array('type' => 'root', 'props' => array(), 'children' => array(array('type' => 'loop_area', 'props' => array(), 'children' => array()))));
+	pg_assert_same($placeholder, pg_sw_default_parts_apply($placeholder, 'order_view'), 'the placeholder as it is');
 }

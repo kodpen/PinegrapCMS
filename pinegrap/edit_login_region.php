@@ -43,8 +43,8 @@ if (!$_POST) {
             logged_in_header,
             logged_in_footer
         FROM login_regions
-        WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // If the login region does not exist, then output error.
@@ -79,8 +79,8 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         <p>' . lang('Page Style Body Tag') . ': <strong>' . h('<login>' . $row['name'] . '</login>') . '</strong></p>
                     </div>
@@ -90,13 +90,13 @@ if (!$_POST) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 my-2">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Login Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<login>') . '</div>
@@ -104,30 +104,30 @@ if (!$_POST) {
                                                 <div class="input-group-text">' . h('</login>') . '</div>
                                             </div>
                                         </div>
-                                        <h5 class="mt-5">' . lang('Not Logged In') . '</h5>
-                                        <div class="col-12 my-2">
+                                        <h5 class="mt-12">' . lang('Not Logged In') . '</h5>
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Header') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'not_logged_in_header', 'id'=>'not_logged_in_header', 'style'=>'width: 600px; height: 200px')) . '
                                             ' . pg_code_editor_attach(array('id' => 'not_logged_in_header', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'login_form', 'id'=>'login_form', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                <label class="form-check-label" for="login_form">' . lang('Show Login Form') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'login_form', 'id'=>'login_form', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                <label class="" for="login_form">' . lang('Show Login Form') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Footer') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'not_logged_in_footer', 'id'=>'not_logged_in_footer', 'style'=>'width: 600px; height: 200px')) . '
                                             ' . pg_code_editor_attach(array('id' => 'not_logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
-                                        <h5 class="mt-5">' . lang('Logged In') . '</h5>
-                                        <div class="col-12 my-2">
+                                        <h5 class="mt-12">' . lang('Logged In') . '</h5>
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Header') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'logged_in_header', 'id'=>'logged_in_header', 'style'=>'width: 600px; height: 200px')) . '
                                             ' . pg_code_editor_attach(array('id' => 'logged_in_header', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Footer') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'logged_in_footer', 'id'=>'logged_in_footer', 'style'=>'width: 600px; height: 200px')) . '
                                             ' . pg_code_editor_attach(array('id' => 'logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
@@ -137,11 +137,11 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('login region')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('login region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -160,8 +160,8 @@ if (!$_POST) {
     // if login region was selected for deletion
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete login region
-        $query = "DELETE FROM login_regions WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM login_regions WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('login region'), $_POST['name']) )), $_SESSION['sessionusername']);
         
         $liveform->remove_form();
@@ -188,9 +188,9 @@ if (!$_POST) {
         $query =
             "SELECT id
             FROM login_regions
-            WHERE (name = '" . escape($liveform->get_field_value('name')) . "')
-            AND (id != '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE (name = ?)
+            AND (id != ?)";
+        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // if name is already in use, prepare error and forward user back to login region screen
         if (mysqli_num_rows($result) > 0) {
@@ -204,16 +204,16 @@ if (!$_POST) {
         // update region
         $query = 
             "UPDATE login_regions SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                not_logged_in_header = '" . escape($liveform->get_field_value('not_logged_in_header')) . "',
-                login_form = '" . escape($liveform->get_field_value('login_form')) . "',
-                not_logged_in_footer = '" . escape($liveform->get_field_value('not_logged_in_footer')) . "',
-                logged_in_header = '" . escape($liveform->get_field_value('logged_in_header')) . "',
-                logged_in_footer = '" . escape($liveform->get_field_value('logged_in_footer')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                not_logged_in_header = ?,
+                login_form = ?,
+                not_logged_in_footer = ?,
+                logged_in_header = ?,
+                logged_in_footer = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) ($liveform->get_field_value('not_logged_in_header')), (string) ($liveform->get_field_value('login_form')), (string) ($liveform->get_field_value('not_logged_in_footer')), (string) ($liveform->get_field_value('logged_in_header')), (string) ($liveform->get_field_value('logged_in_footer')), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('login region'), $_POST['name']) )), $_SESSION['sessionusername']);
      

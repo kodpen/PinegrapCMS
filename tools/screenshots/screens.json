@@ -1,9 +1,9 @@
 {
-	"comment": "Screens tools/screenshots/shoot.js photographs. path is relative to the panel (/pinegrap/); {name} is replaced by the id seed.php printed under that name. crop names an element shot instead of the whole page. click is a selector clicked before the shot, either for every viewport or per viewport (an object keyed by phone or wide). cookies are set for that screen only. viewports limits the screen to some of wide and phone. kept marks the screens the owner wants kept as they are.",
+	"comment": "Screens tools/screenshots/shoot.js photographs. path is relative to the panel (/pinegrap/); {name} is replaced by the id seed.php printed under that name. crop names an element shot instead of the whole page. click is a selector clicked before the shot, either for every viewport or per viewport (an object keyed by phone or wide). cookies are set for that screen only. viewports limits the screen to some of wide and phone. kept marks the screens the owner wants kept as they are. signed_out shoots a screen before signing in (the secure screens a visitor sees).",
 	"screens": [
 		{"name": "welcome", "path": "welcome.php", "kept": true},
 		{"name": "header", "path": "welcome.php", "crop": "#header", "kept": true},
-		{"name": "main-menu", "path": "welcome.php", "crop": "#menu", "click": {"phone": "#menu_mode_toggle"}, "kept": true},
+		{"name": "main-menu", "path": "welcome.php", "crop": "#menu", "click": {"tablet": "#menu_mode_toggle", "phone": "#menu_mode_toggle"}, "kept": true},
 		{"name": "main-menu-expanded", "path": "welcome.php", "crop": "#menu", "cookies": {"softwaremenustatus": "expanded"}, "viewports": ["wide"], "kept": true},
 		{"name": "footer", "path": "welcome.php", "crop": "#footer", "kept": true},
 		{"name": "workspace", "path": "workspace.php?channel={channel_id}", "kept": true},
@@ -13,6 +13,16 @@
 		{"name": "edit_user", "path": "edit_user.php?id={user_id}", "kept": true},
 		{"name": "view_product_groups", "path": "view_product_groups.php", "kept": true},
 		{"name": "view_offers", "path": "view_offers.php", "kept": true},
-		{"name": "edit_offer", "path": "edit_offer.php?id={offer_id}", "kept": true}
+		{"name": "edit_offer", "path": "edit_offer.php?id={offer_id}", "kept": true},
+		{"name": "calendars", "path": "calendars.php"},
+		{"name": "add_calendar_event", "path": "add_calendar_event.php"},
+		{"name": "add_gift_card", "path": "add_gift_card.php"},
+		{"name": "add_shipping_method", "path": "add_shipping_method.php"},
+		{"name": "add_email_campaign_profile", "path": "add_email_campaign_profile.php"},
+		{"name": "view_pages", "path": "view_pages.php"},
+		{"name": "signin", "path": "index.php", "signed_out": true},
+		{"name": "forgot_password", "path": "forgot_password.php", "signed_out": true},
+		{"name": "designer_home", "path": "view_system_styles.php"},
+		{"name": "visual_editor", "path": "add_system_style.php"}
 	]
 }

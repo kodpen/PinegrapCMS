@@ -34,7 +34,8 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-accountant-pack.md: ERP accountant pack (4.78): the shared xlsx writer, where the ZIP is kept, the link token, the monthly job, and what a new record type must add to the pack.
 - erp-accounting-rules.md: ERP accounting rules (4.103): withholding in the VAT difference, the exemption code of zero-rated lines, the expense category VAT default, and the accountant questions file.
 - erp-aging-and-due-date.md: Single source for ERP due dates and aging (includes/erp/aging.php): point-in-time open amounts, buckets, filters, and payment_days default due dates.
-- erp-alerts.md: ERP bell and device notices (4.91): money in, low stock, quotes running out, refused automatic invoice; the actor rule, who gets banners, and what a new notice needs.
+- erp-alerts.md: ERP bell and device notices (4.91): money in, low stock, quotes running out (and their Workspace follow-up), refused automatic invoice; the actor rule, who gets banners, what a new notice needs.
+- erp-api-dry-run.md: Which ERP API writes take X-Dry-Run (MCP dry_run); the account (PR #1850), receipt (PR #1870) and expense (PR #1891) rehearsals: their checks, the *_check() functions, the tests
 - erp-api-events-and-testing.md: The ERP event door erp_event() (webhook queue, audit trail, alerts), where writers announce, what a new event needs, and how to test the ERP API on dev without creating keys.
 - erp-api-seam.md: ERP's only door into the external API, includes/erp/api.php: five hooks, load chain, name clashes, schema pairs, paging, scope groups, owner ceiling, error codes, drafts, wire rules.
 - erp-audit-trail.md: ERP audit trail (erp_audit_log, 4.90): its two writers (events and ERP log lines), the calling-file rule, why it is never deleted, what a line carries, who may read it.
@@ -61,6 +62,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-edoc-send-and-cancel.md: How an ERP invoice goes through the e-document provider: the send gate, a send that stopped, create then hand to GİB (autosend, 4.63), status on request, taking a document back before the cancel.
 - erp-edoc-send-readiness.md: What the provider would refuse, asked before it is: missing-field lists and format helpers, the repair form, the not-ready filter, the final-consumer number, sales-only rules, GİB's date order.
 - erp-edoc-settings-card.md: Where the e-document provider settings card lives (pgset-invoice), how it saves, the connection test endpoint, and the owner decision to keep it there.
+- erp-efatura-threshold.md: The e-Fatura threshold warning (includes/erp/efatura_threshold.php): the two threshold settings, what counts as a sale, the daily cached sum, the System Status tile and its deadline.
 - erp-expense-receipts.md: An ERP expense's receipt file: one door for form and API, type read from the bytes, replacing keeps the old copy (erp_archive_store again), readers take the newest row, MAX(id) in direct joins.
 - erp-expense-recurring-restart.md: Starting a stopped repeating expense again goes on from where it stopped and does not write past periods a second time; a restart keeps the first expense as its source
 - erp-expenses.md: ERP expenses (4.95): why an expense is nobody's debt, how payment and cancel post to the till, amount and base figures, date and till rules, categories, the API's cash gate and events.
@@ -93,7 +95,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-order-documents-flow.md: The order screen's documents card (includes/erp/order_flow.php): the four documents, step states, the one Next button, and why a step only calls its own screen's function.
 - erp-order-invoice-header.md: An order's invoice header: header-only order amounts, charge lines and gift card, subtotal and grand_total, and the status and total checks that refuse before a number is spent.
 - erp-order-tax-number-difference.md: Contact card's tax number not on the order's ERP account: automatic invoice held, documents card shows both numbers, bell and log neither (owner decision 2026-10-23, #1307)
-- erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients.
+- erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients, Workspace collection follow-up.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (accounts capability): the lists a read pages through, archived and unlisted cards, card shape, writing a card, the linked card on invoices
 - erp-parasut-connect-card.md: The Paraşüt card of the commerce settings: status line, connect steps, secret and password boxes, default product help, what Connect answers, which company it takes
@@ -107,6 +109,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-legacy-invoice.md: What the order screen's legacy Paraşüt "Create Invoice" sends: its lines and refusals (#1268), an unanswered create (#1416), the buyer card (#1408), its e-document (#1278), after E-Shipment (#1506)
 - erp-parasut-legacy-invoiced-order.md: ERP send of an order the legacy Create Invoice invoiced at Paraşüt: the unsure mark refuses unread naming the way out; a record id is read, only a deleted one frees the send (#1629, #1682)
 - erp-parasut-legacy-order-buttons.md: The order screen's Paraşüt buttons (Create Invoice, E-Shipment): the ERP's card (#639), a sent order (#1084, #1407), E-Shipment's VKN/TCKN check (#1418), stock movement lines (#1458)
+- erp-parasut-legacy-order-gates-limits.md: What the order gates of #1628 do not cover: an ERP invoice whose Paraşüt record was deleted there, and orders whose "Sent" flag was set by a failed e-document before 2026.4.4
 - erp-parasut-legacy-order-gates.md: Which orders the order screen's Paraşüt Create Invoice and E-Shipment go for (a finished sale, not one the ERP invoiced through a provider), and what the status row says (#1628, #1660)
 - erp-parasut-legacy-shipment-deleted-products.md: E-Shipment refuses an order whose lines name a product deleted from the catalogue, naming those lines, instead of leaving them off the waybill (#1630)
 - erp-parasut-legacy-shipment-stock.md: E-Shipment's stock step: every line's product card opened first, then each Paraşüt product made ready once for the order's total; one movement per order line (#1630)
@@ -115,7 +118,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-product-card-opening-stock.md: The stock a tracked Paraşüt product card opens with: Pinegrap's count plus the units the documented sale already took out of it (#1630); what each caller adds, and the orders still counted out twice
 - erp-parasut-product-card.md: The Paraşüt product card of a Pinegrap product (parasut_sync_product()): who opens it, what the create sends, the price's currency (#1631), why no stock_updates follows (#1517)
 - erp-parasut-send-failures.md: What the ERP does when a Paraşüt send step goes wrong (no answer, a record not deleted, a failed job, a record deleted there) so no second sales invoice is opened
-- erp-parasut-sent-cancel.md: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from the row, the way out, what the deleted-record 404 can free wrongly after a company switch, and what is still open
+- erp-parasut-sent-cancel.md: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from the row, the way out, the company guard on the deleted-record 404, and what is still open
 - erp-parasut-shipped-order.md: The ERP driver's sales invoice for an order the legacy E-Shipment already shipped: sent without shipment and naming the shipment document, so Paraşüt counts the goods out once (#1530)
 - erp-parasut-stale-kept-ids.md: Paraşüt ids Pinegrap sends without a read (product card, default warehouse, buyer card, the driver's shipment document): a create answered 404 naming one forgets it and is sent once more (#1627)
 - erp-period-lock.md: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the two checks every ledger or till write meets, which date a cancel, return or payment is judged by, who moves the lock.

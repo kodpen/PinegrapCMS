@@ -459,6 +459,10 @@ function api_openapi_type($param) {
 
 			return array('type' => 'string', 'description' => 'ISO-8601, YYYY-MM-DD, or a unix timestamp.');
 
+		case 'object':
+
+			return array('type' => 'object');
+
 		case 'list':
 
 			// 'of' names what the list holds, in the spelling of the field
@@ -642,6 +646,7 @@ function api_openapi_objects()
         'TopContent'   => 'api_top_content_schema',
         'VisitorBreakdown' => 'api_visitor_breakdown_schema',
         'SiteLogEntry' => 'api_site_log_schema',
+        'AuditLogEntry' => 'api_audit_log_schema',
         'Campaign'     => 'api_campaign_schema',
         'CampaignRecipient' => 'api_campaign_recipient_schema',
         'ContactGroup' => 'api_contact_group_schema',
@@ -657,6 +662,7 @@ function api_openapi_objects()
         'PriceBatch'     => 'api_price_batch_schema',
         'PriceHistoryEntry' => 'api_price_history_entry_schema',
         'WishlistItem'      => 'api_wishlist_item_schema',
+        'Consent'           => 'api_consent_schema',
         'ProductMarketplace' => 'api_product_marketplace_schema',
         'Seo'          => 'api_seo_schema',
         'Form'           => 'api_form_schema',

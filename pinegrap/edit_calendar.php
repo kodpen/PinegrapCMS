@@ -38,8 +38,8 @@ if (validate_calendar_access($_REQUEST['id']) == false) {
 $liveform = new liveform('edit_calendar', $_REQUEST['id']);
 
 // get number of calendar events in this calendar
-$query = "SELECT COUNT(calendar_event_id) FROM calendar_events_calendars_xref WHERE calendar_id = '" . escape($_REQUEST['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT COUNT(calendar_event_id) FROM calendar_events_calendars_xref WHERE calendar_id = ?";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $number_of_calendar_events = $row[0];
 
@@ -48,19 +48,19 @@ if (!$_POST) {
     $query =
         "SELECT name
         FROM calendars
-        WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $liveform->assign_field_value('name', $row['name']);
     
     // if there are no calendar events in this calendar, allow delete
     if ($number_of_calendar_events == 0) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('calendar')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('calendar')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
 
     // else there is at least one calendar event in this calendar, so disable delete button
     } else {
-        $output_delete_button = '<button type="button" value="Delete" class="btn my-1 btn-danger "  data-confirm-content="' . lang('Please delete or remove all calendar events from this calendar before deleting this calendar.') . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="button" value="Delete" class="btn my-1 btn-solid theme-danger "  data-confirm-content="' . lang('Please delete or remove all calendar events from this calendar before deleting this calendar.') . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     echo 
@@ -91,13 +91,13 @@ if (!$_POST) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 my-2">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Calendar'))) . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
@@ -107,11 +107,11 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                             
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>
@@ -133,30 +133,30 @@ if (!$_POST) {
         // if there are no calendar events in this calendar, proceed with deleting calendar
         if ($number_of_calendar_events == 0) {
             // get calendar name for log
-            $query = "SELECT name FROM calendars WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT name FROM calendars WHERE id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $calendar_name = $row['name'];
             
             // delete calendar
-            $query = "DELETE FROM calendars WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM calendars WHERE id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete users_calendars_xref records
-            $query = "DELETE FROM users_calendars_xref WHERE calendar_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM users_calendars_xref WHERE calendar_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete calendar_views_calendars_xref records
-            $query = "DELETE FROM calendar_views_calendars_xref WHERE calendar_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM calendar_views_calendars_xref WHERE calendar_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete calendar_event_views_calendars_xref records
-            $query = "DELETE FROM calendar_event_views_calendars_xref WHERE calendar_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM calendar_event_views_calendars_xref WHERE calendar_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete calendar_events_calendars_xref records
-            $query = "DELETE FROM calendar_events_calendars_xref WHERE calendar_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM calendar_events_calendars_xref WHERE calendar_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('calendar'), $calendar_name) )), $_SESSION['sessionusername']);
 
             $liveform->remove_form();
@@ -194,9 +194,9 @@ if (!$_POST) {
             "SELECT id
             FROM calendars
             WHERE
-                (name = '" . escape($liveform->get_field_value('name')) . "')
-                AND (id != '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (name = ?)
+                AND (id != ?)";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // if name is already in use by a different calendar, prepare error and forward user back to screen
         if (mysqli_num_rows($result) > 0) {
@@ -211,11 +211,11 @@ if (!$_POST) {
         $query =
             "UPDATE calendars
             SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('calendar'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);
         

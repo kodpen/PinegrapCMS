@@ -95,10 +95,10 @@ $output = pg_page_shell( array(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 col-sm-12 text-center text-md-start">
-<div class="row mb-2">
-                        <div class="col-12 col-md">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 sm:col-12 text-center md:text-start">
+<div class="row mb-3">
+                        <div class="col-12 md:col">
                             <h2 class="d-inline-block text-break" data-bs-content="' . lang('The form layout will look like this when displayed within a page.') . '" title="' . lang('Preview Form') . '">' . h($form_description) . '</h2>
                         </div>
                     </div>
@@ -106,19 +106,20 @@ $output = pg_page_shell( array(
             </div>
             <div class="row">
                 <div class="col-12">
-                    <div class="card my-4 ">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                    <div class="card my-7 ">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                             ' . lang('Form Properties') . '
                         </div>
-                        <div class="card-body text-center text-md-start">
+                        <div class="card-body text-center md:text-start">
                             <div class="row">
-                                <div class="col-12 my-2">
+                                <div class="col-12 my-3">
                                     <fieldset style="margin-bottom: 1em">
                                         ' . $output_legend . '
                                         <div style="padding: 0.7em">
                                             <table>
                                                 ' . $form_info['content'] . '
                                             </table>
+                                            ' . $form_info['picker_scripts'] . '
                                         </div>
                                     </fieldset>
                                 </div>

@@ -44,8 +44,8 @@ if (!$_POST) {
            user.user_username
        FROM style
        LEFT JOIN user ON style.style_user = user.user_id
-       WHERE style_id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+       WHERE style_id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_array($result);
 
     // The id comes from the request and can point at a style that was
@@ -105,9 +105,9 @@ if (!$_POST) {
         }
 
         $output_social_networking_position =
-            '<div class="col-12 col-md-6 col-lg-4 my-2">
+            '<div class="col-12 md:col-6 lg:col-4 my-3">
                 <label for="social_networking_position" class="form-label">' . lang('Social Networking Position') . '</label>
-                <select id="social_networking_position" name="social_networking_position" class="form-select">
+                <select id="social_networking_position" name="social_networking_position" class="form-control">
                     <option value="top_left"' . $output_top_left_selected . '>' . lang('Top Left') . '</option>
                     <option value="top_right"' . $output_top_right_selected . '>' . lang('Top Right') . '</option>
                     <option value="bottom_left"' . $output_bottom_left_selected . '>' . lang('Bottom Left') . '</option>
@@ -147,9 +147,9 @@ if (!$_POST) {
             COUNT(folder_id)
         FROM folder
         WHERE
-            (folder_style = '" . $style_id . "')
-            OR (mobile_style_id = '" . $style_id . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            (folder_style = ?)
+            OR (mobile_style_id = ?)";
+    $result = db_q($query, array((string) $style_id, (string) $style_id)) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $folders_using_style = $row[0];
     
@@ -159,16 +159,16 @@ if (!$_POST) {
             COUNT(page_id)
         FROM page
         WHERE
-            (page_style = '" . $style_id . "')
-            OR (mobile_style_id = '" . $style_id . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            (page_style = ?)
+            OR (mobile_style_id = ?)";
+    $result = db_q($query, array((string) $style_id, (string) $style_id)) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $pages_using_style = $row[0];
 
     // if style is being used by either a folder or a page
     if (($folders_using_style > 0) || ($pages_using_style > 0)) {
         // output delete button with alert
-        $output_delete_button = '<button type="button" value="Delete" class="btn my-1 btn-danger "  data-confirm-content="' . lang('You may not delete this page style because it is being used by at least one folder or page.') . '" title="' . lang('You may not delete this page style because it is being used by at least one folder or page.') . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="button" value="Delete" class="btn my-1 btn-solid theme-danger "  data-confirm-content="' . lang('You may not delete this page style because it is being used by at least one folder or page.') . '" title="' . lang('You may not delete this page style because it is being used by at least one folder or page.') . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
        
     } else {
         // output regular delete button
@@ -177,21 +177,21 @@ if (!$_POST) {
         $delete_confirmation = pg_recycle_style_ready()
             ? lang('This page style will be moved to the Recycle Bin.')
             : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page style'))));
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     print
     $output_header . '
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 <h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Update this HTML template that is applied to all associated pages.') . '" title="' . lang('Edit Custom Page Style') . '">[' . h($style_name) . ']</h2>
                         <p>' . lang('Last Modified') . ': ' . get_relative_time(array('timestamp' => $style_timestamp)) . ' ' . h($user_username) . '</p>
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_style.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+                                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_style.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                             </div>
                         </nav>
                     </div>
@@ -202,18 +202,18 @@ if (!$_POST) {
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Page Style Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-8 col-lg-6 my-2">
+                                        <div class="col-12 md:col-8 lg:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
                                             <input value="' . h($style_name) . '" name="name" id="name" type="text" placeholder="' . lang('new page style') . '" class="form-control" maxlength="100" required />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label class="form-label">' . lang('HTML Page with embedded Tags') . '</label>
                                             <div id="edit_custom">
                                                 <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($style_code) . '</textarea>
@@ -226,28 +226,28 @@ if (!$_POST) {
                         </div>
                         
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Additional Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 mt-2">
+                                        <div class="col-12 mt-3">
                                             <h5>'. lang('Collection') . '</h5>
                                         </div>
-                                        <div class="col-12 mb-2">
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" name="collection" id="collection_a" value="a"' . $output_collection_a_checked . ' class="form-check-input" />
-                                                <label class="form-check-label" for="collection_a">' . lang('Collection') . ' A</label>
+                                        <div class="col-12 mb-3">
+                                            <div class="form-field d-inline-grid me-5">
+                                                <input type="radio" name="collection" id="collection_a" value="a"' . $output_collection_a_checked . ' class="radio" />
+                                                <label class="" for="collection_a">' . lang('Collection') . ' A</label>
                                             </div>
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" name="collection" id="collection_b" value="b"' . $output_collection_b_checked . ' class="form-check-input" />
-                                                <label class="form-check-label" for="collection_b">' . lang('Collection') . ' B</label>
+                                            <div class="form-field d-inline-grid me-5">
+                                                <input type="radio" name="collection" id="collection_b" value="b"' . $output_collection_b_checked . ' class="radio" />
+                                                <label class="" for="collection_b">' . lang('Collection') . ' B</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="layout_type" class="form-label">' . lang('Override Layout Type') . '</label>
-                                            <select id="layout_type" name="layout_type" class="form-select">
+                                            <select id="layout_type" name="layout_type" class="form-control">
                                                 <option value=""></option>
                                                 <option value="system"' . $output_layout_type_system_selected . '>' . lang('System') . '</option>
                                                 <option value="custom"' . $output_layout_type_custom_selected . '>' . lang('Custom') . '</option>
@@ -259,11 +259,11 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary"><span class="material-icons me-2">arrow_backsave</span><span class="pg-btn-label">' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary"><span class="material-icons me-3">arrow_backsave</span><span class="pg-btn-label">' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>
@@ -291,9 +291,9 @@ else
                 COUNT(folder_id)
             FROM folder
             WHERE
-                (folder_style = '" . escape($_POST['id'] ?? '') . "')
-                OR (mobile_style_id = '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (folder_style = ?)
+                OR (mobile_style_id = ?)";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         $folders_using_style = $row[0];
         
@@ -303,9 +303,9 @@ else
                 COUNT(page_id)
             FROM page
             WHERE
-                (page_style = '" . escape($_POST['id'] ?? '') . "')
-                OR (mobile_style_id = '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (page_style = ?)
+                OR (mobile_style_id = ?)";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         $pages_using_style = $row[0];
 
@@ -330,7 +330,7 @@ else
                 $notice = lang('The style was moved to the Recycle Bin.');
 
             } else {
-                $result=mysqli_query(db::$con, "DELETE FROM style WHERE style_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+                $result=db_q("DELETE FROM style WHERE style_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
 
                 db("DELETE FROM preview_styles WHERE style_id = '" . escape($_POST['id'] ?? '') . "'");
 

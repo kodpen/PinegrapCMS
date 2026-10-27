@@ -64,21 +64,21 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Import CSV or Excel') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12  my-2">
+                                        <div class="col-12  my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto')) . '
                                             <div class="form-text">' . lang('A .csv, .xlsx or .ods file. The first row holds the column names.') . '</div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'update_existing_products', 'id'=>'update_existing_products', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                <label class="form-check-label" for="update_existing_products">' . lang('Update Existing Products') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'update_existing_products', 'id'=>'update_existing_products', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                <label class="" for="update_existing_products">' . lang('Update Existing Products') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -86,10 +86,10 @@ if (!$_POST) {
                             </div> 
                         </div> 
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Warning') . '\', message:\'' . lang('WARNING: If an existing product has the same name as a product in the import file, then the existing product data will be replaced.') . '\', confirmText:\'' . lang('Import Products') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-2">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
+                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-solid theme-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Warning') . '\', message:\'' . lang('WARNING: If an existing product has the same name as a product in the import file, then the existing product data will be replaced.') . '\', confirmText:\'' . lang('Import Products') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -269,8 +269,8 @@ if (!$_POST) {
                     seo_analysis_current,
                     address_name
                 FROM products
-                WHERE name = '" . escape($row[$name_key]) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE name = ?";
+            $result = db_q($query, array((string) $row[$name_key])) or output_error('Query failed.');
             if (mysqli_num_rows($result) > 0) {
                 $row_2 = mysqli_fetch_assoc($result);
                 $product_id = $row_2['id'];
@@ -345,8 +345,8 @@ if (!$_POST) {
                             // if this column is keywords, then update the product's keywords in the tag cloud
                             if ($column_name == 'keywords') {
                                 // get the tag cloud keywords xref records for this product
-                                $query = "SELECT item_id FROM tag_cloud_keywords_xref WHERE item_id = '" . escape($product_id) . "' AND item_type = 'product'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $query = "SELECT item_id FROM tag_cloud_keywords_xref WHERE item_id = ? AND item_type = 'product'";
+                                $result = db_q($query, array((string) $product_id)) or output_error('Query failed.');
                                 
                                 // if there is an xref record, then update the keywords in the tag cloud
                                 if (mysqli_num_rows($result) > 0) {
@@ -368,8 +368,8 @@ if (!$_POST) {
                                     $original_keywords = array();
                                     
                                     // get the original meta keywords for this product
-                                    $query = "SELECT keyword FROM tag_cloud_keywords WHERE (item_id = '" . escape($product_id) . "' AND item_type = 'product')";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    $query = "SELECT keyword FROM tag_cloud_keywords WHERE (item_id = ? AND item_type = 'product')";
+                                    $result = db_q($query, array((string) $product_id)) or output_error('Query failed.');
                                     while($row_3 = mysqli_fetch_assoc($result)) {
                                         $original_keywords[] = $row_3['keyword'];
                                     }
@@ -391,8 +391,8 @@ if (!$_POST) {
                                             
                                             // if a keyword was not found, then remove it from the database
                                             if ($found_keyword == FALSE) {
-                                                $query = "DELETE FROM tag_cloud_keywords WHERE ((keyword = '" . escape($original_keyword) . "') AND (item_id = '" . escape($product_id) . "') AND (item_type = 'product'))";
-                                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                                $query = "DELETE FROM tag_cloud_keywords WHERE ((keyword = ?) AND (item_id = ?) AND (item_type = 'product'))";
+                                                $result = db_q($query, array((string) $original_keyword, (string) $product_id)) or output_error('Query failed.');
                                             }
                                         }
                                     }
@@ -408,11 +408,11 @@ if (!$_POST) {
                                                     item_id, 
                                                     item_type
                                                 ) VALUES (
-                                                    '" . escape($new_keyword) . "',
-                                                    '" . escape($product_id) . "',
+                                                    ?,
+                                                    ?,
                                                     'product'
                                                 )";
-                                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                            $result = db_q($query, array((string) $new_keyword, (string) $product_id)) or output_error('Query failed.');
                                         }
                                     }
                                 }
@@ -670,8 +670,8 @@ if (!$_POST) {
                 $address_name = prepare_catalog_item_address_name($address_name);
                 
                 // update the product's address name
-                $query = "UPDATE products SET address_name = '" . escape($address_name) . "' WHERE id = '$product_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE products SET address_name = ? WHERE id = ?";
+                $result = db_q($query, array((string) $address_name, (string) $product_id)) or output_error('Query failed.');
 
                 // If a submit form field column exists, then update those fields.
                 if ($submit_form_fields) {

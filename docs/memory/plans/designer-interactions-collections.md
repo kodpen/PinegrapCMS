@@ -13,7 +13,8 @@ description: Plan (approved 2026-10-19, watch list, designer session): interacti
 - Legacy: classic pages and legacy form pages are untouched.
 
 ## What remains?
-- Designer session writes the real slices (one PR each) and updates this file or replaces it with its own plan files; dependencies to note: `designer/page-schedule.md` (collections items want scheduling too), `designer/responsive-images.md` (image fields), translations (reference labels).
+- Interactions: done (I1–I4, `designer/designer-interactions.md`).
+- Collections: cut into steps C1–C7 in `plans/designer-collections-steps.md`.
 
 ## Open questions?
 - Should collection items get their own revision history like pages? Yes, through the same `page_revisions` pattern (`record_revisions`), decided when the collections slice starts.

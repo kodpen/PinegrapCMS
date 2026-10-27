@@ -5,11 +5,12 @@
  * A request to be told when an out-of-stock product is back
  * (includes/fn/stock_notify.php).
  *
- *   POST product_id, email_address, token, send_to
+ *   POST product_id, email_address, phone, token, send_to
  *
  * email_address may be left empty by a signed-in visitor: the account's
- * address is used then. A POST sent with X-Requested-With: XMLHttpRequest is
- * answered in JSON, {"status": <code>, "ok": bool, "message": <sentence>};
+ * address is used then. phone, a mobile number, is optional and kept only
+ * while the notice can go out as a text message (pg_stock_notify_sms_on()).
+ * A POST sent with X-Requested-With: XMLHttpRequest is answered in JSON, {"status": <code>, "ok": bool, "message": <sentence>};
  * any other POST is sent back to its send_to field (a path on the site, the
  * home page without one), with the sentence among the product page's
  * messages (the catalog_detail form). A request refused before it is read is
@@ -78,7 +79,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
     stock_notify_refuse('method', lang('Method not allowed.'), 405);
 }
 
-pg_request_single_values(array('product_id', 'email_address', 'token', 'send_to'));
+pg_request_single_values(array('product_id', 'email_address', 'phone', 'token', 'send_to'));
 
 // The token check of validate_token_field(), answered the way the request
 // was asked: that function always prints an HTML page. Without it a page on
@@ -105,13 +106,14 @@ if (pg_stock_notify_throttled()) {
 $user_id = (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ID')) ? (int) USER_ID : 0;
 
 try {
-    $status = pg_stock_notify_request($product_id, (string) ($_POST['email_address'] ?? ''), $user_id);
+    $phone = (string) ($_POST['phone'] ?? '');
+    $status = pg_stock_notify_request($product_id, (string) ($_POST['email_address'] ?? ''), $user_id, $phone);
 } catch (Throwable $error) {
     stock_notify_refuse('failed', lang('Something went wrong. Please try again.'), 500);
 }
 
 $ok = pg_stock_notify_status_ok($status);
-$message = pg_stock_notify_status_message($status);
+$message = pg_stock_notify_status_message($status, (pg_stock_notify_phone($phone) !== '') && pg_stock_notify_sms_on());
 
 if ($stock_notify_json) {
     stock_notify_answer(array('status' => $status, 'ok' => $ok, 'message' => $message));
@@ -125,7 +127,7 @@ $liveform = new liveform('catalog_detail');
 if ($ok) {
     $liveform->add_notice(h($message));
 } else {
-    $liveform->mark_error('email_address', h($message));
+    $liveform->mark_error(($status === 'phone') ? 'phone' : 'email_address', h($message));
 }
 
 session_write_close();

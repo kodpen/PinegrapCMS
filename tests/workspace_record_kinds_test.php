@@ -250,7 +250,7 @@ function workspace_record_kinds_test_lists()
 		'audit' => array(
 			'where'  => 'pg_audit_tables() in includes/fn/audit.php, through ws_change_audit_target() in includes/workspace/changes.php',
 			'kinds'  => workspace_record_kinds_test_tags_of($audited),
-			'except' => $tag_only + array_fill_keys(array('product_group', 'contact', 'erp_account', 'form', 'calendar_event'),
+			'except' => $tag_only + array_fill_keys(array('product_group', 'erp_account', 'form', 'calendar_event'),
 				'its table is not in pg_audit_tables(), as ws_change_audit_target() says') + array(
 				'erp_quote' => 'erp_quotes is not in pg_audit_tables(); its save announces erp.quote.created to the ERP\'s own audit trail',
 			),
@@ -546,7 +546,7 @@ function test_workspace_record_kinds_source_reader_reads_the_change_catalogue()
 {
 	$types = pg_test_ws_change_types();
 
-	pg_assert_same(array('product', 'stock', 'order', 'contact', 'erp_account', 'erp_quote', 'product_group', 'channel', 'user', 'page', 'file', 'offer', 'form', 'calendar_event', 'task', 'task_note', 'note'), array_keys($types), 'the kinds, in their order');
+	pg_assert_same(array('product', 'stock', 'order', 'contact', 'erp_account', 'erp_quote', 'product_group', 'variant_set', 'channel', 'user', 'page', 'file', 'offer', 'form', 'calendar_event', 'task', 'task_note', 'note'), array_keys($types), 'the kinds, in their order');
 
 	pg_assert_same('money', $types['product']['fields']['price'][0], 'the kind of value');
 	pg_assert_same(2147483647, $types['product']['fields']['price'][1], 'a literal limit');

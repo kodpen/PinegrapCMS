@@ -320,25 +320,25 @@ function ws_notes_quick_markup($rights, $parent_target = '')
 
     return '
                 <ul class="navbar-nav">
-                    <li class="nav-item dropdown no-arrow no-popover" title="' . h(lang('Quick note')) . '">
-                        <button type="button" id="pg_quick_note_toggle" class="nav-link nav-link-sm no-popover dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="' . h(lang('Quick note')) . '">
+                    <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . h(lang('Quick note')) . '">
+                        <button type="button" id="pg_quick_note_toggle" class="nav-link nav-link-sm no-popover pg-menu-caret" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false" aria-label="' . h(lang('Quick note')) . '">
                             <span class="bi bi-journal-plus" aria-hidden="true"></span>
                         </button>
-                        <div id="pg_quick_note" class="dropdown-menu shadow p-3 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" aria-labelledby="pg_quick_note_toggle">
+                        <div id="pg_quick_note" class="menu shadow p-5 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" aria-labelledby="pg_quick_note_toggle">
                             <form data-pg-quick-note class="disable_shortcut" novalidate
                                 data-api="' . h($base . 'api.php') . '"
                                 data-note-url="' . h($base . 'workspace_notes.php?note=') . '"
                                 data-saved="' . h(lang('Saved to your notes.')) . '"
                                 data-open="' . h(lang('Open the note')) . '"
                                 data-failed="' . h(lang('The note could not be saved.')) . '">
-                                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
                                     <label for="pg_quick_note_text" class="fw-semibold small mb-0"><i class="bi bi-journal-plus me-1" aria-hidden="true"></i>' . h(lang('Quick note')) . '</label>
-                                    <a class="small link-body-emphasis" href="' . h($base . 'workspace_notes.php') . '"' . $parent_target . '><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('My Notes')) . '</a>
+                                    <a class="small pg-link-body-emphasis" href="' . h($base . 'workspace_notes.php') . '"' . $parent_target . '><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('My Notes')) . '</a>
                                 </div>
                                 <textarea id="pg_quick_note_text" name="body" class="form-control form-control-sm" rows="4" maxlength="' . WS_NOTE_MAX . '" placeholder="' . h(lang('Write a note. Its first line becomes its title.')) . '"></textarea>
-                                <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
-                                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">' . h(lang('Save')) . '</button>
-                                    <span class="small text-body-secondary d-none d-sm-inline">Ctrl+Enter</span>
+                                <div class="d-flex align-items-center flex-wrap gap-3 mt-3">
+                                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Save')) . '</button>
+                                    <span class="small fg-secondary d-none sm:d-inline">Ctrl+Enter</span>
                                     <span class="small ms-auto" data-pg-quick-note-status role="status"></span>
                                 </div>
                             </form>
@@ -846,9 +846,13 @@ function ws_notes_list_columns()
  *
  * @param string $search
  * @param int    $updated_since unix time; 0 for any
+ * @param string $shared_at     the share's time column (s.created_at) for
+ *                              notes shared with the person: a note shared
+ *                              again since counts as changed, as sharing
+ *                              does not move updated_at
  * @return string " AND ..." or ''
  */
-function ws_notes_filter_sql($search, $updated_since = 0)
+function ws_notes_filter_sql($search, $updated_since = 0, $shared_at = '')
 {
     $filter = '';
     $search = trim(mb_substr((string) $search, 0, 100));
@@ -859,7 +863,11 @@ function ws_notes_filter_sql($search, $updated_since = 0)
     }
 
     if ((int) $updated_since > 0) {
-        $filter .= " AND n.updated_at >= '" . (int) $updated_since . "'";
+        $changed = "n.updated_at >= '" . (int) $updated_since . "'";
+
+        $filter .= ($shared_at !== '')
+            ? " AND (" . $changed . " OR " . $shared_at . " >= '" . (int) $updated_since . "')"
+            : " AND " . $changed;
     }
 
     return $filter;
@@ -1000,7 +1008,7 @@ function ws_notes_page_rows($user_id, $options)
     if ($scope !== 'mine') {
         $from = " FROM ws_notes n
             INNER JOIN ws_note_shares s ON s.note_id = n.id AND s.user_id = '" . $me . "'
-            WHERE n.user_id <> '" . $me . "'" . $filter;
+            WHERE n.user_id <> '" . $me . "'" . ws_notes_filter_sql((string) ($options['search'] ?? ''), (int) ($options['updated_since'] ?? 0), 's.created_at');
 
         $total += (int) db_value("SELECT COUNT(DISTINCT n.id)" . $from);
 
@@ -1215,7 +1223,9 @@ function ws_note_delete_check($viewer, $note)
 /**
  * The notes deleted since a moment that the person kept: their own, those
  * shared with them, and those shared in a channel they may read, each once,
- * the oldest deletion first.
+ * the oldest deletion first; with them the notes no longer shared with
+ * them (a share taken back), unless they own the note or it is shared with
+ * them again.
  *
  * @param array $viewer ws_viewer()
  * @param int   $since
@@ -1248,7 +1258,62 @@ function ws_note_deletions_since($viewer, $since)
         $out[] = array('id' => (int) $row['note_id'], 'deleted_at' => (int) $row['deleted_at']);
     }
 
+    if (empty($out)) {
+        return $out;
+    }
+
+    // A note that still exists is in the list again when the person owns
+    // it or a person share brings it to them; a deleted one has no rows.
+    $me = (int) $viewer['id'];
+    $ids = implode(',', array_column($out, 'id'));
+    $kept = array_merge(
+        (array) db_values("SELECT id FROM ws_notes WHERE user_id = '" . $me . "' AND id IN (" . $ids . ")"),
+        (array) db_values("SELECT note_id FROM ws_note_shares WHERE user_id = '" . $me . "' AND note_id IN (" . $ids . ")")
+    );
+
+    return ws_note_deletions_unkept($out, $kept);
+}
+
+/**
+ * The deletions a sync client is told of, without the notes the person
+ * still keeps in their list.
+ *
+ * @param array[] $deletions id, deleted_at
+ * @param int[]   $kept      note ids the person owns or has a person share of
+ * @return array[] id, deleted_at
+ */
+function ws_note_deletions_unkept($deletions, $kept)
+{
+    $kept = array_flip(array_map('intval', (array) $kept));
+    $out = array();
+
+    foreach ((array) $deletions as $deletion) {
+        if (!isset($kept[(int) $deletion['id']])) {
+            $out[] = $deletion;
+        }
+    }
+
     return $out;
+}
+
+/**
+ * The ws_note_deletions row a person share taken back keeps for the
+ * person, so that a sync client drops its copy; null for a channel share,
+ * whose notes never come in the person's list.
+ *
+ * @param array $note  id
+ * @param array $share the ws_note_shares row: user_id, channel_id
+ * @param int   $by    who took it back
+ * @param int   $now
+ * @return array|null note_id, user_id, channel_id, deleted_by, deleted_at
+ */
+function ws_note_unshare_deletion_row($note, $share, $by, $now)
+{
+    if ((int) ($share['user_id'] ?? 0) <= 0) {
+        return null;
+    }
+
+    return array('note_id' => (int) $note['id'], 'user_id' => (int) $share['user_id'], 'channel_id' => 0, 'deleted_by' => (int) $by, 'deleted_at' => (int) $now);
 }
 
 /**
@@ -1522,6 +1587,15 @@ function ws_note_unshare($viewer, $note, $share_id = 0)
 
     if (!is_array($share) || (!$owner && ((int) $share['user_id'] !== (int) $viewer['id']))) {
         return array('ok' => false, 'error' => lang('That share could not be found.'));
+    }
+
+    // The note leaves the person's list, for the apps that keep notes in
+    // sync as for a deletion.
+    $row = ws_note_unshare_deletion_row($note, $share, (int) $viewer['id'], time());
+
+    if ($row && ws_note_deletions_ready()) {
+        db("INSERT INTO ws_note_deletions (note_id, user_id, channel_id, deleted_by, deleted_at)
+            VALUES ('" . $row['note_id'] . "', '" . $row['user_id'] . "', '" . $row['channel_id'] . "', '" . $row['deleted_by'] . "', '" . $row['deleted_at'] . "')");
     }
 
     db("DELETE FROM ws_note_shares WHERE id = '" . (int) $share['id'] . "'");
@@ -2292,6 +2366,7 @@ function ws_notes_js_strings()
         'notes_import_picked'   => ws_js_template('{var:1} file(s) selected, {var:2}', 2),
         'notes_import_over'     => ws_js_template('{var:1} of them are over the limit and will not be sent', 1),
         'notes_import_blocked'  => ws_js_template('{var:1} of them are of a type that cannot be uploaded and will not be sent', 1),
+        'notes_import_stale'    => ws_js_template('{var:1} of them cannot be read and will not be sent', 1),
         'notes_import_not_allowed' => lang('not allowed here'),
         'notes_import_unreadable' => lang('unreadable'),
         'notes_import_cannot_read' => ws_js_template('The file {var:1} cannot be read.', 1),
@@ -2337,6 +2412,7 @@ function ws_notes_js_strings()
         'notes_empty'           => lang('No note yet.'),
         'notes_empty_shared'    => lang('Nothing is shared with you yet.'),
         'notes_empty_search'    => lang('No note matches.'),
+        'notes_none'            => lang('A clean page - your first note is one click away.'),
         'notes_intro'           => lang('Your notes are yours alone - nobody else sees them, administrators included - until you share them. Keep any message here from its menu with "Save to my notes", or write your own.'),
         'notes_pick'            => lang('Pick a note on the left, or start a new one.'),
         'notes_title'           => lang('Title'),

@@ -1,6 +1,6 @@
 ---
 name: consent-log-writers
-description: Which screens write a person's own e-mail marketing answer to consent_log (sign-up, preferences, one-click, checkout, custom form) and when a row is written (PR #1581)
+description: Who writes consent_log rows: own e-mail marketing answers (sign-up, preferences, one-click, checkout, custom form; PR #1581), accepted checkout documents as contract rows (PR #2000)
 ---
 
 ## What is recorded?
@@ -16,5 +16,11 @@ description: Which screens write a person's own e-mail marketing answer to conse
 - One-click POST: `marketing` refused, `unsubscribe`, with the account using the address and its contact, else the first contact with it.
 - `checkout`: `pg_consent_log_checkout()` right after the `UPDATE contacts` that writes `opt_in` (billing_information.php, express_order.php's update-cart post, submit_order()'s express block), with that value, so a submit later refused or never paid keeps its row. Only for `opt_in_displayed === 'true'`, never while ghosting; an address `validate_email_address()` refuses stays out. A signed-in buyer whose card is not updated (`update_contact` off or not posted, as on a designed express order without an `update_contact` control, the default tree included) gets none. A designed express order posts `opt_in_displayed=true` only when `_eo_tree_asks_opt_in()` finds the box after the visibility and section bindings.
 - `custom_form.php`, `form`: a choice field (`pg_cf_type_has_options()`) bound to `opt_in`, not office use only, not hidden by `?show_<id>=false` in `send_to`, not a contact filled in for somebody else; answer = the stored `contacts.opt_in`.
+
+## Who writes contract rows?
+- `pg_legal_documents_store()` (`includes/fn/legal_documents.php`, PR #2000), after the order's `order_documents` rows: one `granted` row per type both stored and accepted (`preinfo`, `contract`), source `checkout`, purpose = the type. Person from the order (`billing_email_address` as the token, `user_id`, `contact_id`); ip, user agent and `created_at` are the documents' own (`accepted_at`). Built by `pg_legal_documents_consent_events()` (tested in `tests/legal_documents_test.php`).
+- An unaccepted type writes nothing (no `refused` row: not ticking a box is no answer), nor does the repeat call the store ignores. `kvkk` waits on the KVKK checkbox (`plans/checkout-legal-documents.md`).
+
+The cookie notice's answers (channel `cookie`, source `banner`): `consent-log-cookie-notice.md`.
 
 Gaps, tests, open questions: docs/memory/core/consent-log-writer-gaps.md. Related: docs/memory/core/consent-log-and-audit-trail.md, docs/memory/plans/sms-and-iys.md

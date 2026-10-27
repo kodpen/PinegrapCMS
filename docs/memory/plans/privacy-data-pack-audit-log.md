@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; steps 1-4b done, last #1706 and #1792; next 5): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+description: Plan (approved 2026-10-19; all steps done, open questions remain): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -19,11 +19,15 @@ description: Plan (approved 2026-10-19; steps 1-4b done, last #1706 and #1792; n
 3. Done (#938): `privacy_export.php`, JSON pack, PDF summary; `core/personal-data-export.md`.
 4. Done (#1706): `privacy_erase.php`, `core/personal-data-erasure.md`; the owner's answers in `workflow/decisions-made-product.md`.
 4b. Done (#1792): feed tokens in clear in early SEO settings lines masked in place, step 11.0.38 (`core/audit-trail-stored-values.md`).
-5. Audit screen (JSON text is stored as object, list or compacted text: `core/audit-trail-stored-values.md`), export, API; retention jobs (S–M).
+5a. Done (#1821): `view_audit_log.php`, filters, CSV export; `core/audit-trail-screen.md`.
+5b. Done (#1844): `GET /audit-log`, scope `system:read`; `core/audit-trail-screen.md`.
+5d. Done (#1919): the cookie notice's answers into `consent_log`, `consent_answer.php`; `core/consent-log-cookie-notice.md`.
+5e. Done (#2000): `contract` consent rows from `pg_legal_documents_store()`; `core/consent-log-writers.md`.
+5c. Done (#2324): `config.audit_log_retention_years` (11.0.47, owner approved 2026-10-27), the general job's daily pass; `core/privacy-log-retention.md`.
 
 ## Open questions?
 - The export leaves out the site log, `audit_log` rows about the person and `visitors` (`core/personal-data-export.md`): add them later?
-- Which step writes cookie and `contract` consent rows? `sms-and-iys.md` step 4 (PR #1581) added the e-mail marketing writers (`core/consent-log-writers.md`); the cookie notice's server endpoint and a `contract` row next to `order_documents` are not assigned.
+- Tie an anonymous visitor's cookie rows by an id in `pg_consent` (cookie format change)? Asked in 5d's PR.
 
 ## Where to start?
-- Step 5. Read `core/audit-trail-stored-values.md` and `core/audit-trail-writers.md` first. The plan's `[NEW]` line is in (export); steps 4 and 5 widen it, no second line.
+- Every step is done; only the open questions above remain. Once the owner answers them, their decisions go to the topic files and this plan is deleted.

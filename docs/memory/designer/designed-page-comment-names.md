@@ -1,6 +1,7 @@
 ---
 name: designed-page-comment-names
 description: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values
+module: comments
 ---
 
 ## Which name does a member's comment get on a designed page?

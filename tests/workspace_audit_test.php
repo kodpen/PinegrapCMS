@@ -46,6 +46,7 @@ function test_workspace_audit_target_maps_each_kind_to_its_table()
 		'page'    => 'page',
 		'file'    => 'files',
 		'offer'   => 'offers',
+		'contact' => 'contacts',
 	);
 
 	foreach ($tables as $type => $table) {
@@ -67,7 +68,7 @@ function test_workspace_audit_target_leaves_out_other_kinds()
 {
 	$ok = array('ok' => true, 'error' => '', 'id' => 7);
 
-	foreach (array('contact', 'erp_account', 'product_group', 'form', 'calendar_event', 'channel', 'task', 'task_note', 'note', 'audit_probe', '') as $type) {
+	foreach (array('erp_account', 'product_group', 'form', 'calendar_event', 'channel', 'task', 'task_note', 'note', 'audit_probe', '') as $type) {
 		foreach (array('create', 'update', 'delete', 'add', 'remove') as $action) {
 			pg_assert_same(array(), ws_change_audit_target($type, $action, $ok), $type . ' ' . $action);
 		}
@@ -94,6 +95,7 @@ function test_workspace_audit_target_delete_and_recycle()
 
 	pg_assert_same(array('table' => 'page', 'action' => 'delete'), ws_change_audit_target('page', 'delete', $ok), 'a page deleted for good');
 	pg_assert_same(array('table' => 'orders', 'action' => 'delete'), ws_change_audit_target('order', 'delete', $ok), 'an order deleted');
+	pg_assert_same(array('table' => 'contacts', 'action' => 'delete'), ws_change_audit_target('contact', 'delete', $ok), 'a contact deleted');
 }
 
 // An order moved to cancelled is a "cancel" and one taken out of cancelled a

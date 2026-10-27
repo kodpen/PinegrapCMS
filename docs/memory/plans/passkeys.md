@@ -1,6 +1,6 @@
 ---
 name: passkeys
-description: Plan (approved 2026-10-19; steps 1-3 done, 3b and 4 left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
+description: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor and for sign-in with a passkey alone
 ---
 
 ## Why?
@@ -11,22 +11,27 @@ description: Plan (approved 2026-10-19; steps 1-3 done, 3b and 4 left): WebAuthn
 - Table `user_passkeys` (2026.11.0, 11.0.13; columns and why in docs/memory/core/passkey-ceremonies.md). Challenges live in the PHP session (short TTL).
 - Two uses, both settings-gated: (a) second factor: a passkey satisfies the two-step requirement wherever TOTP does, including the role-based "required from role" setting; (b) passwordless: the sign-in form shows "Sign in with a passkey" (conditional UI / autofill) when the site allows it; the first factor then is the passkey and the two-step requirement counts as satisfied.
 - Where: Account Security widget for members and the panel account page for staff (`account_security` widget already lists sessions and connected sign-ins); the `edit_user.php` two-step reset removes passkeys too. Recovery codes stay the fallback.
+- Owner (2026-10-26): a password reset or change leaves the passkeys working; the member takes them back under My Account › Security (step 4e), the administrator with the two-step reset.
+- Owner (2026-10-27, «4c önerin kabul»): an account without TOTP adds a passkey with its password **and** a one-time code e-mailed to the account's address, so a stolen password alone cannot add the thief's passkey; removing one needs the password only.
+- Owner (2026-10-27, «4e ekle»): the column `auth_tokens.passkey_id` is approved (built in 11.0.46).
 - API `/auth/login` is unchanged (team devices keep password + TOTP); OAuth consent screen signs in with whatever the site offers.
 - Password sign-in and TOTP remain; nothing is removed or forced.
 
-## What is built?
-- Step 1 (PR #594): the verifier and its tests, docs/memory/core/webauthn-verifier.md.
-- Step 2 (PR #672): `user_passkeys` (11.0.13, with `alg`, `backup_eligible`, `backup_state`, `user_handle`), `includes/fn/passkeys.php`, `passkey.php` (registration, sign-in options), the passkey button and answer in `mfa.php` verify mode, `assets/js/pg_passkey.js`; docs/memory/core/passkey-ceremonies.md. Changed from the sketch: the sign-in answer is posted to the screen that owns the step (`mfa.php`), because completing a sign-in redirects; `pg_mfa_reset()` removes passkeys (admin reset, both deletes).
-- Step 3 (PR #1384): the classic account page (`pg_passkey_account_section()`: list, add, rename, remove), `passkey.php` registration behind re-authentication (`pg_mfa_reauth_refusal()`; only with TOTP on), the `passkeys` export section; docs/memory/core/passkey-account-section.md.
+## What are the steps? (one PR each)
+- Done: 1 (#594, core/webauthn-verifier.md), 2 (#672, core/passkey-ceremonies.md), 3 (#1384, core/passkey-account-section.md), 3b (#1843, designer/passkey-widget-list.md), 4a (#1862, core/passkey-second-factor.md), 4b (#1882) and 4d (#1960) (core/passkey-passwordless.md).
 
-## What remains?
-3b. The designed `account_security` widget (`includes/fn/widgets_account.php`, `style_designer.js`, design templates): the loop of passkeys with their flags, the add form and its script, rename and remove forms posting to the step 3 actions, binding tokens, the palette default tree (S).
-4. Sign-in form conditional UI (passwordless: `pg_passkey_signin_begin(0)`, answer posted to the sign-in screens), two-step integration: the account found by the passkey must still exist, an account with a passkey and no TOTP gets `verify` mode, a passkey satisfies `mfa_required_role`, recovery codes for passkey-only accounts (S–M).
-5. Memory: update `core/passkey-ceremonies.md` and `two-step-sign-in.md` with each step.
+- 4c done (#2226, core/passkey-account-section.md): the classic account page adds a passkey without TOTP (password + e-mailed code); the first passkey of such an account gives it recovery codes, which `mfa.php` takes.
+
+- 4e done (#2250, core/passkey-sessions.md): `auth_tokens.passkey_id` (11.0.46), the session row names its passkey, removing a passkey ends its sessions.
+
+- 4c2 done (#2279, designer/passkey-widget-list.md): the widget adds a passkey without TOTP (e-mailed code), its device rows name the session's passkey.
+
+- 4c3 New recovery codes for an account with passkeys and no TOTP (classic page and widget): `mfa_recovery_regenerate` asks for a TOTP code today. Waits on the owner: password + e-mailed code, or a fresh passkey ceremony (asked in #2279). (S)
+
+- 5 Memory: update `core/passkey-ceremonies.md` and `two-step-sign-in.md` with each step.
 
 ## Open questions?
 - `rpId` on sites served from a sub-folder or several hosts: use the host only; the language prefix does not matter.
-- Step 4: what an account without TOTP proves to add a passkey (adding needs TOTP on until then), and whether removing one then needs more than its password.
 
 ## Where to start?
-- Step 3b: read `core/passkey-account-section.md` (the classic section is the model) and `designer/` for the widget rules. Step 4: `core/passkey-ceremonies.md` (what exists, refusal words), `two-step-sign-in.md` and `social-sign-in.md` for the session and remember-me rules.
+- Step 4c3 (after the owner's answer): `account_security.php` `mfa_recovery_regenerate`, `core/passkey-without-totp.md`.

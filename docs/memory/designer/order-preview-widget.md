@@ -1,6 +1,7 @@
 ---
 name: order-preview-widget
 description: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out.
+module: widgets_order_preview
 ---
 
 ## What is it?
@@ -17,8 +18,9 @@ description: The Order Preview widget (last classic checkout step): values from 
 ## Which controls and parts?
 - By name: `payment_method` radios (values `Credit/Debit Card`, `PayPal Express Checkout`, `Pay With Iyzico`, `Offline Payment`), `card_number` (id too: the installment script finds it by id), `expiration`, `card_verification_number`, `threedsecure`, `gift_card_code` + `submit_apply_gift_card`, `terms`, `submit_purchase_now` (the legal documents' boxes go in front of it, `designer.php` wraps the render as for the express order).
 - Flags: `pg_op_flags()`; a part off drops its controls too. One method: radios dropped, the branch's hidden field posts it. `software.init_payment_method()` (in `system`) makes the card fields required only while the card is chosen.
+- With more than one method, `pg_op_stamp_method_classes()` stamps the classes that script switches, found by bindings so saved trees need no change: `credit_debit_card` on the `pays_by_card` node holding `card_number` (not the card's radio row), and with a surcharge `surcharge_row` / `surcharge_total_row` on the `has_surcharge` rows and `total_row` on the outermost node holding `__cart_total` alone. So the card fields hide for another method and the surcharge rows replace the total only while the card is chosen, as on the classic page. `.purchase_button` is not stamped: the button has no `data-paypal-label`, and the script would blank its label.
 - Sections (not designable): `order_recipients`, `applied_offers`, `applied_gift_cards`, `recurring_payments`, `billing_form`, `installment_table`, `card_installments` (the express order widget's `_eo_render_installment_box()`).
 
 ## What is left out?
-- "On account" (ERP) and the hosted card fields: the classic custom layout offers neither. The currency switcher. Hiding the card fields while another method is chosen, and the surcharge rows' switch (the classic script hangs them on classes): both rows show, with the surcharge note.
+- "On account" (ERP) and the hosted card fields: the classic custom layout offers neither. The currency switcher.
 - A background render draws nothing (the visitor's own order).

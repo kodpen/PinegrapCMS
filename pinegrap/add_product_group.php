@@ -60,7 +60,7 @@ if (!$_POST) {
 
     foreach ($initial_products as $urow) {
         $urow['price'] = $urow['price'] / 100;
-        $ustatus_class = $urow['enabled'] == 1 ? 'text-success' : 'text-danger';
+        $ustatus_class = $urow['enabled'] == 1 ? 'fg-success' : 'fg-danger';
         $uoutput_image_column = '';
         if ($show_image) {
             $uoutput_image_column = pg_product_image_cell('product-' . (int) $urow['id'], $urow['image_name'], $urow['name'], $urow['short_description'],
@@ -68,8 +68,8 @@ if (!$_POST) {
         }
         $output_rows .=
             '<tr id="' . $urow['id'] . '">' .
-            '<td class="select-all align-middle text-start"><input class="form-check-input" type="checkbox" name="products[]" value="' . $urow['id'] . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
+            '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $urow['id'] . '"/></td>' .
+            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $uoutput_image_column .
             '<td class="align-middle chart_label ' . $ustatus_class . '">' . h($urow['name']) . '</td>' .
             '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
@@ -86,9 +86,9 @@ if (!$_POST) {
     $default_parent_id = $any_product_groups ? (int)db_value("SELECT id FROM product_groups WHERE parent_id = 0 ORDER BY sort_order, name LIMIT 1") : 0;
     if ($any_product_groups) {
         $output_parent_group_select_block =
-            '<div class="col-12 col-md-4 my-2">' .
+            '<div class="col-12 md:col-4 my-3">' .
             '<label for="parent_id" class="form-label">*' . lang('Parent Product Group') . '</label>' .
-            '<select required style="width:100%" class="form-select" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '">' .
+            '<select required style="width:100%" class="form-control" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '">' .
             get_product_group_options($default_parent_id, 0, 0, 0, array(), FALSE, 'text', false, true, false) .
             '</select></div>';
     } else {
@@ -118,21 +118,21 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('New Product Group Information') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="name" class="form-label">*' . lang('Product Group Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="enabled" name="enabled" value="1" checked="checked" />
-                                                <label class="form-check-label" for="enabled">' . lang('Enabled') . '</label>
+                                        <div class="col-12 my-5">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="enabled" name="enabled" value="1" checked="checked" /></div>
+                                                <label class="" for="enabled">' . lang('Enabled') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -140,46 +140,46 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Catalog Page Display Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         ' . $output_parent_group_select_block . '
-                                        <div class="col-12 col-md-8 my-2">
+                                        <div class="col-12 md:col-8 my-3">
                                             <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
                                             <input type="text" name="short_description" placeholder="' . lang('Short Description') . '" id="short_description" maxlength="100" class="form-control" />
                                         </div>
-                                        <div class="col-12 mt-1 mb-2">
+                                        <div class="col-12 mt-1 mb-3">
                                             <label for="full_description" class="form-label">' . lang('Full Description') . '</label>
                                             <textarea id="full_description" name="full_description"></textarea>
                                         </div>
 
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 my-5">
                                             <div class="col-12">
                                                 <label class="form-label">' . lang('Display Type') . '</label>
                                             </div>
-                                            <div class="form-check  form-check-inline" title="' . lang('Display contents for browsing on catalog page') . '">
-                                                <input class="form-check-input collapse-switcher"  type="radio" id="browse" name="display_type" checked="checked" value="browse" />
+                                            <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for browsing on catalog page') . '">
+                                                <input class="radio collapse-switcher"  type="radio" id="browse" name="display_type" checked="checked" value="browse" />
                                                 <label for="browse">' . lang('Browse') . '</label> 
                                             </div>
-                                            <div class="form-check  form-check-inline" title="' . lang('Display contents for selection on catalog detail page') . '">
-                                                <input class="form-check-input collapse-switcher"  type="radio" id="select" name="display_type" value="select" data-bs-target="#display_type_select_row"/>
+                                            <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for selection on catalog detail page') . '">
+                                                <input class="radio collapse-switcher"  type="radio" id="select" name="display_type" value="select" data-bs-target="#display_type_select_row"/>
                                                 <label for="select">' . lang('Select') . '</label>
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="display_type_select_row">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_select_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
-                                                        <div class="col-12 my-2">
-                                                            <div class="alert alert-primary">' . lang('Product group behaves like a product and provides the ability to select options in product detail page.') . '</div>
+                                                        <div class="col-12 my-3">
+                                                            <div class="alert theme-primary">' . lang('Product group behaves like a product and provides the ability to select options in product detail page.') . '</div>
                                                         </div>
-                                                        <div class="col-12 mt-1 mb-2">
+                                                        <div class="col-12 mt-1 mb-3">
                                                             <label for="details" class="form-label">' . lang('Details') . '</label>
                                                             <textarea id="details" name="details"></textarea>
                                                         </div>
-                                                        <div class="col-12 mt-3 mb-2">
+                                                        <div class="col-12 mt-5 mb-3">
                                                             <label for="keywords" class="form-label">' . lang('Search Keywords') . '</label>
                                                             <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>' . pg_fields_script() . '
                                                         </div>
@@ -192,38 +192,34 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Image Options') . ' 
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 mt-3">
+                                        <div class="col-12 mt-5">
                                             ' . pg_pb_render_image_picker(
                                                     array(),
-                                                    '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-bs-toggle="modal" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
+                                                    '<button type="button" class="btn btn-sm btn-outline theme-secondary ms-auto" data-bs-toggle="dialog" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
 
-                                            <div class="modal fade" id="image_code" tabindex="-1" aria-labelledby="image_code" aria-hidden="true">
-                                                <div class="modal-dialog modal-lg ">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">' . lang('Code') . '</h5>
-                                                            <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            <dialog class="dialog dialog-lg" id="image_code" aria-labelledby="image_code">
+                                                        <div class="dialog-header">
+                                                            <h5 class="dialog-title">' . lang('Code') . '</h5>
+                                                            <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                                                         </div>
-                                                        <div class="modal-body "> 
+                                                        <div class="dialog-body "> 
                                                             <div class="row">
-                                                                <div class="col-12 my-2">
-                                                                <div class="alert alert-primary">' . lang('Tags') . ':<span title="' . lang('Loop start') . '">^^image_loop_start^^</span>, <span title="' . lang('Short Description') . '">^^image_alt^^</span>, <span title="' . lang('Image Url') . '">^^image_url^^</span>, <span title="' . lang('Loop End') . '">^^image_loop_end^^</span></div>
+                                                                <div class="col-12 my-3">
+                                                                <div class="alert theme-primary">' . lang('Tags') . ':<span title="' . lang('Loop start') . '">^^image_loop_start^^</span>, <span title="' . lang('Short Description') . '">^^image_alt^^</span>, <span title="' . lang('Image Url') . '">^^image_url^^</span>, <span title="' . lang('Loop End') . '">^^image_loop_end^^</span></div>
                                                                 </div>
-                                                                <div class="col-12 my-2">
+                                                                <div class="col-12 my-3">
                                                                     <textarea id="code" name="code">' . $code . '</textarea>
                                                                     ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            </dialog>
                                         </div>
                                     </div>
                                 </div>
@@ -231,28 +227,28 @@ if (!$_POST) {
                         </div>
 
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('SEO') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 mt-1 mb-2">
+                                        <div class="col-12 mt-1 mb-3">
                                             <label for="address_name" class="form-label">' . lang('Catalog Name') . '</label>
                                             <div class="input-group ">
                                                 <label for="address_name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}">public</label>
                                                 <input type="text" name="address_name" id="address_name" class="form-control" />
                                             </div>
                                         </div>
-                                        <div class="col-12 mt-1 mb-2">
+                                        <div class="col-12 mt-1 mb-3">
                                             <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
                                             <input type="text" name="title" id="title" class="form-control" />
                                         </div>
-                                        <div class="col-12 mt-1 mb-2">
+                                        <div class="col-12 mt-1 mb-3">
                                             <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
                                             <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" ></textarea>
                                         </div>
-                                        <div class="col-12 mt-1 mb-2">
+                                        <div class="col-12 mt-1 mb-3">
                                             <label for="meta_keywords" class="form-label">' . lang('Web Browser Keywords') . '</label>
                                             <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>' . pg_fields_script() . '
                                         </div>
@@ -261,15 +257,15 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset text-uppercase text-primary h5 fw-bold">' . lang('Products to Include') . '</div>
+                            <div class="card my-7">
+                                <div class="card-header bg-reset text-uppercase fg-primary h5 fw-bold">' . lang('Products to Include') . '</div>
                                 <div class="card-body p-0 position-relative">
                                     <table id="add_product_group_products_table" class="chart table-hover table datatable-restricted-mode" style="width:100%;display:none">
                                         <thead>
                                             <tr>
                                                 <th class="noVis">
-                                                    <div class="form-check form-switch">
-                                                        <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                                                    <div class="form-field">
+                                                        <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                                     </div>
                                                 </th>
                                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
@@ -285,9 +281,9 @@ if (!$_POST) {
                                     </table>
                                 </div>
                                 ' . ($total_unselected > $initial_count ? '
-                                <div class="p-3 border-top">
-                                    <button id="btn_load_more_products" type="button" class="btn btn-outline-secondary btn-sm">
-                                        <i class="bi bi-arrow-down-circle me-2"></i>' . lang('Load More Products') . '
+                                <div class="p-5 border-top">
+                                    <button id="btn_load_more_products" type="button" class="btn btn-outline theme-secondary btn-sm">
+                                        <i class="bi bi-arrow-down-circle me-3"></i>' . lang('Load More Products') . '
                                     </button>
                                 </div>' : '') . '
                             </div>
@@ -350,10 +346,10 @@ if (!$_POST) {
                         </div>
                     </div>
                     <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_button" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_button" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -481,8 +477,8 @@ $liveform->remove_form();
     if ($_POST['products']) {
         // foreach product that was selected
         foreach($_POST['products'] as $product_id) {
-            $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES ('" . escape($product_id) . "', '" . $product_group_id . "', '" . escape($_POST['sort_order_product_' . $product_id]) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES (?, ?, ?)";
+            $result = db_q($query, array((string) $product_id, (string) $product_group_id, (string) $_POST['sort_order_product_' . $product_id])) or output_error('Query failed');
         }
     }
     
@@ -532,8 +528,8 @@ $liveform->remove_form();
         //check if config_code is not equal to POSTED code
         if($config_code != $_POST['code']){
             //update config_code with new code
-            $query = "UPDATE config SET product_image_code_template = '" . escape($_POST['code'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE config SET product_image_code_template = ?";
+            $result = db_q($query, array((string) ($_POST['code'] ?? ''))) or output_error('Query failed.');
         }
     }       
     

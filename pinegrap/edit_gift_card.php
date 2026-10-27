@@ -86,11 +86,11 @@ if (!$_POST) {
             || ($gift_card['expiration_date'] >= date('Y-m-d'))
         )
     ) {
-        $output_status_class = 'status_enabled text-success';
+        $output_status_class = 'status_enabled fg-success';
     
     // Otherwise this gift card has expired, so use class that shows red color.
     } else {
-        $output_status_class = 'status_disabled text-danger';
+        $output_status_class = 'status_disabled fg-danger';
     }
 
     $output_order_info_rows = '';
@@ -145,30 +145,30 @@ if (!$_POST) {
         }
 
         $output_order_info_rows =
-            '<div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                <div class="card my-4 h-100">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            '<div class="col-12 sm:col-6 md:col-4 lg:col-3">
+                <div class="card my-7 h-100">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Order Info') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <span class="translateable col text-muted">' . lang('Order') . ' #:</span>
+                            <span class="translateable col fg-secondary">' . lang('Order') . ' #:</span>
                             <span class="col text-end">' . $output_order_number . '</span>
                         </div>
                         <div class="row">
-                            <span class="translateable col text-muted">' . lang('From') . ':</span>
+                            <span class="translateable col fg-secondary">' . lang('From') . ':</span>
                             <span class="col text-end">' . $output_from . '</span>
                         </div>
                         <div class="row">
-                            <span class="translateable col text-muted">' . lang('Recipient') . ':</span>
+                            <span class="translateable col fg-secondary">' . lang('Recipient') . ':</span>
                             <span class="col text-end"><a href="mailto:' . h($gift_card['recipient_email_address']) . '">' . h($gift_card['recipient_email_address']) . '</a></span>
                         </div>
                         <div class="row">
-                            <span class="translateable col text-muted">' . lang('Message') . ':</span>
+                            <span class="translateable col fg-secondary">' . lang('Message') . ':</span>
                             <span class="col text-end">' . nl2br(h($gift_card['message'])) . '</span>
                         </div>
                         <div class="row">
-                            <span class="translateable col text-muted">' . lang('Delivery Date') . ':</span>
+                            <span class="translateable col fg-secondary">' . lang('Delivery Date') . ':</span>
                             <span class="col text-end">' . $output_delivery_date . '</span>
                         </div>
                     </div>
@@ -178,9 +178,9 @@ if (!$_POST) {
     // Otherwise, this gift card was created manually, so explain that.
     } else {
         $output_order_info_rows =
-            '<div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                <div class="card my-4 h-100">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            '<div class="col-12 sm:col-6 md:col-4 lg:col-3">
+                <div class="card my-7 h-100">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Order Info') . '
                     </div>
                     <div class="card-body">
@@ -218,21 +218,21 @@ if (!$_POST) {
             $output_redemption_history_rows .=
                 '<tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                     </td>
                     <td class="align-middle">' . h($redemption['order_number']) . '</td>
-                    <td class="align-middle text-end"><span class=" badge bg-secondary  fw-lighter">' . pg_format_money($redemption['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
-                    <td class="align-middle text-end"><span class=" badge bg-primary  fw-lighter">' . pg_format_money($redemption['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
+                    <td class="align-middle text-end"><span class=" badge theme-secondary  fw-lighter">' . pg_format_money($redemption['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
+                    <td class="align-middle text-end"><span class=" badge theme-primary  fw-lighter">' . pg_format_money($redemption['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
                     <td>' . get_relative_time(array('timestamp' => $redemption['order_date'])) . '</td>
                     <td></td>
                 </tr>';
         }
 
         $output_redemption_history =
-            '<div class="col-12 col-sm-12 col-md-8 col-lg-9">
-                <div class="card my-4 h-100">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            '<div class="col-12 sm:col-12 md:col-8 lg:col-9">
+                <div class="card my-7 h-100">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Redemption History') . '
                     </div>
                     <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
@@ -258,9 +258,9 @@ if (!$_POST) {
 
     } else {
         $output_redemption_history = '
-            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                <div class="card my-4 h-100">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="col-12 sm:col-6 md:col-4 lg:col-3">
+                <div class="card my-7 h-100">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Redemption History') . '
                     </div>
                     <div class="card-body">
@@ -296,13 +296,13 @@ if (!$_POST) {
                     ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'balance_was')) . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Gift Card Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-sm-4 col-lg-3 col-xl-2 my-2">
+                                        <div class="col-12 sm:col-4 lg:col-3 xl:col-2 my-3">
                                             <label for="balance" class="form-label">' . lang('Balance') . '</label>
                                             <div class="input-group">
                                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'balance', 'name' => 'balance', 'class' => 'form-control text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
@@ -310,7 +310,7 @@ if (!$_POST) {
                                             </div>
                                             <div class="form-text text-end">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array(pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) ))) . '</div>
                                         </div>
-                                        <div class="col-12 col-sm-4 col-xl-3 my-2">
+                                        <div class="col-12 sm:col-4 xl:col-3 my-3">
                                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'text',
@@ -324,7 +324,7 @@ if (!$_POST) {
                                                 ' . get_date_picker_format() . pg_fields_script() . '
                                             <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
                                         </div>
-                                        <div class="col-12 col-xl-8 my-2">
+                                        <div class="col-12 xl:col-8 my-3">
                                             <label for="notes" class="form-label">' . lang('Notes') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'textarea',
@@ -337,15 +337,15 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <div class="row mb-5 g-3">
+                    <div class="row mb-12 g-5">
                         ' . $output_order_info_rows . '
                         ' . $output_redemption_history . '
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

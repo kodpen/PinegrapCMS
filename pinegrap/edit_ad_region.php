@@ -34,8 +34,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM ad_regions WHERE id = '" 
 // if user has a user role and if they do not have access to this ad region, output error
 if (($user['role'] == 3) && (in_array($_REQUEST['id'], get_items_user_can_edit('ad_regions', $user['id'])) == FALSE)) {
     // get ad region name
-    $query = "SELECT name FROM ad_regions WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT name FROM ad_regions WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     log_activity(lang(array('string'=>'access denied because user does not have access to edit the ad region ({var:1})','vars'=>$row['name'])), $_SESSION['sessionusername']);
@@ -49,8 +49,8 @@ $liveform = new liveform('edit_ad_region');
 $ads_assigned_to_this_ad_region = false;
 
 // determine if there are ads assigned to this ad region
-$query = "SELECT id FROM ads WHERE ad_region_id = '" . escape($_REQUEST['id']) . "' LIMIT 1";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT id FROM ads WHERE ad_region_id = ? LIMIT 1";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 
 // if there is a result, then there are ads assigned to this ad region, so remember that
 if (mysqli_num_rows($result) > 0) {
@@ -70,8 +70,8 @@ if (!$_POST) {
             slideshow_interval,
             slideshow_continuous
         FROM ad_regions
-        WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $name = $row['name'];
@@ -124,11 +124,11 @@ if (!$_POST) {
         // if there are ads assigned to this ad region, then prepare inactive delete button with alert
         if ($ads_assigned_to_this_ad_region == true) {
 
-            $output_delete_button = '<button type="button" name="submit_delete" value="Delete" class="btn my-1  btn-danger " onclick="alert(\'' . lang('Please delete or remove all ads from this ad region before deleting this ad region.') . '\');return false; " ><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            $output_delete_button = '<button type="button" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete or remove all ads from this ad region before deleting this ad region.') . '\');return false; " ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
 
         // else there are no ads assigned to this ad region, so prepare active delete button with warning
         } else {
-            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad region')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
 
         }
     }
@@ -149,8 +149,8 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         ' . $output_subheading . '
                     </div>
@@ -161,13 +161,13 @@ if (!$_POST) {
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 my-2">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Ad Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<ad>') . '</div>
@@ -175,21 +175,21 @@ if (!$_POST) {
                                                 <div class="input-group-text">' . h('</ad>') . '</div>
                                             </div>
                                         </div>
-                                        <h5 class="mt-5">' . lang('Region Behavior') . '</h5>
+                                        <h5 class="mt-12">' . lang('Region Behavior') . '</h5>
                                         <div class="col-12">
                                             <label class="form-label">' . lang('Display Type') . '</label>
                                         </div>
                                         <div class="col-12">
-                                            <div class="form-check">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'static', 'value'=>'static', 'class'=>'form-check-input collapse-switcher')) . '
-                                                <label class="form-check-label" for="static">' . lang('Static') . ' (' . lang('i.e. display one ad per page view') . ')</label>
+                                            <div class="form-field">
+                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'static', 'value'=>'static', 'class'=>'radio collapse-switcher')) . '
+                                                <label class="" for="static">' . lang('Static') . ' (' . lang('i.e. display one ad per page view') . ')</label>
                                             </div>
-                                            <div class="form-check">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'dynamic', 'value'=>'dynamic', 'class'=>'form-check-input collapse-switcher', 'data-bs-target'=>'#display_type_dynamic_row')) . '
-                                                <label class="form-check-label" for="dynamic">' . lang('Dynamic') . ' (' . lang('i.e. display multiple ads per page view') . ')</label>
+                                            <div class="form-field">
+                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'dynamic', 'value'=>'dynamic', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#display_type_dynamic_row')) . '
+                                                <label class="" for="dynamic">' . lang('Dynamic') . ' (' . lang('i.e. display multiple ads per page view') . ')</label>
                                             </div>
                                             
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="display_type_dynamic_row">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_dynamic_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
@@ -197,16 +197,16 @@ if (!$_POST) {
                                                             <label class="form-label">' . lang('Transition Type') . '</label>
                                                         </div>
                                                         <div class="col-12 my-1">
-                                                            <div class="form-check">
-                                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'slide', 'value'=>'slide', 'class'=>'form-check-input')) . '
-                                                                <label class="form-check-label" for="slide">' . lang('Slide') . '</label>
+                                                            <div class="form-field">
+                                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'slide', 'value'=>'slide', 'class'=>'radio')) . '
+                                                                <label class="" for="slide">' . lang('Slide') . '</label>
                                                             </div>
-                                                            <div class="form-check">
-                                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'fade', 'value'=>'fade', 'class'=>'form-check-input')) . '
-                                                                <label class="form-check-label" for="fade">' . lang('Fade') . '</label>
+                                                            <div class="form-field">
+                                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'fade', 'value'=>'fade', 'class'=>'radio')) . '
+                                                                <label class="" for="fade">' . lang('Fade') . '</label>
                                                             </div>
                                                         </div>
-                                                        <div class="col-12 col-md-6 col-lg-4 my-1">
+                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
                                                             <label class="form-label" for="transition_duration">' . lang('Transition Duration') . '</label>
                                                             <div class="input-group">
                                                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'transition_duration', 'id'=>'transition_duration', 'class'=>'form-control text-end', 'inputmode'=>'numeric', 'maxlength'=>'4', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
@@ -215,15 +215,15 @@ if (!$_POST) {
                                                             <div class="form-text text-end">' . lang('leave blank for default, 1 for instant, 1000 for 1 second') . '</div>
                                                         </div>
                                                         <div class="col-12 my-1">
-                                                            <div class="form-check form-switch">
-                                                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'slideshow', 'id'=>'slideshow', 'value'=>'1', 'class'=>'form-check-input collapse-switcher', 'data-bs-target'=>'#slideshow_row')) . '
-                                                                <label class="form-check-label" for="slideshow">' . lang('Enable Autoplay') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'slideshow', 'id'=>'slideshow', 'value'=>'1', 'class'=>'collapse-switcher no-bs', 'data-bs-target'=>'#slideshow_row')) . '</div>
+                                                                <label class="" for="slideshow">' . lang('Enable Autoplay') . '</label>
                                                             </div>
-                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2 w-100" id="slideshow_row">
+                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3 w-100" id="slideshow_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                 <div class="popover-body">
                                                                     <div class="row">
-                                                                        <div class="col-12 col-md-6 col-lg-4 my-1">
+                                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
                                                                             <label class="form-label" for="slideshow_interval">' . lang('Interval') . '</label>
                                                                             <div class="input-group">
                                                                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'slideshow_interval', 'id'=>'slideshow_interval', 'class'=>'form-control text-end', 'inputmode'=>'numeric', 'maxlength'=>'3', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
@@ -231,9 +231,9 @@ if (!$_POST) {
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 my-1">
-                                                                            <div class="form-check form-switch">
-                                                                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'slideshow_continuous', 'id'=>'slideshow_continuous', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                                                <label class="form-check-label" for="slideshow_continuous">' . lang('Play Continuously') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'slideshow_continuous', 'id'=>'slideshow_continuous', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                                                <label class="" for="slideshow_continuous">' . lang('Play Continuously') . '</label>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -250,10 +250,10 @@ if (!$_POST) {
                         </div>
                     </div>
 
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>
@@ -292,12 +292,12 @@ if (!$_POST) {
         }        
         
         // delete ad region
-        $query = "DELETE FROM ad_regions WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM ad_regions WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete users_ad_regions_xref records
-        $query = "DELETE FROM users_ad_regions_xref WHERE ad_region_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM users_ad_regions_xref WHERE ad_region_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('ad region'), $liveform->get_field_value('name')) )), $_SESSION['sessionusername']);
         
@@ -320,6 +320,7 @@ if (!$_POST) {
     // else the user selected to save the ad region
     } else {
         $sql_name = "";
+        $name_values = array();
         $name = '';
         
         // if the user is a designer or above, then validate name field and prepare to update it
@@ -333,8 +334,8 @@ if (!$_POST) {
                 // because the theme designer does not support underscores in names.  We are going to allow
                 // underscores as long as it was set in the past in order to prevent their styles or themes
                 // from being messed up.
-                $query = "SELECT name FROM ad_regions WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT name FROM ad_regions WHERE id = ?";
+                $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $previous_name = $row['name'];
                 
@@ -361,9 +362,9 @@ if (!$_POST) {
                     "SELECT id
                     FROM ad_regions
                     WHERE
-                        (name = '" . escape($liveform->get_field_value('name')) . "')
-                        AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (name = ?)
+                        AND (id != ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
                 
                 // if the name is already in use by a different ad region, then mark error
                 if (mysqli_num_rows($result) > 0) {
@@ -377,14 +378,15 @@ if (!$_POST) {
                 exit();
             }
             
-            $sql_name = "name = '" . escape($liveform->get_field_value('name')) . "',";
+            $sql_name = "name = ?,";
+            $name_values = array((string) $liveform->get_field_value('name'));
             
             $name = $liveform->get_field_value('name');
             
         // else the user is a manager, so get ad region name for log message
         } else {
-            $query = "SELECT name FROM ad_regions WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT name FROM ad_regions WHERE id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $name = $row['name'];
         }
@@ -394,16 +396,16 @@ if (!$_POST) {
             "UPDATE ad_regions
             SET
                 $sql_name
-                display_type = '" . escape($liveform->get_field_value('display_type')) . "',
-                transition_type = '" . escape($liveform->get_field_value('transition_type')) . "',
-                transition_duration = '" . escape($liveform->get_field_value('transition_duration')) . "',
-                slideshow = '" . escape($liveform->get_field_value('slideshow')) . "',
-                slideshow_interval = '" . escape($liveform->get_field_value('slideshow_interval')) . "',
-                slideshow_continuous = '" . escape($liveform->get_field_value('slideshow_continuous')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                display_type = ?,
+                transition_type = ?,
+                transition_duration = ?,
+                slideshow = ?,
+                slideshow_interval = ?,
+                slideshow_continuous = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array_merge($name_values, array((string) $liveform->get_field_value('display_type'), (string) $liveform->get_field_value('transition_type'), (string) $liveform->get_field_value('transition_duration'), (string) $liveform->get_field_value('slideshow'), (string) $liveform->get_field_value('slideshow_interval'), (string) $liveform->get_field_value('slideshow_continuous'), (string) $user['id'], (string) $liveform->get_field_value('id')))) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('ad region'), $name) )), $_SESSION['sessionusername']);
         

@@ -30,9 +30,9 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             form
         FROM products
         WHERE
-            (id = '" . escape($product_id) . "')
+            (id = ?)
             AND (enabled = '1')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $product_id)) or output_error(lang('Query failed.'));
     $product = mysqli_fetch_assoc($result);
     // If an enabled product was not found, then return false.
     if (!$product or ($product['id'] == '')) {
@@ -54,13 +54,13 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
     $query = "SELECT id
         FROM order_items
         WHERE
-            (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
-            AND (product_id = '" . escape($product_id) . "')
-            AND (ship_to_id = '" . escape($ship_to_id) . "')
-            AND (calendar_event_id = '" . escape($calendar_event_id) . "')
-            AND (recurrence_number = '" . escape($recurrence_number) . "')
+            (order_id = ?)
+            AND (product_id = ?)
+            AND (ship_to_id = ?)
+            AND (calendar_event_id = ?)
+            AND (recurrence_number = ?)
             AND (added_by_offer = '0')" . pg_order_item_active_sql();
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
     // if product has already been added to order, update order item
     if (mysqli_num_rows($result) > 0) {
         // get order item id
@@ -70,26 +70,26 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
         if ($product['selection_type'] == 'donation') {
             $query = "UPDATE order_items
                 SET
-                    price = (price + '" . e($donation_amount) . "')
+                    price = (price + ?)
                 WHERE
-                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
-                    AND (product_id = '" . escape($product_id) . "')
-                    AND (ship_to_id = '" . escape($ship_to_id) . "')
-                    AND (calendar_event_id = '" . escape($calendar_event_id) . "')
-                    AND (recurrence_number = '" . escape($recurrence_number) . "')" . pg_order_item_active_sql();
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    (order_id = ?)
+                    AND (product_id = ?)
+                    AND (ship_to_id = ?)
+                    AND (calendar_event_id = ?)
+                    AND (recurrence_number = ?)" . pg_order_item_active_sql();
+            $result = db_q($query, array((string) $donation_amount, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
             // else this product is not a donation product, so update quantity
         } else {
             $query = "UPDATE order_items
                 SET
-                    quantity = (quantity + '" . e($quantity) . "')
+                    quantity = (quantity + ?)
                 WHERE
-                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
-                    AND (product_id = '" . escape($product_id) . "')
-                    AND (ship_to_id = '" . escape($ship_to_id) . "')
-                    AND (calendar_event_id = '" . escape($calendar_event_id) . "')
-                    AND (recurrence_number = '" . escape($recurrence_number) . "')" . pg_order_item_active_sql();
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    (order_id = ?)
+                    AND (product_id = ?)
+                    AND (ship_to_id = ?)
+                    AND (calendar_event_id = ?)
+                    AND (recurrence_number = ?)" . pg_order_item_active_sql();
+            $result = db_q($query, array((string) $quantity, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
             // if there is a ship to for this order item
             if ($ship_to_id) {
                 // get ship to information
@@ -97,8 +97,8 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
 
                     FROM ship_tos
 
-                    WHERE id = '" . escape($ship_to_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
                 $row = mysqli_fetch_assoc($result);
                 $complete = $row['complete'];
                 // if ship to is complete, then update shipping cost for ship to
@@ -135,16 +135,16 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                     recurrence_number,
                     add_watcher)
                  VALUES (
-                    '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
-                    '" . escape($ship_to_id) . "',
-                    '" . escape($product_id) . "',
-                    '" . escape($product['name']) . "',
-                    '" . escape($quantity) . "',
-                    '" . escape($price) . "',
-                    '" . escape($calendar_event_id) . "',
-                    '" . escape($recurrence_number) . "',
-                    '" . escape($add_watcher) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?)";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_id, (string) $product_id, (string) $product['name'], (string) $quantity, (string) $price, (string) $calendar_event_id, (string) $recurrence_number, (string) $add_watcher)) or output_error(lang('Query failed.'));
         $order_item_id = mysqli_insert_id(db::$con);
         // if there is a ship to for this order item
         if ($ship_to_id) {
@@ -154,8 +154,8 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                     country,
                     state
                 FROM ship_tos
-                WHERE id = '" . escape($ship_to_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                WHERE id = ?";
+            $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
             $row = mysqli_fetch_assoc($result);
             $complete = $row['complete'];
             $country_code = $row['country'];
@@ -168,8 +168,8 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                     update_shipping_cost_for_ship_to($ship_to_id);
                     // else there are problems, so mark ship to as incomplete
                 } else {
-                    $query = "UPDATE ship_tos SET complete = 0 WHERE id = '" . escape($ship_to_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $query = "UPDATE ship_tos SET complete = 0 WHERE id = ?";
+                    $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
                 }
             }
         }
@@ -235,27 +235,27 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
 function remove_order_item($order_item_id)
 {
     // before we remove order item from order, get ship to id, so we can remove ship to if necessary
-    $query = "SELECT ship_to_id FROM order_items WHERE id = '" . escape($order_item_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT ship_to_id FROM order_items WHERE id = ?";
+    $result = db_q($query, array((string) $order_item_id)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $ship_to_id = $row['ship_to_id'];
     // delete order item
-    $query = "DELETE FROM order_items WHERE id = '" . escape($order_item_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "DELETE FROM order_items WHERE id = ?";
+    $result = db_q($query, array((string) $order_item_id)) or output_error(lang('Query failed.'));
     db("DELETE FROM order_item_gift_cards WHERE order_item_id = '" . escape($order_item_id) . "'");
     // delete product form data for order item
-    $query = "DELETE FROM form_data WHERE (order_item_id = '" . escape($order_item_id) . "') AND (order_item_id != '0')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "DELETE FROM form_data WHERE (order_item_id = ?) AND (order_item_id != '0')";
+    $result = db_q($query, array((string) $order_item_id)) or output_error(lang('Query failed.'));
     // get all order items for ship to id, so we can figure out if we may delete ship to record
-    $query = "SELECT id FROM order_items WHERE ship_to_id = '" . escape($ship_to_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM order_items WHERE ship_to_id = ?";
+    $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
     // if there are no order items left for ship to, then delete ship to
     if (mysqli_num_rows($result) == 0) {
-        $query = "DELETE FROM ship_tos WHERE id = '$ship_to_id'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "DELETE FROM ship_tos WHERE id = ?";
+        $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
         // delete custom shipping form data for ship to
-        $query = "DELETE FROM form_data WHERE (ship_to_id = '$ship_to_id') AND (ship_to_id != '0')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "DELETE FROM form_data WHERE (ship_to_id = ?) AND (ship_to_id != '0')";
+        $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
         // else there are order items left for ship to, so update shipping cost for ship to, if necessary
     } else {
         // if there is a ship to for this order item
@@ -265,8 +265,8 @@ function remove_order_item($order_item_id)
 
                 FROM ship_tos
 
-                WHERE id = '" . escape($ship_to_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                WHERE id = ?";
+            $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
             $row = mysqli_fetch_assoc($result);
             $complete = $row['complete'];
             // if ship to is complete, then update shipping cost for ship to
@@ -697,16 +697,16 @@ function create_or_get_ship_to($ship_to, $add_name)
     }
 
     // figure out if ship_to record has already been created for ship to name
-    $query = "SELECT id FROM ship_tos WHERE ship_to_name = '" . escape($ship_to_name) . "' AND order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM ship_tos WHERE ship_to_name = ? AND order_id = ?";
+    $result = db_q($query, array((string) $ship_to_name, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     // if ship_to record has already been created, get ship to id
     if (mysqli_num_rows($result)) {
         $row = mysqli_fetch_assoc($result);
         $ship_to_id = $row['id'];
         // else ship_to record has not been created, so create record
     } else {
-        $query = "INSERT INTO ship_tos (order_id, ship_to_name) VALUES ('" . ($_SESSION['ecommerce']['order_id'] ?? '') . "', '" . escape($ship_to_name) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "INSERT INTO ship_tos (order_id, ship_to_name) VALUES (?, ?)";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_name)) or output_error(lang('Query failed.'));
         $ship_to_id = mysqli_insert_id(db::$con);
     }
     // add recipient to session so that ship to name appears in ship to pick lists
@@ -1164,19 +1164,19 @@ function pg_order_list_status_html($order, $paid_known)
     $html = '';
 
     if ($status == 'incomplete') {
-        $html = '<span class="badge bg-warning text-dark bg-gradient fw-light">' . lang('Incomplete') . '</span>';
+        $html = '<span class="badge theme-warning fg-black bg-gradient fw-light">' . lang('Incomplete') . '</span>';
     } elseif ($status == 'complete') {
-        $html = '<span class="badge bg-primary bg-gradient fw-light">' . lang('Complete') . '</span>';
+        $html = '<span class="badge theme-primary bg-gradient fw-light">' . lang('Complete') . '</span>';
     } elseif ($status == 'exported') {
-        $html = '<span class="badge bg-success bg-gradient fw-light">' . lang('Exported') . '</span>';
+        $html = '<span class="badge theme-success bg-gradient fw-light">' . lang('Exported') . '</span>';
     } elseif (($status == 'canceled') || ($status == 'cancelled')) {
-        $html = '<span class="badge bg-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
+        $html = '<span class="badge theme-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
     }
 
     // A bank transfer order whose money has not arrived is complete but not
     // paid; a second badge says so without changing the status itself.
     if ($paid_known && pg_order_awaiting_payment($order)) {
-        $html .= '<span class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
+        $html .= '<span class="badge theme-warning fg-black bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
     }
 
     // parasut_exported is set by two different things: the spreadsheet export
@@ -1197,7 +1197,7 @@ function pg_order_list_status_html($order, $paid_known)
     }
 
     if ($parasut_unsure) {
-        $html .= '<span title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '" class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . h(lang('Check Paraşüt')) . '</span>';
+        $html .= '<span title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '" class="badge theme-warning fg-black bg-gradient fw-light ms-1">' . h(lang('Check Paraşüt')) . '</span>';
     }
 
     return $html;
@@ -1248,7 +1248,7 @@ function pg_order_quick_update($order_id, $field, $value)
     // still redrawn from what is stored.
     if ($previous !== (string) $value) {
         db("UPDATE orders
-            SET status = '" . e($value) . "', last_modified_timestamp = UNIX_TIMESTAMP()
+            SET status = '" . e($value) . "', " . pg_order_touch_sql() . "
             WHERE id = '" . $order_id . "' AND status = '" . e($previous) . "'");
 
         $written = (mysqli_affected_rows(db::$con) > 0);
@@ -1394,8 +1394,8 @@ function get_valid_zones($ship_to_id, $country_code, $state_code)
 
              FROM order_items
 
-             WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND ship_to_id = '" . escape($ship_to_id) . "'" . pg_order_item_active_sql();
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+             WHERE order_id = ? AND ship_to_id = ?" . pg_order_item_active_sql();
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_id)) or output_error(lang('Query failed.'));
     $order_items = array();
     // add all items in cart to array
     while ($row = mysqli_fetch_assoc($result)) {
@@ -1410,8 +1410,8 @@ function get_valid_zones($ship_to_id, $country_code, $state_code)
 
                  FROM products_zones_xref
 
-                 WHERE product_id = '$product_id'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                 WHERE product_id = ?";
+        $result = db_q($query, array((string) $product_id)) or output_error(lang('Query failed.'));
         while ($row = mysqli_fetch_assoc($result)) {
             $zones_for_order_item[] = $row['zone_id'];
         }
@@ -1444,8 +1444,8 @@ function get_valid_zones_for_destination($country_code, $state_code)
 
              LEFT JOIN countries ON countries.id = zones_countries_xref.country_id
 
-             WHERE countries.code = '" . escape($country_code) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+             WHERE countries.code = ?";
+    $result = db_q($query, array((string) $country_code)) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         $zones_for_country[] = $row['zone_id'];
     }
@@ -1454,8 +1454,8 @@ function get_valid_zones_for_destination($country_code, $state_code)
     // declare zones array that we will use to store all valid zones for recipient's address
     $zones_for_destination = array();
     // get country id
-    $query = "SELECT id FROM countries WHERE code = '" . escape($country_code) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM countries WHERE code = ?";
+    $result = db_q($query, array((string) $country_code)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
 
     // $row is null when the country code is not in the database.
@@ -1467,10 +1467,10 @@ function get_valid_zones_for_destination($country_code, $state_code)
 
         WHERE
 
-            (code = '" . escape($state_code) . "')
+            (code = ?)
 
-            AND (country_id = '$country_id')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            AND (country_id = ?)";
+    $result = db_q($query, array((string) $state_code, (string) $country_id)) or output_error(lang('Query failed.'));
     // if recipient's state was found in database and it belongs to recipient's country, find what zones contain recipient's state
     if (mysqli_num_rows($result) > 0) {
         $query = "SELECT zone_id
@@ -1479,8 +1479,8 @@ function get_valid_zones_for_destination($country_code, $state_code)
 
                  LEFT JOIN states ON states.id = zones_states_xref.state_id
 
-                 WHERE states.code = '" . escape($state_code) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                 WHERE states.code = ?";
+        $result = db_q($query, array((string) $state_code)) or output_error(lang('Query failed.'));
         while ($row = mysqli_fetch_assoc($result)) {
             $zones_for_state[] = $row['zone_id'];
         }
@@ -1500,8 +1500,8 @@ function get_valid_zones_for_destination($country_code, $state_code)
 function validate_product_for_destination($product_id, $country_code, $state_code)
 {
     // get country id
-    $query = "SELECT id FROM countries WHERE code = '" . escape($country_code) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM countries WHERE code = ?";
+    $result = db_q($query, array((string) $country_code)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
 
     // $row is null when the country code is not in the database.
@@ -1511,8 +1511,8 @@ function validate_product_for_destination($product_id, $country_code, $state_cod
 
              FROM products_zones_xref
 
-             WHERE product_id = '" . escape($product_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+             WHERE product_id = ?";
+    $result = db_q($query, array((string) $product_id)) or output_error(lang('Query failed.'));
     $zones = array();
     // loop through all allowed zones for this product
     while ($row = mysqli_fetch_assoc($result)) {
@@ -1524,8 +1524,8 @@ function validate_product_for_destination($product_id, $country_code, $state_cod
 
                  LEFT JOIN countries ON zones_countries_xref.country_id = countries.id
 
-                 WHERE (zone_id = '$zone_id') AND (countries.code = '" . escape($country_code) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                 WHERE (zone_id = ?) AND (countries.code = ?)";
+        $result = db_q($query, array((string) $zone_id, (string) $country_code)) or output_error(lang('Query failed.'));
         // if result was found, then product can be shipped to recipient's country
         if (mysqli_num_rows($result) > 0) {
             $valid_product = true;
@@ -1541,10 +1541,10 @@ function validate_product_for_destination($product_id, $country_code, $state_cod
 
                 WHERE
 
-                    (code = '" . escape($state_code) . "')
+                    (code = ?)
 
-                    AND (country_id = '$country_id')";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    AND (country_id = ?)";
+            $result = db_q($query, array((string) $state_code, (string) $country_id)) or output_error(lang('Query failed.'));
             // if recipient's state was found in database and it belongs to recipient's country, check to see if this product can be shipped to recipient's state
             if (mysqli_num_rows($result) > 0) {
                 // determine if recipient's state is in this zone
@@ -1552,8 +1552,8 @@ function validate_product_for_destination($product_id, $country_code, $state_cod
 
                          LEFT JOIN states ON zones_states_xref.state_id = states.id
 
-                         WHERE (zone_id = '$zone_id') AND (states.code = '" . escape($state_code) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                         WHERE (zone_id = ?) AND (states.code = ?)";
+                $result = db_q($query, array((string) $zone_id, (string) $state_code)) or output_error(lang('Query failed.'));
                 // if result was found, then product can be shipped to recipient's state
                 if (mysqli_num_rows($result) > 0) {
                     $valid_product = true;
@@ -1616,8 +1616,8 @@ function get_order_subtotal()
     if (pg_offer_guest_view()) {
         return 0;
     }
-    $query = "SELECT price, quantity FROM order_items WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql();
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT price, quantity FROM order_items WHERE order_id = ?" . pg_order_item_active_sql();
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $order_subtotal = 0;
     while ($row = mysqli_fetch_assoc($result)) {
         $order_subtotal += $row['price'] * $row['quantity'];
@@ -1716,8 +1716,8 @@ function update_order_item_prices()
 
              LEFT JOIN products ON order_items.product_id = products.id
 
-             WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+             WHERE order_items.order_id = ?";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $order_items = array();
     while ($row = mysqli_fetch_assoc($result)) {
         $order_items[] = $row;
@@ -1737,10 +1737,10 @@ function update_order_item_prices()
                     : $order_items[$key]['product_price'];
                 $query = "UPDATE order_items
 
-                         SET price = '" . $price . "'
+                         SET price = ?
 
-                         WHERE id = '" . $order_items[$key]['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                         WHERE id = ?";
+                $result = db_q($query, array((string) $price, (string) $order_items[$key]['id'])) or output_error(lang('Query failed.'));
             }
             // Otherwise a product was not found for order item (an admin recently deleted product),
             // or product is now disabled, so remove order item from cart.
@@ -2526,6 +2526,270 @@ function pg_catalog_group_create($data, $user, $opts = array())
     pg_announce('product_group.created', array('id' => $id, 'name' => $input['data']['name']));
 
     return $id;
+}
+
+/**
+ * Is this a whole, non-negative amount of minor units a price column holds?
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function pg_catalog_variant_set_minor_units($value)
+{
+    return is_int($value) && ($value >= 0) && ($value <= 2147483647);
+}
+
+/**
+ * What would stop a variant set from being written, checked before anything
+ * is: the product screen's group mode and POST /product-groups/variant-sets
+ * meet the same refusals. Needs no database; the API adds its own checks
+ * against the rows (names taken, parent, options) before it writes.
+ *
+ * @param array $data see pg_catalog_variant_set_create()
+ * @return array list of array('field' => ..., 'message' => ...); empty when
+ *               the set can be written
+ */
+function pg_catalog_variant_set_check($data)
+{
+    $errors = array();
+
+    if (pg_catalog_variant_set_name($data) === '') {
+        $errors[] = array('field' => 'name', 'message' => lang(array('string' => '{var:1} is required', 'vars' => array('name'))));
+    }
+
+    if (isset($data['price_base']) && !pg_catalog_variant_set_minor_units($data['price_base'])) {
+        $errors[] = array('field' => 'price', 'message' => lang('A price is a whole number of minor units, from 0 to 2147483647.'));
+    }
+
+    $variants = (isset($data['variants']) && is_array($data['variants'])) ? $data['variants'] : array();
+
+    if (count($variants) < 2) {
+        $errors[] = array('field' => 'variants', 'message' => lang('A variant set needs at least two variants.'));
+    }
+
+    foreach ($variants as $variant) {
+
+        if (!is_array($variant) || !isset($variant['name']) || (trim((string) $variant['name']) === '')) {
+            $errors[] = array('field' => 'variants', 'message' => lang('Every variant needs a product ID / SKU.'));
+            break;
+        }
+
+        if (!array_key_exists('price', $variant) || !pg_catalog_variant_set_minor_units($variant['price'])) {
+            $errors[] = array('field' => 'variants', 'message' => lang('A price is a whole number of minor units, from 0 to 2147483647.'));
+            break;
+        }
+    }
+
+    return $errors;
+}
+
+/**
+ * The group's name: the short description, else the name (the screen's
+ * Product ID / SKU field).
+ *
+ * @param array $data
+ * @return string
+ */
+function pg_catalog_variant_set_name($data)
+{
+    $short = isset($data['short_description']) ? trim((string) $data['short_description']) : '';
+
+    return ($short !== '') ? $short : (isset($data['name']) ? trim((string) $data['name']) : '');
+}
+
+/**
+ * One variant's price in minor units: what the set's rules give it from the
+ * base (pg_variant_price_compute()), unless its price was typed over them or
+ * the set has no rules, when the row's own price stays.
+ *
+ * @param array      $variant    a row, price in minor units
+ * @param int        $base_cents
+ * @param array|null $rules      canonical rules
+ * @return int
+ */
+function pg_catalog_variant_set_price($variant, $base_cents, $rules)
+{
+    if (!$rules || !empty($variant['price_manual'])) {
+        return $variant['price'];
+    }
+
+    $selection = array();
+
+    foreach ($variant['attributes'] as $pair) {
+        $selection[(int) $pair['attribute_id']] = (int) $pair['option_id'];
+    }
+
+    $priced = pg_variant_price_compute($base_cents, $rules, $selection);
+
+    return $priced['cents'];
+}
+
+/**
+ * The product row and links one variant of a set is written with, built
+ * without a query.
+ *
+ * @param array      $data      see pg_catalog_variant_set_create()
+ * @param array      $variant   one row of $data['variants']
+ * @param int        $group_id  the set's group
+ * @param array|null $ai_posted the texts an accepted "Write with AI" draft
+ *                              filled in (pg_ai_fields_posted()), NULL for none
+ * @return array 'product' => columns, 'relations' => for pg_pb_create_product()
+ */
+function pg_catalog_variant_set_product($data, $variant, $group_id, $ai_posted)
+{
+    $common = isset($data['common']) ? $data['common'] : array();
+
+    $product = $common;
+
+    $product['name']               = $variant['name'];
+    $product['short_description']  = $variant['short_description'];
+    $product['price']              = pg_catalog_variant_set_price($variant, isset($data['price_base']) ? $data['price_base'] : 0, isset($data['price_rules']) ? $data['price_rules'] : null);
+    $product['full_description']   = prepare_rich_text_editor_content_for_input(isset($data['full_description']) ? $data['full_description'] : '');
+    $product['details']            = prepare_rich_text_editor_content_for_input(isset($data['details']) ? $data['details'] : '');
+    $product['title']              = isset($data['title']) ? trim($data['title']) : '';
+    $product['meta_description']   = isset($data['meta_description']) ? trim($data['meta_description']) : '';
+    $product['inventory']          = $variant['inventory'];
+    $product['inventory_quantity'] = $variant['inventory_quantity'];
+
+    // The shared GTIN field is hidden while a set is built, so whatever it
+    // holds is stale: the row wins, empty included.
+    $product['gtin'] = $variant['gtin'];
+
+    // Each variant has its own address (sitemap, feed, JSON-LD): short
+    // description first, SKU otherwise. An empty one would make the whole set
+    // share one blank address with [1], [2] appended.
+    $product['address_name'] = ($variant['short_description'] !== '') ? $variant['short_description'] : $variant['name'];
+
+    // Per-variant recurring overrides, only for columns the shared set
+    // carries: those are the ones the store's gateway allows.
+    if (!empty($variant['recurring'])) {
+        foreach ($variant['recurring'] as $recurring_column => $recurring_value) {
+            if (array_key_exists($recurring_column, $common)) {
+                $product[$recurring_column] = $recurring_value;
+            }
+        }
+    }
+
+    if ($ai_posted !== null) {
+        $product['ai_fields'] = pg_ai_fields_after_save(
+            'product',
+            pg_ai_fields_for_variant($ai_posted, isset($data['short_description']) ? $data['short_description'] : '', $product['short_description']),
+            null,
+            pg_ai_fields_values('product', $product));
+    }
+
+    // The set is the only group a variant joins: it reaches the catalogue
+    // through its parent, and filing every variant in a category too would
+    // list the same article once per variant there. A variant without images
+    // of its own shows the set's.
+    return array(
+        'product'   => $product,
+        'relations' => array(
+            'images'     => !empty($variant['images']) ? $variant['images'] : (isset($data['images']) ? $data['images'] : array()),
+            'group_ids'  => array((int) $group_id),
+            'zone_ids'   => isset($data['zone_ids']) ? $data['zone_ids'] : array(),
+            'attributes' => $variant['attributes'],
+        ),
+    );
+}
+
+/**
+ * A variant set: one 'select' product group (pg_pb_create_group()) and one
+ * product per variant filed in it (pg_pb_create_product(), which starts each
+ * price history), the rows' barcodes, then the price rules kept with the
+ * group. The writer of the product screen's group mode
+ * (pg_pb_save_new_product()) and of POST /product-groups/variant-sets.
+ * Nothing is announced and no marketplace is told: a new product is matched
+ * to no listing yet, and the screen never announced a set.
+ *
+ * @param array $data name, short_description (the group's name when given),
+ *                    full_description, details, parent_id, enabled, code,
+ *                    keywords, images (file names, cover first),
+ *                    address_name, title, meta_description, attribute_meta
+ *                    (list of id, default_option_id), form, form_name,
+ *                    form_label_column_width, form_quantity_type, common
+ *                    (the columns every variant shares), zone_ids,
+ *                    price_base (minor units), price_rules (canonical, or
+ *                    null), variants (rows as pg_pb_decode_variants() gives
+ *                    them, price in minor units)
+ * @param array|int|null $user the person or the key's owner (an array with
+ *                    id) or a user id; null: the session's user (USER_ID)
+ * @param array $opts ai_fields (pg_ai_fields_posted(), null for none),
+ *                    submit_form (the array form-field rows are read from;
+ *                    absent: $_POST), barcode_auto (absent: the screen's
+ *                    switch), price_source (pg_price_history_sources())
+ * @return array group_id, product_ids, name, errors (pg_catalog_variant_set_check();
+ *               nothing is written when there are any)
+ */
+function pg_catalog_variant_set_create($data, $user = null, $opts = array())
+{
+    $name = pg_catalog_variant_set_name($data);
+
+    $errors = pg_catalog_variant_set_check($data);
+
+    if ($errors) {
+        return array('group_id' => 0, 'product_ids' => array(), 'name' => $name, 'errors' => $errors);
+    }
+
+    if (!function_exists('pg_pb_create_group')) {
+        require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
+    }
+
+    $user_id = null;
+
+    if (is_array($user)) {
+        $user_id = isset($user['id']) ? (int) $user['id'] : 0;
+    } elseif ($user !== null) {
+        $user_id = (int) $user;
+    }
+
+    $group = array('name' => $name);
+
+    foreach (array('parent_id', 'enabled', 'short_description', 'full_description', 'details', 'code', 'keywords', 'images',
+        'address_name', 'title', 'meta_description', 'attribute_meta',
+        'form', 'form_name', 'form_label_column_width', 'form_quantity_type') as $key) {
+        if (array_key_exists($key, $data)) {
+            $group[$key] = $data[$key];
+        }
+    }
+
+    if ($user_id !== null) {
+        $group['user'] = $user_id;
+    }
+
+    $group_id = pg_pb_create_group($group);
+
+    $ai_posted   = isset($opts['ai_fields']) ? $opts['ai_fields'] : null;
+    $product_ids = array();
+
+    foreach ($data['variants'] as $variant) {
+
+        $built = pg_catalog_variant_set_product($data, $variant, $group_id, $ai_posted);
+
+        if ($user_id !== null) {
+            $built['product']['user'] = $user_id;
+        }
+
+        if (array_key_exists('submit_form', $opts)) {
+            $built['relations']['submit_form'] = $opts['submit_form'];
+        }
+
+        if (isset($opts['price_source'])) {
+            $built['relations']['price_source'] = $opts['price_source'];
+        }
+
+        $product_id = pg_pb_create_product($built['product'], $built['relations']);
+
+        pg_pb_apply_barcode($product_id, isset($variant['barcode']) ? $variant['barcode'] : '', isset($opts['barcode_auto']) ? $opts['barcode_auto'] : null);
+
+        $product_ids[] = $product_id;
+    }
+
+    if (!empty($data['price_rules'])) {
+        pg_variant_price_rules_store($group_id, $data['price_rules'], $data['price_base']);
+    }
+
+    return array('group_id' => $group_id, 'product_ids' => $product_ids, 'name' => $name, 'errors' => array());
 }
 
 /**
@@ -3546,8 +3810,8 @@ function update_order_item_taxes()
 
              FROM orders
 
-             WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+             WHERE id = ?";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
 
     // $row is null when there is no order in the session yet.
@@ -3570,8 +3834,8 @@ function update_order_item_taxes()
 
                  SET tax_total = 0, tax = 0" . $rate_sql(0) . "
 
-                 WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                 WHERE order_id = ?";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
         // else order is not tax-exempt, so we need to apply taxes to order items
     } else {
         // Each line's amount and the rate it is charged at, gathered over every
@@ -3597,10 +3861,10 @@ function update_order_item_taxes()
 
                  LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
 
-                 WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
+                 WHERE order_items.order_id = ?
 
                  ORDER BY order_items.ship_to_id";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
         $ship_tos = array();
         // foreach ship to, add ship to to array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -3640,8 +3904,8 @@ function update_order_item_taxes()
 
                      LEFT JOIN products ON order_items.product_id = products.id
 
-                     WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND ship_to_id = '" . $ship_to['ship_to_id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                     WHERE order_id = ? AND ship_to_id = ?";
+            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to['ship_to_id'])) or output_error(lang('Query failed.'));
             $order_items = array();
             // foreach order item for this ship to, add order item to array
             while ($row = mysqli_fetch_assoc($result)) {
@@ -3698,10 +3962,10 @@ function update_order_item_taxes()
         foreach ($lines as $id => $line) {
             $query = "UPDATE order_items
 
-                     SET tax_total = '" . (int) $taxes[$id] . "', tax = '0'" . $rate_sql($line['rate']) . "
+                     SET tax_total = ?, tax = '0'" . $rate_sql($line['rate']) . "
 
-                     WHERE id = '" . (int) $id . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                     WHERE id = ?";
+            $result = db_q($query, array((string) (int) $taxes[$id], (string) (int) $id)) or output_error(lang('Query failed.'));
         }
     }
 }
@@ -4356,14 +4620,14 @@ function validate_offer($offer_id, $ship_to_id = 0, $subtotal = '')
 
         WHERE
 
-            (offers.id = '" . e($offer_id) . "')
+            (offers.id = ?)
 
             AND (offers.status = 'enabled')
 
             AND (offers.start_date <= CURRENT_DATE())
 
             AND (CURRENT_DATE() <= offers.end_date)";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $offer_id)) or output_error(lang('Query failed.'));
     // if an offer was not found, then the offer is not valid, so return false
     if (mysqli_num_rows($result) == 0) {
         return false;
@@ -4477,8 +4741,8 @@ function validate_offer($offer_id, $ship_to_id = 0, $subtotal = '')
 function get_offer_code_for_special_offer_code($special_offer_code)
 {
     $offer_code = '';
-    $query = "SELECT code FROM offers WHERE code = '" . escape($special_offer_code) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT code FROM offers WHERE code = ?";
+    $result = db_q($query, array((string) $special_offer_code)) or output_error(lang('Query failed.'));
     // If an offer was found, use that code.
     if (mysqli_num_rows($result) > 0) {
         $row = mysqli_fetch_assoc($result);
@@ -4537,12 +4801,12 @@ function apply_offers_to_cart()
 
         WHERE
 
-            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+            (order_items.order_id = ?)
 
             AND (order_items.discounted_by_offer = '1')
 
             AND (order_items.added_by_offer = '0')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $order_items = array();
     while ($row = mysqli_fetch_assoc($result)) {
         $order_items[] = $row;
@@ -4556,18 +4820,20 @@ function apply_offers_to_cart()
         // if a product was found for this order item, then remove discount
         if ($order_item['product_id'] != '') {
             $restored_price = pg_offer_restored_line_price($order_item, $member_prices);
+            $values = ($restored_price !== null) ? array((string) $restored_price) : array();
+            $values[] = (string) $order_item['id'];
             $query = "UPDATE order_items
 
                 SET
 
-                    " . (($restored_price !== null) ? "price = '" . e($restored_price) . "'," : '') . "
+                    " . (($restored_price !== null) ? "price = ?," : '') . "
 
                     offer_id = '0',
 
                     discounted_by_offer = '0'
 
-                WHERE id = '" . $order_item['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                WHERE id = ?";
+            $result = db_q($query, $values) or output_error(lang('Query failed.'));
             // else a product was not found for this order item (e.g. an admin recently deleted product), so remove order item from order
         } else {
             remove_order_item($order_item['id']);
@@ -4587,14 +4853,14 @@ function apply_offers_to_cart()
 
             WHERE
 
-                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                (order_id = ?)
 
                 AND (offer_id != '0')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     }
     // get special offer code for this order
-    $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT special_offer_code FROM orders WHERE id = ?";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
 
     // $row is null when there is no order in the session yet.
@@ -4650,10 +4916,10 @@ function apply_offers_to_cart()
 
             AND (CURRENT_DATE() <= offers.end_date)
 
-            AND ((offers.require_code = 0) OR (offers.code = '" . escape($offer_code) . "'))
+            AND ((offers.require_code = 0) OR (offers.code = ?))
 
         ORDER BY offers.code ASC";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $offer_code)) or output_error(lang('Query failed.'));
     $offers = array();
     while ($row = mysqli_fetch_assoc($result)) {
         $offers[] = $row;
@@ -4730,8 +4996,8 @@ function apply_offers_to_cart()
 
         LEFT JOIN products ON order_items.product_id = products.id
 
-        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql();
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE order_items.order_id = ?" . pg_order_item_active_sql();
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $ship_tos = array();
     while ($row = mysqli_fetch_assoc($result)) {
         // if this ship to has not been added yet, then add it
@@ -4795,8 +5061,8 @@ function apply_offers_to_cart()
 
             LEFT JOIN products AS add_products ON offer_actions.add_product_product_id = add_products.id
 
-            WHERE offers_offer_actions_xref.offer_id = '" . $offer['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE offers_offer_actions_xref.offer_id = ?";
+        $result = db_q($query, array((string) $offer['id'])) or output_error(lang('Query failed.'));
         $offers[$key]['offer_actions'] = mysqli_fetch_items($result);
     }
     $discounted_order_items = array();
@@ -4905,16 +5171,16 @@ function apply_offers_to_cart()
 
             SET
 
-                price = '" . $discounted_order_item['price'] . "',
+                price = ?,
 
-                offer_id = '" . $discounted_order_item['offer_id'] . "',
+                offer_id = ?,
 
-                offer_action_id = '" . $discounted_order_item['offer_action_id'] . "',
+                offer_action_id = ?,
 
                 discounted_by_offer = 1
 
-            WHERE id = '" . $discounted_order_item['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE id = ?";
+        $result = db_q($query, array((string) $discounted_order_item['price'], (string) $discounted_order_item['offer_id'], (string) $discounted_order_item['offer_action_id'], (string) $discounted_order_item['id'])) or output_error(lang('Query failed.'));
     }
     // Get all order items that were added by an offer in order to determine if they are still valid.
     // We don't just want to remove them all and then add them down below because it would be too
@@ -4969,12 +5235,12 @@ function apply_offers_to_cart()
 
         WHERE
 
-            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+            (order_items.order_id = ?)
 
             AND (order_items.added_by_offer = '1')
 
         ORDER BY order_items.id ASC";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $order_items = array();
     while ($row = mysqli_fetch_assoc($result)) {
         $order_items[] = $row;
@@ -5012,14 +5278,14 @@ function apply_offers_to_cart()
 
                 SET
 
-                    quantity = '" . $order_item['offer_action_add_product_quantity'] . "',
+                    quantity = ?,
 
-                    price = '" . $discounted_price . "',
+                    price = ?,
 
-                    discounted_by_offer = '" . $discounted_by_offer . "'
+                    discounted_by_offer = ?
 
-                WHERE id = '" . $order_item['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                WHERE id = ?";
+            $result = db_q($query, array((string) $order_item['offer_action_add_product_quantity'], (string) $discounted_price, (string) $discounted_by_offer, (string) $order_item['id'])) or output_error(lang('Query failed.'));
             // if it has not already been remembered that this offer and action have added a product, then remember that
             if (in_array($order_item['offer_id'] . '_' . $order_item['offer_action_id'], $offers_and_offer_actions) == false) {
                 $offers_and_offer_actions[] = $order_item['offer_id'] . '_' . $order_item['offer_action_id'];
@@ -5078,12 +5344,12 @@ function apply_offers_to_cart()
 
                                     WHERE
 
-                                        (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                        (order_id = ?)
 
-                                        AND (offer_id = '" . $offer['id'] . "')
+                                        AND (offer_id = ?)
 
-                                        AND (offer_action_id = '" . $offer_action['id'] . "')";
-                                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                        AND (offer_action_id = ?)";
+                                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $offer['id'], (string) $offer_action['id'])) or output_error(lang('Query failed.'));
                                 // The offer applies, so the gift is placed by the
                                 // software: either as a discount on the line the
                                 // shopper is already paying for, or as a line of
@@ -5130,12 +5396,12 @@ function apply_offers_to_cart()
 
                                 WHERE
 
-                                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                    (order_id = ?)
 
-                                    AND (offer_id = '" . $offer['id'] . "')
+                                    AND (offer_id = ?)
 
-                                    AND (offer_action_id = '" . $offer_action['id'] . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                    AND (offer_action_id = ?)";
+                            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $offer['id'], (string) $offer_action['id'])) or output_error(lang('Query failed.'));
                             // if this offer and action have not already been applied to order or offer is allowed to be applied to multiple recipients, then continue to add pending offer
                             if ((mysqli_num_rows($result) == 0) || ($offer['multiple_recipients'] == 1)) {
                                 // loop through recipients
@@ -5155,14 +5421,14 @@ function apply_offers_to_cart()
 
                                             WHERE
 
-                                                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                                (order_id = ?)
 
-                                                AND (ship_to_id = '" . $ship_to['id'] . "')
+                                                AND (ship_to_id = ?)
 
-                                                AND (offer_id = '" . $offer['id'] . "')
+                                                AND (offer_id = ?)
 
-                                                AND (offer_action_id = '" . $offer_action['id'] . "')";
-                                        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                                AND (offer_action_id = ?)";
+                                        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to['id'], (string) $offer['id'], (string) $offer_action['id'])) or output_error(lang('Query failed.'));
                                         // The recipient is known here - the offer
                                         // qualified for this one - so the gift is
                                         // placed rather than offered.
@@ -5224,10 +5490,10 @@ function apply_offers_to_cart()
 
                                         WHERE
 
-                                            (offer_action_id = '" . $offer_action['id'] . "')
+                                            (offer_action_id = ?)
 
-                                            AND (shipping_method_id = '" . $ship_to['shipping_method_id'] . "')";
-                                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                            AND (shipping_method_id = ?)";
+                                    $result = db_q($query, array((string) $offer_action['id'], (string) $ship_to['shipping_method_id'])) or output_error(lang('Query failed.'));
                                     // if this offer and action is valid for the shipping method then continue to prepare to discount shipping
                                     if (mysqli_num_rows($result) != 0) {
                                         $original_shipping_cost = $ship_to['shipping_cost'];
@@ -5280,14 +5546,14 @@ function apply_offers_to_cart()
     }
     // if there is an order discount, then add order discount to order
     if ($best_order_discount_offer_id != 0) {
-        $query = "UPDATE orders SET discount_offer_id = '" . $best_order_discount_offer_id . "' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "UPDATE orders SET discount_offer_id = ? WHERE id = ?";
+        $result = db_q($query, array((string) $best_order_discount_offer_id, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
         $_SESSION['ecommerce']['order_discount'] = $best_order_discount;
         // else there is not an order discount, so if there was before, then remove it
     } else if (isset($_SESSION['ecommerce']['order_discount']) == true) {
         // remove order discount until we find out below if there is an order discount
-        $query = "UPDATE orders SET discount_offer_id = '0' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "UPDATE orders SET discount_offer_id = '0' WHERE id = ?";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
         unset($_SESSION['ecommerce']['order_discount']);
     }
     // if shipping is on, then loop through discounted ship tos in order to discount them
@@ -5297,14 +5563,14 @@ function apply_offers_to_cart()
 
                 SET
 
-                    shipping_cost = '" . $discounted_ship_to['shipping_cost'] . "',
+                    shipping_cost = ?,
 
-                    original_shipping_cost = '" . $discounted_ship_to['original_shipping_cost'] . "',
+                    original_shipping_cost = ?,
 
-                    offer_id = '" . $discounted_ship_to['offer_id'] . "'
+                    offer_id = ?
 
-                WHERE id = '" . $discounted_ship_to['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                WHERE id = ?";
+            $result = db_q($query, array((string) $discounted_ship_to['shipping_cost'], (string) $discounted_ship_to['original_shipping_cost'], (string) $discounted_ship_to['offer_id'], (string) $discounted_ship_to['id'])) or output_error(lang('Query failed.'));
         }
     }
     // The order discount was worked out over every line, but today's charge
@@ -5493,8 +5759,8 @@ function get_best_offer_id($offer_code, $scope = '')
 
         LEFT JOIN products ON order_items.product_id = products.id
 
-        WHERE order_items.order_id = '" . e($cart_order_id) . "'" . pg_order_item_active_sql();
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE order_items.order_id = ?" . pg_order_item_active_sql();
+    $result = db_q($query, array((string) $cart_order_id)) or output_error(lang('Query failed.'));
     $ship_tos = array();
     while ($row = mysqli_fetch_assoc($result)) {
         // if this ship to has not been added yet, then add it
@@ -5563,8 +5829,8 @@ function get_best_offer_id($offer_code, $scope = '')
 
             LEFT JOIN products AS add_products ON offer_actions.add_product_product_id = add_products.id
 
-            WHERE offers_offer_actions_xref.offer_id = '" . $offer['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE offers_offer_actions_xref.offer_id = ?";
+        $result = db_q($query, array((string) $offer['id'])) or output_error(lang('Query failed.'));
         $offer_actions = array();
         while ($row = mysqli_fetch_assoc($result)) {
             $offer_actions[] = $row;
@@ -5745,10 +6011,10 @@ function get_best_offer_id($offer_code, $scope = '')
 
                                         WHERE
 
-                                            (offer_action_id = '" . $offer_action['id'] . "')
+                                            (offer_action_id = ?)
 
-                                            AND (shipping_method_id = '" . $ship_to['shipping_method_id'] . "')";
-                                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                            AND (shipping_method_id = ?)";
+                                    $result = db_q($query, array((string) $offer_action['id'], (string) $ship_to['shipping_method_id'])) or output_error(lang('Query failed.'));
                                     // if this offer and action is valid for the shipping method then determine discount amount
                                     if (mysqli_num_rows($result) != 0) {
                                         // if there is an original shipping cost, then use that for the original shipping cost
@@ -5808,8 +6074,8 @@ function get_best_offer_id($offer_code, $scope = '')
 function get_best_shipping_discount_offer($ship_to_id, $shipping_method_id)
 {
     // get special offer code that shopper might have entered
-    $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT special_offer_code FROM orders WHERE id = ?";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
 
     // $row is null when there is no order in the session yet.
@@ -5838,10 +6104,10 @@ function get_best_shipping_discount_offer($ship_to_id, $shipping_method_id)
 
             AND (CURRENT_DATE() <= offers.end_date)
 
-            AND ((offers.require_code = 0) OR (offers.code = '" . escape($offer_code) . "'))
+            AND ((offers.require_code = 0) OR (offers.code = ?))
 
         ORDER BY offers.code ASC";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $offer_code)) or output_error(lang('Query failed.'));
     $offers = array();
     while ($row = mysqli_fetch_assoc($result)) {
         $offers[] = $row;
@@ -5906,14 +6172,14 @@ function get_best_shipping_discount_offer($ship_to_id, $shipping_method_id)
 
                 WHERE
 
-                    (offers_offer_actions_xref.offer_id = '" . $offer['id'] . "')
+                    (offers_offer_actions_xref.offer_id = ?)
 
                     AND (offer_actions.type = 'discount shipping')
 
                     AND (offer_actions.discount_shipping_percentage != '0')
 
-                    AND (offer_actions_shipping_methods_xref.shipping_method_id = '" . escape($shipping_method_id) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    AND (offer_actions_shipping_methods_xref.shipping_method_id = ?)";
+            $result = db_q($query, array((string) $offer['id'], (string) $shipping_method_id)) or output_error(lang('Query failed.'));
             $offer_actions = array();
             while ($row = mysqli_fetch_assoc($result)) {
                 $offer_actions[] = $row;
@@ -5944,8 +6210,8 @@ function get_best_shipping_discount_offer($ship_to_id, $shipping_method_id)
 function check_if_active_shipping_discount_offer_exists()
 {
     // get special offer code that shopper might have entered
-    $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT special_offer_code FROM orders WHERE id = ?";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
 
     // $row is null when there is no order in the session yet.
@@ -5971,12 +6237,12 @@ function check_if_active_shipping_discount_offer_exists()
 
             AND (CURRENT_DATE() <= offers.end_date)
 
-            AND ((offers.require_code = 0) OR (offers.code = '" . escape($offer_code) . "'))
+            AND ((offers.require_code = 0) OR (offers.code = ?))
 
             AND (offer_actions.type = 'discount shipping')
 
             AND (offer_actions.discount_shipping_percentage != '0')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $offer_code)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_row($result);
     // if there is at least one active shipping discount offer, then return that
     if ($row[0] > 0) {
@@ -6001,8 +6267,8 @@ function add_pending_offers($liveform)
                 $offer_id = $offer_id_and_offer_action_id_parts[0];
                 $offer_action_id = $offer_id_and_offer_action_id_parts[1];
                 // get special offer code for this order
-                $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "SELECT special_offer_code FROM orders WHERE id = ?";
+                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
                 $row = mysqli_fetch_assoc($result);
                 $special_offer_code = $row['special_offer_code'] ?? '';
                 $offer_code = '';
@@ -6045,9 +6311,9 @@ function add_pending_offers($liveform)
 
                     WHERE
 
-                        (offer_actions.id = '" . escape($offer_action_id) . "')
+                        (offer_actions.id = ?)
 
-                        AND (offers.id = '" . escape($offer_id) . "')
+                        AND (offers.id = ?)
 
                         AND (offers.status = 'enabled')
 
@@ -6055,14 +6321,14 @@ function add_pending_offers($liveform)
 
                         AND (CURRENT_DATE() <= offers.end_date)
 
-                        AND ((offers.require_code = 0) OR (offers.code = '" . escape($offer_code) . "'))
+                        AND ((offers.require_code = 0) OR (offers.code = ?))
 
                         AND (offer_actions.type = 'add product')
 
                         AND (add_products.id IS NOT NULL)
 
                         AND (offer_actions.add_product_quantity != '0')";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $result = db_q($query, array((string) $offer_action_id, (string) $offer_id, (string) $offer_code)) or output_error(lang('Query failed.'));
                 // if an offer was not found
                 if (mysqli_num_rows($result) == 0) {
                     $liveform->mark_error('pending_offer', lang('The offer that you tried to add no longer exists or is no longer active.'));
@@ -6108,8 +6374,8 @@ function add_pending_offers($liveform)
                                 $ship_to_name = $ship_to;
                             }
                             // get ship to id for ship to name
-                            $query = "SELECT id FROM ship_tos WHERE (order_id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "') AND (ship_to_name = '" . escape($ship_to_name) . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                            $query = "SELECT id FROM ship_tos WHERE (order_id = ?) AND (ship_to_name = ?)";
+                            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_name)) or output_error(lang('Query failed.'));
                             $row = mysqli_fetch_assoc($result);
                             $ship_to_id = $row['id'];
                         }
@@ -6127,12 +6393,12 @@ function add_pending_offers($liveform)
 
                                     WHERE
 
-                                        (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                        (order_id = ?)
 
-                                        AND (offer_id = '" . $offer_action['offer_id'] . "')
+                                        AND (offer_id = ?)
 
-                                        AND (offer_action_id = '" . $offer_action['id'] . "')";
-                                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                        AND (offer_action_id = ?)";
+                                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $offer_action['offer_id'], (string) $offer_action['id'])) or output_error(lang('Query failed.'));
                                 // if this offer and action have not already been applied to this order, add pending offer
                                 if (mysqli_num_rows($result) == 0) {
                                     $discounted_price = pg_offer_gift_price($offer_action['add_product_price'], $offer_action['add_product_discount_amount'], $offer_action['add_product_discount_percentage']);
@@ -6169,26 +6435,26 @@ function add_pending_offers($liveform)
 
                                         ) VALUES (
 
-                                            '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
+                                            ?,
 
-                                            '" . (int) $ship_to_id . "',
+                                            ?,
 
-                                            '" . $offer_action['add_product_product_id'] . "',
+                                            ?,
 
-                                            '" . escape($offer_action['add_product_name']) . "',
+                                            ?,
 
-                                            '" . $offer_action['add_product_quantity'] . "',
+                                            ?,
 
-                                            '$discounted_price',
+                                            ?,
 
-                                            '" . $offer_action['offer_id'] . "',
+                                            ?,
 
-                                            '" . $offer_action['id'] . "',
+                                            ?,
 
                                             1,
 
-                                            $discounted_by_offer)";
-                                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                            ?)";
+                                    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) (int) $ship_to_id, (string) $offer_action['add_product_product_id'], (string) $offer_action['add_product_name'], (string) $offer_action['add_product_quantity'], (string) $discounted_price, (string) $offer_action['offer_id'], (string) $offer_action['id'], (int) $discounted_by_offer)) or output_error(lang('Query failed.'));
                                     $order_item_id = mysqli_insert_id(db::$con);
                                     // if there is a ship to for this order item
                                     if ($ship_to_id) {
@@ -6203,8 +6469,8 @@ function add_pending_offers($liveform)
 
                                             FROM ship_tos
 
-                                            WHERE id = '" . escape($ship_to_id) . "'";
-                                        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                            WHERE id = ?";
+                                        $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
                                         $row = mysqli_fetch_assoc($result);
                                         $complete = $row['complete'];
                                         $country_code = $row['country'];
@@ -6217,8 +6483,8 @@ function add_pending_offers($liveform)
                                                 update_shipping_cost_for_ship_to($ship_to_id);
                                                 // else there are problems, so mark ship to as incomplete
                                             } else {
-                                                $query = "UPDATE ship_tos SET complete = 0 WHERE id = '" . escape($ship_to_id) . "'";
-                                                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                                $query = "UPDATE ship_tos SET complete = 0 WHERE id = ?";
+                                                $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
                                             }
                                         }
                                     }
@@ -6233,12 +6499,12 @@ function add_pending_offers($liveform)
 
                                 WHERE
 
-                                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                    (order_id = ?)
 
-                                    AND (offer_id = '" . $offer_action['offer_id'] . "')
+                                    AND (offer_id = ?)
 
-                                    AND (offer_action_id = '" . $offer_action['id'] . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                    AND (offer_action_id = ?)";
+                            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $offer_action['offer_id'], (string) $offer_action['id'])) or output_error(lang('Query failed.'));
                             // if offer has not already been applied to order or offer is allowed to be applied to multiple recipients, then continue
                             if ((mysqli_num_rows($result) == 0) || ($offer_action['offer_multiple_recipients'] == 1)) {
                                 // if offer is valid for this recipient
@@ -6250,14 +6516,14 @@ function add_pending_offers($liveform)
 
                                         WHERE
 
-                                            (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                            (order_id = ?)
 
-                                            AND (ship_to_id = '$ship_to_id')
+                                            AND (ship_to_id = ?)
 
-                                            AND (offer_id = '" . $offer_action['offer_id'] . "')
+                                            AND (offer_id = ?)
 
-                                            AND (offer_action_id = '" . $offer_action['id'] . "')";
-                                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                            AND (offer_action_id = ?)";
+                                    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_id, (string) $offer_action['offer_id'], (string) $offer_action['id'])) or output_error(lang('Query failed.'));
                                     // if offer has not already been applied to this recipient, then add pending offer
                                     if (mysqli_num_rows($result) == 0) {
                                         $discounted_price = pg_offer_gift_price($offer_action['add_product_price'], $offer_action['add_product_discount_amount'], $offer_action['add_product_discount_percentage']);
@@ -6291,26 +6557,26 @@ function add_pending_offers($liveform)
 
                                             ) VALUES (
 
-                                                '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
+                                                ?,
 
-                                                '$ship_to_id',
+                                                ?,
 
-                                                '" . $offer_action['add_product_product_id'] . "',
+                                                ?,
 
-                                                '" . escape($offer_action['add_product_name']) . "',
+                                                ?,
 
-                                                '" . $offer_action['add_product_quantity'] . "',
+                                                ?,
 
-                                                '$discounted_price',
+                                                ?,
 
-                                                '" . $offer_action['offer_id'] . "',
+                                                ?,
 
-                                                '" . $offer_action['id'] . "',
+                                                ?,
 
                                                 1,
 
-                                                $discounted_by_offer)";
-                                        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                                ?)";
+                                        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_id, (string) $offer_action['add_product_product_id'], (string) $offer_action['add_product_name'], (string) $offer_action['add_product_quantity'], (string) $discounted_price, (string) $offer_action['offer_id'], (string) $offer_action['id'], (int) $discounted_by_offer)) or output_error(lang('Query failed.'));
                                         $order_item_id = mysqli_insert_id(db::$con);
                                         // if there is a ship to for this order item
                                         if ($ship_to_id) {
@@ -6325,8 +6591,8 @@ function add_pending_offers($liveform)
 
                                                 FROM ship_tos
 
-                                                WHERE id = '" . escape($ship_to_id) . "'";
-                                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                                WHERE id = ?";
+                                            $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
                                             $row = mysqli_fetch_assoc($result);
                                             $complete = $row['complete'];
                                             $country_code = $row['country'];
@@ -6339,8 +6605,8 @@ function add_pending_offers($liveform)
                                                     update_shipping_cost_for_ship_to($ship_to_id);
                                                     // else there are problems, so mark ship to as incomplete
                                                 } else {
-                                                    $query = "UPDATE ship_tos SET complete = 0 WHERE id = '" . escape($ship_to_id) . "'";
-                                                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                                    $query = "UPDATE ship_tos SET complete = 0 WHERE id = ?";
+                                                    $result = db_q($query, array((string) $ship_to_id)) or output_error(lang('Query failed.'));
                                                 }
                                             }
                                         }
@@ -6431,34 +6697,34 @@ function initialize_order()
 
                     UNIX_TIMESTAMP(),
 
-                    '" . e(USER_ID) . "',
+                    ?,
 
-                    '" . e(USER_CONTACT_ID) . "',
+                    ?,
 
-                    '$reference_code',
+                    ?,
 
-                    '" . escape(get_tracking_code()) . "',
+                    ?,
 
-                    '" . e($_SESSION['software']['utm_source'] ?? '') . "',
+                    ?,
 
-                    '" . e($_SESSION['software']['utm_medium'] ?? '') . "',
+                    ?,
 
-                    '" . e($_SESSION['software']['utm_campaign'] ?? '') . "',
+                    ?,
 
-                    '" . e($_SESSION['software']['utm_term'] ?? '') . "',
+                    ?,
 
-                    '" . e($_SESSION['software']['utm_content'] ?? '') . "',
+                    ?,
 
-                    '" . escape(VISITOR_CURRENCY_CODE) . "',
+                    ?,
 
-                    '" . escape(get_affiliate_code()) . "',
+                    ?,
 
-                    '" . escape($_SESSION['software']['http_referer'] ?? '') . "',
+                    ?,
 
-                    IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0),
+                    IFNULL(INET_ATON(?), 0),
 
-                    '" . $offline_payment_allowed . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    ?)";
+        $result = db_q($query, array((string) USER_ID, (string) USER_CONTACT_ID, (string) $reference_code, (string) get_tracking_code(), (string) ($_SESSION['software']['utm_source'] ?? ''), (string) ($_SESSION['software']['utm_medium'] ?? ''), (string) ($_SESSION['software']['utm_campaign'] ?? ''), (string) ($_SESSION['software']['utm_term'] ?? ''), (string) ($_SESSION['software']['utm_content'] ?? ''), (string) VISITOR_CURRENCY_CODE, (string) get_affiliate_code(), (string) ($_SESSION['software']['http_referer'] ?? ''), (string) $_SERVER['REMOTE_ADDR'], (string) $offline_payment_allowed)) or output_error(lang('Query failed.'));
         // store order id in session
         $_SESSION['ecommerce']['order_id'] = mysqli_insert_id(db::$con);
         // if visitor tracking is on, update visitor record with order information, if visitor has not already created a previous order
@@ -6468,14 +6734,14 @@ function initialize_order()
 
                      SET
 
-                        order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
+                        order_id = ?,
 
                         order_created = '1',
 
                         stop_timestamp = UNIX_TIMESTAMP()
 
-                     WHERE (id = '" . $_SESSION['software']['visitor_id'] . "') AND (order_created = '0')";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                     WHERE (id = ?) AND (order_created = '0')";
+            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $_SESSION['software']['visitor_id'])) or output_error(lang('Query failed.'));
         }
     }
 }
@@ -6501,10 +6767,10 @@ function get_price_range($product_group_id, $discounted_product_prices)
 
         WHERE
 
-            (parent_id = '" . escape($product_group_id) . "')
+            (parent_id = ?)
 
             AND (enabled = '1')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $product_group_id)) or output_error(lang('Query failed.'));
     // loop through all product groups in order to add them to array
     while ($row = mysqli_fetch_assoc($result)) {
         $product_groups[] = $row;
@@ -6545,12 +6811,12 @@ function get_price_range($product_group_id, $discounted_product_prices)
 
         WHERE
 
-            (products_groups_xref.product_group = '" . escape($product_group_id) . "')
+            (products_groups_xref.product_group = ?)
 
             AND (products.enabled = '1')
 
             AND (products.selection_type != 'donation')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $product_group_id)) or output_error(lang('Query failed.'));
     // loop through all products in order to add them to array
     while ($row = mysqli_fetch_assoc($result)) {
         $products[] = $row;
@@ -6712,64 +6978,22 @@ function send_givex_request($type, $gift_card_code, $amount = 0)
             </params>
 
         </methodCall>';
-    // initialize cURL
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://' . ECOMMERCE_GIVEX_PRIMARY_HOSTNAME . ':50042');
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        'Content-Type: text/xml'
-    ));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    pg_curl_tls($ch);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    // if there is a proxy address, then send cURL request through proxy
-    if (PROXY_ADDRESS != '') {
-        curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-        curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-        curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-    }
-    // get cURL response
-    $response_data = curl_exec($ch);
-    $curl_errno = curl_errno($ch);
-    $curl_error = curl_error($ch);
-    unset($ch);
-    // if there was a cURL error, then send the same request to the secondary Givex server
-    if ($curl_errno != 0) {
-        // initialize cURL
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://' . ECOMMERCE_GIVEX_SECONDARY_HOSTNAME . ':50042');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'Content-Type: text/xml'
+    // send the request to the primary Givex server, and to the secondary one when cURL fails on the primary
+    foreach (array(ECOMMERCE_GIVEX_PRIMARY_HOSTNAME, ECOMMERCE_GIVEX_SECONDARY_HOSTNAME) as $hostname) {
+        $response = pg_curl_run('POST', 'https://' . $hostname . ':50042', array(
+            'body' => $request,
+            'headers' => array('Content-Type: text/xml'),
+            'timeout' => 15,
+            'forbid_reuse' => true,
         ));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-        pg_curl_tls($ch);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-        curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        // if there is a proxy address, then send cURL request through proxy
-        if (PROXY_ADDRESS != '') {
-            curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-            curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-            curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-        }
-        // get cURL response
-        $response_data = curl_exec($ch);
-        $curl_errno = curl_errno($ch);
-        $curl_error = curl_error($ch);
-        unset($ch);
-        // if there was also a cURL error for the secondary Givex server, then return error
-        if ($curl_errno != 0) {
-            $result['curl_errno'] = $curl_errno;
-            $result['curl_error'] = $curl_error;
-            return $result;
+        if ($response['errno'] == 0) {
+            return pg_givex_parse_response($type, $response['body']);
         }
     }
-    return pg_givex_parse_response($type, $response_data);
+    // there was also a cURL error for the secondary Givex server, so return error
+    $result['curl_errno'] = $response['errno'];
+    $result['curl_error'] = $response['error'];
+    return $result;
 }
 // Reads a Givex reply: a list of strings, the transaction code, the result (0 for success),
 // then the balance of a balance check, or the authorization number and the new balance of a
@@ -6857,8 +7081,8 @@ function get_discounted_product_prices($for_member = true)
     $guest = pg_offer_guest_view();
     // if the visitor has an order, then get special offer code from order in database
     if (!$guest && (isset($_SESSION['ecommerce']['order_id']) == true)) {
-        $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT special_offer_code FROM orders WHERE id = ?";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $special_offer_code = $row['special_offer_code'] ?? '';
         // else the visitor does not have an order, so if there is a special offer code in the visitor's session (e.g. passed via the query string), then set special offer code
@@ -6889,12 +7113,12 @@ function get_discounted_product_prices($for_member = true)
 
             AND (CURRENT_DATE() <= offers.end_date)
 
-            AND ((offers.require_code = 0) OR (offers.code = '" . escape($offer_code) . "'))
+            AND ((offers.require_code = 0) OR (offers.code = ?))
 
             AND (offers.scope = 'order')
 
         ORDER BY offers.code ASC";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $offer_code)) or output_error(lang('Query failed.'));
     $offers = array();
     while ($row = mysqli_fetch_assoc($result)) {
         $offers[] = $row;
@@ -6966,14 +7190,14 @@ function get_discounted_product_prices($for_member = true)
 
                 WHERE
 
-                    (offers_offer_actions_xref.offer_id = '" . $offer['id'] . "')
+                    (offers_offer_actions_xref.offer_id = ?)
 
                     AND (offer_actions.type = 'discount product')
 
                     AND ((offer_actions.discount_product_product_id != '0') OR (offer_actions.discount_product_group_id != '0'))
 
                     AND ((offer_actions.discount_product_amount != 0) OR (offer_actions.discount_product_percentage != 0))";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $result = db_q($query, array((string) $offer['id'])) or output_error(lang('Query failed.'));
             $offer_actions = array();
             while ($row = mysqli_fetch_assoc($result)) {
                 $offer_actions[] = $row;
@@ -7549,12 +7773,12 @@ function check_inventory($liveform)
 
         WHERE
 
-            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+            (order_items.order_id = ?)
 
             AND (products.inventory = '1')
 
             AND (products.backorder = '0')" . pg_order_item_active_sql();
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $products = array();
     // loop through products in order to add them to array
     while ($row = mysqli_fetch_assoc($result)) {
@@ -7582,12 +7806,12 @@ function check_inventory($liveform)
 
             WHERE
 
-                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
+                (order_items.order_id = ?)" . pg_order_item_active_sql() . "
 
-                AND (order_items.product_id = '" . $product['id'] . "')
+                AND (order_items.product_id = ?)
 
             ORDER BY order_items.id ASC";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product['id'])) or output_error(lang('Query failed.'));
         $order_items = array();
         // loop through order items in order to add them to array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -7630,8 +7854,8 @@ function check_inventory($liveform)
                 // minimum quantity property below.  This is a current bug when using minimum quantity with inventory tracking enabled.
                 if ($order_item['quantity'] > $product['inventory_quantity']) {
                     $order_item['quantity'] = $product['inventory_quantity'];
-                    $query = "UPDATE order_items SET quantity = '" . $order_item['quantity'] . "' WHERE id = '" . $order_item['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $query = "UPDATE order_items SET quantity = ? WHERE id = ?";
+                    $result = db_q($query, array((string) $order_item['quantity'], (string) $order_item['id'])) or output_error(lang('Query failed.'));
                     // if there is a ship to and it is complete, then update shipping cost for ship to
                     if (($order_item['ship_to_id'] != '') && ($order_item['ship_to_complete'] == 1)) {
                         require_once(PG_FUNCTIONS_DIR . '/shipping.php');
@@ -7684,10 +7908,10 @@ function check_reservations($liveform)
 
             WHERE
 
-                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
+                (order_items.order_id = ?)" . pg_order_item_active_sql() . "
 
                 AND (order_items.calendar_event_id != '0')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
         $reservation_order_items = array();
         // loop through reservation order items in order to add them to array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -7734,8 +7958,8 @@ function check_reservations($liveform)
                     // else there are remaining spots, so if the quantity is greater than the number of remaining spots,
                     // then adjust quantity for order item and add notice
                 } else if ($reservation_order_item['quantity'] > $calendar_event['number_of_remaining_spots']) {
-                    $query = "UPDATE order_items SET quantity = '" . $calendar_event['number_of_remaining_spots'] . "' WHERE id = '" . $reservation_order_item['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $query = "UPDATE order_items SET quantity = ? WHERE id = ?";
+                    $result = db_q($query, array((string) $calendar_event['number_of_remaining_spots'], (string) $reservation_order_item['id'])) or output_error(lang('Query failed.'));
                     // if there is a ship to and it is complete, then update shipping cost for ship to
                     if (($reservation_order_item['ship_to_id'] != '') && ($reservation_order_item['ship_to_complete'] == 1)) {
                         require_once(PG_FUNCTIONS_DIR . '/shipping.php');
@@ -7785,8 +8009,8 @@ function check_for_recurring_instance_in_the_future($calendar_event_id)
 
         FROM calendar_events
 
-        WHERE id = '" . escape($calendar_event_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE id = ?";
+    $result = db_q($query, array((string) $calendar_event_id)) or output_error(lang('Query failed.'));
     $calendar_event = mysqli_fetch_assoc($result);
     $recurrence_day_sun = $calendar_event['recurrence_day_sun'];
     $recurrence_day_mon = $calendar_event['recurrence_day_mon'];
@@ -7797,8 +8021,8 @@ function check_for_recurring_instance_in_the_future($calendar_event_id)
     $recurrence_day_sat = $calendar_event['recurrence_day_sat'];
     $recurrence_month_type = $calendar_event['recurrence_month_type'];
     // get exceptions so we don't look at those instances
-    $query = "SELECT recurrence_number FROM calendar_event_exceptions WHERE calendar_event_id = '" . $calendar_event['id'] . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT recurrence_number FROM calendar_event_exceptions WHERE calendar_event_id = ?";
+    $result = db_q($query, array((string) $calendar_event['id'])) or output_error(lang('Query failed.'));
     $exceptions = array();
     // loop through exceptions in order to add them to array
     while ($row = mysqli_fetch_assoc($result)) {
@@ -7965,8 +8189,8 @@ function update_recurring_commissions()
 
                 (enabled = '1')
 
-                AND (start_date <= '" . date('Y-m-d') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (start_date <= ?)";
+        $result = db_q($query, array((string) date('Y-m-d'))) or output_error(lang('Query failed.'));
         $recurring_commission_profiles = array();
         // loop through profiles in order to add them to array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -7975,8 +8199,8 @@ function update_recurring_commissions()
         // loop through the profiles in order to create commissions
         foreach ($recurring_commission_profiles as $recurring_commission_profile) {
             // get existing commissions for this profile, so we can determine if a commission already exists
-            $query = "SELECT created_timestamp FROM commissions WHERE recurring_commission_profile_id = '" . $recurring_commission_profile['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $query = "SELECT created_timestamp FROM commissions WHERE recurring_commission_profile_id = ?";
+            $result = db_q($query, array((string) $recurring_commission_profile['id'])) or output_error(lang('Query failed.'));
             $existing_commission_dates = array();
             // loop through commissions in order to add dates to array
             while ($row = mysqli_fetch_assoc($result)) {
@@ -8051,22 +8275,22 @@ function update_recurring_commissions()
 
                         VALUES (
 
-                            '" . generate_commission_reference_code() . "',
+                            ?,
 
-                            '" . escape($recurring_commission_profile['affiliate_code']) . "',
+                            ?,
 
-                            '" . $recurring_commission_profile['order_id'] . "',
+                            ?,
 
-                            '" . $recurring_commission_profile['amount'] . "',
+                            ?,
 
                             'pending',
 
-                            '" . $recurring_commission_profile['id'] . "',
+                            ?,
 
-                            '" . strtotime($instance_start_date) . "',
+                            ?,
 
                             UNIX_TIMESTAMP())";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $result = db_q($query, array((string) generate_commission_reference_code(), (string) $recurring_commission_profile['affiliate_code'], (string) $recurring_commission_profile['order_id'], (string) $recurring_commission_profile['amount'], (string) $recurring_commission_profile['id'], (string) strtotime($instance_start_date))) or output_error(lang('Query failed.'));
                 }
             }
         }
@@ -8603,7 +8827,7 @@ function pg_assign_product_barcode($product_id, $barcode = '', $type = '')
 function duplicate_product($id)
 {
     // get original product's info
-    $result = mysqli_query(db::$con, "SELECT * FROM products WHERE id = '" . escape($id) . "'") or output_error(lang('Query failed'));
+    $result = db_q("SELECT * FROM products WHERE id = ?", array((string) $id)) or output_error(lang('Query failed'));
     $row = mysqli_fetch_assoc($result);
     $original_product_name = $row['name'];
     $product_name = get_unique_name(array(
@@ -9009,12 +9233,12 @@ function duplicate_product($id)
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
     $new_product_id = mysqli_insert_id(db::$con);
     // get allowed zones for product that we are duplicating
-    $query = "SELECT zone_id FROM products_zones_xref WHERE product_id = '" . escape($id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT zone_id FROM products_zones_xref WHERE product_id = ?";
+    $result = db_q($query, array((string) $id)) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         // insert row for allowed zone for new product
-        $query = "INSERT INTO products_zones_xref (product_id, zone_id) VALUES ($new_product_id, " . $row['zone_id'] . ")";
-        $result_2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "INSERT INTO products_zones_xref (product_id, zone_id) VALUES (?, ?)";
+        $result_2 = db_q($query, array((int) $new_product_id, (int) $row['zone_id'])) or output_error(lang('Query failed.'));
     }
     // get form fields for this product and duplicate them
     //
@@ -9022,8 +9246,8 @@ function duplicate_product($id)
     // never be picked up, and the copy is written by the explicit column list
     // below, which deliberately omits template_field_id: a duplicate is a
     // standalone product, not a variant generated from somebody's template.
-    $query = "SELECT * FROM form_fields WHERE (product_id = '" . escape($id) . "') AND (form_type = 'product')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT * FROM form_fields WHERE (product_id = ?) AND (form_type = 'product')";
+    $result = db_q($query, array((string) $id)) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         // insert row for field for new product
         $query = "INSERT INTO form_fields (
@@ -9070,50 +9294,50 @@ function duplicate_product($id)
 
             VALUES (
 
-                '" . e($row['form_type']) . "',
+                ?,
 
-                '" . $new_product_id . "',
+                ?,
 
-                '" . escape($row['name']) . "',
+                ?,
 
-                '" . escape($row['label']) . "',
+                ?,
 
-                '" . escape($row['type']) . "',
+                ?,
 
-                '" . escape($row['sort_order']) . "',
+                ?,
 
-                '" . escape($row['required']) . "',
+                ?,
 
-                '" . escape($row['information']) . "',
+                ?,
 
-                '" . escape($row['default_value']) . "',
+                ?,
 
-                '" . escape($row['use_folder_name_for_default_value']) . "',
+                ?,
 
-                '" . escape($row['size']) . "',
+                ?,
 
-                '" . escape($row['maxlength']) . "',
+                ?,
 
-                '" . escape($row['wysiwyg']) . "',
+                ?,
 
-                '" . escape($row['rows']) . "',
+                ?,
 
-                '" . escape($row['cols']) . "',
+                ?,
 
-                '" . escape($row['multiple']) . "',
+                ?,
 
-                '" . escape($row['spacing_above']) . "',
+                ?,
 
-                '" . escape($row['spacing_below']) . "',
+                ?,
 
-                '" . USER_ID . "',
+                ?,
 
                 UNIX_TIMESTAMP())";
-        $result_2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $result_2 = db_q($query, array((string) $row['form_type'], (string) $new_product_id, (string) $row['name'], (string) $row['label'], (string) $row['type'], (string) $row['sort_order'], (string) $row['required'], (string) $row['information'], (string) $row['default_value'], (string) $row['use_folder_name_for_default_value'], (string) $row['size'], (string) $row['maxlength'], (string) $row['wysiwyg'], (string) $row['rows'], (string) $row['cols'], (string) $row['multiple'], (string) $row['spacing_above'], (string) $row['spacing_below'], (string) USER_ID)) or output_error(lang('Query failed.'));
         $new_form_field_id = mysqli_insert_id(db::$con);
         // get form field options
-        $query = "SELECT * FROM form_field_options WHERE form_field_id = '" . $row['id'] . "'";
-        $result2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT * FROM form_field_options WHERE form_field_id = ?";
+        $result2 = db_q($query, array((string) $row['id'])) or output_error(lang('Query failed.'));
         $form_field_options = array();
         while ($row = mysqli_fetch_assoc($result2)) {
             $form_field_options[] = $row;
@@ -9136,18 +9360,18 @@ function duplicate_product($id)
 
                      VALUES (
 
-                        '" . $new_product_id . "',
+                        ?,
 
-                        '" . $new_form_field_id . "',
+                        ?,
 
-                        '" . escape($form_field_option['label']) . "',
+                        ?,
 
-                        '" . escape($form_field_option['value']) . "',
+                        ?,
 
-                        '" . $form_field_option['default_selected'] . "',
+                        ?,
 
-                        '" . $form_field_option['sort_order'] . "')";
-            $result2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                        ?)";
+            $result2 = db_q($query, array((string) $new_product_id, (string) $new_form_field_id, (string) $form_field_option['label'], (string) $form_field_option['value'], (string) $form_field_option['default_selected'], (string) $form_field_option['sort_order'])) or output_error(lang('Query failed.'));
         }
     }
     // Get submit form fields, in order to duplicate them.
@@ -9526,7 +9750,7 @@ function pg_key_code_list_cells($key_code, $today)
     $username = (string) ($key_code['last_modified_username'] ?? '');
 
     return array(
-        'code'          => array('class' => 'chart_label align-middle ' . (pg_key_code_active($key_code, $today) ? 'status_enabled text-success' : 'status_disabled text-danger')),
+        'code'          => array('class' => 'chart_label align-middle ' . (pg_key_code_active($key_code, $today) ? 'status_enabled fg-success' : 'status_disabled fg-danger')),
         'enabled'       => array('html' => !empty($key_code['enabled']) ? '<span class="material-icons">task_alt</span>' : '', 'class' => 'align-middle text-center'),
         'last_modified' => array(
             'html'  => get_relative_time(array('timestamp' => $key_code['last_modified_timestamp']))
@@ -10155,7 +10379,8 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
             status              = 'cancelled',
             cancelled_at        = '" . $now . "',
             cancelled_by        = '" . (int) $user_id . "',
-            cancellation_reason = '" . escape($reason_clean) . "'
+            cancellation_reason = '" . escape($reason_clean) . "',
+            " . pg_order_touch_sql() . "
          WHERE id = '" . e($order_id) . "'
            AND status <> 'cancelled'"
     );
@@ -10301,7 +10526,8 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
             "UPDATE orders SET
                 refund_status    = '" . escape($refund_status_outcome) . "',
                 refunded_at      = " . $refunded_at_sql . ",
-                refund_reference = '" . escape($refund_reference) . "'
+                refund_reference = '" . escape($refund_reference) . "',
+                " . pg_order_touch_sql() . "
              WHERE id = '" . e($order_id) . "'"
         );
     }
@@ -10430,7 +10656,7 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
         return false;
     }
 
-    db("UPDATE orders SET status = '" . $status . "' WHERE id = '" . $order_id . "' AND status = 'cancelled'");
+    db("UPDATE orders SET status = '" . $status . "', " . pg_order_touch_sql() . " WHERE id = '" . $order_id . "' AND status = 'cancelled'");
     if (mysqli_affected_rows(db::$con) < 1) {
         return false;
     }
@@ -10438,11 +10664,11 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
     // Columns are 2026.1.26 / 2026.1.27 additions, so both groups are probed.
     // A refund that went through stays on the record.
     if ($has_cancel_columns) {
-        db("UPDATE orders SET cancelled_at = NULL, cancelled_by = 0, cancellation_reason = ''
+        db("UPDATE orders SET cancelled_at = NULL, cancelled_by = 0, cancellation_reason = '', " . pg_order_touch_sql() . "
             WHERE id = '" . $order_id . "'");
     }
     if (_orders_has_refund_columns()) {
-        db("UPDATE orders SET refund_status = '', refunded_at = NULL, refund_reference = ''
+        db("UPDATE orders SET refund_status = '', refunded_at = NULL, refund_reference = '', " . pg_order_touch_sql() . "
             WHERE id = '" . $order_id . "' AND refund_status != 'refunded'");
     }
 
@@ -11572,10 +11798,11 @@ function pg_variant_price_rules_store($group_id, $rules, $base_cents)
     // Not through db(): that ends the request on a failed query, and this runs
     // after the variants have been written. Losing the copy of the rules is
     // better than a half-finished save page.
-    return (bool) @mysqli_query(db::$con,
+    return (bool) db_q(
         "UPDATE product_groups
-        SET variant_price_rules = '" . e(encode_json($rules)) . "'
-        WHERE id = '$group_id'");
+        SET variant_price_rules = ?
+        WHERE id = ?",
+        array((string) encode_json($rules), (string) $group_id));
 }
 
 
@@ -11791,4 +12018,95 @@ function pg_products_import_row_value($row, $key)
     }
 
     return (string) $row[$key];
+}
+
+/**
+ * The product that already holds a product code (products.name, the
+ * "Product ID / SKU" of the product screen), other than $except_id; null
+ * while the code is free. Compared by the column's collation, as the external
+ * API compares it (api_products_name_or_fail()): a case difference is the
+ * same code. A product in the Recycle Bin still holds its code, since
+ * restoring it brings the code back.
+ *
+ * @param string $name
+ * @param int    $except_id the product being edited
+ * @return array|null id, name, short_description, recycled ('0' or '1')
+ */
+function pg_product_name_holder($name, $except_id = 0)
+{
+    $name = trim((string) $name);
+
+    if ($name === '') {
+        return null;
+    }
+
+    $holder = db_item(
+        "SELECT id, name, short_description, " . (pg_catalog_bin_ready() ? "recycled" : "'0' AS recycled") . "
+        FROM products
+        WHERE (name = '" . e($name) . "')" . (((int) $except_id > 0) ? " AND (id != '" . e((int) $except_id) . "')" : '') . "
+        LIMIT 1");
+
+    return $holder ? $holder : null;
+}
+
+/**
+ * The first code written twice among $names, compared case aside as the
+ * catalogue compares them; '' when every code is different. Empty rows are
+ * not codes.
+ *
+ * @param array $names
+ * @return string
+ */
+function pg_product_names_repeated($names)
+{
+    $seen = array();
+
+    foreach ($names as $name) {
+        $name = trim((string) $name);
+
+        if ($name === '') {
+            continue;
+        }
+
+        $key = mb_strtolower($name, 'UTF-8');
+
+        if (isset($seen[$key])) {
+            return $name;
+        }
+
+        $seen[$key] = true;
+    }
+
+    return '';
+}
+
+/**
+ * What the product screen says about a code another product holds: the code
+ * and the product, by its title, else by its number. With $html the values
+ * are escaped for a page.
+ *
+ * @param string $name   the code as typed
+ * @param array  $holder pg_product_name_holder()
+ * @param bool   $html
+ * @return string
+ */
+function pg_product_name_taken_text($name, $holder, $html = false)
+{
+    $label = trim((string) $holder['short_description']);
+
+    if ($label === '') {
+        $label = '#' . (int) $holder['id'];
+    }
+
+    $vars = array((string) $name, $label);
+
+    if ($html) {
+        $vars = array_map('h', $vars);
+    }
+
+    return lang(array(
+        'string' => !empty($holder['recycled'])
+            ? 'The product code {var:1} is already used by {var:2}, which is in the Recycle Bin. Restore it and change its code, or delete it for good.'
+            : 'The product code {var:1} is already used by {var:2}.',
+        'vars' => $vars));
 }

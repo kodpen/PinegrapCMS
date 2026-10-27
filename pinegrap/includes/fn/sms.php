@@ -17,7 +17,8 @@
  * later needs no schema change.
  *
  * Every message has a kind. Transactional kinds (an order, a shipment, a
- * sign-in code, a reminder) go out as informational messages; a commercial
+ * sign-in code, a reminder, the one back-in-stock notice a customer asked
+ * for) go out as informational messages; a commercial
  * one needs the recipient's consent recorded in İYS, and until the consent
  * records exist pg_sms_send() refuses it.
  *
@@ -163,6 +164,7 @@ function pg_sms_kinds()
         'shipping'  => false,
         'otp'       => false,
         'reminder'  => false,
+        'stock'     => false,
         'marketing' => true,
     );
 }
@@ -343,6 +345,34 @@ function pg_sms_driver($provider)
 }
 
 /**
+ * Whether a provider can text a number. A driver names the numbers it takes
+ * with pg_sms_<key>_number() ('' for one it does not take): Netgsm takes
+ * Turkish mobile numbers only, its international sending being a separate
+ * permission on the account. A number kept for a message sent later (a
+ * back-in-stock request) is asked about first: queued as it is, it would be
+ * refused only when the general job sends it. A driver without that function
+ * takes every number pg_sms_number() reads.
+ *
+ * @param string $number   E.164 digits, as pg_sms_number() gives them
+ * @param string $provider a pg_sms_providers() key: pg_sms_provider() for the
+ *                         one messages go through, '' when SMS is not set up
+ * @return bool false without a provider
+ */
+function pg_sms_reachable($number, $provider)
+{
+    $number = (string) $number;
+
+    // Only the stored form: digits that pg_sms_dial() reads back unchanged.
+    if (($number === '') || (pg_sms_number(pg_sms_dial($number)) !== $number) || !pg_sms_driver((string) $provider)) {
+        return false;
+    }
+
+    $rule = 'pg_sms_' . $provider . '_number';
+
+    return !function_exists($rule) || ($rule($number) !== '');
+}
+
+/**
  * Sends one message.
  *
  * @param string $to   a mobile number in any form pg_sms_number() reads
@@ -441,9 +471,9 @@ function pg_sms_sender_match($sender, $senders, $user = '')
 
 /**
  * A driver's HTTP call. The provider's address is fixed in its driver, never
- * typed by anyone, so this is a plain cURL call with the certificate checks
- * the carriers and the update channel use (pg_curl_tls()); a redirect is not
- * followed. The cURL error number, a proxy's answer to the tunnel and the
+ * typed by anyone, so this is a fixed-host call (pg_curl_run()) with the
+ * certificate checks the carriers and the update channel use; a redirect is
+ * not followed. The cURL error number, a proxy's answer to the tunnel and the
  * bytes of the request that went out tell a caller whether the request can
  * have reached the provider (pg_sms_http_never_sent()).
  *
@@ -464,44 +494,31 @@ function pg_sms_http($method, $request)
         return array('status' => 0, 'body' => '', 'error' => lang('cURL is not available on this server.'), 'errno' => 2, 'connect' => 0, 'request_size' => 0);
     }
 
-    $handle = curl_init((string) $request['url']);
-
-    curl_setopt($handle, CURLOPT_CUSTOMREQUEST, (string) $method);
-    curl_setopt($handle, CURLOPT_HTTPHEADER, (array) $request['headers']);
-    curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($handle, CURLOPT_FOLLOWLOCATION, false);
-    curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($handle, CURLOPT_TIMEOUT, 20);
-    curl_setopt($handle, CURLOPT_USERAGENT, 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (+sms)');
-    pg_curl_tls($handle);
+    $options = array(
+        'headers'         => (array) $request['headers'],
+        'timeout'         => 20,
+        'connect_timeout' => 10,
+        'user_agent'      => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (+sms)',
+    );
 
     if (isset($request['body']) && ((string) $request['body'] !== '')) {
-        curl_setopt($handle, CURLOPT_POSTFIELDS, (string) $request['body']);
+        $options['body'] = (string) $request['body'];
     }
 
-    $body = curl_exec($handle);
-    $errno = (int) curl_errno($handle);
-    $error = curl_error($handle);
-    $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
-    $connect = (int) curl_getinfo($handle, CURLINFO_HTTP_CONNECTCODE);
-    $request_size = (int) curl_getinfo($handle, CURLINFO_REQUEST_SIZE);
+    $answer = pg_curl_run((string) $method, (string) $request['url'], $options);
 
-    // The handle is freed with the variable; curl_close() does nothing since
-    // PHP 8.0 and is deprecated in 8.5.
-    unset($handle);
-
-    if ($errno !== 0) {
+    if ($answer['errno'] !== 0) {
         return array(
             'status'  => 0,
             'body'    => '',
-            'error'   => trim($error . pg_curl_tls_hint($errno)),
-            'errno'   => $errno,
-            'connect' => $connect,
-            'request_size' => $request_size,
+            'error'   => trim($answer['error'] . pg_curl_tls_hint($answer['errno'])),
+            'errno'   => $answer['errno'],
+            'connect' => $answer['connect'],
+            'request_size' => $answer['request_size'],
         );
     }
 
-    return array('status' => $status, 'body' => (string) $body, 'error' => '', 'errno' => 0, 'connect' => $connect, 'request_size' => $request_size);
+    return array('status' => $answer['status'], 'body' => $answer['body'], 'error' => '', 'errno' => 0, 'connect' => $answer['connect'], 'request_size' => $answer['request_size']);
 }
 
 /**
@@ -1080,24 +1097,24 @@ function pg_sms_settings_fields()
 
     $html = '
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox" name="sms_enabled" id="sms_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="form-check-input collapse-switcher" data-bs-target="#sms_row"/>
-                                                <label class="form-check-label" for="sms_enabled">' . lang('Send SMS') . '<br/><span class="form-text">' . lang('Text messages through an SMS provider account of the site. Only transactional messages are sent and they carry no promotion: a marketing message needs the recipient\'s consent recorded in İYS.') . '</span></label>
+                                            <div class="form-field">
+                                                <div class="switch"><input type="checkbox" name="sms_enabled" id="sms_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#sms_row"/></div>
+                                                <label class="" for="sms_enabled">' . lang('Send SMS') . '<br/><span class="form-text">' . lang('Text messages through an SMS provider account of the site. Only transactional messages are sent and they carry no promotion: a marketing message needs the recipient\'s consent recorded in İYS.') . '</span></label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0" id="sms_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
-                                                   <div class="row gy-3">';
+                                                   <div class="row gy-5">';
 
     if ($warning !== '') {
         $html .= '
-                                                        <div class="col-12"><div class="alert alert-warning mb-0">' . h($warning) . '</div></div>';
+                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . h($warning) . '</div></div>';
     }
 
     $html .= '
                                                         <div class="pg-f-md">
                                                             <label for="sms_provider" class="form-label">' . lang('Provider') . '</label>
-                                                            <select name="sms_provider" id="sms_provider" class="form-select">' . $options . '</select>
+                                                            <select name="sms_provider" id="sms_provider" class="form-control">' . $options . '</select>
                                                         </div>';
 
     foreach (pg_sms_providers() as $key => $definition) {
@@ -1118,7 +1135,7 @@ function pg_sms_settings_fields()
                                                             <div class="form-text">' . lang('A mobile number. The message goes out at once and the provider charges it.') . '</div>
                                                         </div>
                                                         <div class="col-12">
-                                                            <button type="submit" name="sms_test" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Save and send a test message') . '</button>
+                                                            <button type="submit" name="sms_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Save and send a test message') . '</button>
                                                         </div>
                                                     </div>
                                                 </div>

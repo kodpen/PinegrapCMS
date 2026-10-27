@@ -13,8 +13,8 @@ description: ERP sales quotes (4.92) and their signature (8.58): own table, numb
 - Status changes go through `erp_quote_status_refusal()`, shared by the screen and the API.
 
 ## How is it printed and invoiced?
-- With the invoice template: `erp_invoice_document_data(0, erp_quote_document_source($quote))` (title QUOTE, the account as it reads today: no snapshot is kept on a quote).
-- Into an invoice only through `erp_quote_to_invoice()`: an `erp_invoice_draft_save()` draft dated today at the prices quoted, notes "Quote <number>", event `erp.quote.invoiced`; the draft is issued the usual way.
+- With the invoice template: `erp_invoice_document_data(0, erp_quote_document_source($quote))` (title QUOTE, the account as it reads today).
+- Into an invoice only through `erp_quote_to_invoice()` (state rule `erp_quote_invoice_refusal()`): an `erp_invoice_draft_save()` draft dated today at the prices quoted, notes "Quote <number>", event `erp.quote.invoiced`; the draft is issued the usual way.
 - The invoice names its quote in `erp_invoices.quote_id` (8.58), written only when the key is given (`array_key_exists`). `erp_quotes.invoice_id`, the other way, is cleared when the quote is opened again.
 
 ## How does the signature work? (`includes/erp/signatures.php`, 2026.4.8 step 8.58)
@@ -23,11 +23,11 @@ description: ERP sales quotes (4.92) and their signature (8.58): own table, numb
 - An ordinary electronic signature, not a qualified one.
 
 ## When is a quote about to run out announced?
-- Hourly, once per quote (`erp_quotes.expiry_notified_at`): erp-alerts.md.
+- Hourly, once per quote (`erp_quotes.expiry_notified_at`), with an optional follow-up: erp-alerts.md.
 
 ## How is a quote tagged in the Workspace?
 - Tag kind `erp_quote`, "Sales quote" / "Satış teklifi" (never a bare "quote": an Offer is "Teklif", a quoted message "Alıntı"); `#satis` or `#salesquote` picks it, Offer keeps `#teklif`. Shown with the ERP right (`manage_erp`), as the quote screens; read over the API and by the assistants with `erp:read`.
-- The chip: number, account, total in the quote's own currency (`erp_money_out_currency()`, as the quote screens; `ws_money_out()` would print the visitor's currency), state (`erp_quote_state()`); it opens edit_erp_quote.php, which draws the Workspace button. refs.php loads quotes.php and money.php alone (`ws_erp_quotes_readable()`), not the bootstrap. The invoice chip still prints through `ws_money_out()`.
+- The chip: number, account, total in the quote's own currency (`erp_money_out_currency()`; `ws_money_out()` would print the visitor's currency), state (`erp_quote_state()`); it opens edit_erp_quote.php, which draws the Workspace button. refs.php loads quotes.php and money.php alone (`ws_erp_quotes_readable()`), not the bootstrap. The invoice chip still prints through `ws_money_out()`.
 - Its menu's "Copy as a new sales quote" opens add_erp_quote.php `?copy=<id>`, offered to whoever may write ERP documents (not `manage_erp_readonly`).
-- The Workspace adds a quote only from a change card the person applies (kind `erp_quote`, #1705), through `erp_quote_save()`; it changes, sends or invoices none: workspace/workspace-sales-quote-change.md.
+- The Workspace adds a quote (kind `erp_quote`, #1705) or invoices one (action `invoice`, #1907) only from a change card the person applies; it changes or sends none: workspace/workspace-sales-quote-change.md.
 - A channel's menu offers the same people "New sales quote", `?account_id=` on its customer's account: workspace/workspace-new-sales-quote.md.

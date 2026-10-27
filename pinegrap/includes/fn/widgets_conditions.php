@@ -15,6 +15,8 @@
 // A node is drawn only when a value passes a test:
 //   props._bindings.show_if   = '__discount_percent'   (the token, like any binding)
 //   props._bindParams.show_if = {op: 'gt', value: '0'} (missing: not_empty)
+// It may carry two more (show_if_2, show_if_3 in the same two maps), joined
+// by _bindParams.show_if.join: 'any' (one is enough) or 'all' (missing).
 // _render_tree_node() wraps such a node in markers while a widget renders,
 // and the finish pass (widgets_finish.php) keeps or cuts it by the value the
 // renderer filled in. Everything here is pure: the spec, the reading of a
@@ -44,26 +46,45 @@ function pg_sw_cond_ops()
     );
 }
 
-// A node's condition: null when it has none, false when it has one that
-// cannot be evaluated (the node is then drawn nowhere), otherwise
-// array('token' => ..., 'op' => ..., 'operand' => ...). The token is
-// sanitised the way _apply_bindings() sanitises every bound field, so the
-// carrier asks the renderer for the same value a text binding would get.
-function pg_sw_cond_spec($props)
+// The names a node's conditions are stored under, in order: the first is
+// the one every saved page had before an element could carry several.
+function pg_sw_cond_names()
+{
+    return array('show_if', 'show_if_2', 'show_if_3');
+}
+
+// Whether $props names a condition under any of pg_sw_cond_names(), set or
+// empty.
+function pg_sw_cond_present($props)
+{
+    if (!is_array($props) || !isset($props['_bindings']) || !is_array($props['_bindings'])) return false;
+    foreach (pg_sw_cond_names() as $name) {
+        if (array_key_exists($name, $props['_bindings'])) return true;
+    }
+    return false;
+}
+
+// A node's condition stored under $name (pg_sw_cond_names()): null when
+// it has none, false when it has one that cannot be evaluated (the node is
+// then drawn nowhere), otherwise array('token' => ..., 'op' => ...,
+// 'operand' => ...). The token is sanitised the way _apply_bindings()
+// sanitises every bound field, so the carrier asks the renderer for the
+// same value a text binding would get.
+function pg_sw_cond_spec($props, $name = 'show_if')
 {
     if (!is_array($props) || !isset($props['_bindings']) || !is_array($props['_bindings'])) return null;
-    if (!array_key_exists('show_if', $props['_bindings'])) return null;
+    if (!array_key_exists($name, $props['_bindings'])) return null;
 
     // An empty binding is no binding, as in _apply_bindings().
-    $raw = $props['_bindings']['show_if'];
+    $raw = $props['_bindings'][$name];
     if ($raw === null || $raw === '' || $raw === false) return null;
     if (!is_string($raw)) return false;
 
     $token = preg_replace('/[^a-z0-9_\-]/i', '', $raw);
     if ($token === '' || !pg_sw_cond_token_allowed($token)) return false;
 
-    $params = (isset($props['_bindParams']['show_if']) && is_array($props['_bindParams']['show_if']))
-        ? $props['_bindParams']['show_if'] : array();
+    $params = (isset($props['_bindParams'][$name]) && is_array($props['_bindParams'][$name]))
+        ? $props['_bindParams'][$name] : array();
 
     $op = 'not_empty';
     if (isset($params['op']) && $params['op'] !== '') {
@@ -83,6 +104,47 @@ function pg_sw_cond_spec($props)
     return array('token' => $token, 'op' => $op, 'operand' => $operand);
 }
 
+// Every condition of a node: null when it has none, false when one of them
+// cannot be evaluated, or a join the node does not know, or a later one
+// stands without the first (the node is then drawn nowhere), otherwise
+// array('join' => 'all' | 'any', 'conds' => list of pg_sw_cond_spec()).
+// The join is read from the first condition's params: 'any' draws the node
+// when one condition holds, 'all' (or none) when every one does.
+function pg_sw_cond_specs($props)
+{
+    $conds = array();
+    foreach (pg_sw_cond_names() as $i => $name) {
+        $spec = pg_sw_cond_spec($props, $name);
+        if ($spec === false) return false;
+        if ($spec !== null) $conds[$i] = $spec;
+    }
+    if (!$conds) return null;
+    if (!isset($conds[0])) return false;
+    $conds = array_values($conds);
+
+    $join = 'all';
+    if (isset($props['_bindParams']['show_if']['join'])) {
+        $join = $props['_bindParams']['show_if']['join'];
+        if ($join === '' || $join === null) $join = 'all';
+        if ($join !== 'all' && $join !== 'any') return false;
+    }
+    return array('join' => $join, 'conds' => $conds);
+}
+
+// The joined test: $tests is a list of array(op, value, operand), each
+// tested by pg_sw_cond_eval(); 'any' holds when one holds, 'all' (any
+// other join) when every one does. No tests hold.
+function pg_sw_cond_eval_all($join, $tests)
+{
+    if (!is_array($tests) || !$tests) return true;
+    foreach ($tests as $t) {
+        $ok = pg_sw_cond_eval($t[0], $t[1], $t[2]);
+        if ($join === 'any' && $ok) return true;
+        if ($join !== 'any' && !$ok) return false;
+    }
+    return $join !== 'any';
+}
+
 // The tokens a condition may not read. A carrier repeats its token in the
 // template, so:
 //   - a token a renderer looks for in the template to decide whether the
@@ -100,7 +162,6 @@ function pg_sw_cond_denied_tokens()
 {
     return array(
         '__variant_picker',
-        '__filter_chips',
         '__filters_button',
         '__filters_offcanvas',
         '__clear_filters_button',
@@ -132,11 +193,13 @@ function pg_sw_cond_tree_json($tree)
 // Takes the condition out of $node and every node under it.
 function _pg_sw_cond_drop_conditions(&$node)
 {
-    if (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) {
-        unset($node['props']['_bindings']['show_if']);
-    }
-    if (isset($node['props']['_bindParams']) && is_array($node['props']['_bindParams'])) {
-        unset($node['props']['_bindParams']['show_if']);
+    foreach (pg_sw_cond_names() as $name) {
+        if (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) {
+            unset($node['props']['_bindings'][$name]);
+        }
+        if (isset($node['props']['_bindParams']) && is_array($node['props']['_bindParams'])) {
+            unset($node['props']['_bindParams'][$name]);
+        }
     }
     if (isset($node['children']) && is_array($node['children'])) {
         foreach ($node['children'] as $i => $child) {
@@ -168,16 +231,17 @@ function pg_sw_cond_holds_required($node)
     return false;
 }
 
-// Whether a condition's compared text is words a site translation should
-// carry: an operator that compares text, and a value that is not a number
-// or an amount (pg_sw_cond_is_number()). Numbers read the same in every
+// Whether the compared text of the condition stored under $name
+// (pg_sw_cond_names()) is words a site translation should carry: an
+// operator that compares text, and a value that is not a number or an
+// amount (pg_sw_cond_is_number()). Numbers read the same in every
 // language, and so do the codes of pg_sw_cond_code_tokens().
-function pg_sw_cond_operand_is_words($props)
+function pg_sw_cond_operand_is_words($props, $name = 'show_if')
 {
-    if (!is_array($props) || empty($props['_bindings']['show_if'])) return false;
-    if (in_array(strtolower((string)$props['_bindings']['show_if']), pg_sw_cond_code_tokens(), true)) return false;
-    $params = (isset($props['_bindParams']['show_if']) && is_array($props['_bindParams']['show_if']))
-        ? $props['_bindParams']['show_if'] : array();
+    if (!is_array($props) || empty($props['_bindings'][$name]) || !is_string($props['_bindings'][$name])) return false;
+    if (in_array(strtolower($props['_bindings'][$name]), pg_sw_cond_code_tokens(), true)) return false;
+    $params = (isset($props['_bindParams'][$name]) && is_array($props['_bindParams'][$name]))
+        ? $props['_bindParams'][$name] : array();
     $op = isset($params['op']) ? (string)$params['op'] : '';
     if (!in_array($op, array('eq', 'neq', 'contains', 'not_contains', 'starts'), true)) return false;
     $value = (isset($params['value']) && is_string($params['value'])) ? trim($params['value']) : '';
@@ -185,12 +249,13 @@ function pg_sw_cond_operand_is_words($props)
 }
 
 // Tokens whose value is a fixed code, the same in every language: the order
-// view's default parts compare them (created, paid, complete, pending...).
-// A translated compared text would never match the code, and the status badge
-// and the timeline icons would not draw on that language.
+// view's default parts compare them (created, paid, complete, pending...),
+// the catalog breadcrumb part its crumb's kind (link, text, active). A
+// translated compared text would never match the code, and the status badge,
+// the timeline icons and the crumbs would not draw on that language.
 function pg_sw_cond_code_tokens()
 {
-    return array('__step_kind', '__order_status_stage');
+    return array('__step_kind', '__order_status_stage', '__crumb_kind');
 }
 
 // Whether a condition may read $token (see pg_sw_cond_denied_tokens()).

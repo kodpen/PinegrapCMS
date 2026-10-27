@@ -30,8 +30,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM states WHERE id = '" . $i
 
 if (!$_POST) {
     // get state data
-    $query = "SELECT * FROM states WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT * FROM states WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $name = h($row['name']);
@@ -57,24 +57,24 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('State'))) . '</label>
                                             <input value="' . $name . '" name="name" id="name" type="text" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="code" class="form-label">' . lang('State Code') . '</label>
                                             <input value="' . $code . '" name="code" id="code" type="text" class="form-control" maxlength="50" />
                                             <div class="text-end form-text">' . lang('New State/Province Code for Order Reporting') . '</div>
                                         </div>
-                                        <div class="col-12 col-md-12 col-lg-4 my-2">
+                                        <div class="col-12 md:col-12 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Country') . '</label>
-                                            <select name="country_id" id="country_id"  class="form-select">' .  select_country($country_id) . '</select>
+                                            <select name="country_id" id="country_id"  class="form-control">' .  select_country($country_id) . '</select>
                                         </div>
                                     </div>
                                 </div>
@@ -82,11 +82,11 @@ if (!$_POST) {
                         </div>
                     </div>
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('state')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('state')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -105,33 +105,33 @@ if (!$_POST) {
     // if state was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete state
-        $query = "DELETE FROM states WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM states WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete state references in zones_states_xref
-        $query = "DELETE FROM zones_states_xref WHERE state_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM zones_states_xref WHERE state_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete state references in tax_zones_states_xref
-        $query = "DELETE FROM tax_zones_states_xref WHERE state_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM tax_zones_states_xref WHERE state_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete verified shipping addresses for this state
-        $query = "DELETE FROM verified_shipping_addresses WHERE state_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM verified_shipping_addresses WHERE state_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('state'), $_POST['name']) )), $_SESSION['sessionusername']);
 
     // else state was not selected for delete
     } else {
         // update state
         $query = "UPDATE states SET
-                    name = '" . escape($_POST['name'] ?? '') . "',
-                    code = '" . escape($_POST['code'] ?? '') . "',
-                    country_id = '" . escape($_POST['country_id'] ?? '') . "',
-                    user = '" . $user['id'] . "',
+                    name = ?,
+                    code = ?,
+                    country_id = ?,
+                    user = ?,
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['code'] ?? ''), (string) ($_POST['country_id'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('state'), $_POST['name']) )), $_SESSION['sessionusername']);
 
     }

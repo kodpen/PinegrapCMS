@@ -339,3 +339,104 @@ function test_consent_insert_needs_a_whole_page()
 	pg_assert_contains('id="pg-cc"', $result, 'notice');
 	pg_assert_false(strpos($result, 'data-pg-consent-mode') !== false, 'no default without a head');
 }
+
+// Only a value the notice's script writes is an answer: version 1, known
+// letters, each at most once.
+function test_consent_answer_valid_is_strict()
+{
+	foreach (array('1', '1.a1', '1.m0', '1.a1.m0', '1.m1.a0') as $raw) {
+		pg_assert_true(pg_consent_answer_valid($raw), $raw);
+	}
+
+	foreach (array('', '2.a1', 'a1', '1.', '1.x1', '1.a2', '1.a1.a0', '1.a1.m0.', '1.A1', " 1.a1", null, array('1.a1'), 1) as $raw) {
+		pg_assert_false(pg_consent_answer_valid($raw), var_export($raw, true));
+	}
+}
+
+// One row per category whose answer differs from the cookie before it.
+function test_consent_answer_changes_lists_what_changed()
+{
+	pg_assert_same(
+		array(
+			array('channel' => 'cookie', 'purpose' => 'analytics', 'status' => 'granted'),
+			array('channel' => 'cookie', 'purpose' => 'marketing', 'status' => 'granted'),
+		),
+		pg_consent_answer_changes('', '1.a1.m1'),
+		'first answer, accept all'
+	);
+
+	pg_assert_same(
+		array(array('channel' => 'cookie', 'purpose' => 'marketing', 'status' => 'refused')),
+		pg_consent_answer_changes('1.a1.m1', '1.a1.m0'),
+		'marketing withdrawn'
+	);
+
+	pg_assert_same(
+		array(array('channel' => 'cookie', 'purpose' => 'analytics', 'status' => 'refused')),
+		pg_consent_answer_changes('garbage', '1.a0'),
+		'an unreadable cookie before counts as no answer'
+	);
+
+	pg_assert_same(array(), pg_consent_answer_changes('1.a1.m0', '1.m0.a1'), 'same answer, other order');
+	pg_assert_same(array(), pg_consent_answer_changes('', '1'), 'nothing optional to answer');
+	pg_assert_same(array(), pg_consent_answer_changes('1.a1.m1', '1.a1'), 'a category not in the answer is not a change');
+}
+
+// An answer the script could not have written records nothing.
+function test_consent_answer_changes_refuses_a_malformed_answer()
+{
+	foreach (array('', '1.a1.a0', '1.z1', '2.a1', null) as $raw) {
+		pg_assert_same(null, pg_consent_answer_changes('', $raw), var_export($raw, true));
+	}
+
+	// Longer than any value the script writes: refused before it is split.
+	pg_assert_same(null, pg_consent_answer_changes(str_repeat('1.a1', 9), '1.a1'), 'long value before');
+	pg_assert_same(null, pg_consent_answer_changes(str_repeat('1.a1', 8 * 1024 * 1024 / 4), '1.a1'), 'very long value before');
+	pg_assert_false(pg_consent_answer_valid('1' . str_repeat('.a1', 11)), 'long answer');
+	pg_assert_same(array(), pg_consent_answer_changes('1.a1.m1', '1.a1.m1'), 'a value at the usual length');
+}
+
+// The endpoint takes posts from the site's own pages only: Sec-Fetch-Site
+// when the browser sends it, otherwise the Origin against the host.
+function test_consent_answer_same_origin()
+{
+	pg_assert_true(pg_consent_answer_same_origin(array('HTTP_SEC_FETCH_SITE' => 'same-origin', 'HTTP_HOST' => 'example.com')), 'fetch metadata');
+	pg_assert_false(pg_consent_answer_same_origin(array('HTTP_SEC_FETCH_SITE' => 'cross-site', 'HTTP_ORIGIN' => 'https://example.com', 'HTTP_HOST' => 'example.com')), 'cross-site wins over a matching origin');
+	pg_assert_false(pg_consent_answer_same_origin(array('HTTP_SEC_FETCH_SITE' => 'same-site', 'HTTP_HOST' => 'example.com')), 'a sibling subdomain');
+	pg_assert_true(pg_consent_answer_same_origin(array('HTTP_ORIGIN' => 'https://Example.com', 'HTTP_HOST' => 'example.com')), 'origin, host case');
+	pg_assert_true(pg_consent_answer_same_origin(array('HTTP_ORIGIN' => 'http://example.com:8080', 'HTTP_HOST' => 'example.com:8080')), 'origin with a port');
+	pg_assert_false(pg_consent_answer_same_origin(array('HTTP_ORIGIN' => 'https://evil.test', 'HTTP_HOST' => 'example.com')), 'other origin');
+	pg_assert_false(pg_consent_answer_same_origin(array('HTTP_ORIGIN' => 'https://example.com.evil.test', 'HTTP_HOST' => 'example.com')), 'suffix');
+	pg_assert_false(pg_consent_answer_same_origin(array('HTTP_ORIGIN' => 'null', 'HTTP_HOST' => 'example.com')), 'opaque origin');
+	pg_assert_false(pg_consent_answer_same_origin(array('HTTP_HOST' => 'example.com')), 'neither header');
+	pg_assert_false(pg_consent_answer_same_origin(array('HTTP_ORIGIN' => 'https://example.com')), 'no host');
+}
+
+// The notice names the endpoint only when it has something to ask, and the
+// script sends the answer from decide(), never from the stored-answer path.
+function test_consent_notice_names_the_answer_endpoint()
+{
+	pg_assert_contains('/consent_answer.php"', pg_consent_markup(consent_test_page_with_categories()), 'with categories');
+	pg_assert_contains(' data-log="', pg_consent_markup(consent_test_page_with_categories()), 'attribute');
+	pg_assert_false(strpos(pg_consent_markup('<html><head></head><body></body></html>'), 'data-log=') !== false, 'nothing to ask');
+
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_consent.js');
+	$decide = substr($script, strpos($script, 'function decide('), 600);
+
+	pg_assert_contains('report(', $decide, 'decide reports');
+	pg_assert_same(2, substr_count($script, 'report('), 'one definition, one call');
+}
+
+// The endpoint counts per address before it writes and reads the signed-in
+// user from initialize_user(), not from the session's user name.
+function test_consent_answer_endpoint_throttles_before_writing()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/consent_answer.php');
+	$throttle = strpos($source, 'pg_consent_answer_throttled()');
+
+	pg_assert_true($throttle !== false, 'throttled');
+	pg_assert_true($throttle < strpos($source, 'pg_consent_log_record('), 'before the write');
+	pg_assert_contains('429', $source, 'refused with 429');
+	pg_assert_contains('USER_EMAIL_ADDRESS', $source, 'user from initialize_user()');
+	pg_assert_false(strpos($source, 'sessionusername') !== false, 'no lookup by user name');
+}

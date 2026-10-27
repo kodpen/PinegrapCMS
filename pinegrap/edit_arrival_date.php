@@ -34,8 +34,8 @@ $liveform = new liveform('edit_arrival_date');
 
 if (!$_POST) {
     // get arrival date data
-    $query = "SELECT * FROM arrival_dates WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT * FROM arrival_dates WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $name = h($row['name']);
@@ -90,9 +90,9 @@ if (!$_POST) {
             shipping_method_id,
             date_and_time
         FROM shipping_cutoffs
-        WHERE arrival_date_id = '" . escape($_GET['id']) . "'
+        WHERE arrival_date_id = ?
         ORDER BY id ASC";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
     $shipping_cutoffs = array();
 
@@ -177,23 +177,23 @@ if (!$_POST) {
                     <input type="hidden" id="last_shipping_cutoff_number" name="last_shipping_cutoff_number" value="0" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Preview Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Arrival Date'))) . '</label>
                                             <input value="' . $name . '" type="text" name="name"  id="name" maxlength="50" class="form-control" />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Arrival Date Code') . '</label>
                                             <input value="' . $code . '" type="text" name="code"  id="code" maxlength="50" class="form-control" />
                                             <div class="form-text text-end">' . lang('Arrival Date Code for Order Reporting') . '</div>
                                         </div>
-                                        <div class="col-12 col-sm-4  my-2">
+                                        <div class="col-12 sm:col-4  my-3">
                                             <label for="sort_order" class="form-label">' . lang('Sorting') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button">remove</button>
@@ -201,7 +201,7 @@ if (!$_POST) {
                                                 <button class="btn material-icons plus border border-start-0" type="button">add</button>
                                             </div>
                                         </div>
-                                        <div class="col-12  col-sm-8 col-lg-12 my-2">
+                                        <div class="col-12  sm:col-8 lg:col-12 my-3">
                                             <label for="description" class="form-label">' . lang(array('string'=>'{var:1} Description','vars'=>lang('Arrival Date'))) . '</label>
                                             <input value="' . $description . '" type="text" name="description" id="description" maxlength="255" class="form-control" />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
@@ -211,31 +211,31 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Arrival Date Availability') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="status" name="status" value="1"' . $status_enabled_checked . ' />
-                                                <label class="form-check-label" for="status">' . lang('Enable this Arrival Date') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="status" name="status" value="1"' . $status_enabled_checked . ' /></div>
+                                                <label class="" for="status">' . lang('Enable this Arrival Date') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="default_selected" name="default_selected" value="1"' . $default_selected_checked . ' />
-                                                <label class="form-check-label" for="default_selected">' . lang('Selected by Default') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="default_selected" name="default_selected" value="1"' . $default_selected_checked . ' /></div>
+                                                <label class="" for="default_selected">' . lang('Selected by Default') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-lg-8 my-3">
+                                        <div class="col-12 lg:col-8 my-5">
                                             <div class="row">
-                                                <div class="col-12 col-md">
+                                                <div class="col-12 md:col">
                                                     <label for="start_date" class="form-label">' . lang('Start Date') . '</label>
                                                     <input value="' . $start_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                                 </div>
-                                                <div class="col-12 col-md">
+                                                <div class="col-12 md:col">
                                                     <label for="end_date" class="form-label">' . lang('End Date') . '</label>
                                                     <input value="' . $end_date . '" type="text" name="end_date" id="end_date" class="form-control " maxlength="10" autocomplete="off" data-pg-date/>
                                                 </div>
@@ -246,25 +246,25 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Arrival Date Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-4">
+                                        <div class="col-12 md:col-4">
                                             <label for="arrival_date" class="form-label">' . lang('Arrival Date') . '</label>
                                             <input value="' . $arrival_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                         </div>
-                                        <div class="col-12 mt-4">
+                                        <div class="col-12 mt-7">
                                             <h5>' . lang('Or allow Customer to enter this Arrival Date during checkout') . '</h5>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                    <input value="1"' . $custom_checked . ' id="custom" name="custom" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#custom_row" onclick="show_or_hide_custom()"/>
-                                                    <label class="form-check-label" for="custom">' . lang('Display Custom Field') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                    <div class="switch"><input value="1"' . $custom_checked . ' id="custom" name="custom" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#custom_row" onclick="show_or_hide_custom()"/></div>
+                                                    <label class="" for="custom">' . lang('Display Custom Field') . '</label>
                                                 </div>
-                                                <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="custom_row">
+                                                <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="custom_row">
                                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                     <div class="popover-body">
                                                         <div class="row">
@@ -278,12 +278,12 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2" id="shipping_cutoff_heading_row" style="' . $shipping_cutoff_heading_row_style . '">
-                                            <h4 class="fw-bold text-muted">' . lang('Shipping Cut-offs') . '</h4>
+                                        <div class="col-12 my-3" id="shipping_cutoff_heading_row" style="' . $shipping_cutoff_heading_row_style . '">
+                                            <h4 class="fw-bold fg-secondary">' . lang('Shipping Cut-offs') . '</h4>
                                         </div>
                                         <div id="shipping_cutoff_row" style="' . $shipping_cutoff_row_style . '">
                                             <div>
-                                                <a href="javascript:void(0)" onclick="create_shipping_cutoff()" class="button btn btn-primary">' . lang('Add Shipping Cut-off') . '</a>
+                                                <a href="javascript:void(0)" onclick="create_shipping_cutoff()" class="button btn btn-solid theme-primary">' . lang('Add Shipping Cut-off') . '</a>
                                             </div>
                                             <div class="table-responsive" >
                                                 <table id="shipping_cutoff_table" style="display: none;" class="chart_no_hover table">
@@ -317,11 +317,11 @@ if (!$_POST) {
                         </div>
                     </div>
                     ' . pg_fields_script() . '
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('arrival date')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('arrival date')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -341,8 +341,8 @@ if (!$_POST) {
     validate_token_field();
     
     // delete shipping cut-offs (we do this regardless of whether the arrival date is being deleted or edited)
-    $query = "DELETE FROM shipping_cutoffs WHERE arrival_date_id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "DELETE FROM shipping_cutoffs WHERE arrival_date_id = ?";
+    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
     
     // assume that there is not an error for a shipping cut-off until we find out otherwise
     $shipping_cutoff_error = FALSE;
@@ -357,35 +357,35 @@ if (!$_POST) {
     // if arrival date was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete arrival date
-        $query = "DELETE FROM arrival_dates WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM arrival_dates WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('arrival date'), $_POST['name']) )), $_SESSION['sessionusername']);
     // else arrival date was not selected for delete
     } else {
         // update arrival date
         $query =
             "UPDATE arrival_dates SET
-                name = '" . escape($_POST['name'] ?? '') . "',
-                description = '" . escape($_POST['description'] ?? '') . "',
-                code = '" . escape($_POST['code'] ?? '') . "',
-                arrival_date = '" . escape(prepare_form_data_for_input($_POST['arrival_date'], 'date')) . "',
-                status = '" . escape($status) . "',
-                start_date = '" . escape(prepare_form_data_for_input($_POST['start_date'], 'date')) . "',
-                end_date = '" . escape(prepare_form_data_for_input($_POST['end_date'], 'date')) . "',
-                default_selected = '" . escape($_POST['default_selected'] ?? '') . "',
-                sort_order = '" . escape($_POST['sort_order'] ?? '') . "',
-                custom = '" . escape($_POST['custom'] ?? '') . "',
-                custom_maximum_arrival_date = '" . escape(prepare_form_data_for_input($_POST['custom_maximum_arrival_date'], 'date')) . "',
-                user = '" . $user['id'] . "',
+                name = ?,
+                description = ?,
+                code = ?,
+                arrival_date = ?,
+                status = ?,
+                start_date = ?,
+                end_date = ?,
+                default_selected = ?,
+                sort_order = ?,
+                custom = ?,
+                custom_maximum_arrival_date = ?,
+                user = ?,
                 timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['description'] ?? ''), (string) ($_POST['code'] ?? ''), (string) prepare_form_data_for_input($_POST['arrival_date'], 'date'), (string) $status, (string) prepare_form_data_for_input($_POST['start_date'], 'date'), (string) prepare_form_data_for_input($_POST['end_date'], 'date'), (string) ($_POST['default_selected'] ?? ''), (string) ($_POST['sort_order'] ?? ''), (string) ($_POST['custom'] ?? ''), (string) prepare_form_data_for_input($_POST['custom_maximum_arrival_date'], 'date'), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // if default selected was checked, then turn value off for all other arrival dates
         if (($_POST['default_selected'] ?? '') == 1) {
             // update arrival date
-            $query = "UPDATE arrival_dates SET default_selected = 0 WHERE id != '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE arrival_dates SET default_selected = 0 WHERE id != ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         }
         
         // create array for storing shipping methods that have a shipping cut-off, so that we do not create multiple cut-offs for the same shipping method
@@ -413,10 +413,10 @@ if (!$_POST) {
                         shipping_method_id,
                         date_and_time)
                     VALUES (
-                        '" . escape($_POST['id'] ?? '') . "',
-                        '" . escape($_POST['shipping_cutoff_' . $i . '_shipping_method_id']) . "',
-                        '" . escape(prepare_form_data_for_input($_POST['shipping_cutoff_' . $i . '_date_and_time'], 'date and time')) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $_POST['shipping_cutoff_' . $i . '_shipping_method_id'], (string) prepare_form_data_for_input($_POST['shipping_cutoff_' . $i . '_date_and_time'], 'date and time'))) or output_error('Query failed.');
                 
                 // remember that the shipping method has been used in a shipping cut-off
                 $shipping_cutoff_shipping_methods[] = $_POST['shipping_cutoff_' . $i . '_shipping_method_id'];

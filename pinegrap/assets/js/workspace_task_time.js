@@ -98,7 +98,7 @@
             head.appendChild(h.el('span', 'fw-semibold', h.t('tt_title')));
             head.appendChild(h.el('span', 'ws-grow'));
 
-            var compare = h.el('span', 'text-body-secondary' + (time.share && time.share.over ? ' text-danger' : ''), time.compare);
+            var compare = h.el('span', 'fg-secondary' + (time.share && time.share.over ? ' fg-danger' : ''), time.compare);
 
             if (time.share && time.share.over) {
                 compare.title = h.t('tt_over');
@@ -125,12 +125,12 @@
 
             if (timer && timer.here) {
                 var counter = h.el('span', 'ws-task-time-clock');
-                row.appendChild(h.icon('bi-record-circle', 'text-danger me-1'));
-                row.appendChild(h.el('span', 'me-2', h.t('tt_running_here')));
+                row.appendChild(h.icon('bi-record-circle', 'fg-danger me-1'));
+                row.appendChild(h.el('span', 'me-3', h.t('tt_running_here')));
                 row.appendChild(counter);
                 ticker(counter, timer.started_at, time.now);
 
-                var stop = h.button('btn btn-sm btn-outline-danger rounded-pill px-3 ms-auto', h.t('tt_stop'), 'bi-stop-circle');
+                var stop = h.button('btn btn-sm btn-outline theme-danger rounded-pill px-5 ms-auto', h.t('tt_stop'), 'bi-stop-circle');
                 stop.addEventListener('click', function () {
                     stop.disabled = true;
                     h.api('ws_task_time_stop', { task_id: task.id }).then(function (data) {
@@ -147,10 +147,10 @@
             }
 
             if (timer) {
-                row.appendChild(h.el('span', 'small text-body-secondary', h.t('tt_running_other', timer.number)));
+                row.appendChild(h.el('span', 'small fg-secondary', h.t('tt_running_other', timer.number)));
             }
 
-            var start = h.button('btn btn-sm btn-outline-primary rounded-pill px-3 ms-auto', h.t('tt_start'), 'bi-play-circle');
+            var start = h.button('btn btn-sm btn-outline theme-primary rounded-pill px-5 ms-auto', h.t('tt_start'), 'bi-play-circle');
             start.addEventListener('click', function () {
                 start.disabled = true;
                 h.api('ws_task_time_start', { task_id: task.id }).then(function (data) {
@@ -170,7 +170,7 @@
         }
 
         function addForm(time) {
-            var form = h.el('div', 'ws-task-time-add row g-2 align-items-end');
+            var form = h.el('div', 'ws-task-time-add row g-3 align-items-end');
 
             function cell(className, label, control) {
                 var box = h.el('div', className);
@@ -209,10 +209,10 @@
             note.maxLength = 255;
             cell(person ? 'col-12' : 'col-4', h.t('tt_note'), note);
 
-            var foot = h.el('div', 'col-12 d-flex align-items-center gap-2');
-            var check = h.el('div', 'form-check mb-0');
-            var billable = h.el('input', 'form-check-input');
-            var billableLabel = h.el('label', 'form-check-label small', h.t('tt_billable'));
+            var foot = h.el('div', 'col-12 d-flex align-items-center gap-3');
+            var check = h.el('div', 'form-field mb-0');
+            var billable = h.el('input', 'check');
+            var billableLabel = h.el('label', 'small', h.t('tt_billable'));
 
             billable.type = 'checkbox';
             billable.checked = true;
@@ -222,7 +222,7 @@
             check.appendChild(billableLabel);
             foot.appendChild(check);
 
-            var add = h.button('btn btn-sm btn-primary rounded-pill px-3 ms-auto', h.t('tt_add'), 'bi-plus-lg');
+            var add = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 ms-auto', h.t('tt_add'), 'bi-plus-lg');
 
             function submit() {
                 if (amount.value.trim() === '') {
@@ -269,7 +269,7 @@
             var list = h.el('div', 'ws-task-time-list');
 
             if (!time.entries.length) {
-                list.appendChild(h.el('div', 'small text-body-secondary', h.t('tt_none')));
+                list.appendChild(h.el('div', 'small fg-secondary', h.t('tt_none')));
                 return list;
             }
 
@@ -281,14 +281,14 @@
                 var main = h.el('div', 'ws-grow');
                 var line = h.el('div', 'ws-task-time-row-head');
                 line.appendChild(h.el('b', '', entry.person ? entry.person.name : ''));
-                line.appendChild(h.el('span', 'text-body-secondary', entry.day_label));
+                line.appendChild(h.el('span', 'fg-secondary', entry.day_label));
 
                 if (!entry.billable) {
-                    line.appendChild(h.el('span', 'badge text-bg-light', h.t('tt_not_billable')));
+                    line.appendChild(h.el('span', 'badge badge-subtle theme-secondary', h.t('tt_not_billable')));
                 }
 
                 if (entry.invoice_id) {
-                    line.appendChild(h.el('span', 'badge text-bg-secondary', h.t('tt_on_invoice')));
+                    line.appendChild(h.el('span', 'badge theme-secondary', h.t('tt_on_invoice')));
                 }
 
                 main.appendChild(line);
@@ -298,7 +298,7 @@
                 }
 
                 row.appendChild(main);
-                row.appendChild(h.el('span', 'ws-task-time-amount' + (entry.running ? ' text-danger' : ''), entry.label));
+                row.appendChild(h.el('span', 'ws-task-time-amount' + (entry.running ? ' fg-danger' : ''), entry.label));
 
                 if (entry.can_delete) {
                     var remove = h.button('btn btn-sm btn-ghost py-0 px-1 ws-tool-danger', '', 'bi-trash', h.t('delete'));
@@ -336,7 +336,7 @@
             return;
         }
 
-        var tag = h.el('span', 'ws-task-time-tag ms-2');
+        var tag = h.el('span', 'ws-task-time-tag ms-3');
         tag.appendChild(h.icon('bi-stopwatch', 'me-1'));
         tag.appendChild(document.createTextNode(task.time_label));
         tag.title = h.t('tt_title');
@@ -346,11 +346,11 @@
     // ── A channel's Summary tab ────────────────────────────────────────
 
     function channelCard(channel, h) {
-        var card = h.el('div', 'card ws-task-time-card mt-4');
+        var card = h.el('div', 'card ws-task-time-card mt-7');
         var header = h.el('div', 'card-header d-flex justify-content-between align-items-center');
         var body = h.el('div', 'card-body');
 
-        header.appendChild(h.el('span', 'text-uppercase h5 text-primary fw-bold mb-0', h.t('tt_card')));
+        header.appendChild(h.el('span', 'text-uppercase h5 fg-primary fw-bold mb-0', h.t('tt_card')));
         card.appendChild(header);
         card.appendChild(body);
 
@@ -361,7 +361,7 @@
 
             [[h.t('tt_month'), data.month_label], [h.t('tt_all'), data.total_label], [h.t('tt_unbilled'), data.unbilled_label]].forEach(function (item) {
                 var stat = h.el('div', 'ws-task-time-stat');
-                stat.appendChild(h.el('div', 'small text-body-secondary', item[0]));
+                stat.appendChild(h.el('div', 'small fg-secondary', item[0]));
                 stat.appendChild(h.el('div', 'fw-semibold', item[1]));
                 stats.appendChild(stat);
             });
@@ -369,7 +369,7 @@
             body.appendChild(stats);
 
             if (data.people.length) {
-                body.appendChild(h.el('div', 'small fw-semibold mt-3 mb-1', h.t('tt_by_person')));
+                body.appendChild(h.el('div', 'small fw-semibold mt-5 mb-1', h.t('tt_by_person')));
 
                 data.people.forEach(function (item) {
                     var line = h.el('div', 'ws-task-time-row');
@@ -379,11 +379,11 @@
                     body.appendChild(line);
                 });
             } else {
-                body.appendChild(h.el('div', 'small text-body-secondary mt-3', h.t('tt_none')));
+                body.appendChild(h.el('div', 'small fg-secondary mt-5', h.t('tt_none')));
             }
 
             if (data.invoices.length) {
-                body.appendChild(h.el('div', 'small fw-semibold mt-3 mb-1', h.t('tt_invoices')));
+                body.appendChild(h.el('div', 'small fw-semibold mt-5 mb-1', h.t('tt_invoices')));
 
                 data.invoices.forEach(function (invoice) {
                     var line = h.el('div', 'ws-task-time-row');
@@ -420,7 +420,7 @@
             // Only where the ERP, the customer and the right are all there;
             // the server asks again when the draft is made.
             if (data.can_invoice && data.unbilled > 0) {
-                var open = h.button('btn btn-sm btn-outline-secondary mt-3', h.t('tt_invoice'), 'bi-receipt');
+                var open = h.button('btn btn-sm btn-outline theme-secondary mt-5', h.t('tt_invoice'), 'bi-receipt');
                 open.addEventListener('click', function () {
                     open.remove();
                     body.appendChild(invoiceForm(data));
@@ -430,10 +430,10 @@
         }
 
         function invoiceForm(data) {
-            var form = h.el('div', 'ws-task-time-invoice row g-2 mt-2');
+            var form = h.el('div', 'ws-task-time-invoice row g-3 mt-3');
 
             function cell(label, control) {
-                var box = h.el('div', 'col-6 col-lg-3');
+                var box = h.el('div', 'col-6 lg:col-3');
                 var caption = h.el('label', 'form-label small mb-1', label);
 
                 control.id = h.nextId('ws-task-time-inv-');
@@ -452,7 +452,7 @@
                 return node;
             }
 
-            form.appendChild(h.el('div', 'col-12 small text-body-secondary', h.t('tt_invoice_help')));
+            form.appendChild(h.el('div', 'col-12 small fg-secondary', h.t('tt_invoice_help')));
 
             var from = cell(h.t('tt_from'), input('date', data.month_start));
             var to = cell(h.t('tt_to'), input('date', data.today));
@@ -462,8 +462,8 @@
             rate.inputMode = 'decimal';
             tax.inputMode = 'decimal';
 
-            var actions = h.el('div', 'col-12 d-flex gap-2');
-            var save = h.button('btn btn-sm btn-primary rounded-pill px-3', h.t('tt_invoice'), 'bi-receipt');
+            var actions = h.el('div', 'col-12 d-flex gap-3');
+            var save = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', h.t('tt_invoice'), 'bi-receipt');
 
             save.addEventListener('click', function () {
                 save.disabled = true;
@@ -508,9 +508,9 @@
 
             if (mine.running) {
                 var running = h.el('div', 'ws-list-row');
-                var counter = h.el('span', 'ws-task-time-clock ms-2');
+                var counter = h.el('span', 'ws-task-time-clock ms-3');
 
-                running.appendChild(h.icon('bi-record-circle', 'text-danger'));
+                running.appendChild(h.icon('bi-record-circle', 'fg-danger'));
                 running.appendChild(h.el('span', 'ws-grow', h.t('tt_running_other', mine.running.number)));
                 running.appendChild(counter);
                 ticker(counter, mine.running.started_at, mine.now);
@@ -536,7 +536,7 @@
                     var row = h.el('div', 'ws-list-row');
                     var title = h.el('div', 'ws-grow ws-row-title');
 
-                    title.appendChild(h.el('span', 'text-body-secondary me-1', item.number));
+                    title.appendChild(h.el('span', 'fg-secondary me-1', item.number));
                     title.appendChild(document.createTextNode(item.title));
                     row.appendChild(title);
                     row.appendChild(h.el('span', 'ws-task-time-amount', item.label));
@@ -556,7 +556,7 @@
     // ── The board ──────────────────────────────────────────────────────
 
     function boardTag(time, h) {
-        var tag = h.el('small', 'ws-task-time-board' + (time.spent > time.planned ? ' text-danger' : ''), h.t('tt_board', time.planned_label, time.spent_label));
+        var tag = h.el('small', 'ws-task-time-board' + (time.spent > time.planned ? ' fg-danger' : ''), h.t('tt_board', time.planned_label, time.spent_label));
         return tag;
     }
 

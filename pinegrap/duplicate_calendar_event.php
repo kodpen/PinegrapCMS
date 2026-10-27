@@ -70,8 +70,8 @@ $query =
         reserve_button_label,
         product_id,
         next_page_id
-    FROM calendar_events WHERE id = '" . escape($_GET['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    FROM calendar_events WHERE id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 $calendar_event = mysqli_fetch_assoc($result);
 
 // if the event is published and the user does not have rights to publish calendar events then do not publish new event
@@ -118,48 +118,48 @@ $query =
         last_modified_user_id,
         last_modified_timestamp)
     VALUES (
-        '" . escape($calendar_event['name']) . "',
-        '" . e($calendar_event['published']) . "',
-        '" . e($calendar_event['unpublish_days']) . "',
-        '" . escape($calendar_event['short_description']) . "',
-        '" . escape($calendar_event['full_description']) . "',
-        '" . escape($calendar_event['notes']) . "',
-        '" . escape($calendar_event['all_day']) . "',
-        '" . escape($calendar_event['start_time']) . "',
-        '" . escape($calendar_event['end_time']) . "',
-        '" . escape($calendar_event['show_start_time']) . "',
-        '" . escape($calendar_event['show_end_time']) . "',
-        '" . escape($calendar_event['recurrence']) . "',
-        '" . escape($calendar_event['recurrence_number']) . "',
-        '" . escape($calendar_event['recurrence_type']) . "',
-        '" . escape($calendar_event['recurrence_day_sun']) . "',
-        '" . escape($calendar_event['recurrence_day_mon']) . "',
-        '" . escape($calendar_event['recurrence_day_tue']) . "',
-        '" . escape($calendar_event['recurrence_day_wed']) . "',
-        '" . escape($calendar_event['recurrence_day_thu']) . "',
-        '" . escape($calendar_event['recurrence_day_fri']) . "',
-        '" . escape($calendar_event['recurrence_day_sat']) . "',
-        '" . escape($calendar_event['recurrence_month_type']) . "',
-        '" . escape($calendar_event['location']) . "',
-        '" . escape($calendar_event['reservations']) . "',
-        '" . escape($calendar_event['separate_reservations']) . "',
-        '" . escape($calendar_event['limit_reservations']) . "',
-        '" . escape($calendar_event['number_of_initial_spots']) . "',
-        '" . escape($calendar_event['no_remaining_spots_message']) . "',
-        '" . escape($calendar_event['reserve_button_label']) . "',
-        '" . escape($calendar_event['product_id']) . "',
-        '" . escape($calendar_event['next_page_id']) . "',
-        '" . $user['id'] . "',
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
         UNIX_TIMESTAMP(),
-        '" . $user['id'] . "',
+        ?,
         UNIX_TIMESTAMP())";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $calendar_event['name'], (string) $calendar_event['published'], (string) $calendar_event['unpublish_days'], (string) $calendar_event['short_description'], (string) $calendar_event['full_description'], (string) $calendar_event['notes'], (string) $calendar_event['all_day'], (string) $calendar_event['start_time'], (string) $calendar_event['end_time'], (string) $calendar_event['show_start_time'], (string) $calendar_event['show_end_time'], (string) $calendar_event['recurrence'], (string) $calendar_event['recurrence_number'], (string) $calendar_event['recurrence_type'], (string) $calendar_event['recurrence_day_sun'], (string) $calendar_event['recurrence_day_mon'], (string) $calendar_event['recurrence_day_tue'], (string) $calendar_event['recurrence_day_wed'], (string) $calendar_event['recurrence_day_thu'], (string) $calendar_event['recurrence_day_fri'], (string) $calendar_event['recurrence_day_sat'], (string) $calendar_event['recurrence_month_type'], (string) $calendar_event['location'], (string) $calendar_event['reservations'], (string) $calendar_event['separate_reservations'], (string) $calendar_event['limit_reservations'], (string) $calendar_event['number_of_initial_spots'], (string) $calendar_event['no_remaining_spots_message'], (string) $calendar_event['reserve_button_label'], (string) $calendar_event['product_id'], (string) $calendar_event['next_page_id'], (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
 
 $new_calendar_event_id = mysqli_insert_id(db::$con);
 
 // get all calendars that original event is in
-$query = "SELECT calendar_id as id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . escape($_GET['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT calendar_id as id FROM calendar_events_calendars_xref WHERE calendar_event_id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
 $calendars = array();
 
@@ -177,15 +177,15 @@ foreach ($calendars as $calendar) {
                 calendar_event_id,
                 calendar_id)
             VALUES (
-                '" . $new_calendar_event_id . "',
-                '" . $calendar['id'] . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                ?,
+                ?)";
+        $result = db_q($query, array((string) $new_calendar_event_id, (string) $calendar['id'])) or output_error('Query failed.');
     }
 }
 
 // get all calendar event exceptions for the original event in order to assign them to the new event
-$query = "SELECT recurrence_number FROM calendar_event_exceptions WHERE calendar_event_id = '" . escape($_GET['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT recurrence_number FROM calendar_event_exceptions WHERE calendar_event_id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
 $calendar_event_exceptions = array();
 
@@ -201,9 +201,9 @@ foreach ($calendar_event_exceptions as $calendar_event_exception) {
             calendar_event_id,
             recurrence_number)
         VALUES (
-            '" . $new_calendar_event_id . "',
-            '" . $calendar_event_exception['recurrence_number'] . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            ?,
+            ?)";
+    $result = db_q($query, array((string) $new_calendar_event_id, (string) $calendar_event_exception['recurrence_number'])) or output_error('Query failed.');
 }
 
 log_activity(lang(array('string'=>'{var:1} ({var:2}) was duplicated','vars'=>array(lang('event'), $calendar_event['name']) )), $_SESSION['sessionusername']);

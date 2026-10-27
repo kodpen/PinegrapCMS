@@ -219,6 +219,30 @@ function test_ai_fields_hand_edit_loses_the_mark()
 	pg_assert_same(null, pg_ai_fields_after_save('product', null, $stored, array('title' => $edited)), 'edited without the script: the server takes it off');
 }
 
+// A copy of a product or a page keeps the marks of the texts it copies as
+// they were, and loses those its copy changes (the letters replaced at the
+// end of a product's short description, a page's find and replace).
+function test_ai_fields_copy()
+{
+	$title = 'Soft cotton shirt';
+	$short = 'Shirt A';
+	$row = array(
+		'short_description' => $short,
+		'title' => $title,
+		'ai_fields' => pg_ai_fields_encode('product', array('short_description', 'title'), array('short_description' => $short, 'title' => $title)),
+	);
+
+	pg_assert_same('{"short_description":"' . pg_ai_fields_fingerprint($short) . '","title":"' . pg_ai_fields_fingerprint($title) . '"}', pg_ai_fields_copy('product', $row, array('short_description' => $short, 'title' => $title)), 'unchanged texts keep their marks');
+	pg_assert_same('{"title":"' . pg_ai_fields_fingerprint($title) . '"}', pg_ai_fields_copy('product', $row, array('short_description' => 'Shirt B', 'title' => $title)), 'replaced text drops its mark');
+	pg_assert_same(null, pg_ai_fields_copy('product', array('ai_fields' => null) + $row, array('short_description' => $short, 'title' => $title)), 'a NULL source stays NULL');
+	pg_assert_same(false, pg_ai_fields_copy('product', array('short_description' => $short, 'title' => $title), array('title' => $title)), 'a source without the column writes none');
+
+	$page = array('page_title' => 'Home', 'ai_fields' => '{"page_title":"' . pg_ai_fields_fingerprint('Home') . '"}');
+
+	pg_assert_same($page['ai_fields'], pg_ai_fields_copy('page', $page, array('page_title' => 'Home', 'page_meta_description' => '')), 'page copied as it was');
+	pg_assert_same(null, pg_ai_fields_copy('page', $page, array('page_title' => 'Start', 'page_meta_description' => '')), 'page text changed by find and replace');
+}
+
 // A variant keeps the mark of the set's short description only while its own
 // short description holds the set's text.
 function test_ai_fields_for_variant()
@@ -240,12 +264,12 @@ function test_ai_fields_marker()
 
 	pg_assert_contains('data-pg-ai-mark="title"', $html, 'column');
 	pg_assert_contains('data-pg-ai-field="title"', $html, 'element');
-	pg_assert_contains('class="pg-ai-mark badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-normal d-inline-flex align-items-center gap-1"', $html, 'classes');
+	pg_assert_contains('class="pg-ai-mark badge rounded-pill bg-subtle-primary fg-emphasis-primary border border-subtle-primary fw-normal d-inline-flex align-items-center gap-1"', $html, 'classes');
 	pg_assert_contains('data-bs-toggle="tooltip" title="' . h(lang('Written with AI')) . '"', $html, 'tooltip');
 	pg_assert_contains('no-popover', $html, 'no popover');
 	pg_assert_contains('<span class="visually-hidden">' . h(lang('Written with AI')) . '</span>', $html, 'screen readers');
 	pg_assert_contains('<i class="bi bi-stars" aria-hidden="true"></i> <span aria-hidden="true">' . h(lang('AI')) . '</span>', $html, 'icon and the short word');
-	pg_assert_contains('class="btn btn-link btn-sm p-0 border-0 lh-1 text-reset pg-ai-mark-remove no-popover"', $html, 'remove button');
+	pg_assert_contains('class="btn btn-link btn-sm p-0 border-0 lh-1 fg-reset pg-ai-mark-remove no-popover"', $html, 'remove button');
 	pg_assert_contains('aria-label="' . h(lang('Remove the AI mark')) . '"', $html, 'remove label');
 	pg_assert_contains('type="button"', $html, 'not a submit');
 	pg_assert_false(strpos($html, 'd-none') !== false, 'shown');
@@ -265,8 +289,8 @@ function test_ai_fields_input()
 // The marker sits beside the label, with or without the button.
 function test_ai_fields_label_row_with_marker()
 {
-	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline column-gap-2"><label>A</label><span>M</span></div>', pg_ai_write_label_row('<label>A</label>', '', '<span>M</span>'), 'no button');
-	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-2"><div class="d-flex flex-wrap align-items-baseline column-gap-2"><label>A</label><span>M</span></div><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>', '<span>M</span>'), 'with button');
+	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline column-gap-3"><label>A</label><span>M</span></div>', pg_ai_write_label_row('<label>A</label>', '', '<span>M</span>'), 'no button');
+	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-3"><div class="d-flex flex-wrap align-items-baseline column-gap-3"><label>A</label><span>M</span></div><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>', '<span>M</span>'), 'with button');
 	pg_assert_same('<label>A</label>', pg_ai_write_label_row('<label>A</label>', '', ''), 'neither');
 }
 

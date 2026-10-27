@@ -56,6 +56,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // The Audit Trail card: checked before anything is written, and written
+    // on its own, only once the 2026.11.0 step has added the column and the
+    // card's field was posted.
+    $audit_retention_post = (post_value('audit_log_retention_years') !== NULL)
+        && pg_schema_has('config', 'audit_log_retention_years');
+    $audit_retention_input = $audit_retention_post ? pg_audit_retention_years_from_input(post_value('audit_log_retention_years')) : null;
+
+    if ($audit_retention_post && ($audit_retention_input === null)) {
+        $audit_retention_limits = pg_privacy_retention_limits();
+
+        $liveform->mark_error('audit_log_retention_years', lang(array('string' => 'Keep audit trail lines for 0 years (no limit), or for {var:1} to {var:2} years.', 'vars' => array($audit_retention_limits['audit_min'], $audit_retention_limits['audit_max']))));
+
+        return;
+    }
+
     // The Spam Protection card's CAPTCHA provider: checked, and its keys
     // asked about, before anything is written, like Apple's application.
     $captcha_settings_post = function_exists('pg_captcha_settings_check') ? pg_captcha_settings_check($_POST, $liveform) : null;
@@ -139,19 +154,20 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         pg_captcha_settings_save($captcha_settings_post, USER_ID, $liveform);
     }
 
+    if ($audit_retention_post) {
+        db("UPDATE config SET audit_log_retention_years = '" . (int) $audit_retention_input . "'");
+    }
+
 
     // Device limit lives in a column a not-yet-upgraded database may not have
     // yet (migration 4.14). Save it on its own, only when the column exists, so
     // the rest of Settings still saves either way.
-    $rml_col = @mysqli_query(db::$con, "SHOW COLUMNS FROM config LIKE 'remember_me_device_limit'");
-    if ($rml_col && mysqli_num_rows($rml_col) > 0) {
+    if (function_exists('pg_schema_has') && pg_schema_has('config', 'remember_me_device_limit')) {
         db("UPDATE config SET remember_me_device_limit_enabled = '" . ((post_value('remember_me_device_limit_enabled') == '1') ? 1 : 0) . "', remember_me_device_limit = '" . max(1, (int) post_value('remember_me_device_limit')) . "'");
 
         // Strict mode arrives with migration 4.16, one release later than the
         // limit itself, so it gets its own column check.
-        $strict_column = @mysqli_query(db::$con, "SHOW COLUMNS FROM config LIKE 'remember_me_device_limit_strict'");
-
-        if ($strict_column && (mysqli_num_rows($strict_column) > 0)) {
+        if (pg_schema_has('config', 'remember_me_device_limit_strict')) {
             db("UPDATE config SET remember_me_device_limit_strict = '" . ((post_value('remember_me_device_limit_strict') == '1') ? 1 : 0) . "'");
         }
     }
@@ -177,11 +193,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         db("UPDATE config SET mfa_required_role = " . $mfa_post_role);
 
         // Accounts the rule now covers but did not before, and that have no
-        // second factor, lose their remembered devices: a remembered sign-in
-        // would otherwise keep opening a session on a password typed before
-        // the rule applied. The operator saving the rule keeps their own
-        // session (the session is bound to its token) and is asked at their
-        // next sign-in; a pinned device is left to the sign-in gate, which
+        // second factor (authenticator key or passkey), lose their remembered
+        // devices: a remembered sign-in would otherwise keep opening a
+        // session on a password typed before the rule applied. The operator
+        // saving the rule keeps their own session (the session is bound to
+        // its token) and is asked at their next sign-in; a pinned device is left to the sign-in gate, which
         // sends it to setup on its next use.
         if (($mfa_post_role < 99) && ($mfa_post_role > $mfa_previous_role)
             && function_exists('pg_mfa_table_exists') && pg_mfa_table_exists()
@@ -194,13 +210,23 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 WHERE user.user_role <= " . $mfa_post_role . "
                     AND user.user_role > " . $mfa_previous_bound . "
                     AND user.user_id <> '" . (int) USER_ID . "'
-                    AND (user_mfa.user_id IS NULL OR user_mfa.enabled_at = 0 OR user_mfa.totp_secret = '')");
+                    AND (user_mfa.user_id IS NULL OR user_mfa.enabled_at = 0 OR user_mfa.totp_secret = '')"
+                    // A passkey satisfies the rule where the site can ask for one.
+                    . ((function_exists('pg_passkeys_available') && pg_passkeys_available())
+                        ? " AND NOT EXISTS (SELECT 1 FROM user_passkeys WHERE user_passkeys.user_id = user.user_id)"
+                        : ""));
 
             foreach ($mfa_uncovered_ids as $mfa_uncovered_id) {
                 db("DELETE FROM auth_tokens WHERE user_id = '" . (int) $mfa_uncovered_id . "'"
                     . (pg_auth_tokens_have_pin() ? " AND pinned = 0" : ""));
             }
         }
+    }
+
+    // Sign-in with a passkey alone (11.0.41). A switch that is off is not
+    // posted, so the column is written whenever it exists.
+    if (function_exists('pg_schema_has') && pg_schema_has('config', 'passkey_signin')) {
+        db("UPDATE config SET passkey_signin = " . ((post_value('passkey_signin') == '1') ? 1 : 0));
     }
 
     // Sign in with Microsoft and Apple (10.74): the switches, and Apple's

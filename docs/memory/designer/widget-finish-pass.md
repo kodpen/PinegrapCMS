@@ -1,6 +1,7 @@
 ---
 name: widget-finish-pass
-description: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, the pg-hide-if-empty rerun, the edit pencil, the strip (#1592).
+description: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, pg-hide-if-empty, the edit pencil, the strip (#1592).
+module: widgets_finish
 ---
 
 ## Where does the pass run?
@@ -17,7 +18,7 @@ description: The finish pass every system widget render goes through: scope, mar
 - `pg_sw_marker_nonce()` is random per request: a value shaped like a marker is inert; only this request's markers go.
 
 ## How are spans found?
-- With `strpos()`, outermost first, never one pattern over a body (`pcre.backtrack_limit`). A span's value is the last carrier of its number in its body; an open marker of the same number inside it is counted, so a template nested in a copy of itself (a reply in its comment) pairs right; it is sought only before the next close, so the cost stays linear.
+- With `strpos()`, outermost first, never one regex over a body (`pcre.backtrack_limit`). A span's value is the last carrier of its number in its body; an open marker of the same number inside it is counted, so a template nested in a copy of itself (a reply in its comment) pairs right; it is sought only before the next close, so the cost stays linear.
 - A marker without its pair is left; the strip takes it out, the node shows.
 
 ## What does a cut leave?
@@ -28,14 +29,14 @@ description: The finish pass every system widget render goes through: scope, mar
 1. Row positions ([[widget-loop-position]]): row spans numbered, marks and position tokens left removed.
 2. Lists ([[widget-lists]]): every list span drawn from the published rows; an empty one leaves a cut point.
 3. Conditions (`pg_sw_finish_resolve()`), list rows included; then attribute values ([[widget-attr-bindings]]).
-4. After a cut, in form_list_view, form_item_view and comments: `pg_sw_hide_empty_fields($html, $cut_mark)` judges only pg-hide-if-empty elements holding a cut point; one that goes leaves the point, so the box around it is judged in turn.
+4. pg-hide-if-empty ([[widget-hide-if-empty]]): in `pg_sw_finish_judged_kinds()` after a cut only, judging the marked elements holding a cut point (one that goes leaves the point, so the box around it is judged in turn); in every other kind every marked element (`pg_sw_finish_hide_empty()`), even without a marker.
 5. Every carrier, cut point, empty value element and marker of this request still standing removed.
 6. Each record's edit pencil put in (below), then pencil markers left removed.
-- Markup with neither the nonce nor `^^__loop_` comes back untouched; without the nonce the pass ends after stage 1.
+- Without the nonce and `^^__loop_` only stage 4 runs (outside the judged kinds); without the nonce, stages 1 and 4.
 
 ## Why does the edit pencil wait for the pass?
-- Put in before the pass, it went with a cut first element or a row the rerun dropped, and counted as content in a pg-hide-if-empty box.
+- Put in before, it went with a cut first element or a dropped row, and counted as content in a pg-hide-if-empty box.
 - `pg_sw_add_edit_chip()` on a record holding a condition marker writes the record between `<!--pg-chip:NONCE:N:B64-->` … `<!--/pg-chip:NONCE:N-->` (address, title, tone as JSON). Stage 6 (`pg_sw_finish_place_chips()`) puts it in the first element the record kept, by `pg_sw_insert_edit_chip()`'s rules: none if that element cannot hold one or nothing is left; a record cut whole takes it along. A record without a condition gets it at once, as before.
 
 ## What is still open?
-- A plain shared component in a widget is expanded outside any scope: its `show_if` is ignored (W18).
+- A plain shared component in a widget has no scope: `show_if` ignored (visit facts aside: [[page-conditions]]).

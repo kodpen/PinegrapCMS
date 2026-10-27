@@ -157,5 +157,5 @@ function test_menu_widget_registered()
 	pg_assert_contains("{ type: 'menu_region'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'menu_region': {", $js, 'has a starter tree');
 	pg_assert_contains("menu_region:       SW_MENU_REGION_TOKEN_GROUPS", $js, 'has a token palette');
-	pg_assert_contains("comments_recent: 1, menu_region: 1 };", $js, 'draws no Messages block');
+	pg_assert_contains("comments_recent: 1, menu_region: 1,", $js, 'draws no Messages block');
 }

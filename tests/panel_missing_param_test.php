@@ -62,7 +62,7 @@ function test_panel_missing_param_empty_reads()
 		'browse_catalog_menu'  => array("get_page_name(\$_GET['current_page_id'] ?? '')", "(\$_GET['previous_url_id'] ?? '')"),
 		'check_if_file_exists' => array("prepare_file_name(\$_GET['file_name'] ?? '')"),
 		'get_region_content'   => array("switch (\$_GET['region_type'] ?? '')"),
-		'print_packing_slip'   => array("escape(\$_GET['ship_to_id'] ?? '')"),
+		'print_packing_slip'   => array("(string) (\$_GET['ship_to_id'] ?? '')"),
 		'add_email_campaign'   => array("\$page_name = \$row['page_name'] ?? '';", "\$folder_id = \$row['page_folder'] ?? '';"),
 	);
 

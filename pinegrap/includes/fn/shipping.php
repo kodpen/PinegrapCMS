@@ -693,6 +693,7 @@ function pg_shipment_delivered($ship_to_id, $time, $opts = array())
         'order_number'  => $recipient['order_number'],
         'ship_to_id'    => $ship_to_id,
         'delivery_date' => $day,
+        'parcels'       => pg_shipment_api_parcels($ship_to_id),
     ));
 
     if (!empty($opts['notify'])) {
@@ -701,9 +702,9 @@ function pg_shipment_delivered($ship_to_id, $time, $opts = array())
             'action'        => 'order_delivered',
             'contact_id'    => $recipient['contact_id'],
             'email_address' => $recipient['billing_email_address'],
-            'fields'        => array(
-                array('name' => 'order_number', 'data' => $recipient['order_number']),
-            ),
+            'fields'        => array_merge(
+                array(array('name' => 'order_number', 'data' => $recipient['order_number'])),
+                pg_shipment_mail_fields(array($ship_to_id))),
             'data'          => array('order' => array(
                 'id'                    => (int) $recipient['order_id'],
                 'order_number'          => $recipient['order_number'],
@@ -715,6 +716,8 @@ function pg_shipment_delivered($ship_to_id, $time, $opts = array())
                 )),
             )),
         ));
+
+        pg_sms_order_delivered((int) $recipient['order_id'], $ship_to_id);
 
     }
 
@@ -806,6 +809,176 @@ function pg_shipment_view($row, $method, $default)
 }
 
 /**
+ * One parcel as the external API's shipments and the order.shipped and
+ * order.delivered webhooks give it: the carrier and the link the order screen
+ * shows (pg_shipment_view()), the status and the two dates as UTC times. What
+ * is not known is null, not an empty string.
+ *
+ * @param  array  $row     a row of pg_shipment_rows()
+ * @param  string $method  ship_tos.shipping_method_code
+ * @param  string $default the site's default carrier (pg_shipping_default_carrier())
+ * @return array number, carrier (key), carrier_name, tracking_url, status,
+ *               shipped_at, delivered_at
+ */
+function pg_shipment_api_parcel($row, $method, $default)
+{
+    $row = (array) $row;
+    $view = pg_shipment_view($row, $method, $default);
+
+    $time = function ($key) use ($row) {
+        $unix = isset($row[$key]) ? (int) $row[$key] : 0;
+
+        return ($unix > 0) ? gmdate('Y-m-d\TH:i:s\Z', $unix) : null;
+    };
+
+    return array(
+        'number'       => $view['number'],
+        'carrier'      => ($view['carrier'] !== '') ? $view['carrier'] : null,
+        'carrier_name' => ($view['carrier_name'] !== '') ? $view['carrier_name'] : null,
+        'tracking_url' => ($view['url'] !== '') ? $view['url'] : null,
+        'status'       => $view['status'],
+        'shipped_at'   => $time('shipped_at'),
+        'delivered_at' => $time('delivered_at'),
+    );
+}
+
+/**
+ * The numbered parcels of an address, each as pg_shipment_api_parcel() gives
+ * it, oldest first.
+ *
+ * @param  int         $ship_to_id
+ * @param  string|null $method ship_tos.shipping_method_code when the caller
+ *                             has it; null reads it
+ * @param  string|null $number only the parcel with this number
+ * @return array
+ */
+function pg_shipment_api_parcels($ship_to_id, $method = null, $number = null)
+{
+    $ship_to_id = (int) $ship_to_id;
+
+    if ($ship_to_id <= 0) {
+        return array();
+    }
+
+    if ($method === null) {
+        $method = (string) db_value("SELECT shipping_method_code FROM ship_tos WHERE id = '" . $ship_to_id . "'");
+    }
+
+    $default = pg_shipping_default_carrier();
+    $parcels = array();
+
+    foreach (pg_shipment_rows($ship_to_id) as $row) {
+        $parcel = pg_shipment_api_parcel($row, (string) $method, $default);
+
+        if (($parcel['number'] === '') || (($number !== null) && (strcasecmp($parcel['number'], (string) $number) !== 0))) {
+            continue;
+        }
+
+        $parcels[] = $parcel;
+    }
+
+    return $parcels;
+}
+
+/**
+ * The tracking numbers of a POST /orders/{id}/shipment call as update_order()
+ * takes them, with the carrier the call names on each one. Only a carrier
+ * the store knows (pg_shipping_method_carrier()) is passed on: free text is
+ * no carrier for a row, so the numbers then go plain and each row keeps the
+ * carrier it had.
+ *
+ * @param  string[] $numbers
+ * @param  string   $carrier a carrier key or name, or ''
+ * @return array numbers, or list of number, carrier
+ */
+function pg_shipment_numbers_with_carrier($numbers, $carrier)
+{
+    $numbers = array_values((array) $numbers);
+    $carrier = pg_shipping_method_carrier((string) $carrier);
+
+    if ($carrier === '') {
+        return $numbers;
+    }
+
+    $entries = array();
+
+    foreach ($numbers as $number) {
+        $entries[] = array('number' => $number, 'carrier' => $carrier);
+    }
+
+    return $entries;
+}
+
+/**
+ * The mail-merge fields the order_shipped and order_delivered e-mails offer:
+ * ^^tracking_numbers^^ (every number), ^^carrier_name^^ (each carrier once)
+ * and ^^tracking_url^^ (the first parcel that has a link: one link is what an
+ * href can hold). Always all three, empty when there is no parcel, so a
+ * [[...||...]] conditional falls to its else part.
+ *
+ * @param  array $views rows of pg_shipment_view()
+ * @return array list of name, data
+ */
+function pg_shipment_merge_fields($views)
+{
+    $numbers = array();
+    $carriers = array();
+    $url = '';
+
+    foreach ((array) $views as $view) {
+        $number = isset($view['number']) ? trim((string) $view['number']) : '';
+
+        if ($number === '') {
+            continue;
+        }
+
+        $numbers[] = $number;
+        $carrier = isset($view['carrier_name']) ? (string) $view['carrier_name'] : '';
+
+        if (($carrier !== '') && !in_array($carrier, $carriers, true)) {
+            $carriers[] = $carrier;
+        }
+
+        if (($url === '') && !empty($view['url'])) {
+            $url = (string) $view['url'];
+        }
+    }
+
+    return array(
+        array('name' => 'tracking_numbers', 'data' => implode(', ', $numbers)),
+        array('name' => 'carrier_name', 'data' => implode(', ', $carriers)),
+        array('name' => 'tracking_url', 'data' => $url),
+    );
+}
+
+/**
+ * The tracking mail-merge fields of the given addresses of one order, read
+ * from their parcel rows the way the order screen shows them.
+ *
+ * @param  int[] $ship_to_ids
+ * @return array list of name, data (pg_shipment_merge_fields())
+ */
+function pg_shipment_mail_fields($ship_to_ids)
+{
+    $default = pg_shipping_default_carrier();
+    $views = array();
+
+    foreach (array_unique(array_map('intval', (array) $ship_to_ids)) as $ship_to_id) {
+        if ($ship_to_id <= 0) {
+            continue;
+        }
+
+        $method = (string) db_value("SELECT shipping_method_code FROM ship_tos WHERE id = '" . $ship_to_id . "'");
+
+        foreach (pg_shipment_rows($ship_to_id) as $row) {
+            $views[] = pg_shipment_view($row, $method, $default);
+        }
+    }
+
+    return pg_shipment_merge_fields($views);
+}
+
+/**
  * The name of a parcel's status, for a badge.
  *
  * @param  string $status
@@ -840,15 +1013,15 @@ function pg_shipment_status_class($status)
     switch ((string) $status) {
         case 'in_transit':
         case 'out_for_delivery':
-            return 'text-bg-primary';
+            return 'theme-primary';
         case 'delivered':
-            return 'text-bg-success';
+            return 'theme-success';
         case 'returned':
-            return 'text-bg-warning';
+            return 'theme-warning';
         case 'exception':
-            return 'text-bg-danger';
+            return 'theme-danger';
         default:
-            return 'text-bg-secondary';
+            return 'theme-secondary';
     }
 }
 

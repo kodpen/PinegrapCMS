@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
 
 $user = validate_user();
 validate_email_access($user);
@@ -55,8 +56,8 @@ $query =
         created_user_id,
         created_timestamp
     FROM email_campaigns
-    WHERE id = '" . escape($_GET['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
 $row = mysqli_fetch_assoc($result);
 
@@ -97,11 +98,11 @@ $query =
         contact_id
      FROM email_recipients
      WHERE
-        (email_campaign_id = '" . escape($_GET['id']) . "')
+        (email_campaign_id = ?)
         AND (complete = '0')
      ORDER BY id
      LIMIT 10";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
 // if there is at least one e-mail recipient left
 if (mysqli_num_rows($result) > 0) {
@@ -140,6 +141,15 @@ if (mysqli_num_rows($result) > 0) {
             continue;
         }
 
+        // An address İYS holds a refusal for gets no commercial mail while
+        // İYS is on for e-mail (includes/iys/client.php).
+        if (($purpose == 'commercial') and pg_iys_email_refused($email_recipient['email_address'])) {
+
+            db("DELETE FROM email_recipients WHERE id = '" . $email_recipient['id'] . "'");
+
+            continue;
+        }
+
         // prepare email body content
         $subject = $subject_template;
         $body = $body_template;
@@ -163,11 +173,11 @@ if (mysqli_num_rows($result) > 0) {
                 salutation,
                 suffix
              FROM contacts
-             WHERE id = " . (int) $email_recipient['contact_id'];
+             WHERE id = ?";
         $row = null;
         // Manually entered recipients are stored with contact_id 0 and have no contact row.
         if ((int) $email_recipient['contact_id'] > 0) {
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((int) $email_recipient['contact_id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
         }
         if (!$row) {
@@ -386,20 +396,20 @@ if (mysqli_num_rows($result) > 0) {
             "UPDATE email_recipients
             SET
                 complete = '1',
-                reference_code = '" . $email_recipient['reference_code'] . "'
-            WHERE id = '" . $email_recipient['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                reference_code = ?
+            WHERE id = ?";
+        $result = db_q($query, array((string) $email_recipient['reference_code'], (string) $email_recipient['id'])) or output_error('Query failed.');
     }
     
     // get total number of recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_email_recipients = $row[0];
     
     // get total number of incomplete recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = '" . escape($_GET['id']) . "') AND (complete = '0')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = ?) AND (complete = '0')";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_remaining_email_recipients = $row[0];
 
@@ -414,12 +424,12 @@ if (mysqli_num_rows($result) > 0) {
         <div class="container-fluid">
             <span class="navbar-text me-auto" data-bs-content="' . lang('A function for sending e-mails to recipients') . '" title="' . lang('Send E-mail Campaign') . '">' . lang('Send E-mail Campaign') . '</span>
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
-                    <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                    <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+                <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
+                    <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+                    <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
                     </ul>
                 </li>
                 <li class="nav-item">
@@ -435,8 +445,8 @@ if (mysqli_num_rows($result) > 0) {
     <main id="content" class="container-fluid">
         <div class="row">
             <div class="col-12">
-                <div class="card mb-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card mb-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Informations') . '
                     </div>
                     <div class="card-body">
@@ -455,13 +465,13 @@ if (mysqli_num_rows($result) > 0) {
                     <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="' . $percent_complete . '" aria-valuemin="0" aria-valuemax="100" style="width: ' . $percent_complete . '%">' . $percent_complete . '%</div>
                 </div>
                 <h3>(' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ')</h3>
-                <div class="alert alert-danger"><p>' . lang('Closing this browser window before completion will pause this Campaign, but it can be resumed at any time.') . '</p></div>
+                <div class="alert theme-danger"><p>' . lang('Closing this browser window before completion will pause this Campaign, but it can be resumed at any time.') . '</p></div>
             </div>
         </div>
         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
             <div class="container">
                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button type="button" name="submit_save" onclick="window.close();" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-danger submit-primary" ><span class="material-icons me-2">close</span>' . lang(array('string'=>'Stop & Close') ) . '</button>
+                    <button type="button" name="submit_save" onclick="window.close();" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-solid theme-danger submit-primary" ><span class="material-icons me-3">close</span>' . lang(array('string'=>'Stop & Close') ) . '</button>
                 </div>
             </div>
         </nav>
@@ -470,12 +480,12 @@ if (mysqli_num_rows($result) > 0) {
 // else there is not at least one e-mail recipient left, so e-mail campaign is complete
 } else {
     // update e-mail campaign status
-    $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     
     // get total number of recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_email_recipients = $row[0];
 
@@ -506,12 +516,12 @@ if (mysqli_num_rows($result) > 0) {
         <div class="container-fluid">
             <span class="navbar-text me-auto" data-bs-content="' . lang('A function for sending e-mails to recipients') . '" title="' . lang('Send E-mail Campaign') . '">' . lang('Send E-mail Campaign') . '</span>
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
-                    <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                    <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+                <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
+                    <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+                    <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
                     </ul>
                 </li>
                 <li class="nav-item">
@@ -526,8 +536,8 @@ if (mysqli_num_rows($result) > 0) {
     <main id="content" class="container-fluid">
         <div class="row">
             <div class="col-12">
-                <div class="card mb-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card mb-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Informations') . '
                     </div>
                     <div class="card-body">
@@ -540,13 +550,13 @@ if (mysqli_num_rows($result) > 0) {
             </div>
             <div class="col-12">
                 <h3>' . lang('Campaign Sent') . '.</h3>
-                <div class="alert alert-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p></div>
+                <div class="alert theme-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p></div>
             </div>
         </div>
         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
             <div class="container">
                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button type="button" name="submit_save" value="Close" onclick="window.opener.location.reload(true); window.close();" class="btn mb-1 mt-1  btn-secondary submit-primary" ><span class="material-icons me-2">close</span>' . lang(array('string'=>'Close') ) . '</button>
+                    <button type="button" name="submit_save" value="Close" onclick="window.opener.location.reload(true); window.close();" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="material-icons me-3">close</span>' . lang(array('string'=>'Close') ) . '</button>
                 </div>
             </div>
         </nav>

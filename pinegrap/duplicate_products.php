@@ -1105,13 +1105,13 @@ if (!$_POST) {
             // If this product is enabled, then use green color class for name and short description,
             // and output check mark for enabled column.
             if ($enabled == 1) {
-                $output_name_and_short_description_color_class = 'text-success';
+                $output_name_and_short_description_color_class = 'fg-success';
                 $output_enabled_check_mark = $output_checkmark;
             
             // Otherwise this product is disabled, so use red color class for name and short description,
             // and do not output check mark for enabled column.
             } else {
-                $output_name_and_short_description_color_class = 'text-danger';
+                $output_name_and_short_description_color_class = 'fg-danger';
             }
 
             // if tax is on, prepare tax data
@@ -1289,9 +1289,9 @@ if (!$_POST) {
                              zones.name 
                           FROM zones 
                           LEFT JOIN products_zones_xref ON products_zones_xref.zone_id = zones.id 
-                          WHERE products_zones_xref.product_id = '" . escape($product_id) . "'
+                          WHERE products_zones_xref.product_id = ?
                           ORDER BY zones.name ASC";
-                $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
+                $result2 = db_q($query2, array((string) $product_id)) or output_error('Query failed.');
 
                 // loop through and prepare allowed zones
                 while($row2 = mysqli_fetch_assoc($result2)){
@@ -1457,15 +1457,15 @@ if (!$_POST) {
             }else{
 
                 $output_inventory_headers ='<th>' . get_column_heading(lang('Inventory Quantity'), $sort_levels, '', '', 'inventory_quantity') . '</th>';
-                $output_inventory_columns ='<td class="align-middle text-center text-success h5 fw-bolder" title="' . lang('Inventory tracking is not active for this product/service') . '">-</td>';
+                $output_inventory_columns ='<td class="align-middle text-center fg-success h5 fw-bolder" title="' . lang('Inventory tracking is not active for this product/service') . '">-</td>';
                 if ($inventory == 1){
                     if ($inventory_quantity >= 10){
-                        $output_inventory_columns ='<td class="align-middle text-center text-success h5 fw-bolder">'.$inventory_quantity.'</td>';
+                        $output_inventory_columns ='<td class="align-middle text-center fg-success h5 fw-bolder">'.$inventory_quantity.'</td>';
                     }else{
-                        $output_inventory_columns ='<td class="align-middle text-center text-warning h5 fw-bolder">'.$inventory_quantity.'</td>';
+                        $output_inventory_columns ='<td class="align-middle text-center fg-warning h5 fw-bolder">'.$inventory_quantity.'</td>';
                     }
                     if ($inventory_quantity == 0){
-                        $output_inventory_columns ='<td class="align-middle text-center text-danger h5 fw-bolder">'.$inventory_quantity.'</td>';
+                        $output_inventory_columns ='<td class="align-middle text-center fg-danger h5 fw-bolder">'.$inventory_quantity.'</td>';
                     }
                 }
 
@@ -1473,7 +1473,7 @@ if (!$_POST) {
 
             $output_rows .=
             '<tr>
-                <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="products[]" value="' . $row['id'] . '" class="checkbox" /></td>
+                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $row['id'] . '" class="checkbox" /></td>
         
                 ' . $output_image_column . '
                 <td class="align-middle chart_label ' . $output_name_and_short_description_color_class . '">' . $name . '</td>
@@ -1503,15 +1503,15 @@ if (!$_POST) {
                     ' . $liveform->output_errors() . '
                     ' . $liveform->get_warnings() . '
                     ' . $liveform->output_notices() . '
-                    <div class="row mb-2 flex-wrap">
-                        <div class="col-12 text-center text-md-start">
+                    <div class="row mb-3 flex-wrap">
+                        <div class="col-12 text-center md:text-start">
                             <nav id="button_bar" class="navigation " aria-label="Button Bar">
                                 <div class="pg-toolbar-grow"></div>
                                 ' . pg_list_sort_menu('duplicate_products.php', $sort_columns, $sort_levels, $sort_default) . '
                             </nav>
                         </div>
                     </div>
-                    <div class="card my-4">
+                    <div class="card my-7">
                         <div class="card-body p-0 position-relative">
                             <form name="form"  action="duplicate_products.php" method="post"> 
                                 ' . get_token_field() . '
@@ -1530,8 +1530,8 @@ if (!$_POST) {
                                     <thead>
                                         <tr>
                                             <th class="noVis">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                                                <div class="form-field">
+                                                    <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                                 </div>
                                             </th>
 
@@ -1560,7 +1560,7 @@ if (!$_POST) {
                                 </table>
                                 
                               
-                                <div class="row g-2 p-3 mb-4">
+                                <div class="row g-3 p-5 mb-7">
                                     <div class="col-12">
                                     <p>' . h(lang('The new letter replaces the 1 character removed from the ID and Short Description fields.')) . '</p>
                                     </div>
@@ -1588,7 +1588,7 @@ if (!$_POST) {
                                         <option value="93" >Assortment X</option>
                                         <option value="135" >Assortment Y</option>
                                     </select></div>
-                                    <div class="col"><button type="submit" value="Duplicate Selected" class=" mt-4 btn btn-secondary"><span class="material-icons me-2">edit</span>' . h(lang('Duplicate Selected')) . '</button></div>
+                                    <div class="col"><button type="submit" value="Duplicate Selected" class=" mt-7 btn btn-solid theme-secondary"><span class="material-icons me-3">edit</span>' . h(lang('Duplicate Selected')) . '</button></div>
                                 </div>
                                 
                             </form>
@@ -1617,7 +1617,7 @@ if (!$_POST) {
     // below before anything is copied, or an empty array for "Do not Change".
     function duplicate_products($id,$lettertodelete,$newletter,$option) {
         // get original product's info
-        $result = mysqli_query(db::$con, "SELECT * FROM products WHERE id = '" . escape($id) . "'") or output_error(lang('Query failed'));
+        $result = db_q("SELECT * FROM products WHERE id = ?", array((string) $id)) or output_error(lang('Query failed'));
         $row                   = mysqli_fetch_assoc($result);
         $original_product_name = $row['name'];
         $product_name          = get_unique_name(array(
@@ -1657,6 +1657,18 @@ if (!$_POST) {
         // original's "was" price as it starts with its price.
         $compare_at_column = array_key_exists('compare_at_price', $row) ? 'compare_at_price,' : '';
         $compare_at_value  = array_key_exists('compare_at_price', $row) ? pg_compare_at_price_sql($row['compare_at_price']) . ',' : '';
+
+        // products.ai_fields (2026.11.0) likewise: the copy keeps the marks of
+        // the texts it writes unchanged; the short description, whose last
+        // letters are replaced, keeps its mark only if it is still the same.
+        $ai_fields = pg_ai_fields_copy('product', $row, array(
+            'short_description' => $short_description,
+            'full_description'  => $row['full_description'],
+            'title'             => $row['title'],
+            'meta_description'  => $row['meta_description'],
+        ));
+        $ai_fields_column = ($ai_fields !== false) ? 'ai_fields,' : '';
+        $ai_fields_value  = ($ai_fields !== false) ? (($ai_fields === null) ? 'NULL' : "'" . e($ai_fields) . "'") . ',' : '';
 
         // insert row into product table
         $query        = "INSERT INTO products (
@@ -1842,6 +1854,8 @@ if (!$_POST) {
                 mpn,
     
                 " . $compare_at_column . "
+    
+                " . $ai_fields_column . "
     
                 user,
     
@@ -2031,25 +2045,27 @@ if (!$_POST) {
     
                 " . $compare_at_value . "
     
+                " . $ai_fields_value . "
+    
                 '" . USER_ID . "',
     
                 UNIX_TIMESTAMP())";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
         $new_product_id = mysqli_insert_id(db::$con);
         // get allowed zones for product that we are duplicating
-        $query          = "SELECT zone_id FROM products_zones_xref WHERE product_id = '" . escape($id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query          = "SELECT zone_id FROM products_zones_xref WHERE product_id = ?";
+        $result = db_q($query, array((string) $id)) or output_error(lang('Query failed.'));
         while ($row = mysqli_fetch_assoc($result)) {
             // insert row for allowed zone for new product
-            $query = "INSERT INTO products_zones_xref (product_id, zone_id) VALUES ($new_product_id, " . $row['zone_id'] . ")";
-            $result_2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $query = "INSERT INTO products_zones_xref (product_id, zone_id) VALUES (?, ?)";
+            $result_2 = db_q($query, array((int) $new_product_id, (int) $row['zone_id'])) or output_error(lang('Query failed.'));
         }
         // get form fields for this product and duplicate them
         // form_type pinned: template rows (product_id 0 since 2026.4) must not
         // be copied onto a duplicate, and a duplicate is a standalone product
         // rather than a variant generated from somebody's template.
-        $query = "SELECT * FROM form_fields WHERE (product_id = '" . escape($id) . "') AND (form_type = 'product')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT * FROM form_fields WHERE (product_id = ?) AND (form_type = 'product')";
+        $result = db_q($query, array((string) $id)) or output_error(lang('Query failed.'));
         while ($row = mysqli_fetch_assoc($result)) {
             // insert row for field for new product
             $query = "INSERT INTO form_fields (
@@ -2096,50 +2112,50 @@ if (!$_POST) {
     
                 VALUES (
     
-                    '" . e($row['form_type']) . "',
+                    ?,
     
-                    '" . $new_product_id . "',
+                    ?,
     
-                    '" . escape($row['name']) . "',
+                    ?,
     
-                    '" . escape($row['label']) . "',
+                    ?,
     
-                    '" . escape($row['type']) . "',
+                    ?,
     
-                    '" . escape($row['sort_order']) . "',
+                    ?,
     
-                    '" . escape($row['required']) . "',
+                    ?,
     
-                    '" . escape($row['information']) . "',
+                    ?,
     
-                    '" . escape($row['default_value']) . "',
+                    ?,
     
-                    '" . escape($row['use_folder_name_for_default_value']) . "',
+                    ?,
     
-                    '" . escape($row['size']) . "',
+                    ?,
     
-                    '" . escape($row['maxlength']) . "',
+                    ?,
     
-                    '" . escape($row['wysiwyg']) . "',
+                    ?,
     
-                    '" . escape($row['rows']) . "',
+                    ?,
     
-                    '" . escape($row['cols']) . "',
+                    ?,
     
-                    '" . escape($row['multiple']) . "',
+                    ?,
     
-                    '" . escape($row['spacing_above']) . "',
+                    ?,
     
-                    '" . escape($row['spacing_below']) . "',
+                    ?,
     
-                    '" . USER_ID . "',
+                    ?,
     
                     UNIX_TIMESTAMP())";
-            $result_2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $result_2 = db_q($query, array((string) $row['form_type'], (string) $new_product_id, (string) $row['name'], (string) $row['label'], (string) $row['type'], (string) $row['sort_order'], (string) $row['required'], (string) $row['information'], (string) $row['default_value'], (string) $row['use_folder_name_for_default_value'], (string) $row['size'], (string) $row['maxlength'], (string) $row['wysiwyg'], (string) $row['rows'], (string) $row['cols'], (string) $row['multiple'], (string) $row['spacing_above'], (string) $row['spacing_below'], (string) USER_ID)) or output_error(lang('Query failed.'));
             $new_form_field_id = mysqli_insert_id(db::$con);
             // get form field options
-            $query             = "SELECT * FROM form_field_options WHERE form_field_id = '" . $row['id'] . "'";
-            $result2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $query             = "SELECT * FROM form_field_options WHERE form_field_id = ?";
+            $result2 = db_q($query, array((string) $row['id'])) or output_error(lang('Query failed.'));
             $form_field_options = array();
             while ($row = mysqli_fetch_assoc($result2)) {
                 $form_field_options[] = $row;
@@ -2162,18 +2178,18 @@ if (!$_POST) {
     
                          VALUES (
     
-                            '" . $new_product_id . "',
+                            ?,
     
-                            '" . $new_form_field_id . "',
+                            ?,
     
-                            '" . escape($form_field_option['label']) . "',
+                            ?,
     
-                            '" . escape($form_field_option['value']) . "',
+                            ?,
     
-                            '" . $form_field_option['default_selected'] . "',
+                            ?,
     
-                            '" . $form_field_option['sort_order'] . "')";
-                $result2 = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                            ?)";
+                $result2 = db_q($query, array((string) $new_product_id, (string) $new_form_field_id, (string) $form_field_option['label'], (string) $form_field_option['value'], (string) $form_field_option['default_selected'], (string) $form_field_option['sort_order'])) or output_error(lang('Query failed.'));
             }
         }
         // Get submit form fields, in order to duplicate them.

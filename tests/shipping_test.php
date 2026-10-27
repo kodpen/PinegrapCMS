@@ -290,13 +290,13 @@ function test_shipment_view()
 // The badge of each status.
 function test_shipment_status_badges()
 {
-	pg_assert_same('text-bg-success', pg_shipment_status_class('delivered'));
-	pg_assert_same('text-bg-primary', pg_shipment_status_class('in_transit'));
-	pg_assert_same('text-bg-primary', pg_shipment_status_class('out_for_delivery'));
-	pg_assert_same('text-bg-warning', pg_shipment_status_class('returned'));
-	pg_assert_same('text-bg-danger', pg_shipment_status_class('exception'));
-	pg_assert_same('text-bg-secondary', pg_shipment_status_class('created'));
-	pg_assert_same('text-bg-secondary', pg_shipment_status_class('anything'));
+	pg_assert_same('theme-success', pg_shipment_status_class('delivered'));
+	pg_assert_same('theme-primary', pg_shipment_status_class('in_transit'));
+	pg_assert_same('theme-primary', pg_shipment_status_class('out_for_delivery'));
+	pg_assert_same('theme-warning', pg_shipment_status_class('returned'));
+	pg_assert_same('theme-danger', pg_shipment_status_class('exception'));
+	pg_assert_same('theme-secondary', pg_shipment_status_class('created'));
+	pg_assert_same('theme-secondary', pg_shipment_status_class('anything'));
 	pg_assert_same(lang('Recorded'), pg_shipment_status_label('anything'), 'unknown reads as recorded');
 	pg_assert_same(lang('Delivered'), pg_shipment_status_label('delivered'));
 }
@@ -323,4 +323,84 @@ function test_shipment_warning_text()
 {
 	pg_assert_contains('MNG Kargo', pg_shipment_warning_text('MNG Kargo'));
 	pg_assert_same(lang('This does not look like a tracking number. It was saved anyway.'), pg_shipment_warning_text(''));
+}
+
+// The order_shipped / order_delivered e-mail fields: every number, each
+// carrier once in the order first met, and the first parcel's link (one link
+// fits an href); a row without a number adds nothing.
+function test_shipment_merge_fields()
+{
+	$fields = pg_shipment_merge_fields(array(
+		array('number' => '1234567890', 'carrier_name' => 'Aras Kargo', 'url' => ''),
+		array('number' => '', 'carrier_name' => 'MNG Kargo', 'url' => 'https://example.com/x'),
+		array('number' => 'AB123', 'carrier_name' => 'Yurtiçi Kargo', 'url' => 'https://example.com/ab123'),
+		array('number' => '777', 'carrier_name' => 'Aras Kargo', 'url' => 'https://example.com/777'),
+		array('number' => '888', 'carrier_name' => '', 'url' => ''),
+	));
+
+	pg_assert_same(array(
+		array('name' => 'tracking_numbers', 'data' => '1234567890, AB123, 777, 888'),
+		array('name' => 'carrier_name', 'data' => 'Aras Kargo, Yurtiçi Kargo'),
+		array('name' => 'tracking_url', 'data' => 'https://example.com/ab123'),
+	), $fields);
+
+	// No parcel: the fields are still there, empty, so a [[...||...]]
+	// conditional takes its else part instead of printing the ^^name^^.
+	pg_assert_same(array(
+		array('name' => 'tracking_numbers', 'data' => ''),
+		array('name' => 'carrier_name', 'data' => ''),
+		array('name' => 'tracking_url', 'data' => ''),
+	), pg_shipment_merge_fields(array()));
+}
+
+// A parcel as the API's shipments and the order.shipped / order.delivered
+// payloads give it: the carrier and link the order screen shows, the status,
+// and the dates as UTC times (null when not known).
+function test_shipment_api_parcel()
+{
+	$named = pg_shipment_api_parcel(array(
+		'number' => '12345678901', 'carrier' => 'aras', 'tracking_url' => '', 'status' => 'delivered',
+		'shipped_at' => '1792836000', 'delivered_at' => '1793008800',
+	), 'Standart Teslimat', '');
+
+	pg_assert_same(array(
+		'number'       => '12345678901',
+		'carrier'      => 'aras',
+		'carrier_name' => 'Aras Kargo',
+		'tracking_url' => str_replace('{code}', '12345678901', pg_shipping_carriers()['aras']['url']),
+		'status'       => 'delivered',
+		'shipped_at'   => gmdate('Y-m-d\TH:i:s\Z', 1792836000),
+		'delivered_at' => gmdate('Y-m-d\TH:i:s\Z', 1793008800),
+	), $named);
+
+	// The carrier the method code spells, as on the order screen.
+	$guessed = pg_shipment_api_parcel(array('number' => '1234567890', 'carrier' => ''), 'MNG Ertesi Gün', '');
+	pg_assert_same('mng', $guessed['carrier']);
+	pg_assert_same('created', $guessed['status']);
+	pg_assert_same(null, $guessed['shipped_at']);
+	pg_assert_same(null, $guessed['delivered_at']);
+
+	// Nothing known: null rather than an empty string.
+	$unknown = pg_shipment_api_parcel(array('number' => 'ABC-12345', 'carrier' => 'nope'), 'Standart Teslimat', '');
+	pg_assert_same(null, $unknown['carrier']);
+	pg_assert_same(null, $unknown['carrier_name']);
+	pg_assert_same(null, $unknown['tracking_url']);
+}
+
+// The carrier POST /orders/{id}/shipment names goes on each number it sends,
+// but only a carrier the store knows: free text is no carrier for the row.
+function test_shipment_numbers_with_carrier()
+{
+	pg_assert_same(array(
+		array('number' => '111', 'carrier' => 'yurtici'),
+		array('number' => '222', 'carrier' => 'yurtici'),
+	), pg_shipment_numbers_with_carrier(array('111', '222'), 'YURTİÇİ KARGO'));
+
+	pg_assert_same(array(array('number' => '111', 'carrier' => 'ups')),
+		pg_shipment_numbers_with_carrier(array('111'), 'ups'));
+
+	// Unknown or empty: the plain numbers, so each row keeps its own carrier.
+	pg_assert_same(array('111'), pg_shipment_numbers_with_carrier(array('111'), 'Bizim Kurye'));
+	pg_assert_same(array('111'), pg_shipment_numbers_with_carrier(array('111'), ''));
+	pg_assert_same(array(), pg_shipment_numbers_with_carrier(array(), 'aras'));
 }

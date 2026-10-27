@@ -61,8 +61,7 @@ function pg_panel_shared_component($request, $action)
 
     // Defensive: ensure shared_components table exists (migration may not have been run).
     // Returns a clear JSON error instead of a cryptic HTML dump / 500.
-    $_sc_check = @mysqli_query(db::$con, "SHOW TABLES LIKE 'shared_components'");
-    if (!$_sc_check || mysqli_num_rows($_sc_check) === 0) {
+    if (!pg_schema_has('shared_components')) {
         respond(array(
             'status'  => 'error',
             'message' => 'shared_components table is missing — please run the software upgrade at install/index.php',
@@ -251,6 +250,29 @@ function pg_panel_shared_component($request, $action)
             $sc_region = isset($request['name']) && is_string($request['name']) ? $request['name'] : '';
             $sc_warn = array();
             $sc_made = ($sc_region !== '') ? pg_designer_region_component($sc_region, $user, $sc_warn) : null;
+            if (!is_array($sc_made)) {
+                respond(array('status' => 'error', 'message' => lang('Record not found.')));
+            }
+            respond(array('status' => 'success', 'id' => $sc_made['id'], 'name' => $sc_made['name'],
+                          'created' => $sc_made['created'], 'warnings' => $sc_warn));
+            break;
+
+        // ── FROM COMMON REGION (designer) ────────────────────────────────
+        // A common region as a shared component opened to content editors,
+        // the users granted the region granted it. Unlike a designer
+        // region, the component replaces the region everywhere: its classic
+        // tag draws the component from then on. One made earlier is given
+        // back.
+        case 'from_common_region':
+            require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
+            if (!pg_shared_component_content_ready()) {
+                respond(array('status' => 'error', 'message' => lang('Please run the software upgrade to open shared components to content editors.')));
+            }
+            $sc_region = isset($request['name']) && is_string($request['name']) ? $request['name'] : '';
+            $sc_rid = ($sc_region !== '') ? (int)db_value("SELECT cregion_id FROM cregion
+                WHERE cregion_name = '" . e($sc_region) . "' AND cregion_designer_type = 'no' ORDER BY cregion_id LIMIT 1") : 0;
+            $sc_warn = array();
+            $sc_made = ($sc_rid > 0) ? pg_common_region_component($sc_rid, $user, $sc_warn) : null;
             if (!is_array($sc_made)) {
                 respond(array('status' => 'error', 'message' => lang('Record not found.')));
             }
@@ -756,6 +778,28 @@ function pg_panel_shared_component($request, $action)
             respond(array('status' => 'success', 'fields' => $sc_ff_rows));
             break;
 
+        // ── TEMPLATE LAYOUTS ────────────────────────────────────────────
+        // The layout gallery's "From templates": the layouts the design's
+        // template ships for a widget kind (pg_sw_template_layouts()). The
+        // template is read from the design's own row; a design not saved
+        // yet names the one it is being made from.
+        case 'template_layouts':
+            $sc_tl_kind  = isset($request['kind']) && is_string($request['kind']) ? $request['kind'] : '';
+            $sc_tl_style = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+            $sc_tl_id    = '';
+            if ($sc_tl_style > 0 && pg_schema_has('style', 'style_template')) {
+                $sc_tl_id = (string)db_value("SELECT style_template FROM style WHERE style_id = '$sc_tl_style'");
+            } elseif ($sc_tl_style <= 0 && isset($request['template']) && is_string($request['template'])) {
+                $sc_tl_id = $request['template'];
+            }
+            $sc_tl_tpl = ($sc_tl_id !== '' && $sc_tl_kind !== '') ? pg_design_template($sc_tl_id) : null;
+            if (!$sc_tl_tpl) {
+                respond(array('status' => 'success', 'layouts' => array()));
+            }
+            respond(array('status' => 'success', 'layouts' => pg_sw_template_layouts(
+                $sc_tl_tpl, $sc_tl_kind, pg_sw_template_page_map($sc_tl_tpl, $sc_tl_style))));
+            break;
+
         default:
             respond(array('status' => 'error', 'message' => lang('Invalid action.')));
     }
@@ -792,20 +836,6 @@ function _sc_flag_binned_pages($rows)
     }
     unset($row);
     return $rows;
-}
-
-// Returns a name that does not yet exist in shared_components.
-// If $desired is already taken, appends " [1]", " [2]", ... until a free slot is found.
-function _sc_unique_name($desired)
-{
-    $base = $desired;
-    $name = $base;
-    $i    = 1;
-    while (db_value("SELECT COUNT(*) FROM shared_components WHERE name = '" . e($name) . "'") > 0) {
-        $name = $base . ' [' . $i . ']';
-        $i++;
-    }
-    return $name;
 }
 
 // What each component row says about the content level: its flag

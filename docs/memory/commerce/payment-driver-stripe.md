@@ -5,7 +5,7 @@ description: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24,
 
 ## What is it?
 - `includes/payments/stripe.php`, key `stripe`, card driver for the gateway value `Stripe PaymentIntents` (appended to the `config.ecommerce_payment_gateway` ENUM by 11.0.24). `Stripe` stays the classic Charges code ("Stripe (classic)").
-- `connect_apps` `payment_stripe`: `publishable_key`, `secret_key` (sealed), `link`. Mode comes from the keys (mode row hidden); Transaction Type Authorize → `capture_method=manual`.
+- `connect_apps` `payment_stripe`: `publishable_key`, `secret_key` and `webhook_secret` (sealed), `link`. Mode from the keys; Transaction Type Authorize → `capture_method=manual`.
 - No SDK: `pg_curl_tls()`, `Stripe-Version: 2024-06-20`; each operation has a `*_with($…, $settings, $http)` twin for tests.
 
 ## How does a card payment go?
@@ -21,12 +21,15 @@ description: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24,
 - Visitor sentences are the site's; Stripe's words go to `Stripe payment for order #N was not accepted: …`.
 
 ## Security policy?
-- A definition may list `csp` hosts (script-src, frame-src, connect-src; https origins, `https://*.` allowed). `waf_csp_add_payment_sources()` adds the card gateway's to the built-in policy (read from the config row). Stripe's list: script `js.stripe.com`, `*.js.stripe.com`; frame those plus `hooks.stripe.com`, `link.com`, `*.link.com`; connect `api.stripe.com`, `link.com`, `*.link.com`. Link hosts are always listed (static). A custom policy must add them itself.
+- A definition may list `csp` hosts (script-src, frame-src, connect-src; https origins, `https://*.` allowed). `waf_csp_add_payment_sources()` adds the card gateway's to the built-in policy (read from the config row). Stripe's: script `js.stripe.com`, `*.js.stripe.com`; frame those, `hooks.stripe.com`, `link.com`, `*.link.com`; connect `api.stripe.com`, `link.com`, `*.link.com` (Link hosts always listed). A custom policy must add them itself.
+
+## Webhook?
+- `notify()` (PR #2143): `Stripe-Signature` checked (HMAC-SHA256 of `t.body`, any `v1`, 300 s; no secret = refused). `payment_intent.succeeded` (metadata `order_id`) → `paid`; `charge.refunded` → `refunded`; `charge.dispute.created` → `pending`; else `raw.ignored`. Order lookup and outcome: `payment-callback.md`.
 
 ## What is not done?
-- Webhook for a visitor who never returns: plan step 3b. Apple Pay needs the domain in the Stripe Dashboard; Link is turned on there.
+- Completing an incomplete order from the webhook (owner, plan 3b). Apple Pay needs the domain in the Stripe Dashboard; Link is turned on there.
 
 ## How was it verified?
-- `tests/payment_stripe_test.php` (stand-in HTTP caller); sandbox with Stripe unreachable; the script in jsdom with a fake Stripe.js. No real Stripe account.
+- `tests/payment_stripe_test.php` (stand-in HTTP caller), `payment_stripe_webhook_test.php`; sandbox, Stripe unreachable; the script in jsdom with a fake Stripe.js. No real Stripe account.
 
 Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-refunds.md, docs/memory/plans/payment-driver-layer.md

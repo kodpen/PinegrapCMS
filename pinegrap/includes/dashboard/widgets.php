@@ -195,24 +195,24 @@ function pg_widget_headline($properties)
     if ($today > $yesterday) {
         $direction = 'up';
         $arrow = 'bi-caret-up-fill';
-        $color = 'text-success';
+        $color = 'fg-success';
     } elseif ($today < $yesterday) {
         $direction = 'down';
         $arrow = 'bi-caret-down-fill';
-        $color = 'text-danger';
+        $color = 'fg-danger';
     } else {
         $direction = 'flat';
         $arrow = 'bi-dash';
-        $color = 'text-muted';
+        $color = 'fg-secondary';
     }
 
     return '
     <div class="pg-head">
         <div class="pg-head-line">
             <span class="pg-head-num">' . pg_format_number($today, 0) . '</span>
-            <span class="pg-head-unit text-muted">' . $unit . '</span>
+            <span class="pg-head-unit fg-secondary">' . $unit . '</span>
             <i class="bi ' . $arrow . ' pg-head-dir ' . $color . '" title="' . h(lang('Compared to yesterday')) . '"></i>
-            <span class="pg-head-total text-muted">' . lang(array(
+            <span class="pg-head-total fg-secondary">' . lang(array(
                 'string' => 'in 7 days {var:1}',
                 'vars' => '<b>' . pg_format_number($total, 0) . '</b>',
             )) . '</span>
@@ -289,8 +289,8 @@ function pg_widget_row($properties)
         $meta  = pg_strip_anchor_tags($meta);
     }
 
-    $output_aside  = ($aside !== '') ? '<span class="pg-row-aside text-muted">' . $aside . '</span>' : '';
-    $output_meta   = ($meta !== '') ? '<span class="pg-row-meta d-block text-muted">' . $meta . '</span>' : '';
+    $output_aside  = ($aside !== '') ? '<span class="pg-row-aside fg-secondary">' . $aside . '</span>' : '';
+    $output_meta   = ($meta !== '') ? '<span class="pg-row-meta d-block fg-secondary">' . $meta . '</span>' : '';
     // A row that sets its own tile colour has to bring its own glyph colour
     // with it, because the CSS variable pairing only covers the card accents.
     $output_color = ($color !== '')
@@ -312,7 +312,7 @@ function pg_widget_row($properties)
 
     if ($href !== '') {
         $open  = '<a href="' . $href . '" class="' . $class . '"' . $output_target . $output_data . '>';
-        $close = '<i class="bi bi-arrow-right text-muted pg-row-go"></i></a>';
+        $close = '<i class="bi bi-arrow-right fg-secondary pg-row-go"></i></a>';
     } else {
         $open  = '<div class="' . $class . '"' . $output_data . '>';
         $close = '</div>';
@@ -373,7 +373,7 @@ function pg_readable_ink($hex)
 // "Top Pages" over "Top Products", "Expiring Soon" over the rest.
 function pg_widget_row_heading($label, $aside = '')
 {
-    return '<div class="pg-row-heading text-muted">' . $label
+    return '<div class="pg-row-heading fg-secondary">' . $label
         . (($aside !== '') ? '<span class="pg-row-aside">' . $aside . '</span>' : '')
         . '</div>';
 }

@@ -20,6 +20,7 @@ include('init.php');
 require_once(dirname(__FILE__) . '/seo.php');
 require_once(dirname(__FILE__) . '/seo_structure.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_type_pane.php');
 
 $liveform = new liveform('edit_page');
 
@@ -37,12 +38,20 @@ $requested_page_id = $_POST ? ($_POST['id'] ?? '') : ($_GET['id'] ?? '');
 // "not found" screen instead of PHP notices from the unchecked row below or
 // an error page.
 $id = is_scalar($requested_page_id) ? (int) $requested_page_id : 0;
+
+// The visual designer's page type pane reads and saves the page's type
+// fields here (includes/fn/page_type_pane.php): JSON, no redirect, and only
+// the type fields and the layout type are written.
+if ((string) ($_GET['properties'] ?? '') === '1') {
+    pg_page_type_pane_request($user, $id);
+}
+
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM page WHERE page_id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
 // get page's folder in order to validate folder access
-$result = mysqli_query(db::$con, "SELECT page_id, page_folder FROM page WHERE page_id = '" . escape($requested_page_id) . "'") or output_error('Query failed.');
+$result = db_q("SELECT page_id, page_folder FROM page WHERE page_id = ?", array((string) $requested_page_id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 if (!$row['page_id']) {
@@ -97,8 +106,8 @@ if (!$_POST) {
             seo_analysis,
             seo_analysis_current
         FROM page
-        WHERE page_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $page_id = $row['page_id'];
@@ -177,10 +186,10 @@ if (!$_POST) {
         FROM short_links
         WHERE
             (destination_type = 'page')
-            AND (page_id = '" . escape($_GET['id']) . "')
+            AND (page_id = ?)
         ORDER BY last_modified_timestamp DESC
         LIMIT 1";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $short_link = mysqli_fetch_assoc($result);
 
     // if there is a short link, then prepare to output description in sub-navigation area
@@ -197,7 +206,7 @@ if (!$_POST) {
     
     // if this is a home page, then prepare to output description in sub-navigation area
     if ($page_home == 'yes') {
-        $output_subnav_home = '<span class="badge material-icons text-primary h2">home</span>';
+        $output_subnav_home = '<span class="badge material-icons fg-primary h2">home</span>';
     }
     
     $output_subnav_search = '';
@@ -268,16 +277,16 @@ if (!$_POST) {
     
     // if user is above a user role, then prepare to output style and mobile style pick list, because user has access to select style
     if ($user['role'] < 3) {
-        $output_style = '<select class="form-select" id="style" name="style">' . select_style($page_style) . '</select>';
-        $output_mobile_style = '<select class="form-select" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options($mobile_style_id) . '</select>';
+        $output_style = '<select class="form-control" id="style" name="style">' . select_style($page_style) . '</select>';
+        $output_mobile_style = '<select class="form-control" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options($mobile_style_id) . '</select>';
         
     // else user has a user role, so prepare to just output style and mobile style name
     } else {
         // if there is a style set for this page, then prepare to just output style name
         if ($page_style != 0) {
             // get style name
-            $query = "SELECT style_name FROM style WHERE style_id='" . escape($page_style) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT style_name FROM style WHERE style_id=?";
+            $result = db_q($query, array((string) $page_style)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $style_name = $row['style_name'];
             
@@ -291,8 +300,8 @@ if (!$_POST) {
         // if there is a mobile style set for this page, then prepare to just output mobile style name
         if ($mobile_style_id != 0) {
             // get mobile style name
-            $query = "SELECT style_name FROM style WHERE style_id='" . escape($mobile_style_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT style_name FROM style WHERE style_id=?";
+            $result = db_q($query, array((string) $mobile_style_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $mobile_style_name = $row['style_name'];
             
@@ -311,30 +320,7 @@ if (!$_POST) {
     $output_page_type_properties = '';
 
     // if user is above a user role or page type is accessible by this user, then prepare to output page type area
-    if (
-        ($user['role'] < 3)
-        || ($page_type == 'standard')
-        || (($page_type == 'email a friend') && ($user['set_page_type_email_a_friend'] == TRUE))
-        || (($page_type == 'folder view') && ($user['set_page_type_folder_view'] == TRUE))
-        || (($page_type == 'photo gallery') && ($user['set_page_type_photo_gallery'] == TRUE))
-        || (($page_type == 'catalog') && ($user['set_page_type_catalog'] == TRUE))
-        || (($page_type == 'catalog detail') && ($user['set_page_type_catalog_detail'] == TRUE))
-        || (($page_type == 'express order') && ($user['set_page_type_express_order'] == TRUE))
-        || (($page_type == 'order form') && ($user['set_page_type_order_form'] == TRUE))
-        || (($page_type == 'shopping cart') && ($user['set_page_type_shopping_cart'] == TRUE))
-        || (($page_type == 'shipping address and arrival') && ($user['set_page_type_shipping_address_and_arrival'] == TRUE))
-        || (($page_type == 'shipping method') && ($user['set_page_type_shipping_method'] == TRUE))
-        || (($page_type == 'billing information') && ($user['set_page_type_billing_information'] == TRUE))
-        || (($page_type == 'order preview') && ($user['set_page_type_order_preview'] == TRUE))
-        || (($page_type == 'order receipt') && ($user['set_page_type_order_receipt'] == TRUE))
-        || (($page_type == 'custom form') && ($user['set_page_type_custom_form'] == TRUE))
-        || (($page_type == 'custom form confirmation') && ($user['set_page_type_custom_form_confirmation'] == TRUE))
-        || (($page_type == 'form list view') && ($user['set_page_type_form_list_view'] == TRUE))
-        || (($page_type == 'form item view') && ($user['set_page_type_form_item_view'] == TRUE))
-        || (($page_type == 'form view directory') && ($user['set_page_type_form_view_directory'] == TRUE))
-        || (($page_type == 'calendar view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_view'] == TRUE))
-        || (($page_type == 'calendar event view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_event_view'] == TRUE))
-    ) {
+    if (pg_page_type_user_may_set($user, $page_type)) {
         $page_type_properties = array();
 
         if (check_for_page_type_properties($page_type)) {
@@ -363,45 +349,58 @@ if (!$_POST) {
                 $query_string_from = '';
             }
 
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+
+            // The same target as the form screen's link. A page whose own
+            // style is a visual design never reaches this screen (it is sent
+            // to the designer above), so this is the classic link in practice.
+            $edit_layout_url = pg_layout_edit_url(
+                $page_id,
+                PATH . encode_url_path($page_name) . $query_string_from,
+                $page_style,
+                pg_page_is_visual_design(array('page_style' => $page_style)),
+                USER_ROLE,
+                pg_hosted());
+
             $output_layout_buttons =
-                '<a class="btn btn-link link-secondary py-0 mb-2 " href="page_designer.php?url=' . h(urlencode(PATH . encode_url_path($page_name) . $query_string_from)) . '&amp;type=layout&amp;id=' . $page_id . '" target="_top"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
-                <a class="btn btn-link link-secondary py-0 mb-2 " href="generate_layout.php?page_id=' . $page_id . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>';
+                '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h($edit_layout_url) . '" target="_top"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
+                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="generate_layout.php?page_id=' . $page_id . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>';
         }
 
         switch ($page_type) {
             case 'custom form':
-                $output_edit_custom_form = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Form') . '</a>';
+                $output_edit_custom_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Form') . '</a>';
                 break;
 
             case 'form list view':
-                $output_edit_form_list_view = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_list_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">list</span>' . lang('Edit Form List View') . '</a>';
+                $output_edit_form_list_view = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_list_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">list</span>' . lang('Edit Form List View') . '</a>';
                 break;
 
             case 'form item view':
-                $output_edit_form_item_view = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_item_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">description</span>' . lang('Edit Form Item View') . '</a>';
+                $output_edit_form_item_view = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_item_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">description</span>' . lang('Edit Form Item View') . '</a>';
                 break;
 
             case 'express order':
                 if (($stored_properties['shipping_form'] ?? '')) {
-                    $output_edit_custom_shipping_form = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=shipping&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Shipping Form') . '</a>';
+                    $output_edit_custom_shipping_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=shipping&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Shipping Form') . '</a>';
                 }
 
                 if (($stored_properties['form'] ?? '') == '1') {
-                    $output_edit_custom_billing_form = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=billing&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Billing Form') . '</a>';
+                    $output_edit_custom_billing_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=billing&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Billing Form') . '</a>';
                 }
 
                 break;
 
             case 'shipping address and arrival':
                 if (($stored_properties['form'] ?? '') == '1') {
-                    $output_edit_custom_shipping_form = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Shipping Form') . '</a>';
+                    $output_edit_custom_shipping_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Shipping Form') . '</a>';
                 }
 
                 break;
 
             case 'billing information':
                 if (($stored_properties['form'] ?? '') == '1') {
-                    $output_edit_custom_billing_form = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Billing Form') . '</a>';
+                    $output_edit_custom_billing_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Billing Form') . '</a>';
                 }
 
                 break;
@@ -455,10 +454,10 @@ if (!$_POST) {
         }
         
         $output_home_page_rows =
-            '<div class="col-12 my-3">
-                <div class="form-check form-switch">
-                    <input value="yes"' . $home_checked . ' id="home" name="home" class="form-check-input" type="checkbox" />
-                    <label class="form-check-label" for="home">' . lang('Set As Homepage') . '</label>
+            '<div class="col-12 my-5">
+                <div class="form-field">
+                    <div class="switch"><input value="yes"' . $home_checked . ' id="home" name="home" class="" type="checkbox" /></div>
+                    <label class="" for="home">' . lang('Set As Homepage') . '</label>
                 </div>
             </div>';
     }
@@ -472,10 +471,10 @@ if (!$_POST) {
     if (($user['role'] < 3) && pg_short_link_redirects_ready()) {
         $output_name_redirect_row =
             '<div class="col-12 d-none" id="name_redirect_row" data-current-name="' . h($page_name) . '">
-                <div class="form-check">
+                <div class="form-field">
                     <input type="hidden" name="name_redirect" value="0" />
-                    <input value="1" checked="checked" id="name_redirect" name="name_redirect" class="form-check-input" type="checkbox" />
-                    <label class="form-check-label" for="name_redirect">' . lang('Send visitors of the old address here (301 redirect)') . ' <span class="text-body-secondary">' . OUTPUT_PATH . h($page_name) . '</span></label>
+                    <input value="1" checked="checked" id="name_redirect" name="name_redirect" class="check" type="checkbox" />
+                    <label class="" for="name_redirect">' . lang('Send visitors of the old address here (301 redirect)') . ' <span class="fg-secondary">' . OUTPUT_PATH . h($page_name) . '</span></label>
                 </div>
             </div>';
     }
@@ -518,17 +517,17 @@ if (!$_POST) {
         $nofollow_disabled = ($noindex == 1) ? '' : ' disabled="disabled"';
 
         $output_noindex_rows =
-            '<div class="col-12 my-3" id="noindex_row">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="noindex" name="noindex" value="1"' . $noindex_checked . '>
-                    <label class="form-check-label" for="noindex">' . lang('Close to Search Engines (noindex)') . '</label>
+            '<div class="col-12 my-5" id="noindex_row">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" id="noindex" name="noindex" value="1"' . $noindex_checked . '></div>
+                    <label class="" for="noindex">' . lang('Close to Search Engines (noindex)') . '</label>
                 </div>
                 <div class="form-text">' . lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.') . '</div>
-                <div class="form-check form-switch mt-3 ms-4">
-                    <input class="form-check-input" type="checkbox" id="nofollow" name="nofollow" value="1"' . $nofollow_checked . $nofollow_disabled . '>
-                    <label class="form-check-label" for="nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
+                <div class="form-field mt-5 ms-7">
+                    <div class="switch"><input class="" type="checkbox" id="nofollow" name="nofollow" value="1"' . $nofollow_checked . $nofollow_disabled . '></div>
+                    <label class="" for="nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
                 </div>
-                <div class="form-text ms-4">' . lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.') . '</div>
+                <div class="form-text ms-7">' . lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.') . '</div>
             </div>';
     }
 
@@ -556,20 +555,20 @@ if (!$_POST) {
         $noarchive_checked = ($page_noarchive == 1) ? ' checked="checked"' : '';
 
         $output_seo_extra_rows =
-            '<div class="col-12 mt-1 mb-2" id="canonical_url_row">
+            '<div class="col-12 mt-1 mb-3" id="canonical_url_row">
                 <input type="hidden" name="seo_extras" value="1">
                 <label for="canonical_url" class="form-label">' . lang('Canonical Address') . '</label>
                 <input type="text" value="' . h($page_canonical_url) . '" name="canonical_url" id="canonical_url" class="form-control' . $canonical_invalid . '" maxlength="2000" placeholder="https://" autocomplete="off" spellcheck="false">
                 <div class="form-text">' . lang('Leave empty to use the address of this page. Fill it in when the page repeats another one, to name the address search engines should list instead: a full address starting with https://, or a path on this site such as /about-us. Products, posts and other items shown through this page keep their own address.') . '</div>
             </div>
-            <div class="col-12 my-3" id="noarchive_row">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="noarchive" name="noarchive" value="1"' . $noarchive_checked . '>
-                    <label class="form-check-label" for="noarchive">' . lang('Do Not Keep a Cached Copy (noarchive)') . '</label>
+            <div class="col-12 my-5" id="noarchive_row">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" id="noarchive" name="noarchive" value="1"' . $noarchive_checked . '></div>
+                    <label class="" for="noarchive">' . lang('Do Not Keep a Cached Copy (noarchive)') . '</label>
                 </div>
                 <div class="form-text">' . lang('Asks search engines not to keep or show a cached copy of the page. Like the snippet length, it is left out while the page is closed to search engines.') . '</div>
             </div>
-            <div class="col-12 col-md-6 mt-1 mb-2" id="max_snippet_row">
+            <div class="col-12 md:col-6 mt-1 mb-3" id="max_snippet_row">
                 <label for="max_snippet" class="form-label">' . lang('Snippet Length (max-snippet)') . '</label>
                 <input type="number" value="' . h($page_max_snippet) . '" name="max_snippet" id="max_snippet" class="form-control' . $max_snippet_invalid . '" min="-1" max="' . pg_page_max_snippet_limit() . '" step="1">
                 <div class="form-text">' . lang('The most characters of text a search result may quote from the page. Leave empty to let the search engine decide; -1 is no limit, 0 is no text snippet.') . '</div>
@@ -683,7 +682,7 @@ if (!$_POST) {
         $delete_confirmation = (pg_recycle_ready() && !pg_recycle_is_inside($page_folder))
             ? lang('This page will be moved to the Recycle Bin.')
             : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page'))));
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     // "Write with AI" beside the browser title and description
@@ -734,8 +733,8 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 ' . $output_subnav_home . '
                         
                         <p>' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($page_folder))) . $output_subnav_page_type . $output_subnav_short_link . $output_subnav_search . $output_subnav_search_keywords . $output_subnav_next_page . $output_subnav_skip_page . '</p>
@@ -749,16 +748,16 @@ if (!$_POST) {
                     ' . ($ai_marks_ready ? pg_ai_fields_input('page', $ai_marks) : '') . '
                     <div class="row">
                         ' . $output_page_type_selector . '
-                        <div class="col-12 col-md" style="min-width:0">
+                        <div class="col-12 md:col" style="min-width:0">
                             <div class="row">
                                 <div class="col-12">
-                                    <div class="card my-4 position-sticky" style="top:56px;">
-                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7 position-sticky" style="top:56px;">
+                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Main Informations') . '
                                         </label>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-md-8 col-lg-6 my-2">
+                                                <div class="col-12 md:col-8 lg:col-6 my-3">
                                                     <div class="input-group ">
                                                         <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</label>
                                                         <input name="name" id="name" type="text" value="' . h($page_name) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
@@ -771,24 +770,24 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 <div class="col-12">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Content Options') . '
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-md-6 my-2">
+                                                <div class="col-12 md:col-6 my-3">
                                                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                                    <select class="form-select" id="folder" name="folder">' . select_folder($page_folder) . '</select>
+                                                    <select class="form-control" id="folder" name="folder">' . select_folder($page_folder) . '</select>
                                                     <div class="form-text">' . lang('Page Access Control, Design &amp; Common Content') . '</div>
                                                 </div>
                                             </div>
-                                            <div class="row mt-4">
-                                                <div class="col-12 col-md-6 col-lg-auto my-2">
+                                            <div class="row mt-7">
+                                                <div class="col-12 md:col-6 lg:col-auto my-3">
                                                     <label for="style" class="form-label">' . lang('Desktop Page Style') . '</label>
                                                     ' . $output_style . '
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-auto my-2">
+                                                <div class="col-12 md:col-6 lg:col-auto my-3">
                                                     <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
                                                     ' . $output_mobile_style . '
                                                 </div>
@@ -798,27 +797,27 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 ' . $output_page_type_properties . '
-                                <div class="col-12 col-xl-6 mb-5">
-                                    <div class="card my-4 h-100">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="col-12 xl:col-6 mb-12">
+                                    <div class="card my-7 h-100">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Search Engine Optimization') . '<span class="float-end">' . pg_seo_render_badge($seo_row) . '</span>
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 mt-1 mb-2">
+                                                <div class="col-12 mt-1 mb-3">
                                                     ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_title_button, $ai_title_marker) . '
                                                     <input type="text" value="' . h($page_title) . '" name="title" id="title" class="form-control" maxlength="255"/>
                                                     <div id="seo_c_title"></div>
                                                 </div>
-                                                <div class="col-12 mt-1 mb-2">
+                                                <div class="col-12 mt-1 mb-3">
                                                     ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_description_button, $ai_description_marker) . '
                                                     <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($page_meta_description) . '</textarea>
                                                     <div id="seo_c_meta_description"></div>
                                                 </div>
-                                                <div class="col-12 my-3" id="sitemap_row" style="' . $sitemap_row_style . '">
-                                                    <div class="form-check form-switch">
-                                                        <input value="1"' . $sitemap_checked . ' id="sitemap" name="sitemap" class="form-check-input" type="checkbox" />
-                                                        <label class="form-check-label" for="sitemap">' . lang('Include in Site Map') . '</label>
+                                                <div class="col-12 my-5" id="sitemap_row" style="' . $sitemap_row_style . '">
+                                                    <div class="form-field">
+                                                        <div class="switch"><input value="1"' . $sitemap_checked . ' id="sitemap" name="sitemap" class="" type="checkbox" /></div>
+                                                        <label class="" for="sitemap">' . lang('Include in Site Map') . '</label>
                                                     </div>
                                                 </div>
                                                 ' . $output_noindex_rows . '
@@ -831,23 +830,23 @@ if (!$_POST) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12 col-xl-6 mb-5">
-                                    <div class="card my-4 h-100">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="col-12 xl:col-6 mb-12">
+                                    <div class="card my-7 h-100">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Site Search') . '
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 my-3">
-                                                    <div class="form-check form-switch">
-                                                        <input value="1"' . $search_checked . ' id="search" name="search" class="form-check-input collapse-switcher" type="checkbox"  data-bs-target="#show_or_hide_search"/>
-                                                        <label class="form-check-label" for="search">' . lang('Include in Site Search') . '</label>
+                                                <div class="col-12 my-5">
+                                                    <div class="form-field">
+                                                        <div class="switch"><input value="1"' . $search_checked . ' id="search" name="search" class="collapse-switcher" type="checkbox"  data-bs-target="#show_or_hide_search"/></div>
+                                                        <label class="" for="search">' . lang('Include in Site Search') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_search">
+                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_search">
                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                         <div class="popover-body">
                                                             <div class="row">
-                                                                <div class="col-12 mt-3 mb-2">
+                                                                <div class="col-12 mt-5 mb-3">
                                                                     <label for="keywords" class="form-label">' . lang('Promote on Keyword') . '</label>
                                                                     <input value="' . h($page_search_keywords) . '" type="text" name="search_keywords" id="search_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"/>' . pg_fields_script() . '
                                                                 </div>
@@ -860,100 +859,100 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 <div class="col-12">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Comments Feature') . '
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 my-2">
-                                                    <div class="form-check form-switch">
-                                                        <input value="1"' . $comments_checked . ' id="comments" name="comments" class="form-check-input collapse-switcher"  type="checkbox" role="switch" onclick="show_or_hide_comments();" data-bs-target="#show_or_hide_comments" />
-                                                        <label class="form-check-label" for="comments">' . lang('Enable Comments') . '</label>
+                                                <div class="col-12 my-3">
+                                                    <div class="form-field">
+                                                        <div class="switch"><input value="1"' . $comments_checked . ' id="comments" name="comments" class="collapse-switcher"  type="checkbox" role="switch" onclick="show_or_hide_comments();" data-bs-target="#show_or_hide_comments" /></div>
+                                                        <label class="" for="comments">' . lang('Enable Comments') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_comments">
+                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_comments">
                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                         <div class="popover-body">
                                                             <div class="row">
-                                                                <div class="col-12 col-md-6 col-lg-4 my-2">
+                                                                <div class="col-12 md:col-6 lg:col-4 my-3">
                                                                     <label for="comments_label" class="form-label">' . lang('Comment Label') . '</label>
                                                                     <input value="' . h($comments_label) . '" type="text" name="comments_label" id="comments_label" class="form-control" maxlength="100"/>
                                                                 </div>
-                                                                <div class="col-12 col-md-6 col-lg-8 my-2">
+                                                                <div class="col-12 md:col-6 lg:col-8 my-3">
                                                                     <label for="comments_message" class="form-label">' . lang('Add Comment Message') . '</label>
                                                                     <input value="' . h($comments_message) . '" type="text" name="comments_message" id="comments_message" class="form-control" maxlength="255"/>
                                                                 </div>
-                                                                <div class="col-12 col-md-12 offset-lg-4 col-lg-8 my-2">
+                                                                <div class="col-12 md:col-12 lg:offset-4 lg:col-8 my-3">
                                                                     <label for="comments_disallow_new_comment_message" class="form-label">' . lang('Do Not Allow New Comments Message') . '</label>
                                                                     <input value="' . h($comments_disallow_new_comment_message) . '" type="text" name="comments_disallow_new_comment_message" id="comments_disallow_new_comment_message" class="form-control" maxlength="255"/>
                                                                 </div>
-                                                                <div class="col-12 my-1 mt-3">
-                                                                    <div class="form-check form-switch">
-                                                                        <input type="checkbox" id="comments_allow_new_comments" name="comments_allow_new_comments" class="form-check-input" role="switch" value="1"' . $comments_allow_new_comments_checked . ' />
-                                                                        <label class="form-check-label" for="comments_allow_new_comments">' . lang('Allow New Comments') . '</label>
+                                                                <div class="col-12 my-1 mt-5">
+                                                                    <div class="form-field">
+                                                                        <div class="switch"><input type="checkbox" id="comments_allow_new_comments" name="comments_allow_new_comments" class="" role="switch" value="1"' . $comments_allow_new_comments_checked . ' /></div>
+                                                                        <label class="" for="comments_allow_new_comments">' . lang('Allow New Comments') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col-12 my-1">
-                                                                    <div class="form-check form-switch">
-                                                                        <input type="checkbox" id="comments_automatic_publish" name="comments_automatic_publish" class="form-check-input" role="switch" value="1"' . $comments_automatic_publish_checked . ' />
-                                                                        <label class="form-check-label" for="comments_automatic_publish">' . lang('Automatically Publish Comments') . '</label>
+                                                                    <div class="form-field">
+                                                                        <div class="switch"><input type="checkbox" id="comments_automatic_publish" name="comments_automatic_publish" class="" role="switch" value="1"' . $comments_automatic_publish_checked . ' /></div>
+                                                                        <label class="" for="comments_automatic_publish">' . lang('Automatically Publish Comments') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col-12 my-1">
-                                                                    <div class="form-check form-switch">
-                                                                        <input type="checkbox" id="comments_rating" name="comments_rating" class="form-check-input" role="switch" value="1"' . $comments_rating_checked . ' />
-                                                                        <label class="form-check-label" for="comments_rating">' . lang('Enable Rating') . '</label>
+                                                                    <div class="form-field">
+                                                                        <div class="switch"><input type="checkbox" id="comments_rating" name="comments_rating" class="" role="switch" value="1"' . $comments_rating_checked . ' /></div>
+                                                                        <label class="" for="comments_rating">' . lang('Enable Rating') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 
                                                                 <div class="col-12 my-1">
-                                                                    <div class="form-check form-switch">
-                                                                        <input type="checkbox" id="comments_allow_user_to_select_name" name="comments_allow_user_to_select_name" class="form-check-input" role="switch" value="1"' . $comments_allow_user_to_select_name_checked . ' />
-                                                                        <label class="form-check-label" for="comments_allow_user_to_select_name">' . lang('Allow User to Select Name') . '</label>
+                                                                    <div class="form-field">
+                                                                        <div class="switch"><input type="checkbox" id="comments_allow_user_to_select_name" name="comments_allow_user_to_select_name" class="" role="switch" value="1"' . $comments_allow_user_to_select_name_checked . ' /></div>
+                                                                        <label class="" for="comments_allow_user_to_select_name">' . lang('Allow User to Select Name') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col-12 my-1">
-                                                                    <div class="form-check form-switch">
-                                                                        <input type="checkbox" id="comments_require_login_to_comment" name="comments_require_login_to_comment" class="form-check-input" role="switch" value="1"' . $comments_require_login_to_comment_checked . ' />
-                                                                        <label class="form-check-label" for="comments_require_login_to_comment">' . lang('Require Login to Comment') . '</label>
+                                                                    <div class="form-field">
+                                                                        <div class="switch"><input type="checkbox" id="comments_require_login_to_comment" name="comments_require_login_to_comment" class="" role="switch" value="1"' . $comments_require_login_to_comment_checked . ' /></div>
+                                                                        <label class="" for="comments_require_login_to_comment">' . lang('Require Login to Comment') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col-12 my-1">
-                                                                    <div class="form-check form-switch">
-                                                                        <input type="checkbox" id="comments_allow_file_attachments" name="comments_allow_file_attachments" class="form-check-input" role="switch" value="1"' . $comments_allow_file_attachments_checked . ' />
-                                                                        <label class="form-check-label" for="comments_allow_file_attachments">' . lang('Allow File Attachments') . '</label>
+                                                                    <div class="form-field">
+                                                                        <div class="switch"><input type="checkbox" id="comments_allow_file_attachments" name="comments_allow_file_attachments" class="" role="switch" value="1"' . $comments_allow_file_attachments_checked . ' /></div>
+                                                                        <label class="" for="comments_allow_file_attachments">' . lang('Allow File Attachments') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col-12 my-1">
-                                                                    <div class="form-check form-switch">
-                                                                        <input type="checkbox" id="comments_show_submitted_date_and_time" name="comments_show_submitted_date_and_time" class="form-check-input" role="switch" value="1"' . $comments_show_submitted_date_and_time_checked . ' />
-                                                                        <label class="form-check-label" for="comments_show_submitted_date_and_time">' . lang('Show Submitted Date & Time') . '</label>
+                                                                    <div class="form-field">
+                                                                        <div class="switch"><input type="checkbox" id="comments_show_submitted_date_and_time" name="comments_show_submitted_date_and_time" class="" role="switch" value="1"' . $comments_show_submitted_date_and_time_checked . ' /></div>
+                                                                        <label class="" for="comments_show_submitted_date_and_time">' . lang('Show Submitted Date & Time') . '</label>
                                                                     </div>
                                                                 </div>
-                                                                <div class="col-12 my-1 mb-3" id="comments_watchers_managed_by_submitter_row" style="' . $comments_watchers_managed_by_submitter_row_style . '">
-                                                                    <div class="form-check form-switch">
-                                                                        <input type="checkbox" id="comments_watchers_managed_by_submitter" name="comments_watchers_managed_by_submitter" class="form-check-input" role="switch" value="1"' . $comments_watchers_managed_by_submitter_checked . ' />
-                                                                        <label class="form-check-label" for="comments_watchers_managed_by_submitter">' . lang('Allow submitter to manage watchers') . '</label>
+                                                                <div class="col-12 my-1 mb-5" id="comments_watchers_managed_by_submitter_row" style="' . $comments_watchers_managed_by_submitter_row_style . '">
+                                                                    <div class="form-field">
+                                                                        <div class="switch"><input type="checkbox" id="comments_watchers_managed_by_submitter" name="comments_watchers_managed_by_submitter" class="" role="switch" value="1"' . $comments_watchers_managed_by_submitter_checked . ' /></div>
+                                                                        <label class="" for="comments_watchers_managed_by_submitter">' . lang('Allow submitter to manage watchers') . '</label>
                                                                     </div>
                                                                 </div>
-                                                                <div class="col-12 my-2 mt-4" id="comments_administrator_email_row" style="' . $comments_administrator_email_row_style . '">
+                                                                <div class="col-12 my-3 mt-7" id="comments_administrator_email_row" style="' . $comments_administrator_email_row_style . '">
                                                                     <h5>' . lang('E-mail moderator when a comment is added') . '</h5>
-                                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100 show" id="fake_popover_1000000000">
+                                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100 show" id="fake_popover_1000000000">
                                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                         <div class="popover-body ">
                                                                             <div class="row">
-                                                                                <div class="col-12 col-md-6 col-lg-4 my-2">
+                                                                                <div class="col-12 md:col-6 lg:col-4 my-3">
                                                                                     <label for="comments_administrator_email_to_email_address" class="form-label">' . lang('To E-mail Address') . '</label>
                                                                                     <input value="' . h($comments_administrator_email_to_email_address) . '" type="text" class="form-control text-end" id="comments_administrator_email_to_email_address" name="comments_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                                                                 </div>
-                                                                                <div class="col-12 col-md-6 col-lg-8 my-2">
+                                                                                <div class="col-12 md:col-6 lg:col-8 my-3">
                                                                                     <label for="comments_administrator_email_subject" class="form-label">' . lang('Subject') . '</label>
                                                                                     <input value="' . h($comments_administrator_email_subject) . '" type="text" name="comments_administrator_email_subject" id="comments_administrator_email_subject" class="form-control" maxlength="255"/>
                                                                                 </div> 
-                                                                                <div class="col-12 my-3" id="comments_administrator_email_conditional_administrators_row" style="' . $comments_administrator_email_conditional_administrators_row_style . '">
-                                                                                    <div class="form-check form-switch">
-                                                                                        <input type="checkbox" id="comments_administrator_email_conditional_administrators" name="comments_administrator_email_conditional_administrators" class="form-check-input" role="switch" value="1"' . $comments_administrator_email_conditional_administrators_checked . ' />
-                                                                                        <label class="form-check-label" for="comments_administrator_email_conditional_administrators">' . lang('Also send e-mail to custom form conditional administrators') . '</label>
+                                                                                <div class="col-12 my-5" id="comments_administrator_email_conditional_administrators_row" style="' . $comments_administrator_email_conditional_administrators_row_style . '">
+                                                                                    <div class="form-field">
+                                                                                        <div class="switch"><input type="checkbox" id="comments_administrator_email_conditional_administrators" name="comments_administrator_email_conditional_administrators" class="" role="switch" value="1"' . $comments_administrator_email_conditional_administrators_checked . ' /></div>
+                                                                                        <label class="" for="comments_administrator_email_conditional_administrators">' . lang('Also send e-mail to custom form conditional administrators') . '</label>
                                                                                     </div>
                                                                                 </div>
 
@@ -961,17 +960,17 @@ if (!$_POST) {
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <div class="col-12 my-2 mt-4" id="comments_submitter_email_row" style="' . $comments_submitter_email_row_style . '">
+                                                                <div class="col-12 my-3 mt-7" id="comments_submitter_email_row" style="' . $comments_submitter_email_row_style . '">
                                                                     <h5>' . lang('E-mail custom form submitter when a comment is published') . '</h5>
-                                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100 show" id="fake_popover_1000000001">
+                                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100 show" id="fake_popover_1000000001">
                                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                         <div class="popover-body ">
                                                                             <div class="row">
-                                                                                <div class="col-12 col-md-6 col-lg-4 my-2">
+                                                                                <div class="col-12 md:col-6 lg:col-4 my-3">
                                                                                     <label for="comments_submitter_email_page_id" class="form-label">' . lang('Page') . '</label>
-                                                                                    <select name="comments_submitter_email_page_id" id="comments_submitter_email_page_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($comments_submitter_email_page_id) . '</select>
+                                                                                    <select name="comments_submitter_email_page_id" id="comments_submitter_email_page_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($comments_submitter_email_page_id) . '</select>
                                                                                 </div>
-                                                                                <div class="col-12 col-md-6 col-lg-8 my-2">
+                                                                                <div class="col-12 md:col-6 lg:col-8 my-3">
                                                                                     <label for="comments_submitter_email_subject" class="form-label">' . lang('Subject') . '</label>
                                                                                     <input value="' . h($comments_submitter_email_subject) . '" type="text" name="comments_submitter_email_subject" id="comments_submitter_email_subject" class="form-control" maxlength="255"/>
                                                                                 </div> 
@@ -979,17 +978,17 @@ if (!$_POST) {
                                                                         </div> 
                                                                     </div> 
                                                                 </div> 
-                                                                <div class="col-12 my-2 mt-4" id="comments_watcher_email_row" style="' . $comments_watcher_email_row_style . '">
+                                                                <div class="col-12 my-3 mt-7" id="comments_watcher_email_row" style="' . $comments_watcher_email_row_style . '">
                                                                     <h5>' . lang('E-mail watchers when a comment is published') . '</h5>
-                                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100 show" id="fake_popover_1000000002">
+                                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100 show" id="fake_popover_1000000002">
                                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                         <div class="popover-body ">
                                                                             <div class="row">
-                                                                                <div class="col-12 col-md-6 col-lg-4 my-2">
+                                                                                <div class="col-12 md:col-6 lg:col-4 my-3">
                                                                                     <label for="comments_watcher_email_page_id" class="form-label">' . lang('Page') . '</label>
-                                                                                    <select name="comments_watcher_email_page_id" id="comments_watcher_email_page_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($comments_watcher_email_page_id) . '</select>
+                                                                                    <select name="comments_watcher_email_page_id" id="comments_watcher_email_page_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($comments_watcher_email_page_id) . '</select>
                                                                                 </div>
-                                                                                <div class="col-12 col-md-6 col-lg-8 my-2">
+                                                                                <div class="col-12 md:col-6 lg:col-8 my-3">
                                                                                     <label for="comments_watcher_email_subject" class="form-label">' . lang('Subject') . '</label>
                                                                                     <input value="' . h($comments_watcher_email_subject) . '" type="text" name="comments_watcher_email_subject" id="comments_watcher_email_subject" class="form-control" maxlength="255"/>
                                                                                 </div> 
@@ -1008,10 +1007,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>
@@ -1059,8 +1058,8 @@ if (!$_POST) {
             " . (pg_ai_fields_ready('page') ? "ai_fields," : "NULL AS ai_fields,") . "
             sitemap
         FROM page
-        WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page_id = ?";
+    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $page_id = $row['page_id'];
@@ -1114,8 +1113,8 @@ if (!$_POST) {
         // if this page is a custom form, we need to check if there are submitted forms for this page,
         // because software will not allow this page to be deleted if there are submitted forms for this page
         if ($current_page_type == 'custom form') {
-            $query = "SELECT id FROM forms WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM forms WHERE page_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
             // if there are submitted forms for this page, do not delete page and notify user
             if (mysqli_num_rows($result) > 0) {
@@ -1133,54 +1132,54 @@ if (!$_POST) {
         }
         
         // delete page
-        $query = "DELETE FROM page WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM page WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         pg_audit_record('delete', 'page', $page_id, $audit_before);
         
         // delete regions
-        $query = "DELETE FROM pregion WHERE pregion_page = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM pregion WHERE pregion_page = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete form fields for page
-        $query = "DELETE FROM form_fields WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM form_fields WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete form field options for page
-        $query = "DELETE FROM form_field_options WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM form_field_options WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // Delete target options for page.
         db("DELETE FROM target_options WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
         
         // if this page is a form list view, delete records from related tables.
         if ($current_page_type == 'form list view') {
-            $query = "DELETE FROM form_list_view_filters WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM form_list_view_filters WHERE page_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
-            $query = "DELETE FROM form_list_view_browse_fields WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM form_list_view_browse_fields WHERE page_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
-            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         }
         
         // if this page is a form view directory, delete form_view_directories_form_list_views_xref records
         if ($current_page_type == 'form view directory') {
-            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         }
         
         // delete views for this page that the form view directory feature uses
         pg_sfv_delete_views('page_id', $_POST['id']);
         
         // delete calendar_views_calendars_xref records
-        $query = "DELETE FROM calendar_views_calendars_xref WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM calendar_views_calendars_xref WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete calendar_event_views_calendars_xref records
-        $query = "DELETE FROM calendar_event_views_calendars_xref WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM calendar_event_views_calendars_xref WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // if page type has a table for properties, delete page type record of properties
         if (check_for_page_type_properties($current_page_type) == true) {
@@ -1199,9 +1198,9 @@ if (!$_POST) {
             FROM comments
             LEFT JOIN files ON comments.file_id = files.id
             WHERE
-                (comments.page_id = '" . escape($_POST['id'] ?? '') . "')
+                (comments.page_id = ?)
                 AND (files.id IS NOT NULL)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         $attachments = array();
         
@@ -1213,14 +1212,14 @@ if (!$_POST) {
         // loop through the attachments so they can be deleted
         foreach ($attachments as $attachment) {
             // check if the file attachment is used by another comment (multiple comments can share the same file attachment when pages are duplicated)
-            $query = "SELECT id FROM comments WHERE (file_id = '" . $attachment['id'] . "') AND (id != '" . $attachment['comment_id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM comments WHERE (file_id = ?) AND (id != ?)";
+            $result = db_q($query, array((string) $attachment['id'], (string) $attachment['comment_id'])) or output_error('Query failed.');
             
             // if the file attachment is not used by another comment, then delete the file
             if (mysqli_num_rows($result) == 0) {
                 // delete file from database
-                $query = "DELETE FROM files WHERE id = '" . $attachment['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "DELETE FROM files WHERE id = ?";
+                $result = db_q($query, array((string) $attachment['id'])) or output_error('Query failed.');
                 
                 // delete file on file system
                 @unlink(FILE_DIRECTORY_PATH . '/' . $attachment['name']);
@@ -1231,35 +1230,35 @@ if (!$_POST) {
         }
         
         // delete comments for page
-        $query = "DELETE FROM comments WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM comments WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete submitted_form_info for page
-        $query = "DELETE FROM submitted_form_info WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM submitted_form_info WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete allow new comments data for this page
-        $query = "DELETE FROM allow_new_comments_for_items WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM allow_new_comments_for_items WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete stored SEO structure findings for this page.
         // Guarded on the table existing, because a page can be deleted on an
         // installation that has not run the upgrade that creates it.
-        if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+        if (pg_schema_has('seo_issue')) {
             db("DELETE FROM seo_issue WHERE (entity_type = 'page') AND (entity_id = '" . (int) ($_POST['id'] ?? 0) . "')");
         }
 
         // Both directions of the link graph: the rows this page produced and
         // the rows naming it as a destination. Leaving the latter would make
         // pages that linked here look connected to something that is gone.
-        if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+        if (pg_schema_has('seo_link')) {
             db("DELETE FROM seo_link WHERE (from_type = 'page') AND (from_id = '" . (int) ($_POST['id'] ?? 0) . "')");
             db("DELETE FROM seo_link WHERE (to_type = 'page') AND (to_id = '" . (int) ($_POST['id'] ?? 0) . "')");
         }
 
         // delete watchers for this page
-        $query = "DELETE FROM watchers WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM watchers WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // remove this page's keywords from the tag cloud
         update_tag_cloud_keywords_for_page($_POST['id'], 0, '', $current_page_search, $current_search_keywords);
@@ -1270,8 +1269,8 @@ if (!$_POST) {
             FROM short_links
             WHERE
                 (destination_type = 'page')
-                AND (page_id = '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                AND (page_id = ?)";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
 
         // If a short link exists, then delete them.
@@ -1280,8 +1279,8 @@ if (!$_POST) {
                 "DELETE FROM short_links
                 WHERE
                     (destination_type = 'page')
-                    AND (page_id = '" . escape($_POST['id'] ?? '') . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    AND (page_id = ?)";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         }
 
         db("DELETE FROM preview_styles WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
@@ -1358,30 +1357,7 @@ if (!$_POST) {
         // basic user may set any type, a basic user needs the matching flag.
         // add_page.php applies the same list to a new page.
         $user_can_set_page_type = function ($page_type) use ($user) {
-            return (
-                ($user['role'] < 3)
-                || ($page_type == 'standard')
-                || (($page_type == 'email a friend') && ($user['set_page_type_email_a_friend'] == TRUE))
-                || (($page_type == 'folder view') && ($user['set_page_type_folder_view'] == TRUE))
-                || (($page_type == 'photo gallery') && ($user['set_page_type_photo_gallery'] == TRUE))
-                || (($page_type == 'catalog') && ($user['set_page_type_catalog'] == TRUE))
-                || (($page_type == 'catalog detail') && ($user['set_page_type_catalog_detail'] == TRUE))
-                || (($page_type == 'express order') && ($user['set_page_type_express_order'] == TRUE))
-                || (($page_type == 'order form') && ($user['set_page_type_order_form'] == TRUE))
-                || (($page_type == 'shopping cart') && ($user['set_page_type_shopping_cart'] == TRUE))
-                || (($page_type == 'shipping address and arrival') && ($user['set_page_type_shipping_address_and_arrival'] == TRUE))
-                || (($page_type == 'shipping method') && ($user['set_page_type_shipping_method'] == TRUE))
-                || (($page_type == 'billing information') && ($user['set_page_type_billing_information'] == TRUE))
-                || (($page_type == 'order preview') && ($user['set_page_type_order_preview'] == TRUE))
-                || (($page_type == 'order receipt') && ($user['set_page_type_order_receipt'] == TRUE))
-                || (($page_type == 'custom form') && ($user['set_page_type_custom_form'] == TRUE))
-                || (($page_type == 'custom form confirmation') && ($user['set_page_type_custom_form_confirmation'] == TRUE))
-                || (($page_type == 'form list view') && ($user['set_page_type_form_list_view'] == TRUE))
-                || (($page_type == 'form item view') && ($user['set_page_type_form_item_view'] == TRUE))
-                || (($page_type == 'form view directory') && ($user['set_page_type_form_view_directory'] == TRUE))
-                || (($page_type == 'calendar view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_view'] == TRUE))
-                || (($page_type == 'calendar event view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_event_view'] == TRUE))
-            );
+            return pg_page_type_user_may_set($user, $page_type);
         };
 
         // A type the software does not know would not fit the page_type
@@ -1413,8 +1389,8 @@ if (!$_POST) {
         
         // if page is a custom form, check to see if there is another page with this same form name
         if ($_POST['type'] == 'custom form') {
-            $query = "SELECT id FROM custom_form_pages WHERE (form_name = '" . escape($_POST['custom_form_form_name'] ?? '') . "') AND (page_id != '" . escape($_POST['id'] ?? '') . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM custom_form_pages WHERE (form_name = ?) AND (page_id != ?)";
+            $result = db_q($query, array((string) ($_POST['custom_form_form_name'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
             // if there is another page with this form name, output error
             if (mysqli_num_rows($result) > 0) {
@@ -1484,8 +1460,8 @@ if (!$_POST) {
             // we need to check if there are submitted forms for this page,
             // because software will not allow the page type for this page to be changed if there are submitted forms for this page
             if (($current_page_type != $_POST['type']) && ($current_page_type == 'custom form')) {
-                $query = "SELECT id FROM forms WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT id FROM forms WHERE page_id = ?";
+                $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
                 if (mysqli_num_rows($result) > 0) {
                     $update_page_type = false;
@@ -1506,182 +1482,16 @@ if (!$_POST) {
                     delete_tag_cloud_keywords_for_search_results_page($_POST['id']);
                 }
                 
-                $properties = pg_page_form_type_properties_from_post($_POST['type'], $_POST['id']);
+                $checked = pg_page_type_properties_for_save($_POST['type'], $_POST['id'], $user);
+                $properties = $checked['properties'];
 
-                switch ($_POST['type']) {
-                    case 'custom form':
-                        $new_contact_group_id = $properties['contact_group_id'];
-                        
-                        // if user has a user role, then verify that user has access to contact group that was selected
-                        if ($user['role'] == 3) {
-                            // get current contact group id
-                            $current_contact_group_id = db_value(
-                                "SELECT contact_group_id
-                                FROM custom_form_pages
-                                WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
-                            
-                            // if contact group is trying to be changed
-                            // and a contact group was selected
-                            // and user does not have access to contact group,
-                            // then don't allow contact group to be changed
-                            if (($new_contact_group_id != $current_contact_group_id) && ($new_contact_group_id) && (validate_contact_group_access($user, $new_contact_group_id) == false)) {
-                                $new_contact_group_id = $current_contact_group_id;
-                                $liveform->mark_error('', lang('The contact group for the custom form could not be changed, because you do not have access to the contact group you selected.'));
-                                log_activity(lang('access denied to change contact group for custom form because user did not have access to contact group'), $_SESSION['sessionusername']);
-                            }
-                        }
-
-                        $properties['contact_group_id'] = $new_contact_group_id;
-
-                        $new_private_folder_id = $properties['private_folder_id'];
-                        
-                        // If user has a user role, then verify that user has access to the selected private folder.
-                        if (USER_ROLE == 3) {
-                            $old_private_folder_id = db_value(
-                                "SELECT private_folder_id
-                                FROM custom_form_pages
-                                WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
-                            
-                            // If the user is trying to change the private folder to a folder
-                            // that he/she does not have edit access to,
-                            // then don't allow folder to be set and log activity.
-                            if (
-                                ($new_private_folder_id != $old_private_folder_id)
-                                && ($new_private_folder_id)
-                                && (check_edit_access($new_private_folder_id) == false)
-                            ) {
-                                $new_private_folder_id = $old_private_folder_id;
-                                $liveform->mark_error('', lang('The private folder for the custom form could not be changed, because you do not have edit access to the folder you selected.'));
-                                log_activity(lang('access denied to change private folder for custom form because user did not have edit access to folder'), $_SESSION['sessionusername']);
-                            }
-                        }
-
-                        $properties['private_folder_id'] = $new_private_folder_id;
-
-                        // If commerce is enabled then save offer properties.
-                        if (ECOMMERCE) {
-                            // If user does not have access to commerce, then get old values,
-                            // because we might need to save them.
-                            if (!USER_MANAGE_ECOMMERCE) {
-                                $old_properties = db_item(
-                                    "SELECT
-                                        offer,
-                                        offer_id
-                                    FROM custom_form_pages
-                                    WHERE page_id = '" . e($_POST['id'] ?? '') . "'");
-                            }
-
-                            // If the user has access to commerce or the user just disabled grant offer,
-                            // then save grant offer status.
-                            if (USER_MANAGE_ECOMMERCE || !($_POST['custom_form_offer'] ?? '')) {
-                                $properties['offer'] = $_POST['custom_form_offer'] ?? 0;
-
-                            // Otherwise the user does not have access to commerce, so save old value.
-                            } else {
-                                $properties['offer'] = ($old_properties['offer'] ?? '');
-                            }
-
-                            // If the user has access to commerce or the user just selected the blank offer,
-                            // then save the offer id from the user.
-                            if (USER_MANAGE_ECOMMERCE || !($_POST['custom_form_offer_id'] ?? '')) {
-                                $properties['offer_id'] = $_POST['custom_form_offer_id'] ?? '';
-
-                            // Otherwise the user does not have access to commerce, so save old value.
-                            } else {
-                                $properties['offer_id'] = ($old_properties['offer_id'] ?? '');
-                            }
-
-                            $properties['offer_days'] = $_POST['custom_form_offer_days'] ?? '';
-                            $properties['offer_eligibility'] = $_POST['custom_form_offer_eligibility'] ?? '';
-                        }
-                        
-                        break;
-                    
-                    case 'form list view':
-                    case 'form item view':
-                        $new_custom_form_page_id = $properties['custom_form_page_id'];
-                        $page_type_table_name = str_replace(' ', '_', $_POST['type']) . '_pages';
-                        
-                        // if user has a user role, then verify that user has access to custom form that was selected
-                        if ($user['role'] == 3) {
-                            // get current custom form
-                            $current_custom_form_page_id = db_value(
-                                "SELECT custom_form_page_id
-                                FROM $page_type_table_name
-                                WHERE
-                                    (page_id = '" . escape($_POST['id'] ?? '') . "')
-                                    AND (collection = 'a')");
-                            
-                            // get folder of new custom_form
-                            $new_custom_form_folder_id = db_value(
-                                "SELECT page_folder
-                                FROM page
-                                WHERE page_id = '" . escape($new_custom_form_page_id) . "'");
-                            
-                            // if custom form is trying to be changed and user does not have access to custom form, don't allow custom form to be changed
-                            if (($new_custom_form_page_id != $current_custom_form_page_id) && (check_edit_access($new_custom_form_folder_id) == false)) {
-                                $new_custom_form_page_id = $current_custom_form_page_id;
-
-                                if ($_POST['type'] == 'form list view') {
-                                    $liveform->mark_error('', lang('The custom form for the form list view could not be changed, because you do not have access to the custom form you selected.'));
-                                    log_activity(lang('access denied to change custom form for form list view because user did not have access to modify folder that custom form was in'), $_SESSION['sessionusername']);
-                                } else {
-                                    $liveform->mark_error('', lang('The custom form for the form item view could not be changed, because you do not have access to the custom form you selected.'));
-                                    log_activity(lang('access denied to change custom form for form item view because user did not have access to modify folder that custom form was in'), $_SESSION['sessionusername']);
-                                }
-                            }
-                        }
-                        
-                        $properties['custom_form_page_id'] = $new_custom_form_page_id;
-
-                        // if there is not a record for this form list view yet, then set default values
-                        if (
-                            ($_POST['type'] == 'form list view')
-                            && (db_value("SELECT COUNT(*) FROM form_list_view_pages WHERE page_id = '" . escape($_POST['id'] ?? '') . "'") == 0)
-                        ) {
-                            $properties['search'] = 1;
-                            $properties['show_results_by_default'] = 1;
-                            $properties['maximum_number_of_results_per_page'] = 25;
-                        }
-                        
-                        break;
-                        
-                    case 'calendar view':
-                        // If the default_view property was changed, then forget the view
-                        // visitors last picked, so that the new default shows.
-                        $current_default_view = db_value(
-                            "SELECT default_view
-                            FROM calendar_view_pages
-                            WHERE page_id = '" . e($_POST['id'] ?? '') . "'");
-
-                        if ($current_default_view != $properties['default_view']) {
-                            unset($_SESSION['software']['calendar_views'][$_POST['id']]['view']);
-                        }
-                        
-                        break;
-                    
-                    case 'express order':
-                        // Get current form values before we update it, so that we know later
-                        // if we should forward the user to the form designer or not.
-                        $old_properties = db_item(
-                            "SELECT shipping_form, form FROM express_order_pages
-                            WHERE page_id = '" . e($_POST['id'] ?? '') . "'");
-
-                        break;
-
-                    case 'shipping address and arrival':
-                        // get current form value before we update it, so that we know later if we should forward the user to the form designer or not
-                        $current_shipping_address_and_arrival_form = db_value("SELECT form FROM shipping_address_and_arrival_pages WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
-                        
-                        break;
-
-                    case 'billing information':
-                        // Get current form value before we update it, so that we know later
-                        // if we should forward the user to the form designer or not.
-                        $current_billing_information_form = db_value("SELECT form FROM billing_information_pages WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
-
-                        break;
+                foreach ($checked['errors'] as $checked_error) {
+                    $liveform->mark_error('', $checked_error);
                 }
+
+                $old_properties = array('shipping_form' => $checked['before']['shipping_form'], 'form' => $checked['before']['form']);
+                $current_shipping_address_and_arrival_form = $checked['before']['shipping_address_and_arrival_form'];
+                $current_billing_information_form = $checked['before']['billing_information_form'];
 
                 pg_page_form_save_type_links($_POST['type'], $_POST['id'], $user);
                 
@@ -1697,14 +1507,14 @@ if (!$_POST) {
                     
                     // if the old page type was form list view, delete form_view_directories_form_list_views_xref records
                     if ($current_page_type == 'form list view') {
-                        $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = '" . escape($_POST['id'] ?? '') . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = ?";
+                        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
                     }
 
                     // if the old page type was form view directory, then delete form_view_directories_form_list_views_xref records
                     if ($current_page_type == 'form view directory') {
-                        $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($_POST['id'] ?? '') . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = ?";
+                        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
                     }
                 }
                 

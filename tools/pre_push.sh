@@ -11,10 +11,15 @@
 # result. Which ones run follows from what the branch changes against the
 # point it left origin/development, as CI checks the whole pull request:
 #
-#   every push                  memory index (tools/memory_index.php --check)
+#   every push                  memory index (tools/memory_index.php --check);
+#                               the branch's commits: no Co-Authored-By: or
+#                               Claude-Session: trailer, Erdal Güral as
+#                               author and committer, no change to
+#                               pinegrap/changelog.txt (tools/check_pr.php)
 #   any change outside the      php -l of the changed PHP files, translation
 #   documentation (docs/,       keys, designer bindings, external API schema,
-#   .github/, .claude/, the     get_file.php copies, unit tests
+#   .github/, .claude/, the     get_file.php copies, Bootstrap 6 panel
+#                               markup (check_bs6.php --strict), unit tests
 #   root *.md files)
 #   a change to a panel script  node --check of the panel scripts CI checks,
 #   or to how they are built    minified scripts against their sources
@@ -72,14 +77,15 @@ fork_point() {
 	git merge-base "$1" origin/development 2>/dev/null || true
 }
 
-# "<commit>:<base>" pairs to check; an empty base means every check.
+# "<commit>:<base>:<branch>" triples to check (git allows no colon or space
+# in a ref name); an empty base means every check but the commit guards.
 targets=''
 
 add_target() {
 	case " $targets " in
 		*" $1:"*) return ;;
 	esac
-	targets="$targets $1:$2"
+	targets="$targets $1:$2:$3"
 }
 
 if [ "${1:-}" = '--hook' ]; then
@@ -102,7 +108,7 @@ if [ "${1:-}" = '--hook' ]; then
 			base=$remote_sha
 		fi
 
-		add_target "$local_sha" "$base"
+		add_target "$local_sha" "$base" "${remote_ref#refs/heads/}"
 
 	done
 
@@ -119,7 +125,7 @@ else
 		base=$(fork_point "$commit")
 	fi
 
-	add_target "$commit" "$base"
+	add_target "$commit" "$base" "$(git symbolic-ref --quiet --short HEAD 2>/dev/null)"
 
 fi
 
@@ -216,7 +222,7 @@ run_tool() {
 }
 
 check_commit() {
-	local commit=$1 base=$2 short status path code=0 js=0 file terser
+	local commit=$1 base=$2 branch=$3 short status path code=0 js=0 file terser
 	local php_files=()
 
 	short=$(git rev-parse --short "$commit")
@@ -256,12 +262,17 @@ check_commit() {
 	fi
 
 	if [ "$code" = 1 ]; then
-		say "checking $short: memory index, PHP syntax, translation keys, bindings, API schema, copies, unit tests..."
+		say "checking $short: memory index, commits, PHP syntax, translation keys, bindings, API schema, copies, unit tests..."
 	else
-		say "checking $short: memory index (the branch changes documentation only)..."
+		say "checking $short: memory index, commits (the branch changes documentation only)..."
 	fi
 
 	run_tool 'memory index' memory_index.php --check
+
+	# Without a base the branch's own commits are unknown.
+	if [ -n "$base" ]; then
+		run_tool 'commit authors, trailers, changelog' check_pr.php "$base" "$commit" "--branch=$branch"
+	fi
 
 	if [ "$code" = 1 ]; then
 
@@ -278,6 +289,7 @@ check_commit() {
 		run_tool 'designer bindings' check_bindings.php
 		run_tool 'external API schema' check_api_schema.php
 		run_tool 'get_file.php copies' check_copies.php
+		run_tool 'Bootstrap 6 panel markup' check_bs6.php --strict
 		run_tool 'unit tests' test.php
 
 	fi
@@ -314,7 +326,8 @@ check_commit() {
 }
 
 for target in $targets; do
-	check_commit "${target%%:*}" "${target#*:}"
+	rest=${target#*:}
+	check_commit "${target%%:*}" "${rest%%:*}" "${rest#*:}"
 done
 
 if [ "$failed" = 1 ]; then

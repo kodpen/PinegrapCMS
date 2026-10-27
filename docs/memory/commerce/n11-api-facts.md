@@ -11,6 +11,9 @@ description: n11 REST API facts for the connector: headers, connection test, asy
 - Symptom before the fix (#1029): it read 4,000 bytes, so the right key failed with "n11 answered 200 with something that is not JSON" and the account's last error was written.
 - `mp_n11_call()` reports a 2xx body that is not JSON and as long as its limit as cut off, and does not retry it (asking again gets the same cut). A 5xx/408 body of that length stays "not JSON" with its status and is retried, so a long gateway error page during an outage does not fail queued price/stock rows for good (#1029).
 
+## How is the store's catalogue listed? (`mp_n11_remote_products()`)
+- `GET /ms/product-query?page=N&size=100` (max 250; 100 because full descriptions make pages large), pages from 0, `sender=ALL` so the n11 warehouse's products come too (`n11-warehouse.md`). `content` rows carry stockCode, n11ProductId, barcode, title, salePrice, quantity, imageUrls, status/saleStatus; `last`, `totalPages`; an empty page is the end. No stockCode: skipped.
+
 ## How does the async product side work?
 - `price-stock-update` (1000 SKU/request) -> `taskId` -> `task-details/page-query` -> SUCCESS/FAIL PER SKU.
 - Saying "success" on submission is wrong.

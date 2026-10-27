@@ -159,8 +159,8 @@ function get_sitemap_info() {
                 $sql_catalog_detail_noindex as catalog_detail_noindex
             FROM catalog_pages
             LEFT JOIN page AS catalog_detail_page ON catalog_pages.catalog_detail_page_id = catalog_detail_page.page_id
-            WHERE catalog_pages.page_id = '" . $catalog_page['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE catalog_pages.page_id = ?";
+        $result = db_q($query, array((string) $catalog_page['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $product_group_id = $row['product_group_id'];
@@ -267,9 +267,9 @@ function get_sitemap_info() {
                     FROM form_list_view_pages
                     LEFT JOIN page AS form_item_view_page ON form_list_view_pages.form_item_view_page_id = form_item_view_page.page_id
                     WHERE
-                        (form_list_view_pages.page_id = '" . $form_list_view_page['id'] . "')
+                        (form_list_view_pages.page_id = ?)
                         AND (form_list_view_pages.collection = 'a')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $form_list_view_page['id'])) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 
                 $custom_form_page_id = $row['custom_form_page_id'];
@@ -535,8 +535,8 @@ function get_sitemap_info() {
     // loop through all calendar view pages in order to prepare URL's to calendar events on calendar event view pages
     foreach ($calendar_view_pages as $calendar_view_page) {
         // get calendars that are allowed for this calendar view page
-        $query = "SELECT calendar_id as id FROM calendar_views_calendars_xref WHERE page_id = '" . $calendar_view_page['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT calendar_id as id FROM calendar_views_calendars_xref WHERE page_id = ?";
+        $result = db_q($query, array((string) $calendar_view_page['id'])) or output_error('Query failed.');
         
         $calendar_ids = array();
         
@@ -557,8 +557,8 @@ function get_sitemap_info() {
                     $sql_calendar_event_view_noindex as calendar_event_view_noindex
                 FROM calendar_view_pages
                 LEFT JOIN page AS calendar_event_view_page ON calendar_view_pages.calendar_event_view_page_id = calendar_event_view_page.page_id
-                WHERE calendar_view_pages.page_id = '" . $calendar_view_page['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE calendar_view_pages.page_id = ?";
+            $result = db_q($query, array((string) $calendar_view_page['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             $calendar_event_view_page_id = $row['calendar_event_view_page_id'];

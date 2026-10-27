@@ -58,7 +58,7 @@ function test_bs6_map_keeps_sizes()
 	pg_assert_same('md:mb-0', bs6_test_tokens('mb-md-0'));
 	pg_assert_same('ms--1', bs6_test_tokens('ms-n1'));
 	pg_assert_same('me--2', bs6_test_tokens('me-n2'));
-	pg_assert_same('REVIEW', bs6_test_tokens('mt-n1'), 'v6 has no block negative margins');
+	pg_assert_same('pg-mt-n1', bs6_test_tokens('mt-n1'), 'v6 has no block negative margins: the panel draws its own');
 	pg_assert_same('fs-4xl', bs6_test_tokens('fs-1'));
 	pg_assert_same('fs-xl', bs6_test_tokens('fs-4'));
 	pg_assert_same('fs-md', bs6_test_tokens('fs-6'));
@@ -101,10 +101,30 @@ function test_bs6_map_renames()
 	pg_assert_same('md:text-start', bs6_test_tokens('text-md-start'));
 }
 
+function test_bs6_map_light_and_dark()
+{
+	pg_assert_same('fg-black', bs6_test_tokens('text-dark'));
+	pg_assert_same('bg-1', bs6_test_tokens('bg-light'));
+	pg_assert_same('bg-1 fg-body', bs6_test_tokens('text-bg-light'));
+	pg_assert_same('btn-subtle theme-secondary', bs6_test_tokens('btn-light'));
+	pg_assert_same('badge rounded-pill badge-subtle theme-secondary', bs6_convert_class_list('badge rounded-pill text-bg-light')['value'], 'a light badge');
+	pg_assert_same('badge theme-inverse', bs6_convert_class_list('badge bg-dark')['value'], 'a dark badge');
+	pg_assert_same('pg-table-light', bs6_test_tokens('table-light'), 'a table row tint has no neutral twin: the panel draws its own');
+	pg_assert_same('fg-reset', bs6_test_tokens('text-reset'));
+	pg_assert_same('fg-3', bs6_test_tokens('text-body-tertiary'));
+	pg_assert_same('bg-1', bs6_test_tokens('bg-body-tertiary'));
+	pg_assert_same('bg-2', bs6_test_tokens('bg-body-secondary'));
+	pg_assert_same('pg-fg-emphasis', bs6_test_tokens('text-body-emphasis'));
+	pg_assert_same('fg-white', bs6_test_tokens('btn-close-white'), 'the v6 close icon is drawn in currentcolor');
+	pg_assert_same('pg-display-4', bs6_test_tokens('display-4'));
+	pg_assert_same('pg-lead', bs6_test_tokens('lead'));
+	pg_assert_same('pg-alert-dismissible', bs6_test_tokens('alert-dismissible'));
+	pg_assert_same('btn btn-solid theme-primary', bs6_convert_class_list('btn btn-primary dropdown-menu-right')['value'], 'a Bootstrap 4 class goes');
+}
+
 function test_bs6_map_reviews_and_untouched()
 {
-	foreach (array('btn-light', 'text-dark', 'bg-light', 'alert-dark', 'text-reset', 'bg-body-tertiary',
-		'display-4', 'lead', 'btn-close-white', 'alert-dismissible', 'needs-validation', 'd-print-none',
+	foreach (array('alert-dark', 'needs-validation', 'd-print-none',
 		'modal', 'modal-dialog', 'offcanvas-end', 'dropdown-menu', 'dropdown-toggle', 'form-check-input',
 		'form-switch', 'btn-check', 'accordion-button', 'form-range', 'opacity-50-hover', 'link-primary',
 		'text-opacity-75') as $token) {
@@ -214,11 +234,14 @@ function test_bs6_scope_kind()
 		'my_account.php' => 'site',
 		'frontend.src.js' => 'site',
 		'includes/fn/widgets_cart.php' => 'site',
+		'includes/fn/widgets_order_preview.php' => 'site',
+		'includes/fn/widgets_lists_cart.php' => 'site',
 		'includes/templates/membership_entrance.php' => 'site',
 		'includes/design_templates/forum/home.php' => 'site',
 		'assets/js/pg_consent.js' => 'site',
 		'email_campaign_job.php' => 'site',
-		'includes/fn/output.php' => 'shared',
+		'includes/fn/output.php' => 'panel',
+		'includes/fn/forms.php' => 'shared',
 		'liveform.class.php' => 'shared',
 		'assets/js/style_designer.js' => 'editor',
 		'includes/designer_screen.php' => 'editor',
@@ -266,6 +289,7 @@ function test_bs6_targets_exist_in_dist()
 		'order-lg-1', 'row-cols-md-3', 'd-md-none', 'd-lg-flex', 'flex-md-row', 'justify-content-md-between',
 		'align-items-lg-center', 'text-md-end', 'float-lg-end', 'p-md-3', 'mb-lg-0', 'g-md-4', 'gap-lg-2', 'container-sm',
 		'navbar-expand-lg', 'table-responsive-md', 'list-group-horizontal-md', 'sticky-md-top',
+		'text-dark', 'text-light', 'bg-light', 'bg-dark', 'text-bg-light', 'text-bg-dark', 'alert-light', 'btn-light', 'btn-dark', 'border-dark', 'border-light',
 	);
 
 	foreach ($inputs as $input) {
@@ -302,7 +326,7 @@ function test_bs6_parse_added_lines()
 function test_bs6_convert_class_list_keeps_code()
 {
 	$value = "' . ((\$b > 0) ? 'text-success' : ((\$b < 0) ? 'text-danger' : '')) . '";
-	pg_assert_same($value, bs6_convert_class_list($value)['value'], 'ternary colons kept');
+	pg_assert_same("' . ((\$b > 0) ? 'fg-success' : ((\$b < 0) ? 'fg-danger' : '')) . '", bs6_convert_class_list($value)['value'], 'ternary colons kept');
 
 	$value = "x ' . (\$a ? ' p-3 foo' : ' foo bar') . ' foo";
 	pg_assert_same("x ' . (\$a ? ' p-5 foo' : ' foo bar') . ' foo", bs6_convert_class_list($value)['value'], 'no de-duplication across code');
@@ -311,14 +335,20 @@ function test_bs6_convert_class_list_keeps_code()
 	pg_assert_same(array(), $r['reviews'], 'theme count only for lists without code');
 }
 
-// A v5 class quoted inside the code of a class list is reported with the
-// class it should become.
-function test_bs6_convert_class_list_reports_code_classes()
+// A v5 class quoted inside the code of a class list is rewritten in place;
+// one that needs a hand is reported, and so is one that would split in a
+// class API call.
+function test_bs6_convert_class_list_rewrites_code_classes()
 {
 	$r = bs6_convert_class_list("' . (\$ok ? 'text-success' : 'p-3') . '");
+	pg_assert_same("' . (\$ok ? 'fg-success' : 'p-5') . '", $r['value']);
+	pg_assert_same(array(), $r['reviews']);
+	pg_assert_same(2, $r['changed']);
+
+	$r = bs6_convert_class_list("' . (\$ok ? 'modal' : 'text-bg-danger') . '", true);
 	pg_assert_same(array(
-		array('text-success -> fg-success', 'class inside code: convert it by hand'),
-		array('p-3 -> p-5', 'class inside code: convert it by hand'),
+		array('modal', 'class inside code: convert it by hand'),
+		array('text-bg-danger -> bg-danger fg-contrast-danger', 'class inside code: convert it by hand'),
 	), $r['reviews']);
 	pg_assert_same(0, $r['changed']);
 }
@@ -342,4 +372,72 @@ function test_bs6_class_api_keeps_split_classes()
 		array(1, 'btn-warning -> btn-solid theme-warning', 'a class API call takes one class: convert it by hand'),
 		array(3, 'btn-outline-secondary -> btn-outline theme-secondary', 'a class API call takes one class: convert it by hand'),
 	), $r['reviews']);
+}
+
+// On a converted tree (check_bs6.php after the switch) a class the v6 dist
+// defines is kept: `p-5` is not grown to `p-12` and not counted as a rewrite;
+// a v5-only class is still mapped.
+function test_bs6_converted_tree_keeps_v6_classes()
+{
+	$dist = array('p-5' => true, 'md:col-6' => true, 'bg-primary' => true, 'badge' => true);
+	bs6_converted_tree_classes($dist);
+
+	try {
+		pg_assert_same('p-5', bs6_test_tokens('p-5'), 'a v6 spacer stays');
+		pg_assert_same('md:col-6', bs6_test_tokens('md:col-6'));
+		pg_assert_same('fg-secondary', bs6_test_tokens('text-muted'), 'a v5-only class is still mapped');
+		pg_assert_same('md:col-6', bs6_test_tokens('col-md-6'));
+
+		$list = bs6_convert_class_list('badge bg-primary p-5 text-muted');
+		pg_assert_same('badge bg-primary p-5 fg-secondary', $list['value'], 'badge rule skips a v6 class');
+		pg_assert_same(1, $list['changed']);
+	} finally {
+		bs6_converted_tree_classes(false);
+	}
+
+	pg_assert_same(null, bs6_converted_tree_classes(), 'cleared');
+	pg_assert_same('p-12', bs6_test_tokens('p-5'), 'Bootstrap 5 reading again');
+}
+
+// The element helpers of the panel scripts carry class lists too.
+function test_bs6_helper_contexts()
+{
+	$in = "a = el('div', 'mb-2 text-muted', label); b = h.el(\"span\", \"col-md-6\"); c = K.button('btn btn-primary', t('x'));\n"
+		. "d = icon('bi-x', 'me-2'); e = model('a', 'p-3'); f = el(tag, 'p-3');";
+	$out = bs6_convert_source($in)['source'];
+
+	pg_assert_same("a = el('div', 'mb-3 fg-secondary', label); b = h.el(\"span\", \"md:col-6\"); c = K.button('btn btn-solid theme-primary', t('x'));\n"
+		. "d = icon('bi-x', 'me-3'); e = model('a', 'p-3'); f = el(tag, 'p-3');", $out);
+}
+
+// A class printed between two PHP blocks is rewritten too; a badge's colour
+// becomes its theme there as well.
+function test_bs6_classes_between_php_blocks()
+{
+	pg_assert_same('badge <?php if ($a): ?>theme-success<?php else: ?>theme-secondary<?php endif ?> p-5',
+		bs6_convert_class_list('badge <?php if ($a): ?>text-bg-success<?php else: ?>text-bg-secondary<?php endif ?> p-3')['value']);
+	pg_assert_same('x <?php if ($a): ?>fg-danger<?php endif ?>', bs6_convert_class_list('x <?php if ($a): ?>text-danger<?php endif ?>')['value']);
+}
+
+// Class strings in code (a status map, a ternary feeding className) are read
+// when the caller asks; a lone text-bg colour is a badge's theme, a lone
+// class that would split is reported.
+function test_bs6_class_strings()
+{
+	$js = "var cls = ok ? 'text-success' : 'text-muted';\nbadge.className = 'badge ' + (open ? 'text-bg-warning' : 'text-bg-secondary');\n"
+		. "x.classList.toggle(on ? 'btn-primary' : 'btn-outline-secondary');\nvar label = 'Save it';\nvar wide = 'col-12 col-md-6 p-2';\n";
+	$r = bs6_convert_source($js, null, true);
+
+	pg_assert_same("var cls = ok ? 'fg-success' : 'fg-secondary';\nbadge.className = 'badge ' + (open ? 'theme-warning' : 'theme-secondary');\n"
+		. "x.classList.toggle(on ? 'btn-primary' : 'btn-outline-secondary');\nvar label = 'Save it';\nvar wide = 'col-12 md:col-6 p-3';\n", $r['source']);
+	pg_assert_same(2, count($r['reviews']), 'the split button classes');
+	pg_assert_same($js, bs6_convert_source($js)['source'], 'not read unless asked');
+	pg_assert_false(bs6_reads_class_strings('assets/js/style_designer.js'), 'the editor names canvas classes as data');
+
+	$ids = "echo '<td id=\"modal-date\"></td>'; document.getElementById(\"modal-date\"); var s = 'lead';\n";
+	pg_assert_same(array(), bs6_find_class_strings($ids), 'an id, an element lookup and a lone word name no class');
+
+	$added = "var c = 'ws-row-sub' + (late ? ' text-danger' : '');\nvar s = on ? 'status_enabled text-success' : 'status_disabled';\nvar k = 'some_key';\n";
+	pg_assert_same("var c = 'ws-row-sub' + (late ? ' fg-danger' : '');\nvar s = on ? 'status_enabled fg-success' : 'status_disabled';\nvar k = 'some_key';\n",
+		bs6_convert_source($added, null, true)['source'], 'a leading space, an own snake_case class');
 }

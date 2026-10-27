@@ -1,6 +1,6 @@
 ---
 name: shipping-management
-description: Shipping plan (2026-10-08; phases 1-4 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
+description: Shipping plan (2026-10-08; phases 1-4, 5, 6 and 7a done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 ---
 
 ## What state is it in?
@@ -18,9 +18,9 @@ description: Shipping plan (2026-10-08; phases 1-4 done, phase 1 waits for new c
 2. Schema - done (#694): carrier, link, status, date, source and warning columns, unique `uk_parcel`, `shipping_methods.carrier`, `order_delivered` in `email_campaign_profiles.action`.
 3. One write path - done (#879): `pg_shipment_record()`, `pg_shipment_prune()`, `pg_shipment_delivered()` in `includes/fn/shipping.php`, used by `update_order()` (API source `api`) and the marketplace import; ShipWorks still inserts directly.
 4. Panel - done (#931): one card per address, per-number carrier select, status badge, format warning; Save no longer empties undrawn addresses.
-5. Customer side (M), two PRs: (a) e-mail: mail-merge fields `^^tracking_numbers^^`, `^^carrier_name^^`, `^^tracking_url^^` from `pg_shipment_rows()` + `pg_shipment_view()` (order_shipped: the addresses shipped in the save; order_delivered: that address), `order_delivered` in `add_/edit_email_campaign_profile.php` and `view_email_campaign_profiles.php` (actions listed by hand), and a step widening `email_campaigns.action`: that ENUM lacks `order_delivered`, so a delivered campaign is stored with action '' (seen on a sandbox); the owner approved the step (2026-10-20), same way 11.0.20 widened the profiles. (b) widget `__tracking_*` tokens read the row first; guest tracking by order number + billing e-mail (CSRF, 10/hour/IP, shipping data only). Leave the TR seed page "Kargo Yola Çıktı"; tell operators via `install_note()`.
-6. Bulk (S–M): "mark shipped" on selected orders and a CSV upload (`order_number,number,carrier`, `fgetcsv`) with a result list; role gate `USER_MANAGE_ECOMMERCE`.
-7. API (S–M): validate `carrier` in `api_orders_ship()` (422); carrier name, URL, status and dates in shipments and the `order.shipped` / `order.delivered` payloads. n11 import: city = district, state = province for new imports only.
+5. Customer side (M), two PRs: (a) done (#1964; `commerce/shipment-mail-fields.md`) e-mail: tracking mail-merge fields, `order_delivered` in the campaign profile screens, and the step widening `email_campaigns.action` (owner approved 2026-10-20). (b) widget `__tracking_*` tokens read the row first - done (#2102); guest tracking by order number + billing e-mail - done (#2116; `commerce/guest-shipment-lookup.md`).
+6. Bulk - done (#1877; `commerce/shipping-bulk-import.md`).
+7. API (S–M), two PRs: (a) done (#2004; `commerce/shipment-api-fields.md`): `parcels` (carrier, name, URL, status, dates) in shipments and the `order.shipped` / `order.delivered` payloads, a recognised `carrier` of `api_orders_ship()` kept on each parcel, n11 import city = district, state = province for new imports only. (b) refuse an unknown `carrier` in `api_orders_ship()` with 422: waits on the owner.
 8. Optional: `ship_tos.district`, `states.plate_code`, postcode-province check in warning mode; no district data set (licence decision).
 
 ## What must the owner check by hand?

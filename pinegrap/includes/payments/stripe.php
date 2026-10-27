@@ -57,6 +57,13 @@ function pg_payment_stripe_fields()
             'max_length' => 255,
         ),
         array(
+            'name'       => 'webhook_secret',
+            'type'       => 'secret',
+            'label'      => lang('Webhook Signing Secret'),
+            'help'       => lang('Starts with whsec_. Add the webhook address above in the Stripe Dashboard and copy its signing secret here; without it Stripe\'s messages are refused.'),
+            'max_length' => 255,
+        ),
+        array(
             'name'  => 'link',
             'type'  => 'switch',
             'label' => lang('Offer Link'),
@@ -90,6 +97,11 @@ function pg_payment_stripe_cancel($order, $transaction_id)
     return pg_payment_stripe_cancel_with($order, $transaction_id, pg_payment_stripe_settings(), 'pg_payment_stripe_request');
 }
 
+function pg_payment_stripe_notify($headers, $body)
+{
+    return pg_payment_stripe_notify_with($headers, $body, pg_payment_stripe_settings(), time());
+}
+
 /* ---------------------------------------------------------------------------
    Settings, amounts and the API
    --------------------------------------------------------------------------- */
@@ -107,8 +119,8 @@ function pg_payment_stripe_api_version()
 /**
  * The store's Stripe settings.
  *
- * @return array publishable_key, secret_key, link (bool), currency (lowercase
- *               ISO code), capture ('automatic' or 'manual'), locale
+ * @return array publishable_key, secret_key, webhook_secret, link (bool),
+ *               currency (lowercase ISO code), capture ('automatic' or 'manual'), locale
  */
 function pg_payment_stripe_settings()
 {
@@ -117,6 +129,7 @@ function pg_payment_stripe_settings()
     return array(
         'publishable_key' => trim(pg_payment_setting('stripe', 'publishable_key')),
         'secret_key'      => trim(pg_payment_setting('stripe', 'secret_key')),
+        'webhook_secret'  => trim(pg_payment_setting('stripe', 'webhook_secret')),
         'link'            => (pg_payment_setting('stripe', 'link') === '1'),
         'currency'        => strtolower(defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : ''),
         // The store's Transaction Type: Authorize holds the money, and the
@@ -850,4 +863,208 @@ function pg_payment_stripe_cancel_with($order, $transaction_id, $settings, $http
     }
 
     return array('success' => true, 'status' => 'cancelled', 'refund_reference' => $void['reference']);
+}
+
+/* ---------------------------------------------------------------------------
+   Webhook: the messages Stripe sends on its own
+   --------------------------------------------------------------------------- */
+
+/**
+ * How old a signed message may be, in seconds: Stripe's own libraries use
+ * five minutes, so a message caught and posted again later is refused.
+ *
+ * @return int
+ */
+function pg_payment_stripe_signature_tolerance()
+{
+    return 300;
+}
+
+/**
+ * Checks a Stripe-Signature header: t=<unix time>,v1=<hex>[,v1=...][,v0=...].
+ * v1 is HMAC-SHA256 of "<t>.<body>" with the endpoint's signing secret;
+ * while a secret is rolled Stripe signs with both and sends one v1 each, so
+ * any of them may match. v0 (the test-mode scheme of old) is never read.
+ *
+ * @param string $header
+ * @param string $body     the raw request body, byte for byte
+ * @param string $secret   whsec_...
+ * @param int    $now      unix time
+ * @return string '' when it is signed in time, else missing, invalid or stale
+ */
+function pg_payment_stripe_signature_check($header, $body, $secret, $now)
+{
+    $header = trim((string) $header);
+
+    if ($header === '') {
+        return 'missing';
+    }
+
+    $time = null;
+    $signatures = array();
+
+    foreach (explode(',', $header) as $part) {
+        $pair = explode('=', trim($part), 2);
+
+        if (count($pair) !== 2) {
+            continue;
+        }
+
+        if (($pair[0] === 't') && (preg_match('/^[0-9]{1,12}$/', $pair[1]) === 1)) {
+            $time = (int) $pair[1];
+        } elseif (($pair[0] === 'v1') && (preg_match('/^[0-9a-f]{64}$/', $pair[1]) === 1)) {
+            $signatures[] = $pair[1];
+        }
+    }
+
+    if (($time === null) || !$signatures || ((string) $secret === '')) {
+        return 'invalid';
+    }
+
+    $expected = hash_hmac('sha256', $time . '.' . (string) $body, (string) $secret);
+    $matched = false;
+
+    foreach ($signatures as $signature) {
+        if (hash_equals($expected, $signature)) {
+            $matched = true;
+        }
+    }
+
+    if (!$matched) {
+        return 'invalid';
+    }
+
+    // Checked after the signature, so a wrong secret is never reported as a
+    // clock problem.
+    if (abs((int) $now - $time) > pg_payment_stripe_signature_tolerance()) {
+        return 'stale';
+    }
+
+    return '';
+}
+
+/**
+ * An amount of a Stripe object as text for a log line: "47.14 TRY".
+ *
+ * @param mixed  $amount   Stripe's units
+ * @param string $currency
+ * @return string
+ */
+function pg_payment_stripe_log_amount($amount, $currency)
+{
+    $hundredths = pg_payment_stripe_hundredths($amount, $currency);
+
+    return ($hundredths === null) ? '' : pg_payment_decimal($hundredths) . ' ' . strtoupper((string) $currency);
+}
+
+/**
+ * A message Stripe sent to payment_callback.php?driver=stripe. Only a
+ * message signed with the endpoint's secret is read. Three events are
+ * answered; the callback decides what the store does with each (it never
+ * changes the order):
+ *
+ *   payment_intent.succeeded  paid: the payment of an order (metadata
+ *                             order_id) went through, perhaps after the
+ *                             visitor left the 3-D Secure page
+ *   charge.refunded           refunded: money was given back on Stripe's
+ *                             screen (amount: everything refunded so far)
+ *   charge.dispute.created    pending: the card holder disputes the payment
+ *
+ * The log line names the event without its end; the callback finishes it
+ * with the order it found and what it did (pg_payment_notify_outcome()).
+ *
+ * Every other event, and a payment that names no order of this store, is a
+ * failure with raw.ignored set: the callback acknowledges it, so Stripe does
+ * not send it again.
+ *
+ * @param array  $headers  lowercase name => value (pg_payment_request_headers())
+ * @param string $body     the raw body
+ * @param array  $settings pg_payment_stripe_settings()
+ * @param int    $now      unix time
+ * @return array an answer; order_reference is the order id from the
+ *               metadata, or the PaymentIntent's id the order keeps as its
+ *               transaction id
+ */
+function pg_payment_stripe_notify_with($headers, $body, $settings, $now)
+{
+    $header = (is_array($headers) && isset($headers['stripe-signature']) && is_string($headers['stripe-signature'])) ? $headers['stripe-signature'] : '';
+    $secret = isset($settings['webhook_secret']) ? (string) $settings['webhook_secret'] : '';
+
+    if ($secret === '') {
+        return pg_payment_failure(lang('No webhook signing secret is stored for Stripe.'), array('signature' => 'no_secret'));
+    }
+
+    $check = pg_payment_stripe_signature_check($header, $body, $secret, $now);
+
+    if ($check !== '') {
+        return pg_payment_failure(lang('The message is not signed by Stripe.'), array('signature' => $check));
+    }
+
+    $event = json_decode((string) $body, true);
+    $type = (is_array($event) && isset($event['type']) && is_string($event['type'])) ? $event['type'] : '';
+    $object = (is_array($event) && isset($event['data']['object']) && is_array($event['data']['object'])) ? $event['data']['object'] : null;
+
+    if (($type === '') || ($object === null)) {
+        return pg_payment_failure(lang('The message cannot be read.'), array('signature' => 'valid'));
+    }
+
+    $ignored = array('success' => false, 'error' => lang('This message is not used.'), 'raw' => array('signature' => 'valid', 'ignored' => true, 'event' => $type));
+    $text = function ($name) use ($object) {
+        return (isset($object[$name]) && is_string($object[$name])) ? $object[$name] : '';
+    };
+    $currency = $text('currency');
+    $raw = array('signature' => 'valid', 'event' => $type, 'id' => $text('id'));
+
+    switch ($type) {
+        case 'payment_intent.succeeded':
+            $order_id = (isset($object['metadata']['order_id']) && is_scalar($object['metadata']['order_id'])) ? trim((string) $object['metadata']['order_id']) : '';
+
+            if ((preg_match('/^[1-9][0-9]{0,18}$/', $order_id) !== 1) || (preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $text('id')) !== 1)) {
+                return $ignored;
+            }
+
+            $amount = isset($object['amount_received']) ? $object['amount_received'] : null;
+
+            return array(
+                'success'         => true,
+                'status'          => 'paid',
+                'transaction_id'  => $text('id'),
+                'order_reference' => $order_id,
+                'amount'          => pg_payment_stripe_hundredths($amount, $currency),
+                'log'             => array('Stripe reports that payment ' . $text('id') . ' of ' . pg_payment_stripe_log_amount($amount, $currency) . ' succeeded'),
+                'raw'             => $raw,
+            );
+
+        case 'charge.refunded':
+        case 'charge.dispute.created':
+            $intent = $text('payment_intent');
+
+            if (preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $intent) !== 1) {
+                return $ignored;
+            }
+
+            $order_id = (isset($object['metadata']['order_id']) && is_scalar($object['metadata']['order_id'])) ? trim((string) $object['metadata']['order_id']) : '';
+
+            if ($type === 'charge.refunded') {
+                $amount = isset($object['amount_refunded']) ? $object['amount_refunded'] : null;
+                $line = 'Stripe reports that ' . pg_payment_stripe_log_amount($amount, $currency) . ' of payment ' . $intent . ' was refunded on Stripe';
+                $status = 'refunded';
+            } else {
+                $amount = isset($object['amount']) ? $object['amount'] : null;
+                $line = 'Stripe reports a dispute of ' . pg_payment_stripe_log_amount($amount, $currency) . ' on payment ' . $intent . ' (reason: ' . (($text('reason') !== '') ? $text('reason') : 'none given') . ')';
+                $status = 'pending';
+            }
+
+            return array(
+                'success'         => true,
+                'status'          => $status,
+                'transaction_id'  => $intent,
+                'order_reference' => (preg_match('/^[1-9][0-9]{0,18}$/', $order_id) === 1) ? $order_id : $intent,
+                'amount'          => pg_payment_stripe_hundredths($amount, $currency),
+                'log'             => array($line),
+                'raw'             => $raw,
+            );
+    }
+
+    return $ignored;
 }

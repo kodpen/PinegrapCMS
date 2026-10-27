@@ -45,7 +45,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_scheduled.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_commands.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -164,11 +164,14 @@ function ws_openapi_objects()
         'WorkspaceNoteRemoval'    => 'ws_api_note_removal_schema',
         'WorkspaceTemplate'        => 'ws_api_template_schema',
         'WorkspaceTemplateApplied' => 'ws_api_template_applied_schema',
+        'WorkspaceCommand'         => 'ws_api_command_schema',
+        'WorkspaceCommandArgument' => 'ws_api_command_argument_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
+        'WorkspaceTimeEntry'      => 'ws_api_task_time_range_schema',
+        'WorkspaceTimeTask'       => 'ws_api_task_time_task_schema',
         'WorkspaceApproval'       => 'ws_api_approval_schema',
         'WorkspaceThread'           => 'ws_api_thread_schema',
         'WorkspaceScheduledMessage' => 'ws_api_scheduled_message_schema',
-        'WorkspaceScheduledAction'  => 'ws_api_scheduled_action_schema',
         'WorkspaceNoteVersion'      => 'ws_api_note_version_schema',
         'WorkspacePlanItem'         => 'ws_api_plan_item_schema',
         'WorkspaceSearchHit'        => 'ws_api_search_hit_schema',
@@ -186,6 +189,7 @@ function ws_openapi_objects()
         'WorkspaceMessageSender'    => 'ws_api_message_sender_schema',
         'WorkspaceMessageFile'      => 'ws_api_message_file_schema',
         'WorkspaceMessageThread'    => 'ws_api_message_thread_schema',
+        'WorkspaceMessageNoteCard'  => 'ws_api_message_note_card_schema',
         'WorkspaceApprovalRecord'   => 'ws_api_approval_record_schema',
         'WorkspaceChannelGroupMemberships'  => 'ws_api_channel_group_memberships_schema',
         'WorkspaceChannelGroupChange'       => 'ws_api_channel_group_change_schema',
@@ -197,11 +201,16 @@ function ws_openapi_objects()
         'WorkspaceNoteSource'       => 'ws_api_note_source_schema',
         'WorkspaceFlow'             => 'ws_api_flow_schema',
         'WorkspaceFlowVersion'      => 'ws_api_flow_version_schema',
+        'WorkspaceFlowVersionDetail' => 'ws_api_flow_version_detail_schema',
+        'WorkspaceFlowKind'         => 'ws_api_flow_kind_schema',
+        'WorkspaceFlowValidation'   => 'ws_api_flow_validation_schema',
         'WorkspaceFlowGraph'        => 'ws_api_flow_graph_schema',
         'WorkspaceFlowProblem'      => 'ws_api_flow_problem_schema',
+        'WorkspaceFlowTemplate'     => 'ws_api_flow_template_schema',
         'WorkspaceFlowRun'          => 'ws_api_flow_run_schema',
         'WorkspaceFlowRunStep'      => 'ws_api_flow_run_step_schema',
         'WorkspaceFlowShare'        => 'ws_api_flow_share_schema',
+        'WorkspaceFlowBoxTry'       => 'ws_api_flow_box_try_schema',
         'WorkspaceMcpConnector'     => 'ws_api_mcp_connector_schema',
         'WorkspaceMcpServer'        => 'ws_api_mcp_server_schema',
         'WorkspaceMcpTool'          => 'ws_api_mcp_tool_schema',
@@ -252,8 +261,8 @@ function ws_api_routes()
     $flow_fields = array(
         array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 160, 'description' => 'What the flow is called. Runs of spaces are made one.'),
         array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'Its home: a public or private channel the owner of the application reads, whose readers may run the flow once it is live, and where its runs open their tasks. 0 for none, a flow only its owner sees. It is not part of the draft and changes at once: on a flow published once, only a team devices session may change it.'),
-        array('name' => 'nodes', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'string', 'kind' => 'string', 'label' => 'string', 'x' => 'integer', 'y' => 'integer', 'config' => 'object'), 'max_items' => 1000, 'description' => 'The boxes, as objects of {id, kind, label, x, y, config}. id: small letters, digits and _, starting with a letter, at most 32 characters, once in the flow. kind: manual, the box that starts the flow by hand (config {subject}: empty, or the kind of record a run is about, such as order or contact); task, which opens a task and waits for it (config {title, up to 200 characters; description; assignees, up to 20 user ids, or assign: creator, whoever starts the run, department_lead, department:ID, user:ID or none; due_in, days from when the box is reached, 0-3650, or empty for none; priority: low, normal, high or urgent}); or end. x and y place it on the canvas. Replaces every box of the draft; left out of a change, the boxes are kept.'),
-        array('name' => 'edges', 'in' => 'body', 'type' => 'list', 'of' => array('from' => 'string', 'to' => 'string', 'on' => 'string'), 'max_items' => 5000, 'description' => 'The arrows, as objects of {from, to, on}: from the box with the id from to the box with the id to, taken when from ends on the outcome on: next for a start box, done or cancelled for a task; left out, the box\'s first. A box with several arrows in waits for all of them. Replaces every arrow of the draft; left out of a change, the arrows are kept.'),
+        array('name' => 'nodes', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'string', 'kind' => 'string', 'label' => 'string', 'x' => 'integer', 'y' => 'integer', 'config' => 'object'), 'max_items' => 1000, 'description' => 'The boxes, as objects of {id, kind, label, x, y, config}. id: small letters, digits and _, starting with a letter, at most 32 characters, once in the flow. kind: manual, the box that starts the flow by hand (config {subject}: empty, or the kind of record a run is about, such as order or contact); task, which opens a task and waits for it (config {title, up to 200 characters; description; assignees, up to 20 user ids, or assign: creator, whoever starts the run, department_lead, department:ID, user:ID or none; due_in, days from when the box is reached, 0-3650, or empty for none; priority: low, normal, high or urgent}); post, which writes a message in a channel as the owner (config {channel_id; body}); email, which sends an e-mail from the site (config {to, addresses separated by commas; subject; body; or page_id, a page sent instead}); notify, a line in the inbox of team members (config {user_ids, up to 50; text}); task_open, a task opened without waiting for it (config {title; description; assignees, up to 20 user ids; channel_id, 0 for none; due_in; priority}); webhook, a POST to an https address with an Idempotency-Key per run and box (config {url; format: generic, text or discord; text}); web_check, a look at an https address (config {url; mode: status or ssl; redirect; contains; max_ms; days, the days a certificate must have left for ssl}); task_digest, each person their tasks by e-mail (config {mode: mine or channel; channel_id; user_ids; only: open, week, overdue or stale; subject; intro; missed; ai}); report, a summary of counts (config {title; metrics, up to 20 of {key, param}; channel_id; to}); checkin, a check-in asked in a channel (config {channel_id; question}); start_action, a scheduled action started (config {target_id; delay, 0-10080 minutes}); or end. The url of webhook and web_check is answered whole only to whoever may change the flow; others read https://host/…. The texts of these steps may hold {{node.ID.FIELD}}: the text, outcome or status of an earlier box of the run, or a value it kept (message_id of a post, task_id of a task_open), empty when the run has none. x and y place it on the canvas. Replaces every box of the draft; left out of a change, the boxes are kept.'),
+        array('name' => 'edges', 'in' => 'body', 'type' => 'list', 'of' => array('from' => 'string', 'to' => 'string', 'on' => 'string'), 'max_items' => 5000, 'description' => 'The arrows, as objects of {from, to, on}: from the box with the id from to the box with the id to, taken when from ends on the outcome on: next for a start box, done or cancelled for a task, done or failed for a step (post, email, notify, task_open, webhook, web_check, task_digest, report, checkin, start_action; a failure no arrow leaves on fails the run); left out, the box\'s first. A box with several arrows in waits for all of them. Replaces every arrow of the draft; left out of a change, the arrows are kept.'),
         array('name' => 'notes', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'string', 'text' => 'string', 'x' => 'integer', 'y' => 'integer', 'w' => 'integer', 'h' => 'integer'), 'max_items' => 1000, 'description' => 'Notes on the canvas, as objects of {id, text, x, y, w, h}, up to 2,000 characters each; they are never checked. Replaces every note of the draft; left out of a change, the notes are kept.'),
     );
 
@@ -508,6 +517,24 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.messages.forward',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/forwards',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_forward',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessage',
+            'status'      => 201,
+            'summary'     => 'Forward messages to a channel',
+            'description' => 'Forwards messages into a channel, as Forward does in the panel: id is the channel they go to, message_ids the messages, all of one channel the owner reads, written by people or applications, not deleted, at most 20. The channel they go to must be one the owner may post in and not archived (403 otherwise); a room with a guest takes no forwards. A new message is written there carrying a copy of each forwarded message as it is now - its words, who wrote it, when and where - so a later change or deletion of the original does not reach the copy; a file goes as its name, the file itself stays in its channel. text puts a few words above them. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. Whoever reads the channel it goes to reads the copies too, so forwarding out of a private channel shares its words. A dry run makes every check and its detail gives source_channel_id and how many messages would be forwarded. Send an Idempotency-Key so a retried call does not forward twice.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'message_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'required' => true, 'description' => 'Ids of the messages to forward (GET /workspace/channels/{id}/messages), all of one channel; they are forwarded oldest first.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'A few words above the forwarded messages. Tags are written as tokens, as when writing.'),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.files.create',
             'method'      => 'POST',
             'path'        => '/workspace/channels/{id}/files',
@@ -517,9 +544,8 @@ function ws_api_routes()
             'returns'     => 'WorkspaceMessage',
             'status'      => 201,
             'form_file'   => 'file',
-            'mcp'         => false,
             'summary'     => 'Post a file in a channel',
-            'description' => 'Posts a picture, a video, a document or any other file into a channel the owner may post in, as a message carrying it, the way the paperclip in the panel does; text goes with it. Send the file as multipart/form-data in a part named file, with name and text as form fields if wanted - the way for a large file - or as content_base64 in a JSON body with name. What the channel takes is what the panel takes: at most 20 MB, or less where the server sets a lower limit (422 beyond it); no programs, scripts or server files, no SVG, HTML, XML or JavaScript, and no Office files with macros; a picture has to be a picture. The file goes into the channel\'s folder in the file manager, and a discussion\'s into its channel\'s. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. parent_id makes the file an answer to a message, as Reply does in the panel (where a sound\'s own microphone answers it with a voice message): the message must be one of this channel or discussion, not deleted and not in an earlier version of the conversation, or the call is refused with 422 on parent_id. A voice message is a sound file posted this way; the panel records it as voice-YYYYMMDD-HHMMSS with .weba, .ogg or .m4a. The answer is the message; its file.api_url fetches the file with the same token (GET /workspace/messages/{id}/file). A dry run checks the file and parent_id the same way without keeping anything - nothing reaches the disk or the file manager - and its detail.file gives the name, kind and size that would be posted. Send an Idempotency-Key so a retried upload does not post twice; the same key sent with another file, or another name, text or parent_id, is refused with 409 idempotency_key_reused.',
+            'description' => 'Posts a picture, a video, a document or any other file into a channel the owner may post in, as a message carrying it, the way the paperclip in the panel does; text goes with it. Send the file as multipart/form-data in a part named file, with name and text as form fields if wanted - the way for a large file - or as content_base64 in a JSON body with name. What the channel takes is what the panel takes: at most 20 MB, or less where the server sets a lower limit (422 beyond it); no programs, scripts or server files, no SVG, HTML, XML or JavaScript, and no Office files with macros; a picture has to be a picture. The file goes into the channel\'s folder in the file manager, and a discussion\'s into its channel\'s. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. parent_id makes the file an answer to a message, as Reply does in the panel (where a sound\'s own microphone answers it with a voice message): the message must be one of this channel or discussion, not deleted and not in an earlier version of the conversation, or the call is refused with 422 on parent_id. A voice message is a sound file posted this way; the panel records it as voice-YYYYMMDD-HHMMSS with .weba, .ogg or .m4a. The answer is the message; its file.api_url fetches the file with the same token (GET /workspace/messages/{id}/file). A dry run checks the file and parent_id the same way without keeping anything - nothing reaches the disk or the file manager - and its detail.file gives the name, kind and size that would be posted. As an MCP tool it takes content_base64 and name alone, for a small file of at most 1 MB (422 on content_base64 beyond it); post a larger one over the REST API as a form part. Send an Idempotency-Key so a retried upload does not post twice; the same key sent with another file, or another name, text or parent_id, is refused with 409 idempotency_key_reused.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'description' => 'The file\'s name with its extension, as readers see it. Required with content_base64; a form part\'s own file name is used when it is left out.'),
@@ -1246,7 +1272,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_notes_list',
             'returns'     => array('list' => 'WorkspaceNote', 'deleted' => array(array('id' => 'integer', 'deleted_at' => 'string'))),
             'summary'     => 'The owner\'s notes',
-            'description' => 'The personal notes of the owner of the application - the pinned ones first, then the latest changed - followed by the notes colleagues shared with them, the latest changed first. A note is seen by nobody but the one who wrote it until it is shared, administrators included, so nobody else\'s notes are listed here. scope mine or shared keeps one of the two. search and updated_since are applied before the list is paged, so every note that matches comes in some page; page.total counts them. Page with next_cursor until has_more is false. A note changed while the pages are read moves to the top and may be missed in that pass; read again with updated_since from the moment the first page was asked for. text and body are null in the listing; GET /workspace/notes/{id} carries them. With updated_since, the first page (no cursor) also lists in deleted the notes deleted since then that the owner kept - their own, those shared with them and those shared in a channel they may read - the oldest first, at most 1,000, so a copy kept elsewhere can be dropped; deletions are remembered for 30 days, so an app away longer reads the whole list again. Without updated_since, deleted is empty.',
+            'description' => 'The personal notes of the owner of the application - the pinned ones first, then the latest changed - followed by the notes colleagues shared with them, the latest changed first. A note is seen by nobody but the one who wrote it until it is shared, administrators included, so nobody else\'s notes are listed here. scope mine or shared keeps one of the two. search and updated_since are applied before the list is paged, so every note that matches comes in some page; page.total counts them. Page with next_cursor until has_more is false. A note changed while the pages are read moves to the top and may be missed in that pass; read again with updated_since from the moment the first page was asked for. A note shared with them since updated_since comes in the list too. text and body are null in the listing; GET /workspace/notes/{id} carries them. With updated_since, the first page (no cursor) also lists in deleted the notes deleted since then that the owner kept - their own, those shared with them and those shared in a channel they may read - or no longer shared with them, the oldest first, at most 1,000, so a copy kept elsewhere can be dropped; deletions are remembered for 30 days, so an app away longer reads the whole list again. Without updated_since, deleted is empty.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'shared'), 'default' => 'all'),
                 array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Words in the title or the text.'),
@@ -1423,6 +1449,23 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.messages.item_task',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/item-task',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_messages_item_task',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTask',
+            'status'      => 201,
+            'summary'     => 'Make one checklist item of a message a task',
+            'description' => 'Makes one item of a message\'s checklist ("- [ ] " lines) a task in the message\'s channel, the way the button beside the item does in the panel. The item\'s words are read as /task reads them: a day or date, a time, an estimate such as "1.5 saat", tagged people and typed usernames of team members; a task given to nobody is the owner\'s own. The task\'s description is the item as written and its source_message_id the message; no card is posted, the item shows the task\'s tag instead. item counts the checklist items of the message from 0. Whoever may write in the channel may, for the people they may give tasks to; a message of a guest, a task card or a message in an earlier version of the conversation is refused, and so is an item a task was already made of (422), so a retried call does not make two tasks. A clash with somebody\'s leave is refused too: /task shows it and may hand the task over anyway. A dry run makes the same checks and its detail gives the task\'s title, channel and people.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'item', 'in' => 'body', 'type' => 'int', 'min' => 0, 'required' => true, 'description' => 'The checklist item, counted from 0 in the order of the message.'),
+            ),
+        ),
+
+        array(
             'id'           => 'workspace.tasks.update',
             'method'       => 'POST',
             'also_accepts' => array('PATCH'),
@@ -1570,6 +1613,43 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.tasks.time.update',
+            'method'      => 'POST',
+            'path'        => '/workspace/tasks/{id}/time/{entry_id}/update',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_task_time_update',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTaskTime',
+            'summary'     => 'Change an entry of time',
+            'description' => 'Changes only the fields sent, for whoever may delete the entry: the owner\'s own, or anybody\'s for an owner who is staff (403 otherwise). An entry on an ERP invoice draft is refused with 422 until the tie is undone, and so is a timer still running (stop it first). It has an address of its own because POST /workspace/tasks/{id}/time/{entry_id} deletes the entry. Not announced as an event.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'minutes', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100000),
+                array('name' => 'worked_on', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD, today or earlier.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'null or an empty text clears it.'),
+                array('name' => 'billable', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the time may go on an invoice of the channel\'s customer.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.time.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/time',
+            'scope'       => 'tasks:read',
+            'handler'     => 'ws_api_time_list',
+            'returns'     => array('list' => 'WorkspaceTimeEntry', 'total_minutes' => 'integer'),
+            'summary'     => 'The owner\'s own time across tasks',
+            'description' => 'Every entry of time the owner of the application wrote between two site days, on any task, newest day first, as My time on the tasks screen reads it: a stopped timer or minutes written by hand, and a timer still running with running true and minutes 0 (on the day it was started). task names the task; a task the owner can no longer see keeps its id with an empty title and visible false. total_minutes is the sum of the whole range, not of the page. Page with next_cursor.',
+            'params'      => array(
+                array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD: the first day, in the site\'s time zone. The Monday of the week of to when left out.'),
+                array('name' => 'to', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD: the last day, included; 92 days at most from from. Today when left out.'),
+                array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 250),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.tasks.recurrence.get',
             'method'      => 'GET',
             'path'        => '/workspace/tasks/{id}/recurrence',
@@ -1653,7 +1733,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_plan_get',
             'returns'     => array('list' => 'WorkspacePlanRow'),
             'summary'     => 'The planning board',
-            'description' => 'One row per person, one entry per day: the minutes planned, the capacity and the load in percent, leave and holidays. Only the people the owner may see on the board: everyone for a board holder, the owner and the departments they lead otherwise.',
+            'description' => 'One row per person, one entry per day: the minutes planned, the capacity and the load in percent, leave and holidays. A day lists its task ids (tasks) and the task entries the board draws (task_items: the day\'s share of minutes; due on the last day of the task\'s window; upcoming for a projected copy of a repeating task, under the series task\'s id, with its repeat label, the day it was moved from and the task number it waits for while the newest copy is overdue), and the plan items placed on it (events: meetings, leave, holidays and others with their minutes that day). A row counts the person\'s open tasks with neither a start nor a due date (unscheduled). Only the people the owner may see on the board: everyone for a board holder, the owner and the departments they lead otherwise.',
             'params'      => array(
                 array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Monday of this week when left out.'),
                 array('name' => 'days', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 31, 'default' => 7),
@@ -1796,6 +1876,19 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.commands.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/commands',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_commands_list',
+            'returns'     => array('list' => 'WorkspaceCommand'),
+            'mcp'         => false,
+            'summary'     => 'List the channel commands',
+            'description' => 'The / commands the owner of the application may type into a channel, in the order the panel\'s picker lists them, for an app that offers the same picker: names holds every name a command answers to (Turkish and English, each with its slash), name the one shown first in the language of the site, usage the name and its arguments (<required> [optional]), and args each argument in the order it is typed, with its kind and where the panel suggests values for it (suggest: people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, or null). anywhere true means the argument is read wherever it is written on the line; live true means the panel shows a line under the command while it is typed. A command the owner may not use is left out: /price, /stock and /product without the product rights, /claude and /ai until they are set up. Nothing is run here: what a command does has its own endpoint.',
+            'params'      => array(),
+        ),
+
+        array(
             'id'          => 'workspace.channels.apply_template',
             'method'      => 'POST',
             'path'        => '/workspace/channels/{id}/apply-template',
@@ -1819,9 +1912,13 @@ function ws_api_routes()
             'handler'     => 'ws_api_flows_list',
             'returns'     => array('list' => 'WorkspaceFlow'),
             'summary'     => 'List flows',
-            'description' => 'The flows of the owner of the application - drafts, live and paused ones - the live flows of others whose home channel (channel_id) the owner reads, which the owner may run, and the flows shared with the owner, themselves or in a channel they read (GET /workspace/flows/{id}/shares); the latest changed first. A flow is seen by nobody but its owner until it is published with a home channel or shared, administrators included. access says edit (the owner\'s own while they build flows, which is for staff in the team, or one shared with them at edit while they are staff), run (a live flow of a home channel they read, or one shared with them at run, or at edit while they are not staff) or view (shared with them at view, or in a channel they read). version is the live version, null before the first publish. draft, graph and problems are null in the listing; GET /workspace/flows/{id} carries them. Deleted flows are not listed. The application Claude works through lists the flows of others only when they are shared with the owner in person, shared in a channel where Claude may be asked, or live with such a channel as their home.',
+            'description' => 'The flows of the owner of the application - drafts, live and paused ones - the live flows of others whose home channel (channel_id) the owner reads, which the owner may run, and the flows shared with the owner, themselves or in a channel they read (GET /workspace/flows/{id}/shares); the latest changed first. A flow is seen by nobody but its owner until it is published with a home channel or shared, administrators included. access says edit (the owner\'s own while they build flows, which is for staff in the team, or one shared with them at edit while they are staff), run (a live flow of a home channel they read, or one shared with them at run, or at edit while they are not staff) or view (shared with them at view, or in a channel they read). version is the live version, null before the first publish. draft, graph, problems, start and start_text are null in the listing; GET /workspace/flows/{id} carries them. start, status, channel_id and updated_since narrow the list, together. Deleted flows are not listed. The application Claude works through lists the flows of others only when they are shared with the owner in person, shared in a channel where Claude may be asked, or live with such a channel as their home.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'shared'), 'default' => 'all', 'description' => 'mine keeps the owner\'s own, shared the ones of others.'),
+                array('name' => 'start', 'in' => 'query', 'type' => 'enum', 'values' => array('time', 'event', 'join', 'manual'), 'description' => 'Only the flows that start this way: time (at a time, once or again and again), event (when something happens on the site or in the workspace), join (when somebody joins a channel) or manual (by hand). A published flow starts as its live version does, one never published as its draft; a draft without a start box matches none.'),
+                array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'live', 'paused'), 'description' => 'Only the flows in this state. Deleted flows are never listed.'),
+                array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the flows with this home channel.'),
+                array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only the flows changed at or after this moment: the draft saved, published or paused. Sharing a flow changes nothing in it, so a flow shared with the owner since then is not among them.'),
             ),
         ),
 
@@ -1833,7 +1930,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_flows_get',
             'returns'     => 'WorkspaceFlow',
             'summary'     => 'One flow, with its graph',
-            'description' => 'A flow the owner of the application reaches. To its owner it carries draft, the graph being edited, with draft_rev, the number to send back with a change, and problems, what stops the draft from being published (an empty list when nothing does): each has a code (too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle, unreachable), the box (node) or the place of the arrow in edges (edge) it is about, and a text to show. graph is the live version as it was published, null before the first publish. To somebody who may only run the flow or look at it, problems are null, and so is draft, except on a flow never published: shared before its first publish, it is read as its draft, read-only. The application Claude works through reaches the flow of somebody else only when it is shared with the owner in person, shared in a channel where Claude may be asked, or live with such a channel as its home.',
+            'description' => 'A flow the owner of the application reaches. To its owner it carries draft, the graph being edited, with draft_rev, the number to send back with a change, and problems, what stops the draft from being published (an empty list when nothing does): each has a code (too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle, unreachable), the box (node) or the place of the arrow in edges (edge) it is about, and a text to show. graph is the live version as it was published, null before the first publish. To somebody who may only run the flow or look at it, problems are null, and so is draft, except on a flow never published: shared before its first publish, it is read as its draft, read-only. start says how the flow starts - time, event, join or manual, as the start of GET /workspace/flows narrows the list - and start_text says it in words in the site\'s language ("Every week on Monday at 09:00, from 02.11.2026", "When a form is submitted: Contact", "By hand"); both follow the live version once the flow is published and the draft before, and are null for a draft without a start box. A channel the owner of the application does not read is not named in start_text. The application Claude works through reaches the flow of somebody else only when it is shared with the owner in person, shared in a channel where Claude may be asked, or live with such a channel as its home.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -1851,7 +1948,9 @@ function ws_api_routes()
             'summary'     => 'Draft a flow',
             'description' => 'Starts a new draft flow of the owner of the application, as the flow canvas does. Building flows is for staff in the team: anybody else is refused with 403. A draft never runs, so an application key or an OAuth connection may write one - an assistant can lay a process out for the person to look at and publish. It may hold problems, which the answer lists instead of refusing it; a dry run answers them too. A draft is at most ' . (int) (WS_FLOW_GRAPH_BYTES / 1024) . ' KB of JSON, a published flow at most ' . WS_FLOW_MAX_NODES . ' boxes, and one person keeps at most ' . WS_FLOW_MAX_PER_OWNER . ' flows. Send an Idempotency-Key so a retried call does not create two flows.',
             'params'      => array_merge(array(
-                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 160, 'required' => true, 'description' => 'What the flow is called. Runs of spaces are made one.'),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 160, 'description' => 'What the flow is called. Runs of spaces are made one. Required, but for a flow made from a template, which is called after the template\'s title when no name is sent.'),
+                array('name' => 'template', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'description' => 'The key of a ready-made flow (GET /workspace/flow-templates) whose boxes and arrows the draft gets; nodes, edges and notes are refused beside it. A key not offered to the owner of the application is refused with 422 (field template).'),
+                array('name' => 'answers', 'in' => 'body', 'type' => 'object', 'description' => 'With template: the answers to its settings, by setting type - channel (a channel id), person (a list of up to 20 user ids, every assignee, approver and person told), time (HH:MM), url (http or https), address (e-mail addresses separated by commas). Sent, every setting of the template must be answered, or the call is refused with 422 (field answers.TYPE); left out, the boxes keep the template\'s own values. Whether the owner may write in the channel or assign the people is checked when the person publishes.'),
             ), array_slice($flow_fields, 1)),
         ),
 
@@ -1902,7 +2001,117 @@ function ws_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceFlow',
             'summary'     => 'Pause a flow',
-            'description' => 'Pauses a live flow the owner may change (their own, or one shared with them at edit): nothing starts it until its owner publishes it again, and its versions stay as they are. Runs already going go on. A flow that is not live is refused with 422. The activity log gets a line.',
+            'description' => 'Pauses a live flow the owner may change (their own, or one shared with them at edit): nothing starts it until its owner resumes it (POST /workspace/flows/{id}/resume) or publishes it again, and its versions stay as they are. Runs already going go on. A flow that is not live is refused with 422. The activity log gets a line.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // Resumed, a paused flow opens tasks in the person's own name again,
+        // as a published one does: their team devices session only, and no
+        // MCP tool (flow_versions.php).
+        array(
+            'id'          => 'workspace.flows.resume',
+            'method'      => 'POST',
+            'path'        => '/workspace/flows/{id}/resume',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flows_resume',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlow',
+            'summary'     => 'Resume a paused flow',
+            'description' => 'Makes a paused flow of the owner\'s own live again on the version it was paused at; its draft stays a draft (POST /workspace/flows/{id}/publish makes the draft live instead). Only the flow\'s owner resumes it: a colleague it is shared with at edit is refused with 403, since the runs act with the owner\'s rights. The version is checked again as a publish checks it, with the owner\'s rights now: a channel they no longer write in, a time already gone or a person they may no longer give work to is refused with 422, and the owner then publishes a changed draft. A flow that is not paused, or was never published, is refused with 422; a second resume of the same moment with 409. Only a team devices session (a Bearer token from POST /auth/login) may resume a flow: an application key and an OAuth connection are refused with 403 forbidden. The activity log gets a line.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // The published versions of a flow (flow_versions.php), read and
+        // brought back into the draft by whoever may change the flow. A draft
+        // never runs, so bringing one back is a tool, as changing the draft is.
+        array(
+            'id'          => 'workspace.flow_versions.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/versions',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flow_versions_list',
+            'returns'     => array('list' => 'WorkspaceFlowVersion'),
+            'summary'     => 'List the versions of a flow',
+            'description' => 'The versions a flow the owner of the application may change was published as, newest first, without their graphs: n is the version\'s number, published_by who published it. The live one is the version of GET /workspace/flows/{id}; a paused flow keeps it and resumes on it. Versions are never changed or deleted, and runs keep the one they started on. Somebody who may only run the flow or look at it is refused with 403. Page with next_cursor.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flow_versions.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/versions/{n}',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flow_versions_get',
+            'returns'     => 'WorkspaceFlowVersionDetail',
+            'summary'     => 'One version of a flow, with its graph',
+            'description' => 'A version of a flow the owner of the application may change, by its number, with the graph as it was published; live says whether it is the version live now (or the one a paused flow resumes on). Somebody who may only run the flow or look at it is refused with 403; a number the flow was never published as is a 404.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'n', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The version\'s number.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flow_versions.restore',
+            'method'      => 'POST',
+            'path'        => '/workspace/flows/{id}/versions/{n}/restore',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flow_versions_restore',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceFlow',
+            'summary'     => 'Bring a version back into the draft',
+            'description' => 'Replaces the draft of a flow the owner of the application may change with the graph of one of its published versions, as a change of the draft does: draft_rev goes up, the name and the home channel stay. The flow itself is not changed - a live flow goes on running its live version, a paused one stays paused - until its owner publishes the draft. A draft never runs, so an application key or an OAuth connection may do it. Send draft_rev, the one the draft was read at, to have it refused with 409 changed_meanwhile when the draft changed since. Somebody who may only run the flow or look at it is refused with 403; a number the flow was never published as is a 404. A dry run answers the boxes and the problems the draft would have. The activity log gets a line.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'n', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The version\'s number.'),
+                array('name' => 'draft_rev', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The draft_rev the draft was read at.'),
+            ),
+        ),
+
+        // What a flow is built from and a draft looked at before it is
+        // published (flow_catalogue.php). Both write nothing, so both are
+        // tools: an assistant drafts a flow from the catalogue and checks
+        // it before the person publishes it.
+        array(
+            'id'          => 'workspace.flow_templates.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/flow-templates',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flow_templates_list',
+            'returns'     => array('list' => 'WorkspaceFlowTemplate'),
+            'summary'     => 'Ready-made flows to start a draft from',
+            'description' => 'The ready-made flows the flow canvas\'s gallery offers the owner of the application, in one page, filled for them: a text a template sends goes to their own e-mail address or inbox, a schedule starts on the next fitting day of the site\'s calendar. Only staff in the team, who build flows, are offered any; a template that needs a count the owner may not read is left out. key is what POST /workspace/flows takes as template; category is team, site or sales; start the kind of the box that starts it; boxes and threads how many boxes it has and how many of their texts read a value of an earlier box ({{node.ID.FIELD}}); settings the types of the few values its setup asks for (channel, person, time, url, address), which answers sends; graph its boxes and arrows as the draft gets them.',
+        ),
+
+        array(
+            'id'          => 'workspace.flow_kinds.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/flow-kinds',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flow_kinds_list',
+            'returns'     => array('list' => 'WorkspaceFlowKind'),
+            'summary'     => 'The kinds of box a flow is built from',
+            'description' => 'Every kind of box the nodes of a flow (POST /workspace/flows) may have, in one page. starts says the box starts the flow (a flow has exactly one); step that it is a step a scheduled action could take too. outcomes are the values the on of an arrow leaving it may take (next for a start box; an end has none). outputs are the values it gives the boxes after it, read in their texts as {{node.ID.KEY}}: key, type (number or text) and label; a web check\'s carry mode, the one of its modes they belong to, and a report gives one more number per count it is set to send. texts are the settings that take those values. settings are the keys of its config as a save keeps them, in order: type is text, integer, boolean, list (of says of what: integer ids, or objects) or object; blank says an integer may be left empty for none; values, when set, are the words the setting takes, any other being kept as the first. A setting not sent is kept at its empty value, and a key not listed is dropped. What each setting means is said under nodes of POST /workspace/flows.',
+        ),
+
+        array(
+            'id'          => 'workspace.flows.validate',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/validate',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flows_validate',
+            'returns'     => 'WorkspaceFlowValidation',
+            'summary'     => 'Look at a flow\'s draft before publishing it',
+            'description' => 'Looks at the saved draft of a flow the owner of the application may change as publishing would, and writes nothing. problems are what GET /workspace/flows/{id} lists (an empty list when none). To the flow\'s owner, once there is no problem, the draft is also checked with their rights now, as POST /workspace/flows/{id}/publish checks it: a channel they may not post in, an address that is not good, a time already gone, a person they may not give work to; refusal is the first such reason, null when none. checked_rights says whether that was done: a colleague the flow is shared with at edit does not publish it, so they get the problems alone and publishable is false for them. publishable is true when the owner\'s publish would pass these checks now; it still meets draft_rev and a draft saved meanwhile. Somebody who may only run the flow or look at it is refused with 403.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -2012,6 +2221,25 @@ function ws_api_routes()
             ),
         ),
 
+        // A box tried reads the draft and looks at counts and records with
+        // the flow owner's rights: offered to no MCP client as a tool.
+        array(
+            'id'          => 'workspace.flows.box_try',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/boxes/{node}/try',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flows_box_try',
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlowBoxTry',
+            'summary'     => 'Try one box of a flow\'s draft',
+            'description' => 'What one box of the draft of a flow of the owner of the application\'s own would do, in words, without doing it: nothing is sent, written or called. The box is checked with the rights the flow\'s owner holds now, as publishing and the run check it. A step box answers said, what it would do, and texts, its texts with the {{node.ID.FIELD}} values of the run named by run_id filled in (a run of this flow the owner of the application reaches); empty lists the values that run does not give, or all of them without run_id, which are filled in empty. {{date}} and the other placeholders are filled when the box runs. A condition box is looked at now and answers outcome yes or no with its reason in said; a start box at a time names its next times in next. outcome is the arrow the box would leave on (null when it would fail or waits for a task); refusal, when set, is why the box would fail. A box not in the draft, or a run of another flow, is a 404. Only the flow\'s owner tries its boxes, as only they publish it: a colleague it is shared with at edit is refused with 403, since the box is looked at with the owner\'s rights. An MCP client is offered no tool for it, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'node', 'in' => 'path', 'type' => 'string', 'max_length' => 32, 'required' => true, 'description' => 'The id of the box in the draft.'),
+                array('name' => 'run_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'A run of this flow whose settled boxes give the {{node.*}} values.'),
+            ),
+        ),
+
         // The runs of a flow (flow_runs.php). A run opens tasks in the flow
         // owner's name: an AI app is to ask the person before it starts or
         // cancels one, which the MCP server cannot do yet, so the two writes
@@ -2059,7 +2287,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_flow_runs_get',
             'returns'     => 'WorkspaceFlowRun',
             'summary'     => 'One run of a flow, with its boxes',
-            'description' => 'A run the owner of the application reaches: any run of a flow of their own, or one started in a channel they read (channel_id: the flow\'s home as the run started) of a flow they may run, or one they started (of a flow shared with them to run, or with no channel; in a channel they read, of a flow paused since). The application Claude works through reads only the runs of channels where Claude may be asked, besides those of its owner\'s own flows. steps are the boxes the run has reached so far, in the order they were reached: node_id and kind and name of the box (its label, or its id), status (ready, running, waiting, done, failed or skipped - a box only reachable through arrows that were not taken, or after a box that failed, is skipped, so a join waits for every arrow into it and goes on once), outcome (the arrow it left on: next for the start box, done or cancelled for a task; a cancelled task with no arrow on cancelled fails its box), task_id (the task a task box opened; it stays as it is whatever becomes of the run), attempt, its times, and result, how it went in a sentence. graph is the version the run follows, which may differ from the flow\'s live one.',
+            'description' => 'A run the owner of the application reaches: any run of a flow of their own, or one started in a channel they read (channel_id: the flow\'s home as the run started) of a flow they may run, or one they started (of a flow shared with them to run, or with no channel; in a channel they read, of a flow paused since). The application Claude works through reads only the runs of channels where Claude may be asked, besides those of its owner\'s own flows. steps are the boxes the run has reached so far, in the order they were reached: node_id and kind and name of the box (its label, or its id), status (ready, running, waiting, done, failed or skipped - a box only reachable through arrows that were not taken, or after a box that failed, is skipped, so a join waits for every arrow into it and goes on once), outcome (the arrow it left on: next for the start box, done or cancelled for a task; a cancelled task with no arrow on cancelled fails its box), task_id (the task a task box opened; it stays as it is whatever becomes of the run), attempt, its times, threads_in (the arrows into the box: from, the box it comes from; on, its outcome; taken, whether the run took it, as its box ended done on that outcome, or on any for always), outputs (the values the box kept for the boxes after it, which their texts read as {{node.ID.FIELD}}: a number, a text, or null for one it did not give; the record of a change box and the run a start-a-flow box started only to whoever may change the flow, others get an empty object), and result, how it went in a sentence. graph is the version the run follows, which may differ from the flow\'s live one.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -2078,6 +2306,40 @@ function ws_api_routes()
             'description' => 'Cancels a run that is still going: its status becomes cancelled and its open boxes are skipped. The flow\'s owner and the person who started the run may cancel it; anybody else who reads it is refused with 403, and a run that has ended with 422 (409 when it ended at that moment). The tasks the run opened stay as they are, open or not: a person decides what becomes of them; the boxes that waited for one say so. A dry run answers how many boxes are open and which tasks stay. The activity log gets a line. An MCP client is offered no tool for it until it can ask the person first, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flow_runs.step_retry',
+            'method'      => 'POST',
+            'path'        => '/workspace/flow-runs/{id}/steps/{node}/retry',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flow_runs_step_retry',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlowRun',
+            'summary'     => 'Try a failed box of a run again',
+            'description' => 'Tries a box of a run that failed (status failed, a box that stopped half way included) again as a new attempt: it is ready again, forgets what it began and the task it waited for, and the boxes after it follow how it goes; the boxes skipped behind it are walked again, and a run that had failed goes on (running). A step box that may have posted or sent before it stopped does so again, and a task box opens a new task (one an earlier try opened stays as it is). The box\'s result says who tried it again and how it had failed until it settles again. Only the flow\'s owner may: the box runs in their name and with their rights; anybody else who reads the run is refused with 403. A box the run has not reached is a 404, one that has not failed or a run done or cancelled 422, and a box tried again or skipped at that very moment 409, so two calls never run it twice. A dry run answers which boxes would be walked again. The activity log gets a line. An MCP client is offered no tool for it, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'node', 'in' => 'path', 'type' => 'string', 'max_length' => 32, 'required' => true, 'description' => 'The id of the box in the version the run follows.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flow_runs.step_skip',
+            'method'      => 'POST',
+            'path'        => '/workspace/flow-runs/{id}/steps/{node}/skip',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flow_runs_step_skip',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlowRun',
+            'summary'     => 'Skip a failed box of a run',
+            'description' => 'Skips a box of a run that failed (status failed, a box that stopped half way included): its status becomes skipped and the run goes on as for a branch not taken, so a box after it that another taken arrow leads into still runs; the boxes skipped behind it are walked again, and a run that had failed goes on or ends done. The box\'s result says who skipped it and how it had failed. Only the flow\'s owner may; anybody else who reads the run is refused with 403. A box the run has not reached is a 404, one that has not failed or a run done or cancelled 422, and a box tried again or skipped at that very moment 409. A dry run answers which boxes would be walked again. The activity log gets a line. An MCP client is offered no tool for it, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'node', 'in' => 'path', 'type' => 'string', 'max_length' => 32, 'required' => true, 'description' => 'The id of the box in the version the run follows.'),
             ),
         ),
 
@@ -2186,8 +2448,7 @@ function ws_api_routes()
 
     );
 
-    // Asking Claude in a channel (api_claude.php), the changes an
-    // application proposes (api_proposals.php) and the scheduled actions
-    // (api_scheduled.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_scheduled_api_routes());
+    // Asking Claude in a channel (api_claude.php) and the changes an
+    // application proposes (api_proposals.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes());
 }

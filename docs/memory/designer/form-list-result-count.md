@@ -4,14 +4,14 @@ description: form_list_view ^^__result_count^^ (records matched, capped at max_r
 ---
 
 ## What does `^^__result_count^^` count?
-- The complete records the list matched: its filters, the visitor's search and the viewer filter. Capped at `max_results` (`min(total, max_results)` when set): the number a visitor can page through, as the classic list's "Found N results" (`get_form_list_view.php`, `form_list_view_system.php`) and search_results count it.
+- The complete records the list matched: its filters, the visitor's search and the viewer filter, less its `offset` ([[widget-list-paging]]). Capped at `max_results` (`min(total − offset, max_results)` when set): the number a visitor can page through, as the classic list's "Found N results" (`get_form_list_view.php`, `form_list_view_system.php`) and search_results count it.
 - Printed in the surround and in every row, grouped with the site's separators (`h(pg_format_number($n, 0))`, "1.284"). Escaped once and passed as a finished value, so it is not in `pg_sw_raw_token_keys()`.
 - 0 when nothing matches, when a filter closes the list (`AND (0 = 1)`, `form-list-filters-fail-closed.md`) and in the empty state.
 - Editor: Bind Data "Number of results" (search_results' label for the same name). The canvas shows 12 (`_SD_NUMERIC_TOKENS`).
 
 ## Why this name, and does search print it the same way?
 - One value has one name (`token-dictionary.md`); search_results already calls its number of results `__result_count`.
-- The format differs: search_results prints plain digits ("1284", `(string)$total`), the list groups them like the classic list and the record counters. Whether search groups too is an open owner question; search is unchanged.
+- The format is the same: search_results groups its number in the page's language too (`pg_format_number($total, 0)`, as its heading does; owner, 2026-10-27, W12). Before, it printed plain digits ("1284").
 
 ## Which flags does a list set?
 - `has_records` (count > 0) and `no_records` (count = 0), in the surround and in the rows (a row always has `has_records` on). The list marks only its own flags (`_pg_sw_mark_visibility()` list).

@@ -18,7 +18,7 @@ description: Lists inside a record in the designer (#1688): palette items, where
 - An optgroup "Row of the list" first: the row values of every list the element is drawn in, the nearest list's first, each token once (`_sdListRowOptions()`). The same tokens reach the condition row and the code view completion through `_swBindTokenOptions()`; the position tokens number the list's own rows. `_swBindLabel()` names them.
 
 ## What does the canvas show?
-- The template once under a cyan band "Values of a field · Colour — one row shown…" (`_sdListBand()`, the table band too). When the site would draw nothing (unknown source, no field, unreadable settings, a kind without lists, outside the record in a form list, a fifth level, a field that gives no rows) the band turns amber with the reason and the list fades. Row values preview as samples (`_SD_LIST_ROW_PREVIEWS`). Tree, HTML tree and code view name it a list.
+- The template once under a cyan band "Values of a field · Colour — one row shown…" (`_sdListBand()`, the table band too). When the site would draw nothing (unknown source, no field, unreadable settings, a kind without lists, outside the record in a form list, a fifth level, a field that gives no rows) the band turns amber with the reason and the list fades. Row values preview as samples (`_SD_LIST_ROW_PREVIEWS`); sample rows follow the card ([[widget-condition-canvas]]). Tree, HTML tree and code view name it a list.
 
 ## Which lists must match the server?
 - `SW_LIST_SOURCES` (labels, arg, arg required, row tokens, kinds) = `pg_sw_list_sources()` and `pg_sw_kind_lists()`; `_sdListSpec()` = `pg_sw_list_spec()`; `_sdListIsSourced()` = `pg_sw_list_is_sourced()`. `tests/widget_lists_editor_test.php` checks them under Node. No list name holds TOKEN (check_bindings reads `SW_*TOKEN*` as palettes).
@@ -26,4 +26,4 @@ description: Lists inside a record in the designer (#1688): palette items, where
 
 ## What is not done yet?
 - Tried by unit tests only: a browser round (palette drag into a form list and a detail view, the panel, the band, Preview) is still owed.
-- A source change keeps the row's bindings (no rebinding offer). No condition on a list's own loop_area; `eo_visible_if` inside a list is not resolved (W23).
+- A source change keeps the row's bindings (no rebinding offer). No condition on a list's own loop_area; a flag naming a row value: [[widget-list-flags]].

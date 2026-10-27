@@ -65,6 +65,45 @@ function pg_announce($event, $data = array())
     api_webhook_enqueue($event, (array) $data, true);
 }
 
+// What customer.consent_changed carries for a consent_log row, or null when
+// the row announces nothing: a cookie answer (no customer), a pending one (no
+// answer yet), an import (a bulk path), or no customer record to name.
+function pg_consent_changed_event($id, $row, $contact_id)
+{
+    if (($row['channel'] === 'cookie') || ($row['status'] === 'pending') || ($row['source'] === 'import') || ((int) $contact_id <= 0)) {
+        return null;
+    }
+
+    return array(
+        'id'      => (int) $contact_id,
+        'consent' => array(
+            'id'         => (int) $id,
+            'channel'    => (string) $row['channel'],
+            'purpose'    => (string) $row['purpose'],
+            'status'     => (string) $row['status'],
+            'source'     => (string) $row['source'],
+            'created_at' => gmdate('Y-m-d\TH:i:s\Z', (int) $row['created_at']),
+        ),
+    );
+}
+
+// A consent answer just written to consent_log (pg_consent_log_record()). A
+// row kept under the account alone names the account's customer record.
+function pg_announce_consent_changed($id, $row)
+{
+    $contact_id = (int) $row['contact_id'];
+
+    if (($contact_id <= 0) && ((int) $row['user_id'] > 0)) {
+        $contact_id = (int) db_value("SELECT user_contact FROM user WHERE user_id = '" . (int) $row['user_id'] . "'");
+    }
+
+    $event = pg_consent_changed_event($id, $row, $contact_id);
+
+    if ($event !== null) {
+        pg_announce('customer.consent_changed', $event);
+    }
+}
+
 // A contact that did not exist a moment ago, whichever screen or form made it.
 //
 // The address book is written from eight places in this software and most of
@@ -193,8 +232,25 @@ function pg_event_record($event, $payload = array())
         return;
     }
 
-    $json = json_encode((array) $payload, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    $json = json_encode(pg_event_payload_depth((array) $payload), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
     db("INSERT INTO ws_events_in (event, payload, created_at, taken_at)
         VALUES ('" . e((string) $event) . "', '" . e(($json === false) ? '{}' : $json) . "', UNIX_TIMESTAMP(), 0)");
+}
+
+// The payload with the chain depth an event caused right now stands at
+// (ws_event_depth()), as ws_event() stamps it: an order a flow's step makes
+// starts the actions waiting for it one step further down the run's chain,
+// so a loop of runs stops at the chain limit (ws_events_start()). Outside a
+// run, or where the workspace's files are not loaded, it is left as it is.
+function pg_event_payload_depth($payload)
+{
+    $payload = (array) $payload;
+    $depth = function_exists('ws_event_depth') ? (int) ws_event_depth() : 0;
+
+    if ($depth > 0) {
+        $payload['_depth'] = $depth;
+    }
+
+    return $payload;
 }

@@ -52,8 +52,8 @@ $query =
         comments_label,
         comments_watcher_email_page_id
     FROM page
-    WHERE page_id = '" . escape($page_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE page_id = ?";
+$result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 $page_name = $row['page_name'];
@@ -119,8 +119,8 @@ if ($management == TRUE) {
                     form_editor_user_id,
                     user_id
                 FROM forms
-                WHERE id = '" . escape($item_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+            $result = db_q($query, array((string) $item_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
 
             $form_editor_user_id = $row['form_editor_user_id'];
@@ -133,8 +133,8 @@ if ($management == TRUE) {
 
             // Otherwise this user is not the form editor, so determine if the submitter is allowed to manage watchers for this page.
             } else {
-                $query = "SELECT comments_watchers_managed_by_submitter FROM page WHERE page_id = '" . escape($page_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT comments_watchers_managed_by_submitter FROM page WHERE page_id = ?";
+                $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $comments_watchers_managed_by_submitter = $row['comments_watchers_managed_by_submitter'];
                 
@@ -153,9 +153,9 @@ if ($management == TRUE) {
                             FROM form_data
                             LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
                             WHERE
-                                (form_data.form_id = '" . escape($item_id) . "')
+                                (form_data.form_id = ?)
                                 AND (form_fields.contact_field = 'email_address')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $item_id)) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
                         $submitter_email_address = $row['data'];
 
@@ -183,9 +183,9 @@ if ($management == TRUE) {
             "SELECT user_id
             FROM user
             WHERE
-                (user_username = '" . escape($username_or_email_address) . "')
-                OR (user_email = '" . escape($username_or_email_address) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (user_username = ?)
+                OR (user_email = ?)";
+        $result = db_q($query, array((string) $username_or_email_address, (string) $username_or_email_address)) or output_error('Query failed.');
 
         // If a user was found, then determine if we should add watcher in a certain way.
         if (mysqli_num_rows($result) > 0) {
@@ -198,11 +198,15 @@ if ($management == TRUE) {
                 "SELECT COUNT(*)
                 FROM watchers
                 WHERE
-                    (user_id = '" . $watcher_user_id . "')
-                    AND (page_id = '" . escape($page_id) . "')
-                    AND (item_id = '" . escape($item_id) . "')
-                    AND (item_type = '" . escape($item_type) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (user_id = ?)
+                    AND (page_id = ?)
+                    AND (item_id = ?)
+                    AND (item_type = ?)";
+            $result = db_q($query, array(
+                (string) $watcher_user_id,
+                (string) $page_id,
+                (string) $item_id,
+                (string) $item_type)) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             
             // If the user is already a watcher, then output error.
@@ -220,11 +224,15 @@ if ($management == TRUE) {
                     item_id,
                     item_type)
                  VALUES (
-                    '" . $watcher_user_id . "',
-                    '" . escape($page_id) . "',
-                    '" . escape($item_id) . "',
-                    '" . escape($item_type) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?,
+                    ?,
+                    ?)";
+            $result = db_q($query, array(
+                (string) $watcher_user_id,
+                (string) $page_id,
+                (string) $item_id,
+                (string) $item_type)) or output_error('Query failed.');
 
         // Otherwise a user was not found, so check if value is a valid e-mail address.
         } else {
@@ -240,11 +248,15 @@ if ($management == TRUE) {
                 "SELECT COUNT(*)
                 FROM watchers
                 WHERE
-                    (page_id = '" . escape($page_id) . "')
-                    AND (item_id = '" . escape($item_id) . "')
-                    AND (item_type = '" . escape($item_type) . "')
-                    AND (email_address = '" . escape($username_or_email_address) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (page_id = ?)
+                    AND (item_id = ?)
+                    AND (item_type = ?)
+                    AND (email_address = ?)";
+            $result = db_q($query, array(
+                (string) $page_id,
+                (string) $item_id,
+                (string) $item_type,
+                (string) $username_or_email_address)) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             
             // If there is already a watcher for the entered e-mail address, then output error.
@@ -262,11 +274,15 @@ if ($management == TRUE) {
                     item_id,
                     item_type)
                  VALUES (
-                    '" . escape($username_or_email_address) . "',
-                    '" . escape($page_id) . "',
-                    '" . escape($item_id) . "',
-                    '" . escape($item_type) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?,
+                    ?,
+                    ?)";
+            $result = db_q($query, array(
+                (string) $username_or_email_address,
+                (string) $page_id,
+                (string) $item_id,
+                (string) $item_type)) or output_error('Query failed.');
         }
         
         // Remove form so that we get fresh values when we take the visitor back to the previous page.
@@ -289,11 +305,15 @@ if ($management == TRUE) {
             "SELECT COUNT(*)
             FROM watchers
             WHERE
-                (id = '" . escape($id) . "')
-                AND (page_id = '" . escape($page_id) . "')
-                AND (item_id = '" . escape($item_id) . "')
-                AND (item_type = '" . escape($item_type) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (id = ?)
+                AND (page_id = ?)
+                AND (item_id = ?)
+                AND (item_type = ?)";
+        $result = db_q($query, array(
+            (string) $id,
+            (string) $page_id,
+            (string) $item_id,
+            (string) $item_type)) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // If the watcher does not exist, then output error.
@@ -304,8 +324,8 @@ if ($management == TRUE) {
         }
         
         // Delete record for watcher in database.
-        $query = "DELETE FROM watchers WHERE id = '" . escape($id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM watchers WHERE id = ?";
+        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
         
         // Remove form so that we get fresh values when we take the visitor back to the previous page.
         $liveform->remove_form();
@@ -447,13 +467,18 @@ if ($management == TRUE) {
             FROM watchers
             WHERE
                 (
-                    (user_id = '" . USER_ID . "')
-                    || (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                    (user_id = ?)
+                    || (email_address = ?)
                 )
-                AND (page_id = '" . escape($page_id) . "')
-                AND (item_id = '" . escape($item_id) . "')
-                AND (item_type = '" . escape($item_type) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                AND (page_id = ?)
+                AND (item_id = ?)
+                AND (item_type = ?)";
+        $result = db_q($query, array(
+            (string) USER_ID,
+            (string) USER_EMAIL_ADDRESS,
+            (string) $page_id,
+            (string) $item_id,
+            (string) $item_type)) or output_error('Query failed.');
         
         // if the user is already a watcher, then output error
         if (mysqli_num_rows($result) > 0) {
@@ -468,11 +493,15 @@ if ($management == TRUE) {
                 item_id,
                 item_type)
              VALUES (
-                '" . USER_ID . "',
-                '" . escape($page_id) . "',
-                '" . escape($item_id) . "',
-                '" . escape($item_type) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                ?,
+                ?,
+                ?,
+                ?)";
+        $result = db_q($query, array(
+            (string) USER_ID,
+            (string) $page_id,
+            (string) $item_id,
+            (string) $item_type)) or output_error('Query failed.');
         
         // remove form so that we get fresh values when we take the visitor back to the previous page
         $liveform->remove_form();
@@ -491,13 +520,18 @@ if ($management == TRUE) {
             FROM watchers
             WHERE
                 (
-                    (user_id = '" . USER_ID . "')
-                    || (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                    (user_id = ?)
+                    || (email_address = ?)
                 )
-                AND (page_id = '" . escape($page_id) . "')
-                AND (item_id = '" . escape($item_id) . "')
-                AND (item_type = '" . escape($item_type) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                AND (page_id = ?)
+                AND (item_id = ?)
+                AND (item_type = ?)";
+        $result = db_q($query, array(
+            (string) USER_ID,
+            (string) USER_EMAIL_ADDRESS,
+            (string) $page_id,
+            (string) $item_id,
+            (string) $item_type)) or output_error('Query failed.');
         
         // if the user is not already a watcher, then output error
         if (mysqli_num_rows($result) == 0) {
@@ -512,13 +546,18 @@ if ($management == TRUE) {
             "DELETE FROM watchers
             WHERE
                 (
-                    ((user_id = '" . USER_ID . "') && (user_id != ''))
-                    || ((email_address = '" . escape(USER_EMAIL_ADDRESS) . "') && (email_address != ''))
+                    ((user_id = ?) && (user_id != ''))
+                    || ((email_address = ?) && (email_address != ''))
                 )
-                AND (page_id = '" . escape($page_id) . "')
-                AND (item_id = '" . escape($item_id) . "')
-                AND (item_type = '" . escape($item_type) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                AND (page_id = ?)
+                AND (item_id = ?)
+                AND (item_type = ?)";
+        $result = db_q($query, array(
+            (string) USER_ID,
+            (string) USER_EMAIL_ADDRESS,
+            (string) $page_id,
+            (string) $item_id,
+            (string) $item_type)) or output_error('Query failed.');
         
         // remove form so that we get fresh values when we take the visitor back to the previous page
         $liveform->remove_form();

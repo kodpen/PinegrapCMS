@@ -28,30 +28,28 @@
         var t = h.t;
         var el = h.el;
         var node = h.offcanvas('ws-ack-people', t('ack_people'));
-        var body = h.clear(node.querySelector('.offcanvas-body'));
+        var body = h.clear(node.querySelector('.drawer-body'));
 
-        h.clear(node.querySelector('.offcanvas-footer')).classList.add('d-none');
+        h.clear(node.querySelector('.drawer-footer')).classList.add('d-none');
 
         h.api('ws_ack_people', { message_id: messageId }).then(function (data) {
             [['read', t('ack_read')], ['unread', t('ack_unread')]].forEach(function (part) {
                 var list = data[part[0]] || [];
 
-                body.appendChild(el('div', 'form-label mt-2', part[1] + ' (' + list.length + ')'));
+                body.appendChild(el('div', 'form-label mt-3', part[1] + ' (' + list.length + ')'));
 
                 if (!list.length && part[0] === 'unread') {
-                    body.appendChild(el('div', 'small text-body-secondary', t('ack_nobody_left')));
+                    body.appendChild(el('div', 'small fg-secondary', t('ack_nobody_left')));
                 }
 
                 list.forEach(function (person) {
                     var row = el('div', 'ws-ack-person');
                     var face = h.avatar(person, '1.6rem');
-
-                    face.style.borderRadius = '50%';
                     row.appendChild(face);
                     row.appendChild(el('span', 'flex-grow-1', person.name));
 
                     if (person.time) {
-                        row.appendChild(el('small', 'text-body-secondary', person.time));
+                        row.appendChild(el('small', 'fg-secondary', person.time));
                     }
 
                     body.appendChild(row);
@@ -75,7 +73,7 @@
         var row = el('div', 'ws-ack' + (ack.done ? ' ws-ack-done' : ''));
 
         if (ack.can_ack) {
-            var read = h.button('btn btn-sm btn-outline-primary py-0', t('ack_button'), 'bi-eye');
+            var read = h.button('btn btn-sm btn-outline theme-primary py-0', t('ack_button'), 'bi-eye');
 
             read.addEventListener('click', function (event) {
                 event.stopPropagation();
@@ -201,7 +199,7 @@
             var text = el('span', 'ws-home-row-text');
             var meta = el('small', 'ws-home-row-meta');
 
-            row.appendChild(h.icon('bi-eye', 'text-body-secondary'));
+            row.appendChild(h.icon('bi-eye', 'fg-secondary'));
             meta.appendChild(el('b', '', t('ack_home_asked', item.asker)));
             meta.appendChild(document.createTextNode(' · '));
             meta.appendChild(h.icon(item.channel['private'] ? 'bi-lock' : 'bi-hash'));

@@ -107,12 +107,12 @@ $privacy_export_side = '';
 if (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'refused')) {
 
     $privacy_export_body = '
-            <div class="alert alert-warning">' . h(lang('This person has a user account with a role as high as yours or higher. Ask an administrator to export their data.')) . '</div>';
+            <div class="alert theme-warning">' . h(lang('This person has a user account with a role as high as yours or higher. Ask an administrator to export their data.')) . '</div>';
 
 } elseif (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'not_found')) {
 
     $privacy_export_body = '
-            <div class="alert alert-info">' . h(lang('The site keeps nothing for this person.')) . '</div>';
+            <div class="alert theme-info">' . h(lang('The site keeps nothing for this person.')) . '</div>';
 
 } elseif (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'ok')) {
 
@@ -125,16 +125,16 @@ if (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'r
         $privacy_export_count = (int) $privacy_export_section['count'];
 
         $privacy_export_rows .= '
-                        <tr' . (($privacy_export_count === 0) ? ' class="text-body-secondary"' : '') . '>
+                        <tr' . (($privacy_export_count === 0) ? ' class="fg-secondary"' : '') . '>
                             <td>' . h($privacy_export_section['label']) . '</td>
-                            <td class="text-end">' . pg_format_number($privacy_export_count, 0) . (!empty($privacy_export_section['truncated']) ? ' <span class="badge text-bg-warning" title="' . h(lang(array('string' => 'Cut at {var:1} records.', 'vars' => array(pg_privacy_export_row_limit())))) . '">+</span>' : '') . '</td>
+                            <td class="text-end">' . pg_format_number($privacy_export_count, 0) . (!empty($privacy_export_section['truncated']) ? ' <span class="badge theme-warning" title="' . h(lang(array('string' => 'Cut at {var:1} records.', 'vars' => array(pg_privacy_export_row_limit())))) . '">+</span>' : '') . '</td>
                         </tr>';
     }
 
     $privacy_export_body = '
-            <div class="card mb-5">
+            <div class="card mb-12">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('What the site keeps')) . '</span>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('What the site keeps')) . '</span>
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
@@ -155,7 +155,7 @@ if (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'r
 
     foreach ($privacy_export_found['users'] as $privacy_export_user) {
         $privacy_export_people .= '
-                        <li class="mb-1"><i class="bi bi-person me-1" aria-hidden="true"></i><a href="edit_user.php?id=' . (int) $privacy_export_user['user_id'] . '">' . h($privacy_export_user['user_username']) . '</a> <span class="text-body-secondary small">' . h(pg_user_role_name($privacy_export_user['user_role'])) . '</span></li>';
+                        <li class="mb-1"><i class="bi bi-person me-1" aria-hidden="true"></i><a href="edit_user.php?id=' . (int) $privacy_export_user['user_id'] . '">' . h($privacy_export_user['user_username']) . '</a> <span class="fg-secondary small">' . h(pg_user_role_name($privacy_export_user['user_role'])) . '</span></li>';
     }
 
     foreach ($privacy_export_found['contacts'] as $privacy_export_contact) {
@@ -166,7 +166,7 @@ if (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'r
         }
 
         $privacy_export_people .= '
-                        <li class="mb-1"><i class="bi bi-person-vcard me-1" aria-hidden="true"></i><a href="edit_contact.php?id=' . (int) $privacy_export_contact['id'] . '">' . h($privacy_export_name) . '</a> <span class="text-body-secondary small">' . h(lang('Contact')) . '</span></li>';
+                        <li class="mb-1"><i class="bi bi-person-vcard me-1" aria-hidden="true"></i><a href="edit_contact.php?id=' . (int) $privacy_export_contact['id'] . '">' . h($privacy_export_name) . '</a> <span class="fg-secondary small">' . h(lang('Contact')) . '</span></li>';
     }
 
     $privacy_export_emails = '';
@@ -183,41 +183,41 @@ if (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'r
 
     $privacy_export_side = '
             <div class="position-sticky" style="top:1rem">
-                <div class="card mb-5">
+                <div class="card mb-12">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Who this is about')) . '</span>
+                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Who this is about')) . '</span>
                     </div>
                     <div class="card-body">
-                        <div class="small text-body-secondary">' . h(lang('E-mail Address')) . '</div>
-                        <div class="mb-3">' . (($privacy_export_emails !== '') ? $privacy_export_emails : '<span class="text-body-secondary">' . h(lang('None')) . '</span>') . '</div>
-                        ' . (($privacy_export_people !== '') ? '<ul class="list-unstyled mb-3">' . $privacy_export_people . '</ul>' : '') . '
-                        <form action="privacy_export.php" method="post" class="disable_shortcut d-flex flex-wrap gap-2">
+                        <div class="small fg-secondary">' . h(lang('E-mail Address')) . '</div>
+                        <div class="mb-5">' . (($privacy_export_emails !== '') ? $privacy_export_emails : '<span class="fg-secondary">' . h(lang('None')) . '</span>') . '</div>
+                        ' . (($privacy_export_people !== '') ? '<ul class="list-unstyled mb-5">' . $privacy_export_people . '</ul>' : '') . '
+                        <form action="privacy_export.php" method="post" class="disable_shortcut d-flex flex-wrap gap-3">
                             ' . get_token_field() . $privacy_export_hidden . '
-                            <button type="submit" name="download" value="json" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-filetype-json me-1" aria-hidden="true"></i>' . h(lang('Download JSON')) . '</button>
-                            ' . ($privacy_export_pdf_ready ? '<button type="submit" name="download" value="pdf" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-filetype-pdf me-1" aria-hidden="true"></i>' . h(lang('Download PDF summary')) . '</button>' : '') . '
+                            <button type="submit" name="download" value="json" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-filetype-json me-1" aria-hidden="true"></i>' . h(lang('Download JSON')) . '</button>
+                            ' . ($privacy_export_pdf_ready ? '<button type="submit" name="download" value="pdf" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5"><i class="bi bi-filetype-pdf me-1" aria-hidden="true"></i>' . h(lang('Download PDF summary')) . '</button>' : '') . '
                         </form>
-                        <p class="small text-body-secondary mt-3 mb-0">' . h(lang('The JSON file is the full record; the PDF summary is the version to send to the person. Each download is recorded in the audit trail.')) . '</p>
+                        <p class="small fg-secondary mt-5 mb-0">' . h(lang('The JSON file is the full record; the PDF summary is the version to send to the person. Each download is recorded in the audit trail.')) . '</p>
                     </div>
                 </div>
             </div>';
 }
 
 $privacy_export_search = '
-            <div class="card mb-5">
+            <div class="card mb-12">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Find a person')) . '</span>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Find a person')) . '</span>
                 </div>
                 <div class="card-body">
-                    <form action="privacy_export.php" method="post" class="disable_shortcut row g-2 align-items-end">
+                    <form action="privacy_export.php" method="post" class="disable_shortcut row g-3 align-items-end">
                         ' . get_token_field() . '
-                        <div class="col-12 col-md-8 col-xl-6">
+                        <div class="col-12 md:col-8 xl:col-6">
                             <label for="email" class="form-label">' . h(lang('E-mail Address')) . '</label>
                             ' . $liveform->output_field(array('type' => 'email', 'id' => 'email', 'name' => 'email', 'class' => 'form-control', 'maxlength' => '254', 'autocomplete' => 'off', 'required' => 'true')) . '
                         </div>
-                        <div class="col-12 col-md-auto">
-                            <button type="submit" class="btn btn-primary rounded-pill px-3"><i class="bi bi-search me-1" aria-hidden="true"></i>' . h(lang('Find')) . '</button>
+                        <div class="col-12 md:col-auto">
+                            <button type="submit" class="btn btn-solid theme-primary rounded-pill px-5"><i class="bi bi-search me-1" aria-hidden="true"></i>' . h(lang('Find')) . '</button>
                         </div>
-                        <div class="col-12 small text-body-secondary">' . h(lang('The user accounts and contacts with this address are found, with the records tied to them. A contact or user can also be opened here from its own screen.')) . '</div>
+                        <div class="col-12 small fg-secondary">' . h(lang('The user accounts and contacts with this address are found, with the records tied to them. A contact or user can also be opened here from its own screen.')) . '</div>
                     </form>
                 </div>
             </div>';
@@ -237,11 +237,11 @@ pg_page_shell(array(
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
         </div>
-        <div class="col-12 col-lg-8 col-xxl-9 order-1">
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
             ' . $privacy_export_search . '
             ' . $privacy_export_body . '
         </div>
-        <div class="col-12 col-lg-4 col-xxl-3 order-2">
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
             ' . $privacy_export_side . '
         </div>
     </div>

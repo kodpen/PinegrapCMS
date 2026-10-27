@@ -125,13 +125,13 @@ function initialize_recipients()
     // store recipients from address book in session.
     if (empty($_SESSION['ecommerce']['initialized_recipients']) and USER_LOGGED_IN and empty($_SESSION['software']['ghost'])) {
         // get user id
-        $query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT user_id FROM user WHERE user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $user_id = $row['user_id'];
         // get all recipients in address book
-        $query = "SELECT ship_to_name FROM address_book WHERE user = '$user_id' ORDER BY ship_to_name";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT ship_to_name FROM address_book WHERE user = ? ORDER BY ship_to_name";
+        $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
         // loop through all recipients in address book to make sure recipient is in ship to selection
         while ($row = mysqli_fetch_assoc($result)) {
             $recipient_in_session = false;
@@ -510,8 +510,8 @@ function send_comment_email_to_custom_form_submitter($comment_id)
 
         LEFT JOIN files ON comments.file_id = files.id
 
-        WHERE comments.id = '" . escape($comment_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE comments.id = ?";
+    $result = db_q($query, array((string) $comment_id)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $page_id = $row['page_id'];
     $item_id = $row['item_id'];
@@ -541,16 +541,16 @@ function send_comment_email_to_custom_form_submitter($comment_id)
 
         LEFT JOIN custom_form_pages ON form_item_view_pages.custom_form_page_id = custom_form_pages.page_id
 
-        WHERE page.page_id = '$page_id'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE page.page_id = ?";
+    $result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $page_type = $row['page_type'];
     $submitter_email_from_email_address = $row['submitter_email_from_email_address'];
     $comments_submitter_email_page_id = $row['comments_submitter_email_page_id'];
     $comments_submitter_email_subject = $row['comments_submitter_email_subject'];
     // get forms reference code
-    $query = "SELECT reference_code FROM forms WHERE id = '$item_id'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT reference_code FROM forms WHERE id = ?";
+    $result = db_q($query, array((string) $item_id)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $reference_code = $row['reference_code'];
     $email_address = get_submitter_email_address($item_id);
@@ -660,8 +660,8 @@ function send_comment_email_to_watchers($comment_id)
 
         LEFT JOIN user AS writer ON comments.created_user_id = writer.user_id
 
-        WHERE comments.id = '" . escape($comment_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE comments.id = ?";
+    $result = db_q($query, array((string) $comment_id)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $page_id = $row['page_id'];
     $item_id = $row['item_id'];
@@ -702,12 +702,12 @@ function send_comment_email_to_watchers($comment_id)
 
             WHERE
 
-                (watchers.page_id = '" . escape($page_id) . "')
+                (watchers.page_id = ?)
 
-                AND (watchers.item_id = '" . escape($item_id) . "')
+                AND (watchers.item_id = ?)
 
-                AND (watchers.item_type = '" . escape($item_type) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (watchers.item_type = ?)";
+        $result = db_q($query, array((string) $page_id, (string) $item_id, (string) $item_type)) or output_error(lang('Query failed.'));
         $watchers = array();
         // loop through all watchers in order to add them to array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -811,10 +811,13 @@ function get_email_campaign_profile_options()
  * one with a host or more text around the field included, is left as it is.
  *
  * @param string $body   the e-mail's HTML
- * @param array  $fields names of the fields that hold a whole address
+ * @param array  $fields names of the fields that hold a whole address; by
+ *                       default those of the auto campaigns: review_url
+ *                       (review request) and tracking_url (order shipped and
+ *                       order delivered)
  * @return string
  */
-function pg_mail_merge_address_hrefs($body, $fields = array('review_url'))
+function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url'))
 {
     $body = (string) $body;
     $names = array();
@@ -972,7 +975,7 @@ function create_auto_email_campaigns($properties)
             require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
             // Get html for page.
             $body = get_page_content($email_campaign_profile['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, $data);
-            // A link made with the editor's Link button to ^^review_url^^ was stored with http:// in front of it.
+            // A link made with the editor's Link button to ^^review_url^^ or ^^tracking_url^^ was stored with http:// in front of it.
             $body = pg_mail_merge_address_hrefs($body);
             // Find if there is a base tag in the HTML.
             $base_in_html = preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body);

@@ -201,12 +201,16 @@ function pg_settings_categories()
                 'pgset-chat'      => lang('Chat'),
                 'pgset-mailchimp' => lang('MailChimp'),
                 'pgset-sms'       => lang('SMS'),
+                'pgset-sms-messages' => lang('SMS Messages'),
+                'pgset-iys'       => lang('İYS'),
             ),
             'keywords' => array(
                 'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, organization, address')),
                 'pgset-chat'      => pg_settings_keywords(lang('chat, live support, operator, bubble, message')),
                 'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
+                'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
+                'pgset-iys'       => pg_settings_keywords(lang('iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal')),
             ),
         ),
 
@@ -219,6 +223,7 @@ function pg_settings_categories()
                 'pgset-captcha'    => lang('Spam Protection'),
                 'pgset-device'     => lang('Device'),
                 'pgset-mfa'        => lang('Two-Step Verification'),
+                'pgset-audit'      => lang('Audit Trail'),
                 'pgset-signin'     => lang('Sign in with Google, Microsoft and Apple'),
                 'pgset-membership' => lang('Registration & Membership'),
             ),
@@ -227,6 +232,7 @@ function pg_settings_categories()
                 'pgset-captcha'    => pg_settings_keywords(lang('captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
                 'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
+                'pgset-audit'      => pg_settings_keywords(lang('audit, audit trail, changes, history, retention, kvkk, gdpr, who changed')),
                 'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')
                     . ', ' . lang('microsoft, entra, azure, outlook, office 365, sign in with microsoft, sso')
                     . ', ' . lang('apple, icloud, sign in with apple, services id, team id, key id, p8')),
@@ -265,6 +271,7 @@ function pg_settings_categories()
                 'pgset-invoice'   => lang('E-Invoice'),
                 'pgset-erp'       => lang('ERP'),
                 'pgset-payments'  => lang('Payment Methods'),
+                'pgset-reference-price' => lang('Reference Price'),
                 'pgset-legal'     => lang('Legal Documents'),
                 'pgset-affiliate' => lang('Affiliate Program'),
             ),
@@ -275,6 +282,7 @@ function pg_settings_categories()
                 'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting')),
                 'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder, automatic invoice')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
+                'pgset-reference-price' => pg_settings_keywords(lang('reference price, price before discount, lowest price, 30 days, 10 days, compare-at price, omnibus, price label')),
                 'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
             ),
@@ -480,12 +488,13 @@ function pg_settings_tool_groups($user)
 
     $groups = array();
 
-    // Watching: the log and who is signed in.
+    // Watching: the logs and who is signed in.
     $groups[] = array(
         'label' => lang('Monitoring'),
         'icon'  => 'bi-activity',
         'items' => array(
             array('label' => lang('Site Log'), 'icon' => 'bi-card-list', 'url' => 'view_log.php'),
+            array('label' => lang('Audit trail'), 'icon' => 'bi-clipboard-check', 'url' => 'view_audit_log.php'),
             array('label' => lang('Sessions'), 'icon' => 'bi-laptop',    'url' => 'view_sessions.php'),
         ),
     );

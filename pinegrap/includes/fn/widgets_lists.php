@@ -85,32 +85,41 @@ function pg_sw_list_sources()
                 array('__file_ext', lang('File type')),
             ),
         ),
-    ) + pg_sw_list_product_sources() + pg_sw_list_calendar_sources() + pg_sw_list_order_sources()
-        + pg_sw_list_cart_sources() + pg_sw_list_menu_sources();
+    ) + pg_sw_list_product_sources() + pg_sw_list_crumb_sources() + pg_sw_list_active_filter_sources() + pg_sw_list_calendar_sources() + pg_sw_list_order_sources()
+        + pg_sw_list_cart_sources() + pg_sw_list_checkout_sources() + pg_sw_list_menu_sources() + pg_sw_list_security_sources()
+        + pg_sw_list_paging_sources();
 }
 
 // The sources a widget kind offers (source => descriptor): the form record
 // sources in the two form views, the product sources in the catalog detail
 // view and, but for the products bought together (a cross-sell lookup per
-// card), in the catalog listing (widgets_lists_product.php), the calendar
+// card), in the catalog listing, the crumbs of the catalog path in both
+// and the listing's active attribute filters
+// (widgets_lists_product.php), the calendar
 // grid sources in the calendar view (widgets_lists_calendar.php), the order
 // sources in the order view and the member's orders in the my account
 // widget (widgets_lists_order.php), the visitor's cart in the cart link and
-// the cart widget (widgets_lists_cart.php), the sub-items of a menu item in
-// the menu widget (widgets_lists_menu.php), each kind publishing its data;
-// none in any other kind.
+// the cart widget (widgets_lists_cart.php), the express order's offers,
+// gift cards and recipients and its cart (widgets_lists_checkout.php), the sub-items of a menu item in
+// the menu widget (widgets_lists_menu.php), the member's passkeys in the
+// account security widget (widgets_account.php), and in the form list the
+// page links too, as in the catalog listing and the search results
+// (widgets_lists_paging.php), each kind publishing its
+// data; none in any other kind.
 function pg_sw_kind_lists($kind)
 {
-    $families = array('form_list_view' => 'form_record', 'form_item_view' => 'form_record',
-                      'catalog_item_view' => 'product', 'catalog_listing' => 'product', 'calendar_view' => 'calendar',
+    $families = array('form_list_view' => array('form_record', 'paging'), 'form_item_view' => 'form_record',
+                      'catalog_item_view' => array('product', 'crumbs'), 'catalog_listing' => array('product', 'crumbs', 'filter_chips', 'paging'), 'calendar_view' => 'calendar',
                       'order_view' => 'order', 'my_account' => 'account', 'cart_link' => 'cart', 'shopping_cart' => 'cart',
-                      'menu_region' => 'menu');
-    $except   = array('catalog_listing' => array('product.related' => true));
+                      'express_order' => array('cart', 'checkout'),
+                      'menu_region' => 'menu', 'account_security' => 'security', 'search_results' => 'paging');
+    $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true),
+                      'express_order' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();
     $out = array();
     foreach (pg_sw_list_sources() as $source => $descriptor) {
-        if ($descriptor['family'] === $families[$kind] && !isset($except[$kind][$source])) $out[$source] = $descriptor;
+        if (in_array($descriptor['family'], (array)$families[$kind], true) && !isset($except[$kind][$source])) $out[$source] = $descriptor;
     }
     return $out;
 }
@@ -211,6 +220,45 @@ function _pg_sw_list_position_names()
     return array_keys(pg_sw_finish_position_values(0, 1));
 }
 
+// The row tokens of the lists whose row templates are being drawn, the
+// innermost last (pg_sw_list_span()): each a set of flag names.
+function &_pg_sw_list_row_stack()
+{
+    static $stack = array();
+    return $stack;
+}
+
+// The flag names a row of $source answers: each row token without its
+// leading '__' (menu_item_has_children for __menu_item_has_children), as a
+// set. Empty for an unknown source.
+function pg_sw_list_row_flags($source)
+{
+    $sources = pg_sw_list_sources();
+    if (!is_string($source) || !isset($sources[$source])) return array();
+    $out = array();
+    foreach ($sources[$source]['tokens'] as $pair) $out[substr($pair[0], 2)] = true;
+    return $out;
+}
+
+// A widget flag (_bindings.eo_visible_if) inside a list's row that names a
+// row value of that list or of a list around it is a value condition on
+// it: eo_visible_if 'menu_item_has_children' reads as show_if
+// '__menu_item_has_children' not_empty, so the row decides. The widget's
+// own flags were judged on the whole tree before the render and are not
+// row values (_eo_apply_visibility_bindings() and _pg_sw_mark_visibility()
+// leave these alone). The condition, in pg_sw_cond_spec()'s shape, or null.
+function pg_sw_list_flag_alias($props)
+{
+    $stack = &_pg_sw_list_row_stack();
+    if (!$stack || !is_array($props) || !isset($props['_bindings']['eo_visible_if'])) return null;
+    $flag = $props['_bindings']['eo_visible_if'];
+    if (!is_string($flag) || $flag === '' || preg_match('/[^a-z0-9_]/', $flag)) return null;
+    foreach ($stack as $flags) {
+        if (isset($flags[$flag])) return array('token' => '__' . $flag, 'op' => 'not_empty', 'operand' => '');
+    }
+    return null;
+}
+
 // The render half: the span a list draws where its loop_area stands, its
 // row template rendered and kept aside. '' outside a widget render (no
 // pass would expand it), for invalid settings, and for a source the
@@ -227,11 +275,18 @@ function pg_sw_list_span($node, $indent = 0, $depth = 0)
     $descriptor = $offered[$spec['source']];
 
     // The row template, drawn inside the scope: a node with a condition is
-    // wrapped, and a list in it writes its own span.
+    // wrapped, a flag naming a row value is one (pg_sw_list_flag_alias()),
+    // and a list in it writes its own span.
     $template = '';
     $children = (isset($node['children']) && is_array($node['children'])) ? $node['children'] : array();
-    foreach ($children as $child) {
-        $template .= _render_tree_node($child, $indent, $depth);
+    $rows_drawn = &_pg_sw_list_row_stack();
+    $rows_drawn[] = pg_sw_list_row_flags($spec['source']);
+    try {
+        foreach ($children as $child) {
+            $template .= _render_tree_node($child, $indent, $depth);
+        }
+    } finally {
+        array_pop($rows_drawn);
     }
     if (trim($template) === '') return '';
 
@@ -325,7 +380,10 @@ function pg_sw_list_wanted($family)
 // pg_sw_list_product_read() builds them.
 // 'calendar': $data_rows = source => key => rows, as
 // pg_sw_list_calendar_rows() builds them; 'order' and 'account' as
-// pg_sw_list_order_rows() and pg_sw_list_account_rows() build them. Every
+// pg_sw_list_order_rows() and pg_sw_list_account_rows() build them,
+// 'security' as pg_sw_list_passkey_rows() does, 'paging' as
+// pg_sw_list_paging_rows() does, 'checkout' as pg_sw_list_checkout_rows()
+// does. Every
 // family but form_record publishes its rows so.
 function pg_sw_list_publish($family, $data_rows, $options = array())
 {

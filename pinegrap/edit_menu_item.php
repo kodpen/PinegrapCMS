@@ -38,8 +38,8 @@ $query =
         menu_items.parent_id
     FROM menus
     LEFT JOIN menu_items ON menus.id = menu_items.menu_id
-    WHERE menu_items.id = '" . escape($_REQUEST['id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE menu_items.id = ?";
+$result = db_q($query, array((string) ($_REQUEST['id'] ?? ''))) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // Without a row every value below is empty and the "menu item above" query
@@ -77,8 +77,8 @@ if (!$_POST) {
                 security,
                 class
             FROM menu_items
-            WHERE id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         // Assign the values to the fields.
@@ -96,12 +96,12 @@ if (!$_POST) {
             "SELECT id
             FROM menu_items
             WHERE 
-                (menu_id = '" . escape($menu_id) . "')
-                AND (sort_order < " . (int) $sort_order . ")
-                AND (parent_id = '" . escape($parent_id) . "')
+                (menu_id = ?)
+                AND (sort_order < ?)
+                AND (parent_id = ?)
             ORDER BY sort_order DESC
             LIMIT 1";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed. ' . $query);
+        $result = db_q($query, array((string) $menu_id, (int) $sort_order, (string) $parent_id)) or output_error('Query failed. ' . $query);
         $row = mysqli_fetch_assoc($result);
         
         // The first item on its level has nothing above it.
@@ -121,11 +121,11 @@ if (!$_POST) {
             name
         FROM menu_items
         WHERE
-            (id != '" . escape($_GET['id']) . "')
-            AND (menu_id = '" . escape($menu_id) . "')
-            AND (parent_id = '" . escape($parent_id) . "')
+            (id != ?)
+            AND (menu_id = ?)
+            AND (parent_id = ?)
         ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $_GET['id'], (string) $menu_id, (string) $parent_id)) or output_error('Query failed.');
     
     // loop through all menu items in order to add them to sort order options
     while ($row = mysqli_fetch_assoc($result)) {
@@ -158,8 +158,8 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         <p>' . lang('Menu') . ': ' . h($menu_name) . '</p>
                     </div>
@@ -173,48 +173,48 @@ if (!$_POST) {
                     <input type="hidden" id="parent_id_status" name="parent_id_status" value="" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Menu Item Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="link_target" class="form-label">' . lang('Link Target') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_target', 'id'=>'link_target', 'class'=>'form-select', 'options'=>$link_target_options)) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_target', 'id'=>'link_target', 'class'=>'form-control', 'options'=>$link_target_options)) . '
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="parent_id" class="form-label">' . lang('Parent Menu Item') . '</label>
-                                            <select name="parent_id" id="parent_id" class="form-select">' . $parent_id_options . '</select>
+                                            <select name="parent_id" id="parent_id" class="form-control">' . $parent_id_options . '</select>
                                         </div>
-                                        <div class="col-12 mt-4"><h5>' . lang('Link Menu Item To') . '</h5></div>
-                                        <div class="col-12 col-md-12 col-lg-5 my-2">
+                                        <div class="col-12 mt-7"><h5>' . lang('Link Menu Item To') . '</h5></div>
+                                        <div class="col-12 md:col-12 lg:col-5 my-3">
                                             <label for="link_page_id" class="form-label">' . lang('Page') . '</label>
                                             <div class="input-group flex-wrap">
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-select', 'style'=>'min-width:100px', 'options'=>$page_options, 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-control', 'style'=>'min-width:100px', 'options'=>$page_options, 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
                                                 <div class="input-group-text">
-                                                    <div class="form-check form-switch">
-                                                        ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                        <label class="form-check-label" for="security" title="' . lang('Enable Security') . '" data-bs-content="' . lang('only show Menu Item if Visitor has access to view Page') . '">' . lang('Enable Security') . ' (?)</label>
+                                                    <div class="form-field">
+                                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                        <label class="" for="security" title="' . lang('Enable Security') . '" data-bs-content="' . lang('only show Menu Item if Visitor has access to view Page') . '">' . lang('Enable Security') . ' (?)</label>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-12 col-lg-2  my-2 text-lg-center">
+                                        <div class="col-12 md:col-12 lg:col-2  my-3 lg:text-center">
                                             <label class="form-label">-' . lang('or') . '-</label>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-5 my-2">
+                                        <div class="col-12 md:col-6 lg:col-5 my-3">
                                             <label for="link_url" class="form-label">' . lang('URL') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'link_url', 'id'=>'link_url', 'class'=>'form-control', 'maxlength'=>'255')) . '
                                         </div>
-                                        <div class="col-12 mt-3 mb-2">
+                                        <div class="col-12 mt-5 mb-3">
                                             <label for="item_class" class="form-label">' . lang('Classes') . '</label>
-                                            <div class="input-group input-group-sm d-flex flex-wrap border rounded border-2">
+                                            <div class="input-group input-group-sm d-flex flex-wrap border rounded-4 border-2">
                                                 <div class="input-group-text bg-reset border-0">&lt;li class="</div>
                                                 ' . $liveform->output_field(array(
                                                     'type' => 'text',
@@ -230,9 +230,9 @@ if (!$_POST) {
                                             <div class="form-text text-end">' . lang('One or More Custom Classes for the Menu Item. Separate classes with a space') . '</div>
                                         </div>
                                         <div class="col-12"></div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="parent_id" class="form-label">' . lang('Position') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'sort_order', 'name'=>'sort_order', 'class'=>'form-select', 'options'=>$sort_order_options)) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'sort_order', 'name'=>'sort_order', 'class'=>'form-control', 'options'=>$sort_order_options)) . '
                                         </div>
                                
                                         </tr>
@@ -249,11 +249,11 @@ if (!$_POST) {
                         </div>
                     </div>
                     
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu item and all menu items underneath it')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu item and all menu items underneath it')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -275,14 +275,14 @@ if (!$_POST) {
         function delete_menu_items($menu_item_id)
         {
             // delete menu_item
-            $query = "DELETE FROM menu_items WHERE id = '" . escape($menu_item_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM menu_items WHERE id = ?";
+            $result = db_q($query, array((string) $menu_item_id)) or output_error('Query failed.');
             
             $menu_items = array();
             
             // get sub menu items
-            $query = "SELECT id FROM menu_items WHERE parent_id = '" . escape($menu_item_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM menu_items WHERE parent_id = ?";
+            $result = db_q($query, array((string) $menu_item_id)) or output_error('Query failed.');
             
             $menu_items = array();
             
@@ -304,10 +304,10 @@ if (!$_POST) {
         $query =
             "UPDATE menus
             SET
-                last_modified_user_id = '" . $user['id'] . "',
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($menu_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $user['id'], (string) $menu_id)) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'menu item ({var:1}) on menu ({var:2}) was deleted','vars'=>array($_POST['name'],$menu_name))), $_SESSION['sessionusername']);
         
@@ -350,11 +350,11 @@ if (!$_POST) {
                 "SELECT sort_order
                 FROM menu_items
                 WHERE 
-                    (menu_id = '" . escape($menu_id) . "')
-                    AND (parent_id = '" . escape($_POST['parent_id'] ?? '')  . "')
+                    (menu_id = ?)
+                    AND (parent_id = ?)
                 ORDER BY sort_order DESC
                 LIMIT 1";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $menu_id, (string) ($_POST['parent_id'] ?? ''))) or output_error('Query failed.');
             
             $row = mysqli_fetch_assoc($result);
             $sort_order = $row['sort_order'] + 1;
@@ -366,27 +366,27 @@ if (!$_POST) {
         $query =
             "UPDATE menu_items
             SET
-                name = '" . escape($_POST['name'] ?? '') . "',
-                parent_id = '" . escape($_POST['parent_id'] ?? '') . "',
-                sort_order = '" . escape($sort_order) . "',
-                link_page_id = '" . escape($link_page_id) . "',
-                link_url = '" . escape($link_url) . "',
-                link_target = '" . escape($_POST['link_target'] ?? '') . "',
-                security = '" . escape($_POST['security'] ?? '') . "',
-                class = '" . escape($_POST['class'] ?? '') . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                parent_id = ?,
+                sort_order = ?,
+                link_page_id = ?,
+                link_url = ?,
+                link_target = ?,
+                security = ?,
+                class = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['parent_id'] ?? ''), (string) $sort_order, (string) $link_page_id, (string) $link_url, (string) ($_POST['link_target'] ?? ''), (string) ($_POST['security'] ?? ''), (string) ($_POST['class'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // update last modified for menu
         $query =
             "UPDATE menus
             SET
-                last_modified_user_id = '" . $user['id'] . "',
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($menu_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $user['id'], (string) $menu_id)) or output_error('Query failed.');
         
         /* begin: update sort orders for menu items */
         $menu_items = array();
@@ -401,11 +401,11 @@ if (!$_POST) {
             "SELECT id
             FROM menu_items
             WHERE 
-                (menu_id = '" . escape($menu_id) . "')
-                AND (parent_id = '" . escape($_POST['parent_id'] ?? '')  . "')
-                AND (id != '" . escape($_POST['id'] ?? '')  . "')
+                (menu_id = ?)
+                AND (parent_id = ?)
+                AND (id != ?)
             ORDER BY sort_order";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $menu_id, (string) ($_POST['parent_id'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         while ($row = mysqli_fetch_assoc($result)) {
             // add this menu item to array
@@ -424,9 +424,9 @@ if (!$_POST) {
             // update sort order for menu item
             $query =
                 "UPDATE menu_items
-                SET sort_order = '$count'
-                WHERE id = '" . escape($current_menu_id)  . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                SET sort_order = ?
+                WHERE id = ?";
+            $result = db_q($query, array((string) $count, (string) $current_menu_id)) or output_error('Query failed.');
             
             $count++;
         }

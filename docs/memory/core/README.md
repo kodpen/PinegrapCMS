@@ -21,22 +21,28 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 
 - access-control-and-roles.md: validate_area_access() gates, real role numbering (Designer above Manager), role table, job-script gating, and the ecommerce role rule (panel and external API owner).
 - admin-new-account-email-link.md: The "New Account" e-mail an administrator sends from add user or import users carries a single-use set password link, never the random password (PR #1217)
-- ai-prompt-rules.md: The rules block every language-model prompt ends with (pg_ai_prompt_rules(), PR #1124): writer and assistant profiles, the builders, the test that fails for a prompt without it
+- ai-prompt-data-blocks.md: Untrusted text set apart in AI prompts, tool answers and the designer's page brief (pg_ai_data_block(), PR #1854, #1953): the marks, forged marks, what is framed
+- ai-prompt-rules.md: The rules block every language-model prompt ends with (pg_ai_prompt_rules(), PR #1124) writer and assistant profiles, the builders, the test that fails for a prompt without it
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
+- audit-trail-contacts.md: Contacts in audit_log (PR #2170, #2246): which panel, API, import, İYS and Workspace paths write a contact line, the label, the writers not hooked, how erasure clears the lines
 - audit-trail-recycle-bin.md: How Recycle Bin work appears in audit_log: the daily purge recorded as a job (pg_audit_as_job), not as the operator whose visit ran it
+- audit-trail-screen.md: The audit trail screen view_audit_log.php, its CSV export and GET /audit-log (includes/fn/audit_view.php): who may open it, filters, how each stored value form is shown, export limits
 - audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
 - audit-trail-workspace.md: How Workspace writes reach audit_log through ws_change_write(): kind to table, recycle vs deletes the helpers write, offers, the job as actor for bulk and scheduled changes
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which paths are not hooked
 - auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
 - code-editor-completion.md: Code editor completion (pg_code_editor.js): css/js sources inside an HTML editor, addCompletionRanker, colour swatches, the slot sources and the lezer lookup-cache reset
-- code-editor-facade-and-bundle.md: The code editor facade window.PgCodeEditor (assets/js/pg_code_editor.js): lazy CodeMirror 6 bundle, opening an editor, locks and islands, tracked ranges, registries, bundle build
+- code-editor-facade-and-bundle.md: The code editor facade window.PgCodeEditor (assets/js/pg_code_editor.js): lazy CodeMirror 6 bundle, opening an editor, locks and islands, tracked ranges, registries, format, bundle build
+- code-editor-format.md: The code editor's format command: ed.format(), Shift+Alt+F and the Format code buttons for CSS, JavaScript and JSON through the bundled js-beautify, what refuses it (PRs #1909, #2072)
+- code-editor-minimap.md: The code editor's minimap: @replit/codemirror-minimap in the lazy bundle, the opt-in `minimap` option and page default, setMinimap()/hasMinimap(), the toggle buttons (PR #2125), on in the designer
 - code-editor-syntax-lint.md: The code editor's syntax lint (_syntaxLinter): what is marked, empty documents, the whole document parsed in slices first (files over 100 KB), what stops a running parse, the 200-mark cap
 - concurrent-agents.md: Several agents or threads on the repo at once: own branch and area, rebase before push, migration sub-step numbers that do not collide
 - consent-log-and-audit-trail.md: consent_log and audit_log (11.0.16): the person token, consent row rules, what pg_audit() keeps (changed fields, masked secrets, size limits), who writes them
+- consent-log-cookie-notice.md: How the cookie notice's answers reach consent_log: consent_answer.php, the cookie as baseline, the same-origin check instead of a token, rate limit, signed-in and ghosting visitors
 - consent-log-writer-gaps.md: What the e-mail consent log writers leave unrecorded or record unasked (custom layouts without the box), what was run against them, open questions for the owner (PR #1581)
-- consent-log-writers.md: Which screens write a person's own e-mail marketing answer to consent_log (sign-up, preferences, one-click, checkout, custom form) and when a row is written (PR #1581)
+- consent-log-writers.md: Who writes consent_log rows: own e-mail marketing answers (sign-up, preferences, one-click, checkout, custom form; PR #1581), accepted checkout documents as contract rows (PR #2000)
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
 - content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): why translate-on-save opens no second job while one is open, and why a job skips texts translated meanwhile
 - content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
@@ -49,14 +55,15 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
+- explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests
 - explorer-subaction-registration.md: Adding an explorer_* sub-action: it must be registered in the file_explorer allowlist as well as pg_explorer_handle(); symptoms and the catalog gate.
 - file-header-and-embedded-libraries.md: The Pinegrap file header every new PHP/JS file must carry, which files it applies to, the PHP 7.1 base rule when embedding a third-party library, and the libraries with a local change.
 - file-integrity-check.md: The hourly file-integrity check: which reference counts (dev machine's own or the GitHub tag), scope and ignored names, line-ending-proof digests, state file, what cleanup keeps, result codes.
 - file-integrity-github-reference.md: Integrity reference from 2026.4.5: the release tag's tree on GitHub (git blob SHA-1), cache, release rules, what 2026.4.4 sites use, cacert.pem refresh, headers read without $http_response_header.
 - file-placement-rules.md: Where new PHP files go (root only for URL-called files, else includes/), the gate constant each include starts with, root files that stay, file-integrity scope.
 - fn-module-errors-mail-backup-consent.md: The 2026.4.8 modules errors, mail_queue, backup and consent in includes/fn/: entry functions, gates, storage keys and behaviour rules.
-- fn-module-map-additions.md: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 and the memory file that describes each.
 - fn-module-map.md: Which includes/fn/ module holds which kind of function (core, auth, forms, ecommerce, seo, content, designer, widgets, output, system_status ...).
+- fn-modules.md: Generated from the module field of the memory files: each includes/fn/ module so named and the memory files that describe it
 - form-double-opt-in.md: Double opt-in for custom forms that add to a contact group (11.0.27): the switch, the signed stateless link, confirm_subscription.php, consent_log pending/granted, the global opt-out
 - functions-php-split-rules.md: Why functions.php became a manifest over includes/fn/ modules (2026-09-12), what it loads, and the rules for adding a function or a module, paths, PHPMailer use and old line references.
 - get-file-shared-code.md: get_file.php never loads functions.php: the shared files (authentication.php, image_engine.php, http_range.php, record_files.php), what they may call, and the copies check_copies.php allows.
@@ -64,6 +71,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - js-bundles.md: Scripts minified from a list (pg_js_bundles(), tools/build_js.php): the bundles, how a screen prints one, src mode, the CI check, the test, the Workspace drawer's loader on record screens.
 - json-endpoint-rules.md: Endpoints that speak JSON: rejections and CSRF failures in JSON with the right status, api.php reads a JSON body (FormData gets "Invalid action."), no pg_post_body_discarded() on a JSON body.
+- lang-compiled-cache.md: The compiled language cache data/temp/lang_<code>.php that pg_lang_map() reads through opcache: speed, the signature that rebuilds it, atomic write, no writable data/temp, the gate (PR #1933)
 - lang-files.md: Turkish wording as sorted shards in includes/local/tr/: why, layout, pg_lang_map() the one reader, old tr.json on updated sites, tr_add.php, tr_resolve.php, check_lang.php, speed
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)
@@ -72,13 +80,18 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - output-escaping.md: Escaping output: h() for every value in HTML, a query string's & passed raw, lang() {var:N} values not escaped, form labels as plain text, _sdT() output unescaped, PHP tags in raw markup.
 - page-messages-defuse.md: Liveform messages (errors, notices, warnings) are HTML printed into the page before the page eval and marker expansion; pg_defuse_page_message() on store and on print, and the escaped upload refusal
 - panel-action-table.md: Adding an api.php panel action: the pg_panel_actions() row and its columns, handler file and signature, what the general gate does with listed, unlisted and prefixed names, the test.
-- passkey-account-section.md: Passkeys on the account page (pg_passkey_account_section(), PR #1384): who may add one, the re-authentication in passkey.php, rename and remove in account_security.php, what is shown when
+- passkey-account-section.md: Passkeys on the account page (pg_passkey_account_section(), PR #1384, #2226): who may add one, the proofs incl. the e-mailed code, recovery codes of passkey-only accounts, rename and remove
 - passkey-ceremonies.md: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php, the account page; what is not built yet
+- passkey-passwordless.md: Sign-in with a passkey alone (PR #1882): the switch config.passkey_signin (11.0.41, default off), the button among the sign-in buttons, passkey.php options, the answer handled by index.php
+- passkey-second-factor.md: A passkey alone is a second factor (PR #1862): pg_mfa_has_passkey/has_factor/gate_mode, the passkey-only verify screen, what still looks at TOTP only
+- passkey-sessions.md: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (11.0.46), the sign-in mark, the session row on the account page, removing a passkey ends its sessions
+- passkey-without-totp.md: Adding a passkey to an account without TOTP (PR #2226): the e-mailed code (passkey.php email_code), the recovery codes the first passkey brings, what removing the last one does
 - permission-columns.md: Adding a user right: column type and naming, the role-3 ladder files that must learn it, column probes, drawing it on the user screens, exact stored values, separate gates for a card and its links.
 - personal-data-erasure.md: privacy_erase.php (PR #1706): erasing one person after a dry run; whose records are taken, what is deleted and what is kept with personal fields replaced, the checks, the audit lines
 - personal-data-export.md: privacy_export.php (PR #938): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.
 - preg-replace-replacement-escaping.md: Text put into a page through preg_replace() goes through pg_regex_replacement(): $NN and \N in it are back references, "$400'dan" printed as "0'dan"; where it applies and the guard test
+- privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
 - qr-code-generator.md: QR code generation via includes/fn/qr.php (pg_qr_matrix, pg_qr_svg), its limits, forbidden library paths, and why secret QRs are inline SVG only.
 - request-parameter-arrays.md: How screens must treat a request parameter that arrives as an array (?id[]=x), missing records, and null passed to escaping helpers
 - sdt-designer-js-text-rules.md: How visible text in assets/js/style_designer.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.

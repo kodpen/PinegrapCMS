@@ -2069,13 +2069,10 @@ function ws_mcp_agent_answer_view($request, $body)
             'about'    => ($split['tool'] !== '')
                 ? lang(array('string' => 'Answered through {var:1}, for {var:2}', 'vars' => array($split['tool'], $asker)))
                 : lang(array('string' => 'Answered for {var:1}', 'vars' => $asker)),
-            'avatar'   => function_exists('pg_initials_avatar_url')
-                ? pg_initials_avatar_url(pg_initials($alias, ''), 'contact', 'mcp' . (int) $request['mcp_server_id'])
-                : PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png',
             'presence' => 'offline',
             'app'      => true,
             'mcp'      => $alias,
-        ),
+        ) + ws_mcp_agent_face(ws_mcp_agent_identity($server, (int) $request['mcp_server_id'])),
         'text'   => $split['text'],
     );
 }
@@ -2100,7 +2097,7 @@ function ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base)
         'title' => lang(array('string' => '@{var:1} answered you in {var:2}', 'vars' => array($server ? $server['alias'] : 'mcp', $channel_name))),
         'body'  => $message ? ws_plain_excerpt($viewer, ws_mcp_agent_answer_split((string) $message['body'])['text'], 140) : '',
         'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
-        'icon'  => 'bi-plug',
+        'icon'  => $request ? ws_mcp_agent_identity($server, (int) $request['mcp_server_id'])['icon'] : 'bi-plug',
     );
 }
 
@@ -2144,7 +2141,7 @@ function ws_mcp_agent_settings_field($server, $admin)
     }
 
     $problem = (($current !== '') && !ws_mcp_agent_tool($server))
-        ? '<div class="form-text text-danger">' . h($approve ? lang('This tool cannot take the messages now: turn it on below.') : lang('This tool cannot take the messages now: turn it on below as one that reads only.')) . '</div>'
+        ? '<div class="form-text fg-danger">' . h($approve ? lang('This tool cannot take the messages now: turn it on below.') : lang('This tool cannot take the messages now: turn it on below as one that reads only.')) . '</div>'
         : '';
 
     // On a server people sign in to, a tool that writes can take the
@@ -2154,9 +2151,9 @@ function ws_mcp_agent_settings_field($server, $admin)
         : lang('The tool must be turned on below as one that reads only.');
 
     return '
-        <div class="mb-3">
+        <div class="mb-5">
             <label class="form-label small fw-semibold" for="' . $field . '">' . h(lang(array('string' => 'Who answers @{var:1}', 'vars' => $server['alias']))) . '</label>
-            <select class="form-select form-select-sm" name="mcp_agent_tool" id="' . $field . '"' . ($admin ? '' : ' disabled') . '>' . $options . '</select>
+            <select class="form-control form-control-sm" name="mcp_agent_tool" id="' . $field . '"' . ($admin ? '' : ' disabled') . '>' . $options . '</select>
             <div class="form-text">' . h(lang('A server that is an agent itself - another Pinegrap site, a company\'s own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. A task handed to the alias, or a note on a task that writes it, goes to it with the task\'s title and description, and the answer comes back in the task\'s Assistant part. Pinegrap AI is not needed.')) . ' ' . h($rule) . '</div>
             ' . $problem . '
         </div>';

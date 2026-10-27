@@ -34,8 +34,8 @@ if (!$_POST) {
     validate_token_field();
     
     // get address type value for page, so we know if it was enabled or not
-    $query = "SELECT address_type FROM update_address_book_pages WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT address_type FROM update_address_book_pages WHERE page_id = ?";
+    $result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $address_type = is_array($row) ? $row['address_type'] : 0;
 
@@ -98,14 +98,17 @@ if (!$_POST) {
     }
 
     // get user id
-    $query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT user_id FROM user WHERE user_username = ?";
+    $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $user_id = (int) $row['user_id'];
 
     // check to see if ship to name is already in use
-    $query = "SELECT id FROM address_book WHERE (user = '$user_id') AND (id != '" . (int) ($_POST['id'] ?? 0) . "') AND (ship_to_name = '" . escape($liveform->get_field_value('ship_to_name')) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT id FROM address_book WHERE (user = ?) AND (id != ?) AND (ship_to_name = ?)";
+    $result = db_q($query, array(
+        (string) $user_id,
+        (string) (int) ($_POST['id'] ?? 0),
+        (string) $liveform->get_field_value('ship_to_name'))) or output_error('Query failed.');
     if (mysqli_num_rows($result) > 0) {
         $liveform->mark_error('ship_to_name', lang('That ship to name is already in use. Please enter a different ship to name.'));
         $liveform->assign_field_value('ship_to_name', '');
@@ -133,27 +136,34 @@ if (!$_POST) {
         // if an id was supplied, then update current recipient in address book
         if ($_POST['id']) {
             $sql_address_type = "";
+            $sql_address_type_values = array();
             
             // if the address type field is enabled, then update address type in address book
             if ($address_type == 1) {
-                $sql_address_type = "address_type = '" . escape($liveform->get_field_value('address_type')) . "',";
+                $sql_address_type = "address_type = ?,";
+                $sql_address_type_values = array((string) $liveform->get_field_value('address_type'));
             }
             
             // Every column for the legacy screen; for a widget, the ones it drew.
             $sql_address_book_set = '';
+            $sql_address_book_set_values = array();
             foreach (array('salutation', 'first_name', 'last_name', 'company', 'address_1', 'address_2',
                 'city', 'state', 'zip_code', 'country', 'phone_number') as $pg_column) {
                 if (pg_sw_posted_control($pg_controls, $pg_column)) {
-                    $sql_address_book_set .= $pg_column . " = '" . escape($liveform->get_field_value($pg_column)) . "',\n";
+                    $sql_address_book_set .= $pg_column . " = ?,\n";
+                    $sql_address_book_set_values[] = (string) $liveform->get_field_value($pg_column);
                 }
             }
 
             $query = "UPDATE address_book SET
                         $sql_address_book_set
                         $sql_address_type
-                        ship_to_name = '" . escape($liveform->get_field_value('ship_to_name')) . "'
-                     WHERE id = '" . (int) $_POST['id'] . "' AND user = '$user_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ship_to_name = ?
+                     WHERE id = ? AND user = ?";
+            $result = db_q($query, array_merge(
+                $sql_address_book_set_values,
+                $sql_address_type_values,
+                array((string) $liveform->get_field_value('ship_to_name'), (string) (int) $_POST['id'], (string) $user_id))) or output_error('Query failed.');
 
         // else an id was not supplied, so create new recipient in address book
         } else {
@@ -173,21 +183,35 @@ if (!$_POST) {
                         address_type,
                         phone_number)
                      VALUES (
-                        '$user_id',
-                        '" . escape($liveform->get_field_value('ship_to_name')) . "',
-                        '" . escape($liveform->get_field_value('salutation')) . "',
-                        '" . escape($liveform->get_field_value('first_name')) . "',
-                        '" . escape($liveform->get_field_value('last_name')) . "',
-                        '" . escape($liveform->get_field_value('company')) . "',
-                        '" . escape($liveform->get_field_value('address_1')) . "',
-                        '" . escape($liveform->get_field_value('address_2')) . "',
-                        '" . escape($liveform->get_field_value('city')) . "',
-                        '" . escape($liveform->get_field_value('state')) . "',
-                        '" . escape($liveform->get_field_value('zip_code')) . "',
-                        '" . escape($liveform->get_field_value('country')) . "',
-                        '" . escape($liveform->get_field_value('address_type')) . "',
-                        '" . escape($liveform->get_field_value('phone_number')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?)";
+            $result = db_q($query, array(
+                (string) $user_id,
+                (string) $liveform->get_field_value('ship_to_name'),
+                (string) $liveform->get_field_value('salutation'),
+                (string) $liveform->get_field_value('first_name'),
+                (string) $liveform->get_field_value('last_name'),
+                (string) $liveform->get_field_value('company'),
+                (string) $liveform->get_field_value('address_1'),
+                (string) $liveform->get_field_value('address_2'),
+                (string) $liveform->get_field_value('city'),
+                (string) $liveform->get_field_value('state'),
+                (string) $liveform->get_field_value('zip_code'),
+                (string) $liveform->get_field_value('country'),
+                (string) $liveform->get_field_value('address_type'),
+                (string) $liveform->get_field_value('phone_number'))) or output_error('Query failed.');
         }
         
         // add recipient to session so that ship to name appears in ship to pick lists

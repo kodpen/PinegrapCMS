@@ -30,8 +30,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM shipping_methods WHERE id
 
 if (!$_POST) {
     // get shipping method data
-    $query = "SELECT * FROM shipping_methods WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT * FROM shipping_methods WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $shipping_method = $row;
 
@@ -185,8 +185,8 @@ if (!$_POST) {
     if ($zones) {
         // foreach zone, check if zone is allowed or disallowed for this zone
         foreach ($zones as $key => $value) {
-            $query = "SELECT zone_id FROM shipping_methods_zones_xref WHERE shipping_method_id = '" . escape($_GET['id']) . "' AND zone_id = '" . $zones[$key]['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT zone_id FROM shipping_methods_zones_xref WHERE shipping_method_id = ? AND zone_id = ?";
+            $result = db_q($query, array((string) $_GET['id'], (string) $zones[$key]['id'])) or output_error('Query failed.');
 
             // if shipping method and zone were found
             if (mysqli_num_rows($result)) {
@@ -328,8 +328,8 @@ if (!$_POST) {
     }
     
     // get excluded transit dates
-    $query = "SELECT date FROM excluded_transit_dates WHERE shipping_method_id = '" . escape($_GET['id']) . "' ORDER BY date";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT date FROM excluded_transit_dates WHERE shipping_method_id = ? ORDER BY date";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     
     $output_excluded_transit_dates = '';
     
@@ -448,34 +448,34 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Display Name') . '</label>
                                             <input  value="' . $name . '" type="text" name="name" placeholder="' . lang('Shipping Method Name') . '" id="name" maxlength="50" class="form-control" />
                                         </div>
-                                        <div class="col-12 col-sm-6 col-lg-8 my-2">
+                                        <div class="col-12 sm:col-6 lg:col-8 my-3">
                                             <label for="description" class="form-label">' . lang('Display Message') . '</label>
                                             <input value="' . $description . '" type="text" name="description" id="description" class="form-control" maxlength="255" />
                                         </div>
-                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
                                             <label for="code" class="form-label">' . lang('Code') . '</label>
                                             <input value="' . $code . '" type="text" name="code" id="code" class="form-control" maxlength="50" />
                                             <div class="form-text text-end">' . lang('Shipping Method Code for Order Reporting') . '</div>
                                         </div>
-                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
                                             <label for="carrier_title" class="form-label">' . lang('Carrier Title') . '</label>
                                             <input value="' . $carrier_title . '" type="text" name="carrier_title" id="carrier_title" class="form-control" maxlength="255" />
                                             <div class="form-text text-end">' . lang('Registered company name of the carrier, printed on e-archive invoices for internet sales') . '</div>
                                         </div>
-                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
                                             ' . pg_carrier_number_field($carrier_vkn) . '
                                         </div>
-                                        <div class="col-12 col-sm-6 col-lg-4 my-2">
+                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
                                             <label for="service" class="form-label">' . lang('Service') . '</label>
                                             ' . render(array('template' => 'shipping_method_service.php')) . '
                                             <script>$("#service").val("' . escape_javascript($service) . '")</script>
@@ -486,34 +486,34 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Method Charges') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2 collapse" id="realtime_rate_row">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="realtime_rate" name="realtime_rate" value="1"' . $realtime_rate_checked . '/>
-                                                <label class="form-check-label" for="realtime_rate">' . lang('Real-Time Rate') . '</label>
+                                        <div class="col-12 my-3 collapse" id="realtime_rate_row">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="realtime_rate" name="realtime_rate" value="1"' . $realtime_rate_checked . '/></div>
+                                                <label class="" for="realtime_rate">' . lang('Real-Time Rate') . '</label>
                                             </div>
                                             <script>init_shipping_method_service()</script>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="col-12 col-lg-4">
-                                                <div class=" border-1 border rounded p-2 m-1">
+                                        <div class="col-12 my-3">
+                                            <div class="col-12 lg:col-4">
+                                                <div class=" border-1 border rounded-4 p-3 m-1">
                                                     <label class="form-label" for="base_rate">' . lang('Base Rate') . '</label>
-                                                    <div class="input-group">
-                                                        <input value="' . $base_rate . '" type="text" name="base_rate" id="base_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                        <label class="input-group-text" for="base_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                    </div>
-                                                    <div class="form-check form-switch  my-2 ms-3">
-                                                        <input class="form-check-input collapse-switcher" type="checkbox" id="variable_base_rate" name="variable_base_rate" value="1"' . $output_variable_base_rate_checked . ' data-bs-target="#base_rate_rows"/>
-                                                        <label class="form-check-label text-wrap" for="variable_base_rate">' . lang('Enable variable base rate') . '</label>
+                                                    <label class="form-control form-adorn form-adorn-end">
+                                                        <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                        <input value="' . $base_rate . '" type="text" name="base_rate" id="base_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                    </label>
+                                                    <div class="form-field my-3 ms-5">
+                                                        <div class="switch"><input class="collapse-switcher" type="checkbox" id="variable_base_rate" name="variable_base_rate" value="1"' . $output_variable_base_rate_checked . ' data-bs-target="#base_rate_rows"/></div>
+                                                        <label class="text-wrap" for="variable_base_rate">' . lang('Enable variable base rate') . '</label>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 mt-1" id="base_rate_rows">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 mt-1" id="base_rate_rows">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
@@ -552,42 +552,42 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-lg-4 my-2">
-                                            <div class=" border-1 border rounded p-2 m-1">
+                                        <div class="col-12 lg:col-4 my-3">
+                                            <div class=" border-1 border rounded-4 p-3 m-1">
                                                 <label class="form-label" for="primary_weight_rate">' . lang('Primary Weight Rate') . '</label>
-                                                <div class="input-group">
-                                                    <input value="' . $primary_weight_rate . '" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                    <label class="input-group-text" for="primary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                </div>
-                                                <div class="form-check form-switch my-2 ms-3">
-                                                    <input class="form-check-input" type="checkbox" id="primary_weight_rate_first_item_excluded" name="primary_weight_rate_first_item_excluded" value="1"' . $primary_weight_rate_first_item_excluded_checked . ' />
-                                                    <label class="form-check-label text-wrap" for="primary_weight_rate_first_item_excluded">' . lang('Don\'t apply to first item') . '</label>
+                                                <label class="form-control form-adorn form-adorn-end">
+                                                    <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                    <input value="' . $primary_weight_rate . '" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                </label>
+                                                <div class="form-field my-3 ms-5">
+                                                    <div class="switch"><input class="" type="checkbox" id="primary_weight_rate_first_item_excluded" name="primary_weight_rate_first_item_excluded" value="1"' . $primary_weight_rate_first_item_excluded_checked . ' /></div>
+                                                    <label class="text-wrap" for="primary_weight_rate_first_item_excluded">' . lang('Don\'t apply to first item') . '</label>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-lg-4 my-2">
-                                            <div class=" border-1 border rounded p-2 m-1">
+                                        <div class="col-12 lg:col-4 my-3">
+                                            <div class=" border-1 border rounded-4 p-3 m-1">
                                                 <label class="form-label" for="secondary_weight_rate">' . lang('Secondary Weight Rate') . '</label>
-                                                <div class="input-group">
-                                                    <input value="' . $secondary_weight_rate . '" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                    <label class="input-group-text" for="primary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                </div>
-                                                <div class="form-check form-switch my-2 ms-3">
-                                                    <input class="form-check-input" type="checkbox" id="secondary_weight_rate_first_item_excluded" name="secondary_weight_rate_first_item_excluded" value="1"' . $secondary_weight_rate_first_item_excluded_checked . ' />
-                                                    <label class="form-check-label text-wrap" for="secondary_weight_rate_first_item_excluded">' . lang('Don\'t apply to first item') . '</label>
+                                                <label class="form-control form-adorn form-adorn-end">
+                                                    <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                    <input value="' . $secondary_weight_rate . '" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                </label>
+                                                <div class="form-field my-3 ms-5">
+                                                    <div class="switch"><input class="" type="checkbox" id="secondary_weight_rate_first_item_excluded" name="secondary_weight_rate_first_item_excluded" value="1"' . $secondary_weight_rate_first_item_excluded_checked . ' /></div>
+                                                    <label class="text-wrap" for="secondary_weight_rate_first_item_excluded">' . lang('Don\'t apply to first item') . '</label>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-lg-4 my-2">
-                                            <div class=" border-1 border rounded p-2 m-1">
+                                        <div class="col-12 lg:col-4 my-3">
+                                            <div class=" border-1 border rounded-4 p-3 m-1">
                                                 <label class="form-label" for="item_rate">' . lang('Item Rate') . '</label>
-                                                <div class="input-group">
-                                                    <input value="' . $item_rate . '" type="text" name="item_rate" id="item_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                    <label class="input-group-text" for="item_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                </div>
-                                                <div class="form-check form-switch my-2 ms-3">
-                                                    <input class="form-check-input" type="checkbox" id="item_rate_first_item_excluded" name="item_rate_first_item_excluded" value="1"' . $item_rate_first_item_excluded_checked . ' />
-                                                    <label class="form-check-label text-wrap" for="item_rate_first_item_excluded">' . lang('Don\'t apply to first item') . '</label>
+                                                <label class="form-control form-adorn form-adorn-end">
+                                                    <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                    <input value="' . $item_rate . '" type="text" name="item_rate" id="item_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                </label>
+                                                <div class="form-field my-3 ms-5">
+                                                    <div class="switch"><input class="" type="checkbox" id="item_rate_first_item_excluded" name="item_rate_first_item_excluded" value="1"' . $item_rate_first_item_excluded_checked . ' /></div>
+                                                    <label class="text-wrap" for="item_rate_first_item_excluded">' . lang('Don\'t apply to first item') . '</label>
                                                 </div>
                                             </div>
                                         </div>
@@ -596,157 +596,157 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Destination Delivery Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="street_address" name="street_address" value="1"' . $street_address_checked . '/>
-                                                <label class="form-check-label" for="street_address">' . lang('Allow Street Address') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="street_address" name="street_address" value="1"' . $street_address_checked . '/></div>
+                                                <label class="" for="street_address">' . lang('Allow Street Address') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="po_box" name="po_box" value="1"' . $po_box_checked . '/>
-                                                <label class="form-check-label" for="po_box">' . lang('Allow PO Box') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="po_box" name="po_box" value="1"' . $po_box_checked . '/></div>
+                                                <label class="" for="po_box">' . lang('Allow PO Box') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="allowed_zones" class="form-label">' . lang('Allowed Zones') . '</label>
-                                            <select style="width:100%" class="form-select" data-pg-combobox data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $output_allowed_zones . '</select>
+                                            <select style="width:100%" class="form-control" data-pg-combobox data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $output_allowed_zones . '</select>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-1">
+                                        <div class="col-12 md:col-6 lg:col-4 my-1">
                                             <label for="handle_days" class="form-label">' . lang('Handling Time') . '</label>
                                             <div class="input-group">
                                                 <input value="' . h($handle_days) . '" type="text" name="handle_days" id="handle_days" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                                 <span class="input-group-text" title="' . lang('day(s) from order date') . '">' . lang('day(s)') . '</span>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-1">
+                                        <div class="col-12 md:col-6 lg:col-4 my-1">
                                             <label for="end_of_day" class="form-label">' . lang('End of Day Time') . '</label>
                                             <input value="' . $end_of_day . '" type="text" name="end_of_day" id="end_of_day" class="form-control" maxlength="8" data-pg-time/>
                                             <div class="form-text text-end" >' . lang('h:mm AM/PM') . '</div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <h5 class="text-muted">' . lang('Handling on') . '</h5>
-                                            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-auto">
+                                        <div class="col-12 my-3">
+                                            <h5 class="fg-secondary">' . lang('Handling on') . '</h5>
+                                            <div class="row row-cols-1 sm:row-cols-2 md:row-cols-3 lg:row-cols-auto">
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="handle_mon" name="handle_mon" value="1"' . $handle_mon_checked . '>
-                                                        <label class="form-check-label" for="handle_mon">' . lang('Monday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="handle_mon" name="handle_mon" value="1"' . $handle_mon_checked . '>
+                                                        <label class="" for="handle_mon">' . lang('Monday') . '</label>
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="handle_tue" name="handle_tue" value="1"' . $handle_tue_checked . '>
-                                                        <label class="form-check-label" for="handle_tue">' . lang('Tuesday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="handle_tue" name="handle_tue" value="1"' . $handle_tue_checked . '>
+                                                        <label class="" for="handle_tue">' . lang('Tuesday') . '</label>
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="handle_wed" name="handle_wed" value="1"' . $handle_wed_checked . '>
-                                                        <label class="form-check-label" for="handle_wed">' . lang('Wednesday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="handle_wed" name="handle_wed" value="1"' . $handle_wed_checked . '>
+                                                        <label class="" for="handle_wed">' . lang('Wednesday') . '</label>
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="handle_thu" name="handle_thu" value="1"' . $handle_thu_checked . '>
-                                                        <label class="form-check-label" for="handle_thu">' . lang('Thursday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="handle_thu" name="handle_thu" value="1"' . $handle_thu_checked . '>
+                                                        <label class="" for="handle_thu">' . lang('Thursday') . '</label>
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="handle_fri" name="handle_fri" value="1"' . $handle_fri_checked . '>
-                                                        <label class="form-check-label" for="handle_fri">' . lang('Friday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="handle_fri" name="handle_fri" value="1"' . $handle_fri_checked . '>
+                                                        <label class="" for="handle_fri">' . lang('Friday') . '</label>
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="handle_sat" name="handle_sat" value="1"' . $handle_sat_checked . '>
-                                                        <label class="form-check-label" for="handle_sat">' . lang('Saturday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="handle_sat" name="handle_sat" value="1"' . $handle_sat_checked . '>
+                                                        <label class="" for="handle_sat">' . lang('Saturday') . '</label>
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="handle_sun" name="handle_sun" value="1"' . $handle_sun_checked . '>
-                                                        <label class="form-check-label" for="handle_sun">' . lang('Sunday') . '</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 my-2">
-                                            <h5 class="text-muted mt-3">' . lang('Ships on') . '</h5>
-                                            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-auto">
-                                                <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="ship_mon" name="ship_mon" value="1"' . $ship_mon_checked . '>
-                                                        <label class="form-check-label" for="ship_mon">' . lang('Monday') . '</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="ship_tue" name="ship_tue" value="1"' . $ship_tue_checked . '>
-                                                        <label class="form-check-label" for="ship_tue">' . lang('Tuesday') . '</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="ship_wed" name="ship_wed" value="1"' . $ship_wed_checked . '>
-                                                        <label class="form-check-label" for="ship_wed">' . lang('Wednesday') . '</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="ship_thu" name="ship_thu" value="1"' . $ship_thu_checked . '>
-                                                        <label class="form-check-label" for="ship_thu">' . lang('Thursday') . '</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="ship_fri" name="ship_fri" value="1"' . $ship_fri_checked . '>
-                                                        <label class="form-check-label" for="ship_fri">' . lang('Friday') . '</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="ship_sat" name="ship_sat" value="1"' . $ship_sat_checked . '>
-                                                        <label class="form-check-label" for="ship_sat">' . lang('Saturday') . '</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="ship_sun" name="ship_sun" value="1"' . $ship_sun_checked . '>
-                                                        <label class="form-check-label" for="ship_sun">' . lang('Sunday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="handle_sun" name="handle_sun" value="1"' . $handle_sun_checked . '>
+                                                        <label class="" for="handle_sun">' . lang('Sunday') . '</label>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-1">
+                                        <div class="col-12 my-3">
+                                            <h5 class="fg-secondary mt-5">' . lang('Ships on') . '</h5>
+                                            <div class="row row-cols-1 sm:row-cols-2 md:row-cols-3 lg:row-cols-auto">
+                                                <div class="col">
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="ship_mon" name="ship_mon" value="1"' . $ship_mon_checked . '>
+                                                        <label class="" for="ship_mon">' . lang('Monday') . '</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col">
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="ship_tue" name="ship_tue" value="1"' . $ship_tue_checked . '>
+                                                        <label class="" for="ship_tue">' . lang('Tuesday') . '</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col">
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="ship_wed" name="ship_wed" value="1"' . $ship_wed_checked . '>
+                                                        <label class="" for="ship_wed">' . lang('Wednesday') . '</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col">
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="ship_thu" name="ship_thu" value="1"' . $ship_thu_checked . '>
+                                                        <label class="" for="ship_thu">' . lang('Thursday') . '</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col">
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="ship_fri" name="ship_fri" value="1"' . $ship_fri_checked . '>
+                                                        <label class="" for="ship_fri">' . lang('Friday') . '</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col">
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="ship_sat" name="ship_sat" value="1"' . $ship_sat_checked . '>
+                                                        <label class="" for="ship_sat">' . lang('Saturday') . '</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col">
+                                                    <div class="form-field">
+                                                        <input class="check" type="checkbox" id="ship_sun" name="ship_sun" value="1"' . $ship_sun_checked . '>
+                                                        <label class="" for="ship_sun">' . lang('Sunday') . '</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 md:col-6 lg:col-4 my-1">
                                             <label for="base_transit_days" class="form-label">' . lang('Base Transit Time') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $base_transit_days . '" type="text" name="base_transit_days" id="base_transit_days" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                                 <span class="input-group-text" title="' . lang('day(s) from order date') . '">' . lang('day(s)') . '</span>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="adjust_transit" name="adjust_transit" value="1"' . $adjust_transit_checked . '/>
-                                                <label class="form-check-label" for="adjust_transit">' . lang('Adjust Transit for Country') . '</label>
+                                        <div class="col-12 my-5">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="adjust_transit" name="adjust_transit" value="1"' . $adjust_transit_checked . '/></div>
+                                                <label class="" for="adjust_transit">' . lang('Adjust Transit for Country') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="transit_on_saturday" name="transit_on_saturday" value="1"' . $transit_on_saturday_checked . '/>
-                                                <label class="form-check-label" for="transit_on_saturday">' . lang('Transit on Saturday') . '</label>
+                                        <div class="col-12 my-5">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="transit_on_saturday" name="transit_on_saturday" value="1"' . $transit_on_saturday_checked . '/></div>
+                                                <label class="" for="transit_on_saturday">' . lang('Transit on Saturday') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="transit_on_sunday" name="transit_on_sunday" value="1"' . $transit_on_sunday_checked . '/>
-                                                <label class="form-check-label" for="transit_on_sunday">' . lang('Transit on Sunday') . '</label>
+                                        <div class="col-12 my-5">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="transit_on_sunday" name="transit_on_sunday" value="1"' . $transit_on_sunday_checked . '/></div>
+                                                <label class="" for="transit_on_sunday">' . lang('Transit on Sunday') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -754,51 +754,51 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Method Availability') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="status" name="status" value="1"' . $status_enabled_checked . ' />
-                                                <label class="form-check-label" for="status">' . lang('Enabled this shipping method') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="status" name="status" value="1"' . $status_enabled_checked . ' /></div>
+                                                <label class="" for="status">' . lang('Enabled this shipping method') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="protected" name="protected" value="1"' . $protected_checked . ' />
-                                                <label class="form-check-label" for="protected">' . lang('Protected') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="protected" name="protected" value="1"' . $protected_checked . ' /></div>
+                                                <label class="" for="protected">' . lang('Protected') . '</label>
                                             </div>
                                         </div>
 
-                                        <div class="col-12 mt-3 mb-2">
+                                        <div class="col-12 mt-5 mb-3">
                                             <label for="excluded_transit_dates" class="form-label">' . lang('Excluded Dates') . '</label>
                                             <input value="' . $output_excluded_transit_dates . '" type="text" name="excluded_transit_dates" id="excluded_transit_dates" class="form-control tagin min-height-tagin" data-pg-chips maxlength="255"/>
                                             <div class="form-text text-end">' . lang('Excluded Dates for Shipping & Handling (e.g. Holidays). Split dates with enter key or \',\' key') . ' (' . get_date_format_help() . ')</div>
                                         </div>
-                                        <div class="col-12 col-lg-8 my-3">
+                                        <div class="col-12 lg:col-8 my-5">
                                             <div class="row">
-                                                <div class="col-12 col-md">
+                                                <div class="col-12 md:col">
                                                     <label for="start_time" class="form-label">' . lang('Start Time') . '</label>
                                                     <input value="' . prepare_form_data_for_output($start_time, 'date and time') . '" type="text" name="start_time" id="start_time" class="form-control" maxlength="10" autocomplete="off" data-pg-datetime/>
                                                 </div>
-                                                <div class="col-12 col-md">
+                                                <div class="col-12 md:col">
                                                     <label for="end_time" class="form-label">' . lang('End Time') . '</label>
                                                     <input value="' . prepare_form_data_for_output($end_time, 'date and time') . '" type="text" name="end_time" id="end_time" class="form-control " maxlength="10" autocomplete="off" data-pg-datetime/>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <h5 class="text-muted mt-3">' . lang('Available on') . '</h5>
-                                            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <div class="col-12 my-3">
+                                            <h5 class="fg-secondary mt-5">' . lang('Available on') . '</h5>
+                                            <div class="row row-cols-1 sm:row-cols-2 md:row-cols-3 lg:row-cols-4 xl:row-cols-5">
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input collapse-switcher" type="checkbox" id="available_on_monday" name="available_on_monday" value="1"' . $available_on_monday_checked . ' data-bs-target="#available_on_monday_cutoff_time_cell">
-                                                        <label class="form-check-label" for="available_on_monday">' . lang('Monday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check collapse-switcher" type="checkbox" id="available_on_monday" name="available_on_monday" value="1"' . $available_on_monday_checked . ' data-bs-target="#available_on_monday_cutoff_time_cell">
+                                                        <label class="" for="available_on_monday">' . lang('Monday') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-auto" id="available_on_monday_cutoff_time_cell">
+                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-auto" id="available_on_monday_cutoff_time_cell">
                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
                                                         <div class="popover-body">
                                                             <div class="row">
@@ -812,11 +812,11 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input collapse-switcher" type="checkbox" id="available_on_tuesday" name="available_on_tuesday" value="1"' . $available_on_tuesday_checked . ' data-bs-target="#available_on_tuesday_cutoff_time_cell">
-                                                        <label class="form-check-label" for="available_on_tuesday">' . lang('Tuesday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check collapse-switcher" type="checkbox" id="available_on_tuesday" name="available_on_tuesday" value="1"' . $available_on_tuesday_checked . ' data-bs-target="#available_on_tuesday_cutoff_time_cell">
+                                                        <label class="" for="available_on_tuesday">' . lang('Tuesday') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-auto" id="available_on_tuesday_cutoff_time_cell">
+                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-auto" id="available_on_tuesday_cutoff_time_cell">
                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
                                                         <div class="popover-body">
                                                             <div class="row">
@@ -830,11 +830,11 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input collapse-switcher" type="checkbox" id="available_on_wednesday" name="available_on_wednesday" value="1"' . $available_on_wednesday_checked . ' data-bs-target="#available_on_wednesday_cutoff_time_cell">
-                                                        <label class="form-check-label" for="available_on_wednesday">' . lang('Wednesday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check collapse-switcher" type="checkbox" id="available_on_wednesday" name="available_on_wednesday" value="1"' . $available_on_wednesday_checked . ' data-bs-target="#available_on_wednesday_cutoff_time_cell">
+                                                        <label class="" for="available_on_wednesday">' . lang('Wednesday') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-auto" id="available_on_wednesday_cutoff_time_cell">
+                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-auto" id="available_on_wednesday_cutoff_time_cell">
                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
                                                         <div class="popover-body">
                                                             <div class="row">
@@ -848,11 +848,11 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input collapse-switcher" type="checkbox" id="available_on_thursday" name="available_on_thursday" value="1"' . $available_on_thursday_checked . ' data-bs-target="#available_on_thursday_cutoff_time_cell">
-                                                        <label class="form-check-label" for="available_on_thursday">' . lang('Thursday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check collapse-switcher" type="checkbox" id="available_on_thursday" name="available_on_thursday" value="1"' . $available_on_thursday_checked . ' data-bs-target="#available_on_thursday_cutoff_time_cell">
+                                                        <label class="" for="available_on_thursday">' . lang('Thursday') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-auto" id="available_on_thursday_cutoff_time_cell">
+                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-auto" id="available_on_thursday_cutoff_time_cell">
                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
                                                         <div class="popover-body">
                                                             <div class="row">
@@ -866,11 +866,11 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input collapse-switcher" type="checkbox" id="available_on_friday" name="available_on_friday" value="1"' . $available_on_friday_checked . ' data-bs-target="#available_on_friday_cutoff_time_cell">
-                                                        <label class="form-check-label" for="available_on_friday">' . lang('Friday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check collapse-switcher" type="checkbox" id="available_on_friday" name="available_on_friday" value="1"' . $available_on_friday_checked . ' data-bs-target="#available_on_friday_cutoff_time_cell">
+                                                        <label class="" for="available_on_friday">' . lang('Friday') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-auto" id="available_on_friday_cutoff_time_cell">
+                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-auto" id="available_on_friday_cutoff_time_cell">
                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
                                                         <div class="popover-body">
                                                             <div class="row">
@@ -884,11 +884,11 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input collapse-switcher" type="checkbox" id="available_on_saturday" name="available_on_saturday" value="1"' . $available_on_saturday_checked . ' data-bs-target="#available_on_saturday_cutoff_time_cell">
-                                                        <label class="form-check-label" for="available_on_saturday">' . lang('Saturday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check collapse-switcher" type="checkbox" id="available_on_saturday" name="available_on_saturday" value="1"' . $available_on_saturday_checked . ' data-bs-target="#available_on_saturday_cutoff_time_cell">
+                                                        <label class="" for="available_on_saturday">' . lang('Saturday') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-auto" id="available_on_saturday_cutoff_time_cell">
+                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-auto" id="available_on_saturday_cutoff_time_cell">
                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
                                                         <div class="popover-body">
                                                             <div class="row">
@@ -902,11 +902,11 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                                 <div class="col">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input collapse-switcher" type="checkbox" id="available_on_sunday" name="available_on_sunday" value="1"' . $available_on_sunday_checked . ' data-bs-target="#available_on_sunday_cutoff_time_cell">
-                                                        <label class="form-check-label" for="available_on_sunday">' . lang('Sunday') . '</label>
+                                                    <div class="form-field">
+                                                        <input class="check collapse-switcher" type="checkbox" id="available_on_sunday" name="available_on_sunday" value="1"' . $available_on_sunday_checked . ' data-bs-target="#available_on_sunday_cutoff_time_cell">
+                                                        <label class="" for="available_on_sunday">' . lang('Sunday') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-auto" id="available_on_sunday_cutoff_time_cell">
+                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-auto" id="available_on_sunday_cutoff_time_cell">
                                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
                                                         <div class="popover-body">
                                                             <div class="row">
@@ -928,11 +928,11 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('shipping method')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('shipping method')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -952,26 +952,26 @@ if (!$_POST) {
     
     // delete shipping method references in shipping_methods_zones_xref (we do this reguardless of whether we are deleting the shipping method or updating the shipping method)
     $query = "DELETE FROM shipping_methods_zones_xref ".
-             "WHERE shipping_method_id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             "WHERE shipping_method_id = ?";
+    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
     
     // delete excluded transit dates for this shipping method (we do this reguardless of whether we are deleting the shipping method or updating the shipping method)
-    $query = "DELETE FROM excluded_transit_dates WHERE shipping_method_id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "DELETE FROM excluded_transit_dates WHERE shipping_method_id = ?";
+    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
     // if shipping method was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete shipping_method
-        $query = "DELETE FROM shipping_methods WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM shipping_methods WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete records in offer_actions_shipping_methods_xref for this shipping method
-        $query = "DELETE FROM offer_actions_shipping_methods_xref WHERE shipping_method_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM offer_actions_shipping_methods_xref WHERE shipping_method_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete shipping cut-offs for this shipping method
-        $query = "DELETE FROM shipping_cutoffs WHERE shipping_method_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM shipping_cutoffs WHERE shipping_method_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         db("DELETE FROM ship_date_adjustments WHERE shipping_method_id = '" . escape($_POST['id'] ?? '') . "'");
 
@@ -1085,71 +1085,71 @@ if (!$_POST) {
 
         // update shipping method
         $query = "UPDATE shipping_methods SET
-                    name = '" . escape($_POST['name'] ?? '') . "',
-                    description = '" . escape($_POST['description'] ?? '') . "',
-                    code = '" . escape($_POST['code'] ?? '') . "',
-                    carrier_title = '" . escape($_POST['carrier_title'] ?? '') . "',
-                    carrier_vkn = '" . escape(pg_carrier_number_clean($_POST['carrier_vkn'] ?? '')) . "',
-                    status = '" . escape($status) . "',
-                    start_time = '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
-                    end_time = '" . escape(prepare_form_data_for_input($_POST['end_time'], 'date and time')) . "',
-                    service = '" . e($_POST['service'] ?? '') . "',
-                    realtime_rate = '" . e($realtime_rate) . "',
-                    base_rate = '" . escape($base_rate) . "',
-                    variable_base_rate = '" . escape($variable_base_rate) . "',
-                    base_rate_2 = '" . escape($base_rate_2) . "',
-                    base_rate_2_subtotal = '" . escape($base_rate_2_subtotal) . "',
-                    base_rate_3 = '" . escape($base_rate_3) . "',
-                    base_rate_3_subtotal = '" . escape($base_rate_3_subtotal) . "',
-                    base_rate_4 = '" . escape($base_rate_4) . "',
-                    base_rate_4_subtotal = '" . escape($base_rate_4_subtotal) . "',
-                    primary_weight_rate = '" . escape($primary_weight_rate) . "',
-                    primary_weight_rate_first_item_excluded = '" . escape($_POST['primary_weight_rate_first_item_excluded'] ?? '') . "',
-                    secondary_weight_rate = '" . escape($secondary_weight_rate) . "',
-                    secondary_weight_rate_first_item_excluded = '" . escape($_POST['secondary_weight_rate_first_item_excluded'] ?? '') . "',
-                    item_rate = '" . escape($item_rate) . "',
-                    item_rate_first_item_excluded = '" . escape($_POST['item_rate_first_item_excluded'] ?? '') . "',
-                    base_transit_days = '" . escape($_POST['base_transit_days'] ?? '') . "',
-                    adjust_transit = '" . escape($_POST['adjust_transit'] ?? '') . "',
-                    street_address = '" . escape($_POST['street_address'] ?? '') . "',
-                    po_box = '" . escape($_POST['po_box'] ?? '') . "',
-                    handle_days = '" . e($_POST['handle_days'] ?? '') . "',
-                    handle_mon = '" . e($_POST['handle_mon'] ?? '') . "',
-                    handle_tue = '" . e($_POST['handle_tue'] ?? '') . "',
-                    handle_wed = '" . e($_POST['handle_wed'] ?? '') . "',
-                    handle_thu = '" . e($_POST['handle_thu'] ?? '') . "',
-                    handle_fri = '" . e($_POST['handle_fri'] ?? '') . "',
-                    handle_sat = '" . e($_POST['handle_sat'] ?? '') . "',
-                    handle_sun = '" . e($_POST['handle_sun'] ?? '') . "',
-                    ship_mon = '" . e($_POST['ship_mon'] ?? '') . "',
-                    ship_tue = '" . e($_POST['ship_tue'] ?? '') . "',
-                    ship_wed = '" . e($_POST['ship_wed'] ?? '') . "',
-                    ship_thu = '" . e($_POST['ship_thu'] ?? '') . "',
-                    ship_fri = '" . e($_POST['ship_fri'] ?? '') . "',
-                    ship_sat = '" . e($_POST['ship_sat'] ?? '') . "',
-                    ship_sun = '" . e($_POST['ship_sun'] ?? '') . "',
-                    end_of_day = '" . e(prepare_form_data_for_input($_POST['end_of_day'], 'time')) . "',
-                    transit_on_sunday = '" . escape($_POST['transit_on_sunday'] ?? '') . "',
-                    transit_on_saturday = '" . escape($_POST['transit_on_saturday'] ?? '') . "',
-                    available_on_sunday = '" . escape($_POST['available_on_sunday'] ?? '') . "',
-                    available_on_sunday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_sunday_cutoff_time'], 'time')) . "',
-                    available_on_monday = '" . escape($_POST['available_on_monday'] ?? '') . "',
-                    available_on_monday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_monday_cutoff_time'], 'time')) . "',
-                    available_on_tuesday = '" . escape($_POST['available_on_tuesday'] ?? '') . "',
-                    available_on_tuesday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_tuesday_cutoff_time'], 'time')) . "',
-                    available_on_wednesday = '" . escape($_POST['available_on_wednesday'] ?? '') . "',
-                    available_on_wednesday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_wednesday_cutoff_time'], 'time')) . "',
-                    available_on_thursday = '" . escape($_POST['available_on_thursday'] ?? '') . "',
-                    available_on_thursday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_thursday_cutoff_time'], 'time')) . "',
-                    available_on_friday = '" . escape($_POST['available_on_friday'] ?? '') . "',
-                    available_on_friday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_friday_cutoff_time'], 'time')) . "',
-                    available_on_saturday = '" . escape($_POST['available_on_saturday'] ?? '') . "',
-                    available_on_saturday_cutoff_time = '" . escape(prepare_form_data_for_input($_POST['available_on_saturday_cutoff_time'], 'time')) . "',
-                    protected = '" . e($_POST['protected'] ?? '') . "',
-                    user = '" . $user['id'] . "',
+                    name = ?,
+                    description = ?,
+                    code = ?,
+                    carrier_title = ?,
+                    carrier_vkn = ?,
+                    status = ?,
+                    start_time = ?,
+                    end_time = ?,
+                    service = ?,
+                    realtime_rate = ?,
+                    base_rate = ?,
+                    variable_base_rate = ?,
+                    base_rate_2 = ?,
+                    base_rate_2_subtotal = ?,
+                    base_rate_3 = ?,
+                    base_rate_3_subtotal = ?,
+                    base_rate_4 = ?,
+                    base_rate_4_subtotal = ?,
+                    primary_weight_rate = ?,
+                    primary_weight_rate_first_item_excluded = ?,
+                    secondary_weight_rate = ?,
+                    secondary_weight_rate_first_item_excluded = ?,
+                    item_rate = ?,
+                    item_rate_first_item_excluded = ?,
+                    base_transit_days = ?,
+                    adjust_transit = ?,
+                    street_address = ?,
+                    po_box = ?,
+                    handle_days = ?,
+                    handle_mon = ?,
+                    handle_tue = ?,
+                    handle_wed = ?,
+                    handle_thu = ?,
+                    handle_fri = ?,
+                    handle_sat = ?,
+                    handle_sun = ?,
+                    ship_mon = ?,
+                    ship_tue = ?,
+                    ship_wed = ?,
+                    ship_thu = ?,
+                    ship_fri = ?,
+                    ship_sat = ?,
+                    ship_sun = ?,
+                    end_of_day = ?,
+                    transit_on_sunday = ?,
+                    transit_on_saturday = ?,
+                    available_on_sunday = ?,
+                    available_on_sunday_cutoff_time = ?,
+                    available_on_monday = ?,
+                    available_on_monday_cutoff_time = ?,
+                    available_on_tuesday = ?,
+                    available_on_tuesday_cutoff_time = ?,
+                    available_on_wednesday = ?,
+                    available_on_wednesday_cutoff_time = ?,
+                    available_on_thursday = ?,
+                    available_on_thursday_cutoff_time = ?,
+                    available_on_friday = ?,
+                    available_on_friday_cutoff_time = ?,
+                    available_on_saturday = ?,
+                    available_on_saturday_cutoff_time = ?,
+                    protected = ?,
+                    user = ?,
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['description'] ?? ''), (string) ($_POST['code'] ?? ''), (string) ($_POST['carrier_title'] ?? ''), (string) pg_carrier_number_clean($_POST['carrier_vkn'] ?? ''), (string) $status, (string) prepare_form_data_for_input($_POST['start_time'], 'date and time'), (string) prepare_form_data_for_input($_POST['end_time'], 'date and time'), (string) ($_POST['service'] ?? ''), (string) $realtime_rate, (string) $base_rate, (string) $variable_base_rate, (string) $base_rate_2, (string) $base_rate_2_subtotal, (string) $base_rate_3, (string) $base_rate_3_subtotal, (string) $base_rate_4, (string) $base_rate_4_subtotal, (string) $primary_weight_rate, (string) ($_POST['primary_weight_rate_first_item_excluded'] ?? ''), (string) $secondary_weight_rate, (string) ($_POST['secondary_weight_rate_first_item_excluded'] ?? ''), (string) $item_rate, (string) ($_POST['item_rate_first_item_excluded'] ?? ''), (string) ($_POST['base_transit_days'] ?? ''), (string) ($_POST['adjust_transit'] ?? ''), (string) ($_POST['street_address'] ?? ''), (string) ($_POST['po_box'] ?? ''), (string) ($_POST['handle_days'] ?? ''), (string) ($_POST['handle_mon'] ?? ''), (string) ($_POST['handle_tue'] ?? ''), (string) ($_POST['handle_wed'] ?? ''), (string) ($_POST['handle_thu'] ?? ''), (string) ($_POST['handle_fri'] ?? ''), (string) ($_POST['handle_sat'] ?? ''), (string) ($_POST['handle_sun'] ?? ''), (string) ($_POST['ship_mon'] ?? ''), (string) ($_POST['ship_tue'] ?? ''), (string) ($_POST['ship_wed'] ?? ''), (string) ($_POST['ship_thu'] ?? ''), (string) ($_POST['ship_fri'] ?? ''), (string) ($_POST['ship_sat'] ?? ''), (string) ($_POST['ship_sun'] ?? ''), (string) prepare_form_data_for_input($_POST['end_of_day'], 'time'), (string) ($_POST['transit_on_sunday'] ?? ''), (string) ($_POST['transit_on_saturday'] ?? ''), (string) ($_POST['available_on_sunday'] ?? ''), (string) prepare_form_data_for_input($_POST['available_on_sunday_cutoff_time'], 'time'), (string) ($_POST['available_on_monday'] ?? ''), (string) prepare_form_data_for_input($_POST['available_on_monday_cutoff_time'], 'time'), (string) ($_POST['available_on_tuesday'] ?? ''), (string) prepare_form_data_for_input($_POST['available_on_tuesday_cutoff_time'], 'time'), (string) ($_POST['available_on_wednesday'] ?? ''), (string) prepare_form_data_for_input($_POST['available_on_wednesday_cutoff_time'], 'time'), (string) ($_POST['available_on_thursday'] ?? ''), (string) prepare_form_data_for_input($_POST['available_on_thursday_cutoff_time'], 'time'), (string) ($_POST['available_on_friday'] ?? ''), (string) prepare_form_data_for_input($_POST['available_on_friday_cutoff_time'], 'time'), (string) ($_POST['available_on_saturday'] ?? ''), (string) prepare_form_data_for_input($_POST['available_on_saturday_cutoff_time'], 'time'), (string) ($_POST['protected'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // load all zones in array by exploding string that has allowed zone ids separated by commas
         // No zone chosen posts no list at all.
@@ -1159,8 +1159,8 @@ if (!$_POST) {
         foreach ($allowed_zones as $zone_id) {
             // if zone id is not blank, insert row
             if ($zone_id) {
-                $query = "INSERT INTO shipping_methods_zones_xref (shipping_method_id, zone_id) VALUES ('" . escape($_POST['id'] ?? '') . "', '" . escape($zone_id) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "INSERT INTO shipping_methods_zones_xref (shipping_method_id, zone_id) VALUES (?, ?)";
+                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $zone_id)) or output_error('Query failed.');
             }
         }
         
@@ -1205,9 +1205,9 @@ if (!$_POST) {
                     shipping_method_id,
                     date)
                 VALUES (
-                    '" . escape($_POST['id'] ?? '') . "',
-                    '" . escape($excluded_transit_date) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?)";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $excluded_transit_date)) or output_error('Query failed.');
         }
         
         log_activity(lang(array('string'=>'shipping method ({var:1}) was modified','vars'=>$_POST['name'])), $_SESSION['sessionusername']);

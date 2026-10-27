@@ -39,8 +39,8 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_contact_group', $_REQUEST['id']);
 
 // get number of contacts in this contact group
-$query = "SELECT COUNT(contact_id) FROM contacts_contact_groups_xref WHERE contact_group_id = '" . escape($_REQUEST['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT COUNT(contact_id) FROM contacts_contact_groups_xref WHERE contact_group_id = ?";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $number_of_contacts = $row[0];
 
@@ -55,8 +55,8 @@ if (!$_POST) {
                 email_subscription_type,
                 description
             FROM contact_groups
-            WHERE id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $liveform->assign_field_value('name', $row['name']);
@@ -67,11 +67,11 @@ if (!$_POST) {
     
     // if there are no contacts in this contact group, allow delete
     if ($number_of_contacts == 0) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         
     // else there is at least one contact in this contact group, so disable delete button
     } else {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " onclick="alert(\'' . lang('Please delete or remove all contacts from this contact group before deleting this contact group.') . '\')" ><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete or remove all contacts from this contact group before deleting this contact group.') . '\')" ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     print
@@ -99,39 +99,39 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Contact Group Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'placeholder'=>lang('Please enter a name'), 'maxlength'=>'255', 'class'=>'form-control')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
 
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'email_subscription', 'id'=>'email_subscription', 'value'=>'1', 'class'=>'form-check-input collapse-switcher', 'data-bs-target'=>'#email_subscription_type_row')) . '
-                                                <label class="form-check-label" for="email_subscription">' . lang('Enable E-mail Subscription') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'email_subscription', 'id'=>'email_subscription', 'value'=>'1', 'class'=>'collapse-switcher no-bs', 'data-bs-target'=>'#email_subscription_type_row')) . '</div>
+                                                <label class="" for="email_subscription">' . lang('Enable E-mail Subscription') . '</label>
                                                 <div class="form-text">' . lang('Allow Campaigns to send to this Contact Group') . '</div>
                                             </div>
                                         </div>
-                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="email_subscription_type_row">
+                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="email_subscription_type_row">
                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                             <div class="popover-body">
                                                 <div class="row">
                                                  
-                                                    <div class="col-12 my-3">
+                                                    <div class="col-12 my-5">
                                                         <label class="form-label">' . lang('E-mail Subscription Type') . '</label>
-                                                        <div class="form-check">
-                                                        ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'open', 'value'=>'open', 'checked'=>'checked', 'class'=>'form-check-input')) . '
-                                                            <label class="form-check-label" for="open">' . lang('Open') . '</label>
+                                                        <div class="form-field">
+                                                        ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'open', 'value'=>'open', 'checked'=>'checked', 'class'=>'radio')) . '
+                                                            <label class="" for="open">' . lang('Open') . '</label>
                                                         </div>
-                                                        <div class="form-check">
-                                                            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'closed', 'value'=>'closed', 'class'=>'form-check-input')) . '
-                                                            <label class="form-check-label" for="closed">' . lang('Closed') . '</label>
+                                                        <div class="form-field">
+                                                            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'closed', 'value'=>'closed', 'class'=>'radio')) . '
+                                                            <label class="" for="closed">' . lang('Closed') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-12 my-1">
@@ -147,10 +147,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>
@@ -173,30 +173,30 @@ if (!$_POST) {
         // if there are no contacts in this contact group, proceed with deleting contact group
         if ($number_of_contacts == 0) {
             // get contact group name for log
-            $query = "SELECT name FROM contact_groups WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT name FROM contact_groups WHERE id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $contact_group_name = $row['name'];
             
             // delete contact group
-            $query = "DELETE FROM contact_groups WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM contact_groups WHERE id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete contact group references in contacts_contact_groups_xref
-            $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete contact group references in users_contact_groups_xref
-            $query = "DELETE FROM users_contact_groups_xref WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM users_contact_groups_xref WHERE contact_group_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete contact group references in opt_in
-            $query = "DELETE FROM opt_in WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM opt_in WHERE contact_group_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete contact group references in contact_groups_email_campaigns_xref
-            $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE contact_group_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
             log_activity(lang(array('string'=>'contact group ({var:1}) was deleted','vars'=>$contact_group_name)), $_SESSION['sessionusername']);
             $liveform->remove_form();
@@ -233,9 +233,9 @@ if (!$_POST) {
             "SELECT id
             FROM contact_groups
             WHERE
-                (name = '" . escape($liveform->get_field_value('name')) . "')
-                AND (id != '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (name = ?)
+                AND (id != ?)";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // if name is already in use by a different contact group, prepare error and forward user back to screen
         if (mysqli_num_rows($result) > 0) {
@@ -249,14 +249,14 @@ if (!$_POST) {
         $query =
             "UPDATE contact_groups
             SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                email_subscription = '" . escape($liveform->get_field_value('email_subscription')) . "',
-                email_subscription_type = '" . escape($liveform->get_field_value('email_subscription_type')) . "',
-                description = '" . escape($liveform->get_field_value('description')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                email_subscription = ?,
+                email_subscription_type = ?,
+                description = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('email_subscription'), (string) $liveform->get_field_value('email_subscription_type'), (string) $liveform->get_field_value('description'), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'contact group (name: {var:1}) was modified','vars'=>$liveform->get_field_value('name') )), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_contact_groups = new liveform('view_contact_groups');

@@ -23,116 +23,116 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $pg_settings_cards[] = '
                         <div id="pgset-features" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Feature Options') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="pg-f-md">
                                             <label for="badge_label" class="form-label">' . lang('Default Badge Label') . '</label>
                                             <input type="text" name="badge_label" id="badge_label" maxlength="100" class="form-control" value="' . h($badge_label) . '" />
                                         </div>
                                         <div class="col-12 ">
                                             <label class="form-label">'. lang('Site Search Type') . '</label>
-                                            <div class="form-check">
-                                                <input value="simple" class="form-check-input" type="radio" id="search_type_simple" name="search_type" ' . $search_type_simple_checked . '>
-                                                <label class="form-check-label" for="search_type_simple">'. lang('Simple') . '</label>
+                                            <div class="form-field">
+                                                <input value="simple" class="radio" type="radio" id="search_type_simple" name="search_type" ' . $search_type_simple_checked . '>
+                                                <label class="" for="search_type_simple">'. lang('Simple') . '</label>
                                             </div>
-                                            <div class="form-check">
-                                                <input value="advanced" class="form-check-input" type="radio" id="search_type_advanced" name="search_type" ' . $search_type_advanced_checked . '>
-                                                <label class="form-check-label" for="search_type_advanced">'. lang('Advanced') . '</label>
+                                            <div class="form-field">
+                                                <input value="advanced" class="radio" type="radio" id="search_type_advanced" name="search_type" ' . $search_type_advanced_checked . '>
+                                                <label class="" for="search_type_advanced">'. lang('Advanced') . '</label>
                                             </div>
                                             <div class="form-text">' . lang('Advanced searches the search index, which the search index job rebuilds once a day: pages, linked files and the records of public form lists. Simple searches the text of pages as it is now and finds no form records.') . '</div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $perf_monitor_checked . ' class="form-check-input" type="checkbox" id="perf_monitor" name="perf_monitor"/>
-                                                <label class="form-check-label" for="perf_monitor">' . lang('Enable Performance Monitoring') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $perf_monitor_checked . ' class="" type="checkbox" id="perf_monitor" name="perf_monitor"/></div>
+                                                <label class="" for="perf_monitor">' . lang('Enable Performance Monitoring') . '</label>
                                                 <div class="form-text">' . lang('Records how long each request takes, so slow pages can be found. The measurement is written after the response has been sent, so visitors do not wait for it.') . '</div>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $mobile_checked . ' class="form-check-input" type="checkbox" id="mobile" name="mobile"/>
-                                                <label class="form-check-label" for="mobile">' . lang('Enable Mobile') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $mobile_checked . ' class="" type="checkbox" id="mobile" name="mobile"/></div>
+                                                <label class="" for="mobile">' . lang('Enable Mobile') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $auto_dialogs_checked . ' class="form-check-input" type="checkbox" id="auto_dialogs" name="auto_dialogs"/>
-                                                <label class="form-check-label" for="auto_dialogs">' . lang('Enable Auto Dialogs') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $auto_dialogs_checked . ' class="" type="checkbox" id="auto_dialogs" name="auto_dialogs"/></div>
+                                                <label class="" for="auto_dialogs">' . lang('Enable Auto Dialogs') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $social_networking_checked . '  id="social_networking" name="social_networking" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#social_networking_type_row"/>
-                                                <label class="form-check-label d-inline" for="social_networking">' . lang('Enable Social Networking') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $social_networking_checked . '  id="social_networking" name="social_networking" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#social_networking_type_row"/></div>
+                                                <label class="d-inline" for="social_networking">' . lang('Enable Social Networking') . '</label>
                                             </div>
                                             <div class="collapse popover  fade bs-popover-bottom p-0  w-100" id="social_networking_type_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
-                                                   <div class="row gy-3">
+                                                   <div class="row gy-5">
                                                         <label class="form-label">'. lang('Setup') . '</label>
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-check-inline">
-                                                                <input value="simple" class="form-check-input collapse-switcher" type="radio" id="social_networking_type_simple" name="social_networking_type" ' . $social_networking_type_simple_checked . ' data-bs-target="#social_networking_services_row">
-                                                                <label class="form-check-label" for="social_networking_type_simple">'. lang('Simple') . '</label>
+                                                            <div class="form-field d-inline-grid me-5">
+                                                                <input value="simple" class="radio collapse-switcher" type="radio" id="social_networking_type_simple" name="social_networking_type" ' . $social_networking_type_simple_checked . ' data-bs-target="#social_networking_services_row">
+                                                                <label class="" for="social_networking_type_simple">'. lang('Simple') . '</label>
                                                             </div>
-                                                            <div class="form-check form-check-inline">
-                                                                <input value="advanced" class="form-check-input collapse-switcher" type="radio" id="social_networking_type_advanced" name="social_networking_type" ' . $social_networking_type_advanced_checked . ' data-bs-target="#social_networking_code_row">
-                                                                <label class="form-check-label" for="social_networking_type_advanced">'. lang('Advanced') . '</label>
+                                                            <div class="form-field d-inline-grid me-5">
+                                                                <input value="advanced" class="radio collapse-switcher" type="radio" id="social_networking_type_advanced" name="social_networking_type" ' . $social_networking_type_advanced_checked . ' data-bs-target="#social_networking_code_row">
+                                                                <label class="" for="social_networking_type_advanced">'. lang('Advanced') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="social_networking_services_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(15px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                   <div class="row gy-3">
+                                                                   <div class="row gy-5">
                                                                         <label class="form-label">'. lang('Services') . '</label>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input type="checkbox" name="social_networking_facebook" id="social_networking_facebook" value="1"' . $social_networking_facebook_checked . ' class="form-check-input" />
-                                                                                <label class="form-check-label" for="social_networking_facebook">Facebook</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input type="checkbox" name="social_networking_facebook" id="social_networking_facebook" value="1"' . $social_networking_facebook_checked . ' class="" /></div>
+                                                                                <label class="" for="social_networking_facebook">Facebook</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input type="checkbox" name="social_networking_twitter" id="social_networking_twitter" value="1"' . $social_networking_twitter_checked . ' class="form-check-input" />
-                                                                                <label class="form-check-label" for="social_networking_twitter">X (Twitter)</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input type="checkbox" name="social_networking_twitter" id="social_networking_twitter" value="1"' . $social_networking_twitter_checked . ' class="" /></div>
+                                                                                <label class="" for="social_networking_twitter">X (Twitter)</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input type="checkbox" name="social_networking_linkedin" id="social_networking_linkedin" value="1"' . $social_networking_linkedin_checked . ' class="form-check-input" />
-                                                                                <label class="form-check-label" for="social_networking_linkedin">LinkedIn</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input type="checkbox" name="social_networking_linkedin" id="social_networking_linkedin" value="1"' . $social_networking_linkedin_checked . ' class="" /></div>
+                                                                                <label class="" for="social_networking_linkedin">LinkedIn</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input type="checkbox" name="social_networking_whatsapp" id="social_networking_whatsapp" value="1"' . $social_networking_whatsapp_checked . ' class="form-check-input" />
-                                                                                <label class="form-check-label" for="social_networking_whatsapp">WhatsApp</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input type="checkbox" name="social_networking_whatsapp" id="social_networking_whatsapp" value="1"' . $social_networking_whatsapp_checked . ' class="" /></div>
+                                                                                <label class="" for="social_networking_whatsapp">WhatsApp</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input type="checkbox" name="social_networking_telegram" id="social_networking_telegram" value="1"' . $social_networking_telegram_checked . ' class="form-check-input" />
-                                                                                <label class="form-check-label" for="social_networking_telegram">Telegram</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input type="checkbox" name="social_networking_telegram" id="social_networking_telegram" value="1"' . $social_networking_telegram_checked . ' class="" /></div>
+                                                                                <label class="" for="social_networking_telegram">Telegram</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input type="checkbox" name="social_networking_pinterest" id="social_networking_pinterest" value="1"' . $social_networking_pinterest_checked . ' class="form-check-input" />
-                                                                                <label class="form-check-label" for="social_networking_pinterest">Pinterest</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input type="checkbox" name="social_networking_pinterest" id="social_networking_pinterest" value="1"' . $social_networking_pinterest_checked . ' class="" /></div>
+                                                                                <label class="" for="social_networking_pinterest">Pinterest</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input type="checkbox" name="social_networking_reddit" id="social_networking_reddit" value="1"' . $social_networking_reddit_checked . ' class="form-check-input" />
-                                                                                <label class="form-check-label" for="social_networking_reddit">Reddit</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input type="checkbox" name="social_networking_reddit" id="social_networking_reddit" value="1"' . $social_networking_reddit_checked . ' class="" /></div>
+                                                                                <label class="" for="social_networking_reddit">Reddit</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input type="checkbox" name="social_networking_email" id="social_networking_email" value="1"' . $social_networking_email_checked . ' class="form-check-input" />
-                                                                                <label class="form-check-label" for="social_networking_email">'. lang('Email') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input type="checkbox" name="social_networking_email" id="social_networking_email" value="1"' . $social_networking_email_checked . ' class="" /></div>
+                                                                                <label class="" for="social_networking_email">'. lang('Email') . '</label>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -141,7 +141,7 @@ $pg_settings_cards[] = '
                                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="social_networking_code_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(90px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                   <div class="row gy-3">
+                                                                   <div class="row gy-5">
                                                                         <div class="col-12 ">
                                                                             <label for="social_networking_code" class="form-label">'. lang('Code') . '</label>
                                                                             <textarea class="form-control" id="social_networking_code" name="social_networking_code">' . h($social_networking_code) . '</textarea>
@@ -156,28 +156,28 @@ $pg_settings_cards[] = '
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $forms_checked . ' class="form-check-input" type="checkbox" id="forms" name="forms"/>
-                                                <label class="form-check-label" for="forms">' . lang('Enable Forms') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $forms_checked . ' class="" type="checkbox" id="forms" name="forms"/></div>
+                                                <label class="" for="forms">' . lang('Enable Forms') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $calendars_checked . ' class="form-check-input" type="checkbox" id="calendars" name="calendars"/>
-                                                <label class="form-check-label" for="calendars">' . lang('Enable Calendars') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $calendars_checked . ' class="" type="checkbox" id="calendars" name="calendars"/></div>
+                                                <label class="" for="calendars">' . lang('Enable Calendars') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $ads_checked . ' class="form-check-input" type="checkbox" id="ads" name="ads"/>
-                                                <label class="form-check-label" for="ads">' . lang('Enable Ads') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $ads_checked . ' class="" type="checkbox" id="ads" name="ads"/></div>
+                                                <label class="" for="ads">' . lang('Enable Ads') . '</label>
                                             </div>
                                         </div>
                                         ' . ($workspace_setting_available ? '
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $workspace_enabled_checked . ' class="form-check-input" type="checkbox" id="workspace_enabled" name="workspace_enabled"/>
-                                                <label class="form-check-label" for="workspace_enabled">' . lang('Enable Workspace') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $workspace_enabled_checked . ' class="" type="checkbox" id="workspace_enabled" name="workspace_enabled"/></div>
+                                                <label class="" for="workspace_enabled">' . lang('Enable Workspace') . '</label>
                                                 <div class="form-text">' . lang('Channels for the team, tasks with owners and dates, and a planning board. Basic users are given it from their user screen.') . '</div>
                                             </div>
                                         </div>' : '') . '
@@ -225,7 +225,7 @@ $pg_settings_cards[] = '
         $output_image_library_note =
             ($image_library !== '')
                 ? '<div class="form-text">' . lang(array('string' => 'Image library in use: {var:1}', 'vars' => array($image_library))) . $output_upload_limits_note . '</div>'
-                : '<div class="alert alert-warning py-2 mb-0">' . lang('No image library (Imagick or GD) is installed on this server, so images cannot be optimized or resized.') . '</div>';
+                : '<div class="alert theme-warning py-3 mb-0">' . lang('No image library (Imagick or GD) is installed on this server, so images cannot be optimized or resized.') . '</div>';
 
         // How pictures reach visitors: the modern formats the responsive
         // markup offers and the quality each is written at
@@ -247,14 +247,14 @@ $pg_settings_cards[] = '
                 $image_format_checked = (($image_settings['derivative_formats'] & $image_format_row['bit']) === $image_format_row['bit']) ? ' checked="checked"' : '';
 
                 $image_format_note = empty($image_formats_written[$image_format])
-                    ? '<div class="form-text text-warning-emphasis">' . lang(array('string' => 'This server cannot write {var:1}, so it is not offered while that stays so.', 'vars' => array($image_format_row['name']))) . '</div>'
+                    ? '<div class="form-text fg-emphasis-warning">' . lang(array('string' => 'This server cannot write {var:1}, so it is not offered while that stays so.', 'vars' => array($image_format_row['name']))) . '</div>'
                     : '';
 
                 $output_image_delivery_fields .= '
                             <div class="col-12 ">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $image_format_checked . ' class="form-check-input" type="checkbox" id="image_derivative_' . $image_format . '" name="image_derivative_' . $image_format . '"/>
-                                    <label class="form-check-label" for="image_derivative_' . $image_format . '">' . $image_format_row['label'] . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $image_format_checked . ' class="" type="checkbox" id="image_derivative_' . $image_format . '" name="image_derivative_' . $image_format . '"/></div>
+                                    <label class="" for="image_derivative_' . $image_format . '">' . $image_format_row['label'] . '</label>
                                     <div class="form-text">' . $image_format_row['text'] . '</div>' . $image_format_note . '
                                 </div>
                             </div>';
@@ -286,7 +286,7 @@ $pg_settings_cards[] = '
         if ($page_rebuild_ready) {
             $output_page_rebuild_field = '
                             <div class="col-12 ">
-                                <button type="submit" name="submit_rebuild_pages" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and rebuild page HTML') . '</button>
+                                <button type="submit" name="submit_rebuild_pages" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and rebuild page HTML') . '</button>
                                 <div class="form-text">' . lang('Visual designer pages keep the HTML drawn when they were last saved. This draws every page again from what was saved, so pages published before responsive images, or before a format was switched on or off, get the current picture markup. Their content, modified date and author do not change.') . '</div>
                             </div>';
         }
@@ -294,15 +294,15 @@ $pg_settings_cards[] = '
         $output_image_settings_card =
             '<div id="pgset-images" class="pg-set-card">
                 <div class="card">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Image Optimization') . '
                     </div>
                     <div class="card-body">
-                       <div class="row gy-3">
+                       <div class="row gy-5">
                             <div class="col-12 ">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $image_product_optimize_checked . ' class="form-check-input" type="checkbox" id="image_product_optimize" name="image_product_optimize"/>
-                                    <label class="form-check-label" for="image_product_optimize">' . lang('Optimize Product Images On Upload') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $image_product_optimize_checked . ' class="" type="checkbox" id="image_product_optimize" name="image_product_optimize"/></div>
+                                    <label class="" for="image_product_optimize">' . lang('Optimize Product Images On Upload') . '</label>
                                     <div class="form-text">' . lang('Photos added from the product and variant set screens are compressed as they arrive, and scaled down when they are larger than the limit below. Images picked from the file library are left exactly as they are.') . '</div>
                                 </div>
                             </div>
@@ -324,9 +324,8 @@ $pg_settings_cards[] = '
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_resize_quality" class="form-label">' . lang('Quality When Resizing') . '</label>
-                                <div class="input-group">
-                                    <input type="text" name="image_resize_quality" id="image_resize_quality" maxlength="3" inputmode="numeric" class="form-control text-end" value="' . h($image_settings['resize_quality']) . '" />
-                                    <label class="input-group-text" for="image_resize_quality">%</label>
+                                <div class="form-range pg-range-bubble" data-pg-range="%">
+                                    <input type="range" name="image_resize_quality" id="image_resize_quality" min="40" max="100" step="1" class="form-range-input" value="' . (int) $image_settings['resize_quality'] . '" />
                                 </div>
                                 <div class="form-text">' . lang('Applies only when an image is actually scaled down. Optimizing without resizing keeps its own quality setting.') . '</div>
                             </div>
@@ -371,11 +370,11 @@ if (function_exists('pg_page_revisions_retention') && array_key_exists('page_rev
     $pg_settings_cards[] = '
                         <div id="pgset-revisions" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Page Revisions') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="row gy-3">
+                                    <div class="row gy-5">
                                         <div class="col-12">
                                             <div class="form-text mt-0">' . lang('Every publish of a visual designer page is kept as a revision, which the History panel of the editor compares and loads back. A revision is removed only when both limits below let it go; the general job does that once a day.') . '</div>
                                         </div>
@@ -409,15 +408,15 @@ if (function_exists('pg_page_cache_ttl')) {
     $pg_settings_cards[] = '
                         <div id="pgset-page-cache" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Page Cache') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="row gy-3">
+                                    <div class="row gy-5">
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . (($page_cache_ttl > 0) ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="page_cache" name="page_cache"/>
-                                                <label class="form-check-label" for="page_cache">' . lang('Enable Page Cache') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . (($page_cache_ttl > 0) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="page_cache" name="page_cache"/></div>
+                                                <label class="" for="page_cache">' . lang('Enable Page Cache') . '</label>
                                                 <div class="form-text">' . lang('A page that looks the same for every visitor who is not signed in is kept on this server and sent from there, and goes out with standard cache headers, so a CDN or reverse proxy in front of the site (Cloudflare, Varnish, nginx) may keep it too. Pages with a form, a cart or member content, private pages, pages that run PHP, pages for a visitor with a cart, a sign-in or a cookie choice, and error pages are never kept. Off on a site whose mobile view is switched on. A visit answered from a kept page is counted by a small request the browser sends.') . '</div>
                                             </div>
                                         </div>
@@ -449,11 +448,11 @@ $signature_tsa_password = isset($row['signature_tsa_password']) ? (string) $row[
 $pg_settings_cards[] = '
                         <div id="pgset-signature" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Signature Time Stamp') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="row gy-3">
+                                    <div class="row gy-5">
                                         <div class="col-12">
                                             <div class="form-text mt-0">' . lang('A signature field records when it was signed from this server\'s clock, which is this site\'s own word for it. A time stamp authority vouches for the same moment independently. Only a 32 byte digest is sent - the document itself never leaves this server.') . '</div>
                                         </div>
@@ -464,7 +463,7 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-md">
                                             <label for="signature_tsa_auth" class="form-label">' . lang('Credentials') . '</label>
-                                            <select name="signature_tsa_auth" id="signature_tsa_auth" class="form-select">
+                                            <select name="signature_tsa_auth" id="signature_tsa_auth" class="form-control">
                                                 <option value="none"' . (($signature_tsa_auth === 'none') ? ' selected="selected"' : '') . '>' . lang('None') . '</option>
                                                 <option value="basic"' . (($signature_tsa_auth === 'basic') ? ' selected="selected"' : '') . '>' . lang('HTTP Basic') . '</option>
                                             </select>
@@ -479,7 +478,7 @@ $pg_settings_cards[] = '
                                             <input type="password" name="signature_tsa_password" id="signature_tsa_password" maxlength="100" class="form-control" value="' . h($signature_tsa_password) . '" />
                                         </div>
                                         <div class="col-12">
-                                            <button type="submit" name="submit_test_tsa" value="1" class="btn btn-sm btn-outline-secondary">
+                                            <button type="submit" name="submit_test_tsa" value="1" class="btn btn-sm btn-outline theme-secondary">
                                                 <i class="bi bi-clock-history me-1"></i>' . lang('Test The Time Stamp') . '
                                             </button>
                                             <div class="form-text">' . lang('Saves this card and then asks the authority to stamp a throwaway digest, so the answer describes what was just entered. No counter is spent beyond that one stamp.') . '</div>

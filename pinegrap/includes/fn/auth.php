@@ -1103,11 +1103,28 @@ function pg_account_security_section()
     $rows_html = '';
     $count = 0;
     $pin_column = pg_auth_tokens_have_pin();
-    $result = mysqli_query(db::$con,
+
+    // The passkey a session was opened with is named on its row, with a form
+    // that removes it, which signs out every session it opened.
+    $passkey_column = function_exists('pg_auth_tokens_have_passkey') && pg_auth_tokens_have_passkey();
+    $passkey_names = array();
+    $passkey_proofs = null;
+
+    if ($passkey_column) {
+        foreach (pg_passkeys_of_user($user_id) as $passkey) {
+            $passkey_names[(int) $passkey['id']] = ($passkey['name'] !== '') ? $passkey['name'] : lang('Passkey');
+        }
+
+        if (empty($_SESSION['software']['logged_in_as_different_user'])) {
+            $passkey_proofs = pg_passkey_reauth_fields($algo, pg_mfa_table_exists() && pg_mfa_enabled($user_id));
+        }
+    }
+
+    $result = db_q(
         "SELECT selector, user_agent, ip_address, created_at, last_used_at, expires_at"
-         . ($pin_column ? ", pinned" : "") . "
-         FROM auth_tokens WHERE user_id = '" . $user_id . "'
-         ORDER BY (last_used_at = 0) ASC, last_used_at DESC, created_at DESC");
+         . ($pin_column ? ", pinned" : "") . ($passkey_column ? ", passkey_id" : "") . "
+         FROM auth_tokens WHERE user_id = ?
+         ORDER BY (last_used_at = 0) ASC, last_used_at DESC, created_at DESC", array((string) $user_id));
     if ($result) {
         while ($r = mysqli_fetch_assoc($result)) {
             $count++;
@@ -1125,9 +1142,26 @@ function pg_account_security_section()
             $device_title = (($device_title !== '') ? ($device_title . "\n") : '')
                 . lang('First seen') . ': ' . date('Y-m-d H:i', (int) $r['created_at']);
 
+            $passkey_id = $passkey_column ? (int) $r['passkey_id'] : 0;
+            $passkey_html = '';
+
+            if (isset($passkey_names[$passkey_id])) {
+                $passkey_html = '<div style="margin-top:.25em">' . h(lang(array(
+                    'string' => 'Signed in with the passkey {var:1}',
+                    'vars'   => $passkey_names[$passkey_id]))) . '</div>';
+
+                if ($passkey_proofs !== null) {
+                    $passkey_html .= '<details style="margin-top:.25em"><summary style="cursor:pointer">' . h(lang('Sign out and remove the passkey')) . '</summary>'
+                        . pg_passkey_remove_form($passkey_id, $passkey_proofs, $action_url, $token,
+                            'pg_session_passkey_' . $count . '_', lang('Sign out and remove the passkey'))
+                        . '</details>';
+                }
+            }
+
             $rows_html .=
-                '<tr><td style="padding:.4em .6em" title="' . h($device_title) . '">' . h(pg_user_agent_label($r['user_agent']))
+                '<tr><td style="padding:.4em .6em"><span title="' . h($device_title) . '">' . h(pg_user_agent_label($r['user_agent'])) . '</span>'
                 . ($is_current ? ' <span class="badge bg-success fw-light">' . h(lang('This device')) . '</span>' : '')
+                . $passkey_html
                 . '</td><td style="padding:.4em .6em">' . h((string) $r['ip_address'])
                 . '</td><td style="padding:.4em .6em">' . $last
                 . '</td><td style="padding:.4em .6em;text-align:right">'
@@ -1222,10 +1256,10 @@ function pg_device_limit_revoke_oldest($user_id, $keep)
     $pin_column = pg_auth_tokens_have_pin();
 
     $selectors = array();
-    $result = mysqli_query(db::$con,
+    $result = db_q(
         "SELECT selector" . ($pin_column ? ", pinned" : "") . " FROM auth_tokens
-         WHERE user_id = '" . $user_id . "' AND expires_at > '" . time() . "'
-         ORDER BY GREATEST(last_used_at, created_at) DESC, created_at DESC");
+         WHERE user_id = ? AND expires_at > ?
+         ORDER BY GREATEST(last_used_at, created_at) DESC, created_at DESC", array((string) $user_id, (string) time()));
     if ($result) {
         $index = 0;
         while ($r = mysqli_fetch_assoc($result)) {
@@ -1440,6 +1474,17 @@ function pg_login_set_device_cookie($user_id, $remember)
 
     $auth_cookie = pg_auth_token_create($user_id, $lifetime);
 
+    // A sign-in with a passkey names it on its token, so the account page
+    // shows it and removing the passkey ends this session.
+    if (function_exists('pg_passkey_signin_marked') && isset($_SESSION['software'])) {
+        $passkey_id = pg_passkey_signin_marked($_SESSION['software']['signin_passkey'], $user_id, time());
+
+        if (($passkey_id > 0) && pg_auth_tokens_have_passkey()) {
+            db("UPDATE auth_tokens SET passkey_id = '" . $passkey_id . "'
+                WHERE selector = '" . escape(strtok($auth_cookie, ':')) . "'");
+        }
+    }
+
     if (version_compare(PHP_VERSION, '5.2.0', '>=') == TRUE) {
         setcookie('software[auth]', $auth_cookie, $cookie_expiry, '/', '', $secure, true);
     } else {
@@ -1464,7 +1509,7 @@ function pg_login_set_device_cookie($user_id, $remember)
 // for a second factor cannot be opened by a password alone).
 function pg_post_password_signin($user_id, $username)
 {
-    if (function_exists('pg_mfa_enabled') && pg_mfa_enabled($user_id)) {
+    if (function_exists('pg_mfa_has_factor') && pg_mfa_has_factor($user_id)) {
         return false;
     }
     pg_session_sign_in($user_id, $username);
@@ -1749,9 +1794,7 @@ function pg_auth_token_create($user_id, $lifetime_seconds)
         ? mb_substr((string) $_SERVER['HTTP_USER_AGENT'], 0, 255)
         : '';
 
-    $ip_address = function_exists('waf_client_ip')
-        ? waf_client_ip()
-        : (isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '');
+    $ip_address = pg_auth_request_address();
 
     db("INSERT INTO auth_tokens
             (selector, validator_hash, user_id, expires_at, created_at, last_used_at, user_agent, ip_address)
@@ -1976,8 +2019,8 @@ function pg_session_signed_in()
 // The username can either be a username or email address for a user.
 function validate_username($username)
 {
-    $query = "SELECT user_id FROM user WHERE (user_username = '" . escape($username) . "') OR (user_email = '" . escape($username) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
+    $query = "SELECT user_id FROM user WHERE (user_username = ?) OR (user_email = ?)";
+    $result = db_q($query, array((string) $username, (string) $username)) or output_error(lang('Query failed'));
     if (mysqli_num_rows($result) > 0) {
         return true;
     } else {
@@ -2001,8 +2044,8 @@ function validate_user()
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(get_request_uri()));
         exit();
     }
-    $query = "SELECT * FROM user WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
+    $query = "SELECT * FROM user WHERE user_id = ?";
+    $result = db_q($query, array((string) (int) $_SESSION['sessionuserid'])) or output_error(lang('Query failed'));
     $row = mysqli_fetch_array($result);
     $num_rows = mysqli_num_rows($result);
     // The account was deleted out from under a live session: clear it and send
@@ -2239,8 +2282,8 @@ function validate_contact_access($user, $contact_id)
 
             FROM contacts_contact_groups_xref
 
-            WHERE contact_id = '" . escape($contact_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE contact_id = ?";
+        $result = db_q($query, array((string) $contact_id)) or output_error(lang('Query failed.'));
         $contact_groups = array();
         // loop through all contact groups in order to add them to array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -2269,8 +2312,8 @@ function validate_contacts_access($user, $only_return = false)
 
             FROM users_contact_groups_xref
 
-            WHERE user_id = '" . escape($user['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE user_id = ?";
+        $result = db_q($query, array((string) $user['id'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_row($result);
         // if user has access to at least one contact group, return true
         if ($row[0] > 0) {
@@ -2306,10 +2349,10 @@ function validate_contact_group_access($user, $contact_group_id)
 
             WHERE
 
-                (user_id = '" . escape($user['id']) . "')
+                (user_id = ?)
 
-                AND (contact_group_id = '" . escape($contact_group_id) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (contact_group_id = ?)";
+        $result = db_q($query, array((string) $user['id'], (string) $contact_group_id)) or output_error(lang('Query failed.'));
         // if user has access to contact group, return true
         if (mysqli_num_rows($result) > 0) {
             return true;
@@ -2435,8 +2478,8 @@ function validate_calendars_access($user, $only_return = false)
 
             FROM users_calendars_xref
 
-            WHERE user_id = '" . escape($user['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE user_id = ?";
+        $result = db_q($query, array((string) $user['id'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_row($result);
         // if user has access to at least one calendar, return true
         if ($row[0] > 0) {
@@ -2472,10 +2515,10 @@ function validate_calendar_access($calendar_id)
 
             WHERE
 
-                (user_id = '" . USER_ID . "')
+                (user_id = ?)
 
-                AND (calendar_id = '" . escape($calendar_id) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (calendar_id = ?)";
+        $result = db_q($query, array((string) USER_ID, (string) $calendar_id)) or output_error(lang('Query failed.'));
         // if user has access to calendar, return true
         if (mysqli_num_rows($result) > 0) {
             return true;
@@ -2497,8 +2540,8 @@ function validate_calendar_event_access($calendar_event_id)
 
             FROM calendar_events_calendars_xref
 
-            WHERE calendar_event_id = '" . escape($calendar_event_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $calendar_event_id)) or output_error(lang('Query failed.'));
         $selected_calendars = array();
         // loop through all selected calendars in order to build array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -2549,10 +2592,10 @@ function get_folders_that_user_has_access_to($user_id)
 
         WHERE
 
-            (aclfolder_user = '" . escape($user_id) . "')
+            (aclfolder_user = ?)
 
             AND (aclfolder_rights = '2')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         $folders_with_access_set[] = $row['folder_id'];
     }
@@ -2803,11 +2846,11 @@ function select_style($style = '', $default_label = 'Default (inherit)')
     // the page screen) would send those pages to the visual editor with no
     // layout of their own. The one currently stored is kept in the list so
     // an existing choice is not silently dropped on save.
-    $result = mysqli_query(db::$con,
+    $result = db_q(
         "SELECT style_id, style_name FROM style
          WHERE style_layout != 'one_column_mobile'
-           AND (style_layout != 'visual_designer' OR style_id = '" . escape((string)$style) . "')
-         ORDER BY style_name") or output_error(lang('Query failed'));
+           AND (style_layout != 'visual_designer' OR style_id = ?)
+         ORDER BY style_name", array((string) $style)) or output_error(lang('Query failed'));
     while ($row = mysqli_fetch_assoc($result)) {
         // find if style is selected
         if ($row['style_id'] == $style) {
@@ -3010,7 +3053,7 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
                     . '</span>'
                     . '</span>';
             }
-            $output .= '<div class="form-check"><input type="checkbox" name="' . $type . '_' . $folder['id'] . '" id="' . $type . '_' . $folder['id'] . '" value="1" class="form-check-input  multiselect-checkbox"' . $checked . $output_onclick . ' /><label class="form-check-label" for="' . $type . '_' . $folder['id'] . '">' . $indentation . h($folder['name']) . '</label>' . $output_expiration_date_container . '</div>';
+            $output .= '<div class="form-field"><input type="checkbox" name="' . $type . '_' . $folder['id'] . '" id="' . $type . '_' . $folder['id'] . '" value="1" class="check  multiselect-checkbox"' . $checked . $output_onclick . ' /><label class="" for="' . $type . '_' . $folder['id'] . '">' . $indentation . h($folder['name']) . '</label>' . $output_expiration_date_container . '</div>';
         }
         // get lines for child folders
         $output .= get_acl_folder_tree($type, $folder['id'], $next_level, $folders, $folders_that_user_has_access_to, $user_id);
@@ -3020,7 +3063,7 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
 // find if there is an entry for the user in the access control list to edit any folder
 function no_acl_check($user_id)
 {
-    $result = mysqli_query(db::$con, "SELECT aclfolder_user FROM aclfolder WHERE aclfolder_user = '" . escape($user_id) . "' AND aclfolder_rights = '2'") or output_error(lang('Query failed'));
+    $result = db_q("SELECT aclfolder_user FROM aclfolder WHERE aclfolder_user = ? AND aclfolder_rights = '2'", array((string) $user_id)) or output_error(lang('Query failed'));
     if (mysqli_num_rows($result)) {
         return true;
     } else {
@@ -3050,6 +3093,46 @@ function validate_password_strength($password)
     // if we have gotten here, then the password is strong so return true
     return true;
 }
+// The Bootstrap 6 Strength meter for the password field with the id
+// $input_id, scored by assets/js/pg_password_strength.js (load it with
+// pg_password_strength_script()). $strict is "Require Strong Password"
+// (STRONG_PASSWORD): on, the meter reads strong only for a password
+// validate_password_strength() accepts; off, Bootstrap's default scoring only
+// advises. Panel chrome only: sites run Bootstrap 5.3.8, which has no
+// Strength. No data-bs-strength in the markup: Bootstrap's data API would
+// start its own scoring on the element; the script sets it as levels change.
+function pg_password_strength_meter($input_id, $strict)
+{
+    $messages = array(
+        'weak' => lang('Weak'),
+        'fair' => lang('Fair'),
+        'good' => lang('Good'),
+        'strong' => lang('Strong'),
+    );
+
+    return '<div class="strength" data-pg-strength'
+        . ' data-pg-strength-input="' . h('#' . $input_id) . '"'
+        . ' data-pg-strength-strict="' . ($strict ? '1' : '0') . '"'
+        . ' data-pg-strength-messages="' . h(json_encode($messages)) . '">'
+        . str_repeat('<div class="strength-segment"></div>', 4)
+        . '</div>'
+        . '<span class="strength-text" role="status" aria-live="polite"></span>';
+}
+
+// The script behind pg_password_strength_meter(), once per page.
+function pg_password_strength_script()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_password_strength.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_password_strength.js') . '" defer></script>';
+}
+
 function get_strong_password_requirements()
 {
     return '
@@ -3378,23 +3461,12 @@ function pg_form_spam_ip_listed($ip)
         return false;
     }
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://api.stopforumspam.org/api?ip=' . urlencode($ip) . '&json');
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 4);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    pg_curl_tls($ch);
+    $answer = pg_curl_run('GET', 'https://api.stopforumspam.org/api?ip=' . urlencode($ip) . '&json', array(
+        'timeout'         => 4,
+        'connect_timeout' => 4,
+    ));
 
-    $body = curl_exec($ch);
-
-    // A no-op since PHP 8.0 and deprecated in 8.5.
-    if (PHP_VERSION_ID < 80000) {
-        curl_close($ch); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated -- guarded by PHP_VERSION_ID above
-    }
-
-    $response = is_string($body) ? json_decode($body, true) : null;
+    $response = json_decode($answer['body'], true);
 
     if (!is_array($response) || empty($response['success'])) {
         $error = '';
@@ -3654,10 +3726,17 @@ function initialize_user()
                     }
 
                     if ($auth_bind_kick === false) {
+                        // The stamp carries the request's address too, so
+                        // the row says where the device is now, not where
+                        // it signed in: the session lists read it, and the
+                        // firewall asks it before an automatic ban
+                        // (waf_address_has_staff_sign_in()).
+                        $auth_bind_stamp = "last_used_at = '" . time() . "', ip_address = '" . escape(pg_auth_request_address()) . "'";
+
                         if ((((int) $auth_bind_row['expires_at']) - time()) < 21600) {
                             // Slide a token close to expiring, stamping the
                             // activity while at it.
-                            db("UPDATE auth_tokens SET expires_at = '" . (time() + pg_device_session_ttl()) . "', last_used_at = '" . time() . "' WHERE selector = '" . escape($auth_bind_selector) . "'");
+                            db("UPDATE auth_tokens SET expires_at = '" . (time() + pg_device_session_ttl()) . "', " . $auth_bind_stamp . " WHERE selector = '" . escape($auth_bind_selector) . "'");
                         } elseif ((time() - ((int) $auth_bind_row['freshness'])) > 50) {
                             // "Last seen": stamp activity at the same cadence
                             // who_is_online() uses for the per-user stamp (50
@@ -3665,7 +3744,7 @@ function initialize_user()
                             // device really was last active - and the device
                             // limit's oldest-excess choice follows real
                             // activity rather than sign-in order.
-                            db("UPDATE auth_tokens SET last_used_at = '" . time() . "' WHERE selector = '" . escape($auth_bind_selector) . "'");
+                            db("UPDATE auth_tokens SET " . $auth_bind_stamp . " WHERE selector = '" . escape($auth_bind_selector) . "'");
                         }
                     }
                 } else {
@@ -3765,7 +3844,7 @@ function initialize_user()
             if (is_array($user) && isset($user['id'])
                 && function_exists('pg_mfa_required_for_user')
                 && pg_mfa_required_for_user($user['id'])
-                && !pg_mfa_enabled($user['id'])) {
+                && !pg_mfa_has_factor($user['id'])) {
 
                 pg_auth_token_revoke((string) strtok((string) $_COOKIE['software']['auth'], ':'));
                 setcookie('software[auth]', '', time() - 1000, '/');
@@ -3807,11 +3886,11 @@ function initialize_user()
             $api_password_ok = is_array($cred) && isset($cred['user_id'])
                 && pg_password_verify($cred['user_id'], API_PASSWORD, $cred['user_password'], pg_password_row_algo($cred));
 
-            if ($api_password_ok && pg_mfa_enabled($cred['user_id'])) {
+            if ($api_password_ok && pg_mfa_has_factor($cred['user_id'])) {
 
                 // The password was right, but the account asks for a second
-                // step and a request carrying a password has nowhere to give
-                // one. No user is loaded (USER_LOGGED_IN stays false) and
+                // step (a code or a passkey) and a request carrying a password
+                // has nowhere to give one. No user is loaded (USER_LOGGED_IN stays false) and
                 // API_AUTHENTICATED is not set, so the request cannot act and
                 // cannot waive the CSRF token; api.php answers mfa_required.
                 // The failure counter is still cleared: this was not a guess.
@@ -4002,6 +4081,37 @@ function pg_login_throttle_limits()
 }
 
 /**
+ * What a sign-in failure from this address is counted against: the address,
+ * or the /64 for IPv6 (waf_ip_subject()); nothing for an address that is not
+ * counted or that the firewall's allow list covers.
+ *
+ * The allow list is the operator's own office or server: a shared address
+ * whose other users fail fifty times would otherwise lock the operator out
+ * for an hour, with the firewall off too, and no screen releases the address
+ * lock. The account subject still counts there, so guessing at one account
+ * from an allowed address is still stopped.
+ *
+ * @param string $ip      the visitor's address (waf_client_ip())
+ * @param bool   $counted waf_ip_is_counted() for it
+ * @param array  $allowed the allow list's entries (waf_ip_lists())
+ * @return string the subject, or '' when the address is not counted
+ */
+function pg_login_throttle_address_subject($ip, $counted, array $allowed)
+{
+    $ip = (string) $ip;
+
+    if (($ip === '') || !$counted) {
+        return '';
+    }
+
+    if (function_exists('waf_ip_in_any') && waf_ip_in_any($ip, $allowed)) {
+        return '';
+    }
+
+    return function_exists('waf_ip_subject') ? waf_ip_subject($ip) : $ip;
+}
+
+/**
  * The two things a sign-in attempt is counted against.
  *
  * The address catches one machine working through a password list. The
@@ -4017,14 +4127,23 @@ function pg_login_throttle_subjects($identifier)
 
     $ip = function_exists('waf_client_ip') ? waf_client_ip() : '';
 
-    // An unresolved address stands for the whole internet rather than one
-    // visitor, so counting against it would lock everybody out at once.
+    // An unresolved or a shared address (the one a proxy not listed under
+    // Trusted Proxies gives every visitor) stands for the whole internet
+    // rather than one visitor, so counting against it would lock everybody
+    // out at once. See waf_ip_is_counted().
     //
     // Counted per subject - the address for IPv4, the /64 for IPv6 - because
     // an IPv6 guesser can otherwise present a fresh address on every attempt.
     // See waf_ip_subject().
-    if ($ip !== '' && (!function_exists('waf_ip_is_infrastructure') || !waf_ip_is_infrastructure($ip))) {
-        $subjects['a'] = function_exists('waf_ip_subject') ? waf_ip_subject($ip) : $ip;
+    $address_counted = function_exists('waf_ip_is_counted')
+        ? waf_ip_is_counted($ip)
+        : (!function_exists('waf_ip_is_infrastructure') || !waf_ip_is_infrastructure($ip));
+
+    $allowed = function_exists('waf_ip_lists') ? waf_ip_lists() : array('allow' => array());
+    $address_subject = pg_login_throttle_address_subject($ip, $address_counted, $allowed['allow']);
+
+    if ($address_subject !== '') {
+        $subjects['a'] = $address_subject;
     }
 
     $identifier = trim((string) $identifier);
@@ -4447,7 +4566,7 @@ function pg_login_captcha_screen($identifier, $liveform, $screen, $message)
     }
 
     if ($message !== '') {
-        $messages .= '<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h($message) . '</div>';
+        $messages .= '<div class="alert theme-danger" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h($message) . '</div>';
     }
 
     if (!headers_sent()) {
@@ -4455,28 +4574,28 @@ function pg_login_captcha_screen($identifier, $liveform, $screen, $message)
     }
 
     echo output_header_secure(array('title' => lang('One More Step')))
-        . '<main class="container py-4 py-md-5">
+        . '<main class="container py-7 md:py-12">
             <div class="card mx-auto shadow-sm" style="max-width: 28rem;">
-                <div class="card-body p-4">
-                    <h1 class="h4 mb-2"><i class="bi bi-shield-lock me-2" aria-hidden="true"></i>' . lang('One More Step') . '</h1>
-                    <p class="text-muted mb-3">' . lang('There have been several failed sign-in attempts for this account or from this address. Please sign in again and answer the question below.') . '</p>
+                <div class="card-body p-7">
+                    <h1 class="h4 mb-3"><i class="bi bi-shield-lock me-3" aria-hidden="true"></i>' . lang('One More Step') . '</h1>
+                    <p class="fg-secondary mb-5">' . lang('There have been several failed sign-in attempts for this account or from this address. Please sign in again and answer the question below.') . '</p>
                     ' . $messages . '
                     <form name="login_captcha" action="' . h($screen['action']) . '" method="post" autocomplete="on">
                         ' . get_token_field() . '
                         ' . $hidden . '
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label for="' . h($screen['identifier']) . '" class="form-label">' . lang('Email') . '</label>
                             <input type="text" id="' . h($screen['identifier']) . '" name="' . h($screen['identifier']) . '" value="' . h((string) $identifier) . '" class="form-control" required="required" autocomplete="username" spellcheck="false"/>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label for="' . h($screen['password']) . '" class="form-label">' . lang('Password') . '</label>
                             <input type="password" id="' . h($screen['password']) . '" name="' . h($screen['password']) . '" class="form-control" required="required" autocomplete="current-password" autofocus="autofocus"/>
                         </div>
-                        <div class="mb-4">
+                        <div class="mb-7">
                             <label for="login_captcha_answer" class="form-label fw-semibold">' . h($question) . '</label>
                             <input type="number" id="login_captcha_answer" name="login_captcha_answer" class="form-control" style="max-width: 8rem;" min="0" max="18" required="required" autocomplete="off" inputmode="numeric"/>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">' . lang('Login') . '</button>
+                        <button type="submit" class="btn btn-solid theme-primary w-100">' . lang('Login') . '</button>
                     </form>
                 </div>
             </div>
@@ -4589,7 +4708,8 @@ function pg_password_reset_deny($retry_after)
     //
     // Score 7 puts it above the noise floor without auto-banning on its own;
     // waf_register_offence() accumulates it so a persistent source still ends
-    // up banned by the normal path.
+    // up banned by the normal path, the refusals of one minute as one offence:
+    // a reset wave from one company's address is not an attack.
     if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
 
         $blocking = (!function_exists('waf_mode') || waf_mode() === 'block');
@@ -4604,7 +4724,7 @@ function pg_password_reset_deny($retry_after)
         );
 
         if (function_exists('waf_register_offence') && function_exists('waf_client_ip')) {
-            waf_register_offence(waf_client_ip(), 5, $blocking);
+            waf_register_offence(waf_client_ip(), 5, $blocking, true);
         }
     }
 
@@ -5199,11 +5319,9 @@ function initialize_developer_security()
     // Ensure database connection and session user are available
     if (defined('DB_CONNECTED') && isset($_SESSION['sessionusername'])) {
 
-        $SUser = mysqli_real_escape_string(db::$con, $_SESSION['sessionusername']);
-
         // Fetch developer PIN hash from database
-        $query = "SELECT user_devpasspin FROM user WHERE user_username = '" . $SUser . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT user_devpasspin FROM user WHERE user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $devpasspin = $row['user_devpasspin'];
 

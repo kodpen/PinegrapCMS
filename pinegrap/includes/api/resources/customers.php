@@ -425,6 +425,106 @@ function api_wishlist_item_schema() {
 
 }
 
+// A customer's consent record (consent_log, includes/fn/privacy.php): the rows
+// of the contact and of the accounts linked to it, newest first, cursor paged
+// by row. Cookie notice answers are left out; ip and user_agent stay on the
+// site.
+function api_customers_consents($params) {
+
+	$id = (int)$params['id'];
+
+	api_customer_reachable_or_fail($id, 'contacts.id');
+
+	$before = 0;
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$before = (int)$cursor['i'];
+
+	}
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	$rows = pg_consent_log_ready() ? api_rows(api_customer_consents_sql($id, $before, $limit + 1)) : array();
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = end($rows);
+
+		$next = api_cursor_encode((int)$last['id'], (int)$last['id']);
+
+	}
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_consent_present($row);
+
+	}
+
+	api_ok_list($out, $limit, $next);
+
+}
+
+// The page of a contact's consent rows: its own and its accounts'
+// (user.user_contact), newest first, before the row $before (0 for the first
+// page).
+function api_customer_consents_sql($contact_id, $before, $rows) {
+
+	$contact_id = (int)$contact_id;
+
+	return "SELECT id, created_at, channel, purpose, status, source
+		FROM consent_log
+		WHERE ((contact_id = '" . $contact_id . "')
+				OR ((user_id > 0) AND user_id IN (SELECT user_id FROM user WHERE user_contact = '" . $contact_id . "')))
+			AND (channel <> 'cookie')"
+		. (((int)$before > 0) ? " AND (id < '" . (int)$before . "')" : '') . "
+		ORDER BY id DESC
+		LIMIT " . max(1, (int)$rows);
+
+}
+
+function api_consent_present($row) {
+
+	return array(
+		'id'              => (int)$row['id'],
+		'channel'         => (string)$row['channel'],
+		'purpose'         => (string)$row['purpose'],
+		'status'          => (string)$row['status'],
+		'source'          => (string)$row['source'],
+		'created_at'      => api_time($row['created_at']),
+		'created_at_unix' => (int)$row['created_at']
+	);
+
+}
+
+function api_consent_schema() {
+
+	return array(
+		'id'              => 'integer',
+		'channel'         => 'string',
+		'purpose'         => 'string',
+		'status'          => 'string',
+		'source'          => 'string',
+		'created_at'      => 'string?',
+		'created_at_unix' => 'integer'
+	);
+
+}
+
 // What api_customer_present() returns, declared for the OpenAPI document.
 //
 // Every column but the id may be null: a contact is created with what is known
@@ -554,6 +654,8 @@ function api_customers_create($params) {
 
 	$id = (int)api_insert_id();
 
+	pg_audit_record('create', 'contacts', $id);
+
 	if ($group !== null) {
 
 		api_exec("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES ('" . $id . "', '" . (int)$group['id'] . "')");
@@ -661,7 +763,11 @@ function api_customers_update($params) {
 
 	api_dry_run_stop('updated', 'customer', array('id' => $id, 'fields' => count($set)));
 
+	$audit_before = pg_audit_fetch('contacts', $id);
+
 	api_exec("UPDATE contacts SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
+
+	pg_audit_record('update', 'contacts', $id, $audit_before);
 
 	log_activity(lang(array(
 		'string' => 'Customer ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
@@ -709,7 +815,7 @@ function api_customers_delete($params) {
 
 	}
 
-	if ((api_row("SHOW TABLES LIKE 'erp_accounts'") !== null)
+	if (pg_schema_has('erp_accounts')
 		&& ((int)api_value("SELECT COUNT(*) FROM erp_accounts WHERE contact_id = '" . $id . "'") > 0)) {
 
 		api_fail(409, 'customer_has_erp_account', lang('This contact is linked to an ERP account and is not deleted through the API.'));
@@ -718,7 +824,11 @@ function api_customers_delete($params) {
 
 	api_dry_run_stop('deleted', 'customer', array('id' => $id));
 
+	$audit_before = pg_audit_fetch('contacts', $id);
+
 	api_exec("DELETE FROM contacts WHERE id = '" . $id . "' LIMIT 1");
+
+	pg_audit_record('delete', 'contacts', $id, $audit_before);
 
 	api_exec("DELETE FROM contacts_contact_groups_xref WHERE contact_id = '" . $id . "'");
 

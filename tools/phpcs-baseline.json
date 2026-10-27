@@ -1,7 +1,4 @@
 {
-    "pinegrap/includes/fn/ai_write.php": {
-        "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 2
-    },
     "pinegrap/includes/fn/core.php": {
         "PHPCompatibility.Extensions.RemovedExtensions.mysql_DeprecatedRemoved": 5,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_connectDeprecatedRemoved": 1,
@@ -13,9 +10,6 @@
     "pinegrap/includes/fn/custom_form.php": {
         "PHPCompatibility.ControlStructures.ForbiddenBreakContinueOutsideLoop.FatalError": 1
     },
-    "pinegrap/includes/fn/design_templates_custom.php": {
-        "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 1
-    },
     "pinegrap/includes/fn/ecommerce.php": {
         "PHPCompatibility.Constants.RemovedConstants.mcrypt_mode_cbcDeprecatedRemoved": 2,
         "PHPCompatibility.Constants.RemovedConstants.mcrypt_rijndael_256DeprecatedRemoved": 2,
@@ -24,44 +18,11 @@
         "PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_get_iv_sizeDeprecatedRemoved": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_list_algorithmsDeprecatedRemoved": 1
     },
-    "pinegrap/includes/fn/errors.php": {
-        "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 1
-    },
-    "pinegrap/includes/fn/mail_queue.php": {
-        "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 1
-    },
     "pinegrap/includes/fn/office.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated": 1
     },
-    "pinegrap/includes/fn/output.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/fn/product_feeds.php": {
-        "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 1
-    },
-    "pinegrap/includes/image_engine.php": {
-        "PHPCompatibility.FunctionUse.NewFunctions.imageavifFound": 1,
-        "PHPCompatibility.FunctionUse.NewFunctions.imagebmpFound": 1,
-        "PHPCompatibility.FunctionUse.NewFunctions.imagecreatefrombmpFound": 1
-    },
-    "pinegrap/includes/mcp/client.php": {
-        "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 1
-    },
-    "pinegrap/includes/settings/prep.php": {
-        "PHPCompatibility.Constants.NewConstants.php_os_familyFound": 1
-    },
-    "pinegrap/includes/templates/si.php": {
-        "PHPCompatibility.Constants.NewConstants.php_os_familyFound": 1
-    },
-    "pinegrap/includes/webauthn/webauthn.php": {
-        "PHPCompatibility.ParameterValues.NewIDNVariantDefault.NotSet": 1
-    },
-    "pinegrap/includes/workspace/ai.php": {
-        "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 3
-    },
     "pinegrap/init.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.get_magic_quotes_gpcDeprecatedRemoved": 1,
-        "PHPCompatibility.IniDirectives.NewIniDirectives.session_cookie_samesiteFound": 1,
         "PHPCompatibility.IniDirectives.RemovedIniDirectives.magic_quotes_sybaseDeprecatedRemoved": 2
     },
     "pinegrap/install/index.php": {
@@ -77,7 +38,6 @@
     },
     "pinegrap/submit_order.php": {
         "PHPCompatibility.Extensions.RemovedExtensions.pfpro_Removed": 2,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 17,
         "PHPCompatibility.FunctionUse.RemovedFunctions.pfpro_processRemoved": 2
     }
 }

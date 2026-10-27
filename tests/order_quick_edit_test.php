@@ -52,11 +52,11 @@ function test_order_quick_edit_refuses_cancelled_and_incomplete_as_values()
 
 function test_order_quick_edit_status_badge_per_status()
 {
-	pg_assert_contains('bg-warning', pg_order_list_status_html(order_quick_edit_row(array('status' => 'incomplete')), true), 'incomplete');
-	pg_assert_contains('bg-primary', pg_order_list_status_html(order_quick_edit_row(array('status' => 'complete')), true), 'complete');
-	pg_assert_contains('bg-success', pg_order_list_status_html(order_quick_edit_row(array('status' => 'exported')), true), 'exported');
-	pg_assert_contains('bg-danger', pg_order_list_status_html(order_quick_edit_row(array('status' => 'cancelled')), true), 'cancelled');
-	pg_assert_contains('bg-danger', pg_order_list_status_html(order_quick_edit_row(array('status' => 'canceled')), true), 'the old spelling');
+	pg_assert_contains('theme-warning', pg_order_list_status_html(order_quick_edit_row(array('status' => 'incomplete')), true), 'incomplete');
+	pg_assert_contains('theme-primary', pg_order_list_status_html(order_quick_edit_row(array('status' => 'complete')), true), 'complete');
+	pg_assert_contains('theme-success', pg_order_list_status_html(order_quick_edit_row(array('status' => 'exported')), true), 'exported');
+	pg_assert_contains('theme-danger', pg_order_list_status_html(order_quick_edit_row(array('status' => 'cancelled')), true), 'cancelled');
+	pg_assert_contains('theme-danger', pg_order_list_status_html(order_quick_edit_row(array('status' => 'canceled')), true), 'the old spelling');
 }
 
 function test_order_quick_edit_awaiting_payment_needs_the_paid_column()
@@ -91,7 +91,7 @@ function test_order_quick_edit_parasut_unsure_mark_is_not_an_invoice()
 
 	pg_assert_false(strpos($unsure, 'parasut-emblem.png') !== false, 'no emblem');
 	pg_assert_false(strpos($unsure, h(lang('An invoice was created for this order in Parasut'))) !== false, 'not called invoiced');
-	pg_assert_contains('bg-warning', $unsure);
+	pg_assert_contains('theme-warning', $unsure);
 	pg_assert_contains(h(lang('Check Paraşüt')), $unsure);
 
 	pg_assert_contains(h(lang('This order has been exported for upload to parasut.com')), $exported, 'the file emblem');

@@ -284,12 +284,13 @@ function test_comment_parent_page_copy_wiring()
 {
 	$copy = comment_parent_test_source('duplicate_page_f.php');
 
-	comment_parent_test_has("\$query = \"SELECT * FROM comments WHERE page_id = '\" . e(\$page_id) . \"' ORDER BY id\";", $copy, 'oldest first, so a comment is copied before its replies');
+	comment_parent_test_has('$query = "SELECT * FROM comments WHERE page_id = ? ORDER BY id";', $copy, 'oldest first, so a comment is copied before its replies');
 	comment_parent_test_has('$comment_replies = pg_comment_replies_ready();', $copy, 'the column is asked for once');
 	comment_parent_test_has("pg_comment_copy_parent_id(isset(\$comment['parent_id']) ? \$comment['parent_id'] : 0, \$comment_copies)", $copy, 'the parent is mapped to its copy');
 	comment_parent_test_has("\$comment_copies[(int) \$comment['id']] = (int) mysqli_insert_id(db::\$con);", $copy, 'the new id of each copy is kept');
 	comment_parent_test_has('last_modified_timestamp$sql_parent_column)', $copy, 'the column after the last one');
-	comment_parent_test_has("escape(\$comment['last_modified_timestamp']) . \"'\$sql_parent_value)\";", $copy, 'the value after the last one');
+	comment_parent_test_has('?$sql_parent_value)";', $copy, 'the value after the last one');
+	comment_parent_test_has("(string) \$comment['last_modified_timestamp'])) or output_error", $copy, 'the last value bound before the parent');
 
 	$insert = strpos($copy, 'INSERT INTO comments');
 	$columns = ($insert !== false) ? substr($copy, $insert, (int) strpos($copy, 'VALUES', $insert) - $insert) : '';
@@ -300,7 +301,7 @@ function test_comment_parent_page_copy_wiring()
 // Deleting a comment leaves its replies; they read as comments of their own.
 function test_comment_parent_deletes_keep_replies()
 {
-	foreach (array('edit_comment.php', 'includes/api/resources/comments.php', 'edit_page.php', 'edit_pages.php', 'view_folder_and_files_f.php') as $file) {
+	foreach (array('edit_comment.php', 'includes/api/resources/comments.php', 'edit_page.php', 'edit_pages.php', 'includes/explorer/recycle_bin.php') as $file) {
 		$source = comment_parent_test_source($file);
 
 		pg_assert_true(strpos($source, 'DELETE FROM comments') !== false, $file . ' deletes comments');

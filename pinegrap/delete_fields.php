@@ -34,8 +34,8 @@ if ((isset($_POST['page_id'])) && ($_POST['page_id'] != '')) {
             page_folder,
             page_name
         FROM page
-        WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page_id = ?";
+    $result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $page_type = $row['page_type'];
@@ -112,8 +112,8 @@ if ((isset($_POST['page_id'])) && ($_POST['page_id'] != '')) {
     if (($form_settings_table !== '') && ($page_type != 'express order' or $form_type != 'shipping')) {
     
         // get form name for page
-        $query = "SELECT form_name FROM " . $form_settings_table . " WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT form_name FROM " . $form_settings_table . " WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         $form_name = $row['form_name'] ?? '';
@@ -169,8 +169,8 @@ if ((isset($_POST['product_group_id'])) && ($_POST['product_group_id'] != '')) {
                  short_description,
                  form_name
              FROM products
-             WHERE id = '" . escape($_POST['product_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             WHERE id = ?";
+    $result = db_q($query, array((string) ($_POST['product_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $product_name = $row['name'];
@@ -207,8 +207,8 @@ if ($_POST['fields']) {
                  FROM form_fields
                  LEFT JOIN page ON form_fields.page_id = page.page_id
                  WHERE 
-                     form_fields.id = '" . escape($field_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     form_fields.id = ?";
+        $result = db_q($query, array((string) $field_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $page_id = $row['page_id'];
         $product_id = $row['product_id'];
@@ -244,12 +244,12 @@ if ($_POST['fields']) {
         if ($access_granted == true) {
 
             // delete field
-            $query = "DELETE FROM form_fields WHERE id = '" . escape($field_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM form_fields WHERE id = ?";
+            $result = db_q($query, array((string) $field_id)) or output_error('Query failed.');
             
             // delete form field options for field
-            $query = "DELETE FROM form_field_options WHERE form_field_id = '" . escape($field_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM form_field_options WHERE form_field_id = ?";
+            $result = db_q($query, array((string) $field_id)) or output_error('Query failed.');
 
             // Delete target options for this field.
             db("DELETE FROM target_options WHERE trigger_form_field_id = '" . escape($field_id) . "'");
@@ -297,10 +297,10 @@ if ($_POST['fields']) {
             // update last modified for product
             $query = "UPDATE products
                      SET
-                        user = '" . $user['id'] . "',
+                        user = ?,
                         timestamp = UNIX_TIMESTAMP()
-                     WHERE id = '" . escape($_POST['product_id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     WHERE id = ?";
+            $result = db_q($query, array((string) $user['id'], (string) ($_POST['product_id'] ?? ''))) or output_error('Query failed.');
             
             log_activity(lang(array('string'=>'{var:1} field(s) were deleted from {var:2} ({var:3})','vars'=>array($number_of_fields,$form_type_name,$form_name) )), $_SESSION['sessionusername'] );
 
@@ -316,9 +316,9 @@ if ($_POST['fields']) {
             $query = "UPDATE page
                      SET
                         page_timestamp = UNIX_TIMESTAMP(),
-                        page_user = '" . $user['id'] . "'
-                     WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        page_user = ?
+                     WHERE page_id = ?";
+            $result = db_q($query, array((string) $user['id'], (string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
 
             // If this page type supports a custom layout, then check if this page
             // has a modified custom layout in order to determine if we should show a warning.

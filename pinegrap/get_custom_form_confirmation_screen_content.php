@@ -30,12 +30,14 @@ function get_custom_form_confirmation_screen_content($properties)
     }
 
     $where = "";
+    $where_values = array();
 
     // If a form id has been passed like an API (e.g. for getting the page content
     // for an email where there won't be a reference code in the query string)
     // then use that to get the submitted form.
     if ($form_id != '') {
-        $where = "forms.id = '" . escape($form_id) . "'";
+        $where = "forms.id = ?";
+        $where_values = array((string) $form_id);
     
     // Otherwise, a reference code should have been passed in the query string
     // so deal with that.
@@ -57,7 +59,8 @@ function get_custom_form_confirmation_screen_content($properties)
             output_error(lang('Sorry, we can\'t show you the confirmation for that form, because it does not appear that you submitted the form, or your session might have expired.'));
         }
 
-        $where = "forms.reference_code = '" . escape($_GET['r']) . "'";
+        $where = "forms.reference_code = ?";
+        $where_values = array((string) $_GET['r']);
     }
     
     // get form information
@@ -69,7 +72,7 @@ function get_custom_form_confirmation_screen_content($properties)
              FROM forms
              LEFT JOIN custom_form_pages on forms.page_id = custom_form_pages.page_id
              WHERE $where";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, $where_values) or output_error('Query failed.');
 
     // if a submitted form could not be found for this confirmation, output error
     if (mysqli_num_rows($result) == 0) {
@@ -94,10 +97,10 @@ function get_custom_form_confirmation_screen_content($properties)
                 count(*) as number_of_values
              FROM form_data
              LEFT JOIN form_fields on form_data.form_field_id = form_fields.id
-             WHERE (form_data.form_id = '$form_id') AND (form_fields.office_use_only = 0)
+             WHERE (form_data.form_id = ?) AND (form_fields.office_use_only = 0)
              GROUP BY form_data.form_field_id
              ORDER BY form_fields.sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $form_id)) or output_error('Query failed.');
 
     $fields = array();
 
@@ -113,8 +116,8 @@ function get_custom_form_confirmation_screen_content($properties)
             // get file info
             $query = "SELECT name
                      FROM files
-                     WHERE id = '" . escape($field['file_id']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     WHERE id = ?";
+            $result = db_q($query, array((string) $field['file_id'])) or output_error('Query failed.');
             
             $row = mysqli_fetch_assoc($result);
             
@@ -126,9 +129,9 @@ function get_custom_form_confirmation_screen_content($properties)
             if ($field['number_of_values'] > 1) {
                 $query = "SELECT data
                          FROM form_data
-                         WHERE (form_id = '$form_id') AND (form_field_id = '" . $field['form_field_id'] . "')
+                         WHERE (form_id = ?) AND (form_field_id = ?)
                          ORDER BY id";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $form_id, (string) $field['form_field_id'])) or output_error('Query failed.');
                 
                 $field['data'] = '';
                 

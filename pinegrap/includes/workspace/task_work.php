@@ -409,6 +409,257 @@ function ws_checklist_message_for_task($viewer, $message_id)
 }
 
 /* ---------------------------------------------------------------------------
+   One checklist item made into a task
+   --------------------------------------------------------------------------- */
+
+/**
+ * A checklist item read as /task reads the words after it: dates, a time,
+ * an estimate, tags of people and typed usernames. A task given to nobody is
+ * the author's own; the item as written is the description, which is what
+ * ties the task to its item (ws_checklist_item_tasks_pair()).
+ *
+ * @param string      $text      the item's words (ws_checklist_items())
+ * @param int         $author_id who makes the task
+ * @param array[]     $team      ws_team_members()
+ * @param string|null $today     Y-m-d, the server's day when not given
+ * @return array ws_command_parse_task() fields and description
+ */
+function ws_checklist_item_task_fields($text, $author_id, $team, $today = null)
+{
+    $parsed = ws_command_typed_assignees(ws_command_parse_task($text, $today), $team);
+
+    if (empty($parsed['assignees']) && ((int) $parsed['department_id'] === 0)) {
+        $parsed['assignees'] = array((int) $author_id);
+    }
+
+    $parsed['description'] = trim((string) $text);
+
+    return $parsed;
+}
+
+/**
+ * Which item of a list each task was made of: a task made of an item carries
+ * the message as source_message_id and the item's words as its description.
+ * Like a tick after an edit (ws_checks_remap_in()), an item keeps its task
+ * wherever it moved while its words stay the same; each task, oldest first,
+ * takes the first item with its words that no earlier task holds.
+ *
+ * @param array[] $items ws_checklist_items()
+ * @param array[] $tasks id, description; in id order
+ * @return array item => task id
+ */
+function ws_checklist_item_tasks_pair($items, $tasks)
+{
+    $places = array();
+
+    foreach ((array) $items as $item) {
+        $places[$item['text']][] = (int) $item['index'];
+    }
+
+    $out = array();
+
+    foreach ((array) $tasks as $task) {
+        $text = trim((string) $task['description']);
+
+        if (($text !== '') && !empty($places[$text])) {
+            $out[array_shift($places[$text])] = (int) $task['id'];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Whether a message's checklist items may be made into tasks by a reader:
+ * a person's or an application's message, note or decision that is there,
+ * holds a checklist, in a channel the reader may write in (as /task needs).
+ *
+ * @param array $message
+ * @param bool  $can_post the reader may post in its channel, now
+ * @return bool
+ */
+function ws_checklist_item_task_offered($message, $can_post)
+{
+    return $can_post && ((int) ($message['deleted_at'] ?? 0) === 0)
+        && in_array((string) ($message['kind'] ?? ''), array('message', 'note', 'decision'), true)
+        && in_array((string) ($message['sender_kind'] ?? ''), array('user', 'app'), true)
+        && !empty(ws_checklist_items($message['body'] ?? ''));
+}
+
+/**
+ * The tasks made of the checklist items of a page of messages.
+ *
+ * @param array[] $rows ws_messages rows
+ * @return array message id => item => task id
+ */
+function ws_checklist_item_tasks_map($rows)
+{
+    $lists = array();
+    $channels = array();
+
+    foreach ((array) $rows as $row) {
+        if (((int) $row['deleted_at'] > 0) || (strpos((string) $row['body'], '[') === false)) {
+            continue;
+        }
+
+        $items = ws_checklist_items($row['body']);
+
+        if (!empty($items)) {
+            $lists[(int) $row['id']] = $items;
+            $channels[(int) $row['channel_id']] = (int) $row['channel_id'];
+        }
+    }
+
+    // A task made in a discussion is a task of its channel (ws_task_validate()).
+    foreach ($channels as $channel_id) {
+        $channel = ws_channel($channel_id);
+        $parent = ($channel && function_exists('ws_thread_parent_id')) ? (int) ws_thread_parent_id($channel) : 0;
+
+        if ($parent > 0) {
+            $channels[$parent] = $parent;
+        }
+    }
+
+    if (empty($lists)) {
+        return array();
+    }
+
+    // The channel narrows the read to its index; such a task is made in the
+    // message's channel, or the channel of its discussion.
+    $tasks = array();
+
+    foreach ((array) db_items("SELECT id, source_message_id, description FROM ws_tasks
+            WHERE channel_id IN (" . implode(',', $channels) . ") AND source_message_id IN (" . implode(',', array_keys($lists)) . ")
+                AND description <> ''
+            ORDER BY id") as $task) {
+        $tasks[(int) $task['source_message_id']][] = $task;
+    }
+
+    $out = array();
+
+    foreach ($tasks as $message_id => $list) {
+        $pairs = ws_checklist_item_tasks_pair($lists[$message_id] ?? array(), $list);
+
+        if (!empty($pairs)) {
+            $out[$message_id] = $pairs;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The checks ws_checklist_item_task() makes, without writing.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @param int   $item
+ * @return array ok, error, channel, data (the fields ws_task_create() takes)
+ */
+function ws_checklist_item_task_check($viewer, $message, $item)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'channel' => null, 'data' => array());
+    };
+
+    $channel = ws_channel($message['channel_id']);
+
+    if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+        return $fail(lang('That message could not be found.'));
+    }
+
+    $can_post = ws_can_post_channel($viewer, $channel) && !ws_message_in_past($message);
+
+    if (!ws_checklist_item_task_offered($message, $can_post)) {
+        return $fail($can_post ? lang('That message has no checklist.') : lang('You cannot post in that channel.'));
+    }
+
+    $items = ws_checklist_items($message['body']);
+    $item = (int) $item;
+
+    if (!isset($items[$item])) {
+        return $fail(lang('That item is no longer in the list.'));
+    }
+
+    $made = ws_checklist_item_tasks_map(array($message));
+
+    if (isset($made[(int) $message['id']][$item])) {
+        return $fail(lang('A task was already made of that item.'));
+    }
+
+    $parsed = ws_checklist_item_task_fields($items[$item]['text'], $viewer['id'], ws_team_members());
+
+    if ($parsed['title'] === '') {
+        return $fail(lang('The item gives the task no title.'));
+    }
+
+    if (!ws_can_assign_to($viewer, $parsed['assignees'])) {
+        return $fail(lang('You may only give tasks to yourself or to the people in the departments you lead.'));
+    }
+
+    // A clash with somebody's leave is only handed over from /task's card,
+    // where it is shown.
+    if (ws_assignment_check($viewer, $parsed, $parsed['assignees'])['hard']) {
+        return $fail(lang('Somebody on this task is away then. Write it with /task to see the clash.'));
+    }
+
+    $data = array(
+        'title'             => $parsed['title'],
+        'description'       => $parsed['description'],
+        'priority'          => $parsed['priority'],
+        'start_date'        => $parsed['start_date'],
+        'due_date'          => $parsed['due_date'],
+        'estimate_minutes'  => $parsed['estimate_minutes'],
+        'department_id'     => $parsed['department_id'],
+        'channel_id'        => (int) $channel['id'],
+        'source_message_id' => (int) $message['id'],
+        'assignees'         => $parsed['assignees'],
+        'refs'              => $parsed['refs'],
+    );
+
+    if ($parsed['due_time'] !== null) {
+        $data['due_time'] = $parsed['due_time'];
+    }
+
+    $checked = ws_task_create_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        return $fail($checked['error']);
+    }
+
+    return array('ok' => true, 'error' => '', 'channel' => $channel, 'data' => $data);
+}
+
+/**
+ * Makes one item of a message's checklist a task in the message's channel,
+ * read as /task reads its words. No card is posted: the item shows the
+ * task's tag from then on, for everybody, since the message is redrawn.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @param int   $item
+ * @return array ok, error, task_id
+ */
+function ws_checklist_item_task($viewer, $message, $item)
+{
+    $check = ws_checklist_item_task_check($viewer, $message, $item);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error'], 'task_id' => 0);
+    }
+
+    $result = ws_task_create($viewer, $check['data']);
+
+    if (!$result['ok']) {
+        return array('ok' => false, 'error' => $result['error'], 'task_id' => 0);
+    }
+
+    ws_message_touch($message['id']);
+
+    return array('ok' => true, 'error' => '', 'task_id' => (int) $result['task_id']);
+}
+
+/* ---------------------------------------------------------------------------
    Notes
    --------------------------------------------------------------------------- */
 

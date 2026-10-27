@@ -35,8 +35,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM menus WHERE id = '" . $id
 }
 
 // get menu name
-$query = "SELECT name FROM menus WHERE id = '" . escape($_GET['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT name FROM menus WHERE id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // Set Variables
@@ -79,8 +79,8 @@ if (($_GET['from'] ?? '') == 'pages') {
 function build_sortable_html($menu_id, $grouped_items = null, $parent_id = 0, $level = 0)
 {
     if ($grouped_items === null) {
-        $query = "SELECT id, name, parent_id FROM menu_items WHERE menu_id = '" . escape($menu_id) . "' ORDER BY sort_order";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT id, name, parent_id FROM menu_items WHERE menu_id = ? ORDER BY sort_order";
+        $result = db_q($query, array((string) $menu_id)) or output_error('Query failed.');
         $grouped_items = array();
         while ($row = mysqli_fetch_assoc($result)) {
             $grouped_items[$row['parent_id']][] = $row;
@@ -93,8 +93,8 @@ function build_sortable_html($menu_id, $grouped_items = null, $parent_id = 0, $l
     $html = '<ul class="sort-group list-unstyled mb-0" data-parent-id="' . h($parent_id) . '">';
     foreach ($grouped_items[$parent_id] as $item) {
         $html .= '<li class="sort-item" data-id="' . h($item['id']) . '">';
-        $html .= '<div class="d-flex align-items-center py-2 px-2 border rounded mb-1 bg-body" style="margin-left:' . $indent_px . 'px; cursor:default">';
-        $html .= '<i class="bi bi-grip-vertical me-2 text-muted sort-drag-handle" style="cursor:grab; font-size:1.1rem"></i>';
+        $html .= '<div class="d-flex align-items-center py-3 px-3 border rounded-4 mb-1 bg-body" style="margin-left:' . $indent_px . 'px; cursor:default">';
+        $html .= '<i class="bi bi-grip-vertical me-3 fg-secondary sort-drag-handle" style="cursor:grab; font-size:1.1rem"></i>';
         $html .= '<span>' . h($item['name']) . '</span>';
         $html .= '</div>';
         $html .= build_sortable_html($menu_id, $grouped_items, $item['id'], $level + 1);
@@ -126,10 +126,10 @@ function get_menu_items($menu_id, $parent_id = 0, $level = 1)
          LEFT JOIN user ON menu_items.created_user_id = user.user_id
          LEFT JOIN user as user2 ON menu_items.last_modified_user_id = user2.user_id
          WHERE
-            (menu_id = '" . escape($menu_id) . "')
-            AND (parent_id = '" . escape($parent_id) . "')
+            (menu_id = ?)
+            AND (parent_id = ?)
          ORDER BY menu_items.sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $menu_id, (string) $parent_id)) or output_error('Query failed.');
     
     $current_menu_items = array();
     
@@ -145,8 +145,8 @@ function get_menu_items($menu_id, $parent_id = 0, $level = 1)
         $menu_items[] = $menu_item;
         
         // determine if there is a sub menu
-        $query = "SELECT COUNT(*) FROM menu_items WHERE parent_id = '" . $menu_item['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT COUNT(*) FROM menu_items WHERE parent_id = ?";
+        $result = db_q($query, array((string) $menu_item['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // if there is a sub menu, then get menu items for sub menu
@@ -215,7 +215,7 @@ foreach ($menu_items as $menu_item) {
     $output_rows .= 
         '<tr class="pointer" onclick="">
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="align-middle chart_label" style="padding-left: ' . $indentation_padding . 'px">' . h($menu_item['name']) . '</td>
             <td class="align-middle">' . h($link_to_value) . '</td>
@@ -237,16 +237,16 @@ $reorder_button = '';
 
 // If this user is an admin or designer, then show edit and duplicate buttons
 if ($user['role'] < 2) {
-    $edit_button = '<a class="btn btn-sm btn-primary m-1 " href="edit_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Menu Properties') ) . '</a>';
+    $edit_button = '<a class="btn btn-sm btn-solid theme-primary m-1 " href="edit_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Edit Menu Properties') ) . '</a>';
     $duplicate_button =
     '<div class=" btn-group btn-group-sm flex-wrap">
-        <a class="btn btn-link link-secondary py-0 m-1" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '" ><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+        <a class="btn btn-link pg-link-secondary py-0 m-1" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '" ><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
     </div>';
 }
 
 // Show reorder button if user has access to edit this menu and there are items
 if ($sortable_html && (($user['role'] < 3) || in_array($_GET['id'], $user_editable_menus))) {
-    $reorder_button = '<button type="button" id="toggle_reorder" class="btn btn-sm btn-outline-secondary m-1"><i class="bi bi-arrow-down-up me-2"></i>' . lang('Sort Items') . '</button>';
+    $reorder_button = '<button type="button" id="toggle_reorder" class="btn btn-sm btn-outline theme-secondary m-1"><i class="bi bi-arrow-down-up me-3"></i>' . lang('Sort Items') . '</button>';
 }
 
 echo
@@ -257,19 +257,19 @@ pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     <h2 class="d-inline-block " data-bs-content="' . lang('Update, add, or remove menu items.') . '" title="' . lang('Edit Menu') . '">[' . h($menu_name) . ']</h2>
                     ' . $output_subheading . '
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_menu_item.php?menu_id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_menu_item.php?menu_id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                         ' . $edit_button . '
                         ' . $duplicate_button . '
                         ' . $reorder_button . '
                     </nav>
                 </div>
             </div>
-            <div id="menu_items_table_card" class="card my-4">
+            <div id="menu_items_table_card" class="card my-7">
                 <input type="hidden" name="menu_id" value="' . h($_GET['id']) . '" />
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
@@ -288,22 +288,22 @@ pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button
                 </div>
             </div>
 
-            <div id="reorder_panel" class="card my-4" style="display:none">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div id="reorder_panel" class="card my-7" style="display:none">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Sort Items') . '
                 </div>
                 <div class="card-body">
-                    <p class="text-muted small">' . lang('Drag items to reorder or move to a different level.') . '</p>
+                    <p class="fg-secondary small">' . lang('Drag items to reorder or move to a different level.') . '</p>
                     <div id="sortable_tree">
                         ' . $sortable_html . '
                     </div>
                 </div>
             </div>
-            <nav class="buttons navigation text-center position-sticky mb-4" id="reorder_actions" style="bottom:.5rem;display:none" aria-label="reorder buttons">
+            <nav class="buttons navigation text-center position-sticky mb-7" id="reorder_actions" style="bottom:.5rem;display:none" aria-label="reorder buttons">
                 <div class="container">
                     <div class="btn-group flex-wrap justify-content-center">
-                        <button type="button" id="save_sort_order" class="btn my-1 btn-success"><i class="bi bi-check-lg me-2"></i><span class="pg-btn-label">' . lang('Save Order') . '</span></button>
-                        <button type="button" id="cancel_reorder" class="btn my-1 btn-outline-secondary">' . lang('Cancel') . '</button>
+                        <button type="button" id="save_sort_order" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-lg me-3"></i><span class="pg-btn-label">' . lang('Save Order') . '</span></button>
+                        <button type="button" id="cancel_reorder" class="btn my-1 btn-outline theme-secondary">' . lang('Cancel') . '</button>
                     </div>
                 </div>
             </nav>

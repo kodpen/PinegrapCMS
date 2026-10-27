@@ -715,7 +715,7 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
         '__username'       => h(defined('USER_USERNAME') ? (string)USER_USERNAME : ''),
         '__email_address'  => h(defined('USER_EMAIL_ADDRESS') ? (string)USER_EMAIL_ADDRESS : ''),
         '__my_account_url' => h($account_url),
-    ));
+    ) + pg_sw_entity_account_tokens((int)USER_ID, $tree_json));
 }
 
 // ============================================================================
@@ -994,6 +994,8 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
                     ((string)$r['state'] !== (string)$r['city']) ? (string)$r['state'] : ''), 'strlen'))),
                 $country,
             ), 'strlen'));
+            // Then the recipient's allow-listed values (pg_sw_entity_fields(
+            // 'address_book')); its type only where the form asks for it.
             $html = _pg_sw_fill_tokens($template, array(
                 '__recipient_id'           => (string)$rid,
                 '__recipient_name'         => h((string)$r['ship_to_name']),
@@ -1005,7 +1007,10 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
                 '__recipient_edit_url'     => h($self . (strpos($self, '?') === false ? '?' : '&') . 'id=' . $rid),
                 '__recipient_remove_url'   => h(_pg_acct_software_path() . '/remove_recipient.php?id=' . $rid
                                               . '&token=' . urlencode($token) . '&send_to=' . urlencode($self)),
-            ));
+            ) + array_map('h', pg_sw_entity_values('address_book', array(
+                'country'      => $country,
+                'address_type' => $type_on ? (string)$r['address_type'] : '',
+            ) + $r)));
             $rows .= pg_sw_uniquify_row_ids(pg_sw_sweep_tokens($html), $widget_id, $rid);
         }
     }
@@ -1036,7 +1041,87 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
 function pg_sw_account_security_actions()
 {
     return array('logout_all', 'unlink_google', 'unlink_microsoft', 'unlink_apple', 'revoke_device', 'mfa_begin', 'mfa_confirm',
-        'mfa_cancel_setup', 'mfa_codes_seen', 'mfa_recovery_regenerate', 'mfa_disable');
+        'mfa_cancel_setup', 'mfa_codes_seen', 'mfa_recovery_regenerate', 'mfa_disable', 'passkey_rename', 'passkey_remove');
+}
+
+// The account security widget's list (widgets_lists.php), in
+// pg_sw_list_sources()'s shape: the signed-in member's passkeys, read by
+// ^^account_id^^.
+function pg_sw_list_security_sources()
+{
+    return array(
+        'security.passkeys' => array(
+            'family'       => 'security',
+            'key'          => 'account_id',
+            'label'        => lang('Passkeys of the member'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__passkey_id', lang('Passkey identifier (the Rename and Remove buttons carry it)')),
+                array('__passkey_name', lang('Passkey name')),
+                array('__passkey_added', lang('Added (date)')),
+                array('__passkey_last_used', lang('Last used (relative time, else "Never")')),
+                array('__passkey_is_synced', lang('Synced to the member\'s other devices (1 or empty)')),
+            ),
+        ),
+    );
+}
+
+// The rows of the passkey list, as pg_sw_list_publish('security') files
+// them: array('security.passkeys' => array($user_id => rows)). $passkeys:
+// pg_passkeys_of_user() of the account, in its order. Plain text: the pass
+// escapes the values once.
+function pg_sw_list_passkey_rows($user_id, $passkeys, $date_format)
+{
+    $rows = array();
+    foreach ((array)$passkeys as $p) {
+        if (!is_array($p)) continue;
+        $last = isset($p['last_used_at']) ? (int)$p['last_used_at'] : 0;
+        $rows[] = array(
+            '__passkey_id'        => (string)(isset($p['id']) ? (int)$p['id'] : 0),
+            '__passkey_name'      => (isset($p['name']) && (string)$p['name'] !== '') ? (string)$p['name'] : lang('Passkey'),
+            '__passkey_added'     => _pg_sw_short_date(isset($p['created_at']) ? (int)$p['created_at'] : 0, $date_format),
+            // get_relative_time() wraps the text in a <time> element.
+            '__passkey_last_used' => ($last > 0) ? strip_tags(get_relative_time(array('timestamp' => $last))) : lang('Never'),
+            '__passkey_is_synced' => !empty($p['backup_state']) ? '1' : '',
+        );
+    }
+    return array('security.passkeys' => array((int)$user_id => $rows));
+}
+
+// Whether the widget's tree holds the field of the code e-mailed for adding
+// a passkey (a control named email_code). An account without two-step
+// verification adds one only with that code; a tree saved before the field
+// existed keeps offering two-step verification first.
+function _pg_sec_tree_has_email_code($node)
+{
+    if (!is_array($node)) return false;
+    foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
+        if (is_array($a) && isset($a['name'], $a['value']) && strtolower((string)$a['name']) === 'name'
+            && (string)$a['value'] === 'email_code') return true;
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $child) {
+            if (_pg_sec_tree_has_email_code($child)) return true;
+        }
+    }
+    return false;
+}
+
+// The add a passkey flags of the account security widget, by the rules of
+// pg_passkey_account_section(): $live (shown, not signed in as the member),
+// $site_ok (pg_passkey_ready()), $mfa_ready (the two-step tables exist),
+// $mfa_enabled, $email_field (_pg_sec_tree_has_email_code()), $count (the
+// account's passkeys).
+function pg_sw_passkey_add_state($live, $site_ok, $mfa_ready, $mfa_enabled, $email_field, $count)
+{
+    $open = $live && $site_ok && $mfa_ready;
+    $may  = $open && ($mfa_enabled || $email_field);
+    return array(
+        'passkey_can_add'   => $may && (int)$count < PG_PASSKEYS_MAX,
+        'passkey_needs_mfa' => $open && !$mfa_enabled && !$email_field,
+        'passkey_limit'     => $may && (int)$count >= PG_PASSKEYS_MAX,
+    );
 }
 
 // Wire the account security widget from its bindings. Every block is its own
@@ -1044,9 +1129,17 @@ function pg_sw_account_security_actions()
 // in a field submits that form's own button:
 //   form   _bindings.action = 'account_security_form' -> POST to
 //          account_security.php with the CSRF token and return_to
+//   form   _bindings.action = 'passkey_add_form' -> the add a passkey form:
+//          posts nowhere itself, hidden until pg_passkey_add_form_script()
+//          finds a browser that can make passkeys
+//   button _bindings.action = 'passkey_send_code' -> in the add form, sends
+//          the code e-mailed for adding a passkey without two-step
+//          verification (a plain button, data-pg-passkey-send)
 //   button _bindings.action = a pg_sw_account_security_actions() value -> a
 //          submit button carrying it; revoke_device carries the row's device
-//          as pg_revoke_device, since a button holds one name and one value
+//          as pg_revoke_device, passkey_rename and passkey_remove the row's
+//          passkey as pg_passkey_rename / pg_passkey_remove, since a button
+//          holds one name and one value
 // The wiring attributes are rewritten from the binding whatever the node
 // carries. $found counts the bound forms.
 function _pg_sec_apply_action_bindings(&$node, $ctx, &$found)
@@ -1078,9 +1171,30 @@ function _pg_sec_apply_action_bindings(&$node, $ctx, &$found)
         if (!isset($node['children']) || !is_array($node['children'])) $node['children'] = array();
         array_unshift($node['children'], array('type' => 'content',
             'props' => array('contentType' => 'custom_html', 'html' => $ctx['hidden_html']), 'children' => array()));
+    } elseif ($type === 'semantic' && $tag === 'form' && $action === 'passkey_add_form') {
+        $found++;
+        $set_attrs($node, array('action' => 1, 'method' => 1, 'novalidate' => 1, 'hidden' => 1, 'autocomplete' => 1, 'data-pg-passkey-add' => 1),
+            array('action' => $ctx['action_url'], 'method' => 'post', 'hidden' => '', 'autocomplete' => 'off', 'data-pg-passkey-add' => ''));
+        if (!isset($node['children']) || !is_array($node['children'])) $node['children'] = array();
+        array_unshift($node['children'], array('type' => 'content',
+            'props' => array('contentType' => 'custom_html', 'html' => $ctx['token_html']), 'children' => array()));
+    } elseif ($action === 'passkey_send_code') {
+        // Sends the code for adding a passkey (pg_passkey_add_form_script()):
+        // a plain button the script finds by its mark, never a submit.
+        $managed = array('type' => 1, 'name' => 1, 'value' => 1, 'formnovalidate' => 1, 'data-pg-passkey-send' => 1);
+        if ($type === 'semantic' && $tag === 'button') {
+            $set_attrs($node, $managed, array('type' => 'button', 'data-pg-passkey-send' => ''));
+        } elseif ($type === 'component' && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn') {
+            $node['props']['btnElement'] = 'button';
+            $node['props']['btnType']    = 'button';
+            $set_attrs($node, $managed, array('data-pg-passkey-send' => ''));
+        }
     } elseif ($action !== '' && in_array($action, pg_sw_account_security_actions(), true)) {
-        $add = ($action === 'revoke_device')
-            ? array('name' => 'pg_revoke_device', 'value' => '^^__device_selector^^')
+        $carried = array('revoke_device' => array('pg_revoke_device', '^^__device_selector^^'),
+                         'passkey_rename' => array('pg_passkey_rename', '^^__passkey_id^^'),
+                         'passkey_remove' => array('pg_passkey_remove', '^^__passkey_id^^'));
+        $add = isset($carried[$action])
+            ? array('name' => $carried[$action][0], 'value' => $carried[$action][1])
             : array('name' => 'pg_security_action', 'value' => $action);
         // Cancelling a setup needs no code.
         if ($action === 'mfa_cancel_setup') $add['formnovalidate'] = '';
@@ -1100,21 +1214,34 @@ function _pg_sec_apply_action_bindings(&$node, $ctx, &$found)
 }
 
 // Render an 'account_security' system widget: the signed-in member's Google
-// connection, remembered devices and two-step verification - the designed
-// counterpart of pg_account_security_section(). Each block is a form bound
+// connection, remembered devices, two-step verification and passkeys - the
+// designed counterpart of pg_account_security_section(). Each block is a form bound
 // with _bindings.action = 'account_security_form' posting to
 // account_security.php; its buttons are bound to the action they take (see
 // _pg_sec_apply_action_bindings()). return_to brings every action back here.
 // A tree with no bound form is wrapped whole in one form, so its buttons
 // still post.
 //
-// Controls by name: code (a TOTP or recovery code), current_password.
+// Controls by name: code (a TOTP or recovery code), current_password, name
+// (a passkey's name), email_code (the code e-mailed for adding a passkey;
+// without that field an account without two-step verification is told to
+// turn it on first).
 //
 // loop_area: one row per remembered device. Row tokens: ^^__device_label^^,
 // ^^__device_user_agent^^, ^^__device_ip^^, ^^__device_last_used^^,
-// ^^__device_first_seen^^, ^^__device_selector^^. Row flags:
+// ^^__device_first_seen^^, ^^__device_selector^^, ^^__device_passkey^^ (the
+// name of the passkey that opened the session, else empty), ^^__passkey_id^^
+// (its id, so a Remove button in the row removes it). Row flags:
 // device_is_current, device_online, device_offline, device_is_locked,
-// device_can_sign_out.
+// device_can_sign_out, device_by_passkey, and the widget's
+// passkey_can_change, passkey_asks_password and passkey_asks_code.
+//
+// List security.passkeys (widgets_lists.php, rows by
+// pg_sw_list_passkey_rows()): one row per passkey, the same rows
+// pg_passkey_account_section() lists; each row's rename and remove forms
+// post to account_security.php. Row tokens: ^^__passkey_id^^,
+// ^^__passkey_name^^, ^^__passkey_added^^, ^^__passkey_last_used^^,
+// ^^__passkey_is_synced^^ (1 or empty, for a condition).
 //
 // Visibility flags: is_signed_in, is_signed_out, is_impersonated, has_google,
 // has_microsoft, microsoft_removable, microsoft_only, has_apple,
@@ -1122,7 +1249,18 @@ function _pg_sec_apply_action_bindings(&$node, $ctx, &$found)
 // signin_connectable (a provider that is on can still be connected),
 // has_password, password_not_set, has_devices, no_devices, mfa_ready,
 // mfa_off, mfa_no_key, mfa_pending, mfa_codes, mfa_on, mfa_key_unreadable,
-// mfa_can_regenerate, mfa_required. Tokens: ^^__site_name^^,
+// mfa_can_regenerate, mfa_required, and for passkeys: passkeys_shown (the
+// section says something: the site can use them, or the account keeps
+// some), has_passkeys, no_passkeys, passkey_can_change (rename and remove;
+// not while an operator is signed in as the member), passkey_can_add,
+// passkey_needs_mfa (adding waits for two-step verification: a tree
+// without the email_code field), passkey_limit, passkey_unavailable (not on
+// this site or at this address), passkey_asks_password and
+// passkey_asks_code (the proofs adding and removing ask for),
+// passkey_asks_email_code (adding asks for the e-mailed code: two-step
+// verification is off). Tokens: ^^__passkey_notice^^ (why adding is not
+// offered: the site, the address or the limit),
+// ^^__site_name^^, ^^__passkey_count^^,
 // ^^__device_count^^, ^^__mfa_status_text^^, ^^__mfa_enabled_since^^,
 // ^^__mfa_recovery_remaining^^, ^^__mfa_key^^, ^^__mfa_key_uri^^,
 // ^^__mfa_qr^^ (inline SVG), ^^__recovery_codes^^,
@@ -1149,6 +1287,9 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
             'has_apple' => false, 'apple_removable' => false, 'apple_only' => false,
             'signin_connectable' => false,
             'has_devices' => false, 'no_devices' => false, 'mfa_ready' => false,
+            'passkeys_shown' => false, 'has_passkeys' => false, 'no_passkeys' => false, 'passkey_can_change' => false,
+            'passkey_can_add' => false, 'passkey_needs_mfa' => false, 'passkey_limit' => false, 'passkey_unavailable' => false,
+            'passkey_asks_password' => false, 'passkey_asks_code' => false, 'passkey_asks_email_code' => false,
         );
         return _pg_acct_render_signed_out($tree, $cfg, $sec_no_state, array(), 'my_account_profile');
     }
@@ -1175,8 +1316,9 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         $current_selector = (string)$auth_parts[0];
     }
     $pin_column = function_exists('pg_auth_tokens_have_pin') && pg_auth_tokens_have_pin();
+    $pk_column  = pg_auth_tokens_have_passkey();
     $devices = (array)db_items(
-        "SELECT selector, user_agent, ip_address, created_at, last_used_at" . ($pin_column ? ", pinned" : "") . "
+        "SELECT selector, user_agent, ip_address, created_at, last_used_at" . ($pin_column ? ", pinned" : "") . ($pk_column ? ", passkey_id" : "") . "
          FROM auth_tokens WHERE user_id = '" . $user_id . "'
          ORDER BY (last_used_at = 0) ASC, last_used_at DESC, created_at DESC");
 
@@ -1220,6 +1362,18 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         : '';
     // Drawn here as inline SVG, so the key is never part of an image URL.
     $qr = $pending ? pg_qr_svg($key_uri, 200, array('label' => lang('QR code for the authenticator app'), 'class' => 'd-block')) : '';
+    // Passkeys: the states pg_passkey_account_section() draws. A site where
+    // they never work says nothing unless the account keeps some; an
+    // operator signed in as the member sees the count only.
+    $pk_table = pg_passkeys_table_exists();
+    $passkeys = $pk_table ? pg_passkeys_of_user($user_id) : array();
+    $pk_count = count($passkeys);
+    $pk_site  = $pk_table ? pg_passkey_ready() : array('ok' => false, 'error' => 'unavailable');
+    $pk_shown = $pk_table && ($pk_site['ok'] || $pk_count > 0 || $pk_site['error'] === 'host');
+    $pk_live  = $pk_shown && !$impersonated;
+    $pk_proofs = pg_passkey_reauth_fields($algo, $enabled, true);
+    $pk_state  = pg_sw_passkey_add_state($pk_live, $pk_site['ok'], $mfa_ready, $enabled, _pg_sec_tree_has_email_code($tree), $pk_count);
+
     $codes_text = implode("\n", $codes);
     $codes_download = $show_codes ? 'data:text/plain;charset=utf-8,' . rawurlencode($codes_text . "\n") : '';
 
@@ -1227,6 +1381,7 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
     _pg_sec_apply_action_bindings($tree, array(
         'action_url'  => _pg_acct_software_path() . '/account_security.php',
         'hidden_html' => get_token_field() . '<input type="hidden" name="return_to" value="' . h($self) . '">',
+        'token_html'  => get_token_field(),
     ), $found);
     _pg_member_drop_empty_links($tree, array('__recovery_codes_download_url' => $codes_download, '__login_url' => ''));
     pg_cf_link_labels($tree);
@@ -1258,21 +1413,46 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         'mfa_key_unreadable'  => $mfa_on && !$available,
         'mfa_can_regenerate'  => $mfa_on && $available,
         'mfa_required'        => $mfa_on && pg_mfa_required_for_user($user_id),
+        'passkeys_shown'        => $pk_shown,
+        'has_passkeys'          => $pk_live && $pk_count > 0,
+        'no_passkeys'           => $pk_live && $pk_count === 0,
+        'passkey_can_change'    => $pk_live,
+        'passkey_can_add'       => $pk_state['passkey_can_add'],
+        'passkey_needs_mfa'     => $pk_state['passkey_needs_mfa'],
+        'passkey_limit'         => $pk_state['passkey_limit'],
+        'passkey_unavailable'   => $pk_live && !$pk_site['ok'],
+        'passkey_asks_password' => $pk_proofs['password'],
+        'passkey_asks_code'     => $pk_proofs['code'],
+        'passkey_asks_email_code' => $pk_proofs['email'],
     ));
 
+    // Device rows see the passkey flags too: a Remove button beside a
+    // session opened with a passkey asks for the same proofs as in the list.
+    $pk_names = array();
+    foreach ($passkeys as $p) $pk_names[(int)$p['id']] = ((string)$p['name'] !== '') ? (string)$p['name'] : lang('Passkey');
+    $pk_row_flags = array(
+        'passkey_can_change'    => $pk_live,
+        'passkey_asks_password' => $pk_proofs['password'],
+        'passkey_asks_code'     => $pk_proofs['code'],
+    );
     $rows = '';
     if ($split['loop_children'] !== null) {
         $row_tree = array('type' => 'root', 'props' => array(), 'children' => $split['loop_children']);
         foreach ($devices as $i => $d) {
             $fresh  = max((int)$d['last_used_at'], (int)$d['created_at']);
             $locked = $pin_column && isset($d['pinned']) && (int)$d['pinned'] === 1;
+            // The passkey that opened this session, while the account keeps
+            // it (pg_passkey_remove() ends its sessions anyway).
+            $d_pk   = isset($d['passkey_id']) ? (int)$d['passkey_id'] : 0;
+            $d_pk   = ($d_pk > 0 && isset($pk_names[$d_pk])) ? $d_pk : 0;
             $sec_row_flags = array(
                 'device_is_current'   => $current_selector !== '' && hash_equals((string)$d['selector'], $current_selector),
                 'device_online'       => (time() - $fresh) < 300,
                 'device_offline'      => (time() - $fresh) >= 300,
                 'device_is_locked'    => $locked,
                 'device_can_sign_out' => !$locked,
-            );
+                'device_by_passkey'   => $d_pk > 0,
+            ) + $pk_row_flags;
             $t = $row_tree;
             _eo_apply_visibility_bindings($t, $sec_row_flags);
             $html = '';
@@ -1284,14 +1464,20 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
                 '__device_last_used'  => strip_tags(get_relative_time(array('timestamp' => $fresh))),
                 '__device_first_seen' => date('Y-m-d H:i', (int)$d['created_at']),
                 '__device_selector'   => (string)$d['selector'],
+                '__device_passkey'    => $d_pk > 0 ? $pk_names[$d_pk] : '',
+                '__passkey_id'        => $d_pk > 0 ? (string)$d_pk : '',
             )));
             $rows .= pg_sw_uniquify_row_ids(pg_sw_sweep_tokens($html), $widget_id, (int)$i + 1);
         }
     }
     $rendered = str_replace('<!--pg-loop-slot-->', $rows, trim(_render_tree_node($split['static_tree'], 0, 0)));
+    // The passkey list's rows, after the render drew its span; the operator
+    // signed in as the member gets none, as the classic page lists none.
+    if ($pk_live) pg_sw_list_publish('security', pg_sw_list_passkey_rows($user_id, $passkeys, pg_sw_default_date_format('date')));
 
     if ($found > 0) {
         $rendered .= pg_cf_validation_script();
+        if (strpos($rendered, 'data-pg-passkey-add') !== false) $rendered .= pg_passkey_add_form_script();
     } else {
         $rendered = _pg_member_form_wrap($rendered, _pg_acct_software_path() . '/account_security.php',
             array('return_to' => $self), 'pg-account-security-form');
@@ -1299,7 +1485,11 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
 
     return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values(array(
         '__site_name'                   => _pg_member_site_name(),
+        'account_id'                    => (string)$user_id,
         '__device_count'                => (string)count($devices),
+        '__passkey_count'               => (string)$pk_count,
+        '__passkey_notice'              => !$pk_site['ok'] ? pg_passkey_refusal($pk_site['error'], 'register')
+            : (($pk_count >= PG_PASSKEYS_MAX) ? pg_passkey_refusal('limit', 'register') : ''),
         '__mfa_status_text'             => $status_text,
         '__mfa_enabled_since'           => $since,
         '__mfa_recovery_remaining'      => $remaining,
@@ -1732,6 +1922,9 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
 
     $tokens = $values;
     foreach ($links as $k => $v) $tokens[$k] = h($v);
+    // The member's own allow-listed account values: read only when the
+    // tree binds one, as the region sits on every page.
+    if ($signed_in) $tokens += pg_sw_entity_account_tokens((int)USER_ID, $tree_json);
     return _pg_member_apply_tokens($rendered, $tokens);
 }
 
@@ -2062,6 +2255,7 @@ function _render_system_widget_account_email($tree_json, $widget_id, $cfg = arra
     $member = array();
     $links  = array();
     $reset  = '';
+    $user_id = 0;
     if ($acct !== null) {
         $kind = isset($acct['kind']) ? (string)$acct['kind'] : '';
         $user_id = isset($acct['user_id']) ? (int)$acct['user_id'] : 0;
@@ -2107,5 +2301,8 @@ function _render_system_widget_account_email($tree_json, $widget_id, $cfg = arra
 
     $split    = _split_widget_tree($tree);
     $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
-    return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values($values['tokens']));
+    // The addressee's allow-listed account values; none in the unknown-
+    // address answer of a reset or the preview.
+    $account = ($kind !== '' && $kind !== 'preview') ? pg_sw_entity_account_tokens($user_id, $tree_json) : array();
+    return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values($values['tokens']) + $account);
 }

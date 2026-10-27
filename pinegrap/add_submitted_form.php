@@ -168,25 +168,25 @@ if (!$_POST) {
                     <form name="form" action="add_submitted_form.php" method="get" class="product_form">
                         <div class="row">
                             <div class="col-12">
-                                <div class="card my-4">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card my-7">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Custom Form') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label class="form-label" for="page_id">' . lang('Select the Custom Form') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-select', 'options'=>$custom_form_options)) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-control', 'options'=>$custom_form_options)) . '
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="continue_button" name="continue_button" value="Continue" class="btn my-1  btn-success " ><span class="material-icons me-2">arrow_forward</span><span class="pg-btn-label" >' . lang(array('string'=>'Continue') ) . '</span></button>
+                                    <button type="submit" id="continue_button" name="continue_button" value="Continue" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">arrow_forward</span><span class="pg-btn-label" >' . lang(array('string'=>'Continue') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>
@@ -222,9 +222,9 @@ if (!$_POST) {
                     contact_field,
                     office_use_only
                  FROM form_fields
-                 WHERE page_id = '" . escape($page_id) . "'
+                 WHERE page_id = ?
                  ORDER BY sort_order";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
         $fields = array();
 
@@ -248,7 +248,7 @@ if (!$_POST) {
             if (($field['office_use_only'] == 0) || ($office_use_only_access == true)) {
                 // if field is for office use only, then prepare to apply office use only style to row
                 if ($field['office_use_only'] == 1) {
-                    $row_class = 'text-muted';
+                    $row_class = 'fg-secondary';
 
                 // else field is not for office use only, so don't prepare any special styling
                 } else {
@@ -287,9 +287,9 @@ if (!$_POST) {
                                 value,
                                 default_selected
                              FROM form_field_options
-                             WHERE form_field_id = '" . $field['id'] . "'
+                             WHERE form_field_id = ?
                              ORDER BY sort_order";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $field['id'])) or output_error('Query failed.');
 
                     $options = array();
 
@@ -301,14 +301,14 @@ if (!$_POST) {
                 // if field should have spacing above, add spacing
                 if ($field['spacing_above']) {
                     $output_fields .=
-                        '<div class="py-2 ' . $row_class . '"></div>';
+                        '<div class="py-3 ' . $row_class . '"></div>';
                 }
 
                 switch ($field['type']) {
                     case 'text box':
                     case 'email address':
                         $output_fields .=
-                            '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
+                            '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                                 ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $page_id, $field['id'])) . '
                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength'])) . '
                                 ' . $field_required . '
@@ -335,7 +335,7 @@ if (!$_POST) {
                         }
 
                         $output_fields .=
-                            '<div class="col-12 my-2 ' . $row_class . '">
+                            '<div class="col-12 my-3 ' . $row_class . '">
                                 ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $page_id, $field['id'])) . '
                                 ' . $liveform->output_field(array('type'=>'textarea', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'maxlength'=>$field['maxlength'], 'class'=>'form-control', 'rows'=>$field['rows'], 'cols'=>$field['cols'], 'style'=>$style)) . '
                                 ' . $field_required . '
@@ -362,9 +362,9 @@ if (!$_POST) {
                         }
 
                         $output_fields .=
-                            '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
+                            '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                                 <label class="form-label">' . h($field['label']) . '</label>
-                                ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-select', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
+                                ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-control', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
                                 ' . $field_required . '
                             </div>';
 
@@ -382,14 +382,14 @@ if (!$_POST) {
                             }
 
                             $output_options .= '
-                            <div class="form-check">
-                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>$field['id'], 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'form-check-input')) . '
+                            <div class="form-field">
+                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>$field['id'], 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'radio')) . '
                                 <label for="software_option_' . $option['id'] . '"> ' . h($option['label']) . '</label>
                             </div>';
                         }
 
                         $output_fields .=
-                            '<div class="col-12 my-2 ' . $row_class . '">
+                            '<div class="col-12 my-3 ' . $row_class . '">
                                 <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $output_options . '
                             </div>';
@@ -417,8 +417,8 @@ if (!$_POST) {
                             }
 
                             $output_options .= '
-                            <div class="form-check">
-                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>$name, 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'form-check-input')) . '
+                            <div class="form-field">
+                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>$name, 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'check')) . '
                                 <label for="software_option_' . $option['id'] . '"> ' . h($option['label']) . '</label>
                             </div>';
                         }
@@ -429,7 +429,7 @@ if (!$_POST) {
                         // set of fields that gets saved is determined by the office use only gate.
 
                         $output_fields .=
-                            '<div class="col-12 my-2 ' . $row_class . '">
+                            '<div class="col-12 my-3 ' . $row_class . '">
                                 <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $output_options . '
                             </div>';
@@ -442,7 +442,7 @@ if (!$_POST) {
                     // logged in is part of it.
                     case 'signature':
                         $output_fields .=
-                        '<div class="col-12 border py-2 my-2 ' . $row_class . '">
+                        '<div class="col-12 border py-3 my-3 ' . $row_class . '">
                             ' . pg_signature_field($field) . '
                             ' . $field_required . '
                         </div>';
@@ -453,7 +453,7 @@ if (!$_POST) {
 
                     case 'file upload':
                         $output_fields .=
-                        '<div class="col-12 border py-2 my-2 ' . $row_class . '">
+                        '<div class="col-12 border py-3 my-3 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
                             <div class="input-group d-flex flex-row flex-wrap">
                                 ' . $liveform->output_field(array('type'=>'file', 'name'=>$field['id'], 'class'=>'form-control', 'style'=>'min-width:200px;', 'size'=>$field['size'] )) . '
@@ -468,7 +468,7 @@ if (!$_POST) {
                     case 'date':
                         $picker_kinds['date'] = true;
                         $output_fields .=
-                            '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
+                            '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                                 <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'10', 'data-pg-date' => '')) . '
                                 ' . $field_required . '
@@ -478,7 +478,7 @@ if (!$_POST) {
                     case 'date and time':
                         $picker_kinds['date and time'] = true;
                         $output_fields .=
-                            '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
+                            '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                                 <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'22', 'data-pg-datetime' => '')) . '
                                 ' . $field_required . '
@@ -487,13 +487,13 @@ if (!$_POST) {
 
                     case 'information':
                         $output_fields .=
-                            '<div class="py-3 ' . $row_class . '">' . $field['information'] . '</div>';
+                            '<div class="py-5 ' . $row_class . '">' . $field['information'] . '</div>';
                         break;
 
                     case 'time':
                         $picker_kinds['time'] = true;
                         $output_fields .=
-                            '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
+                            '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                                 <label class="form-label">' . h($field['label']) . '</label>
                                 ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11', 'data-pg-time' => '')) . '
                                 ' . $field_required . '
@@ -503,7 +503,7 @@ if (!$_POST) {
 
                     default:
                         $output_fields .=
-                            '<div class="col-12 my-2 ' . $row_class . '">
+                            '<div class="col-12 my-3 ' . $row_class . '">
                                 <label class="form-label">' . h($field['label']) . '</label>
                             </div>';
 
@@ -513,7 +513,7 @@ if (!$_POST) {
                 // if field should have spacing below, add spacing
                 if ($field['spacing_below']) {
                     $output_fields .=
-                        '<div class="py-2 ' . $row_class . '"></div>';
+                        '<div class="py-3 ' . $row_class . '"></div>';
                 }
             }
         }
@@ -577,12 +577,12 @@ if (!$_POST) {
                     ' . $liveform->output_errors() . '
                     ' . $liveform->get_warnings() . '
                     ' . $liveform->output_notices() . '
-                    <div class="row mb-2  flex-wrap">
-                        <div class="col-12 col-sm-12 text-center text-md-start">
-                            <div class="row mb-2">
-                                <div class="col-12 col-md">
+                    <div class="row mb-3  flex-wrap">
+                        <div class="col-12 sm:col-12 text-center md:text-start">
+                            <div class="row mb-3">
+                                <div class="col-12 md:col">
                                     <h2 class="d-inline-block text-break" data-bs-content="' . lang('Manually create a submitted form for this custom form. Office use only fields are also visible.') . '" title="' . lang('Add Submitted Form') . '">[' . h($form_name) . ']</h2>
-                                    <p class="p-0 m-0"><a class="link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php">' . lang('Select a different custom form') . '</a></p>
+                                    <p class="p-0 m-0"><a class="pg-link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php">' . lang('Select a different custom form') . '</a></p>
                                 </div>
                             </div>
                         </div>
@@ -591,21 +591,21 @@ if (!$_POST) {
                             <input type="hidden" name="page_id" value="' . h($page_id) . '" />
                             <div class="row">
                                 <div class="col-12">
-                                    <div class="card my-4 ">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7 ">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Form Properties') . '
                                         </div>
-                                        <div class="card-body text-center text-md-start">
+                                        <div class="card-body text-center md:text-start">
                                             <div class="row">
-                                                <div class="col-12 col-md-6 col-lg-4 my-2">
+                                                <div class="col-12 md:col-6 lg:col-4 my-3">
                                                     <div class="form-text">' . lang('Custom Form') . '</div>
                                                     <h5>' . h($form_name) . '</h5>
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-4 my-2">
+                                                <div class="col-12 md:col-6 lg:col-4 my-3">
                                                     <div class="form-text">' . lang('Notifications') . '</div>
-                                                    <div class="form-check form-switch">
-                                                        ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'send_notifications', 'id'=>'send_notifications', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                        <label class="form-check-label" for="send_notifications">' . lang('Send notification e-mails') . '</label>
+                                                    <div class="form-field">
+                                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'send_notifications', 'id'=>'send_notifications', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                        <label class="" for="send_notifications">' . lang('Send notification e-mails') . '</label>
                                                     </div>
                                                     <div class="form-text">' . lang('Off by default. When on, the same e-mails that a visitor submission would send are sent.') . '</div>
                                                 </div>
@@ -614,8 +614,8 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 <div class="col-12">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Form Data') . '
                                         </div>
                                         <div class="card-body">
@@ -626,11 +626,11 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                            <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                                 <div class="container">
                                     <div class=" btn-group flex-wrap justify-content-center">
-                                        <button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-secondary "><span class="material-icons me-2">save_as</span><span class="pg-btn-label" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
-                                        <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save and Complete') ) . '</span></button>
+                                        <button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-solid theme-secondary "><span class="material-icons me-3">save_as</span><span class="pg-btn-label" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
+                                        <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save and Complete') ) . '</span></button>
                                     </div>
                                 </div>
                             </nav>
@@ -798,14 +798,14 @@ if (!$_POST) {
                 last_modified_user_id,
                 last_modified_timestamp)
             VALUES (
-                '" . escape($page_id) . "',
-                '" . $new_complete . "',
-                '" . $user['id'] . "',
-                '" . escape($reference_code) . "',
+                ?,
+                ?,
+                ?,
+                ?,
                 UNIX_TIMESTAMP(),
-                '" . $user['id'] . "',
+                ?,
                 UNIX_TIMESTAMP())";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $page_id, (string) $new_complete, (string) $user['id'], (string) $reference_code, (string) $user['id'])) or output_error('Query failed.');
 
         $form_id = mysqli_insert_id(db::$con);
 
@@ -854,15 +854,15 @@ if (!$_POST) {
                                 attachment,
                                 timestamp)
                              VALUES (
-                                '" . escape($file_name) . "',
-                                '" . escape($field['upload_folder_id']) . "',
-                                '" . escape($file_extension) . "',
-                                '" . escape($file_size) . "',
-                                '" . $user['id'] . "',
+                                ?,
+                                ?,
+                                ?,
+                                ?,
+                                ?,
                                 '0',
                                 '1',
                                 UNIX_TIMESTAMP())";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $file_name, (string) $field['upload_folder_id'], (string) $file_extension, (string) $file_size, (string) $user['id'])) or output_error('Query failed.');
 
                     $file_id = mysqli_insert_id(db::$con);
 
@@ -973,12 +973,12 @@ if (!$_POST) {
                                     name,
                                     type)
                                  VALUES (
-                                    '" . $form_id . "',
-                                    '" . $field['id'] . "',
-                                    '" . escape(prepare_form_data_for_input($value, $field['type'])) . "',
-                                    '" . escape($field['name']) . "',
-                                    '$form_data_type')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?)";
+                        $result = db_q($query, array((string) $form_id, (string) $field['id'], (string) prepare_form_data_for_input($value, $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
                     }
 
                 // else this field does not have multiple values
@@ -991,12 +991,12 @@ if (!$_POST) {
                                 name,
                                 type)
                              VALUES (
-                                '" . $form_id . "',
-                                '" . $field['id'] . "',
-                                '" . escape(prepare_form_data_for_input($liveform->get_field_value($field['id']), $field['type'])) . "',
-                                '" . escape($field['name']) . "',
-                                '$form_data_type')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                ?,
+                                ?,
+                                ?,
+                                ?,
+                                ?)";
+                    $result = db_q($query, array((string) $form_id, (string) $field['id'], (string) prepare_form_data_for_input($liveform->get_field_value($field['id']), $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
                 }
             }
         }

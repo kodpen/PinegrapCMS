@@ -6,7 +6,7 @@ description: SHELVED plan for Claude as a live channel member through a Claude C
 ## What is it?
 - Today Claude reaches the Workspace by the site-wide routine (docs/memory/workspace/workspace-claude-routine.md, minutes per answer, daily cap), the claude.ai connector (`mcp.php`, only when asked there) and remote MCP agents (`@alias`). Missing: an always-open session answering in seconds with the conversation's context.
 - Claude Code "channels" (research preview, read 2026-10-14): an MCP server on the same machine pushes events into a running Claude Code session (`experimental['claude/channel']`, `notifications/claude/channel` {content, meta}); the reply is an ordinary tool. Permission relay: `claude/channel/permission` (allow / deny; first answer wins). Only plugins on Anthropic's list or the org's `allowedChannelPlugins`, else `--dangerously-load-development-channels` interactively; Team / Enterprise owners must enable channels. Events arrive only while the session is open; no daily run cap. Recheck all of this before building.
-- Shelved with the mobile app (docs/memory/plans/mobile-api-shelved.md); no code.
+- Still shelved (2026-10-14); the app restarted: docs/memory/plans/mobile-api-shelved.md; no code.
 
 ## What is reused as is?
 - Queue `ws_ai_requests` and endpoints `GET /workspace/claude/requests`, `…/{id}/claim`, `/answer`, `/fail`, `/change-types`, `/records/{type}/{id}`, `GET /workspace/channels/{id}/context`; the Claude application identity, channel permission (`claude_access`), 👀 / ✅, the 24 h rule, replies to Claude going back to Claude, approved change drafts, `api_request_log`. ETag makes polling every few seconds cheap; `api_apps.last_used_timestamp` tells whether Claude is online.

@@ -1,6 +1,7 @@
 ---
 name: shipping-method-widget
 description: The Shipping Method widget (second step of the classic multi-step checkout): handler, next page, methods from get_shipping_methods(), the chosen method, items section, what is left out.
+module: widgets_shipping_method
 ---
 
 ## What is it?

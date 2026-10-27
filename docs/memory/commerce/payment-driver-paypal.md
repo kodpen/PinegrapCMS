@@ -1,10 +1,10 @@
 ---
 name: payment-driver-paypal
-description: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.39, PR #1827): redirect, read and capture in complete(), refund and cancel by capture id, no webhook; classic Express Checkout untouched
+description: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.50, PR #1827): redirect, read and capture in complete(), refund and cancel by capture id, no webhook; classic Express Checkout untouched
 ---
 
 ## What is it?
-- `includes/payments/paypal.php`, key `paypal`, redirect driver for the payment method `PayPal Checkout` (appended to the `orders.payment_method` ENUM by 11.0.39). `PayPal Express Checkout` stays the classic NVP code in submit_order.php.
+- `includes/payments/paypal.php`, key `paypal`, redirect driver for the payment method `PayPal Checkout` (appended to the `orders.payment_method` ENUM by 11.0.50). `PayPal Express Checkout` stays the classic NVP code in submit_order.php.
 - `connect_apps` `payment_paypal`: `client_id`, `client_secret` (sealed), `mode` (`live` default, `sandbox`); switch on the Ecommerce card's redirect rows. Return mode `paypal_return`.
 - No SDK: OAuth client-credentials token per operation, then `api-m.paypal.com` / `api-m.sandbox.paypal.com` with `Prefer: return=representation`. Each operation has a `*_with($…, $settings, $http)` twin; `$http($method, $url, $headers, $body)`.
 

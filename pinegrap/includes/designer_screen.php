@@ -121,6 +121,9 @@ function pg_designer_screen_render($ctx)
             'key'                   => 'p' . (int)$p['page_id'],
             'page_id'               => (int)$p['page_id'],
             'page_name'             => (string)$p['page_name'],
+            // A classic page's type: anything but 'standard' opens the Page
+            // Type pane of the settings modal.
+            'page_type'             => (string)(isset($p['page_type']) ? $p['page_type'] : 'standard'),
             'page_folder'           => (int)$p['page_folder'],
             'page_draft'            => (int)(isset($p['page_draft']) ? $p['page_draft'] : 0),
             'page_title'            => (string)$p['page_title'],
@@ -216,6 +219,23 @@ function pg_designer_screen_render($ctx)
         );
         $active = 0;
     }
+    // One shared component opened on its own (edit_system_style.php
+    // ?component=): its one tab places the component and is never saved as
+    // a page; Save writes the component (designer_access.php,
+    // pg_designer_component_entry()).
+    $sd_component = (isset($ctx['component']) && is_array($ctx['component'])) ? $ctx['component'] : null;
+    if ($sd_component) {
+        $js_pages = array(array_merge($js_pages[0], array(
+            'key'        => 'c' . (int)$sd_component['id'],
+            'page_name'  => (string)$sd_component['name'],
+            'page_draft' => 0,
+            'tree'       => array('type' => 'root', 'props' => new stdClass(), 'children' => array(
+                array('type' => 'shared_ref', 'props' => array('sharedId' => (int)$sd_component['id'], 'sharedName' => (string)$sd_component['name']), 'children' => array()),
+            )),
+            'access'     => 'edit',
+        )));
+        $active = 0;
+    }
     $active_key = 'p' . $active;
     $found_active = false;
     foreach ($js_pages as $jp) { if ($jp['key'] === $active_key) { $found_active = true; break; } }
@@ -227,11 +247,16 @@ function pg_designer_screen_render($ctx)
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
     $sd_proto_share = pg_page_draft_ready() && pg_proto_links_ready();
 
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+
     // The order and groups of the tabs, for the pages listed above.
     $tab_page_ids = array();
     foreach ($js_pages as $jp) {
         if ($jp['page_id'] > 0) $tab_page_ids[] = $jp['page_id'];
     }
+    $layout_pages = ((int)$user['role'] <= 1) ? pg_layout_custom_page_ids($tab_page_ids) : array();
+    $active_page_id = 0;
+    foreach ($js_pages as $jp) { if ($jp['key'] === $active_key) { $active_page_id = (int)$jp['page_id']; break; } }
     $tab_layout = pg_designer_tab_layout_normalize(isset($style['tab_layout']) ? $style['tab_layout'] : '', $tab_page_ids);
 
     $design_js = json_encode(array(
@@ -240,6 +265,8 @@ function pg_designer_screen_render($ctx)
         'styleName'     => (string)$style['name'],
         'activeKey'     => $active_key,
         'pages'         => $js_pages,
+        // A shared component opened on its own: Save writes only it.
+        'componentOnly' => $sd_component ? array('id' => (int)$sd_component['id'], 'name' => (string)$sd_component['name']) : null,
         'canSetHome'    => ((int)$user['role'] < 3),
         'noindexReady'  => (pg_page_noindex_ready() == TRUE),
         'apiUrl'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php',
@@ -256,6 +283,19 @@ function pg_designer_screen_render($ctx)
         // the classic Dynamic Region screen admits (administrators); the
         // endpoint (dynamic_region_code) checks the same.
         'dynamicRegionCode' => ((int)$user['role'] === 0),
+        // A classic page's custom layout opens as a code-view tab from its
+        // system region for the role the classic layout editor admits
+        // (designers and administrators); the endpoint (layout_code) checks
+        // the same. Read only on a hosted site, which ignores the file.
+        'layoutCode'    => ((int)$user['role'] <= 1),
+        'layoutPages'   => $layout_pages,
+        'layoutReadOnly' => pg_hosted(),
+        // ?layout=1 (the toolbar's Ctrl+G button, pg_layout_tab_param()):
+        // the page whose layout tab opens once the editor is up, or 0.
+        'openLayout'    => pg_layout_open_page_id(isset($_GET['layout']) ? $_GET['layout'] : '', $active_page_id, $layout_pages),
+        // A classic page's type fields: read and saved by edit_page.php in
+        // JSON (?properties=1), with the rights of that screen.
+        'pageTypeUrl'   => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_page.php',
         // A designer region becomes a designer-only shared component for the
         // roles edit_designer_region.php admits (administrators and
         // designers); shared_component's from_designer_region checks the same.
@@ -456,28 +496,28 @@ function pg_designer_screen_render($ctx)
                          the header link and the browser back button all go through
                          the unsaved-changes guard. -->
                     <div class="sd-toolbar sd-toolbar-tabs">
-                        <div class="sd-toolbar-group sd-toolbar-pages">
-                            <div class="dropdown sd-tabs-add">
-                                <button type="button" class="sd-tabs-add-btn" data-bs-toggle="dropdown" aria-expanded="false" title="' . lang('Add Page') . '">
+                        <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
+                            <div class="pg-menu-wrap sd-tabs-add">
+                                <button type="button" class="sd-tabs-add-btn" data-bs-toggle="menu" aria-expanded="false" title="' . lang('Add Page') . '">
                                     <span class="bi bi-plus-lg"></span><span class="sd-tabs-add-txt">' . lang('Add Page') . '</span>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-dark">
-                                    <li><button type="button" class="dropdown-item" id="sd-tab-new-page"><span class="bi bi-file-earmark-plus me-2"></span>' . lang('New Page') . '</button></li>
-                                    <li><button type="button" class="dropdown-item" id="sd-tab-pick-page"><span class="bi bi-files me-2"></span>' . lang('Select Page') . '</button></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><button type="button" class="dropdown-item" id="sd-tab-import-html"><span class="bi bi-file-earmark-code me-2"></span>' . lang('Import HTML / ZIP') . '</button></li>
-                                    <li><button type="button" class="dropdown-item" id="sd-tab-paste-html"><span class="bi bi-clipboard-plus me-2"></span>' . lang('Paste HTML content') . '</button></li>
+                                <ul data-bs-theme="dark" class="menu">
+                                    <li><button type="button" class="menu-item" id="sd-tab-new-page"><span class="bi bi-file-earmark-plus me-3"></span>' . lang('New Page') . '</button></li>
+                                    <li><button type="button" class="menu-item" id="sd-tab-pick-page"><span class="bi bi-files me-3"></span>' . lang('Select Page') . '</button></li>
+                                    <li><hr class="menu-divider"></li>
+                                    <li><button type="button" class="menu-item" id="sd-tab-import-html"><span class="bi bi-file-earmark-code me-3"></span>' . lang('Import HTML / ZIP') . '</button></li>
+                                    <li><button type="button" class="menu-item" id="sd-tab-paste-html"><span class="bi bi-clipboard-plus me-3"></span>' . lang('Paste HTML content') . '</button></li>
                                 </ul>
                             </div>
-                            <button type="button" class="sd-icon-btn" data-bs-toggle="modal" data-bs-target="#styleSettingsModal" title="' . lang('Settings') . '"><span class="bi bi-gear"></span></button>
+                            <button type="button" class="sd-icon-btn" data-bs-toggle="dialog" data-bs-target="#styleSettingsModal" title="' . lang('Settings') . '"><span class="bi bi-gear"></span></button>
                             ' . ($mode === 'edit' ? $ctx['delete_button'] : '') . '
                         </div>
                         <div class="sd-tabs-scroll" id="sd-tabs-list" role="tablist"></div>
                         <!-- Every page in one list, for when the strip cannot
                              show them all. Shown only then (_pgTabsAllSync()). -->
-                        <div class="dropdown sd-tabs-all" id="sd-tabs-all" hidden>
-                            <button type="button" class="sd-icon-btn sd-tabs-all-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="' . h(lang('All pages')) . '" aria-label="' . h(lang('All pages')) . '"><span class="bi bi-list-ul" aria-hidden="true"></span><span class="sd-tabs-all-count" id="sd-tabs-all-count"></span></button>
-                            <div class="dropdown-menu dropdown-menu-dark dropdown-menu-end sd-tabs-all-menu">
+                        <div class="pg-menu-wrap sd-tabs-all" id="sd-tabs-all" hidden>
+                            <button type="button" class="sd-icon-btn sd-tabs-all-btn" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-auto-close="outside" aria-expanded="false" title="' . h(lang('All pages')) . '" aria-label="' . h(lang('All pages')) . '"><span class="bi bi-list-ul" aria-hidden="true"></span><span class="sd-tabs-all-count" id="sd-tabs-all-count"></span></button>
+                            <div data-bs-theme="dark" class="menu pg-menu-end sd-tabs-all-menu">
                                 <div class="sd-tabs-all-find"><input type="search" class="form-control form-control-sm" id="sd-tabs-all-filter" placeholder="' . h(lang('Find a page…')) . '" autocomplete="off"></div>
                                 <div class="sd-tabs-all-list" id="sd-tabs-all-list"></div>
                             </div>
@@ -494,8 +534,8 @@ function pg_designer_screen_render($ctx)
                             <!-- The main action puts every page of the design on the
                                  site, so it says so. The label drops to the icon on
                                  narrow screens; the title still names it. -->
-                            <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . lang('Publish') . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>
-                            ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready()) ? '<!-- A draft page has two actions: the main button saves it
+                            <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . ($sd_component ? lang('Save') : lang('Publish')) . '"><span class="bi ' . ($sd_component ? 'bi-floppy' : 'bi-rocket-takeoff') . '" aria-hidden="true"></span><span class="sd-publish-txt">' . ($sd_component ? lang('Save') : lang('Publish')) . '</span></button>
+                            ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !$sd_component) ? '<!-- A draft page has two actions: the main button saves it
                                  (it stays a draft), this one puts it on the
                                  site. Hidden while the page on screen is on
                                  the site. -->
@@ -503,14 +543,14 @@ function pg_designer_screen_render($ctx)
                             <!-- Draft or on the site: this page, or every page of the design.
                                  Each item sets the state and saves, the same
                                  save the main button makes. -->
-                            <div class="dropdown sd-publish-more">
-                                <button type="button" id="sd-publish-more" class="sd-icon-btn sd-icon-btn-primary sd-publish-more-btn" data-bs-toggle="dropdown" aria-expanded="false" title="' . h(lang('Publishing options')) . '" aria-label="' . h(lang('Publishing options')) . '"><span class="bi bi-chevron-down" aria-hidden="true"></span></button>
-                                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-                                    <li><button type="button" class="dropdown-item" data-sd-status="page-draft"><span class="bi bi-eye-slash me-2" aria-hidden="true"></span>' . lang('Save this page as a draft') . '</button></li>
-                                    <li><button type="button" class="dropdown-item" data-sd-status="page-publish"><span class="bi bi-rocket-takeoff me-2" aria-hidden="true"></span>' . lang('Publish this page') . '</button></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><button type="button" class="dropdown-item" data-sd-status="all-draft"><span class="bi bi-cloud-slash me-2" aria-hidden="true"></span>' . lang('Take every page of the design off the site') . '</button></li>
-                                    <li><button type="button" class="dropdown-item" data-sd-status="all-publish"><span class="bi bi-cloud-check me-2" aria-hidden="true"></span>' . lang('Publish every page of the design') . '</button></li>
+                            <div class="pg-menu-wrap sd-publish-more">
+                                <button type="button" id="sd-publish-more" class="sd-icon-btn sd-icon-btn-primary sd-publish-more-btn" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('Publishing options')) . '" aria-label="' . h(lang('Publishing options')) . '"><span class="bi bi-chevron-down" aria-hidden="true"></span></button>
+                                <ul data-bs-theme="dark" class="menu pg-menu-end">
+                                    <li><button type="button" class="menu-item" data-sd-status="page-draft"><span class="bi bi-eye-slash me-3" aria-hidden="true"></span>' . lang('Save this page as a draft') . '</button></li>
+                                    <li><button type="button" class="menu-item" data-sd-status="page-publish"><span class="bi bi-rocket-takeoff me-3" aria-hidden="true"></span>' . lang('Publish this page') . '</button></li>
+                                    <li><hr class="menu-divider"></li>
+                                    <li><button type="button" class="menu-item" data-sd-status="all-draft"><span class="bi bi-cloud-slash me-3" aria-hidden="true"></span>' . lang('Take every page of the design off the site') . '</button></li>
+                                    <li><button type="button" class="menu-item" data-sd-status="all-publish"><span class="bi bi-cloud-check me-3" aria-hidden="true"></span>' . lang('Publish every page of the design') . '</button></li>
                                 </ul>
                             </div>' : '') . '
                             <a href="#" id="sd-view-page" class="sd-icon-btn" target="_blank" rel="noopener" title="' . lang('View Page') . '" style="display:none"><span class="bi bi-box-arrow-up-right"></span></a>
@@ -530,7 +570,7 @@ function pg_designer_screen_render($ctx)
 
                     <!-- Status Bar -->
                     <div class="sd-statusbar" id="sd-statusbar">
-                        <span class="text-muted small" id="sd-last-modified-label">' . $last_modified . '</span>
+                        <span class="fg-secondary small" id="sd-last-modified-label">' . $last_modified . '</span>
                     </div>
                 </div>
 
@@ -568,6 +608,8 @@ function pg_designer_screen_render($ctx)
                 'Save'         => lang('Save'),
                 'Code'         => lang('Code'),
                 'Syntax error' => lang('Syntax error'),
+                'Format code'  => lang('Format code'),
+                'Minimap'      => lang('Minimap'),
             )) . ';
         </script>
         <script src="assets/js/codemirror_modal.js?v=' . pg_designer_asset_stamp('assets/js/codemirror_modal.js') . '"></script>
@@ -577,9 +619,10 @@ function pg_designer_screen_render($ctx)
         <script>PgStyleSuggest.configure({ predictor: "assets/js/pg_style_predict.js?v=' . h(pg_designer_asset_stamp('assets/js/pg_style_predict.js')) . '", vocab: "assets/js/designer_vocab/bootstrap5.json?v=' . h(pg_designer_asset_stamp('assets/js/designer_vocab/bootstrap5.json')) . '", complete: "assets/js/pg_style_complete.js?v=' . h(pg_designer_asset_stamp('assets/js/pg_style_complete.js')) . '" });</script>
         <!-- The code editor facade is small; its engine (the CodeMirror 6
              bundle) is fetched the first time a code view opens, so the
-             designer page does not carry it on every load. -->
+             designer page does not carry it on every load. Its editors show
+             a minimap beside the scroll bar. -->
         <script src="assets/js/pg_code_editor.js?v=' . pg_designer_asset_stamp('assets/js/pg_code_editor.js') . '"></script>
-        <script>PgCodeEditor.configure({ bundle: "assets/lib/code_editor/cm6.bundle.js?v=' . h(pg_designer_asset_stamp('assets/lib/code_editor/cm6.bundle.js')) . '" });</script>
+        <script>PgCodeEditor.configure({ minimap: true, bundle: "assets/lib/code_editor/cm6.bundle.js?v=' . h(pg_designer_asset_stamp('assets/lib/code_editor/cm6.bundle.js')) . '" });</script>
         <!-- Text contrast for the audit (window.PgContrast). -->
         <script src="assets/js/pg_contrast.js?v=' . pg_designer_asset_stamp('assets/js/pg_contrast.js') . '"></script>
         <!-- User Styles text helpers (window.PgUserStyles). -->
@@ -588,6 +631,8 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_style_fields.js?v=' . pg_designer_asset_stamp('assets/js/pg_style_fields.js') . '"></script>
         <!-- Per-element custom style rule in User Styles (window.PgCustomStyle). -->
         <script src="assets/js/pg_custom_style.js?v=' . pg_designer_asset_stamp('assets/js/pg_custom_style.js') . '"></script>
+        <!-- The search keyword chips (pgChips). -->
+        ' . pg_fields_script() . '
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
         ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
@@ -603,7 +648,7 @@ function pg_designer_screen_render($ctx)
                 // written without an event, so the same events bring the
                 // counters and the switches up to date.
                 var _sdSettingsBound = false;
-                document.getElementById("styleSettingsModal").addEventListener("shown.bs.modal", function () {
+                pgUI.dialog.on(document.getElementById("styleSettingsModal"), "shown", function () {
                     if (_sdSettingsBound) {
                         ["pg_page_title", "pg_page_meta_description"].forEach(function (id) {
                             var el = document.getElementById(id);
@@ -854,16 +899,16 @@ function pg_designer_list_status_cell($d)
     $s = pg_designer_design_state($c);
 
     if ($s['state'] === 'live') {
-        $badge = '<span class="badge rounded-pill text-bg-success"><i class="bi bi-broadcast me-1" aria-hidden="true"></i>' . h(lang('Live on the site')) . '</span>';
+        $badge = '<span class="badge rounded-pill theme-success"><i class="bi bi-broadcast me-1" aria-hidden="true"></i>' . h(lang('Live on the site')) . '</span>';
         $note  = h(lang('All pages are on the site.'));
     } elseif ($s['state'] === 'draft') {
-        $badge = '<span class="badge rounded-pill text-bg-secondary"><i class="bi bi-eye-slash me-1" aria-hidden="true"></i>' . h(lang('Draft')) . '</span>';
+        $badge = '<span class="badge rounded-pill theme-secondary"><i class="bi bi-eye-slash me-1" aria-hidden="true"></i>' . h(lang('Draft')) . '</span>';
         $note  = ($c['home'] > 0) ? h(lang('The home page stays on the site.')) : h(lang('Visitors cannot open the pages; administrators can.'));
     } elseif ($s['state'] === 'mixed') {
-        $badge = '<span class="badge rounded-pill text-bg-warning"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>' . h(lang('Partly on the site')) . '</span>';
+        $badge = '<span class="badge rounded-pill theme-warning"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>' . h(lang('Partly on the site')) . '</span>';
         $note  = h(lang(array('string' => '{var:1} of {var:2} pages are drafts', 'vars' => array($c['drafts'], $c['pages']))));
     } else {
-        $badge = '<span class="badge rounded-pill text-bg-secondary">' . h(lang('Empty')) . '</span>';
+        $badge = '<span class="badge rounded-pill theme-secondary">' . h(lang('Empty')) . '</span>';
         $note  = h(lang('No pages yet. Open it to add one.'));
     }
 
@@ -871,7 +916,7 @@ function pg_designer_list_status_cell($d)
     // next change comes.
     $scheduled = isset($d['scheduled_count']) ? (int)$d['scheduled_count'] : 0;
     if ($scheduled > 0 && $s['state'] !== 'empty') {
-        $badge .= ' <span class="badge rounded-pill text-bg-info sdh-scheduled"><i class="bi bi-clock me-1" aria-hidden="true"></i>' . h(lang('On a schedule')) . '</span>';
+        $badge .= ' <span class="badge rounded-pill theme-info sdh-scheduled"><i class="bi bi-clock me-1" aria-hidden="true"></i>' . h(lang('On a schedule')) . '</span>';
         $next  = isset($d['scheduled_next']) ? (int)$d['scheduled_next'] : 0;
         $note .= ' · ' . h(($next > 0)
             ? lang(array('string' => '{var:1} scheduled, next change {var:2}', 'vars' => array($scheduled, pg_page_schedule_label($next))))
@@ -1047,16 +1092,16 @@ function pg_designer_home_start_card($drawing, $icon, $title, $text, $opts = arr
     $body = $drawing
           . '<span class="sdh-start-body">'
           .     '<span class="sdh-start-title"><i class="bi ' . h($icon) . '" aria-hidden="true"></i>' . h($title)
-          .         ($disabled ? '<span class="badge text-bg-secondary">' . h(lang('Soon')) . '</span>' : '')
+          .         ($disabled ? '<span class="badge theme-secondary">' . h(lang('Soon')) . '</span>' : '')
           .     '</span>'
           .     '<span class="sdh-start-text">' . h($text) . '</span>'
           . '</span>';
     $card = $disabled
         ? '<div class="sdh-start" aria-disabled="true">' . $body . '</div>'
-        : '<a href="#" role="button" class="sdh-start" data-bs-toggle="modal" data-bs-target="' . h($modal) . '"'
+        : '<a href="#" role="button" class="sdh-start" data-bs-toggle="dialog" data-bs-target="' . h($modal) . '"'
           . ($start !== '' ? ' data-sd-start="' . h($start) . '"' : '')
           . (!empty($opts['id']) ? ' id="' . h($opts['id']) . '"' : '') . '>' . $body . '</a>';
-    return '<div class="col-6 col-xl-3">' . $card . '</div>';
+    return '<div class="col-6 xl:col-3">' . $card . '</div>';
 }
 
 /**
@@ -1152,7 +1197,7 @@ function pg_designer_home_design_card($d, $pages, $ctx)
              .     '<div class="sdh-tile-body">'
              .         '<div class="sdh-title-row"><h3 class="sdh-name">' . $title . '</h3>' . $more . '</div>'
              .         pg_designer_list_status_cell($d)
-             .         '<div class="sdh-tile-meta d-flex justify-content-between gap-2"><span>' . h(lang(array('string' => '{var:1} page{suffix:1}', 'vars' => $count, 'suffix' => ($count === 1 ? '' : 's')))) . '</span><span class="text-truncate">' . $when . '</span></div>'
+             .         '<div class="sdh-tile-meta d-flex justify-content-between gap-3"><span>' . h(lang(array('string' => '{var:1} page{suffix:1}', 'vars' => $count, 'suffix' => ($count === 1 ? '' : 's')))) . '</span><span class="text-truncate">' . $when . '</span></div>'
              .     '</div>'
              . '</article>';
     }
@@ -1162,7 +1207,7 @@ function pg_designer_home_design_card($d, $pages, $ctx)
     $facts = array(array(lang('Framework'), h($d['framework_label'])));
     if ($tpl) $facts[] = array(lang('Started from'), h(isset($tpl['name']) ? (string)$tpl['name'] : (string)$d['template']));
     $theme = pg_designer_list_theme_label($d);
-    $facts[] = array(lang('Theme'), ($theme !== '') ? $theme : '<span class="text-body-secondary">—</span>');
+    $facts[] = array(lang('Theme'), ($theme !== '') ? $theme : '<span class="fg-secondary">—</span>');
     $facts[] = array(lang('Last modified'), lang(array('string' => '{var:1}, by {var:2}', 'vars' => array($when, h($who)))));
     $facts_html = '';
     foreach ($facts as $f) {
@@ -1173,7 +1218,7 @@ function pg_designer_home_design_card($d, $pages, $ctx)
     // site" shows while there are drafts (designer_home.js hides it once
     // there are none); taking a live design off the site is left to the
     // menu, where it is not one stray click away.
-    $buttons = '<a class="btn btn-sm btn-primary rounded-pill px-3" href="' . h($edit_url) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
+    $buttons = '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h($edit_url) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
     if (!empty($ctx['can_change'])) {
         $buttons .= '<a class="btn btn-sm btn-ghost" href="' . h($add_url) . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add Page')) . '</a>';
     }
@@ -1189,9 +1234,9 @@ function pg_designer_home_design_card($d, $pages, $ctx)
         : '';
 
     return '<article class="sdh-card sdh-site" tabindex="0" aria-label="' . $name . '"' . $attrs . '>'
-         .     '<div class="row g-4">'
-         .         '<div class="col-12 col-lg-5 col-xxl-4">' . $picture . '</div>'
-         .         '<div class="col-12 col-lg-7 col-xxl-8">'
+         .     '<div class="row g-7">'
+         .         '<div class="col-12 lg:col-5 2xl:col-4">' . $picture . '</div>'
+         .         '<div class="col-12 lg:col-7 2xl:col-8">'
          .             ($home ? '<div class="sdh-flag"><i class="bi bi-house-door" aria-hidden="true"></i>' . h(lang('The home page is in this design')) . '</div>' : '')
          .             '<div class="sdh-title-row"><h3 class="sdh-name">' . $title . '</h3>' . $more . '</div>'
          .             pg_designer_list_status_cell($d)
@@ -1262,16 +1307,14 @@ function pg_designer_home_texts()
 function pg_designer_home_template_dialog()
 {
     return '
-        <div class="modal fade" id="sdhTemplateFromModal" tabindex="-1" aria-labelledby="sdhTemplateFromModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2 class="modal-title fs-5" id="sdhTemplateFromModalLabel"><i class="bi bi-grid-1x2 me-2" aria-hidden="true"></i>' . h(lang('Turn this design into a template')) . '</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+        <dialog class="dialog pg-dialog-centered" id="sdhTemplateFromModal" aria-labelledby="sdhTemplateFromModalLabel">
+                    <div class="dialog-header">
+                        <h2 class="dialog-title fs-lg" id="sdhTemplateFromModalLabel"><i class="bi bi-grid-1x2 me-3" aria-hidden="true"></i>' . h(lang('Turn this design into a template')) . '</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
-                    <div class="modal-body">
-                        <p class="small text-body-secondary">' . h(lang('The template is made from the saved pages and is listed under Choose a Template.')) . '</p>
-                        <div class="mb-3">
+                    <div class="dialog-body">
+                        <p class="small fg-secondary">' . h(lang('The template is made from the saved pages and is listed under Choose a Template.')) . '</p>
+                        <div class="mb-5">
                             <label class="form-label" for="sdh-tpl-name">' . h(lang('Name')) . '</label>
                             <input type="text" class="form-control" id="sdh-tpl-name" maxlength="255" autocomplete="off">
                         </div>
@@ -1280,13 +1323,11 @@ function pg_designer_home_template_dialog()
                             <textarea class="form-control" id="sdh-tpl-description" rows="3"></textarea>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . h(lang('Cancel')) . '</button>
-                        <button type="button" class="btn btn-primary" id="sdh-tpl-run"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i>' . h(lang('Create template')) . '</button>
+                    <div class="dialog-footer">
+                        <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
+                        <button type="button" class="btn btn-solid theme-primary" id="sdh-tpl-run"><i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i>' . h(lang('Create template')) . '</button>
                     </div>
-                </div>
-            </div>
-        </div>';
+        </dialog>';
 }
 
 /**
@@ -1362,7 +1403,7 @@ function pg_designer_start_screen($ctx)
                             : lang('From a blank page, from your own HTML or from a ready-made template.')) . '</p>
                     </div>
                 </div>
-                <div class="row g-3">
+                <div class="row g-5">
                     ' . pg_designer_home_start_card(pg_designer_home_drawing('blank'), 'bi-file-earmark-plus', lang('Create New'),
                             lang('An empty page on the canvas, on Bootstrap 5 or as a custom design. Add sections from the palette and build the design up.'),
                             array('modal' => '#sdNewDesignModal')) . '
@@ -1379,7 +1420,7 @@ function pg_designer_start_screen($ctx)
             </section>';
     } else {
         $start =
-            '<div class="alert alert-secondary py-2 small mb-4">
+            '<div class="alert theme-secondary py-3 small mb-7">
                 <i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . h(lang('Open a design to edit its text and the areas marked for you. New designs are created by designers.')) . '
             </div>';
     }
@@ -1404,18 +1445,18 @@ function pg_designer_start_screen($ctx)
                 ' . $featured . '
                 ' . ($tiles !== ''
                     ? ($featured !== '' ? '<h3 class="sdh-subhead">' . h(lang('Other designs')) . '</h3>' : '')
-                      . '<div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 row-cols-xxl-4 g-3" id="sdh-tiles">' . $tiles . '</div>'
-                      . '<p class="small text-body-secondary mt-3 mb-0 d-none" id="sdh-filter-empty">' . h(lang('No design matches this name.')) . '</p>'
+                      . '<div class="row row-cols-1 sm:row-cols-2 xl:row-cols-3 2xl:row-cols-4 g-5" id="sdh-tiles">' . $tiles . '</div>'
+                      . '<p class="small fg-secondary mt-5 mb-0 d-none" id="sdh-filter-empty">' . h(lang('No design matches this name.')) . '</p>'
                     : '') . '
             </section>';
     } else {
         $list =
             '<section class="sdh-section" aria-labelledby="sdh-empty-title">
                 <div class="sdh-empty">
-                    <div class="d-flex flex-wrap align-items-start gap-3">
+                    <div class="d-flex flex-wrap align-items-start gap-5">
                         <div class="flex-grow-1">
                             <h3 id="sdh-empty-title">' . h(lang('No designs yet')) . '</h3>
-                            <p class="mb-0 small text-body-secondary">' . h(lang('A design is a set of pages that share stylesheets, scripts, fonts and a theme.')) . '</p>
+                            <p class="mb-0 small fg-secondary">' . h(lang('A design is a set of pages that share stylesheets, scripts, fonts and a theme.')) . '</p>
                         </div>
                         ' . $comp['button'] . '
                     </div>
@@ -1425,7 +1466,7 @@ function pg_designer_start_screen($ctx)
                                 <li>' . h(lang('Build the pages on the canvas: drag sections in and type over the text.')) . '</li>
                                 <li>' . h(lang('New pages start as drafts. Put them on the site when they are ready.')) . '</li>
                            </ol>'
-                        : '<p class="small mt-3 mb-0">' . h(lang('There is no design to open yet.')) . '</p>') . '
+                        : '<p class="small mt-5 mb-0">' . h(lang('There is no design to open yet.')) . '</p>') . '
                 </div>
             </section>';
     }
@@ -1459,7 +1500,7 @@ function pg_designer_start_screen($ctx)
         ' . $comp['panel'] . '
         ' . ($can_create ? pg_designer_new_design_modal($from_pages) . pg_designer_template_modal($templates, $from_pages) : '') . '
         ' . ($can_tpl ? pg_designer_home_template_dialog() : '') . '
-        <div class="dropdown-menu sdh-menu" id="sdh-menu" role="menu" tabindex="-1"></div>
+        <div class="menu sdh-menu" id="sdh-menu" role="menu" tabindex="-1"></div>
         <script type="application/json" id="sdh-config">' . json_encode($config, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>
         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/designer_home.js?v=' . pg_designer_asset_stamp('assets/js/designer_home.js') . '"></script>
         ';
@@ -1484,7 +1525,7 @@ function pg_designer_components_card($user)
     $none = array('button' => '', 'panel' => '');
     require_once(dirname(__FILE__) . '/designer_access.php');
     if (!pg_designer_is_full($user)) return $none;
-    if (!db_value("SHOW TABLES LIKE 'shared_components'")) return $none;
+    if (!pg_schema_has('shared_components')) return $none;
 
     $comp_rows = db_items("SELECT id, name, category, updated_at, system_region_config FROM shared_components ORDER BY name");
     if (!is_array($comp_rows) || count($comp_rows) === 0) return $none;
@@ -1504,7 +1545,7 @@ function pg_designer_components_card($user)
         $type_cell = h($is_widget ? lang('System Widget') : lang('Shared Component'));
         $kind = pg_sw_widget_kind($cfg);
         if ($is_widget && $kind !== '') {
-            $type_cell .= '<div class="small text-muted">' . h(isset($comp_types[$kind]) ? $comp_types[$kind] : $kind) . '</div>';
+            $type_cell .= '<div class="small fg-secondary">' . h(isset($comp_types[$kind]) ? $comp_types[$kind] : $kind) . '</div>';
         }
 
         // A template's shared component carries "template:<template>/<key>"
@@ -1521,14 +1562,17 @@ function pg_designer_components_card($user)
             $tpl_id = strstr($origin, '/', true);
             if ($tpl_id === false) $tpl_id = $origin;
             $tpl_name = isset($comp_templates[$tpl_id]['name']) ? (string)$comp_templates[$tpl_id]['name'] : $tpl_id;
-            $source_cell = h(lang('Template')) . '<div class="small text-muted">' . h($tpl_name) . '</div>';
+            $source_cell = h(lang('Template')) . '<div class="small fg-secondary">' . h($tpl_name) . '</div>';
         } elseif (strpos($category, 'import:') === 0) {
-            $source_cell = h(lang('Import')) . '<div class="small text-muted">' . h(substr($category, 7)) . '</div>';
+            $source_cell = h(lang('Import')) . '<div class="small fg-secondary">' . h(substr($category, 7)) . '</div>';
         } elseif (strpos($category, 'cregion:') === 0) {
             // Made from a classic designer region (pg_designer_region_component()).
             $source_cell = h(lang('Designer Region'));
+        } elseif (strpos($category, 'common_region:') === 0) {
+            // Made from a common region (pg_common_region_component()).
+            $source_cell = h(lang('Common Region'));
         } else {
-            $source_cell = '<span class="text-muted">—</span>';
+            $source_cell = '<span class="fg-secondary">—</span>';
         }
 
         // Where it is placed: page (design), the recycle bin marked. The
@@ -1544,16 +1588,16 @@ function pg_designer_components_card($user)
             $line = ((int)$u['page_id'] > 0 && (string)$u['style_name'] !== '') ? $page . ' (' . $u['style_name'] . ')' : $page;
             $usage_lines[] = $line;
             $usage_cell .= '<div>' . h($line)
-                . (!empty($u['binned']) ? ' <span class="badge text-bg-secondary">' . h(lang('Recycle Bin')) . '</span>' : '')
+                . (!empty($u['binned']) ? ' <span class="badge theme-secondary">' . h(lang('Recycle Bin')) . '</span>' : '')
                 . '</div>';
         }
         if ($usage_cell === '') {
-            $usage_cell = '<span class="badge text-bg-success">' . h(lang('Not used')) . '</span>';
+            $usage_cell = '<span class="badge theme-success">' . h(lang('Not used')) . '</span>';
         }
 
         $comp_output_rows .= '
                     <tr data-id="' . $sid . '" data-name="' . h($r['name']) . '" data-used="' . ($usage_lines ? '1' : '0') . '" data-usage="' . h(json_encode($usage_lines)) . '">
-                        <td><input type="checkbox" class="form-check-input sd-comp-pick" value="' . $sid . '" aria-label="' . h(lang('Select')) . '"></td>
+                        <td><input type="checkbox" class="check sd-comp-pick" value="' . $sid . '" aria-label="' . h(lang('Select')) . '"></td>
                         <td class="fw-semibold">' . h($r['name']) . '</td>
                         <td>' . $type_cell . '</td>
                         <td>' . $source_cell . '</td>
@@ -1562,24 +1606,24 @@ function pg_designer_components_card($user)
                     </tr>';
     }
 
-    $comp_button = '<button type="button" class="btn btn-sm btn-outline-secondary" id="sd-comp-open" data-bs-toggle="offcanvas" data-bs-target="#sd-comp-offcanvas" aria-controls="sd-comp-offcanvas"><i class="bi bi-boxes me-1" aria-hidden="true"></i>' . h(lang('Shared components and system widgets')) . ' <span class="badge rounded-pill text-bg-secondary ms-1" id="sd-comp-total">' . count($comp_rows) . '</span></button>';
+    $comp_button = '<button type="button" class="btn btn-sm btn-outline theme-secondary" id="sd-comp-open" data-bs-toggle="drawer" data-bs-target="#sd-comp-offcanvas" aria-controls="sd-comp-offcanvas"><i class="bi bi-boxes me-1" aria-hidden="true"></i>' . h(lang('Shared components and system widgets')) . ' <span class="badge rounded-pill theme-secondary ms-1" id="sd-comp-total">' . count($comp_rows) . '</span></button>';
 
     $comp_panel = '
-        <div class="offcanvas offcanvas-end" id="sd-comp-offcanvas" tabindex="-1" aria-labelledby="sd-comp-offcanvas-title">
-            <div class="offcanvas-header border-bottom">
-                <h2 class="offcanvas-title text-uppercase h5 text-primary fw-bold mb-0" id="sd-comp-offcanvas-title">' . h(lang('Shared components and system widgets')) . '</h2>
-                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>
+        <dialog class="drawer drawer-end" id="sd-comp-offcanvas" aria-labelledby="sd-comp-offcanvas-title">
+            <div class="drawer-header border-bottom">
+                <h2 class="drawer-title text-uppercase h5 fg-primary fw-bold mb-0" id="sd-comp-offcanvas-title">' . h(lang('Shared components and system widgets')) . '</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
             </div>
-            <div class="d-flex justify-content-end px-3 py-2 border-bottom">
-                <button type="button" class="btn btn-sm btn-outline-warning" id="sd-comp-delete" disabled><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete selected')) . ' (<span id="sd-comp-count">0</span>)</button>
+            <div class="d-flex justify-content-end px-5 py-3 border-bottom">
+                <button type="button" class="btn btn-sm btn-outline theme-warning" id="sd-comp-delete" disabled><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete selected')) . ' (<span id="sd-comp-count">0</span>)</button>
             </div>
-            <div class="offcanvas-body p-0">
-                <p class="small text-muted px-3 pt-3 mb-3">' . h(lang('These do not belong to a single design: they stay when a design is deleted, and a template opened later gives its own a numbered name. Delete the ones you no longer need here; they are edited in the editor.')) . '</p>
+            <div class="drawer-body p-0">
+                <p class="small fg-secondary px-5 pt-5 mb-5">' . h(lang('These do not belong to a single design: they stay when a design is deleted, and a template opened later gives its own a numbered name. Delete the ones you no longer need here; they are edited in the editor.')) . '</p>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead>
                             <tr>
-                                <th><input type="checkbox" class="form-check-input" id="sd-comp-all" aria-label="' . h(lang('Select all')) . '"></th>
+                                <th><input type="checkbox" class="check" id="sd-comp-all" aria-label="' . h(lang('Select all')) . '"></th>
                                 <th>' . h(lang('Name')) . '</th>
                                 <th>' . h(lang('Type')) . '</th>
                                 <th>' . h(lang('Source')) . '</th>
@@ -1592,7 +1636,7 @@ function pg_designer_components_card($user)
                     </table>
                 </div>
             </div>
-        </div>';
+        </dialog>';
 
     return array('button' => $comp_button, 'panel' => $comp_panel);
 }
@@ -1608,30 +1652,28 @@ function pg_designer_new_design_modal($from_pages)
     // import or a paste (the modal is shared, see the script below).
     $option = function ($framework, $icon, $title, $text, $recommended, $import_text) use ($extra) {
         return
-            '<div class="col-12 col-md-6">
+            '<div class="col-12 md:col-6">
                 <a href="add_system_style.php?framework=' . h($framework) . h($extra) . '" class="card h-100 text-decoration-none sd-start-card sd-fw-choice' . ($recommended ? ' border-primary' : '') . '" data-href="add_system_style.php?framework=' . h($framework) . h($extra) . '">
-                    <div class="card-body d-flex flex-column align-items-start gap-2">
+                    <div class="card-body d-flex flex-column align-items-start gap-3">
                         <div class="d-flex w-100 align-items-start">
-                            <i class="bi ' . h($icon) . ' fs-2 ' . ($recommended ? 'text-primary' : 'text-body-secondary') . '" aria-hidden="true"></i>
-                            ' . ($recommended ? '<span class="badge text-bg-primary ms-auto">' . lang('Recommended') . '</span>' : '') . '
+                            <i class="bi ' . h($icon) . ' fs-3xl ' . ($recommended ? 'fg-primary' : 'fg-secondary') . '" aria-hidden="true"></i>
+                            ' . ($recommended ? '<span class="badge theme-primary ms-auto">' . lang('Recommended') . '</span>' : '') . '
                         </div>
-                        <span class="h5 mb-0 text-body">' . h($title) . '</span>
-                        <span class="small text-muted sd-fw-text" data-text-new="' . h($text) . '" data-text-import="' . h($import_text) . '">' . h($text) . '</span>
+                        <span class="h5 mb-0 fg-body">' . h($title) . '</span>
+                        <span class="small fg-secondary sd-fw-text" data-text-new="' . h($text) . '" data-text-import="' . h($import_text) . '">' . h($text) . '</span>
                     </div>
                 </a>
             </div>';
     };
     return '
-        <div class="modal fade" id="sdNewDesignModal" tabindex="-1" aria-labelledby="sdNewDesignModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2 class="modal-title fs-5" id="sdNewDesignModalLabel"><i class="bi bi-file-earmark-plus me-2 sd-fw-icon" aria-hidden="true"></i><span class="sd-fw-title" data-text-new="' . h(lang('Create New Design')) . '" data-text-import="' . h(lang('Import HTML / ZIP')) . '" data-text-paste="' . h(lang('Paste HTML content')) . '">' . lang('Create New Design') . '</span></h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+        <dialog class="dialog dialog-lg pg-dialog-centered" id="sdNewDesignModal" aria-labelledby="sdNewDesignModalLabel">
+                    <div class="dialog-header">
+                        <h2 class="dialog-title fs-lg" id="sdNewDesignModalLabel"><i class="bi bi-file-earmark-plus me-3 sd-fw-icon" aria-hidden="true"></i><span class="sd-fw-title" data-text-new="' . h(lang('Create New Design')) . '" data-text-import="' . h(lang('Import HTML / ZIP')) . '" data-text-paste="' . h(lang('Paste HTML content')) . '">' . lang('Create New Design') . '</span></h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
                     </div>
-                    <div class="modal-body">
-                        <p class="small text-muted mb-3 sd-fw-intro" data-text-new="' . h(lang('Choose what the design is built on. The pages are written against it, so it cannot be changed later.')) . '" data-text-import="' . h(lang('What is the project built on? Bootstrap 5 projects use the editor\'s Bootstrap; a project on another framework (Bootstrap 6, Tailwind…) or none goes into a custom design, with its own files. This cannot be changed later.')) . '">' . lang('Choose what the design is built on. The pages are written against it, so it cannot be changed later.') . '</p>
-                        <div class="row g-3">
+                    <div class="dialog-body">
+                        <p class="small fg-secondary mb-5 sd-fw-intro" data-text-new="' . h(lang('Choose what the design is built on. The pages are written against it, so it cannot be changed later.')) . '" data-text-import="' . h(lang('What is the project built on? Bootstrap 5 projects use the editor\'s Bootstrap; a project on another framework (Bootstrap 6, Tailwind…) or none goes into a custom design, with its own files. This cannot be changed later.')) . '">' . lang('Choose what the design is built on. The pages are written against it, so it cannot be changed later.') . '</p>
+                        <div class="row g-5">
                             ' . $option('bootstrap5', 'bi-bootstrap', lang('Build with Bootstrap 5'),
                                 lang('Bootstrap 5.3 is loaded on every page. The grid, the Bootstrap components and the ready-made blocks are in the palette.'), true,
                                 lang('For a project on Bootstrap 5. The editor\'s Bootstrap 5.3 is used; the project\'s own Bootstrap and jQuery files are left out.')) . '
@@ -1640,9 +1682,7 @@ function pg_designer_new_design_modal($from_pages)
                                 lang('For any other project (Bootstrap 6, Tailwind, your own CSS). Its CSS and JS files come in as they are, framework included; nothing is added.')) . '
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
+        </dialog>
         <script>
             // One modal for three starts: a blank design, an import and a
             // paste all ask the framework first. The card that opened it says
@@ -1661,19 +1701,19 @@ function pg_designer_new_design_modal($from_pages)
                         a.href = a.dataset.href + (mode ? "&start=" + mode : "");
                     });
                     var ic = modal.querySelector(".sd-fw-icon");
-                    if (ic) ic.className = "bi me-2 sd-fw-icon " + (mode === "import" ? "bi-file-earmark-zip" : (mode === "paste" ? "bi-clipboard-plus" : "bi-file-earmark-plus"));
+                    if (ic) ic.className = "bi me-3 sd-fw-icon " + (mode === "import" ? "bi-file-earmark-zip" : (mode === "paste" ? "bi-clipboard-plus" : "bi-file-earmark-plus"));
                 }
-                modal.addEventListener("show.bs.modal", function (e) {
+                pgUI.dialog.on(modal, "show", function (e) {
                     var src = e.relatedTarget;
                     setMode(src && src.dataset ? (src.dataset.sdStart || "") : (modal.dataset.sdStart || ""));
                 });
-                modal.addEventListener("hidden.bs.modal", function () { delete modal.dataset.sdStart; });
+                pgUI.dialog.on(modal, "hidden", function () { delete modal.dataset.sdStart; });
                 var q = new URLSearchParams(window.location.search).get("start");
                 if (q === "import" || q === "paste") {
                     var open = function () {
-                        if (!window.bootstrap || !window.bootstrap.Modal) return;
+                        if (!window.pgUI) return;
                         modal.dataset.sdStart = q;
-                        window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                        pgUI.dialog.show(modal);
                     };
                     if (document.readyState === "complete") open(); else window.addEventListener("load", open);
                 }
@@ -1795,69 +1835,65 @@ function pg_designer_template_modal($templates, $from_pages)
         // highlights and the theme it is made for, kept to a short card.
         // Every piece is escaped, then the markup once more for the attribute.
         $info = array();
-        if ($s['description'] !== '') $info[] = '<div class="mb-2">' . h($s['description']) . '</div>';
+        if ($s['description'] !== '') $info[] = '<div class="mb-3">' . h($s['description']) . '</div>';
         if ($s['pages']) {
             $info_pages = array_slice($s['pages'], 0, 6);
             $info_rest  = count($s['pages']) - count($info_pages);
-            $info[] = '<div class="mb-2"><strong>' . h(lang(array('string' => 'Pages ({var:1})', 'vars' => count($s['pages'])))) . '</strong><br>'
+            $info[] = '<div class="mb-3"><strong>' . h(lang(array('string' => 'Pages ({var:1})', 'vars' => count($s['pages'])))) . '</strong><br>'
                     . h(implode(', ', $info_pages)) . ($info_rest > 0 ? ' ' . h(lang(array('string' => '+{var:1} more', 'vars' => $info_rest))) : '') . '</div>';
         }
         if ($s['highlights']) {
-            $info[] = '<div class="mb-2"><strong>' . h(lang('Highlights')) . '</strong><ul class="ps-3 mb-0">'
+            $info[] = '<div class="mb-3"><strong>' . h(lang('Highlights')) . '</strong><ul class="ps-5 mb-0">'
                     . implode('', array_map(function ($line) { return '<li>' . h($line) . '</li>'; }, array_slice($s['highlights'], 0, 2))) . '</ul></div>';
         }
         if ($made_for !== '') $info[] = '<div>' . h($made_for) . '</div>';
-        $info_btn = '<button type="button" class="btn btn-link btn-sm p-0 text-body-secondary" aria-label="' . h(lang('Template details')) . '"'
+        $info_btn = '<button type="button" class="btn btn-link btn-sm p-0 fg-secondary" aria-label="' . h(lang('Template details')) . '"'
                   . ' title="' . h(h($s['name'])) . '" data-bs-content="' . h(implode('', $info)) . '" data-bs-custom-class="sd-tpl-info"><i class="bi bi-info-circle" aria-hidden="true"></i></button>';
         // A template made from a design (builtin false) can be deleted; the
         // ones the installation ships cannot.
         $custom = isset($s['builtin']) && !$s['builtin'];
-        $custom_badge = $custom ? '<span class="badge text-bg-secondary fw-normal text-nowrap">' . lang('Made from a design') . '</span>' : '';
+        $custom_badge = $custom ? '<span class="badge theme-secondary fw-normal text-nowrap">' . lang('Made from a design') . '</span>' : '';
         $delete_btn = $custom
             ? '<button type="button" class="btn btn-sm btn-ghost sd-tpl-delete no-popover" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" data-bs-toggle="tooltip" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
             : '';
         $use_href = 'add_system_style.php?start=template&template=' . rawurlencode($s['id']) . $extra;
         $cards .=
-            '<div class="col-12 col-md-6 col-xl-4 col-xxl-3">
+            '<div class="col-12 md:col-6 xl:col-4 2xl:col-3">
                 <div class="card h-100 overflow-hidden sd-tpl-card"' . $theme_attrs . '>
                     ' . $thumb . '
-                    <div class="card-body d-flex flex-column gap-1 p-3">
-                        <div class="d-flex flex-wrap align-items-center column-gap-2 row-gap-1">
-                            <div class="d-flex align-items-center gap-2 flex-grow-1 sd-tpl-title">
-                                <i class="bi ' . h($s['icon']) . ' fs-5 text-primary" aria-hidden="true"></i>
+                    <div class="card-body d-flex flex-column gap-1 p-5">
+                        <div class="d-flex flex-wrap align-items-center column-gap-3 row-gap-1">
+                            <div class="d-flex align-items-center gap-3 flex-grow-1 sd-tpl-title">
+                                <i class="bi ' . h($s['icon']) . ' fs-lg fg-primary" aria-hidden="true"></i>
                                 <span class="h6 mb-0 text-truncate">' . h($s['name']) . '</span>
                                 ' . $custom_badge . '
                                 ' . $info_btn . '
                             </div>
-                            <div class="d-flex align-items-center gap-2 ms-auto">
+                            <div class="d-flex align-items-center gap-3 ms-auto">
                                 ' . $theme_apply . '
                                 ' . $delete_btn . '
-                                <a href="' . h($use_href) . '" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
+                                <a href="' . h($use_href) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
                             </div>
                         </div>
-                        <span class="small text-muted text-truncate">' . h($s['description']) . '</span>
-                        ' . ($thumb === '' ? '<div class="text-body-secondary">' . $ver_badge . '</div>' : '') . '
+                        <span class="small fg-secondary text-truncate">' . h($s['description']) . '</span>
+                        ' . ($thumb === '' ? '<div class="fg-secondary">' . $ver_badge . '</div>' : '') . '
                     </div>
                 </div>
             </div>';
     }
     return '
-        <div class="modal fade" id="sdTemplateModal" tabindex="-1" aria-labelledby="sdTemplateModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable sd-tpl-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2 class="modal-title fs-5" id="sdTemplateModalLabel"><i class="bi bi-grid-1x2 me-2" aria-hidden="true"></i>' . lang('Choose a Template') . '</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+        <dialog class="dialog dialog-xl pg-dialog-centered dialog-scrollable sd-tpl-dialog" id="sdTemplateModal" aria-labelledby="sdTemplateModalLabel">
+                    <div class="dialog-header">
+                        <h2 class="dialog-title fs-lg" id="sdTemplateModalLabel"><i class="bi bi-grid-1x2 me-3" aria-hidden="true"></i>' . lang('Choose a Template') . '</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
                     </div>
-                    <div class="modal-body">
-                        <p class="small text-muted mb-3">' . lang('The template\'s pages open in the editor, ready to change. Nothing is added to the site until you publish.') . '</p>
+                    <div class="dialog-body">
+                        <p class="small fg-secondary mb-5">' . lang('The template\'s pages open in the editor, ready to change. Nothing is added to the site until you publish.') . '</p>
                         ' . pg_designer_template_theme_picker() . '
-                        <div class="row g-3" id="sd-tpl-cards">' . $cards . '</div>
-                        <p class="small text-muted mb-0' . ($cards !== '' ? ' d-none' : '') . '" id="sd-tpl-empty">' . lang('There are no templates.') . '</p>
+                        <div class="row g-5" id="sd-tpl-cards">' . $cards . '</div>
+                        <p class="small fg-secondary mb-0' . ($cards !== '' ? ' d-none' : '') . '" id="sd-tpl-empty">' . lang('There are no templates.') . '</p>
                     </div>
-                </div>
-            </div>
-        </div>
+        </dialog>
         <script>
             // Delete a template made from a design. The shipped ones carry no
             // button. api.php reads a JSON body.
@@ -1899,7 +1935,7 @@ function pg_designer_template_modal($templates, $from_pages)
                 if (new URLSearchParams(window.location.search).get("start") !== "template") return;
                 var open = function () {
                     var modal = document.getElementById("sdTemplateModal");
-                    if (modal && window.bootstrap && window.bootstrap.Modal) window.bootstrap.Modal.getOrCreateInstance(modal).show();
+                    if (modal && window.pgUI) pgUI.dialog.show(modal);
                 };
                 if (document.readyState === "complete") open(); else window.addEventListener("load", open);
             })();
@@ -1925,7 +1961,7 @@ function pg_designer_template_theme_picker()
         $id = 'sd-tpl-look-' . (++$n);
         $look_btns .= '<input type="radio" class="btn-check" name="sd_tpl_look" id="' . $id . '" value="' . h($key) . '"' . ($key === $look0 ? ' checked' : '')
                     . ' data-preview="' . h(json_encode($l['preview'])) . '" autocomplete="off">'
-                    . '<label class="btn btn-outline-secondary rounded-pill no-popover" for="' . $id . '" data-bs-toggle="tooltip" title="' . h($l['description']) . '">' . h($l['name']) . '</label>';
+                    . '<label class="btn btn-outline theme-secondary rounded-pill no-popover" for="' . $id . '" data-bs-toggle="tooltip" title="' . h($l['description']) . '">' . h($l['name']) . '</label>';
     }
     $bs = pg_design_bootstrap_colors();
     $palettes = array('' => array('name' => lang('Bootstrap'), 'primary' => $bs['primary'], 'secondary' => $bs['secondary']));
@@ -1944,22 +1980,22 @@ function pg_designer_template_theme_picker()
                    . '<span class="visually-hidden">' . h($p['name']) . '</span></label>';
     }
     return '
-        <div class="border rounded-3 p-3 mb-3 bg-body-tertiary" id="sd-tpl-theme">
-            <div class="mb-3">
-                <div class="small fw-semibold mb-1">' . lang('Look') . ' <span class="fw-normal text-muted">— ' . lang('corners, shadows, type and buttons') . '</span></div>
+        <div class="border rounded-5 p-5 mb-5 bg-1" id="sd-tpl-theme">
+            <div class="mb-5">
+                <div class="small fw-semibold mb-1">' . lang('Look') . ' <span class="fw-normal fg-secondary">— ' . lang('corners, shadows, type and buttons') . '</span></div>
                 <div class="d-flex flex-wrap gap-1 sd-tpl-look" role="radiogroup" aria-label="' . h(lang('Look')) . '">' . $look_btns . '</div>
             </div>
             <div>
-                <div class="small fw-semibold mb-1">' . lang('Colour palette') . ' <span class="fw-normal text-muted">— <span id="sd-tpl-pal-name">' . lang('Bootstrap') . '</span></span></div>
-                <div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="' . h(lang('Colour palette')) . '">' . $pal_btns . '</div>
+                <div class="small fw-semibold mb-1">' . lang('Colour palette') . ' <span class="fw-normal fg-secondary">— <span id="sd-tpl-pal-name">' . lang('Bootstrap') . '</span></span></div>
+                <div class="d-flex flex-wrap gap-3" role="radiogroup" aria-label="' . h(lang('Colour palette')) . '">' . $pal_btns . '</div>
             </div>
-            <div class="form-text mt-2">' . lang('You can change both later in the editor, under Settings, Design, Theme.') . '</div>
+            <div class="form-text mt-3">' . lang('You can change both later in the editor, under Settings, Design, Theme.') . '</div>
         </div>
         <script>
             (function () {
                 var box = document.getElementById("sd-tpl-theme");
                 if (!box) return;
-                var modal = box.closest(".modal");
+                var modal = box.closest(".dialog");
                 // Twin of pg_design_thumb_vars().
                 function vars(pv, p, s) {
                     pv = pv || {};
@@ -2005,7 +2041,7 @@ function pg_designer_template_theme_picker()
                 });
                 // The cards come after this script in the page.
                 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sync); else sync();
-                if (modal) modal.addEventListener("show.bs.modal", sync);
+                if (modal) pgUI.dialog.on(modal, "show", sync);
             })();
         </script>';
 }
@@ -2067,8 +2103,8 @@ function pg_designer_settings_modal($ctx)
     $ai_title_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_title', 'field' => 'pg_page_title'));
     $ai_description_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_description', 'field' => 'pg_page_meta_description'));
 
-    $rail = function ($pane, $icon, $label, $scope, $active) use ($design_hidden) {
-        return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . '" id="tab-' . $pane . '-btn"
+    $rail = function ($pane, $icon, $label, $scope, $active, $hidden = false) use ($design_hidden) {
+        return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . ($hidden ? ' d-none' : '') . '" id="tab-' . $pane . '-btn"
                     data-bs-toggle="pill" data-bs-target="#tab-' . $pane . '" type="button" role="tab"
                     aria-controls="tab-' . $pane . '" aria-selected="' . ($active ? 'true' : 'false') . '" data-sd-settings-scope="' . $scope . '">
                     <span class="bi ' . $icon . '" aria-hidden="true"></span><span class="sd-settings-nav-txt">' . $label . '</span>
@@ -2112,7 +2148,7 @@ function pg_designer_settings_modal($ctx)
                 lang('Bottom Left')  => 'bottom_left',
                 lang('Bottom Right') => 'bottom_right',
                 lang('Disabled')     => 'disabled',
-            ), 'class'=>'form-select form-select-sm')),
+            ), 'class'=>'form-control form-control-sm')),
             array('for' => 'sd-style-social'));
     }
     $general .=
@@ -2121,7 +2157,7 @@ function pg_designer_settings_modal($ctx)
             ' . $social . '
             ' . pg_designer_setting(lang('Collection'),
                 lang('Only for classic Form List View and Form Item View pages that use this design: they keep two layouts, A and B, and show the one chosen here. The widgets of the visual designer draw their own layout and do not follow it.'),
-                $liveform->output_field(array('type'=>'select', 'name'=>'collection', 'id'=>'sd-style-collection', 'options'=>array('A'=>'a', 'B'=>'b'), 'class'=>'form-select form-select-sm')),
+                $liveform->output_field(array('type'=>'select', 'name'=>'collection', 'id'=>'sd-style-collection', 'options'=>array('A'=>'a', 'B'=>'b'), 'class'=>'form-control form-control-sm')),
                 array('for' => 'sd-style-collection')) . '
         </section>';
 
@@ -2141,7 +2177,7 @@ function pg_designer_settings_modal($ctx)
             <h3 class="sd-settings-group-title">' . lang('Theme file') . '</h3>
             ' . pg_designer_setting(lang('Theme file'),
                 lang('A stylesheet from the file manager, loaded after everything else so it wins over the look and the palette. Shown in the Styles list and the Themes panel.'),
-                $liveform->output_field(array('type'=>'select', 'name'=>'theme_id', 'id'=>'sd-style-theme-file', 'options'=>$theme_options, 'class'=>'form-select form-select-sm')),
+                $liveform->output_field(array('type'=>'select', 'name'=>'theme_id', 'id'=>'sd-style-theme-file', 'options'=>$theme_options, 'class'=>'form-control form-control-sm')),
                 array('for' => 'sd-style-theme-file', 'id' => 'sd-theme-file-row')) . '
         </section>';
 
@@ -2174,21 +2210,21 @@ function pg_designer_settings_modal($ctx)
                 // visitors on (pg_short_link_page_renamed()), shown by
                 // _sdSettingsAddress() while the name differs.
                 . (($full && pg_short_link_redirects_ready()) ? '
-                <div class="form-check mt-1 d-none" id="sd-page-redirect-row">
-                    <input class="form-check-input" type="checkbox" id="sd-page-name-redirect" value="1" checked>
-                    <label class="form-check-label small" for="sd-page-name-redirect">' . lang('Send visitors of the old address here (301 redirect)') . ' <span class="text-body-secondary" id="sd-page-redirect-from"></span></label>
+                <div class="form-field mt-1 d-none" id="sd-page-redirect-row">
+                    <input class="check" type="checkbox" id="sd-page-name-redirect" value="1" checked>
+                    <label class="small" for="sd-page-name-redirect">' . lang('Send visitors of the old address here (301 redirect)') . ' <span class="fg-secondary" id="sd-page-redirect-from"></span></label>
                 </div>' : ''),
                 array('for' => 'sd-page-name')) . '
             ' . pg_designer_setting(lang('Page Folder'),
                 lang('The folder decides who may open the page and where it is listed among the pages; administrators, designers and managers can always open it.') . $fixed,
-                '<select name="page_folder" id="pg_page_folder" class="form-select form-select-sm sd-page-field" data-page-key="page_folder"' . $fixed_attr . '>
+                '<select name="page_folder" id="pg_page_folder" class="form-control form-control-sm sd-page-field" data-page-key="page_folder"' . $fixed_attr . '>
                     ' . $folder_options . '
                 </select>
                 <div class="sd-set-status" id="sd-page-access" aria-live="polite"></div>',
                 array('for' => 'pg_page_folder')) . '
             ' . (($full && pg_page_draft_ready()) ? pg_designer_setting(lang('Draft - not on the site'),
                 lang('A draft is kept in the private Drafts folder: visitors cannot open it, administrators can. Once published it goes back to the folder above. Applied when the design is published.'),
-                '<div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" id="pg_page_draft" value="1" data-page-key="page_draft"></div>',
+                '<div class="form-field"><div class="switch"><input class="sd-page-field" type="checkbox" role="switch" id="pg_page_draft" value="1" data-page-key="page_draft"></div></div>',
                 array('for' => 'pg_page_draft', 'switch' => true)) : '') . '
         </section>' . (($full && pg_page_draft_ready() && function_exists('pg_page_schedule_ready') && pg_page_schedule_ready()) ? '
         <section class="sd-settings-group" id="sd-page-schedule-group">
@@ -2209,16 +2245,16 @@ function pg_designer_settings_modal($ctx)
             ' . (((int)$user['role'] < 3) ? pg_designer_setting(lang('Set As Homepage'),
                 lang('The site address on its own (/) opens this page. A home page cannot be a draft; when several pages are marked, the site shows one of them at random.') . $fixed,
                 '<input type="hidden" name="page_home" value="0">
-                <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_home" id="pg_page_home" value="1" data-page-key="page_home"' . $fixed_attr . '></div>',
+                <div class="form-field"><div class="switch"><input class="sd-page-field" type="checkbox" role="switch" name="page_home" id="pg_page_home" value="1" data-page-key="page_home"' . $fixed_attr . '></div></div>',
                 array('for' => 'pg_page_home', 'switch' => true)) : '') . '
             ' . pg_designer_setting(lang('Include in site search'),
                 lang('The search box of the site finds this page too. Turn it off for pages nobody should land on from a search: a thank-you page, an e-mail page.'),
                 '<input type="hidden" name="page_search" value="0">
-                <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_search" id="pg_page_search" value="1" data-page-key="page_search"></div>',
+                <div class="form-field"><div class="switch"><input class="sd-page-field" type="checkbox" role="switch" name="page_search" id="pg_page_search" value="1" data-page-key="page_search"></div></div>',
                 array('for' => 'pg_page_search', 'switch' => true)) . '
             ' . pg_designer_setting(lang('Search Keywords'),
                 lang('Somebody searching for one of these words gets this page at the top of the results; a search for a part of one finds the page too. Press Enter after each word.'),
-                '<input type="text" value="" name="page_search_keywords" id="pg_search_keywords" class="form-control form-control-sm tagin min-height-tagin sd-page-field" data-page-key="page_search_keywords" data-placeholder="' . lang('Add tags') . '">',
+                '<input type="text" value="" name="page_search_keywords" id="pg_search_keywords" class="form-control form-control-sm tagin min-height-tagin sd-page-field" data-pg-chips data-page-key="page_search_keywords" data-placeholder="' . lang('Add tags') . '">',
                 array('for' => 'pg_search_keywords', 'wide' => true, 'id' => 'pg_search_kw_row')) . '
         </section>';
 
@@ -2230,13 +2266,13 @@ function pg_designer_settings_modal($ctx)
                 lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.')
                 . '<span class="sd-set-warn" id="pg_noindex_hint" style="display:none">' . lang('A page blocked in robots.txt is not crawled, so the noindex tag on it is never read. Use this before a page reaches the results; a page that is already listed can take a while to drop out.') . '</span>',
                 '<input type="hidden" name="page_noindex" value="0">
-                <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_noindex" id="pg_page_noindex" value="1" data-page-key="page_noindex"></div>',
+                <div class="form-field"><div class="switch"><input class="sd-page-field" type="checkbox" role="switch" name="page_noindex" id="pg_page_noindex" value="1" data-page-key="page_noindex"></div></div>',
                 array('for' => 'pg_page_noindex', 'switch' => true)) .
             pg_designer_setting(lang('Do Not Follow Links on This Page (nofollow)'),
                 lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.')
                 . ' ' . lang('It can be turned on only while the page is closed to search engines.'),
                 '<input type="hidden" name="page_nofollow" value="0">
-                <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_nofollow" id="pg_page_nofollow" value="1" data-page-key="page_nofollow" disabled="disabled"></div>',
+                <div class="form-field"><div class="switch"><input class="sd-page-field" type="checkbox" role="switch" name="page_nofollow" id="pg_page_nofollow" value="1" data-page-key="page_nofollow" disabled="disabled"></div></div>',
                 array('for' => 'pg_page_nofollow', 'switch' => true));
     }
     // The page's own canonical address and the robots directives besides
@@ -2255,7 +2291,7 @@ function pg_designer_settings_modal($ctx)
                 array('for' => 'pg_page_canonical_url', 'wide' => true)) .
             pg_designer_setting(lang('Do Not Keep a Cached Copy (noarchive)'),
                 lang('Asks search engines not to keep or show a cached copy of the page. Like the snippet length, it is left out while the page is closed to search engines.'),
-                '<div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" id="pg_page_noarchive" value="1" data-page-key="page_noarchive"></div>',
+                '<div class="form-field"><div class="switch"><input class="sd-page-field" type="checkbox" role="switch" id="pg_page_noarchive" value="1" data-page-key="page_noarchive"></div></div>',
                 array('for' => 'pg_page_noarchive', 'switch' => true)) .
             pg_designer_setting(lang('Snippet Length (max-snippet)'),
                 lang('The most characters of text a search result may quote from the page. Leave empty to let the search engine decide; -1 is no limit, 0 is no text snippet.'),
@@ -2291,7 +2327,7 @@ function pg_designer_settings_modal($ctx)
             ' . pg_designer_setting(lang('Include in the site map'),
                 lang('Lists the page in sitemap.xml, the list search engines read to find the pages of the site. A page closed to search engines is never listed.'),
                 '<input type="hidden" name="page_sitemap" value="0">
-                <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_sitemap" id="pg_page_sitemap" value="1" data-page-key="page_sitemap"></div>',
+                <div class="form-field"><div class="switch"><input class="sd-page-field" type="checkbox" role="switch" name="page_sitemap" id="pg_page_sitemap" value="1" data-page-key="page_sitemap"></div></div>',
                 array('for' => 'pg_page_sitemap', 'switch' => true)) . '
             ' . $noindex_rows . '
             ' . $seo_extra_rows . '
@@ -2312,26 +2348,42 @@ function pg_designer_settings_modal($ctx)
         </section>';
     }
 
+    // ── Page: page type ────────────────────────────────────────────────
+    // A classic page placed in the design keeps the fields of its type (a
+    // catalog's product group, a gallery's columns) and its Layout Type. The
+    // editor shows the pill for such a page only and fills the pane from
+    // edit_page.php?properties=1 (includes/fn/page_type_pane.php), which also
+    // saves it, with its own button and at once.
+    $page_type =
+        '<section class="sd-settings-group">
+            <h3 class="sd-settings-group-title">' . lang('Page Type') . ': <span id="sd-page-type-name">—</span></h3>
+            <p class="sd-set-help">' . lang('This page draws its system region from its page type. These settings are stored with their own button, at once, not with the next Save or Publish.') . '</p>
+            <div id="sd-page-type-fields" class="sd-page-type-fields"></div>
+            <div id="sd-page-type-links" class="d-flex flex-wrap gap-3 mt-3"></div>
+            <div class="d-flex align-items-center gap-3 mt-5">
+                <button type="button" class="btn btn-sm btn-solid theme-primary" id="sd-page-type-save" disabled><span class="bi bi-floppy me-1" aria-hidden="true"></span>' . lang('Save') . '</button>
+                <span class="sd-set-status" id="sd-page-type-status" aria-live="polite"></span>
+            </div>
+        </section>';
+
     // ── Page: meta tags ────────────────────────────────────────────────
     $page_meta = pg_designer_meta_tags_group('page');
     $has_page_meta = ($page_meta !== '');
 
     return '
-        <div class="modal fade" id="styleSettingsModal" tabindex="-1" aria-labelledby="styleSettingsModalLabel" aria-hidden="true"
+        <dialog class="dialog dialog-xl lg-down:dialog-fullscreen sd-settings-dialog sd-settings-content" id="styleSettingsModal" aria-labelledby="styleSettingsModalLabel"
              data-bs-backdrop="static" data-bs-keyboard="false" data-bs-theme="dark">
-            <!-- The largest dialog from 992px up, the whole screen below it.
+            <!-- The largest dialog from 1024px up, the whole screen below it.
                  Its height and the scroll chain inside are in
                  style_designer.css (.sd-settings-*): an inline size beats
                  every media query. -->
-            <div class="modal-dialog modal-xl modal-fullscreen-lg-down modal-dialog-centered sd-settings-dialog">
-                <div class="modal-content sd-settings-content">
 
-                    <div class="modal-header sd-settings-header">
-                        <h2 class="modal-title fs-6" id="styleSettingsModalLabel"><span class="bi bi-gear me-2" aria-hidden="true"></span>' . lang('Settings') . '</h2>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+                    <div class="dialog-header sd-settings-header">
+                        <h2 class="dialog-title fs-md" id="styleSettingsModalLabel"><span class="bi bi-gear me-3" aria-hidden="true"></span>' . lang('Settings') . '</h2>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
 
-                    <div class="modal-body sd-settings-main">
+                    <div class="dialog-body sd-settings-main">
 
                         <div class="sd-settings-nav">
                             <!-- ONE tablist: Bootstrap deactivates the previous pill by looking
@@ -2347,6 +2399,7 @@ function pg_designer_settings_modal($ctx)
                                 ' . $rail('page', 'bi-file-earmark', lang('Page'), 'page', !$full) . '
                                 ' . $rail('seo', 'bi-search', lang('Search Engines'), 'page', false) . '
                                 ' . ($has_page_meta ? $rail('page-meta', 'bi-tags', lang('Meta Tags'), 'page', false) : '') . '
+                                ' . $rail('page-type', 'bi-sliders', lang('Page Type'), 'page', false, true) . '
                             </nav>
                         </div>
 
@@ -2357,20 +2410,19 @@ function pg_designer_settings_modal($ctx)
                             ' . $pane_open('page', 'page', !$full) . $page . '</div>
                             ' . $pane_open('seo', 'page', false) . $seo . '</div>
                             ' . ($has_page_meta ? $pane_open('page-meta', 'page', false) . $page_meta . '</div>' : '') . '
+                            ' . $pane_open('page-type', 'page', false) . $page_type . '</div>
                             ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'additional_body_classes')) . '
                             ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'style_empty_cell_width_percentage')) . '
                         </div>
                     </div>
 
-                    <div class="modal-footer sd-settings-footer">
+                    <div class="dialog-footer sd-settings-footer">
                         <span class="sd-settings-footer-note"><span class="bi bi-lightning-charge me-1" aria-hidden="true"></span>' . lang('Changes reach the design at once; they are stored with the next Save or Publish.') . '</span>
-                        <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">' . lang('Apply') . '</button>
-                        <button type="button" class="btn btn-sm btn-primary" id="sd-settings-save"><span class="bi bi-rocket-takeoff me-1" aria-hidden="true"></span><span class="sd-settings-save-txt">' . lang('Publish') . '</span></button>
+                        <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="dialog">' . lang('Apply') . '</button>
+                        <button type="button" class="btn btn-sm btn-solid theme-primary" id="sd-settings-save"><span class="bi bi-rocket-takeoff me-1" aria-hidden="true"></span><span class="sd-settings-save-txt">' . lang('Publish') . '</span></button>
                     </div>
 
-                </div>
-            </div>
-        </div>';
+        </dialog>';
 }
 
 /**
@@ -2467,27 +2519,23 @@ function pg_designer_settings_framework_rows($ctx)
 function pg_designer_pick_page_modal()
 {
     return '
-        <div class="modal fade" id="sdPickPageModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-scrollable">
-                <div class="modal-content" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
-                    <div class="modal-header" style="border-color:#30363d;">
-                        <h5 class="modal-title fs-6"><span class="bi bi-files me-2"></span>' . lang('Select Page') . '</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <dialog class="dialog dialog-scrollable" id="sdPickPageModal" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
+                    <div class="dialog-header" style="border-color:#30363d;">
+                        <h5 class="dialog-title fs-md"><span class="bi bi-files me-3"></span>' . lang('Select Page') . '</h5>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog"></button>
                     </div>
-                    <div class="modal-body p-0">
-                        <div class="p-3 pb-2">
+                    <div class="dialog-body p-0">
+                        <div class="p-5 pb-3">
                             <input type="text" class="form-control form-control-sm" id="sd-pick-page-filter" placeholder="' . lang('Search...') . '" autocomplete="off">
                         </div>
-                        <div class="alert alert-warning py-2 small mx-3 mb-2">
+                        <div class="alert theme-warning py-3 small mx-5 mb-3">
                             <span class="bi bi-exclamation-triangle me-1"></span>' . lang('A page you add here joins this design: it keeps its own layout, but its stylesheets, scripts, fonts and theme are replaced by this design\'s.') . '
                         </div>
                         <div class="list-group list-group-flush" id="sd-pick-page-list">
-                            <div class="list-group-item bg-transparent text-muted small">' . lang('Loading...') . '</div>
+                            <div class="list-group-item bg-transparent fg-secondary small">' . lang('Loading...') . '</div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>';
+        </dialog>';
 }
 
 /**
@@ -2498,37 +2546,33 @@ function pg_designer_pick_page_modal()
 function pg_designer_import_modal()
 {
     return '
-        <div class="modal fade" id="sdImportModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
-                    <div class="modal-header" style="border-color:#30363d;">
-                        <h5 class="modal-title fs-6"><span class="bi bi-file-earmark-code me-2"></span>' . lang('Import HTML / ZIP') . '</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <dialog class="dialog" id="sdImportModal" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
+                    <div class="dialog-header" style="border-color:#30363d;">
+                        <h5 class="dialog-title fs-md"><span class="bi bi-file-earmark-code me-3"></span>' . lang('Import HTML / ZIP') . '</h5>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog"></button>
                     </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
+                    <div class="dialog-body">
+                        <div class="mb-5">
                             <label class="form-label small" for="sd-import-file">' . lang('File') . '</label>
                             <input type="file" class="form-control form-control-sm" id="sd-import-file" accept=".html,.htm,.zip">
                             <div class="form-text small">' . lang('A single .html file, or a .zip with the whole project (HTML pages plus their CSS, JavaScript, images and fonts).') . '</div>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label class="form-label small" for="sd-import-project">' . lang('Project name') . '</label>
                             <input type="text" class="form-control form-control-sm" id="sd-import-project" maxlength="60" placeholder="' . lang('Defaults to the file name') . '" autocomplete="off">
                             <div class="form-text small">' . lang('Files are stored under Import / this name in the file manager, keeping the project\'s folders.') . '</div>
                         </div>
-                        <div class="alert alert-secondary py-2 small mb-0">
+                        <div class="alert theme-secondary py-3 small mb-0">
                             <div><span class="bi bi-info-circle me-1"></span>' . lang('Every .html becomes a page (index.html → index). Its head is replaced by the design\'s: stylesheets and scripts arrive as design assets, Google Fonts in the fonts list, Bootstrap and jQuery are dropped in favour of the design\'s own.') . '</div>
                             <div class="mt-1">' . lang('Pages open as unsaved tabs — review them, then publish.') . '</div>
                         </div>
-                        <div id="sd-import-status" class="small mt-3" style="display:none"></div>
+                        <div id="sd-import-status" class="small mt-5" style="display:none"></div>
                     </div>
-                    <div class="modal-footer" style="border-color:#30363d;">
-                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-                        <button type="button" class="btn btn-sm btn-primary" id="sd-import-run"><span class="bi bi-upload me-1"></span>' . lang('Import') . '</button>
+                    <div class="dialog-footer" style="border-color:#30363d;">
+                        <button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-sm btn-solid theme-primary" id="sd-import-run"><span class="bi bi-upload me-1"></span>' . lang('Import') . '</button>
                     </div>
-                </div>
-            </div>
-        </div>';
+        </dialog>';
 }
 
 /**
@@ -2540,15 +2584,13 @@ function pg_designer_import_modal()
 function pg_designer_make_template_modal()
 {
     return '
-        <div class="modal fade" id="sdMakeTemplateModal" tabindex="-1" aria-labelledby="sdMakeTemplateModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
-                    <div class="modal-header" style="border-color:#30363d;">
-                        <h5 class="modal-title fs-6" id="sdMakeTemplateModalLabel"><span class="bi bi-grid-1x2 me-2" aria-hidden="true"></span>' . lang('Turn this design into a template') . '</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+        <dialog class="dialog" id="sdMakeTemplateModal" aria-labelledby="sdMakeTemplateModalLabel" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
+                    <div class="dialog-header" style="border-color:#30363d;">
+                        <h5 class="dialog-title fs-md" id="sdMakeTemplateModalLabel"><span class="bi bi-grid-1x2 me-3" aria-hidden="true"></span>' . lang('Turn this design into a template') . '</h5>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
+                    <div class="dialog-body">
+                        <div class="mb-5">
                             <label class="form-label small" for="sd-make-template-name">' . lang('Name') . '</label>
                             <input type="text" class="form-control form-control-sm" id="sd-make-template-name" maxlength="255" autocomplete="off">
                         </div>
@@ -2557,13 +2599,11 @@ function pg_designer_make_template_modal()
                             <textarea class="form-control form-control-sm" id="sd-make-template-description" rows="3"></textarea>
                         </div>
                     </div>
-                    <div class="modal-footer" style="border-color:#30363d;">
-                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-                        <button type="button" class="btn btn-sm btn-primary" id="sd-make-template-run"><span class="bi bi-grid-1x2 me-1" aria-hidden="true"></span>' . lang('Create template') . '</button>
+                    <div class="dialog-footer" style="border-color:#30363d;">
+                        <button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-sm btn-solid theme-primary" id="sd-make-template-run"><span class="bi bi-grid-1x2 me-1" aria-hidden="true"></span>' . lang('Create template') . '</button>
                     </div>
-                </div>
-            </div>
-        </div>';
+        </dialog>';
 }
 
 // ── POST handler ────────────────────────────────────────────────────────────

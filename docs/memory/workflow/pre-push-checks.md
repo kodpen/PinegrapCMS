@@ -8,8 +8,8 @@ description: git push runs tools/pre_push.sh first (installed when a cloud sessi
 
 ## What does it run, and when?
 - In a temporary worktree of the commit being pushed (about a second to make; edits, ignored files and a sparse checkout do not count). What runs follows from what the branch changes since it left `origin/development`, as CI checks the whole pull request:
-  - every push: the memory index;
-  - any change outside `docs/`, `.github/`, `.claude/`, the root `*.md` files and `license.txt`: `php -l` of the changed PHP files, `check_lang`, `check_bindings`, `check_api_schema`, `check_copies`, the unit tests;
+  - every push: the memory index and, with a base, the branch's commits and changelog (`tools/check_pr.php`, `branch-guards.md`);
+  - any change outside `docs/`, `.github/`, `.claude/`, the root `*.md` files and `license.txt`: `php -l` of the changed PHP files, `check_lang`, `check_bindings`, `check_api_schema`, `check_copies`, `check_bs6 --strict`, the unit tests;
   - a change under `pinegrap/assets/js/`, to `pg_js_bundles()`'s file or to `tools/build_js.php`: `node --check` of the three panel scripts CI checks and `tools/build_js.php --check`; skipped with a note when node, npx or the npm registry is missing.
 - A documentation-only push takes under two seconds, a code push 25-40 (the unit tests take 20-30). Without `origin/development` it runs everything, the whole-tree `tools/lint.php` included (about 75 seconds). Deletions and tags are not checked.
 - CI alone runs PHPStan and PHPCompatibility (minutes), the code editor bundle (`npm ci`), the install check and the Docker check. A fast step added to `php-checks.yml` is added to the script too.
@@ -21,6 +21,9 @@ description: git push runs tools/pre_push.sh first (installed when a cloud sessi
 - `.claude/settings.json` has a `SessionStart` hook that runs `tools/install_git_hooks.sh --session-start`. In a cloud session (`CLAUDE_CODE_REMOTE=true`) that starts inside this clone, on a branch that carries the script, it writes a shim to the clone's `pre-push` hook (shared by every worktree), which runs the `tools/pre_push.sh` of the worktree a push starts from, and it prints the line "git push runs tools/pre_push.sh first …" into the session's context. A checkout without the script (main, release branches) pushes unchecked.
 - Sessions that start elsewhere (several repositories, one added later) and the owner's machine run `bash tools/install_git_hooks.sh` once. A `pre-push` hook that is not the shim, or `core.hooksPath`, is left alone; the installer prints a guarded line to put first in that hook that passes the refs on.
 - By hand: `bash tools/pre_push.sh` checks HEAD the same way, `bash tools/pre_push.sh <base>` against another base.
+
+## Does it work on Windows?
+- Yes, from Git Bash with a Windows PHP; since #2091 the commit check too (`branch-guards.md`).
 
 ## May a push skip it?
 - Not to push a commit that fails: fix it and push again. `git push --no-verify` only when the script itself is broken (say so in the PR), and fix the script.

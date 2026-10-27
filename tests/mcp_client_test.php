@@ -1043,3 +1043,30 @@ function test_mcp_client_registers_as_a_public_client()
 	pg_assert_false($refused['ok'], 'refused');
 	pg_assert_contains('invalid_redirect_uri: not allowed', $refused['error'], 'with the server\'s reason');
 }
+
+// A header line kept by name: a challenge sent in two WWW-Authenticate lines
+// is joined into one list, as RFC 9110 allows, so a Bearer challenge in the
+// second line is still found; other headers keep their last line.
+function test_mcp_client_http_header_lines()
+{
+	$received = array();
+
+	foreach (array("HTTP/1.1 401 Unauthorized\r\n", "WWW-Authenticate: Basic realm=\"files\"\r\n", "www-authenticate: Bearer resource_metadata=\"https://a.example/m\"\r\n", "Content-Type: text/plain\r\n", "Content-Type: application/json\r\n", "\r\n") as $line) {
+		$received = api_http_header_line($received, $line);
+	}
+
+	pg_assert_same('Basic realm="files", Bearer resource_metadata="https://a.example/m"', $received['www-authenticate']);
+	pg_assert_same('application/json', $received['content-type'], 'another header keeps its last line');
+	pg_assert_same(array('resource_metadata' => 'https://a.example/m'), pg_mcp_client_bearer_challenge($received['www-authenticate']));
+	pg_assert_same(array(), api_http_header_line($received, "HTTP/1.1 200 OK\r\n"), 'a status line starts the headers over');
+}
+
+// Request ids start at a random number and go up one by one, so two
+// requests of a page under the same MCP session do not both start at 1.
+function test_mcp_client_ids_start_at_random()
+{
+	$first = pg_mcp_client_next_id();
+
+	pg_assert_true(is_int($first) && ($first >= 1) && ($first <= 1000000001), 'a positive id');
+	pg_assert_same($first + 1, pg_mcp_client_next_id(), 'the next one follows');
+}

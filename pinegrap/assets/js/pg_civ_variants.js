@@ -280,6 +280,9 @@
                 else if (flag === 'can_notify' && ('out_of_stock' in p)) el.hidden = String(p.out_of_stock) !== '1';
             });
 
+            // 1c. Boxes marked "hide if empty" around a value just redrawn.
+            settleEmptyBoxes(scope);
+
             // 2. Refresh the carousel — rebuild slides + thumbnails from
             //    the new product's gallery. Walks all carousels inside
             //    the form scope.
@@ -321,48 +324,30 @@
             // 5. Refresh cross-sell suggestions for the new product. Cross-sell
             //    is keyed by the source product (different products → different
             //    "ordered together" patterns), so a fresh lookup is needed.
-            //    Uses the existing get_cross_sell_items API endpoint.
+            //    The server draws the widget's part for it.
             refreshCrossSell(p.id);
         }
 
         /**
-         * Refresh the cross-sell row for a new source product. Replaces the
-         * inner HTML of the FIRST `[data-pg-civ-cross-sell="1"]` element
-         * in the form scope.
+         * Refresh the cross-sell part for a new source product: the server
+         * draws the widget's part (its design's own elements) for the
+         * variant, and it takes the place of the FIRST
+         * `[data-pg-civ-cross-sell="1"]` element in the form scope.
          */
         function refreshCrossSell(productId) {
-            if (!data.api_url || !productId || !form) return;
+            if (!data.api_url || !data.widget_id || !productId || !form) return;
             var cs = form.querySelector('[data-pg-civ-cross-sell="1"]');
             if (!cs) return;
-            var detailPid    = cs.getAttribute('data-pg-civ-detail-page') || '0';
-            var count        = cs.getAttribute('data-pg-civ-count') || '4';
-            var columns      = parseInt(cs.getAttribute('data-pg-civ-columns'), 10) || 4;
-            var cardClass    = cs.getAttribute('data-pg-civ-card-class') || '';
-            var imageAspect  = cs.getAttribute('data-pg-civ-image-aspect') || '1/1';
-            var showPrice    = cs.getAttribute('data-pg-civ-show-price') !== '0';
-            var colMd        = Math.floor(12 / columns);
-            var colSm        = columns >= 4 ? 6 : 12;
 
-            // Use the new endpoint that returns Tier-1 (order history) with
-            // automatic Tier-2 fallback (same-group siblings). Both tiers
-            // return the same item shape, including a pre-built
-            // `price_block_html` string with strike-through markup baked in
-            // when a discount applies.
-            //
             // The request must be a JSON body: api.php reads it through
             // json_decode(file_get_contents('php://input')) and never looks
-            // at $_POST. A FormData post would leave the request null on the
-            // server, the product id at 0 and the endpoint returning zero
-            // items -- which the empty-result guard below keeps off screen,
-            // so the previous variant's rows would silently stay in place.
+            // at $_POST.
             var body = {
                 action: 'get_cross_sell_for_product',
                 product: { id: parseInt(productId, 10) },
-                count: parseInt(count, 10)
+                widget_id: parseInt(data.widget_id, 10)
             };
-            if (parseInt(detailPid, 10) > 0) {
-                body.detail_page_id = parseInt(detailPid, 10);
-            }
+            if (parseInt(data.detail_page_id, 10) > 0) body.detail_page_id = parseInt(data.detail_page_id, 10);
             fetch(apiUrl(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -373,45 +358,14 @@
                 .then(function (json) {
                     // A newer variant was picked while this was in flight.
                     if (String(productId) !== currentPid) return;
-                    if (!json || json.status !== 'success' || !Array.isArray(json.items) || json.items.length === 0) {
-                        // No items returned for the new variant. Rather than
-                        // wiping the wrapper (which would HIDE the cross-sell
-                        // section and surprise the visitor mid-flow), keep
-                        // whatever the SSR / previous variant rendered. The
-                        // displayed items remain related to the same product
-                        // family, so they stay reasonable suggestions even
-                        // when the per-variant lookup returns nothing
-                        // (e.g. a brand-new variant with no order history
-                        // and no group siblings of its own).
-                        return;
-                    }
-                    // Rebuild the cards. Mirrors _civ_render_cross_sell PHP
-                    // markup — keep the two in sync if the card layout
-                    // ever changes. price_block_html comes pre-rendered
-                    // from the server so the strike-through styling stays
-                    // identical to SSR.
-                    var html = '<h3 class="h5 mb-3">' + escHtml(label('cross_sell_heading', 'Frequently bought together')) + '</h3><div class="row g-3">';
-                    json.items.forEach(function (it) {
-                        var img = it.image_url
-                            ? '<img src="' + escAttr(it.image_url) + '" class="card-img-top" alt="" loading="lazy" style="aspect-ratio:' + escAttr(imageAspect) + ';object-fit:cover">'
-                            : '<div class="card-img-top bg-body-tertiary" style="aspect-ratio:' + escAttr(imageAspect) + '"></div>';
-                        var label = (it.short_description || it.name || '').toString();
-                        var priceBlock = '';
-                        if (showPrice && it.price_block_html) {
-                            priceBlock = '<div class="small mt-1">' + it.price_block_html + '</div>';
-                        }
-                        html += '<div class="col-' + colSm + ' col-md-' + colMd + '">'
-                              + '<a href="' + escAttr(it.url || '#') + '" class="card h-100 text-decoration-none text-body' + (cardClass ? ' ' + escAttr(cardClass) : '') + '">'
-                              + img
-                              + '<div class="card-body p-2">'
-                              + '<div class="small fw-semibold text-truncate">' + escHtml(label) + '</div>'
-                              + priceBlock
-                              + '</div>'
-                              + '</a>'
-                              + '</div>';
-                    });
-                    html += '</div>';
-                    cs.innerHTML = html;
+                    // Nothing to suggest for the new variant: rather than
+                    // hiding the section mid-flow, the cards shown stay;
+                    // they belong to the same product family.
+                    if (!json || json.status !== 'success' || typeof json.html !== 'string' || json.html === '') return;
+                    var holder = document.createElement('div');
+                    holder.innerHTML = json.html;
+                    var part = holder.querySelector('[data-pg-civ-cross-sell="1"]');
+                    if (part && cs.parentNode) cs.parentNode.replaceChild(part, cs);
                 })
                 .catch(function () { /* leave existing row in place */ });
         }
@@ -572,6 +526,7 @@
                             setProp(el, prop, String(v));
                         });
                     });
+                    settleEmptyBoxes(scope);
                     // Stock-aware Add to Cart: disable when the API reports
                     // out_of_stock=1 (more authoritative than preloaded data).
                     if (parseInt(p.out_of_stock, 10) === 1) {
@@ -582,6 +537,53 @@
                 })
                 .catch(function () { /* ignore — preloaded data is the floor */ });
         }
+    }
+
+    /**
+     * Elements the design marked pg-hide-if-empty around a value the
+     * variant redraws ([data-pg-bind]), or that the server left waiting
+     * (data-pg-empty-wait): hidden while their value shows nothing, shown
+     * when it does, judged as the server judges them
+     * (pg_sw_hide_empty_fields()): the value is the first .pg-field-value
+     * inside, else the whole inside. The innermost first, so a box whose
+     * rows all emptied goes with them. One a variant flag shows or hides
+     * stays the flag's.
+     */
+    function settleEmptyBoxes(scope) {
+        var boxes = scope.querySelectorAll('.pg-hide-if-empty');
+        for (var i = boxes.length - 1; i >= 0; i--) {
+            var el = boxes[i];
+            if (el.hasAttribute('data-pg-variant-flag')) continue;
+            if (!el.hasAttribute('data-pg-empty-wait') && !el.hasAttribute('data-pg-bind') && !el.querySelector('[data-pg-bind]')) continue;
+            var value = (el.tagName === 'IMG') ? el : (el.querySelector('.pg-field-value') || el);
+            el.hidden = !showsSomething(value);
+            if (el.hidden) el.setAttribute('data-pg-empty-wait', '');
+        }
+    }
+
+    // Whether an element shows anything inside it (a picture: whether it
+    // has an address): words, a picture with an address, a video, a frame,
+    // a drawing, a link or a form control (pg_sw_has_content()). What is
+    // hidden does not count.
+    var SHOWN_TAGS = /^(VIDEO|AUDIO|IFRAME|OBJECT|EMBED|SVG|CANVAS|A|INPUT|SELECT|TEXTAREA|BUTTON)$/;
+    function showsSomething(el) {
+        if (el.tagName === 'IMG') return !!el.getAttribute('src');
+        for (var c = el.firstChild; c; c = c.nextSibling) {
+            if (c.nodeType === 3) {
+                if (c.nodeValue.replace(/\u00a0/g, ' ').trim() !== '') return true;
+                continue;
+            }
+            if (c.nodeType !== 1 || c.hidden) continue;
+            var tag = String(c.tagName).toUpperCase();
+            if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEMPLATE') continue;
+            if (SHOWN_TAGS.test(tag)) return true;
+            if (tag === 'IMG') {
+                if (c.getAttribute('src')) return true;
+                continue;
+            }
+            if (showsSomething(c)) return true;
+        }
+        return false;
     }
 
     /**
@@ -659,9 +661,6 @@
 
     function escAttr(s) {
         return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-    function escHtml(s) {
-        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     function showPickerNotice(picker, msg) {

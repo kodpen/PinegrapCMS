@@ -31,6 +31,12 @@ if (!defined('ERP_QUOTE_VALID_DAYS')) {
     define('ERP_QUOTE_VALID_DAYS', 30);
 }
 
+// true in config.php: a sales quote the hourly bell announces as about to
+// run out also opens a Workspace follow-up (erp_quote_expiry_followups()).
+if (!defined('ERP_QUOTE_EXPIRY_FOLLOWUP')) {
+    define('ERP_QUOTE_EXPIRY_FOLLOWUP', false);
+}
+
 /**
  * Whether the 4.92 table is there.
  *
@@ -407,6 +413,28 @@ function erp_quote_set_status($quote_id, $to, $user_id)
 }
 
 /**
+ * Why the quote cannot become an invoice draft now, or ''. An open, expired
+ * or accepted quote can; an invoiced, rejected or cancelled one cannot.
+ * Shared by the quote screen (erp_quote_to_invoice()) and the Workspace's
+ * change card.
+ *
+ * @param array $quote  From erp_quote(): status, valid_until, invoice_status
+ * @return string
+ */
+function erp_quote_invoice_refusal($quote)
+{
+    $state = erp_quote_state($quote);
+
+    if (in_array($state, array('open', 'expired', 'accepted'), true)) {
+        return '';
+    }
+
+    return ($state === 'invoiced')
+        ? lang('The quote has already become an invoice.')
+        : lang('A rejected or cancelled quote is not invoiced. Open it again first.');
+}
+
+/**
  * Turn the quote into an invoice draft at the prices quoted, dated today.
  *
  * A quote in another currency leaves the draft without a rate, so the rate
@@ -424,12 +452,10 @@ function erp_quote_to_invoice($quote_id, $user_id)
         return array('success' => false, 'invoice_id' => 0, 'error' => lang('The quote could not be found.'));
     }
 
-    $state = erp_quote_state($quote);
+    $refusal = erp_quote_invoice_refusal($quote);
 
-    if (!in_array($state, array('open', 'expired', 'accepted'), true)) {
-        return array('success' => false, 'invoice_id' => 0, 'error' => ($state === 'invoiced')
-            ? lang('The quote has already become an invoice.')
-            : lang('A rejected or cancelled quote is not invoiced. Open it again first.'));
+    if ($refusal !== '') {
+        return array('success' => false, 'invoice_id' => 0, 'error' => $refusal);
     }
 
     $data = json_decode((string) $quote['form_data'], true);
@@ -816,8 +842,58 @@ function erp_quote_expiring_count($days = 7)
         return 0;
     }
 
-    $today = date('Y-m-d');
-    $last = date('Y-m-d', strtotime($today . ' +' . max(0, (int) $days) . ' days'));
+    list($today, $last) = erp_quote_expiry_window(date('Y-m-d'), $days);
 
     return (int) db_value("SELECT COUNT(*) FROM erp_quotes WHERE status = 'open' AND valid_until BETWEEN '" . escape($today) . "' AND '" . escape($last) . "'");
+}
+
+/**
+ * The days a quote about to run out is looked for in: today and the days
+ * ahead, both ends included. Shared by the dashboard count and the bell.
+ *
+ * @param string $today Y-m-d
+ * @param int    $days
+ * @return array [first day, last day], Y-m-d
+ */
+function erp_quote_expiry_window($today, $days)
+{
+    return array($today, date('Y-m-d', strtotime($today . ' +' . max(0, (int) $days) . ' days')));
+}
+
+/**
+ * The Workspace follow-up an open quote about to run out becomes, as
+ * ws_followup_task_open() takes it: tagged with the quote, for the person
+ * who made it, due on its last day until 23:59 (the quote is valid through
+ * it) and reminded that day at the Workspace's reminder time. One that is
+ * already past that time on its last day is reminded at once. The title
+ * names the quote by its number, never its account: whoever sees the task
+ * without the ERP right reads the tag only by kind and number.
+ *
+ * @param array  $quote      id, full_number, valid_until, created_by
+ * @param int    $channel_id the customer's channel, 0 for none
+ * @param string $day_time   H:MM, the day's reminder time
+ * @return array|null null when there is nobody to open it as or no date
+ */
+function erp_quote_followup_input($quote, $channel_id, $day_time)
+{
+    $id = (int) ($quote['id'] ?? 0);
+    $created_by = (int) ($quote['created_by'] ?? 0);
+    $valid_until = (string) ($quote['valid_until'] ?? '');
+
+    if (($id <= 0) || ($created_by <= 0) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $valid_until) || ($valid_until === '0000-00-00')) {
+        return null;
+    }
+
+    $number = trim((string) ($quote['full_number'] ?? ''));
+    $parts = array_map('intval', explode(':', (string) $day_time) + array(0, 0));
+
+    return array(
+        'title'          => lang(array('string' => 'Sales quote {var:1} runs out', 'vars' => array(($number !== '') ? $number : '#' . $id))),
+        'refs'           => array(array('type' => 'erp_quote', 'id' => $id)),
+        'channel_id'     => max(0, (int) $channel_id),
+        'assignees'      => array($created_by),
+        'due_date'       => $valid_until,
+        'due_time'       => '23:59',
+        'remind_minutes' => max(0, (23 * 60 + 59) - ($parts[0] * 60 + $parts[1])),
+    );
 }

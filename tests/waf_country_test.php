@@ -84,6 +84,22 @@ function test_waf_health_request_by_running_script()
 	pg_assert_false(waf_is_health_request(), 'the test runner');
 }
 
+// The site's OAuth client metadata (connect_client.php) is fetched by the
+// service's sign-in server, from wherever it runs and under whatever name its
+// fetcher has: known by the running script, like health.php, it skips the bot
+// policy and the country restriction.
+function test_waf_client_metadata_request_by_running_script()
+{
+	pg_assert_true(waf_is_client_metadata_request('connect_client.php'), 'connect_client.php');
+	pg_assert_false(waf_is_client_metadata_request('router.php'), 'router.php');
+	pg_assert_false(waf_is_client_metadata_request('connect_callback.php'), 'the sign-in return, a person in a browser');
+	pg_assert_false(waf_is_client_metadata_request(''), 'no script');
+	pg_assert_false(waf_is_client_metadata_request(), 'the test runner');
+
+	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
+	pg_assert_same(2, substr_count($waf, 'waf_is_health_request() || waf_is_client_metadata_request()'), 'the bot policy and the country restriction both let it through');
+}
+
 // No proof was recorded in this process, so no crawler is let past.
 function test_waf_country_bot_proof_starts_absent()
 {

@@ -304,7 +304,13 @@ function pg_consent_log_record(array $event)
         return 0;
     }
 
-    return (int) mysqli_insert_id(db::$con);
+    $id = (int) mysqli_insert_id(db::$con);
+
+    if (function_exists('pg_announce_consent_changed')) {
+        pg_announce_consent_changed($id, $row);
+    }
+
+    return $id;
 }
 
 /**
@@ -1009,15 +1015,21 @@ function pg_privacy_erase_scope(array $found)
         $scope['return_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM order_returns WHERE " . _pg_privacy_export_in('order_id', $scope['order_ids'])));
     }
 
-    // The trail's lines about the person's account, orders and returns, and
-    // the export lines labelled with their address.
+    // The trail's lines about the person's account, orders, returns and
+    // contacts, and the export lines labelled with their address. A contact
+    // line is also found by its label, the address, so the lines of a
+    // contact deleted earlier are reached too.
     if (pg_audit_ready()) {
         $conditions = array();
 
-        foreach (array('user' => 'user_ids', 'order' => 'order_ids', 'order_return' => 'return_ids', 'person' => 'emails') as $type => $key) {
+        foreach (array('user' => 'user_ids', 'order' => 'order_ids', 'order_return' => 'return_ids', 'contact' => 'contact_ids', 'person' => 'emails') as $type => $key) {
             if ($scope[$key]) {
                 $conditions[] = "((entity_type = '" . $type . "') AND " . _pg_privacy_export_in(($type === 'person') ? 'label' : 'entity_id', $scope[$key]) . ")";
             }
+        }
+
+        if ($scope['emails']) {
+            $conditions[] = "((entity_type = 'contact') AND " . _pg_privacy_export_in('label', $scope['emails']) . ")";
         }
 
         if ($conditions) {
@@ -1032,9 +1044,10 @@ function pg_privacy_erase_scope(array $found)
  * What is replaced in the audit trail's lines about the person, by record
  * type: the field list's columns inside before_json and after_json. A user
  * line has the person's account (deleted, so it has no field list of its
- * own); a person line (an export) holds only ids, the token and counts. The
- * label is cleared on user and person lines, where it is the user name or
- * the address; an order keeps its number.
+ * own); a contact line has the deleted contact's personal columns; a person
+ * line (an export) holds only ids, the token and counts. The label is
+ * cleared on user, contact and person lines, where it is the user name, the
+ * address or the name; an order keeps its number.
  *
  * @return array  entity_type => column => value, as pg_privacy_erase_tables()
  */
@@ -1051,6 +1064,40 @@ function pg_privacy_erase_audit_fields()
         ),
         'order'        => $tables['orders']['fields'],
         'order_return' => $tables['order_returns']['fields'],
+        'contact'      => array(
+            'salutation'         => '',
+            'first_name'         => '{name}',
+            'last_name'          => '',
+            'nickname'           => '',
+            'suffix'             => '',
+            'company'            => '',
+            'title'              => '',
+            'department'         => '',
+            'office_location'    => '',
+            'business_address_1' => '',
+            'business_address_2' => '',
+            'business_city'      => '',
+            'business_state'     => '',
+            'business_zip_code'  => '',
+            'business_phone'     => '',
+            'business_fax'       => '',
+            'home_address_1'     => '',
+            'home_address_2'     => '',
+            'home_city'          => '',
+            'home_state'         => '',
+            'home_zip_code'      => '',
+            'home_phone'         => '',
+            'home_fax'           => '',
+            'mobile_phone'       => '',
+            'email_address'      => '{token}',
+            'website'            => '',
+            'description'        => '',
+            'member_id'          => '',
+            'affiliate_name'     => '',
+            'tax_number'         => '',
+            'tax_office'         => '',
+            'image'              => '',
+        ),
         'person'       => array(),
     );
 }
@@ -1109,7 +1156,7 @@ function pg_privacy_erase_audit_row(array $row, $name, $key = null)
         }
     }
 
-    if (in_array($type, array('user', 'person'), true) && isset($row['label']) && ((string) $row['label'] !== '')) {
+    if (in_array($type, array('user', 'contact', 'person'), true) && isset($row['label']) && ((string) $row['label'] !== '')) {
         $changes['label'] = '';
     }
 

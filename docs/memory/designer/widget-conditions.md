@@ -1,12 +1,13 @@
 ---
 name: widget-conditions
 description: Value conditions on system widget nodes (show_if): operators, how a value reads as text or a number, refused tokens, tree checks, fail closed (#1592).
+module: widgets_conditions
 ---
 
 ## What is show_if?
 - A widget tree node drawn only when a value passes a test: `props._bindings.show_if = '__discount_percent'` (a token, sanitised like every binding) and `props._bindParams.show_if = {op, value}` (missing: `not_empty`). Never a class.
-- Works in every kind: `_render_tree_node()` wraps the node while a widget renders and the finish pass keeps or cuts it ([[widget-finish-pass]]).
-- Pure functions in `includes/fn/widgets_conditions.php`. Set in Bind Data ([[widget-condition-panel]]); never on a required control. `_setBinding()` keeps it when a text binding changes.
+- Every kind: `_render_tree_node()` wraps the node in a widget render, the finish pass keeps or cuts it ([[widget-finish-pass]]).
+- Pure functions in `includes/fn/widgets_conditions.php`. Set in Bind Data ([[widget-condition-panel]]); never on a required control. Up to three ([[widget-condition-rows]]). `_setBinding()` keeps them.
 
 ## Which operators exist, and how do they compare?
 - `not_empty` `empty` `eq` `neq` `contains` `not_contains` `starts` `gt` `gte` `lt` `lte` `multiple_of` (`pg_sw_cond_ops()`; the editor's labels are `_sdT()`).
@@ -31,5 +32,5 @@ description: Value conditions on system widget nodes (show_if): operators, how a
 - A plain list: `tools/check_bindings.php` reads quoted `'__token' =>` keys in `includes/fn/widgets*.php` as filled tokens.
 
 ## What happens when a condition is invalid?
-- Fail closed: unknown op, missing operand, empty or refused token: the node draws nothing inside a widget. Outside a widget scope it draws as before, unmarked.
+- Fail closed: unknown op, missing operand, empty or refused token: the node draws nothing inside a widget. Outside a widget it draws as before (visit facts: [[page-conditions]]).
 - `root`, `loop_area` and `recipient_loop_area` take no condition.

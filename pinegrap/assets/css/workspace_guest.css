@@ -1,3 +1,7 @@
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 /*
  * Pinegrap - the guest's side of a conversation in the workspace
  * (workspace_guest.php, assets/js/workspace_guest.js).
@@ -9,24 +13,24 @@
    notes on that block hold for this one. */
 :root,
 [data-bs-theme] {
-  --pg-bg-1: var(--bs-tertiary-bg);
-  --pg-bg-2: var(--bs-secondary-bg);
-  --pg-bg-body: var(--bs-body-bg);
+  --pg-bg-1: var(--bs-bg-1);
+  --pg-bg-2: var(--bs-bg-2);
+  --pg-bg-body: var(--bs-bg-body);
   --pg-border-color: var(--bs-border-color);
   --pg-border-color-translucent: var(--bs-border-color-translucent);
-  --pg-danger: var(--bs-danger);
-  --pg-fg-2: var(--bs-secondary-color);
-  --pg-fg-body: var(--bs-body-color);
-  --pg-primary: var(--bs-primary);
+  --pg-danger: var(--bs-danger-base);
+  --pg-fg-2: var(--bs-fg-2);
+  --pg-fg-body: var(--bs-fg-body);
+  --pg-primary: var(--bs-primary-base);
   --pg-primary-bg-subtle: var(--bs-primary-bg-subtle);
-  --pg-primary-border-subtle: var(--bs-primary-border-subtle);
-  --pg-primary-fg-emphasis: var(--bs-primary-text-emphasis);
-  --pg-secondary: var(--bs-secondary);
-  --pg-success: var(--bs-success);
-  --pg-success-fg-emphasis: var(--bs-success-text-emphasis);
-  --pg-warning: var(--bs-warning);
+  --pg-primary-border-subtle: var(--bs-primary-border);
+  --pg-primary-fg-emphasis: var(--bs-primary-fg-emphasis);
+  --pg-secondary: var(--bs-secondary-base);
+  --pg-success: var(--bs-success-base);
+  --pg-success-fg-emphasis: var(--bs-success-fg-emphasis);
+  --pg-warning: var(--bs-warning-base);
   --pg-warning-bg-subtle: var(--bs-warning-bg-subtle);
-  --pg-warning-fg-emphasis: var(--bs-warning-text-emphasis);
+  --pg-warning-fg-emphasis: var(--bs-warning-fg-emphasis);
 }
 
 html,
@@ -102,11 +106,8 @@ body.pg-guest {
 }
 
 .pg-guest-face {
+  --bs-avatar-size: 2rem;
   flex: none;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  object-fit: cover;
   box-shadow: 0 0 0 2px var(--pg-bg-body);
 }
 
@@ -373,7 +374,7 @@ body.pg-guest {
   max-width: calc(100% - 2rem);
   padding: .5rem .9rem;
   border-radius: .5rem;
-  background: var(--bs-dark);
+  background: var(--bs-gray-900);
   color: #fff;
   font-size: .85rem;
   opacity: 0;
@@ -538,14 +539,14 @@ body.pg-guest {
   cursor: pointer;
 }
 
-.ws-check .form-check-input {
+.ws-check :is(.check, .radio) {
   position: relative;
   top: .15em;
   flex-shrink: 0;
   margin: 0;
 }
 
-.ws-check .form-check-input:disabled {
+.ws-check :is(.check, .radio):disabled {
   opacity: .7;
 }
 
@@ -762,7 +763,7 @@ div.pg-guest-poll-option {
   border-color: var(--pg-primary-border-subtle);
 }
 
-.pg-guest-poll-option .form-check-input {
+.pg-guest-poll-option :is(.check, .radio) {
   position: relative;
   z-index: 1;
   flex: none;
@@ -831,4 +832,6 @@ div.pg-guest-poll-option {
   .pg-guest-poll-bar {
     transition: none;
   }
+}
+
 }

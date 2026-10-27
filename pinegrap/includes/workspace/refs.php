@@ -161,7 +161,7 @@ function ws_record_kinds()
             'right'      => 'contacts',
             'scope'      => 'customers:read',
             'change'     => 'contact',
-            'audit'      => '',
+            'audit'      => 'contacts',
             'quick_edit' => true,
             'customer'   => true,
         ),
@@ -602,19 +602,35 @@ function ws_refs_resolve($viewer, $tokens)
         }
     }
 
-    // Only Claude is offered as an application to ask, so an application
-    // tag reads as Claude, also after the connection moved to another
-    // application or was switched off.
+    // An application's tag reads as its own name (app_handles.php); only the
+    // application linked as Claude reads "@Claude" and Pinegrap AI's "@ai".
+    // Every application's row is read in one query.
     if (!empty($ids['app'])) {
+        $apps = array();
+
+        foreach ((array) db_items("SELECT id, name FROM api_apps WHERE id IN (" . $in('app') . ")") as $row) {
+            $apps[(int) $row['id']] = $row;
+        }
+
+        $claude_app_id = (function_exists('ws_claude_schema_ready') && ws_claude_schema_ready()) ? (int) ws_claude_config()['app_id'] : 0;
+        $ai_app_id = (function_exists('ws_ai_schema_ready') && ws_ai_schema_ready()) ? (int) ws_ai_config()['app_id'] : 0;
+
+        // MCP servers' aliases are only read when an application other than
+        // the two assistants is drawn.
+        $taken = null;
+
         foreach ($ids['app'] as $id) {
-            // Pinegrap AI is asked with @ai (ai.php); any other application
-            // that can be asked is Claude.
-            if (function_exists('ws_ai_is_app') && ws_ai_is_app($id)) {
-                $put('app', $id, '@ai', '', lang('Pinegrap AI'), '', true, 'bi-cpu');
-                continue;
+            if (($taken === null) && ($id !== $claude_app_id) && ($id !== $ai_app_id) && isset($apps[$id])) {
+                $taken = function_exists('ws_mcp_servers') ? array_column(ws_mcp_servers(), 'alias') : array();
             }
 
-            $put('app', $id, '@Claude', '', lang('AI assistant'), '', true, 'bi-stars');
+            $tag = ws_app_tag($id, $apps[$id] ?? null, $claude_app_id, $ai_app_id, (array) $taken);
+
+            $put('app', $id, $tag['label'], '', $tag['meta'], '', $tag['known'], $tag['icon']);
+
+            if ($tag['gone']) {
+                $out['app:' . (int) $id]['gone'] = true;
+            }
         }
     }
 

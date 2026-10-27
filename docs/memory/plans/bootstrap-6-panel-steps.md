@@ -4,20 +4,12 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 ---
 
 ## Which steps run before the switch (on 5.3.8, nothing visible changes)?
-- Done: B0a, B0b, B1a, B1b, B2a, B2b, B3, B5 (`bootstrap-6-panel-done.md`).
-- B4 Collisions: drop `class="menu"` from `#menu`, rename `<span class="btn-text">` and the own `.submenu`; `data-bs-display="static"` on the account and notification toggles.
-  - Slice 1 (#1738): `btn-text` to `pg-btn-label` in 129 panel files (`tools/bs6_rename_collisions.php`), `view_folders.php` `.submenu` to `.pg-submenu`.
-  - Slice 2 (#1751): the same rename on the gift card, shipping method and ERP screens and `erp_export.php`.
-  - Slice 3 (#1762): `add_page.php`, `edit_page.php` and the `#create_button` selectors in `backend.src.js`.
-  - Slice 4 (#1797): `#menu` without `class="menu"`, `data-bs-display="static"` on the account and notification toggles (`includes/fn/output.php`; both sit in `nav#header.navbar`, where 5.3.8 already skips Popper). No CSS selected `.btn-text` or `.menu`, so no transition selectors are left to drop.
-  - Left: `php tools/bs6_rename_collisions.php --write edit_contact.php` (two spans; #1794 holds the file). Then B4 moves to `bootstrap-6-panel-done.md`.
-- B6 Wrappers with a switchable engine (v5 engine now): `pgChips`, `pgCombobox`, `pgDatePicker`, `pgDateTimeField`; call sites move to `data-pg-*` hooks.
-  - Slice 1 (#1733): `pg_fields.js`, liveform `data-pg-*`, `pg_fields_script()`; gift cards, shipping methods, ERP screens (`ui/pg-field-wrappers.md`). Slice 2 (#1741): firewall card, `edit_page.php`, `mass_edit.php`, `view_contacts.php`. Slice 3 (#1750): `pgInitInjected()`, ACL expiry pickers. Slice 4 (#1764): menus, product groups, zones, verified addresses, product builder selects, campaigns, arrival dates, featured items, add contact, key code, commerce end-of-day time; no `select2`/`timepicker` class is left in panel markup. Slice 5 (#1775): generic inits gone, shipping cut-off rows, submitted form pickers, `view_order.php` tracking chips, API settings IP chips. Slice 6 (#1787): `pgFields.destroy()`/`switchKind()`, calendar all-day switch, comment publish date. Slice 7 (#1794): `edit_contact.php`, `view_order.php` ship and delivery dates (`data-pg-date="plain"`), `offer_editor.js`, the Google category in `product_builder` (`data-pg-source`; the stored value is printed again, it was lost on save). Left (#1781 holds both): `fn/content.php` pickers and the visual editor's keyword box (`designer_screen.php` markup, its tagin redraw in `style_designer.js`).
-- B7 Visual editor stage 0: `/* @pg-site-output */` on the 54 site-output members of style_designer.js with a CI test, the chrome look pinned in style_designer.css, editor calls through `pgUI`.
+- Done: B0a, B0b, B1a, B1b, B2a, B2b, B3, B4, B5, B6, B7, B8 (`bootstrap-6-panel-done.md`).
 
-## What happens at and after the switch?
-- B8 Switch: `bootstrap-6-switch.md`.
-- B9 Component swaps on v6, one claim each (`bootstrap-6-components.md`): B9a Chips, B9b Combobox, B9c Datepicker and time, B9d OTP, B9e Range, B9f form-adorn, B9g Stepper, B9h hover-lift, B9i Strength, B9j Avatar, B9k research proposals.
+## What happens after the switch?
+- B8, the switch, is done (#1866, `bootstrap-6-panel-done.md`); B9 can start.
+- B9 Component swaps on v6, one claim each (`bootstrap-6-components.md`): B9a Chips (done, #2208), B9b Combobox (done, #2243), B9c Datepicker and time (done, #2262), B9e Range (done, #2207), B9f form-adorn, B9g Stepper (done, #2206), B9h hover-lift (done, #2217, #2237), B9i Strength, B9j Avatar (done, #2216, #2242, #2256, #2339), B9k research proposals (slice 1 done, #2273; next slice `.btn-ghost`, the rest waits for B11: `ui/bootstrap-6-own-widget-swaps.md`).
+- B9i: done — the panel meter (#2211) and the installer meter (#2274), `ui/password-strength-js.md`.
 - B10 Token tuning, B11 redesign, B12 jQuery UI out of the panel: `bootstrap-6-redesign.md`.
 
 ## Where do I start?

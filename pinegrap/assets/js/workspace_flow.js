@@ -64,6 +64,8 @@
     var GRID = 16;
     var BOX_W = 208;
     var BOX_H = 80;
+    // The label of each kind of template setting (ws_flow_template_setting_types()).
+    var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address' };
     var ZOOM_MIN = 0.25;
     var ZOOM_MAX = 2;
     var SAVE_DELAY = 1500;
@@ -108,8 +110,42 @@
     // the one a new arrow takes), as ws_flow_kinds() has them.
     var KINDS = {
         manual: { icon: 'bi-play-circle', name: 'fl_kind_manual', into: false, out: ['next'] },
-        task: { icon: 'bi-check2-square', name: 'fl_kind_task', into: true, out: ['done', 'cancelled'] },
+        schedule: { icon: 'bi-clock', name: 'fl_kind_schedule', into: false, out: ['next'] },
+        event: { icon: 'bi-lightning', name: 'fl_kind_event', into: false, out: ['next'] },
+        join: { icon: 'bi-person-plus', name: 'fl_kind_join', into: false, out: ['next'] },
+        task: { icon: 'bi-check2-square', name: 'fl_kind_task', into: true, out: ['done', 'cancelled', 'timeout'] },
+        post: { icon: 'bi-chat-left-text', name: 'fl_kind_post', into: true, out: ['done', 'failed'] },
+        email: { icon: 'bi-envelope', name: 'fl_kind_email', into: true, out: ['done', 'failed'] },
+        notify: { icon: 'bi-bell', name: 'fl_kind_notify', into: true, out: ['done', 'failed'] },
+        task_open: { icon: 'bi-plus-square', name: 'fl_kind_task_open', into: true, out: ['done', 'failed'] },
+        webhook: { icon: 'bi-broadcast', name: 'fl_kind_webhook', into: true, out: ['done', 'failed'] },
+        web_check: { icon: 'bi-globe2', name: 'fl_kind_web_check', into: true, out: ['done', 'failed'] },
+        task_digest: { icon: 'bi-list-check', name: 'fl_kind_task_digest', into: true, out: ['done', 'failed'] },
+        report: { icon: 'bi-bar-chart', name: 'fl_kind_report', into: true, out: ['done', 'failed'] },
+        checkin: { icon: 'bi-person-check', name: 'fl_kind_checkin', into: true, out: ['done', 'failed'] },
+        start_action: { icon: 'bi-alarm', name: 'fl_kind_start_action', into: true, out: ['done', 'failed'] },
+        start_flow: { icon: 'bi-diagram-3', name: 'fl_kind_start_flow', into: true, out: ['done', 'failed'] },
+        change: { icon: 'bi-pencil-square', name: 'fl_kind_change', into: true, out: ['done', 'failed'] },
+        lead: { icon: 'bi-person-vcard', name: 'fl_kind_lead', into: true, out: ['done', 'failed'] },
+        approval: { icon: 'bi-patch-check', name: 'fl_kind_approval', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
+        condition: { icon: 'bi-signpost-split', name: 'fl_kind_condition', into: true, out: ['yes', 'no'] },
+        delay: { icon: 'bi-hourglass', name: 'fl_kind_delay', into: true, out: ['done'] },
         end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] }
+    };
+
+    // What an arrow is taken on, as its box says it.
+    var OUTCOMES = {
+        done: 'fl_on_done',
+        cancelled: 'fl_on_cancelled',
+        failed: 'fl_on_failed',
+        yes: 'fl_on_yes',
+        no: 'fl_on_no',
+        approved: 'fl_on_approved',
+        rejected: 'fl_on_rejected',
+        expired: 'fl_on_expired',
+        withdrawn: 'fl_on_withdrawn',
+        timeout: 'fl_on_timeout',
+        always: 'fl_on_always'
     };
 
     // What a share lets its holder do (ws_flow_share_levels()), lowest first.
@@ -122,7 +158,26 @@
     // What the palette adds.
     var PALETTE = [
         ['manual', 'bi-play-circle', 'fl_add_manual'],
+        ['schedule', 'bi-clock', 'fl_kind_schedule'],
+        ['event', 'bi-lightning', 'fl_kind_event'],
+        ['join', 'bi-person-plus', 'fl_kind_join'],
         ['task', 'bi-check2-square', 'fl_add_task'],
+        ['condition', 'bi-signpost-split', 'fl_kind_condition'],
+        ['delay', 'bi-hourglass', 'fl_kind_delay'],
+        ['post', 'bi-chat-left-text', 'fl_add_post'],
+        ['email', 'bi-envelope', 'fl_add_email'],
+        ['notify', 'bi-bell', 'fl_kind_notify'],
+        ['task_open', 'bi-plus-square', 'fl_kind_task_open'],
+        ['webhook', 'bi-broadcast', 'fl_kind_webhook'],
+        ['web_check', 'bi-globe2', 'fl_kind_web_check'],
+        ['task_digest', 'bi-list-check', 'fl_kind_task_digest'],
+        ['report', 'bi-bar-chart', 'fl_kind_report'],
+        ['checkin', 'bi-person-check', 'fl_kind_checkin'],
+        ['start_action', 'bi-alarm', 'fl_kind_start_action'],
+        ['start_flow', 'bi-diagram-3', 'fl_kind_start_flow'],
+        ['change', 'bi-pencil-square', 'fl_kind_change'],
+        ['lead', 'bi-person-vcard', 'fl_kind_lead'],
+        ['approval', 'bi-patch-check', 'fl_kind_approval'],
         ['end', 'bi-flag', 'fl_add_end']
     ];
 
@@ -140,6 +195,7 @@
         graph: null,        // what is drawn: the draft, or the live graph read-only
         edit: false,
         problems: [],
+        warnings: [],       // what may be published but a reader should know
         selected: null,     // { type: node | edge, id }
         view: { x: 40, y: 40, k: 1 },
         outline: false,
@@ -147,6 +203,7 @@
         changes: 0,         // counts every change, to tell one made while a request ran
         saving: null,
         saveTimer: 0,
+        arriving: 0,        // the timer that opens a placed template's setup panel
         saveError: '',
         conflict: '',
         refocus: '',
@@ -212,7 +269,7 @@
     }
 
     function titleOf(node) {
-        return (node.kind === 'task') ? (node.config.title || node.label || '') : (node.label || '');
+        return ((node.kind === 'task') || (node.kind === 'task_open') || (node.kind === 'approval')) ? (node.config.title || node.label || '') : (node.label || '');
     }
 
     function nameOf(node) {
@@ -360,6 +417,30 @@
         return t('tpl_assign_none');
     }
 
+    // What the step boxes choose from (ws_flow_js_config()).
+    function stepLists() {
+        var steps = FL.steps || {};
+
+        return {
+            metrics: steps.metrics || [],
+            digest: steps.digest_only || {},
+            targets: steps.targets || [],
+            changes: steps.changes || {},
+            records: steps.records || {},
+            operators: steps.operators || {},
+            counts: steps.counts || [],
+            repeats: steps.repeats || {},
+            events: steps.events || null
+        };
+    }
+
+    // Up to two names, then how many more.
+    function peopleText(ids) {
+        var people = ids.map(function (id) { return person(id) ? person(id).name : '#' + id; });
+
+        return (people.length > 2) ? t('fl_people_more', people.slice(0, 2).join(', '), people.length - 2) : people.join(', ');
+    }
+
     function metaOf(node) {
         var config = node.config || {};
 
@@ -373,7 +454,107 @@
             var people = (config.assignees || []).map(function (id) { return person(id) ? person(id).name : '#' + id; });
             var who = people.length ? ((people.length > 2) ? t('fl_people_more', people.slice(0, 2).join(', '), people.length - 2) : people.join(', ')) : ruleLabel(config.assign);
 
-            return ((config.due_in === '') || (config.due_in === undefined) || (config.due_in === null)) ? who : t('fl_due_meta', who, config.due_in);
+            var meta = ((config.due_in === '') || (config.due_in === undefined) || (config.due_in === null)) ? who : t('fl_due_meta', who, config.due_in);
+
+            return (config.timeout > 0) ? t('fl_timeout_meta', meta, config.timeout) : meta;
+        }
+
+        if (node.kind === 'post') {
+            if (config.channel_id === -1) {
+                return t('fl_post_meta_joined');
+            }
+
+            var channel = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+            return channel ? t('fl_post_meta', channel.name) : t('fl_post_no_channel');
+        }
+
+        if (node.kind === 'email') {
+            return config.to ? t('fl_email_meta', config.to) : t('fl_email_no_to');
+        }
+
+        if (node.kind === 'notify') {
+            return (config.user_ids || []).length ? peopleText(config.user_ids) : t('fl_notify_nobody');
+        }
+
+        if (node.kind === 'task_open') {
+            return (config.assignees || []).length ? peopleText(config.assignees) : t('fl_task_open_meta');
+        }
+
+        if ((node.kind === 'checkin') || (node.kind === 'report') || (node.kind === 'task_digest')) {
+            var place = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+            if (node.kind === 'task_digest') {
+                return (config.mode === 'channel') ? (place ? t('fl_post_meta', place.name) : t('fl_post_no_channel')) : t('fl_digest_mine');
+            }
+
+            if (node.kind === 'report') {
+                return place ? t('fl_post_meta', place.name) : (config.to || t('fl_report_nowhere'));
+            }
+
+            return place ? t('fl_post_meta', place.name) : t('fl_post_no_channel');
+        }
+
+        if (node.kind === 'start_flow') {
+            var chained = chainTargets().filter(function (item) { return item.id === config.flow_id; })[0];
+
+            return chained ? chained.name : (config.flow_id ? '#' + config.flow_id : t('fl_chain_none'));
+        }
+
+        if (node.kind === 'start_action') {
+            var target = stepLists().targets.filter(function (item) { return item.id === config.target_id; })[0];
+
+            return target ? target.name : t('fl_start_none');
+        }
+
+        if (node.kind === 'condition') {
+            return conditionMeta(config.rule || {});
+        }
+
+        if (node.kind === 'delay') {
+            return delayText(config);
+        }
+
+        if (node.kind === 'approval') {
+            var asked = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+            if (!asked) {
+                return t('fl_approval_no_channel');
+            }
+
+            return (config.approvers || []).length ? t('fl_post_meta', asked.name) + ' · ' + peopleText(config.approvers) : t('fl_post_meta', asked.name);
+        }
+
+        if (node.kind === 'schedule') {
+            return config.date ? config.date + ' ' + (config.time || '') + ' · ' + (stepLists().repeats[config.repeat] || '') : t('fl_when_none');
+        }
+
+        if (node.kind === 'event') {
+            var events = stepLists().events;
+            var happening = (events && events.list[config.event]) ? events.list[config.event].label : config.event;
+
+            return happening || t('fl_when_none');
+        }
+
+        if (node.kind === 'lead') {
+            return config.private ? t('fl_lead_meta_private') : t('fl_lead_meta');
+        }
+
+        if (node.kind === 'join') {
+            var joined = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+            return joined ? t('fl_post_meta', joined.name) : t('fl_join_any');
+        }
+
+        if (node.kind === 'change') {
+            var kind = stepLists().changes[config.record];
+            var what = kind ? kind.label : (config.record || t('fl_change_none'));
+
+            return what + (config.id ? ' #' + config.id : '') + ((config.action === 'delete') ? ' · ' + t('fl_change_delete') : '');
+        }
+
+        if ((node.kind === 'webhook') || (node.kind === 'web_check')) {
+            return config.url ? config.url.replace(/^https:\/\//i, '').split('/')[0] : t('fl_url_none');
         }
 
         return (node.kind === 'end') ? t('fl_end_meta') : '';
@@ -397,7 +578,7 @@
         K.clear(root);
 
         if (!FL.ready) {
-            root.appendChild(el('div', 'alert alert-warning', t('fl_not_ready')));
+            root.appendChild(el('div', 'alert theme-warning', t('fl_not_ready')));
             return;
         }
 
@@ -434,11 +615,11 @@
 
     function layout(root) {
         ui.root = root;
-        ui.bar = el('nav', 'pg-toolbar navigation mb-2 wsf-bar');
+        ui.bar = el('nav', 'pg-toolbar navigation mb-3 wsf-bar');
         ui.bar.setAttribute('aria-label', t('fl_toolbar'));
         ui.problemBox = el('div', 'wsf-problems d-none');
         ui.problemBox.id = 'wsf-problems';
-        ui.conflictBox = el('div', 'alert alert-warning d-flex flex-wrap align-items-center gap-2 py-2 d-none');
+        ui.conflictBox = el('div', 'alert theme-warning d-flex flex-wrap align-items-center gap-3 py-3 d-none');
         // While a run is shown: which, and the way back to the flow.
         ui.runBox = el('div', 'wsf-run-bar d-none');
         ui.app = el('div', 'wsf-app');
@@ -508,9 +689,19 @@
         ui.scheduled = el('div', 'ws-pane ws-sa-view h-100 d-none');
         ui.scheduled.setAttribute('role', 'region');
         ui.scheduled.setAttribute('aria-label', t('sa_title'));
+        // The setup panel of a template just placed, over the canvas.
+        ui.setup = el('section', 'wsf-setup d-none');
+        ui.setup.setAttribute('aria-labelledby', 'wsf-setup-title');
+        ui.stage.appendChild(ui.setup);
         ui.main.appendChild(ui.stage);
         ui.main.appendChild(ui.outlineBox);
         ui.main.appendChild(ui.scheduled);
+        // The ways to start a flow and the template gallery, in place of
+        // the canvas.
+        ui.gallery = el('div', 'wsf-gallery d-none');
+        ui.gallery.setAttribute('role', 'region');
+        ui.gallery.setAttribute('aria-label', t('fl_tpl_title'));
+        ui.main.appendChild(ui.gallery);
 
         ui.app.appendChild(ui.listCol);
         ui.app.appendChild(ui.main);
@@ -540,10 +731,10 @@
 
             ui.listCol.appendChild(el('div', 'wsf-list-title', t(part[1])));
 
-            var list = el('ul', 'list-unstyled mb-3');
+            var list = el('ul', 'list-unstyled mb-5');
 
             if (!flows.length) {
-                list.appendChild(el('li', 'small text-body-secondary px-2', t('fl_none')));
+                list.appendChild(el('li', 'small fg-secondary px-3', t('fl_none')));
             }
 
             flows.forEach(function (flow) {
@@ -587,7 +778,7 @@
         if (FL.scheduled) {
             var item = el('li');
             var link = el('button', 'wsf-list-item' + ((state.section === 'scheduled') ? ' active' : ''));
-            var list = el('ul', 'list-unstyled mb-3 pt-2 border-top');
+            var list = el('ul', 'list-unstyled mb-5 pt-3 border-top');
 
             link.type = 'button';
             link.appendChild(K.icon('bi-alarm'));
@@ -645,6 +836,7 @@
     }
 
     function showNone() {
+        closeSetup();
         endRun();
         state.panel = '';
         state.flow = null;
@@ -663,6 +855,7 @@
 
         state.section = '';
         ui.scheduled.classList.add('d-none');
+        ui.gallery.classList.add('d-none');
         ui.problemBox.classList.add('d-none');
         ui.app.classList.add('wsf-nothing');
         K.clear(ui.side);
@@ -692,7 +885,9 @@
     }
 
     // The Scheduled actions section: the scheduled screen's list, cards and
-    // form (scheduledList() in workspace.js), New in the toolbar's first slot.
+    // form (scheduledList() in workspace.js). A new rule is made on the
+    // canvas: New flow takes the toolbar's first slot, and the list offers
+    // no New of its own; its cards still edit, duplicate and run.
     function showScheduled() {
         leaveFlow().then(function (go) {
             if (!go) {
@@ -715,12 +910,446 @@
             ui.empty.classList.add('d-none');
             ui.stage.classList.add('d-none');
             ui.scheduled.classList.remove('d-none');
-            ui.scheduled.appendChild(el('h2', 'h5 mb-3', t('sa_title')));
-            K.scheduledList(ui.scheduled, ui.bar);
+            ui.scheduled.appendChild(el('h2', 'h5 mb-5', t('sa_title')));
+            newFlowButton();
+            K.scheduledList(ui.scheduled, ui.bar, { add: false });
             listToggle();
             drawList();
             refocus();
         }).catch(K.fail);
+    }
+
+    // ── Starting a flow, the template gallery ──────────────────────────
+
+    // In place of the canvas: the ways to start a new flow (an empty canvas
+    // or a template), or, with into (a flow with no boxes yet), the
+    // templates to place on that flow. The templates come grouped by their
+    // category (ws_flow_templates()); a card shows the signs of its boxes,
+    // its title and line, how it starts, how many boxes and data threads it
+    // has, and Use.
+    function showGallery(into) {
+        leaveFlow().then(function (go) {
+            if (!go) {
+                refocus();
+                return;
+            }
+
+            window.clearTimeout(state.saveTimer);
+            showNone();
+            state.section = 'templates';
+            K.clear(ui.gallery);
+            ui.empty.classList.add('d-none');
+            ui.stage.classList.add('d-none');
+            ui.gallery.classList.remove('d-none');
+
+            if (into) {
+                var back = K.button('btn btn-sm btn-ghost', t('fl_tpl_back'), 'bi-arrow-left');
+
+                back.setAttribute('data-refocus', 'tpl-back');
+                back.addEventListener('click', function () {
+                    open(into);
+                });
+                ui.bar.insertBefore(back, ui.bar.firstChild);
+            } else {
+                ui.gallery.appendChild(el('h2', 'h5 mb-5', t('fl_tpl_start')));
+
+                var starts = el('div', 'wsf-starts mb-7');
+                var empty = el('button', 'wsf-start-card');
+
+                empty.type = 'button';
+                empty.setAttribute('data-refocus', 'tpl-empty');
+                empty.appendChild(K.icon('bi-square'));
+                empty.appendChild(el('span', 'wsf-start-title', t('fl_tpl_empty')));
+                empty.appendChild(el('span', 'wsf-start-help', t('fl_tpl_empty_help')));
+                empty.addEventListener('click', createFlow);
+                starts.appendChild(empty);
+                ui.gallery.appendChild(starts);
+            }
+
+            ui.gallery.appendChild(el('h2', 'h5 mb-5', t('fl_tpl_title')));
+
+            Object.keys(FL.template_categories || {}).forEach(function (category) {
+                var items = (FL.templates || []).filter(function (template) { return template.category === category; });
+
+                if (!items.length) {
+                    return;
+                }
+
+                var grid = el('div', 'wsf-tpl-grid mb-7');
+
+                ui.gallery.appendChild(el('h3', 'wsf-tpl-category', FL.template_categories[category]));
+                items.forEach(function (template) {
+                    grid.appendChild(templateCard(template, into));
+                });
+                ui.gallery.appendChild(grid);
+            });
+
+            refocus();
+        }).catch(K.fail);
+    }
+
+    function templateCard(template, into) {
+        var card = el('div', 'wsf-tpl-card');
+        var icons = el('div', 'wsf-tpl-icons');
+        var start = KINDS[template.start];
+        var meta = el('div', 'wsf-tpl-meta');
+        var use = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_tpl_use'), 'bi-plus-lg');
+
+        icons.setAttribute('aria-hidden', 'true');
+        template.graph.nodes.forEach(function (node) {
+            icons.appendChild(K.icon((KINDS[node.kind] || {}).icon || 'bi-square'));
+        });
+
+        card.appendChild(icons);
+        card.appendChild(el('h4', 'wsf-tpl-name', template.title));
+        card.appendChild(el('p', 'wsf-tpl-help', template.help));
+        meta.appendChild(el('span', 'wsf-tpl-start', start ? t(start.name) : ''));
+        meta.appendChild(el('span', '', t('fl_tpl_boxes', template.boxes)));
+
+        if (template.threads) {
+            meta.appendChild(el('span', '', t('fl_tpl_threads', template.threads)));
+        }
+
+        card.appendChild(meta);
+        use.setAttribute('data-refocus', 'tpl-' + template.key);
+        use.setAttribute('aria-label', t('fl_tpl_use') + ': ' + template.title);
+        use.addEventListener('click', function () {
+            use.disabled = true;
+            useTemplate(template, into).then(function () {
+                use.disabled = false;
+            });
+        });
+        card.appendChild(use);
+
+        return card;
+    }
+
+    // The template's boxes and arrows on the canvas: on the flow it was
+    // asked for, else on a new flow named after it. Saved as any change.
+    function useTemplate(template, into) {
+        var place = function () {
+            state.graph = graphOf(template.graph);
+            state.selected = null;
+            state.refocus = 'box-' + template.graph.nodes[0].id;
+            drawPalette();
+            drawAll();
+            fit();
+            changed(true);
+            refocus();
+            arrive(template);
+        };
+
+        var create = function () {
+            return K.api('ws_flow_create', { name: template.title, graph: graphOf(template.graph) }).then(function (data) {
+                state.refocus = 'box-' + template.graph.nodes[0].id;
+                show(data.flow);
+                refocus();
+                arrive(template);
+            }).catch(K.fail);
+        };
+
+        // A flow that got boxes meanwhile (another screen) is not written
+        // over: the template becomes a flow of its own.
+        if (into) {
+            return open(into).then(function (opened) {
+                if (!opened) {
+                    return null;
+                }
+
+                if (state.edit && !state.graph.nodes.length) {
+                    place();
+                    return null;
+                }
+
+                return create();
+            });
+        }
+
+        return create();
+    }
+
+    // ── Placing a template, its setup panel ────────────────────────────
+
+    function stillMotion() {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    // A line drawn from its start to its end in ms, after at.
+    function grow(path, at, ms) {
+        var length = path.getTotalLength ? path.getTotalLength() : 0;
+
+        if (!length) {
+            return;
+        }
+
+        path.style.strokeDasharray = length + ' ' + length;
+        path.style.strokeDashoffset = String(length);
+        path.getBoundingClientRect();
+        path.style.transition = 'stroke-dashoffset ' + ms + 'ms ease-out ' + at + 'ms';
+        path.style.strokeDashoffset = '0';
+        window.setTimeout(function () {
+            path.style.transition = '';
+            path.style.strokeDasharray = '';
+            path.style.strokeDashoffset = '';
+        }, at + ms + 50);
+    }
+
+    // The data threads of a template: from the bottom of the box that gives
+    // the value to the bottom of the box that reads it, a curve hanging
+    // 10 px + 0.06 of its span below its middle. Threads that leave or reach
+    // one box are spread a few px apart, the farthest leaving on the left.
+    // They stay until the canvas is drawn again.
+    function drawThreads(threads) {
+        var leaving = {};
+        var reaching = {};
+        var span = function (thread) {
+            var from = nodeById(thread.from);
+            var to = nodeById(thread.to);
+
+            return (from && to) ? Math.abs(to.x - from.x) : 0;
+        };
+
+        threads.forEach(function (thread) {
+            (leaving[thread.from] = leaving[thread.from] || []).push(thread);
+            (reaching[thread.to] = reaching[thread.to] || []).push(thread);
+        });
+
+        Object.keys(leaving).forEach(function (id) {
+            leaving[id].sort(function (a, b) { return span(b) - span(a); });
+        });
+
+        return threads.map(function (thread) {
+            var from = nodeById(thread.from);
+            var to = nodeById(thread.to);
+
+            if (!from || !to) {
+                return null;
+            }
+
+            var out = leaving[thread.from];
+            var into = reaching[thread.to];
+            var x1 = from.x + BOX_W / 2 + (out.indexOf(thread) - (out.length - 1) / 2) * 6;
+            var x2 = to.x + BOX_W / 2 + (into.indexOf(thread) - (into.length - 1) / 2) * 12;
+            var y1 = from.y + BOX_H;
+            var y2 = to.y + BOX_H;
+            var sag = 10 + 0.06 * Math.abs(x2 - x1);
+            var path = svgEl('path', 'wsf-thread');
+
+            path.setAttribute('d', 'M' + x1 + ' ' + y1 + ' Q' + ((x1 + x2) / 2) + ' ' + (Math.max(y1, y2) + sag) + ' ' + x2 + ' ' + y2);
+            ui.svg.appendChild(path);
+
+            return path;
+        });
+    }
+
+    // The template's boxes, arrows and threads appear at the times of
+    // template.motion (ws_flow_template_motion()), all at once with reduced
+    // motion; then the setup panel slides in.
+    function arrive(template) {
+        var motion = template.motion || { boxes: [], arrows: [], threads: [], panel: 0 };
+        var still = stillMotion();
+        var flow = state.flow;
+        var paths = drawThreads(motion.threads || []);
+
+        if (!flow) {
+            return;
+        }
+
+        if (!still) {
+            motion.boxes.forEach(function (item) {
+                var box = ui.boxes.querySelector('.wsf-node[data-node="' + item.id + '"]');
+
+                if (box) {
+                    box.style.animationDelay = item.at + 'ms';
+                    box.style.animationDuration = item.ms + 'ms';
+                    box.classList.add('wsf-arrive');
+                    box.addEventListener('animationend', function () {
+                        box.classList.remove('wsf-arrive');
+                        box.style.animationDelay = '';
+                        box.style.animationDuration = '';
+                    }, { once: true });
+                }
+            });
+
+            motion.arrows.forEach(function (item) {
+                var line = ui.svg.querySelector('.wsf-edge[data-edge="' + item.edge + '"] .wsf-edge-line');
+
+                if (line) {
+                    line.classList.add('wsf-arrow-hold');
+                    window.setTimeout(function () { line.classList.remove('wsf-arrow-hold'); }, item.at + item.ms);
+                    grow(line, item.at, item.ms);
+                }
+            });
+
+            motion.threads.forEach(function (item, index) {
+                if (paths[index]) {
+                    grow(paths[index], item.at, item.ms);
+                }
+            });
+        }
+
+        if (!(template.settings || []).length) {
+            return;
+        }
+
+        state.arriving = window.setTimeout(function () {
+            if (state.flow === flow) {
+                setupPanel(template);
+            }
+        }, still ? 0 : motion.panel);
+    }
+
+    function closeSetup() {
+        window.clearTimeout(state.arriving);
+
+        if (ui.setup) {
+            K.clear(ui.setup);
+            ui.setup.classList.add('d-none');
+        }
+    }
+
+    // What a setting holds now: the value of its first box on the canvas.
+    function settingValue(setting) {
+        var target = setting.targets[0];
+        var node = nodeById(target[0]);
+
+        return node ? node.config[target[1]] : null;
+    }
+
+    function setupControl(setting, answers) {
+        var type = setting.type;
+        var value = settingValue(setting);
+        var control;
+
+        answers[type] = value;
+
+        if (type === 'channel') {
+            control = channelPick({ channel_id: value || 0 }, t('fl_post_pick'));
+            control.addEventListener('change', function () { answers.channel = parseInt(control.value, 10) || 0; });
+        } else if (type === 'person') {
+            control = el('div', 'wsf-people-list');
+            control.setAttribute('role', 'group');
+            answers.person = (value || []).slice();
+            (BOOT.people || []).forEach(function (member) {
+                var row = el('label', 'wsf-person');
+                var check = el('input', 'check m-0');
+
+                check.type = 'checkbox';
+                check.checked = answers.person.indexOf(member.id) !== -1;
+                check.addEventListener('change', function () {
+                    answers.person = answers.person.filter(function (id) { return id !== member.id; });
+
+                    if (check.checked) {
+                        answers.person.push(member.id);
+                    }
+                });
+                row.appendChild(check);
+                row.appendChild(document.createTextNode(member.name));
+                control.appendChild(row);
+            });
+        } else {
+            control = el('input', 'form-control form-control-sm');
+            control.type = { time: 'time', url: 'url' }[type] || 'text';
+            control.value = value || '';
+            control.addEventListener('input', function () { answers[type] = control.value; });
+        }
+
+        control.setAttribute('data-setting', type);
+
+        return field(t(SETTINGS[type] || type), control, (type === 'address') ? t('fl_email_to_help') : '');
+    }
+
+    // The template's few settings, then Open on canvas (the answers into the
+    // draft) or Publish now (into the draft, then published). The server
+    // checks the answers again (ws_flow_template_setup()).
+    function setupPanel(template) {
+        var answers = {};
+        var flow = state.flow;
+        var error = el('div', 'wsf-setup-error d-none');
+        var actions = el('div', 'wsf-setup-actions');
+        var openIt = K.button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('fl_tpl_open'), 'bi-bounding-box');
+        var publishIt = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_tpl_publish'), 'bi-send');
+        var close = K.button('btn btn-sm btn-ghost wsf-setup-close', '', 'bi-x-lg');
+        var title = el('h2', 'wsf-setup-title', t('fl_tpl_setup'));
+
+        closeSetup();
+        title.id = 'wsf-setup-title';
+        close.setAttribute('aria-label', t('fl_tpl_close'));
+        close.addEventListener('click', closeSetup);
+        ui.setup.appendChild(close);
+        ui.setup.appendChild(title);
+        ui.setup.appendChild(el('p', 'wsf-setup-help', t('fl_tpl_setup_help', template.title)));
+        template.settings.forEach(function (setting) {
+            ui.setup.appendChild(setupControl(setting, answers));
+        });
+        error.setAttribute('role', 'alert');
+        ui.setup.appendChild(error);
+
+        var send = function (publishing) {
+            var control = publishing ? publishIt : openIt;
+
+            openIt.disabled = publishIt.disabled = true;
+            error.classList.add('d-none');
+            Array.prototype.forEach.call(ui.setup.querySelectorAll('.is-invalid'), function (item) { item.classList.remove('is-invalid'); });
+
+            flush().then(function () {
+                if ((state.flow !== flow) || state.dirty || state.saveError || state.conflict) {
+                    throw new Error(state.saveError || state.conflict || t('fl_unsaved'));
+                }
+
+                return K.api('ws_flow_template_setup', { flow_id: flow.id, draft_rev: flow.draft_rev, key: template.key, answers: answers, publish: publishing });
+            }).then(function (data) {
+                var view = { x: state.view.x, y: state.view.y, k: state.view.k };
+
+                state.refocus = publishing ? 'status' : 'box-' + template.graph.nodes[0].id;
+                show(data.flow);
+                state.view = view;
+                applyView();
+
+                if (data.publish_error) {
+                    K.toast(data.publish_error, 'danger');
+                } else if (data.published) {
+                    K.toast(t('fl_tpl_published'), 'success');
+                }
+            }).catch(function (failure) {
+                openIt.disabled = publishIt.disabled = false;
+
+                if (failure.field === 'changed_meanwhile') {
+                    closeSetup();
+                    conflict(failure.message);
+                    return;
+                }
+
+                var bad = failure.field ? ui.setup.querySelector('[data-setting="' + failure.field + '"]') : null;
+
+                error.textContent = failure.message || t('fl_unsaved');
+                error.classList.remove('d-none');
+
+                if (bad) {
+                    bad.classList.add('is-invalid');
+                }
+
+                (bad || control).focus();
+            });
+        };
+
+        openIt.addEventListener('click', function () { send(false); });
+        publishIt.addEventListener('click', function () { send(true); });
+        actions.appendChild(openIt);
+        actions.appendChild(publishIt);
+        ui.setup.appendChild(actions);
+        ui.setup.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                closeSetup();
+                ui.viewport.focus();
+            }
+        });
+        ui.setup.classList.remove('d-none');
+
+        var first = ui.setup.querySelector('[data-setting]');
+
+        (first && first.matches('input, select') ? first : (ui.setup.querySelector('input') || openIt)).focus();
     }
 
     // ── A scheduled action on the canvas ───────────────────────────────
@@ -772,17 +1401,17 @@
         ui.bar.appendChild(el('span', 'pg-toolbar-grow'));
 
         if (options.edit) {
-            var edit = K.button('btn btn-sm btn-outline-secondary', t('edit'), 'bi-pencil');
+            var edit = K.button('btn btn-sm btn-outline theme-secondary', t('edit'), 'bi-pencil');
             edit.addEventListener('click', options.edit);
             ui.bar.appendChild(edit);
         }
 
         ui.scheduled.appendChild(el('h2', 'h5 mb-1', item.name));
-        ui.scheduled.appendChild(el('p', 'small text-body-secondary', t('sa_canvas_help')));
+        ui.scheduled.appendChild(el('p', 'small fg-secondary', t('sa_canvas_help')));
 
         var chipRow = el('div', 'ws-sa-graph-chips');
         var chip = function (iconName, text) {
-            var part = el('span', 'badge rounded-pill text-bg-light border ws-sa-graph-chip');
+            var part = el('span', 'badge rounded-pill badge-subtle theme-secondary border ws-sa-graph-chip');
 
             part.appendChild(K.icon(iconName, 'me-1'));
             part.appendChild(document.createTextNode(text));
@@ -922,6 +1551,7 @@
         var same = !!(state.flow && (state.flow.id === flow.id));
 
         window.clearTimeout(state.saveTimer);
+        closeSetup();
         endRun();
         state.openSeq++;
 
@@ -939,12 +1569,14 @@
         // draft, read-only, of a flow never published.
         state.graph = graphOf(state.edit ? flow.draft : (flow.graph || flow.draft));
         state.problems = flow.problems || [];
+        state.warnings = flow.warnings || [];
         state.selected = null;
         state.dirty = false;
         state.saveError = '';
         state.conflict = '';
         state.section = '';
         ui.scheduled.classList.add('d-none');
+        ui.gallery.classList.add('d-none');
         ui.app.classList.remove('wsf-nothing');
         ui.app.classList.toggle('wsf-readonly', !state.edit);
         ui.conflictBox.classList.add('d-none');
@@ -987,15 +1619,22 @@
             return;
         }
 
-        var create = K.button('btn btn-sm btn-primary rounded-pill px-3', t('fl_new'), 'bi-plus-lg');
+        var create = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_new'), 'bi-plus-lg');
 
         create.setAttribute('data-refocus', 'new');
-        create.addEventListener('click', createFlow);
+        create.addEventListener('click', function () {
+            // With templates to offer, the ways to start come first.
+            if ((FL.templates || []).length) {
+                showGallery(null);
+            } else {
+                createFlow();
+            }
+        });
         ui.bar.appendChild(create);
     }
 
     function listToggle() {
-        var toggle = K.button('btn btn-sm btn-ghost d-md-none', t('fl_nav'), 'bi-list-ul');
+        var toggle = K.button('btn btn-sm btn-ghost md:d-none', t('fl_nav'), 'bi-list-ul');
 
         toggle.setAttribute('aria-expanded', ui.app.classList.contains('wsf-show-list') ? 'true' : 'false');
         toggle.addEventListener('click', function () {
@@ -1021,7 +1660,7 @@
             return;
         }
 
-        var run = K.button(primary ? 'btn btn-sm btn-primary rounded-pill px-3' : 'btn btn-sm btn-outline-secondary', t('fl_run'), 'bi-play-fill');
+        var run = K.button(primary ? 'btn btn-sm btn-solid theme-primary rounded-pill px-5' : 'btn btn-sm btn-outline theme-secondary', t('fl_run'), 'bi-play-fill');
 
         run.title = t('fl_run_help');
         run.setAttribute('data-refocus', 'run');
@@ -1110,7 +1749,7 @@
         ui.status.setAttribute('data-refocus', 'status');
         ui.bar.appendChild(ui.status);
 
-        ui.unpublished = el('span', 'small text-body-secondary wsf-unpublished d-none', t('fl_unpublished'));
+        ui.unpublished = el('span', 'small fg-secondary wsf-unpublished d-none', t('fl_unpublished'));
         ui.bar.appendChild(ui.unpublished);
         ui.save = el('span', 'small wsf-save');
         ui.save.setAttribute('role', 'status');
@@ -1140,7 +1779,7 @@
         // A run shown says so in its own bar above the canvas.
         if (!state.edit) {
             if (!state.run) {
-                ui.bar.appendChild(el('span', 'small text-body-secondary', t('fl_read_only')));
+                ui.bar.appendChild(el('span', 'small fg-secondary', t('fl_read_only')));
             }
 
             moreMenu();
@@ -1165,16 +1804,16 @@
         // rights, so a colleague shared at edit changes the draft and the
         // server refuses them a publish (ws_flow_publish_check()).
         if (flow.manage) {
-            ui.publish = K.button('btn btn-sm btn-outline-secondary', t('fl_publish'), 'bi-send');
+            ui.publish = K.button('btn btn-sm btn-outline theme-secondary', t('fl_publish'), 'bi-send');
             ui.publish.addEventListener('click', publish);
             ui.bar.appendChild(ui.publish);
         } else {
             ui.publish = null;
-            ui.bar.appendChild(el('span', 'small text-body-secondary wsf-publish-owner', t('fl_publish_owner')));
+            ui.bar.appendChild(el('span', 'small fg-secondary wsf-publish-owner', t('fl_publish_owner')));
         }
 
         if (flow.status === 'live') {
-            var pause = K.button('btn btn-sm btn-outline-secondary', t('fl_pause'), 'bi-pause-circle');
+            var pause = K.button('btn btn-sm btn-outline theme-secondary', t('fl_pause'), 'bi-pause-circle');
             pause.addEventListener('click', function () { act('ws_flow_pause', pause, t('fl_paused')); });
             ui.bar.appendChild(pause);
         }
@@ -1187,12 +1826,13 @@
     // owner, to read for the others), and deleting it for its owner alone.
     function moreMenu() {
         var flow = state.flow;
-        var more = el('div', 'dropdown');
+        var more = el('div', 'pg-menu-wrap');
         var moreButton = K.button('btn btn-sm btn-ghost', '', 'bi-three-dots', t('fl_more'));
-        var menu = el('ul', 'dropdown-menu dropdown-menu-end');
-        var share = K.button('dropdown-item link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
+        var menu = el('ul', 'menu pg-menu-end');
+        var share = K.button('menu-item pg-link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
 
-        moreButton.setAttribute('data-bs-toggle', 'dropdown');
+        moreButton.setAttribute('data-bs-toggle', 'menu');
+        moreButton.setAttribute('data-bs-placement', 'bottom-end');
         moreButton.setAttribute('aria-expanded', 'false');
         moreButton.setAttribute('data-refocus', 'more');
         share.setAttribute('data-wsf-share', '');
@@ -1200,7 +1840,7 @@
         menu.appendChild(el('li')).appendChild(share);
 
         if (flow.manage && state.edit) {
-            var bin = K.button('dropdown-item link-body-emphasis', t('fl_bin'), 'bi-trash');
+            var bin = K.button('menu-item pg-link-body-emphasis', t('fl_bin'), 'bi-trash');
 
             bin.addEventListener('click', binFlow);
             menu.appendChild(el('li')).appendChild(bin);
@@ -1231,8 +1871,8 @@
 
         ui.save.textContent = text;
         ui.save.title = state.saveError || '';
-        ui.save.classList.toggle('text-danger', !!(state.saveError || state.conflict));
-        ui.save.classList.toggle('text-body-secondary', !(state.saveError || state.conflict));
+        ui.save.classList.toggle('fg-danger', !!(state.saveError || state.conflict));
+        ui.save.classList.toggle('fg-secondary', !(state.saveError || state.conflict));
 
         if (state.saveError && !state.saving) {
             var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
@@ -1244,11 +1884,14 @@
             ui.save.appendChild(retry);
         }
 
+        // Warnings alone open the list too, but leave Publish as it is.
+        var warned = state.warnings.length;
+
         K.clear(ui.problemButton);
-        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline-danger' : 'btn-ghost');
-        ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : 'bi-check2-circle', 'me-1'));
-        ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : t('fl_no_problems')));
-        ui.problemButton.disabled = !count;
+        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : (warned ? 'btn-outline theme-warning' : 'btn-ghost'));
+        ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : (warned ? 'bi-exclamation-circle' : 'bi-check2-circle'), 'me-1'));
+        ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : (warned ? t('fl_warnings', warned) : t('fl_no_problems'))));
+        ui.problemButton.disabled = !count && !warned;
 
         if (!ui.publish) {
             return;
@@ -1343,7 +1986,7 @@
     function fillBox(box, node) {
         var title = titleOf(node);
         var meta = metaOf(node);
-        var missing = !title && ((node.kind === 'task') || !KINDS[node.kind]);
+        var missing = !title && ((node.kind === 'task') || (node.kind === 'task_open') || !KINDS[node.kind]);
         var titleNode = box.querySelector('.wsf-node-title');
 
         titleNode.textContent = title || (missing ? t('fl_untitled_box') : meta);
@@ -1403,7 +2046,7 @@
     }
 
     function drawEdges() {
-        Array.prototype.slice.call(ui.svg.querySelectorAll('.wsf-edge')).forEach(function (node) {
+        Array.prototype.slice.call(ui.svg.querySelectorAll('.wsf-edge, .wsf-thread')).forEach(function (node) {
             node.remove();
         });
 
@@ -1425,7 +2068,7 @@
             // In a run, an arrow its box ended on was taken.
             var step = state.run ? stepOf(edge.from) : null;
 
-            if (step && (step.status === 'done') && (step.outcome === edge.on)) {
+            if (step && (step.status === 'done') && step.outcome && ((step.outcome === edge.on) || (edge.on === 'always'))) {
                 group.classList.add('wsf-edge-taken');
             }
 
@@ -1434,14 +2077,15 @@
             group.appendChild(line);
             group.appendChild(hit);
 
-            // An arrow taken when the task is cancelled says so on itself.
-            if (edge.on === 'cancelled') {
+            // An arrow taken when a task is cancelled, or a step failed, says
+            // so on itself.
+            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always')) {
                 var label = svgEl('text', 'wsf-edge-label');
 
                 label.setAttribute('x', String(path.mx));
                 label.setAttribute('y', String(path.my - 6));
                 label.setAttribute('text-anchor', 'middle');
-                label.textContent = t('fl_on_cancelled');
+                label.textContent = t(OUTCOMES[edge.on]);
                 group.appendChild(label);
             }
 
@@ -1491,10 +2135,32 @@
         ui.palette.classList.toggle('d-none', !state.edit || !state.flow);
 
         if (state.edit) {
+            templateButton(ui.palette);
             paletteButtons('btn btn-sm btn-ghost wsf-palette-item', true).forEach(function (add) {
                 ui.palette.appendChild(add);
             });
         }
+    }
+
+    // "Start from a template" above the boxes, while the flow has none: the
+    // template is placed on this flow's canvas.
+    function templateOffered() {
+        return !!((FL.templates || []).length && !state.graph.nodes.length && !state.run);
+    }
+
+    function templateButton(parent) {
+        if (!templateOffered()) {
+            return;
+        }
+
+        var pick = K.button('btn btn-sm btn-ghost wsf-palette-item wsf-palette-template', t('fl_tpl_from_template'), 'bi-grid-1x2');
+        var into = state.flow.id;
+
+        pick.setAttribute('data-refocus', 'palette-template');
+        pick.addEventListener('click', function () {
+            showGallery(into);
+        });
+        parent.appendChild(pick);
     }
 
     function markSelected() {
@@ -1523,6 +2189,8 @@
         var byNode = {};
         var byEdge = {};
 
+        var warnings = {};
+
         (state.run ? [] : state.problems).forEach(function (problem) {
             if (problem.node) {
                 (byNode[problem.node] = byNode[problem.node] || []).push(problem.text);
@@ -1533,13 +2201,21 @@
             }
         });
 
+        // A warning is told on its box, which is not outlined for it.
+        (state.run ? [] : state.warnings).forEach(function (warning) {
+            if (warning.node) {
+                (warnings[warning.node] = warnings[warning.node] || []).push(warning.text);
+            }
+        });
+
         Array.prototype.forEach.call(ui.root.querySelectorAll('[data-node]'), function (box) {
             var texts = byNode[box.getAttribute('data-node')];
+            var told = (texts || []).concat(warnings[box.getAttribute('data-node')] || []);
 
             box.classList.toggle('wsf-bad', !!texts);
 
             if (!state.run) {
-                box.title = texts ? texts.join('\n') : '';
+                box.title = told.join('\n');
             }
         });
 
@@ -1551,17 +2227,30 @@
     function drawProblems() {
         K.clear(ui.problemBox);
 
-        if (!state.edit || !state.problems.length) {
+        if (!state.edit || (!state.problems.length && !state.warnings.length)) {
             ui.problemBox.classList.add('d-none');
             return;
         }
 
-        ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_problems', state.problems.length)));
+        ui.problemBox.classList.toggle('wsf-warned', !state.problems.length);
 
+        if (state.problems.length) {
+            ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_problems', state.problems.length)));
+            ui.problemBox.appendChild(problemList(state.problems, 'wsf-problem', 'bi-exclamation-triangle'));
+        }
+
+        if (state.warnings.length) {
+            ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_warnings', state.warnings.length)));
+            ui.problemBox.appendChild(problemList(state.warnings, 'wsf-problem wsf-warning', 'bi-exclamation-circle'));
+        }
+    }
+
+    // A list of problems or warnings, each leading to its box or arrow.
+    function problemList(problems, className, icon) {
         var list = el('ul', 'list-unstyled mb-0');
 
-        state.problems.forEach(function (problem) {
-            var row = K.button('wsf-problem', problem.text, 'bi-exclamation-triangle');
+        problems.forEach(function (problem) {
+            var row = K.button(className, problem.text, icon);
 
             if (problem.node && nodeById(problem.node)) {
                 row.addEventListener('click', function () { select({ type: 'node', id: problem.node }, { reveal: true, focus: true }); });
@@ -1574,13 +2263,13 @@
             list.appendChild(el('li')).appendChild(row);
         });
 
-        ui.problemBox.appendChild(list);
+        return list;
     }
 
     // ── Settings ───────────────────────────────────────────────────────
 
     function field(label, control, help) {
-        var wrap = el('div', 'mb-3');
+        var wrap = el('div', 'mb-5');
         var id = 'wsf-f' + (++uid);
         var caption = el('label', 'form-label small fw-semibold mb-1', label);
 
@@ -1698,14 +2387,14 @@
         box.appendChild(field(t('fl_home'), home, (state.edit && !state.flow.manage) ? t('fl_home_owner_only') : t('fl_home_help')));
 
         var keys = el('details', 'small wsf-keys');
-        var list = el('ul', 'mb-0 ps-3 text-body-secondary');
+        var list = el('ul', 'mb-0 ps-5 fg-secondary');
 
         keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
         ['tab', 'arrows', 'connect', 'delete', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
             list.appendChild(el('li', '', t('fl_key_' + key)));
         });
         keys.appendChild(list);
-        box.appendChild(el('p', 'small text-body-secondary', state.edit ? t('fl_flow_help') : t('fl_read_only')));
+        box.appendChild(el('p', 'small fg-secondary', state.edit ? t('fl_flow_help') : t('fl_read_only')));
         box.appendChild(keys);
 
         return box;
@@ -1715,8 +2404,9 @@
         var box = el('div', 'wsf-form');
         var config = node.config;
 
-        var title = textInput(titleOf(node), (node.kind === 'task') ? 200 : 160, function (value) {
-            if (node.kind === 'task') {
+        var titled = (node.kind === 'task') || (node.kind === 'task_open') || (node.kind === 'approval');
+        var title = textInput(titleOf(node), titled ? 200 : 160, function (value) {
+            if (titled) {
                 config.title = value;
             }
 
@@ -1741,15 +2431,181 @@
             taskFields(box, node);
         }
 
+        if (node.kind === 'post') {
+            postFields(box, node);
+        }
+
+        if (node.kind === 'email') {
+            emailFields(box, node);
+        }
+
+        if (node.kind === 'notify') {
+            notifyFields(box, node);
+        }
+
+        if (node.kind === 'task_open') {
+            taskOpenFields(box, node);
+        }
+
+        if ((node.kind === 'webhook') || (node.kind === 'web_check')) {
+            urlFields(box, node);
+        }
+
+        if (node.kind === 'task_digest') {
+            digestFields(box, node);
+        }
+
+        if (node.kind === 'report') {
+            reportFields(box, node);
+        }
+
+        if (node.kind === 'checkin') {
+            checkinFields(box, node);
+        }
+
+        if (node.kind === 'start_action') {
+            startFields(box, node);
+        }
+
+        if (node.kind === 'change') {
+            changeFields(box, node);
+        }
+
+        if (node.kind === 'lead') {
+            leadFields(box, node);
+        }
+
+        if (node.kind === 'condition') {
+            conditionFields(box, node);
+        }
+
+        if (node.kind === 'delay') {
+            delayFields(box, node);
+        }
+
+        if (node.kind === 'start_flow') {
+            chainFields(box, node);
+        }
+
+        if (node.kind === 'approval') {
+            approvalFields(box, node);
+        }
+
+        retryFields(box, node);
+
+        if (node.kind === 'schedule') {
+            scheduleFields(box, node);
+        }
+
+        if (node.kind === 'event') {
+            eventFields(box, node);
+        }
+
+        if (node.kind === 'join') {
+            channelField(box, node, t('fl_join_channel'), t('fl_join_any'));
+        }
+
         if (state.edit) {
+            // Only the owner: the box is looked at with their rights.
+            if (state.flow && state.flow.manage) {
+                tryField(box, node);
+            }
+
             box.appendChild(connections(node));
 
-            var remove = K.button('btn btn-sm btn-outline-warning', t('fl_remove_box'), 'bi-trash');
+            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_remove_box'), 'bi-trash');
             remove.addEventListener('click', function () { removeSelected({ type: 'node', id: node.id }); });
             box.appendChild(remove);
         }
 
         return box;
+    }
+
+    // What the box would do, asked of the server (ws_flow_box_try) without
+    // anything being sent or written: the draft is saved first, since the
+    // server tries the box as the draft keeps it. The runs to read the
+    // {{node.*}} values from are listed when the list is first opened.
+    function tryField(box, node) {
+        var flow = state.flow;
+        var wrap = el('div', 'wsf-try border-top pt-5 mb-5');
+        var runs = K.select([['0', t('fl_try_no_run')]], '0');
+        var go = K.button('btn btn-sm btn-outline theme-secondary', t('fl_try'), 'bi-eye');
+        var out = el('div', 'wsf-try-out small mt-3');
+        var listed = false;
+
+        go.title = t('fl_try_help');
+        out.setAttribute('aria-live', 'polite');
+
+        runs.addEventListener('focus', function () {
+            if (listed) {
+                return;
+            }
+
+            listed = true;
+            K.api('ws_flow_runs_list', { flow_id: flow.id, before_id: 0 }).then(function (data) {
+                (data.runs || []).forEach(function (run) {
+                    var option = document.createElement('option');
+
+                    option.value = String(run.id);
+                    option.textContent = t('fl_try_run_item', run.id, runWord(run.status));
+                    runs.appendChild(option);
+                });
+            }).catch(function () {
+                listed = false;
+            });
+        });
+
+        go.addEventListener('click', function () {
+            go.disabled = true;
+            out.textContent = '';
+
+            flush().then(function () {
+                return K.api('ws_flow_box_try', { flow_id: flow.id, node_id: node.id, run_id: Number(runs.value) || 0 });
+            }).then(function (data) {
+                drawTry(out, data.try || {});
+            }).catch(function (error) {
+                out.appendChild(el('div', 'fg-danger', (error && error.message) || t('error_generic')));
+            }).then(function () {
+                go.disabled = false;
+            });
+        });
+
+        wrap.appendChild(field(t('fl_try_run'), runs, t('fl_try_help')));
+        wrap.appendChild(go);
+        wrap.appendChild(out);
+        box.appendChild(wrap);
+    }
+
+    // The answer of ws_flow_box_try in words: what the box would do, why it
+    // would fail, its texts filled in, the values left empty, its next times
+    // and the arrow it would leave on.
+    function drawTry(out, tried) {
+        if (tried.said) {
+            out.appendChild(el('div', 'fw-semibold text-break', tried.said));
+        }
+
+        if (tried.refusal) {
+            out.appendChild(el('div', 'fg-danger', t('fl_try_fails', tried.refusal)));
+        }
+
+        (tried.texts || []).forEach(function (text) {
+            var shown = el('div', 'border rounded-4 p-3 mt-1 text-break', text.text);
+
+            shown.style.whiteSpace = 'pre-wrap';
+            out.appendChild(shown);
+        });
+
+        if ((tried.empty || []).length) {
+            out.appendChild(el('div', 'fg-secondary mt-1', t('fl_try_empty', tried.empty.join(', '))));
+        }
+
+        if ((tried.next || []).length) {
+            out.appendChild(el('div', 'mt-1', t('fl_try_next', tried.next.join(' · '))));
+        }
+
+        if (tried.outcome && OUTCOMES[tried.outcome]) {
+            out.appendChild(el('div', 'fg-secondary mt-1', t('fl_try_outcome', t(OUTCOMES[tried.outcome]))));
+        }
     }
 
     function taskFields(box, node) {
@@ -1767,7 +2623,7 @@
         }
 
         var who = K.select(options, current);
-        var people = el('div', 'wsf-people mt-2');
+        var people = el('div', 'wsf-people mt-3');
 
         // The team's ticks are built once "The people I pick" is chosen: a
         // box given by a rule does not carry one tick per member in the DOM.
@@ -1816,6 +2672,21 @@
         });
         box.appendChild(field(t('fl_due_in'), due, t('fl_due_help')));
 
+        // Hours the box waits for its task before it leaves on timeout
+        // (ws_flow_timeout_hours()); the task itself stays open.
+        var timeout = el('input', 'form-control form-control-sm wsf-number');
+
+        timeout.type = 'number';
+        timeout.min = '1';
+        timeout.max = '720';
+        timeout.step = '1';
+        timeout.value = (config.timeout === '' || config.timeout === undefined || config.timeout === null) ? '' : String(config.timeout);
+        timeout.addEventListener('input', function () {
+            config.timeout = (timeout.value === '') ? '' : clamp(parseInt(timeout.value, 10) || 1, 1, 720);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_timeout'), timeout, t('fl_timeout_help')));
+
         var priorities = BOOT.priorities || {};
         var priority = K.select(Object.keys(priorities).map(function (key) { return [key, priorities[key]]; }), config.priority || 'normal');
 
@@ -1831,11 +2702,1115 @@
         }, true), t('fl_description_help')));
     }
 
-    // The team as ticks, with a filter once it is long, drawn into wrap.
-    function peopleList(node, wrap) {
+    // A post box: the channel the owner writes in and the message. The store
+    // checks the owner may write there.
+    // The channels a step box may name, the first option for none, then the
+    // options given first ([value, label] pairs: the channel joined), and
+    // one the person does not read named as such.
+    function channelPick(config, none, first) {
+        var channels = [[0, none]].concat(first || []);
+
+        (BOOT.channels || []).forEach(function (channel) {
+            if (((channel.kind === 'public') || (channel.kind === 'private')) && !channel.archived) {
+                channels.push([channel.id, (channel.kind === 'private' ? '🔒 ' : '#') + channel.name]);
+            }
+        });
+
+        if (config.channel_id && !channels.some(function (option) { return option[0] === config.channel_id; })) {
+            channels.push([config.channel_id, t('fl_share_hidden')]);
+        }
+
+        return K.select(channels, config.channel_id || 0);
+    }
+
+    // Whether the flow starts when somebody joins a channel: its post boxes
+    // may then write in the channel joined (-1), as the server allows
+    // (ws_flow_starts_on_join()).
+    function startsOnJoin() {
+        return state.graph.nodes.some(function (item) { return item.kind === 'join'; });
+    }
+
+    function postFields(box, node) {
+        var config = node.config;
+        var pick = channelPick(config, t('fl_post_pick'), (startsOnJoin() || (config.channel_id === -1)) ? [[-1, t('fl_post_joined')]] : []);
+
+        pick.addEventListener('change', function () {
+            config.channel_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_post_channel'), pick));
+        box.appendChild(field(t('fl_post_body'), textInput(config.body, 4000, function (value) {
+            config.body = value;
+            refreshNode(node);
+        }, true), t('fl_values_help')));
+    }
+
+    // An e-mail box: addresses, subject and text, sent from the site.
+    function emailFields(box, node) {
+        var config = node.config;
+
+        box.appendChild(field(t('fl_email_to'), textInput(config.to, 2000, function (value) {
+            config.to = value;
+            refreshNode(node);
+        }), t('fl_email_to_help')));
+        box.appendChild(field(t('fl_email_subject'), textInput(config.subject, 250, function (value) {
+            config.subject = value;
+            refreshNode(node);
+        })));
+        box.appendChild(field(t('fl_email_body'), textInput(config.body, 20000, function (value) {
+            config.body = value;
+            refreshNode(node);
+        }, true), t('fl_values_help')));
+    }
+
+    // A notify box: the people told and the line they read.
+    function notifyFields(box, node) {
+        var config = node.config;
+
+        box.appendChild(field(t('fl_notify_who'), peopleList(node, el('div', 'wsf-people'), 'user_ids', 50)));
+        box.appendChild(field(t('fl_notify_text'), textInput(config.text, 500, function (value) {
+            config.text = value;
+            refreshNode(node);
+        }), t('fl_values_help')));
+    }
+
+    // A task opened without waiting: its people, channel, due day, priority
+    // and description; the title is the box's.
+    function taskOpenFields(box, node) {
+        var config = node.config;
+
+        box.appendChild(field(t('fl_assign_people'), peopleList(node, el('div', 'wsf-people'), 'assignees', 20)));
+
+        var pick = channelPick(config, t('fl_task_no_channel'));
+
+        pick.addEventListener('change', function () {
+            config.channel_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_task_channel'), pick));
+
+        var due = el('input', 'form-control form-control-sm wsf-number');
+
+        due.type = 'number';
+        due.min = '0';
+        due.max = '3650';
+        due.value = (config.due_in === '' || config.due_in === undefined || config.due_in === null) ? '' : String(config.due_in);
+        due.addEventListener('input', function () {
+            config.due_in = (due.value === '') ? '' : clamp(parseInt(due.value, 10) || 0, 0, 3650);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_due_in'), due, t('fl_task_open_due_help')));
+
+        var priorities = BOOT.priorities || {};
+        var priority = K.select(Object.keys(priorities).map(function (key) { return [key, priorities[key]]; }), config.priority || 'normal');
+
+        priority.addEventListener('change', function () {
+            config.priority = priority.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_priority'), priority));
+        box.appendChild(field(t('fl_description'), textInput(config.description, 8000, function (value) {
+            config.description = value;
+            refreshNode(node);
+        }, true), t('fl_values_help')));
+    }
+
+    // A webhook or a web check: the https address, then what each needs.
+    function urlFields(box, node) {
+        var config = node.config;
+
+        box.appendChild(field(t('fl_url'), textInput(config.url, 2000, function (value) {
+            config.url = value.trim();
+            refreshNode(node);
+        }), t('fl_url_help')));
+
+        if (node.kind === 'webhook') {
+            var format = K.select([['generic', t('fl_hook_generic')], ['text', t('fl_hook_text')], ['discord', t('fl_hook_discord')]], config.format || 'generic');
+
+            format.addEventListener('change', function () {
+                config.format = format.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_hook_format'), format, t('fl_hook_help')));
+            box.appendChild(field(t('fl_post_body'), textInput(config.text, 4000, function (value) {
+                config.text = value;
+                refreshNode(node);
+            }, true), t('fl_values_help')));
+
+            return;
+        }
+
+        var mode = K.select([['status', t('fl_check_status')], ['ssl', t('fl_check_ssl')]], config.mode || 'status');
+        var more = el('div');
+        var draw = function () {
+            K.clear(more);
+
+            if (config.mode === 'ssl') {
+                more.appendChild(field(t('fl_check_days'), numberInput(config.days, 1, 365, function (value) { config.days = value || 14; })));
+                return;
+            }
+
+            more.appendChild(field(t('fl_check_contains'), textInput(config.contains, 200, function (value) {
+                config.contains = value;
+                refreshNode(node);
+            })));
+            more.appendChild(field(t('fl_check_max_ms'), numberInput(config.max_ms, 0, 60000, function (value) { config.max_ms = value; }), t('fl_check_max_ms_help')));
+
+            var redirect = el('input', 'check');
+
+            redirect.type = 'checkbox';
+            redirect.checked = !!config.redirect;
+            redirect.addEventListener('change', function () {
+                config.redirect = redirect.checked;
+                refreshNode(node);
+            });
+            more.appendChild(field(t('fl_check_redirect'), redirect));
+        };
+
+        mode.addEventListener('change', function () {
+            config.mode = mode.value;
+            draw();
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_check_mode'), mode));
+        box.appendChild(more);
+        draw();
+
+        function numberInput(value, min, max, set) {
+            var input = el('input', 'form-control form-control-sm wsf-number');
+
+            input.type = 'number';
+            input.min = String(min);
+            input.max = String(max);
+            input.value = String(value || '');
+            input.addEventListener('input', function () {
+                set(clamp(parseInt(input.value, 10) || 0, min, max));
+                refreshNode(node);
+            });
+
+            return input;
+        }
+    }
+
+    // A channel picker whose choice goes to config.channel_id.
+    function channelField(box, node, label, none) {
+        var pick = channelPick(node.config, none);
+
+        pick.addEventListener('change', function () {
+            node.config.channel_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(label, pick));
+    }
+
+    // A tick whose state goes to config[key].
+    function tickField(box, node, key, label, onChange) {
+        var tick = el('input', 'check');
+
+        tick.type = 'checkbox';
+        tick.checked = !!node.config[key];
+        tick.addEventListener('change', function () {
+            node.config[key] = tick.checked;
+            refreshNode(node);
+
+            if (onChange) {
+                onChange();
+            }
+        });
+        box.appendChild(field(label, tick));
+
+        return tick;
+    }
+
+    // The task e-mail: each person their own open tasks, or a channel's;
+    // the filter, subject and opening lines; what they missed, and the
+    // assistant's recap of it.
+    function digestFields(box, node) {
+        var config = node.config;
+        var mode = K.select([['mine', t('fl_digest_mine')], ['channel', t('fl_digest_channel')]], config.mode || 'mine');
+        var only = K.select(Object.keys(stepLists().digest).map(function (key) { return [key, stepLists().digest[key]]; }), config.only || 'open');
+
+        mode.addEventListener('change', function () {
+            config.mode = mode.value;
+            refreshNode(node);
+        });
+        only.addEventListener('change', function () {
+            config.only = only.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_digest_mode'), mode));
+        channelField(box, node, t('fl_digest_channel_pick'), t('fl_task_no_channel'));
+        box.appendChild(field(t('fl_digest_who'), peopleList(node, el('div', 'wsf-people'), 'user_ids', 50), t('fl_digest_who_help')));
+        box.appendChild(field(t('fl_digest_only'), only));
+        box.appendChild(field(t('fl_email_subject'), textInput(config.subject, 250, function (value) {
+            config.subject = value;
+            refreshNode(node);
+        })));
+        box.appendChild(field(t('fl_digest_intro'), textInput(config.intro, 2000, function (value) {
+            config.intro = value;
+            refreshNode(node);
+        }, true), t('fl_values_help')));
+
+        var ai = null;
+
+        tickField(box, node, 'missed', t('fl_digest_missed'), function () {
+            if (!config.missed) {
+                config.ai = false;
+            }
+
+            if (ai) {
+                ai.checked = !!config.ai;
+                ai.disabled = !state.edit || !config.missed;
+            }
+        });
+        ai = tickField(box, node, 'ai', t('fl_digest_ai'));
+        ai.disabled = !state.edit || !config.missed;
+    }
+
+    // A summary of counts: which counts, and where it goes.
+    function reportFields(box, node) {
         var config = node.config;
         var list = el('div', 'wsf-people-list');
-        var chosen = config.assignees || [];
+        var chosen = (config.metrics || []).map(function (item) { return item.key; });
+
+        list.setAttribute('role', 'group');
+        list.setAttribute('aria-label', t('fl_report_counts'));
+        stepLists().metrics.forEach(function (metric) {
+            var row = el('label', 'wsf-person');
+            var check = el('input', 'check m-0');
+
+            check.type = 'checkbox';
+            check.checked = chosen.indexOf(metric.key) !== -1;
+            check.disabled = !state.edit;
+            check.addEventListener('change', function () {
+                var items = (config.metrics || []).filter(function (item) { return item.key !== metric.key; });
+
+                if (check.checked) {
+                    items.push({ key: metric.key, param: 0 });
+                }
+
+                config.metrics = items.slice(0, 20);
+                refreshNode(node);
+            });
+            row.appendChild(check);
+            row.appendChild(document.createTextNode(metric.label));
+            list.appendChild(row);
+        });
+
+        box.appendChild(field(t('fl_report_title'), textInput(config.title, 160, function (value) {
+            config.title = value;
+            refreshNode(node);
+        }), t('fl_values_help')));
+        box.appendChild(field(t('fl_report_counts'), list));
+        channelField(box, node, t('fl_post_channel'), t('fl_task_no_channel'));
+        box.appendChild(field(t('fl_email_to'), textInput(config.to, 2000, function (value) {
+            config.to = value;
+            refreshNode(node);
+        }), t('fl_report_where_help')));
+    }
+
+    // A check-in: the channel asked and the question.
+    function checkinFields(box, node) {
+        channelField(box, node, t('fl_post_channel'), t('fl_post_pick'));
+        box.appendChild(field(t('fl_checkin_question'), textInput(node.config.question, 500, function (value) {
+            node.config.question = value;
+            refreshNode(node);
+        }), t('fl_checkin_help')));
+    }
+
+    // A submitted form's customer brought into a channel: whether a channel
+    // it opens is private, and who is put in it.
+    function leadFields(box, node) {
+        var config = node.config;
+        var closed = el('input', 'check');
+
+        closed.type = 'checkbox';
+        closed.checked = !!config.private;
+        closed.disabled = !state.edit;
+        closed.addEventListener('change', function () {
+            config.private = closed.checked;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_lead_private'), closed, t('fl_lead_help')));
+        box.appendChild(field(t('fl_lead_people'), peopleList(node, el('div', 'wsf-people'), 'user_ids', 50)));
+    }
+
+    // Another scheduled action, started now or some minutes later.
+    // The flows a box may start: those the person runs or changes, other
+    // than the one open; the server takes only a live one started by hand
+    // (ws_flow_chain_check()).
+    function chainTargets() {
+        var open = state.flow ? state.flow.id : 0;
+
+        return state.flows.filter(function (item) {
+            return (item.id !== open) && ((item.access === 'run') || (item.access === 'edit'));
+        });
+    }
+
+    // A box that starts another flow and goes on without waiting for it.
+    function chainFields(box, node) {
+        var config = node.config;
+        var options = [[0, t('fl_chain_pick')]].concat(chainTargets().map(function (item) { return [item.id, item.name]; }));
+
+        if (config.flow_id && !options.some(function (option) { return option[0] === config.flow_id; })) {
+            options.push([config.flow_id, '#' + config.flow_id]);
+        }
+
+        var pick = K.select(options, config.flow_id || 0);
+
+        pick.addEventListener('change', function () {
+            config.flow_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_chain_flow'), pick, t('fl_chain_help')));
+    }
+
+    function startFields(box, node) {
+        var config = node.config;
+        var options = [[0, t('fl_start_pick')]].concat(stepLists().targets.map(function (item) { return [item.id, item.name]; }));
+
+        if (config.target_id && !options.some(function (option) { return option[0] === config.target_id; })) {
+            options.push([config.target_id, '#' + config.target_id]);
+        }
+
+        var pick = K.select(options, config.target_id || 0);
+        var delay = el('input', 'form-control form-control-sm wsf-number');
+
+        pick.addEventListener('change', function () {
+            config.target_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        delay.type = 'number';
+        delay.min = '0';
+        delay.max = '10080';
+        delay.value = String(config.delay || 0);
+        delay.addEventListener('input', function () {
+            config.delay = clamp(parseInt(delay.value, 10) || 0, 0, 10080);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_start_target'), pick));
+        box.appendChild(field(t('fl_start_delay'), delay, t('fl_start_delay_help')));
+    }
+
+    // How long a delay box waits, in words: "2 hours", or that none is set.
+    function delayText(config) {
+        var amount = parseInt(config.amount, 10);
+        var words = {
+            minutes: ['fl_delay_minute', 'fl_delay_minutes'],
+            hours: ['fl_delay_hour', 'fl_delay_hours'],
+            days: ['fl_delay_day', 'fl_delay_days']
+        }[config.unit] || ['fl_delay_minute', 'fl_delay_minutes'];
+
+        if (!(amount > 0)) {
+            return t('fl_delay_none');
+        }
+
+        return (amount === 1) ? t(words[0]) : t(words[1], amount);
+    }
+
+    // A delay box: how long it waits and the unit counted in, at most a
+    // week (WS_FLOW_DELAY_MAX minutes), as a scheduled action's start delay.
+    function delayFields(box, node) {
+        var config = node.config;
+        var amount = el('input', 'form-control form-control-sm wsf-number');
+        var unit = K.select([
+            ['minutes', t('fl_delay_unit_minutes')],
+            ['hours', t('fl_delay_unit_hours')],
+            ['days', t('fl_delay_unit_days')]
+        ], config.unit || 'minutes');
+
+        amount.type = 'number';
+        amount.min = '1';
+        amount.max = '10080';
+        amount.value = (config.amount === '' || config.amount === undefined) ? '' : String(config.amount);
+        amount.addEventListener('input', function () {
+            config.amount = (amount.value === '') ? '' : clamp(parseInt(amount.value, 10) || 0, 0, 99999);
+            refreshNode(node);
+        });
+        unit.addEventListener('change', function () {
+            config.unit = unit.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_delay_amount'), amount, t('fl_delay_help')));
+        box.appendChild(field(t('fl_delay_unit'), unit));
+    }
+
+    // How many times a step box tries again on its own after a failure,
+    // and the minutes before each try (ws_flow_retry_normalize()).
+    function retryFields(box, node) {
+        var retry = (FL.steps || {}).retry || {};
+
+        if ((retry.kinds || []).indexOf(node.kind) < 0) {
+            return;
+        }
+
+        var config = node.config;
+        var max = retry.max || 7;
+        var afterMax = retry.after_max || 10080;
+        var times = el('input', 'form-control form-control-sm wsf-number');
+        var after = el('input', 'form-control form-control-sm wsf-number');
+
+        times.type = 'number';
+        times.min = '0';
+        times.max = String(max);
+        times.step = '1';
+        times.value = String(config.retry || 0);
+        times.addEventListener('input', function () {
+            config.retry = clamp(parseInt(times.value, 10) || 0, 0, max);
+            refreshNode(node);
+        });
+        after.type = 'number';
+        after.min = '1';
+        after.max = String(afterMax);
+        after.step = '1';
+        after.value = (config.retry_after === '' || config.retry_after === undefined || config.retry_after === null) ? '' : String(config.retry_after);
+        after.addEventListener('input', function () {
+            config.retry_after = (after.value === '') ? '' : clamp(parseInt(after.value, 10) || 1, 1, afterMax);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_self_retry'), times, t('fl_self_retry_help')));
+        box.appendChild(field(t('fl_self_retry_after'), after, t('fl_self_retry_after_help')));
+    }
+
+    // An approval box: the channel it asks in, the people asked, the text,
+    // whether one approval or all of them settle it, and the hours it gives
+    // them (WS_STEP_APPROVAL_CLOSES_MAX); the title is the box's.
+    function approvalFields(box, node) {
+        var config = node.config;
+        var rule = K.select([['any', t('fl_approval_any')], ['all', t('fl_approval_all')]], config.rule || 'any');
+        var closes = el('input', 'form-control form-control-sm wsf-number');
+
+        channelField(box, node, t('fl_approval_channel'), t('fl_post_pick'));
+        box.appendChild(field(t('fl_approval_who'), peopleList(node, el('div', 'wsf-people'), 'approvers', 50), t('fl_approval_who_help')));
+        box.appendChild(field(t('fl_description'), textInput(config.text, 4000, function (value) {
+            config.text = value;
+            refreshNode(node);
+        }, true), t('fl_values_help')));
+        rule.addEventListener('change', function () {
+            config.rule = rule.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_approval_rule'), rule));
+
+        closes.type = 'number';
+        closes.min = '1';
+        closes.max = '720';
+        closes.value = (config.closes_in === '' || config.closes_in === undefined || config.closes_in === null) ? '' : String(config.closes_in);
+        closes.addEventListener('input', function () {
+            config.closes_in = (closes.value === '') ? '' : clamp(parseInt(closes.value, 10) || 1, 1, 720);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_approval_closes'), closes, t('fl_approval_closes_help')));
+    }
+
+    // A time the flow starts at: its first day and time, how it repeats, the
+    // days of a weekly one and its last day, as a scheduled action's "when".
+    function scheduleFields(box, node) {
+        var config = node.config;
+        var date = el('input', 'form-control form-control-sm');
+        var clock = el('input', 'form-control form-control-sm');
+        var repeats = stepLists().repeats;
+        var repeat = K.select(Object.keys(repeats).map(function (key) { return [key, repeats[key]]; }), config.repeat || 'none');
+
+        date.type = 'date';
+        date.value = config.date || '';
+        date.addEventListener('input', function () {
+            config.date = date.value;
+            refreshNode(node);
+        });
+        clock.type = 'time';
+        clock.value = config.time || '';
+        clock.addEventListener('input', function () {
+            config.time = clock.value;
+            refreshNode(node);
+        });
+        repeat.addEventListener('change', function () {
+            config.repeat = repeat.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_when_date'), date, t('fl_when_help')));
+        box.appendChild(field(t('fl_when_time'), clock));
+        box.appendChild(field(t('fl_when_repeat'), repeat));
+
+        if (['none', 'workdays'].indexOf(config.repeat || 'none') === -1) {
+            var every = el('input', 'form-control form-control-sm wsf-number');
+
+            every.type = 'number';
+            every.min = '1';
+            every.max = '720';
+            every.value = String(config.every || 1);
+            every.addEventListener('input', function () {
+                config.every = clamp(parseInt(every.value, 10) || 1, 1, 720);
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_when_every'), every));
+        }
+
+        if (config.repeat === 'weekly') {
+            var days = el('div', 'wsf-people-list');
+
+            days.setAttribute('role', 'group');
+            days.setAttribute('aria-label', t('fl_cond_weekdays'));
+            [1, 2, 3, 4, 5, 6, 7].forEach(function (day) {
+                var row = el('label', 'wsf-person');
+                var check = el('input', 'check m-0');
+
+                check.type = 'checkbox';
+                check.checked = (config.days || []).indexOf(day) !== -1;
+                check.disabled = !state.edit;
+                check.addEventListener('change', function () {
+                    var chosen = (config.days || []).filter(function (item) { return item !== day; });
+
+                    if (check.checked) {
+                        chosen.push(day);
+                    }
+
+                    config.days = chosen.sort();
+                    refreshNode(node);
+                });
+                row.appendChild(check);
+                row.appendChild(document.createTextNode(t(DAYS[day])));
+                days.appendChild(row);
+            });
+            box.appendChild(field(t('fl_cond_weekdays'), days));
+        }
+
+        if ((config.repeat || 'none') !== 'none') {
+            var until = el('input', 'form-control form-control-sm');
+
+            until.type = 'date';
+            until.value = config.until || '';
+            until.addEventListener('input', function () {
+                config.until = until.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_when_until'), until, t('fl_when_until_help')));
+        }
+    }
+
+    // Something happening on the site: the event, narrowed to a form, the
+    // status it moves to, or a channel, as the event rule takes it.
+    function eventFields(box, node) {
+        var config = node.config;
+        var events = stepLists().events || { list: {}, forms: [], statuses: [] };
+        var options = [['', t('fl_event_pick')]].concat(Object.keys(events.list).map(function (key) { return [key, events.list[key].label]; }));
+
+        if (config.event && !events.list[config.event]) {
+            options.push([config.event, config.event]);
+        }
+
+        var pick = K.select(options, config.event || '');
+        var info = events.list[config.event] || null;
+
+        pick.addEventListener('change', function () {
+            config.event = pick.value;
+            config.page_id = 0;
+            config.status = '';
+            config.channel_id = 0;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_event'), pick, t('fl_event_help')));
+
+        if (!info) {
+            return;
+        }
+
+        if (info.filter === 'page') {
+            var form = K.select([[0, t('fl_event_any_form')]].concat(events.forms || []), config.page_id || 0);
+
+            form.addEventListener('change', function () {
+                config.page_id = parseInt(form.value, 10) || 0;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_event_form'), form));
+        }
+
+        if ((info.filter === 'status') || info.options) {
+            var values = (info.filter === 'status') ? (events.statuses || []) : info.options;
+            var status = K.select([['', info.any || t('fl_event_any_status')]].concat(values), config.status || '');
+
+            status.addEventListener('change', function () {
+                config.status = status.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(info.filter_label || t('fl_event_status'), status));
+        }
+
+        if (info.channel) {
+            channelField(box, node, t('fl_event_channel'), t('fl_event_any_channel'));
+        }
+    }
+
+    // The days of the week by number, 1 Monday - 7 Sunday.
+    var DAYS = { 1: 'fl_day_mon', 2: 'fl_day_tue', 3: 'fl_day_wed', 4: 'fl_day_thu', 5: 'fl_day_fri', 6: 'fl_day_sat', 7: 'fl_day_sun' };
+
+    // What a condition box's rule is, in a few words on the box.
+    function conditionMeta(rule) {
+        var lists = stepLists();
+
+        if (rule.type === 'workday') {
+            return t('fl_cond_workday');
+        }
+
+        if (rule.type === 'weekdays') {
+            return (rule.days || []).map(function (day) { return t(DAYS[day]); }).join(', ') || t('fl_cond_none');
+        }
+
+        if (rule.type === 'hours') {
+            return (rule.from || '?') + ' – ' + (rule.to || '?');
+        }
+
+        if (rule.type === 'metric') {
+            var metric = lists.metrics.filter(function (item) { return item.key === rule.metric; })[0];
+
+            return metric ? metric.label : (rule.metric || t('fl_cond_none'));
+        }
+
+        if (rule.type === 'record') {
+            var record = lists.records[rule.record];
+            var meta = (record && record.fields[rule.field]) ? record.fields[rule.field].label : rule.field;
+
+            return (record ? record.label : (rule.record || '')) + (rule.id ? ' #' + rule.id : '') + (meta ? ' · ' + meta : '');
+        }
+
+        return t('fl_cond_none');
+    }
+
+    // A condition: its kind of rule, then that rule's settings, as the
+    // scheduled form takes them. Somebody who may not change the flow reads
+    // no record number and no value (ws_flow_condition_masked()).
+    function conditionFields(box, node) {
+        var config = node.config;
+        var rule = config.rule = (config.rule && typeof config.rule === 'object') ? config.rule : { type: '' };
+        var types = [['', t('fl_cond_pick')], ['workday', t('fl_cond_workday')], ['weekdays', t('fl_cond_weekdays')], ['hours', t('fl_cond_hours')], ['metric', t('fl_cond_metric')], ['record', t('fl_cond_record')]];
+        var type = K.select(types, rule.type || '');
+        var changed = function () {
+            refreshNode(node);
+        };
+
+        type.addEventListener('change', function () {
+            config.rule = { type: type.value };
+
+            if (type.value === 'weekdays') {
+                config.rule.days = [1, 2, 3, 4, 5];
+            } else if (type.value === 'hours') {
+                config.rule.from = '09:00';
+                config.rule.to = '18:00';
+            } else if ((type.value === 'metric') || (type.value === 'record')) {
+                config.rule.op = (type.value === 'metric') ? 'gt' : 'eq';
+                config.rule.value = '';
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_cond_kind'), type, t('fl_cond_help')));
+
+        if (rule.type === 'weekdays') {
+            var days = el('div', 'wsf-people-list');
+
+            days.setAttribute('role', 'group');
+            days.setAttribute('aria-label', t('fl_cond_weekdays'));
+            [1, 2, 3, 4, 5, 6, 7].forEach(function (day) {
+                var row = el('label', 'wsf-person');
+                var check = el('input', 'check m-0');
+
+                check.type = 'checkbox';
+                check.checked = (rule.days || []).indexOf(day) !== -1;
+                check.disabled = !state.edit;
+                check.addEventListener('change', function () {
+                    var chosen = (rule.days || []).filter(function (item) { return item !== day; });
+
+                    if (check.checked) {
+                        chosen.push(day);
+                    }
+
+                    rule.days = chosen.sort();
+                    changed();
+                });
+                row.appendChild(check);
+                row.appendChild(document.createTextNode(t(DAYS[day])));
+                days.appendChild(row);
+            });
+            box.appendChild(field(t('fl_cond_weekdays'), days));
+        }
+
+        if (rule.type === 'hours') {
+            [['from', 'fl_cond_from'], ['to', 'fl_cond_to']].forEach(function (pair) {
+                var key = pair[0];
+                var clock = el('input', 'form-control form-control-sm');
+
+                clock.type = 'time';
+                clock.value = rule[key] || '';
+                clock.addEventListener('input', function () {
+                    rule[key] = clock.value;
+                    changed();
+                });
+                box.appendChild(field(t(pair[1]), clock));
+            });
+        }
+
+        if (rule.type === 'metric') {
+            conditionMetric(box, node, rule);
+        }
+
+        if (rule.type === 'record') {
+            conditionRecord(box, node, rule);
+        }
+    }
+
+    // A count compared with a number; a count of a channel's tasks reads one
+    // channel, or every one, and a count measured against a number (products
+    // low in stock) takes that number.
+    function conditionMetric(box, node, rule) {
+        var lists = stepLists();
+        var options = [['', t('fl_cond_metric_pick')]].concat(lists.metrics.map(function (item) { return [item.key, item.label]; }));
+
+        if (rule.metric && !lists.metrics.some(function (item) { return item.key === rule.metric; })) {
+            options.push([rule.metric, rule.metric]);
+        }
+
+        var metric = K.select(options, rule.metric || '');
+        var info = lists.metrics.filter(function (item) { return item.key === rule.metric; })[0];
+
+        metric.addEventListener('change', function () {
+            var picked = lists.metrics.filter(function (item) { return item.key === metric.value; })[0];
+
+            rule.metric = metric.value;
+            // A number to measure against starts at 5, as on the scheduled
+            // form (saMetricPicker() in workspace.js).
+            rule.param = (picked && (picked.scope === 'threshold')) ? 5 : 0;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_cond_metric'), metric));
+
+        if (info && (info.scope === 'channel')) {
+            var place = channelPick({ channel_id: rule.param || 0 }, t('fl_cond_any_channel'));
+
+            place.addEventListener('change', function () {
+                rule.param = parseInt(place.value, 10) || 0;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_task_channel'), place));
+        }
+
+        if (info && (info.scope === 'threshold')) {
+            var most = el('input', 'form-control form-control-sm wsf-number');
+
+            most.type = 'number';
+            most.min = '0';
+            most.max = '1000000';
+            most.value = String(rule.param || 0);
+            most.addEventListener('input', function () {
+                rule.param = Math.max(0, parseInt(most.value, 10) || 0);
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_cond_threshold'), most));
+        }
+
+        conditionCompare(box, node, rule, lists.counts.map(function (op) { return [op, lists.operators[op] || op]; }), null);
+    }
+
+    // A field of a record compared with a value.
+    function conditionRecord(box, node, rule) {
+        var lists = stepLists();
+        var options = [['', t('fl_change_pick')]];
+
+        Object.keys(lists.records).forEach(function (key) {
+            options.push([key, lists.records[key].label]);
+        });
+
+        if (rule.record && !lists.records[rule.record]) {
+            options.push([rule.record, rule.record]);
+        }
+
+        var kind = K.select(options, rule.record || '');
+        var record = lists.records[rule.record] || null;
+        var id = el('input', 'form-control form-control-sm wsf-number');
+
+        kind.addEventListener('change', function () {
+            rule.record = kind.value;
+            rule.field = '';
+            rule.value = '';
+            refreshNode(node);
+            drawSettings();
+        });
+        id.type = 'number';
+        id.min = '1';
+        id.value = rule.id ? String(rule.id) : '';
+        id.addEventListener('input', function () {
+            rule.id = Math.max(0, parseInt(id.value, 10) || 0);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_change_kind'), kind));
+        box.appendChild(field(t('fl_change_id'), id, state.edit ? t('fl_cond_id_help') : t('fl_cond_hidden')));
+
+        var fields = record ? record.fields : {};
+        var names = Object.keys(fields).filter(function (name) { return fields[name].column; });
+        var pick = K.select([['', t('fl_cond_field_pick')]].concat(names.map(function (name) { return [name, fields[name].label]; })), rule.field || '');
+
+        if (rule.field && (names.indexOf(rule.field) === -1)) {
+            pick.appendChild(new Option(rule.field, rule.field, true, true));
+        }
+
+        pick.addEventListener('change', function () {
+            rule.field = pick.value;
+            rule.value = '';
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_cond_field'), pick));
+
+        var meta = fields[rule.field] || null;
+        var ops = Object.keys(lists.operators).filter(function (op) {
+            return ((op !== 'within') && (op !== 'overdue')) || (meta && ((meta.kind === 'date') || (meta.kind === 'datetime')));
+        });
+
+        conditionCompare(box, node, rule, ops.map(function (op) { return [op, lists.operators[op]]; }), meta);
+    }
+
+    // How the value is compared, and the value: a field's choices where it
+    // has them, else the value as the field holds it (conditionValue()). No
+    // value for "is empty", its twin and "has gone by".
+    function conditionCompare(box, node, rule, ops, meta) {
+        var op = K.select(ops, rule.op || (ops[0] ? ops[0][0] : ''));
+
+        op.addEventListener('change', function () {
+            rule.op = op.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_cond_op'), op));
+
+        if ((rule.op === 'empty') || (rule.op === 'not_empty') || (rule.op === 'overdue')) {
+            return;
+        }
+
+        var input;
+
+        if (meta && (meta.kind === 'enum') && ((rule.op === 'eq') || (rule.op === 'neq'))) {
+            input = K.select([['', t('fl_cond_value_pick')]].concat((meta.values || []).map(function (item) {
+                return [item, (meta.labels && meta.labels[item]) ? meta.labels[item] : item];
+            })), rule.value || '');
+            input.addEventListener('change', function () {
+                rule.value = input.value;
+                refreshNode(node);
+            });
+        } else {
+            // "Falls within the next days" takes a number of days.
+            input = conditionValue((rule.op === 'within') ? null : meta, rule.value, function (value) {
+                rule.value = value;
+                refreshNode(node);
+            });
+        }
+
+        box.appendChild(field(t('fl_cond_value'), input, (rule.op === 'within') ? t('fl_cond_within_help') : ''));
+    }
+
+    // A value a field is compared with, kept as the record keeps it and as
+    // the scheduled form sends it (saValueInput() in workspace.js): an amount
+    // shown as a decimal and kept in minor units (changeInput()), yes or no
+    // as '1' or '0', a day as YYYY-MM-DD, a moment as YYYY-MM-DD HH:MM:00, a
+    // decimal with a dot, anything else as typed. Always text: the store
+    // would keep a true or false as '' (ws_flow_text()).
+    function conditionValue(meta, value, onChange) {
+        var kind = meta ? meta.kind : '';
+        var input;
+
+        if (kind === 'money') {
+            return changeInput(meta, value, function (minor) {
+                onChange(String(minor));
+            });
+        }
+
+        if (kind === 'bool') {
+            input = K.select([['1', t('fl_change_yes')], ['0', t('fl_change_no')]], (String(value) === '1') ? '1' : '0');
+            input.addEventListener('change', function () {
+                onChange(input.value);
+            });
+
+            return input;
+        }
+
+        input = textInput(value, 500, function (typed) {
+            if (kind === 'datetime') {
+                typed = (typed === '') ? '' : typed.replace('T', ' ').slice(0, 16) + ':00';
+            }
+
+            onChange((kind === 'decimal') ? typed.replace(',', '.') : typed);
+        });
+
+        if (kind === 'date') {
+            input.type = 'date';
+        } else if (kind === 'datetime') {
+            input.type = 'datetime-local';
+            input.value = String(value || '').replace(' ', 'T').slice(0, 16);
+        }
+
+        return input;
+    }
+
+    // A record changed: its kind, update or delete, its number, and for an
+    // update the fields with their new values. Somebody who may not change
+    // the flow reads the kind, the action and the names of the fields only
+    // (ws_flow_graph_present()).
+    function changeFields(box, node) {
+        var config = node.config;
+        var kinds = stepLists().changes;
+        var options = [['', t('fl_change_pick')]];
+
+        Object.keys(kinds).forEach(function (key) {
+            options.push([key, kinds[key].label]);
+        });
+
+        if (config.record && !kinds[config.record]) {
+            options.push([config.record, config.record]);
+        }
+
+        var kind = K.select(options, config.record || '');
+        var info = kinds[config.record] || null;
+        var actions = (info ? info.actions : ['update', 'delete']).map(function (action) {
+            return [action, t((action === 'delete') ? 'fl_change_delete' : 'fl_change_update')];
+        });
+        var action = K.select(actions, config.action || 'update');
+        var id = el('input', 'form-control form-control-sm wsf-number');
+
+        config.fields = (config.fields && !Array.isArray(config.fields)) ? config.fields : {};
+        kind.addEventListener('change', function () {
+            config.record = kind.value;
+            config.fields = {};
+            config.action = 'update';
+            refreshNode(node);
+            drawSettings();
+        });
+        action.addEventListener('change', function () {
+            config.action = action.value;
+
+            if (config.action === 'delete') {
+                config.fields = {};
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        id.type = 'number';
+        id.min = '1';
+        id.value = config.id ? String(config.id) : '';
+        id.addEventListener('input', function () {
+            config.id = Math.max(0, parseInt(id.value, 10) || 0);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_change_kind'), kind));
+        box.appendChild(field(t('fl_change_action'), action));
+        box.appendChild(field(t('fl_change_id'), id, state.edit ? t('fl_change_id_help') : t('fl_change_hidden')));
+
+        if (config.action !== 'delete') {
+            changeValues(box, node, info);
+        }
+    }
+
+    // The fields of an update, one row each, and a list to add another from.
+    function changeValues(box, node, info) {
+        var config = node.config;
+        var fields = info ? info.fields : {};
+        var list = el('div', 'wsf-change-fields');
+
+        Object.keys(config.fields).forEach(function (name) {
+            var meta = fields[name] || { kind: 'text', label: name, values: [], labels: {} };
+            var input = changeInput(meta, config.fields[name], function (value) {
+                config.fields[name] = value;
+                refreshNode(node);
+            });
+            var row = field(meta.label, input);
+
+            if (state.edit) {
+                var remove = K.button('btn btn-sm btn-link px-0', t('fl_change_remove'), 'bi-x');
+
+                remove.addEventListener('click', function () {
+                    delete config.fields[name];
+                    refreshNode(node);
+                    drawSettings();
+                });
+                row.appendChild(remove);
+            }
+
+            list.appendChild(row);
+        });
+
+        box.appendChild(list);
+
+        var left = Object.keys(fields).filter(function (name) {
+            return !(name in config.fields) && (fields[name].kind !== 'answers');
+        });
+
+        if (!state.edit || !left.length) {
+            return;
+        }
+
+        var add = K.select([['', t('fl_change_add')]].concat(left.map(function (name) { return [name, fields[name].label]; })), '');
+
+        add.addEventListener('change', function () {
+            var meta = fields[add.value];
+
+            if (!meta) {
+                return;
+            }
+
+            config.fields[add.value] = (meta.kind === 'bool') ? false : ((meta.kind === 'enum') ? (meta.values[0] || '') : '');
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_change_fields'), add, t('fl_change_fields_help')));
+    }
+
+    // One field's new value as the change catalogue takes it: a choice, yes
+    // or no, an amount in minor units shown as a decimal, or text.
+    function changeInput(meta, value, onChange) {
+        var input;
+
+        if (meta.kind === 'enum') {
+            input = K.select((meta.values || []).map(function (item) {
+                return [item, (meta.labels && meta.labels[item]) ? meta.labels[item] : item];
+            }), value);
+            input.addEventListener('change', function () { onChange(input.value); });
+        } else if (meta.kind === 'bool') {
+            input = K.select([['1', t('fl_change_yes')], ['0', t('fl_change_no')]], (value === true || value === 1 || value === '1') ? '1' : '0');
+            input.addEventListener('change', function () { onChange(input.value === '1'); });
+        } else if (meta.kind === 'answers') {
+            input = el('input', 'form-control form-control-sm');
+            input.type = 'text';
+            input.value = t('fl_change_answers');
+            input.disabled = true;
+        } else if (meta.kind === 'money') {
+            input = el('input', 'form-control form-control-sm');
+            input.type = 'number';
+            input.step = '0.01';
+            input.min = '0';
+            input.value = (value === '' || value === null || value === undefined) ? '' : (parseInt(value, 10) / 100).toFixed(2);
+            input.addEventListener('input', function () {
+                onChange((input.value === '') ? '' : Math.round(parseFloat(input.value) * 100));
+            });
+        } else {
+            input = textInput((value === null || value === undefined) ? '' : String(value), (meta.kind === 'long') ? 20000 : 4000, onChange, meta.kind === 'long');
+        }
+
+        return input;
+    }
+
+    // The team as ticks, with a filter once it is long, drawn into wrap: the
+    // ids go into the box's settings under key (assignees by default), at
+    // most max of them.
+    function peopleList(node, wrap, key, max) {
+        var config = node.config;
+        var list = el('div', 'wsf-people-list');
+
+        key = key || 'assignees';
+        max = max || 20;
+
+        var chosen = config[key] || [];
         var team = BOOT.people || [];
 
         list.setAttribute('role', 'group');
@@ -1860,20 +3835,23 @@
 
         team.forEach(function (member) {
             var row = el('label', 'wsf-person');
-            var check = el('input', 'form-check-input m-0');
+            var check = el('input', 'check m-0');
 
             check.type = 'checkbox';
             check.checked = chosen.indexOf(member.id) !== -1;
             check.disabled = !state.edit;
             check.addEventListener('change', function () {
-                var ids = (config.assignees || []).filter(function (id) { return id !== member.id; });
+                var ids = (config[key] || []).filter(function (id) { return id !== member.id; });
 
                 if (check.checked) {
                     ids.push(member.id);
                 }
 
-                config.assignees = ids.slice(0, 20);
-                config.assign = '';
+                config[key] = ids.slice(0, max);
+
+                if (node.kind === 'task') {
+                    config.assign = '';
+                }
                 refreshNode(node);
             });
             row.appendChild(check);
@@ -1910,11 +3888,11 @@
 
     // The arrows of a box, and the way to add one without dragging.
     function connections(node) {
-        var box = el('div', 'wsf-links mb-3');
+        var box = el('div', 'wsf-links mb-5');
         var into = state.graph.edges.filter(function (edge) { return edge.to === node.id && nodeById(edge.from); });
 
         if (kindOf(node).into) {
-            var after = el('div', 'small text-body-secondary mb-2', into.length ? '' : t('fl_after_none'));
+            var after = el('div', 'small fg-secondary mb-3', into.length ? '' : t('fl_after_none'));
 
             into.forEach(function (edge, index) {
                 if (index) {
@@ -1934,7 +3912,7 @@
 
         box.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_then')));
 
-        var list = el('ul', 'list-unstyled mb-2');
+        var list = el('ul', 'list-unstyled mb-3');
 
         state.graph.edges.forEach(function (edge, index) {
             if ((edge.from !== node.id) || !nodeById(edge.to)) {
@@ -1963,7 +3941,7 @@
         });
 
         if (!list.children.length) {
-            list.appendChild(el('li', 'small text-body-secondary', t('fl_then_none')));
+            list.appendChild(el('li', 'small fg-secondary', t('fl_then_none')));
         }
 
         box.appendChild(list);
@@ -1971,7 +3949,7 @@
         var targets = candidates(node);
         var group = el('div', 'input-group input-group-sm');
         var pick = K.select([['', t('fl_connect_pick')]].concat(targets.map(function (target) { return [target.id, nameOf(target)]; })), '');
-        var add = K.button('btn btn-outline-secondary', t('fl_connect_add'), 'bi-plus-lg');
+        var add = K.button('btn btn-outline theme-secondary', t('fl_connect_add'), 'bi-plus-lg');
 
         pick.classList.add('wsf-connect');
         nameLabel(pick, 'fl_connect_title', node);
@@ -1990,11 +3968,20 @@
         return box;
     }
 
-    function outcomeSelect(edge) {
-        var pick = K.select([['done', t('fl_on_done')], ['cancelled', t('fl_on_cancelled')]], edge.on);
+    // The outcomes an arrow may leave a box on: its own, and always for a
+    // box that is not a start (ws_flow_arrow_outcomes()).
+    function arrowOutcomes(node) {
+        var kind = kindOf(node);
 
-        pick.className = 'form-select form-select-sm w-auto';
-        pick.setAttribute('aria-label', t('fl_on'));
+        return (kind.into && kind.out.length) ? kind.out.concat(['always']) : kind.out;
+    }
+
+    function outcomeSelect(edge) {
+        var from = nodeById(edge.from);
+        var pick = K.select((from ? arrowOutcomes(from) : [edge.on]).map(function (on) { return [on, t(OUTCOMES[on] || 'fl_on_done')]; }), edge.on);
+
+        pick.className = 'form-control form-control-sm w-auto';
+        pick.setAttribute('aria-label', onLabel(from));
         pick.setAttribute('data-refocus', 'on-' + edge.from + '-' + edge.to);
         pick.disabled = !state.edit;
         pick.addEventListener('change', function () {
@@ -2006,18 +3993,24 @@
         return pick;
     }
 
+    // How the outcome picker of an arrow is called: a task is done or
+    // cancelled, a step box done or failed.
+    function onLabel(from) {
+        return (from && (from.kind === 'task')) ? t('fl_on') : t('fl_on_box');
+    }
+
     function edgeForm(index) {
         var edge = state.graph.edges[index];
         var box = el('div', 'wsf-form');
 
-        box.appendChild(el('p', 'small mb-2', t('fl_arrow_text', nameOf(nodeById(edge.from)), nameOf(nodeById(edge.to)))));
+        box.appendChild(el('p', 'small mb-3', t('fl_arrow_text', nameOf(nodeById(edge.from)), nameOf(nodeById(edge.to)))));
 
         if (nodeById(edge.from) && (kindOf(nodeById(edge.from)).out.length > 1)) {
-            box.appendChild(field(t('fl_on'), outcomeSelect(edge)));
+            box.appendChild(field(onLabel(nodeById(edge.from)), outcomeSelect(edge)));
         }
 
         if (state.edit) {
-            var remove = K.button('btn btn-sm btn-outline-warning', t('fl_remove_arrow'), 'bi-trash');
+            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_remove_arrow'), 'bi-trash');
             remove.addEventListener('click', function () { removeSelected({ type: 'edge', id: index }); });
             box.appendChild(remove);
         }
@@ -2043,7 +4036,7 @@
 
         // A run shown is read only: the bar over it says so, not this help.
         if (!state.run) {
-            ui.outlineBox.appendChild(el('p', 'small text-body-secondary', t('fl_outline_help')));
+            ui.outlineBox.appendChild(el('p', 'small fg-secondary', t('fl_outline_help')));
         }
 
         var list = el('ol', 'wsf-outline-list');
@@ -2075,17 +4068,17 @@
         });
 
         if (!list.children.length) {
-            list.appendChild(el('li', 'small text-body-secondary', state.edit ? t('fl_empty_canvas') : ''));
+            list.appendChild(el('li', 'small fg-secondary', state.edit ? t('fl_empty_canvas') : ''));
         }
 
         ui.outlineBox.appendChild(list);
 
         if (state.edit) {
-            var adds = el('div', 'd-flex flex-wrap gap-2 mb-3');
+            var adds = el('div', 'd-flex flex-wrap gap-3 mb-5');
 
             adds.setAttribute('role', 'group');
             adds.setAttribute('aria-label', t('fl_palette'));
-            paletteButtons('btn btn-sm btn-outline-secondary', false).forEach(function (add) {
+            paletteButtons('btn btn-sm btn-outline theme-secondary', false).forEach(function (add) {
                 adds.appendChild(add);
             });
             ui.outlineBox.appendChild(adds);
@@ -2140,6 +4133,12 @@
         state.changes++;
 
         if (structure) {
+            // The first box placed, or the last one removed, takes the
+            // template entry away or brings it back.
+            if (!!ui.palette.querySelector('.wsf-palette-template') !== templateOffered()) {
+                drawPalette();
+            }
+
             if (!state.outline) {
                 drawCanvas();
             }
@@ -2197,9 +4196,47 @@
         var config = {};
 
         if (kind === 'task') {
-            config = { title: '', description: '', assignees: [], assign: 'creator', due_in: '', priority: 'normal' };
+            config = { title: '', description: '', assignees: [], assign: 'creator', due_in: '', priority: 'normal', timeout: '' };
         } else if (kind === 'manual') {
             config = { subject: '' };
+        } else if (kind === 'post') {
+            config = { channel_id: 0, body: '' };
+        } else if (kind === 'email') {
+            config = { to: '', subject: '', body: '', page_id: 0 };
+        } else if (kind === 'notify') {
+            config = { user_ids: [], text: '' };
+        } else if (kind === 'task_open') {
+            config = { title: '', description: '', assignees: [], channel_id: 0, due_in: '', priority: 'normal' };
+        } else if (kind === 'webhook') {
+            config = { url: '', format: 'generic', text: '' };
+        } else if (kind === 'web_check') {
+            config = { url: '', mode: 'status', redirect: false, contains: '', max_ms: 0, days: 14 };
+        } else if (kind === 'task_digest') {
+            config = { mode: 'mine', channel_id: 0, user_ids: [], only: 'open', subject: '', intro: '', missed: false, ai: false };
+        } else if (kind === 'report') {
+            config = { title: '', metrics: [], channel_id: 0, to: '' };
+        } else if (kind === 'checkin') {
+            config = { channel_id: 0, question: '' };
+        } else if (kind === 'start_action') {
+            config = { target_id: 0, delay: 0 };
+        } else if (kind === 'change') {
+            config = { record: '', action: 'update', id: 0, fields: {} };
+        } else if (kind === 'lead') {
+            config = { private: false, user_ids: [] };
+        } else if (kind === 'condition') {
+            config = { rule: { type: 'workday' } };
+        } else if (kind === 'delay') {
+            config = { amount: 1, unit: 'hours' };
+        } else if (kind === 'start_flow') {
+            config = { flow_id: 0 };
+        } else if (kind === 'approval') {
+            config = { channel_id: 0, title: '', text: '', approvers: [], rule: 'any', closes_in: '' };
+        } else if (kind === 'schedule') {
+            config = { date: new Date().toISOString().slice(0, 10), time: '09:00', repeat: 'none', every: 1, days: [], until: '' };
+        } else if (kind === 'event') {
+            config = { event: '', page_id: 0, status: '', channel_id: 0 };
+        } else if (kind === 'join') {
+            config = { channel_id: 0 };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };
@@ -2252,7 +4289,7 @@
 
         var pick = K.select(targets.map(function (target) { return [target.id, t(kindOf(target).name) + ': ' + nameOf(target)]; }), targets[0].id);
 
-        pick.className = 'form-select';
+        pick.className = 'form-control';
         pick.setAttribute('aria-label', t('fl_connect_title', nameOf(node)));
 
         K.ask(t('fl_connect_title', nameOf(node)), t('fl_connect_add'), false, pick).then(function (yes) {
@@ -2389,6 +4426,7 @@
 
             if (state.flow === flow) {
                 state.problems = data.problems || [];
+                state.warnings = data.warnings || [];
 
                 // A run shown keeps the canvas; the draft's problems are
                 // drawn once it is closed.
@@ -2450,7 +4488,7 @@
         ui.conflictBox.appendChild(K.icon('bi-exclamation-triangle'));
         ui.conflictBox.appendChild(el('span', 'flex-grow-1', state.conflict));
 
-        var reload = K.button('btn btn-sm btn-outline-secondary', t('fl_reload'), 'bi-arrow-clockwise');
+        var reload = K.button('btn btn-sm btn-outline theme-secondary', t('fl_reload'), 'bi-arrow-clockwise');
 
         reload.addEventListener('click', function () {
             state.dirty = false;
@@ -2604,13 +4642,12 @@
             return ui.shareModal;
         }
 
-        var modal = el('div', 'modal fade wsf-share-modal');
-        var dialog = el('div', 'modal-dialog modal-dialog-centered modal-dialog-scrollable');
-        var content = el('div', 'modal-content');
-        var head = el('div', 'modal-header');
-        var title = el('h2', 'modal-title fs-6');
+        var modal = el('dialog', 'dialog dialog-scrollable wsf-share-modal');
+        var content = modal;
+        var head = el('div', 'dialog-header');
+        var title = el('h2', 'dialog-title fs-md');
         var cross = el('button', 'btn-close');
-        var foot = el('div', 'modal-footer');
+        var foot = el('div', 'dialog-footer');
         var close = K.button('btn btn-sm btn-ghost', t('fl_share_close'));
 
         modal.id = 'wsf-share';
@@ -2619,16 +4656,14 @@
         title.id = 'wsf-share-title';
         cross.type = 'button';
         cross.setAttribute('aria-label', t('fl_share_close'));
-        cross.setAttribute('data-bs-dismiss', 'modal');
-        close.setAttribute('data-bs-dismiss', 'modal');
+        cross.setAttribute('data-bs-dismiss', 'dialog');
+        close.setAttribute('data-bs-dismiss', 'dialog');
         head.appendChild(title);
         head.appendChild(cross);
         foot.appendChild(close);
         content.appendChild(head);
-        content.appendChild(el('div', 'modal-body wsf-share-body'));
+        content.appendChild(el('div', 'dialog-body wsf-share-body'));
         content.appendChild(foot);
-        dialog.appendChild(content);
-        modal.appendChild(dialog);
         document.body.appendChild(modal);
 
         pgUI.dialog.on(modal, 'hidden', function () {
@@ -2659,7 +4694,7 @@
             var modal = shareModal();
 
             state.share = { flow: flow, data: data, busy: false };
-            modal.querySelector('.modal-title').textContent = t('fl_share_title', flow.name);
+            modal.querySelector('.dialog-title').textContent = t('fl_share_title', flow.name);
             drawShares();
             pgUI.dialog.show(modal);
         }).catch(K.fail);
@@ -2785,7 +4820,7 @@
     // share it with next.
     function drawShares(focus) {
         var share = state.share;
-        var body = ui.shareModal ? ui.shareModal.querySelector('.modal-body') : null;
+        var body = ui.shareModal ? ui.shareModal.querySelector('.dialog-body') : null;
 
         if (!share || !body) {
             return;
@@ -2797,17 +4832,17 @@
         var owner = person(data.owner_id);
 
         K.clear(body);
-        body.appendChild(el('p', 'small text-body-secondary', manage ? t('fl_share_help') : t('fl_share_read_help')));
+        body.appendChild(el('p', 'small fg-secondary', manage ? t('fl_share_help') : t('fl_share_read_help')));
         body.appendChild(el('div', 'wsf-side-title', t('fl_share_list')));
 
-        var list = el('ul', 'list-unstyled wsf-share-list mb-3');
+        var list = el('ul', 'list-unstyled wsf-share-list mb-5');
         var first = el('li', 'wsf-share-row');
         var who = el('span', 'wsf-share-who');
 
         who.appendChild(owner ? K.avatar(owner, '1.5rem') : K.icon('bi-person-circle'));
         who.appendChild(el('span', 'text-truncate', owner ? owner.name : '#' + data.owner_id));
         first.appendChild(who);
-        first.appendChild(el('span', 'wsf-share-level small text-body-secondary', t('fl_share_owner')));
+        first.appendChild(el('span', 'wsf-share-level small fg-secondary', t('fl_share_owner')));
         list.appendChild(first);
 
         shares.forEach(function (item) {
@@ -2817,7 +4852,7 @@
         body.appendChild(list);
 
         if (!shares.length) {
-            body.appendChild(el('p', 'small text-body-secondary', t('fl_share_none')));
+            body.appendChild(el('p', 'small fg-secondary', t('fl_share_none')));
         }
 
         if (manage) {
@@ -2838,7 +4873,7 @@
     // team but the owner and the people it is shared with already, and the
     // level they all get.
     function sharePeople(shares, ownerId) {
-        var box = el('div', 'wsf-share-add mb-3');
+        var box = el('div', 'wsf-share-add mb-5');
         var taken = {};
 
         shares.forEach(function (item) {
@@ -2858,9 +4893,9 @@
         }
 
         var picker = K.peoplePicker([], others);
-        var row = el('div', 'd-flex flex-wrap align-items-center gap-2 mt-2');
+        var row = el('div', 'd-flex flex-wrap align-items-center gap-3 mt-3');
         var level = K.select(Object.keys(LEVELS).map(function (key) { return [key, t(LEVELS[key])]; }), 'run');
-        var add = K.button('btn btn-sm btn-primary rounded-pill px-3', t('fl_share'), 'bi-share');
+        var add = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_share'), 'bi-share');
 
         picker.setAttribute('role', 'group');
         picker.setAttribute('aria-label', t('fl_share_people'));
@@ -2933,16 +4968,16 @@
             return box;
         }
 
-        var row = el('div', 'd-flex flex-wrap align-items-center gap-2');
+        var row = el('div', 'd-flex flex-wrap align-items-center gap-3');
         var choice = K.select(channels.map(function (channel) {
             return [channel.id, (channel.kind === 'private' ? '🔒 ' : '#') + channel.name];
         }), channels[0].id);
-        var add = K.button('btn btn-sm btn-outline-secondary', t('fl_share'), 'bi-hash');
+        var add = K.button('btn btn-sm btn-outline theme-secondary', t('fl_share'), 'bi-hash');
 
-        choice.classList.add('w-auto', 'mw-100');
+        choice.classList.add('w-auto', 'max-w-100');
         choice.setAttribute('aria-label', t('fl_share_channel'));
         row.appendChild(choice);
-        row.appendChild(el('span', 'small text-body-secondary', t(LEVELS.view)));
+        row.appendChild(el('span', 'small fg-secondary', t(LEVELS.view)));
         add.setAttribute('data-share-focus', 'add-channel');
         add.addEventListener('click', function () {
             var id = parseInt(choice.value, 10) || 0;
@@ -3186,7 +5221,7 @@
         // way to load the list again. The redraw shows "Loading…" at once,
         // which loadRuns() itself does not draw.
         if (!list.items.length && list.error && !list.loading) {
-            var failed = el('p', 'small text-danger', t('fl_runs_failed') + ' ' + list.error);
+            var failed = el('p', 'small fg-danger', t('fl_runs_failed') + ' ' + list.error);
             var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
 
             retry.setAttribute('data-refocus', 'runs-retry');
@@ -3201,11 +5236,11 @@
         }
 
         if (!list.items.length) {
-            ui.side.appendChild(el('p', 'small text-body-secondary', list.loading ? t('loading') : t('fl_runs_none')));
+            ui.side.appendChild(el('p', 'small fg-secondary', list.loading ? t('loading') : t('fl_runs_none')));
             return;
         }
 
-        var rows = el('ul', 'list-unstyled mb-2 wsf-run-list');
+        var rows = el('ul', 'list-unstyled mb-3 wsf-run-list');
 
         rows.setAttribute('aria-labelledby', head.id);
 
@@ -3218,7 +5253,7 @@
             item.setAttribute('data-refocus', 'run-' + run.id);
             top.appendChild(runBadge(RUN_STATES, run.status));
             top.appendChild(el('span', 'fw-semibold', t('fl_run_name', run.id)));
-            top.appendChild(el('span', 'ms-auto small text-body-secondary', t('fl_run_version', run.version)));
+            top.appendChild(el('span', 'ms-auto small fg-secondary', t('fl_run_version', run.version)));
             item.appendChild(top);
             item.appendChild(el('span', 'wsf-run-item-line', t('fl_run_by', personName(run.started_by))));
             item.appendChild(el('span', 'wsf-run-item-line', t('fl_run_at', when(run.started_at))));
@@ -3381,7 +5416,7 @@
             return;
         }
 
-        var close = K.button('btn btn-sm btn-outline-secondary', t('fl_run_close'), 'bi-x-lg');
+        var close = K.button('btn btn-sm btn-outline theme-secondary', t('fl_run_close'), 'bi-x-lg');
 
         ui.runBox.appendChild(runBadge(RUN_STATES, run.status));
         ui.runBox.appendChild(el('span', 'flex-grow-1', t('fl_run_shown', run.id, run.version)));
@@ -3402,7 +5437,7 @@
             return;
         }
 
-        var line = el('div', 'w-100 small ' + (note.lost ? 'text-danger' : 'text-body-secondary'), note.lost ? (note.text + ' ' + t('fl_run_lost')) : note.text);
+        var line = el('div', 'w-100 small ' + (note.lost ? 'fg-danger' : 'fg-secondary'), note.lost ? (note.text + ' ' + t('fl_run_lost')) : note.text);
 
         if (!note.lost) {
             var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
@@ -3422,8 +5457,8 @@
     function runSide() {
         var run = state.run;
         var head = el('div', 'wsf-side-title', t('fl_run_name', run.id));
-        var facts = el('ul', 'list-unstyled small text-body-secondary my-2 wsf-run-facts');
-        var tools = el('div', 'd-flex flex-wrap gap-2 mb-3');
+        var facts = el('ul', 'list-unstyled small fg-secondary my-3 wsf-run-facts');
+        var tools = el('div', 'd-flex flex-wrap gap-3 mb-5');
         // A run the server no longer answers for (pollFailed()) is not said
         // to be still going: it shows as it was last read.
         var lost = !!(state.poll.note && state.poll.note.lost);
@@ -3440,7 +5475,7 @@
         ui.side.appendChild(facts);
 
         if (run.can_cancel) {
-            var cancel = K.button('btn btn-sm btn-outline-warning', t('fl_run_cancel'), 'bi-x-circle');
+            var cancel = K.button('btn btn-sm btn-outline theme-warning', t('fl_run_cancel'), 'bi-x-circle');
 
             cancel.setAttribute('data-refocus', 'run-cancel');
             cancel.addEventListener('click', function () { cancelRun(cancel); });
@@ -3472,7 +5507,7 @@
         var step = stepOf(node.id);
         var wrap = el('div', 'wsf-run-step');
         var title = el('div', 'wsf-side-title', t(kindOf(node).name));
-        var facts = el('ul', 'list-unstyled small text-body-secondary my-2 wsf-run-facts');
+        var facts = el('ul', 'list-unstyled small fg-secondary my-3 wsf-run-facts');
 
         title.tabIndex = -1;
         title.setAttribute('data-refocus', 'step');
@@ -3493,10 +5528,61 @@
         }
 
         if (step && step.task_id) {
-            wrap.appendChild(taskLink(step, node, 'btn btn-sm btn-outline-secondary', 'step-task'));
+            wrap.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'step-task'));
+        }
+
+        // A failed box (one that stopped half way too) is tried again or
+        // skipped by the flow's owner, in whose name it runs; a run done or
+        // cancelled takes neither.
+        if (state.flow && state.flow.manage && step && (step.status === 'failed') && (['done', 'cancelled'].indexOf(state.run.status) < 0)) {
+            var mend = el('div', 'd-flex flex-wrap gap-3 mt-3');
+            var retry = K.button('btn btn-sm btn-outline theme-primary', t('fl_step_retry'), 'bi-arrow-repeat');
+            var skip = K.button('btn btn-sm btn-outline theme-secondary', t('fl_step_skip'), 'bi-skip-forward');
+
+            retry.setAttribute('data-refocus', 'step-retry');
+            skip.setAttribute('data-refocus', 'step-skip');
+            retry.addEventListener('click', function () { mendStep(node, 'retry', [retry, skip]); });
+            skip.addEventListener('click', function () { mendStep(node, 'skip', [retry, skip]); });
+            mend.appendChild(retry);
+            mend.appendChild(skip);
+            wrap.appendChild(mend);
         }
 
         return wrap;
+    }
+
+    // Tries a failed box again or skips it, after asking: a box tried again
+    // may post or send once more. Both buttons wait for the answer, and the
+    // server changes the box only from failed, so a second click does
+    // nothing twice.
+    function mendStep(node, how, controls) {
+        var run = state.run;
+
+        K.ask(t(how === 'retry' ? 'fl_step_retry_ask' : 'fl_step_skip_ask', nameOf(node)), t(how === 'retry' ? 'fl_step_retry' : 'fl_step_skip'), how === 'skip').then(function (yes) {
+            if (!yes || !state.run || (state.run.id !== run.id)) {
+                state.refocus = 'step-' + how + ' step';
+                refocus();
+                return null;
+            }
+
+            controls.forEach(function (control) { control.disabled = true; });
+
+            return K.api('ws_flow_step_mend', { run_id: run.id, node_id: node.id, how: how }).then(function (data) {
+                K.toast(t(how === 'retry' ? 'fl_step_retried' : 'fl_step_skipped_by_hand'), 'success');
+                state.refocus = 'step';
+                applyRun(data.run);
+                refocus();
+                state.poll.delay = POLL_FIRST;
+                schedulePoll();
+            }).catch(function (error) {
+                controls.forEach(function (control) { control.disabled = false; });
+                K.fail(error);
+
+                // Changed meanwhile, most likely: the run as it is now.
+                state.poll.delay = POLL_FIRST;
+                schedulePoll(0);
+            });
+        });
     }
 
     // The boxes of the run in the order of their arrows, each with its state;
@@ -3505,7 +5591,7 @@
         var wrap = el('div');
         var list = el('ul', 'list-unstyled wsf-run-steps');
 
-        wrap.appendChild(el('p', 'small text-body-secondary mb-2', t('fl_run_pick')));
+        wrap.appendChild(el('p', 'small fg-secondary mb-3', t('fl_run_pick')));
         list.setAttribute('aria-label', t('fl_run_boxes'));
 
         orderedNodes().forEach(function (node) {
@@ -3535,7 +5621,7 @@
         box.appendChild(el('p', 'mb-1')).appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
 
         if (meta) {
-            box.appendChild(el('p', 'small text-body-secondary mb-1', meta));
+            box.appendChild(el('p', 'small fg-secondary mb-1', meta));
         }
 
         if (step && step.result) {
@@ -3543,7 +5629,7 @@
         }
 
         if (step && (step.status === 'waiting') && step.task_id) {
-            box.appendChild(taskLink(step, node, 'btn btn-sm btn-outline-secondary', 'run-otask-' + node.id));
+            box.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'run-otask-' + node.id));
         }
 
         return box;

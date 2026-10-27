@@ -767,6 +767,62 @@ function pg_code_editor_attach($properties)
         $options['lint'] = false;
     }
 
+    // Every field gets a row under it with a minimap toggle (off on panel
+    // screens until it is pressed). An editable field also gets a "Format
+    // code" button there, shown while the editor's language has a formatter
+    // (create_file.php changes the language after the start, so the button
+    // follows setLanguage()).
+    $format = '';
+
+    if (empty($properties['readonly'])) {
+        $format = '
+                    var formats = ["css","javascript","json"];
+                    var format = document.createElement("button");
+                    format.type = "button";
+                    format.className = "btn btn-sm btn-outline theme-secondary pg-code-field-format";
+                    format.title = "Shift+Alt+F";
+                    format.textContent = ' . pg_code_editor_json(lang('Format code')) . ';
+                    format.addEventListener("click", function () {
+                        editor.format();
+                        editor.focus();
+                    });
+                    tools.insertBefore(format, minimap);
+                    var sync = function () { format.classList.toggle("d-none", formats.indexOf(editor.getLanguage()) === -1); };
+                    var setLanguage = editor.setLanguage;
+                    editor.setLanguage = function () {
+                        var result = setLanguage.apply(editor, arguments);
+                        sync();
+                        return result;
+                    };
+                    sync();';
+    }
+
+    $tools = '
+                    var tools = document.createElement("div");
+                    tools.className = "pg-code-field-tools gap-3";
+                    var minimap = document.createElement("button");
+                    minimap.type = "button";
+                    minimap.className = "btn btn-sm btn-outline theme-secondary pg-code-field-minimap";
+                    minimap.textContent = ' . pg_code_editor_json(lang('Minimap')) . ';
+                    var syncMinimap = function () {
+                        var on = editor.hasMinimap();
+                        minimap.setAttribute("aria-pressed", on ? "true" : "false");
+                        minimap.classList.toggle("active", on);
+                    };
+                    minimap.addEventListener("click", function () {
+                        editor.setMinimap(!editor.hasMinimap());
+                        syncMinimap();
+                        editor.focus();
+                    });
+                    syncMinimap();
+                    tools.appendChild(minimap);' . $format . '
+                    var destroy = editor.destroy;
+                    editor.destroy = function () {
+                        if (tools.parentNode) tools.parentNode.removeChild(tools);
+                        return destroy.apply(editor, arguments);
+                    };
+                    editor.container.parentNode.insertBefore(tools, editor.container.nextSibling);';
+
     return pg_code_editor_includes() . '<script>
         (function () {
             var field = document.getElementById(' . pg_code_editor_json($id) . ');
@@ -792,7 +848,7 @@ function pg_code_editor_attach($properties)
                 if (typeof PgCodeEditor === "undefined") return;
                 PgCodeEditor.attach(field, options).then(function (instance) {
                     editor = instance;
-                    window.pgCodeEditors[field.id] = instance;
+                    window.pgCodeEditors[field.id] = instance;' . $tools . '
                     // A screen that changes the editor (its language, after a
                     // choice made before it arrived) hears when it is there.
                     try { field.dispatchEvent(new CustomEvent("pgcodeeditorready", { detail: instance })); } catch (e) {}

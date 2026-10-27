@@ -711,23 +711,9 @@ function test_legal_documents_copy_urls()
 	pg_assert_same(array('preinfo' => '', 'contract' => ''), pg_legal_document_copy_urls(array(), 7, '/p/legal_document.php'), 'nothing kept');
 }
 
-// The card after a layout that links neither document lists the kept copies
-// with their names, the addresses escaped; no copy, no card.
-function test_legal_documents_order_view_block()
-{
-	pg_assert_same('', pg_legal_documents_order_view_block(array('preinfo' => '', 'contract' => '')), 'nothing kept');
-
-	$block = pg_legal_documents_order_view_block(array('preinfo' => '', 'contract' => '/p/legal_document.php?order_id=7&type=contract', 'kvkk' => '/x'));
-	$types = pg_legal_document_types();
-
-	pg_assert_contains('<a href="/p/legal_document.php?order_id=7&amp;type=contract" target="_blank" rel="noopener">' . h($types['contract']) . '</a>', $block, 'the contract');
-	pg_assert_false(strpos($block, h($types['preinfo'])) !== false, 'no line for a copy that is not kept');
-	pg_assert_false(strpos($block, 'href="/x"') !== false, 'no line for an unnamed type');
-	pg_assert_contains('<h6 class="mb-0 fw-semibold">' . h(lang('Legal Documents')) . '</h6>', $block, 'the heading');
-}
-
 // The order view links the kept copies, never in the receipt e-mail (it
-// attaches them), and adds the card only to a layout that binds no link.
+// attaches them); a layout that binds no link is given the legal documents
+// card (widget_default_parts_test.php).
 function test_legal_documents_order_view_links()
 {
 	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php'), '_render_system_widget_order_view');
@@ -735,8 +721,7 @@ function test_legal_documents_order_view_links()
 	pg_assert_contains("empty(\$sw_ctx['email']) ? pg_legal_documents_of_order((int)\$order['id']) : array()", $section, 'no copies in the e-mail');
 	pg_assert_contains("'__legal_preinfo_url'       => h(\$legal_urls['preinfo'])", $section, 'the pre-information form link');
 	pg_assert_contains("'__legal_contract_url'      => h(\$legal_urls['contract'])", $section, 'the contract link');
-	pg_assert_contains("!pg_sw_placed(\$tree_decoded, array('__legal_preinfo_url', '__legal_contract_url'))", $section, 'a bound link keeps the card away');
-	pg_assert_same(2, substr_count($section, '. $legal_block;'), 'both ways out add the card');
+	pg_assert_contains("array(array('__legal_preinfo_url', '__legal_contract_url'), 'pg_sw_part_order_legal_documents')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php'), 'a bound link keeps the card away');
 }
 
 // Deleting an order deletes the copies kept with it: they hold the buyer's
@@ -750,4 +735,51 @@ function test_legal_documents_deleted_with_the_order()
 
 	pg_assert_true(($orders !== false) && ($documents !== false) && ($orders < $documents), 'the copies go with the order');
 	pg_assert_contains("pg_schema_has('order_documents')", $source, 'only where the table is there');
+}
+
+// Each stored and accepted document becomes one granted contract consent,
+// tied to the order's buyer and stamped with the document's own ip, user
+// agent and acceptance time. An unaccepted or unstored type gives none.
+function test_legal_documents_consent_events()
+{
+	$order = array('billing_email_address' => ' Buyer@Example.com ', 'user_id' => '12', 'contact_id' => '34');
+	$events = pg_legal_documents_consent_events($order, array('preinfo', 'contract'), array('contract', 'kvkk'), '203.0.113.9', 'Agent/1.0', 1700000000);
+
+	pg_assert_same(array(array(
+		'channel'    => 'contract',
+		'purpose'    => 'contract',
+		'status'     => 'granted',
+		'source'     => 'checkout',
+		'email'      => ' Buyer@Example.com ',
+		'user_id'    => 12,
+		'contact_id' => 34,
+		'ip'         => '203.0.113.9',
+		'user_agent' => 'Agent/1.0',
+		'created_at' => 1700000000,
+	)), $events, 'only the stored and accepted type; kvkk was not stored');
+
+	pg_assert_same(array(), pg_legal_documents_consent_events($order, array('preinfo', 'contract'), array(), '', '', 1), 'nothing accepted');
+
+	$both = pg_legal_documents_consent_events(array(), array('preinfo', 'contract'), array('preinfo', 'contract'), '', '', 1);
+	pg_assert_same(array('preinfo', 'contract'), array_column($both, 'purpose'), 'in the stored order');
+	pg_assert_same(array(0, 0, ''), array($both[0]['user_id'], $both[0]['contact_id'], $both[0]['email']), 'a missing order field is empty');
+
+	// The rows pass the consent log's own checks.
+	$event = $events[0];
+	$row = pg_consent_log_row($event, 1);
+	pg_assert_true(is_array($row), 'a valid consent row');
+	pg_assert_same(pg_privacy_person_token('buyer@example.com', null), pg_privacy_person_token($event['email'], null), 'the token is made from the normalised address');
+}
+
+// The store writes the consent rows after its documents, only for what it
+// wrote: the repeat call returns before them.
+function test_legal_documents_store_records_contract_consents()
+{
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_store');
+	$repeat = strpos($section, 'return 0;', strpos($section, 'SELECT COUNT(*) FROM order_documents'));
+	$stored = strpos($section, 'INSERT INTO order_documents');
+	$consent = strpos($section, 'pg_consent_log_record(');
+
+	pg_assert_true(($repeat !== false) && ($stored !== false) && ($consent !== false) && ($repeat < $stored) && ($stored < $consent), 'consents after the documents, never on the repeat call');
+	pg_assert_contains('pg_legal_documents_consent_events(', $section, 'rows built by the tested helper');
 }

@@ -30,8 +30,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM zones WHERE id = '" . $id
 
 if (!$_POST) {
     // get zone data
-    $query = "SELECT * FROM zones WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT * FROM zones WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $name = h($row['name']);
@@ -52,8 +52,8 @@ if (!$_POST) {
     if ($countries) {
         // foreach country, check if country is allowed or disallowed for this zone
         foreach ($countries as $key => $value) {
-            $query = "SELECT country_id FROM zones_countries_xref WHERE zone_id = '" . escape($_GET['id']) . "' AND country_id = '" . $countries[$key]['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT country_id FROM zones_countries_xref WHERE zone_id = ? AND country_id = ?";
+            $result = db_q($query, array((string) $_GET['id'], (string) $countries[$key]['id'])) or output_error('Query failed.');
 
             // if zone and country were found
             if (mysqli_num_rows($result)) {
@@ -94,8 +94,8 @@ if (!$_POST) {
     if ($states) {
         // foreach state, check if state is allowed or disallowed for this zone
         foreach ($states as $key => $value) {
-            $query = "SELECT state_id FROM zones_states_xref WHERE zone_id = '" . escape($_GET['id']) . "' AND state_id = '" . $states[$key]['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT state_id FROM zones_states_xref WHERE zone_id = ? AND state_id = ?";
+            $result = db_q($query, array((string) $_GET['id'], (string) $states[$key]['id'])) or output_error('Query failed.');
 
             // if zone and state were found
             if (mysqli_num_rows($result)) {
@@ -140,14 +140,14 @@ if (!$_POST) {
                 <form name="form" action="edit_zone.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
-                        <div class="col-12 col-md-6 mb-5">
-                            <div class="card my-4 h-100">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6 mb-12">
+                            <div class="card my-7 h-100">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Zone Name') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Shipping Zone Name') . '</label>
                                             <input value="' . $name . '" type="text" name="name" placeholder="' . lang('Zone Name') . '" id="name" maxlength="50" class="form-control" />
                                         </div>
@@ -155,81 +155,81 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 mb-5">
-                            <div class="card my-4 h-100">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6 mb-12">
+                            <div class="card my-7 h-100">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Zone Fees') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="base_rate" class="form-label">' . lang('Base Rate') . '</label>
-                                            <div class="input-group">
-                                                <input value="' . $base_rate . '" type="text" name="base_rate" id="base_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                <label class="input-group-text" for="base_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                <input value="' . $base_rate . '" type="text" name="base_rate" id="base_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                            </label>
                                         </div>
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="primary_weight_rate" class="form-label">' . lang('Primary Weight Rate') . '</label>
-                                            <div class="input-group">
-                                                <input value="' . $primary_weight_rate . '" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                <label class="input-group-text" for="primary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                <input value="' . $primary_weight_rate . '" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                            </label>
                                         </div>
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="secondary_weight_rate" class="form-label">' . lang('Secondary Weight Rate') . '</label>
-                                            <div class="input-group">
-                                                <input value="' . $secondary_weight_rate . '" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                <label class="input-group-text" for="secondary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                <input value="' . $secondary_weight_rate . '" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                            </label>
                                         </div>
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="item_rate" class="form-label">' . lang('Item Rate') . '</label>
-                                            <div class="input-group">
-                                                <input value="' . $item_rate . '" type="text" name="item_rate" id="item_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                <label class="input-group-text" for="item_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                <input value="' . $item_rate . '" type="text" name="item_rate" id="item_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 mb-5">
-                            <div class="card my-4 h-100">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6 mb-12">
+                            <div class="card my-7 h-100">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Zone Countries') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-1">
                                             <label for="allowed_countries" class="form-label">' . lang('Allowed Countries') . '</label>
-                                            <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $output_allowed_countries . '</select>' . pg_fields_script() . '
+                                            <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $output_allowed_countries . '</select>' . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 mb-5">
-                            <div class="card my-4 h-100">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6 mb-12">
+                            <div class="card my-7 h-100">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Zone States or Provinces') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-1">
                                             <label for="allowed_states" class="form-label">' . lang('Allowed States') . '</label>
-                                            <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $output_allowed_states . '</select>' . pg_fields_script() . '
+                                            <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $output_allowed_states . '</select>' . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('zone')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('zone')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -248,27 +248,27 @@ if (!$_POST) {
     
     // delete zone references in zones_countries_xref (we do this reguardless of whether we are deleting the zone or updating the zone)
     $query = "DELETE FROM zones_countries_xref ".
-             "WHERE zone_id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             "WHERE zone_id = ?";
+    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
     // delete zone references in zones_states_xref (we do this reguardless of whether we are deleting the zone or updating the zone)
     $query = "DELETE FROM zones_states_xref ".
-             "WHERE zone_id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             "WHERE zone_id = ?";
+    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
     // if zone was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete zone
-        $query = "DELETE FROM zones WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM zones WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // delete zone references in shipping_methods_zones_xref
-        $query = "DELETE FROM shipping_methods_zones_xref WHERE zone_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM shipping_methods_zones_xref WHERE zone_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete zone references in products_zones_xref
-        $query = "DELETE FROM products_zones_xref WHERE zone_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM products_zones_xref WHERE zone_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping zone ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
     // else zone was not selected for delete
@@ -292,15 +292,15 @@ if (!$_POST) {
 
         // update zone
         $query = "UPDATE zones SET
-                    name = '" . escape($_POST['name'] ?? '') . "',
-                    base_rate = '" . escape($base_rate) . "',
-                    primary_weight_rate = '" . escape($primary_weight_rate) . "',
-                    secondary_weight_rate = '" . escape($secondary_weight_rate) . "',
-                    item_rate = '" . escape($item_rate) . "',
-                    user = '" . $user['id'] . "',
+                    name = ?,
+                    base_rate = ?,
+                    primary_weight_rate = ?,
+                    secondary_weight_rate = ?,
+                    item_rate = ?,
+                    user = ?,
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) $base_rate, (string) $primary_weight_rate, (string) $secondary_weight_rate, (string) $item_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // load all allowed countries in array by exploding string that has allowed country ids separated by commas
         $allowed_countries = $_POST['allowed_countries'];
@@ -309,8 +309,8 @@ if (!$_POST) {
         foreach ($allowed_countries as $country_id) {
             // if country id is not blank, insert row
             if ($country_id) {
-                $query = "INSERT INTO zones_countries_xref (zone_id, country_id) VALUES ('" . escape($_POST['id'] ?? '') . "', '" . escape($country_id) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "INSERT INTO zones_countries_xref (zone_id, country_id) VALUES (?, ?)";
+                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $country_id)) or output_error('Query failed.');
             }
         }
 
@@ -321,8 +321,8 @@ if (!$_POST) {
         foreach ($allowed_states as $state_id) {
             // if state id is not blank, insert row
             if ($state_id) {
-                $query = "INSERT INTO zones_states_xref (zone_id, state_id) VALUES ('" . escape($_POST['id'] ?? '') . "', '" . escape($state_id) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "INSERT INTO zones_states_xref (zone_id, state_id) VALUES (?, ?)";
+                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $state_id)) or output_error('Query failed.');
             }
         }
 

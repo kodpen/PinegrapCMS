@@ -213,6 +213,7 @@ function ws_task_brief($task, $assignees)
         // The assistant the task is handed to (delegation.php).
         'delegate'         => (string) ($task['delegate'] ?? ''),
         'delegate_name'    => ((string) ($task['delegate'] ?? '') !== '') ? ws_assistant_name($task['delegate']) : '',
+        'delegate_icon'    => ((string) ($task['delegate'] ?? '') !== '') ? ws_assistant_mcp_icon($task['delegate']) : '',
         // What the assistants proposed on it and nobody has decided yet.
         'waiting_changes'  => $waiting,
     );
@@ -1045,11 +1046,11 @@ function ws_task_card_html($viewer, $task, $assignees)
     $people = '';
 
     foreach ($brief['assignees'] as $person) {
-        $people .= '<span class="ws-task-person" title="' . h($person['name']) . '"><img src="' . h($person['avatar']) . '" alt="" loading="lazy" />' . h($person['name']) . '</span>';
+        $people .= '<span class="ws-task-person" title="' . h($person['name']) . '">' . pg_avatar_markup(array('name' => '') + $person) . h($person['name']) . '</span>';
     }
 
     if ($people === '') {
-        $people = '<span class="text-body-secondary">' . h(lang('Nobody yet')) . '</span>';
+        $people = '<span class="fg-secondary">' . h(lang('Nobody yet')) . '</span>';
     }
 
     $progress = '';
@@ -1093,7 +1094,7 @@ function ws_task_card_html($viewer, $task, $assignees)
             $buttons .= '<button type="button" class="btn btn-sm btn-ghost" data-ws-task-status="doing" data-ws-task="' . (int) $task['id'] . '"' . (($waits !== '') ? ' data-ws-blocked="' . h($waits) . '"' : '') . '><i class="bi bi-play-circle me-1"></i>' . h(lang('Start work')) . '</button>';
         }
 
-        $buttons .= '<button type="button" class="btn btn-sm btn-outline-success" data-ws-task-status="done" data-ws-task="' . (int) $task['id'] . '"><i class="bi bi-check2-circle me-1"></i>' . h(lang('Mark done')) . '</button>';
+        $buttons .= '<button type="button" class="btn btn-sm btn-outline theme-success" data-ws-task-status="done" data-ws-task="' . (int) $task['id'] . '"><i class="bi bi-check2-circle me-1"></i>' . h(lang('Mark done')) . '</button>';
     }
 
     $buttons .= '<button type="button" class="btn btn-sm btn-ghost" data-ws-task-open="' . (int) $task['id'] . '"><i class="bi bi-box-arrow-up-right me-1"></i>' . h(lang('Open task')) . '</button>';
@@ -1106,7 +1107,7 @@ function ws_task_card_html($viewer, $task, $assignees)
             </div>
             <div class="ws-task-card-title">' . h($brief['title']) . '</div>
             <div class="ws-task-card-meta">
-                <span class="' . ($brief['overdue'] ? 'text-danger' : '') . '"><i class="bi bi-calendar-event me-1"></i>' . h($brief['due_label']) . '</span>
+                <span class="' . ($brief['overdue'] ? 'fg-danger' : '') . '"><i class="bi bi-calendar-event me-1"></i>' . h($brief['due_label']) . '</span>
                 ' . (($brief['estimate_label'] !== '') ? '<span><i class="bi bi-hourglass-split me-1"></i>' . h($brief['estimate_label']) . '</span>' : '') . '
                 ' . (($brief['time_label'] !== '') ? '<span class="ws-task-time-tag" title="' . h(lang('Time spent')) . '"><i class="bi bi-stopwatch me-1"></i>' . h($brief['time_label']) . '</span>' : '') . '
                 ' . ($brief['recurring'] ? '<span title="' . h(lang('Repeating task')) . '"><i class="bi bi-arrow-repeat"></i></span>' : '') . '

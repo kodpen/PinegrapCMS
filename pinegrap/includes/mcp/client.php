@@ -242,7 +242,7 @@ function pg_mcp_client_headers($conn, $method, $params, $version) {
 // case name), body, error, errno (curl's error number, 0 for none).
 function pg_mcp_client_post($conn, $message, $method, $version) {
 
-	$flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
+	$flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0); // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined()
 
 	$body = json_encode($message, $flags);
 
@@ -554,7 +554,17 @@ function pg_mcp_client_sse_stop($id) {
 // A request id of its own for every message of this run.
 function pg_mcp_client_next_id() {
 
-	static $id = 0;
+	// A random start: two requests of the site that join the same MCP
+	// session (a page and a background run) would otherwise both count
+	// from 1, and a server matching answers by id within the session
+	// could take one for the other.
+	static $id = null;
+
+	if ($id === null) {
+
+		$id = random_int(0, 1000000000);
+
+	}
 
 	return ++$id;
 

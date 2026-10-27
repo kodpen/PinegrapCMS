@@ -53,6 +53,14 @@ if (isset($_POST['pg_revoke_device']) && is_scalar($_POST['pg_revoke_device'])) 
     $_POST['pg_selector'] = (string) $_POST['pg_revoke_device'];
 }
 
+// A passkey row's Rename and Remove buttons in that widget carry the passkey.
+foreach (array('passkey_rename', 'passkey_remove') as $passkey_button) {
+    if (isset($_POST['pg_' . $passkey_button]) && is_scalar($_POST['pg_' . $passkey_button])) {
+        $action = $passkey_button;
+        $_POST['passkey_id'] = (string) $_POST['pg_' . $passkey_button];
+    }
+}
+
 // A widget names the page it was drawn on (return_to, a same-site path);
 // every action that leaves the visitor signed in goes back there. The legacy
 // section sends none and keeps its destinations.
@@ -287,9 +295,8 @@ if (strpos($action, 'passkey_') === 0) {
 
     if ($action === 'passkey_remove') {
         // The password (none for a Google-only account) and, while two-step
-        // verification is on, a code. An account with neither has its session
-        // alone to show; without two-step verification its passkeys answer no
-        // sign-in step.
+        // verification is on, a code; no e-mailed code, which only adding
+        // asks for. An account with neither has its session alone to show.
         $passkey_proofs = pg_passkey_reauth_fields(
             db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $user_id . "'"),
             pg_mfa_table_exists() && pg_mfa_enabled($user_id));

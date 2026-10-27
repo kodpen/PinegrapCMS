@@ -10,13 +10,17 @@
  *
  * Panel files are counted; files shared with the site and the visual editor's
  * files are listed apart, since they are converted per function. Site files
- * stay on Bootstrap 5 and are not read.
+ * stay on Bootstrap 5 and are not read, nor is code marked
+ * `/* @pg-site-output *\/` (bs6_site_output_ranges()).
+ *
+ * After the switch (the panel head loads Bootstrap 6) a class the v6 dist
+ * defines is read as a v6 class, so converted sizes (`p-5`) are not counted.
  *
  * Usage:  php tools/check_bs6.php [--verbose] [--strict] [--top=N]
  *
  * --verbose  every finding with its file and line
- * --strict   exit 1 when a panel file still holds a finding (from the switch,
- *            step B8 of docs/memory/plans/bootstrap-6-panel-steps.md, on)
+ * --strict   exit 1 when a panel file holds a finding that is not on the
+ *            reviewed list (CI runs it since the switch)
  * --top=N    files listed per check (default 5)
  *
  * Exit:   0, or 1 with --strict when panel findings remain.
@@ -33,6 +37,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once(__DIR__ . '/bs6_rules.php');
+require_once(__DIR__ . '/bs6_switch_fields.php');
 
 $verbose = in_array('--verbose', $argv, true);
 $strict = in_array('--strict', $argv, true);
@@ -46,15 +51,27 @@ foreach ($argv as $arg) {
 
 $product = dirname(__DIR__) . '/pinegrap';
 
+// After the switch the panel head loads Bootstrap 6 and panel markup holds v6
+// classes: a class the v6 dist defines (`p-5`, `md:col-6`) is then not a v5
+// class to rewrite. Before it every class is read as Bootstrap 5.
+$converted = bs6_panel_head_is_v6($product);
+
+if ($converted) {
+	bs6_converted_tree_classes(bs6_dist_classes((string) file_get_contents($product . '/assets/lib/bootstrap-6/css/bootstrap.css')));
+}
+
 // Checks read from the source text. Each counts its matches per line.
 $text_checks = array(
 	'Bootstrap JS call of a renamed or bridged component' => '/\bbootstrap\.(Modal|Offcanvas|Dropdown|Tooltip|Popover|Collapse|Tab|Toast|Alert|Button|Carousel|ScrollSpy)\b/',
-	'jQuery Bootstrap plugin call (no jQuery bridge in v6)' => '/\.(modal|dropdown|offcanvas|tooltip|popover|collapse|toast)\(\s*(\'|"|\{|\))/',
+	'jQuery Bootstrap plugin call (no jQuery bridge in v6)' => '/(?<!\bh|Suggest)\.(modal|dropdown|offcanvas|tooltip|popover|collapse|toast)\(\s*(\'|"|\{|\)|\()/',
 	'event of a renamed component (*.bs.dialog, *.bs.drawer, *.bs.menu)' => '/\b(show|shown|hide|hidden|hidePrevented)\.bs\.(modal|offcanvas|dropdown)\b/',
 	'data attribute of a renamed component' => '/data-bs-(toggle|dismiss)\s*=\s*\\\\?["\'](modal|offcanvas|dropdown)\b/',
 	'carousel ride attribute (data-bs-autoplay in v6)' => '/data-bs-ride\b/',
 	'popperConfig (floatingConfig in v6)' => '/\bpopperConfig\b/',
+	'box or state of a v5 modal named in code (the <dialog> is the box)' => '/(?<![\w-])modal-(dialog|content|backdrop|open|static|fullscreen)(?![\w-])/',
+	'v5 component variable (--bs-dropdown-*, --bs-offcanvas-*, --bs-modal-*)' => '/--bs-(dropdown|offcanvas|modal)-[a-z-]+/',
 	'v5 RGB variable (removed in v6: use color-mix())' => '/var\(\s*--bs-[a-z0-9-]+-rgb\s*\)/',
+	'v5 component selector in a code string' => '/[\'"][^\'"\n]*\\.(dropdown|dropup|dropend|dropstart|dropdown-menu|dropdown-item|dropdown-toggle|modal|modal-body|modal-footer|modal-header|modal-title|offcanvas|offcanvas-body|offcanvas-header|offcanvas-title|form-check|form-check-input|form-check-label|form-switch|form-select|accordion-button|accordion-collapse)(?![\w-])[^\'"\n{]*[\'"]/',
 	'v5 component selector in a style block' => '/\.(modal-dialog|modal-content|modal-backdrop|dropdown-menu|dropdown-item|dropdown-toggle|offcanvas|form-check-input|form-check|form-switch|form-select|accordion-button|btn-close-white|collapsing)\b(?=[^\n{;]*\{)/',
 );
 
@@ -62,7 +79,30 @@ $stats = array();   // check => kind => count
 $files = array();   // check => path => count
 $lines = array();   // check => list of "path:line  text"
 
-$add = function ($check, $kind, $path, $line, $text) use (&$stats, &$files, &$lines) {
+// Panel findings reviewed and left as they are, as path => finding text =>
+// how many times it may appear. They are listed as 'reviewed' and do not fail
+// --strict; one more of the same text in the file does.
+$reviewed = array(
+	// Selectors no element carries any more, kept for markup a site pastes,
+	// and the shell rule giving the editor's chrome v5's light outline.
+	'assets/css/backend.src.css' => array('.btn-outline-light' => 4, '.btn-outline-dark' => 1, '.was-validated' => 2),
+	// The page designer's preview draws the site, which stays on Bootstrap 5.
+	'assets/js/page_designer.js' => array('btn-danger -> btn-solid theme-danger' => 1),
+	// The form validation script sets v5's class; panel CSS styles it.
+	// A theme stem whose values are v6 themes (`'bg-' + tone`).
+	'assets/js/backend.src.js' => array('bg-"' => 1, 'was-validated' => 1),
+	'includes/fn/output.php' => array("bg-'" => 2),
+	'includes/workspace/render.php' => array("text-'" => 1),
+	// removeClass() naming both themes the status line switches between.
+	'software_repair.php' => array('theme-success theme-danger' => 1),
+);
+
+$add = function ($check, $kind, $path, $line, $text) use (&$stats, &$files, &$lines, &$reviewed) {
+	if ($kind === 'panel' && !empty($reviewed[$path][$text])) {
+		$reviewed[$path][$text]--;
+		$kind = 'reviewed';
+	}
+
 	$stats[$check][$kind] = isset($stats[$check][$kind]) ? $stats[$check][$kind] + 1 : 1;
 
 	if ($kind === 'panel') {
@@ -77,8 +117,16 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 		continue;
 	}
 
+	// A shared file's panel functions are panel code; the rest of it is read
+	// as site output (bs6_shared_panel_functions()).
+	if ($kind === 'shared' && bs6_codemod_converts($path)) {
+		$kind = 'panel';
+	}
+
 	$source = (string) file_get_contents($product . '/' . $path);
 	$ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+	bs6_current_path($path);
+	$site_output = bs6_site_output_ranges($source);
 
 	if ($ext === 'css') {
 		// A selector on a class v6 renames or drops stops matching after the
@@ -92,7 +140,7 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 			}
 		}
 	} else {
-		$result = bs6_convert_source($source);
+		$result = bs6_convert_source($source, null, bs6_reads_class_strings($path));
 
 		if ($result['changed'] > 0) {
 			$check = 'classes the codemod rewrites';
@@ -118,10 +166,26 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 		}
 
 		foreach ($matches[0] as $match) {
+			if ($site_output && bs6_in_ranges($match[1], $site_output)) {
+				continue;
+			}
+
 			$add($check, $kind, $path, bs6_line_of($source, $match[1]), $match[0]);
 		}
 	}
+
+	// On a switched tree a liveform select, checkbox or radio that names no
+	// Bootstrap class gets v5's default class (bs6_switch_fields.php).
+	if ($converted && $ext === 'php' && bs6_codemod_converts($path) && strpos($source, 'output_field') !== false) {
+		foreach (bs6_field_calls($source) as $call) {
+			if (bs6_field_needs_class($call) && !($site_output && bs6_in_ranges($call['offset'], $site_output))) {
+				$add('liveform field with no v6 class (liveform adds a v5 default)', $kind, $path, bs6_line_of($source, $call['offset']), 'output_field ' . ($call['type'] !== null ? $call['type'] : '?'));
+			}
+		}
+	}
 }
+
+bs6_current_path(false);
 
 ksort($stats);
 $panel_total = 0;
@@ -131,7 +195,7 @@ foreach ($stats as $check => $kinds) {
 	$panel_total += $panel;
 	$aside = array();
 
-	foreach (array('shared', 'editor') as $kind) {
+	foreach (array('reviewed', 'shared', 'editor') as $kind) {
 		if (!empty($kinds[$kind])) {
 			$aside[] = "$kind {$kinds[$kind]}";
 		}
@@ -153,6 +217,6 @@ foreach ($stats as $check => $kinds) {
 	}
 }
 
-echo "\n$panel_total findings in panel files; shared and editor files are counted apart (docs/memory/ui/bootstrap-6-codemod.md).\n";
+echo "\n$panel_total findings in panel files (" . ($converted ? 'converted tree: classes the Bootstrap 6 dist defines are not counted' : 'Bootstrap 5 tree') . "); reviewed findings, shared and editor files are counted apart (docs/memory/ui/bootstrap-6-codemod.md).\n";
 
 exit(($strict && $panel_total > 0) ? 1 : 0);

@@ -42,6 +42,11 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // The text of a percent slider's value bubble (pgUI.range.bubble()).
+    function _sdPercent(value) {
+        return value + '%';
+    }
+
     // Locale for Date#toLocaleString: the panel's <html lang>, or the
     // browser default when the page does not declare one.
     function _sdLocale() {
@@ -143,38 +148,36 @@ const StyleDesigner = (function () {
     // `done` gets the new `pages` list ([] for every page); dismissing the
     // dialog changes nothing.
     function _sdAssetPagesDialog(entry, done) {
-        if (typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+        if (!window.pgUI) return;
         var current = Array.isArray(entry.pages) ? entry.pages.map(String) : [];
         var all = !current.length;
         var rows = _pages.map(function (p) {
             var ref = _sdAssetPageRef(p);
-            return '<label class="form-check d-flex align-items-center gap-2 mb-1">' +
-                       '<input class="form-check-input mt-0" type="checkbox" data-page-ref="' + esc(ref).replace(/"/g, '&quot;') + '"' +
+            return '<label class="form-field d-flex align-items-center gap-3 mb-1">' +
+                       '<input class="check mt-0" type="checkbox" data-page-ref="' + esc(ref).replace(/"/g, '&quot;') + '"' +
                            (current.indexOf(ref) !== -1 ? ' checked' : '') + (all ? ' disabled' : '') + '>' +
-                       '<span class="form-check-label text-truncate">' + esc(p.page_name || _sdT('New Page')) + '</span>' +
+                       '<span class="text-truncate">' + esc(p.page_name || _sdT('New Page')) + '</span>' +
                    '</label>';
         }).join('');
-        var el = document.createElement('div');
-        el.className = 'modal fade';
+        var el = document.createElement('dialog');
+        el.className = 'dialog pg-dialog-centered dialog-scrollable';
         el.tabIndex = -1;
         el.innerHTML =
-            '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
-                '<div class="modal-header py-2"><h6 class="modal-title mb-0 text-truncate">' + esc(_sdT('Pages for "{var}"', entry.name)) + '</h6>' +
-                    '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
-                '<div class="modal-body small">' +
-                    '<p class="text-body-secondary mb-2">' + esc(_sdT('A file that only some pages need (a map, a form script) is better kept to those pages, so the others open faster.')) + '</p>' +
-                    '<label class="form-check mb-1"><input class="form-check-input" type="radio" name="sd-ap-mode" value="all"' + (all ? ' checked' : '') + '>' +
-                        '<span class="form-check-label">' + esc(_sdT('Every page')) + '</span></label>' +
-                    '<label class="form-check mb-2"><input class="form-check-input" type="radio" name="sd-ap-mode" value="some"' + (all ? '' : ' checked') + '>' +
-                        '<span class="form-check-label">' + esc(_sdT('Only these pages:')) + '</span></label>' +
-                    '<div class="sd-ap-pages ps-4">' + rows + '</div>' +
-                    '<div class="text-danger mt-2 d-none" data-ap-error>' + esc(_sdT('Choose at least one page, or pick every page.')) + '</div>' +
+            '<div class="dialog-header py-3"><h6 class="dialog-title mb-0 text-truncate">' + esc(_sdT('Pages for "{var}"', entry.name)) + '</h6>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>' +
+                '<div class="dialog-body small">' +
+                    '<p class="fg-secondary mb-3">' + esc(_sdT('A file that only some pages need (a map, a form script) is better kept to those pages, so the others open faster.')) + '</p>' +
+                    '<label class="form-field mb-1"><input class="radio" type="radio" name="sd-ap-mode" value="all"' + (all ? ' checked' : '') + '>' +
+                        '<span class="">' + esc(_sdT('Every page')) + '</span></label>' +
+                    '<label class="form-field mb-3"><input class="radio" type="radio" name="sd-ap-mode" value="some"' + (all ? '' : ' checked') + '>' +
+                        '<span class="">' + esc(_sdT('Only these pages:')) + '</span></label>' +
+                    '<div class="sd-ap-pages ps-7">' + rows + '</div>' +
+                    '<div class="fg-danger mt-3 d-none" data-ap-error>' + esc(_sdT('Choose at least one page, or pick every page.')) + '</div>' +
                 '</div>' +
-                '<div class="modal-footer py-2">' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + esc(_sdT('Cancel')) + '</button>' +
-                    '<button type="button" class="btn btn-sm btn-primary" data-ap-apply>' + esc(_sdT('Apply')) + '</button>' +
-                '</div>' +
-            '</div></div>';
+                '<div class="dialog-footer py-3">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' + esc(_sdT('Cancel')) + '</button>' +
+                    '<button type="button" class="btn btn-sm btn-solid theme-primary" data-ap-apply>' + esc(_sdT('Apply')) + '</button>' +
+                '</div>';
         document.body.appendChild(el);
         var boxes = Array.prototype.slice.call(el.querySelectorAll('[data-page-ref]'));
         el.addEventListener('change', function (e) {
@@ -191,11 +194,11 @@ const StyleDesigner = (function () {
             var some = !!el.querySelector('input[name="sd-ap-mode"][value="some"]:checked');
             var refs = some ? boxes.filter(function (b) { return b.checked; }).map(function (b) { return b.dataset.pageRef; }) : [];
             if (some && !refs.length) { el.querySelector('[data-ap-error]').classList.remove('d-none'); return; }
-            bootstrap.Modal.getOrCreateInstance(el).hide();
+            pgUI.dialog.hide(el);
             done(refs);
         });
-        el.addEventListener('hidden.bs.modal', function () { el.remove(); });
-        bootstrap.Modal.getOrCreateInstance(el).show();
+        pgUI.dialog.on(el, 'hidden', function () { el.remove(); });
+        pgUI.dialog.show(el);
     }
     let _pages     = [];     // [{ key, page_id, page_name, …settings, tree, undoStack, redoStack, nodeIdCounter, baseline }]
     let _activeKey = null;   // key of the page currently on the canvas
@@ -606,6 +609,7 @@ const StyleDesigner = (function () {
     // it. nodeOf(id, wrap) finds the node of a wrapper (_sdFindNodeForEl());
     // it is asked for open elements only, a closed one draws a node without
     // `show`.
+    /* @pg-site-output */
     function _sdCanvasOpenRestore(doc, open, nodeOf) {
         if (!doc) return;
         _sdCanvasOpenEach(doc, function (el, key, wrap) {
@@ -773,6 +777,7 @@ const StyleDesigner = (function () {
         return { _id: gid(), type: type, props: p, children: children || [] };
     }
 
+    /* @pg-site-output */
     function colProps(xs) {
         return { xs: xs || '12', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '' };
     }
@@ -895,6 +900,12 @@ const StyleDesigner = (function () {
                                 // An old token a default part now draws gets
                                 // the part; the site draws the same.
                                 if (mcfg) _sdDefaultParts(parsed, _swKindOf(mcfg), mcfg);
+                                // Never on a template's placeholder (below).
+                                if (mcfg && !_swIsTemplatePlaceholder(parsed)) {
+                                    _sdDefaultLoopTails(parsed, _swKindOf(mcfg), mcfg);
+                                    _sdDefaultLeads(parsed, _swKindOf(mcfg), mcfg);
+                                    _sdDefaultTails(parsed, _swKindOf(mcfg), mcfg);
+                                }
                             }
                             // A template's widget whose layout was never written
                             // (the loss above): it still holds the placeholder and
@@ -1284,17 +1295,17 @@ const StyleDesigner = (function () {
         var list = _swListCache.list_calendars;
         if (!list) {
             _swFetchList('list_calendars', 'calendars', function () { renderProperties(); });
-            return '<div class="small text-muted">' + esc(_sdT('Loading...')) + '</div>';
+            return '<div class="small fg-secondary">' + esc(_sdT('Loading...')) + '</div>';
         }
-        if (!list.length) return '<div class="small text-muted">' + esc(_sdT('There are no calendars yet.')) + '</div>';
+        if (!list.length) return '<div class="small fg-secondary">' + esc(_sdT('There are no calendars yet.')) + '</div>';
         var chosen = {};
         (Array.isArray(ids) ? ids : []).forEach(function (id) { chosen[parseInt(id, 10)] = true; });
         return list.map(function (c) {
             var id = parseInt(c.id, 10);
-            return '<div class="form-check">' +
-                '<input class="form-check-input" type="checkbox" id="sd-sw-cal-' + sid + '-' + id + '" value="' + id + '"' +
+            return '<div class="form-field">' +
+                '<input class="check" type="checkbox" id="sd-sw-cal-' + sid + '-' + id + '" value="' + id + '"' +
                 ' data-sw-id="' + sid + '" data-sw-cfg-list="calendar_ids"' + (chosen[id] ? ' checked' : '') + '>' +
-                '<label class="form-check-label" for="sd-sw-cal-' + sid + '-' + id + '">' + esc(c.name || ('#' + id)) + '</label>' +
+                '<label class="" for="sd-sw-cal-' + sid + '-' + id + '">' + esc(c.name || ('#' + id)) + '</label>' +
                 '</div>';
         }).join('') +
         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('None ticked means every calendar.')) + '</div>';
@@ -2240,7 +2251,7 @@ const StyleDesigner = (function () {
     }
 
     function _cfSel(cls, current, entries, blankLabel) {
-        var html = '<select class="form-select form-select-sm ' + cls + '">';
+        var html = '<select class="form-control form-control-sm ' + cls + '">';
         if (blankLabel !== null && blankLabel !== undefined) {
             html += '<option value="">' + esc(blankLabel) + '</option>';
         }
@@ -2253,9 +2264,9 @@ const StyleDesigner = (function () {
 
     function _cfSwitch(cls, on, label) {
         var id = cls.replace(/[^a-z0-9_-]/gi, '') + '_' + Math.random().toString(36).slice(2, 7);
-        return '<div class="form-check form-switch">' +
-               '<input class="form-check-input ' + cls + '" type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '>' +
-               '<label class="form-check-label" for="' + id + '" style="font-size:.72rem">' + esc(label) + '</label>' +
+        return '<div class="form-field">' +
+               '<div class="switch"><input class="' + cls + '" type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '></div>' +
+               '<label class="" for="' + id + '" style="font-size:.72rem">' + esc(label) + '</label>' +
                '</div>';
     }
 
@@ -2671,8 +2682,8 @@ const StyleDesigner = (function () {
     /* ── Palette blocks: plain Bootstrap controls, label first ─────────── */
 
     // Every kind the Form palette offers. `type` is the <input type>; the
-    // block is <div class="mb-3"><label for><control> — or, for a group,
-    // <fieldset class="mb-3"><legend>… so the legend names the question.
+    // block is <div class="mb-5"><label for><control> — or, for a group,
+    // <fieldset class="mb-5"><legend>… so the legend names the question.
     var CF_PALETTE = {
         text:       { label: _sdT('Text'),            control: 'input',    type: 'text',           icon: 'bi-input-cursor-text',        name: 'metin' },
         email:      { label: _sdT('Email'),          control: 'input',    type: 'email',          icon: 'bi-envelope',                 name: 'eposta' },
@@ -2717,6 +2728,7 @@ const StyleDesigner = (function () {
      * else it is ordinary markup. The label is an element the designer may
      * delete — the field then keeps the name given in the panel.
      */
+    /* @pg-site-output */
     function _cfPaletteBlock(kind) {
         var def = CF_PALETTE[kind] || CF_PALETTE.text;
         var id  = 'f_' + Math.random().toString(36).slice(2, 7);
@@ -2833,6 +2845,7 @@ const StyleDesigner = (function () {
 
     // The container every custom form starts with: a centred column. What
     // goes inside is the caller's.
+    /* @pg-site-output */
     function _cfFrame(children) {
         var loopArea = createNode('loop_area', {}, []); // present but hidden
         return createNode('root', {}, [
@@ -2848,6 +2861,7 @@ const StyleDesigner = (function () {
 
     // A new form: one input, the CAPTCHA, a button. The designer takes it
     // from there — including deleting the input.
+    /* @pg-site-output */
     function _cfStarterTree() {
         var first = _cfPaletteBlock('text');
         return _cfFrame([first, _cfPaletteBlock('captcha'), _cfPaletteBlock('submit')]);
@@ -2861,6 +2875,7 @@ const StyleDesigner = (function () {
      * and row id. Office-use-only fields are drawn too — the renderer hides
      * them from visitors.
      */
+    /* @pg-site-output */
     function _cfBuildFromFields(fields, formPageId, formName) {
         var blocks = [];
         var reId = function (nd) { nd._id = gid(); if (Array.isArray(nd.children)) nd.children.forEach(reId); };
@@ -3106,7 +3121,7 @@ const StyleDesigner = (function () {
         var w = _sdCommentsWidgetOf(node);
         if (!w) return '';
         return '<div class="sd-prop-row" style="margin-bottom:6px">' +
-            '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cmt-open-settings" data-sw-id="' + w.sid + '">' +
+            '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-cmt-open-settings" data-sw-id="' + w.sid + '">' +
                 '<i class="bi bi-chat-square-text me-1"></i>' + esc(_sdT('Comment settings')) +
             '</button>' +
             (_getCmtVal('pg_comments') !== '1'
@@ -3129,7 +3144,7 @@ const StyleDesigner = (function () {
         if (!w) return '';
         var silent = w.owns && _cfSettingsSilent(_cfPageSettings());
         return '<div class="sd-prop-row" style="margin-bottom:6px">' +
-            '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cf-open-settings" data-sw-id="' + w.sid + '">' +
+            '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-cf-open-settings" data-sw-id="' + w.sid + '">' +
                 '<i class="bi bi-ui-checks me-1"></i>' + esc(_sdT('Form settings')) +
             '</button>' +
             (silent
@@ -3216,6 +3231,7 @@ const StyleDesigner = (function () {
      * controls and indicators dark under data-bs-theme="dark" (and with
      * .carousel-dark, which the carousel ships with), so a dark slide would hide them.
      */
+    /* @pg-site-output */
     function makeCarouselSlide(idx, isActive) {
         var bg = CAROUSEL_SURFACES[(idx - 1) % CAROUSEL_SURFACES.length];
         return createNode('semantic', { tag: 'div', cssClass: 'carousel-item' + (isActive ? ' active' : ''), customName: _sdT('Slide {var}', idx) }, [
@@ -4491,6 +4507,8 @@ const StyleDesigner = (function () {
     var SAVE_STATE_RUN_MS = 700;
 
     function saveState(coalesceKey) {
+        // Editing a tried layout keeps it first (_sdLgKeep()).
+        if (_sdLgState && !_sdLgDrawing) _sdLgKeep();
         var key = (typeof coalesceKey === 'string' && coalesceKey !== '') ? coalesceKey : null;
         var now = Date.now();
 
@@ -4534,6 +4552,8 @@ const StyleDesigner = (function () {
     }
 
     function undo() {
+        // A tried layout is not in the history: undo takes it off.
+        if (_sdLgCancel()) return;
         if (!undoStack.length) return;
         redoStack.push({
             tree:   JSON.stringify(tree),
@@ -4554,6 +4574,7 @@ const StyleDesigner = (function () {
     }
 
     function redo() {
+        if (_sdLgCancel()) return;
         if (!redoStack.length) return;
         undoStack.push({
             tree:   JSON.stringify(tree),
@@ -4683,6 +4704,7 @@ const StyleDesigner = (function () {
         });
         return { props: props, rest: rest };
     }
+    /* @pg-site-output */
     function _serializeRowToClasses(props, rest) {
         var cls = ['row'];
         if (props.gutter)  cls.push('g-' + props.gutter);
@@ -4713,6 +4735,7 @@ const StyleDesigner = (function () {
         });
         return { props: props, rest: rest };
     }
+    /* @pg-site-output */
     function _serializeColToClasses(props, rest) {
         var cls = [];
         if (props.xs === 'col')        cls.push('col');
@@ -4885,6 +4908,7 @@ const StyleDesigner = (function () {
     // with the site's languages (sdDesign.siteLanguages, source first) and
     // the page's own language current. On the site every item links to the
     // page in its language; here none goes anywhere.
+    /* @pg-site-output */
     function _sdLangSwitcherMarkup(p) {
         p = p || {};
         // Attribute-safe as well: names and classes end up inside quotes.
@@ -4911,6 +4935,7 @@ const StyleDesigner = (function () {
             '</div>';
     }
 
+    /* @pg-site-output */
     var COMPONENTS = {
         navbar: {
             label: _sdT('Navbar'), icon: 'bi-layout-navbar',
@@ -5104,6 +5129,7 @@ const StyleDesigner = (function () {
     };
 
     // ========================= CONTENT REGISTRY =========================
+    /* @pg-site-output */
     var CONTENT = {
         heading: {
             label: _sdT('Heading'), icon: 'bi-type-h1',
@@ -5663,6 +5689,7 @@ const StyleDesigner = (function () {
             }).join(' ');
         });
     }
+    /* @pg-site-output */
     var IFRAME_CSS = [
         '*, *::before, *::after { box-sizing: border-box; }',
         // html is the scroll container so position:sticky works inside the canvas iframe.
@@ -5851,6 +5878,11 @@ const StyleDesigner = (function () {
         // Region placeholder
         '.sd-region-ph { padding:10px; text-align:center; color:#6c757d; font-size:11px; border:1px dashed #ccc; border-radius:4px; background:rgba(0,0,0,.015); }',
         '.sd-region-ph .bi { margin-right:4px; }',
+        // A classic system region drawn by the server under its label (_sdLegacyRegionAppend())
+        '.sd-region-ph.sd-legacy-live { padding:0; text-align:start; color:inherit; font-size:inherit; background:none; }',
+        '.sd-legacy-band { padding:4px 8px; text-align:center; color:#6c757d; font-size:11px; border-bottom:1px dashed #ccc; }',
+        '.sd-legacy-note { opacity:.85; }',
+        '.sd-legacy-region { padding:8px; pointer-events:none; user-select:none; overflow:hidden; }',
         // Drop active on parent
         // Drop indicators — doubled selector boosts specificity so semantic-wrap rules
         // (.sd-shared-wrap, .sd-custom-html-wrap, .sd-custom-php-wrap) with their own
@@ -7308,7 +7340,7 @@ const StyleDesigner = (function () {
             document.addEventListener('paste', function (e) {
                 // Anything inside the panels is an ordinary form field.
                 var t = e.target;
-                if (t && t.closest && t.closest('#sd-properties, #sd-bp-attrs, .modal, input, textarea, select')) return;
+                if (t && t.closest && t.closest('#sd-properties, #sd-bp-attrs, dialog, input, textarea, select')) return;
                 _sdHandlePaste(e);
             });
         }
@@ -7940,6 +7972,7 @@ const StyleDesigner = (function () {
         return null;
     }
 
+    /* @pg-site-output */
     function addCompositeChild(node, type) {
         if (!node) return;
         saveState();
@@ -8218,6 +8251,7 @@ const StyleDesigner = (function () {
 
     // ── Node wrap / unwrap helpers (for table-responsive toggle) ──────────────
 
+    /* @pg-site-output */
     function wrapNode(node, wrapTag, wrapCls) {
         var par = findParent(node, tree);
         if (!par) return;
@@ -8324,6 +8358,7 @@ const StyleDesigner = (function () {
         render(); renderProperties();
     }
 
+    /* @pg-site-output */
     function splitCell(node) {
         if (!node || !node.props) return;
         var tr = findParent(node, tree);
@@ -9149,6 +9184,8 @@ const StyleDesigner = (function () {
         if (!cached || !cached.tree || !cached.system_region_config) return false;
         var cfg = cached.system_region_config;
         if (typeof cfg === 'string') { try { cfg = JSON.parse(cfg); } catch (e) { cfg = null; } }
+        // A node that the value conditions' state leaves out.
+        if (_sdCondStateFor(cached.tree, selectedNode) !== _sdCondStateOf(cached.tree)) return true;
         // A comments widget's node that the state on the canvas leaves out.
         var _cmtKind = _swKindOf(cfg);
         if (_cmtKind === 'comments' || _cmtKind === 'comments_recent') {
@@ -10487,6 +10524,7 @@ const StyleDesigner = (function () {
         _reExecuteCanvasScripts(canvasDoc.body);
         _sdThemeSwitchers();
         _sdScrollers();
+        _sdFxCanvas();
         _initCanvasTooltips();
         // Restore tab activation captured before the DOM wipe — keeps the
         // designer on the tab they were editing, not always tab 1.
@@ -10569,6 +10607,38 @@ const StyleDesigner = (function () {
         scr.id = 'pg-scroller-js';
         try { scr.src = new URL('assets/js/pg_scroller.js', document.baseURI).href; } catch (e) { return; }
         canvasDoc.head.appendChild(scr);
+    }
+
+    // Interactions play on the canvas as on the page: the same file
+    // (pg_fx.min.js), loaded into the frame once and bound again after
+    // every render. pgFxEditing makes a node drawn again by a later render
+    // show in place instead of playing its entrance on every change; the
+    // Interactions section's Play button replays one. While the canvas's
+    // motion is paused the frame answers reduced motion, so nothing moves.
+    function _sdFxCanvas() {
+        if (!canvasDoc || !canvasDoc.querySelector('[data-pg-fx]')) return;
+        var win = canvasDoc.defaultView;
+        if (win && typeof win.pgFxBind === 'function') { win.pgFxBind(canvasDoc); return; }
+        if (canvasDoc.getElementById('pg-fx-js') || !canvasDoc.head) return;
+        if (win) win.pgFxEditing = true;
+        var scr = canvasDoc.createElement('script');
+        scr.id = 'pg-fx-js';
+        try { scr.src = new URL('assets/js/pg_fx.min.js', document.baseURI).href; } catch (e) { return; }
+        canvasDoc.head.appendChild(scr);
+    }
+
+    // The Play button of the Interactions section: the node's interaction
+    // once on the canvas, whether the canvas's motion plays or not.
+    function _sdFxReplay(node) {
+        var el = _sdCanvasInnerOf(node);
+        if (el && !el.hasAttribute('data-pg-fx')) el = el.querySelector('[data-pg-fx]');
+        var win = canvasDoc && canvasDoc.defaultView;
+        if (!el || !win) return;
+        if (win.pgFx && typeof win.pgFx.replay === 'function') { win.pgFx.replay(el); return; }
+        // The file is not in the frame yet: load it, then play.
+        _sdFxCanvas();
+        var scr = canvasDoc.getElementById('pg-fx-js');
+        if (scr) scr.addEventListener('load', function () { if (win.pgFx && win.pgFx.replay) win.pgFx.replay(el); });
     }
 
     function _reExecuteCanvasScripts(root) {
@@ -10766,21 +10836,7 @@ const StyleDesigner = (function () {
         // of which builder handled it.
         var hideLoop = false;
         var isList = _sdListIsSourced(node);
-        if (_sysWidgetRenderCfg && !isList) {
-            var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
-                ? _sysWidgetRenderCfg.regionType : 'form_list_view';
-            hideLoop = (_lwRt === 'form_item_view') ||
-                       (_lwRt === 'my_account' && _sysWidgetRenderCfg.show_submissions !== true) ||
-                       (_lwRt === 'login_form') ||
-                       (_lwRt === 'forgot_password') ||
-                       (_lwRt === 'registration') ||
-                       (_lwRt === 'membership') ||
-                       (_lwRt === 'custom_form') ||
-                       (_lwRt === 'catalog_item_view') ||
-                       (_lwRt === 'calendar_event_view') ||
-                       (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
-                       (_SW_ONE_SCREEN[_lwRt] === 1);
-        }
+        if (_sysWidgetRenderCfg && !isList) hideLoop = _sdLoopIsSingle(_sysWidgetRenderCfg);
 
         var isRecipient = (node.type === 'recipient_loop_area');
         var listBand = isList ? _sdListBand(node) : null;
@@ -10846,6 +10902,7 @@ const StyleDesigner = (function () {
                 _tagLoopRow(childEl);
                 if (childEl) frag.appendChild(childEl);
             });
+            _sdListGhostEls(node).forEach(function (g) { _tagLoopRow(g); frag.appendChild(g); });
         } else {
             // Empty loop_area inside a table — real <tr>/<td> drop target so
             // designers can still drag a template row in (mirrors the
@@ -11103,6 +11160,9 @@ const StyleDesigner = (function () {
                     billing_information:  _sdT('Billing Information'),
                     order_preview:        _sdT('Order Preview'),
                     menu_region:          _sdT('Menu'),
+                    menu_sequence_region: _sdT('Menu Sequence'),
+                    ad_region:            _sdT('Ad Region'),
+                    tag_cloud_region:     _sdT('Tag Cloud'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -11127,6 +11187,15 @@ const StyleDesigner = (function () {
                     if (selectedNode) _sdCommentsCanvasState = _sdCommentsStateFor(cached.tree, selectedNode, _sysCfg);
                     band.appendChild(_sdStateChips(doc, node, _sdCommentsCanvasStates(_sysCfg), _sdCommentsStateOf(_sysCfg),
                         _sdSetCommentsCanvasState, 'sd-chips-wrap'));
+                }
+                // A tree with value conditions draws one state of its values;
+                // an element picked from the layer tree, in a state that
+                // draws it.
+                var _condStates = _sdCondCanvasStates(cached.tree);
+                if (_condStates.length) {
+                    if (selectedNode) _sdCondCanvasState = _sdCondStateFor(cached.tree, selectedNode);
+                    band.appendChild(_sdStateChips(doc, node, _condStates, _sdCondStateOf(cached.tree),
+                        _sdSetCondCanvasState, 'sd-chips-wrap'));
                 }
                 inner.appendChild(band);
             }
@@ -11946,6 +12015,83 @@ const StyleDesigner = (function () {
         return current;
     }
 
+    // ── Canvas state of "Hide when empty" (pg-hide-if-empty) ─────────────
+    // The page drops a marked element that came out empty, in every kind
+    // (pg_sw_hide_empty_fields(), the finish pass): judged by its first
+    // element marked pg-field-value ("label: value" rows, a heading over a
+    // list), else by everything inside it. The canvas draws it so in the
+    // state the band chose: every value empty, or the sample values.
+    var SD_HIDE_EMPTY = 'pg-hide-if-empty';
+    var SD_FIELD_VALUE = 'pg-field-value';
+
+    function _sdNodeClassHas(node, cls) {
+        var c = node && node.props && node.props.cssClass;
+        return !!c && (' ' + String(c) + ' ').indexOf(' ' + cls + ' ') !== -1;
+    }
+
+    // Whether `tree` holds an element marked "Hide when empty".
+    function _sdTreeHasHideEmpty(tree) {
+        var found = false;
+        (function walk(n) {
+            if (found || !n || typeof n !== 'object') return;
+            if (_sdNodeClassHas(n, SD_HIDE_EMPTY)) { found = true; return; }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        })(tree);
+        return found;
+    }
+
+    // The element a marked `node` is judged by: its first descendant marked
+    // pg-field-value, else itself.
+    function _sdHideEmptyValueNode(node) {
+        var found = null;
+        (function walk(n) {
+            if (found || !n || !Array.isArray(n.children)) return;
+            n.children.forEach(function (c) {
+                if (found) return;
+                if (_sdNodeClassHas(c, SD_FIELD_VALUE)) { found = c; return; }
+                walk(c);
+            });
+        })(node);
+        return found || node;
+    }
+
+    // Whether what `node` holds shows anything on the page in `state`, as
+    // pg_sw_has_content() reads it: words, a picture with an address, a
+    // link, a button, a form control, a frame; a bound value by its sample
+    // (none in the empty state); a list by its sample rows.
+    function _sdHideEmptyContentShows(node, state) {
+        var p = (node && node.props) || {};
+        if (node.type === 'loop_area' && p.source) return state !== 'empty';
+        var b = p._bindings || {};
+        var bound = b.html || b.text;
+        if (b.src) return state !== 'empty';
+        if (bound) return state !== 'empty' && _sdCondCanvasValue(bound, node, state) !== '';
+        if (node.type === 'component') return true;
+        var ct = p.contentType || '';
+        if (ct === 'link' || ct === 'custom_html' || ct === 'carousel' || ct === 'variant_attr') return true;
+        if (ct === 'image') return !!(p.src || p.url);
+        var tag = String(p.tag || '').toLowerCase();
+        if (/^(a|button|input|select|textarea|video|audio|iframe|object|embed|svg|canvas)$/.test(tag)) return true;
+        if (tag === 'img') return !!(p.src || p.url);
+        if (p.text && _sdCondText(String(p.text)) !== '') return true;
+        return Array.isArray(node.children) && node.children.some(function (c) { return _sdHideEmptyShows(c, state); });
+    }
+
+    // Whether the canvas draws `node` in `state` and it shows anything.
+    function _sdHideEmptyShows(node, state) {
+        if (!node || !_sdCondCanvasShows(node, state)) return false;
+        if (_sdHideEmptyCanvasOff(node, state)) return false;
+        return _sdHideEmptyContentShows(node, state);
+    }
+
+    // Whether `node` is marked "Hide when empty" and the page would drop it
+    // in `state`. Every element is drawn in "All elements".
+    function _sdHideEmptyCanvasOff(node, state) {
+        if (state === 'all' || !_sdNodeClassHas(node, SD_HIDE_EMPTY)) return false;
+        var value = _sdHideEmptyValueNode(node);
+        return (value === node) ? !_sdHideEmptyContentShows(node, state) : !_sdHideEmptyShows(value, state);
+    }
+
     // Switch the state the canvas draws. A selection the new state hides
     // moves up to the widget (refNode), or the next render would switch back.
     function _sdSetCommentsCanvasState(state, refNode) {
@@ -12159,6 +12305,114 @@ const StyleDesigner = (function () {
         }
     }
 
+    // ── Sample rows of a list ─────────────────────────────────────────────
+    // A list inside a record (a loop_area with props.source) is designed on
+    // one row; the canvas follows it with sample rows built from the same
+    // nodes, so the row reads as repeated and a condition on a row value
+    // (the timeline's icon per kind) shows each of its cases. Ghost DOM as
+    // the sample comments: no node id, no toolbar, inert, never in the tree.
+    // A row's values come first in _displayValueForBinding(); a token the
+    // row leaves out reads the card's sample. Off with the sample switch.
+    var _sdListSample = null;
+
+    // The sample rows after the card, by list source: each the values that
+    // differ from the card's. A source not named here gets two rows of the
+    // card's values.
+    var SD_LIST_SAMPLE_ROWS = {
+        'order.steps': [
+            { __step_kind: 'paid', __step_label: _sdT('Payment Received'), __step_date: '20.10.2026 10:05' },
+            { __step_kind: 'shipped', __step_label: _sdT('Shipped'), __step_date: '21.10.2026 09:30' },
+            { __step_kind: 'delivered', __step_label: _sdT('Delivered'), __step_date: '23.10.2026', __step_is_estimate: '1' }
+        ],
+        'calendar.weekdays': [
+            { __weekday_name: _sdT('Tuesday'), __weekday_short: _sdT('Tue') },
+            { __weekday_name: _sdT('Wednesday'), __weekday_short: _sdT('Wed') }
+        ],
+        'product.attributes': [
+            { __attr_name: _sdT('Size'), __attr_value: 'M' }
+        ],
+        'catalog.crumbs': [
+            { __crumb_label: _sdT('Example group'), __crumb_url: '#', __crumb_kind: 'link' },
+            { __crumb_label: _sdT('Example product'), __crumb_url: '', __crumb_kind: 'active' }
+        ],
+        'catalog.active_filters': [
+            { __filter_chip_label: _sdT('Colour: Red'), __filter_chip_url: '#' }
+        ],
+        'security.passkeys': [
+            { __passkey_id: '2', __passkey_name: _sdT('My laptop'), __passkey_last_used: _sdT('Never'), __passkey_is_synced: '' }
+        ],
+        'paging.pages': [
+            { __pager_number: '2', __pager_url: '', __pager_is_current: '1' },
+            { __pager_number: '3' },
+            { __pager_number: '', __pager_url: '', __pager_is_gap: '1' },
+            { __pager_number: '9' }
+        ]
+    };
+
+    // Whether a widget of `cfg` draws its main loop once: a single-record
+    // kind, whose loop holds the layout but repeats nothing.
+    function _sdLoopIsSingle(cfg) {
+        var rt = (cfg && typeof cfg.regionType === 'string' && cfg.regionType !== '') ? cfg.regionType : 'form_list_view';
+        return (rt === 'form_item_view') ||
+               (rt === 'my_account' && cfg.show_submissions !== true) ||
+               (rt === 'login_form') ||
+               (rt === 'forgot_password') ||
+               (rt === 'registration') ||
+               (rt === 'membership') ||
+               (rt === 'custom_form') ||
+               (rt === 'catalog_item_view') ||
+               (rt === 'calendar_event_view') ||
+               (_SW_ACCOUNT_SINGLE[rt] === 1) ||
+               (_SW_ONE_SCREEN[rt] === 1);
+    }
+
+    // The rows drawn after a loop's card. A list: none when the site draws
+    // nothing for it, at most the rows it shows (props.limit) less the card.
+    // The main loop: two rows of the card's values, in a kind that repeats
+    // it and gets no real records (server ghosts) or sample comments. None
+    // inside a sample row or a sample comment, or with the sample switch off.
+    function _sdListSampleRows(node) {
+        if (!_sdGhostsOn || _sdListSample || _sdCommentSample || !node || node.type !== 'loop_area') return [];
+        if (!_sdListIsSourced(node)) {
+            var cfg = _sysWidgetRenderCfg;
+            if (!cfg || !_sysWidgetRenderTreeRoot || _sdFirstLoopArea(_sysWidgetRenderTreeRoot) !== node) return [];
+            var kind = _swKindOf(cfg);
+            if (_SD_GHOST_TYPES[kind] || _SD_GHOST_TYPES[cfg.regionType] || kind === 'comments' || kind === 'comments_recent' || _sdLoopIsSingle(cfg)) return [];
+            return [{}, {}];
+        }
+        var src = SW_LIST_SOURCES[node.props.source];
+        if (!src || _sdListBand(node).off) return [];
+        var rows = SD_LIST_SAMPLE_ROWS[node.props.source] || [{}, {}];
+        var limit = parseInt(node.props.limit, 10);
+        return (limit > 0) ? rows.slice(0, limit - 1) : rows;
+    }
+
+    // The ghost elements of a list's sample rows, in order.
+    function _sdListGhostEls(node) {
+        var out = [];
+        _sdListSampleRows(node).forEach(function (row) {
+            _sdListSample = row;
+            try {
+                (node.children || []).forEach(function (child) {
+                    var el = buildNodeEl(child);
+                    if (!el || el.nodeType !== 1) return;
+                    el.querySelectorAll('.sd-tb').forEach(function (tb) { tb.remove(); });
+                    [el].concat(Array.prototype.slice.call(el.querySelectorAll('*'))).forEach(function (x) {
+                        ['data-sd-id', 'id', 'draggable', 'contenteditable'].forEach(function (a) { x.removeAttribute(a); });
+                        x.classList.remove('sd-selected');
+                    });
+                    el.classList.add('sd-ghost', 'sd-list-sample');
+                    el.setAttribute('aria-hidden', 'true');
+                    el.setAttribute('inert', '');
+                    out.push(el);
+                });
+            } finally {
+                _sdListSample = null;
+            }
+        });
+        return out;
+    }
+
     // In the e-mail state, a widget an e-mail draws no comment from
     // (_sdCommentsEmailDrawsComment()) is left out, as the e-mail leaves it
     // out; this note takes its place and says what the card needs. Editor
@@ -12300,6 +12554,18 @@ const StyleDesigner = (function () {
         } else if (node.props.title) {
             _attrEl.title = node.props.title;
         }
+        // The interaction, as the page writes it (_sdFxAttrs()); a copy of
+        // its names typed into the Attributes panel gives way, as there.
+        var _fxAttrs = _sdFxAttrs(node.props);
+        if (_fxAttrs) {
+            Array.prototype.slice.call(_attrEl.attributes).forEach(function (a) {
+                if (a.name === 'data-pg-fx' || a.name.indexOf('data-pg-fx-') === 0) _attrEl.removeAttribute(a.name);
+            });
+            _fxAttrs.replace(/\s(data-pg-fx[a-z-]*)(?:="([^"]*)")?/g, function (all, n, v) {
+                _attrEl.setAttribute(n, v === undefined ? '' : v);
+                return all;
+            });
+        }
     }
 
     // Whether an image's canvas wrapper is a block (buildNodeEl()): a
@@ -12312,6 +12578,7 @@ const StyleDesigner = (function () {
         return _imgPW.indexOf('%') !== -1;
     }
 
+    /* @pg-site-output */
     function buildNodeEl(node) {
         // Delegate table structural nodes to the wrapper-free builder
         if (node.type === 'semantic' &&
@@ -12412,10 +12679,20 @@ const StyleDesigner = (function () {
         }
 
         // A value condition (Bind Data, "Show only when a value…") is named
-        // on the element; the page and Preview decide it.
-        if (_sysWidgetRenderCfg && node.props && node.props._bindings && node.props._bindings.show_if) {
+        // on the element; the state the band chose decides whether it is
+        // drawn (_sdCondCanvasShows()).
+        if (_sysWidgetRenderCfg && node.props && _sdCondPresent(node.props) && _sdCondSpecs(node.props) !== null) {
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
+            if (!_sdCondCanvasShows(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) wrapper.classList.add('sd-state-off');
+        } else if (!_sysWidgetRenderCfg && node.props && _sdCondPresent(node.props) && _sdPageFactRows(node)) {
+            // On a page: named, always drawn (each visit decides it).
+            wrapper.classList.add('sd-cond');
+            wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
+        }
+        // "Hide when empty": left out in the state that empties it.
+        if (_sysWidgetRenderCfg && _sdHideEmptyCanvasOff(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) {
+            wrapper.classList.add('sd-state-off');
         }
 
         // Login region: the canvas draws one session state at a time; an
@@ -12441,20 +12718,7 @@ const StyleDesigner = (function () {
         // _sysWidgetRenderCfg is set by buildSharedRefEl before rendering the tree.
         // A list inside a record repeats its rows in every kind that draws it.
         if (node.type === 'loop_area' && _sysWidgetRenderCfg && !_sdListIsSourced(node)) {
-            var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
-                ? _sysWidgetRenderCfg.regionType : 'form_list_view';
-            var _loopHide = (_lwRt === 'form_item_view') ||
-                            (_lwRt === 'my_account' && _sysWidgetRenderCfg.show_submissions !== true) ||
-                            (_lwRt === 'login_form') ||
-                            (_lwRt === 'forgot_password') ||
-                            (_lwRt === 'registration') ||
-                            (_lwRt === 'membership') ||
-                            (_lwRt === 'custom_form') ||
-                            (_lwRt === 'catalog_item_view') ||
-                            (_lwRt === 'calendar_event_view') ||
-                            (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
-                            (_SW_ONE_SCREEN[_lwRt] === 1);
-            if (_loopHide) {
+            if (_sdLoopIsSingle(_sysWidgetRenderCfg)) {
                 // A single-record widget renders its loop_area once, so the
                 // "repeated for every record" band would mislead. An empty
                 // one goes altogether; one holding the layout (a form item
@@ -12825,16 +13089,26 @@ const StyleDesigner = (function () {
                     _k = _kNext;
                 }
             }
+            // A sentence with values (pg_sentence_html()): the words, and
+            // the N-th child where {var:N} stands; a link or button too.
+            var _sentence = node.type === 'semantic' && _sdIsSentence(node);
             var _vtxt = null;
-            if (_isBtnLike && node.props.text) {
+            if (_isBtnLike && node.props.text && !_sentence) {
                 _vtxt = _createVirtualText(doc, node);
             }
             var _textPos = node.props.textPosition || 'end';
             if (_isBtnLike && _vtxt && _textPos === 'start') innerEl.appendChild(_vtxt);
-            if (node.children && node.children.length > 0) {
+            if (_sentence) {
+                _sdSentenceLayout(node.props.text, (node.children || []).length).forEach(function (piece) {
+                    innerEl.appendChild(typeof piece === 'number' ? buildNodeEl(node.children[piece - 1])
+                        : doc.createTextNode(piece));
+                });
+            } else if (node.children && node.children.length > 0) {
                 node.children.forEach(function (child) {
                     innerEl.appendChild(buildNodeEl(child));
                 });
+                // A list's sample rows after its card (_sdListGhostEls()).
+                if (node.type === 'loop_area') _sdListGhostEls(node).forEach(function (g) { innerEl.appendChild(g); });
             }
             if (_isBtnLike && _vtxt && _textPos !== 'start') innerEl.appendChild(_vtxt);
             // Non-button-like semantic: legacy behavior — text as plain text node AFTER children.
@@ -12844,7 +13118,7 @@ const StyleDesigner = (function () {
             // a <div> bound to __currency_selector carries only the binding, and the
             // server writes the value into it whatever `text` holds.
             var _semBoundText = !!(node.props._bindings && node.props._bindings.text);
-            if (!_isBtnLike && node.type === 'semantic' && ((node.props.text !== undefined && node.props.text !== '') || _semBoundText)) {
+            if (!_isBtnLike && !_sentence && node.type === 'semantic' && ((node.props.text !== undefined && node.props.text !== '') || _semBoundText)) {
                 var _semText = node.props.text || '';
                 var _semIsHtml = false;
                 if (node.props._bindings && node.props._bindings.text) {
@@ -12877,7 +13151,7 @@ const StyleDesigner = (function () {
                 innerEl.appendChild(dz);
             }
             // Section-binding placeholder — when a semantic node is bound to
-            // a system widget section (breadcrumb, group_tree, filter_chips,
+            // a system widget section (group_tree, filter_chips,
             // filters_offcanvas …), show a friendly hint in the canvas so
             // the designer sees what content the backend will inject at
             // render time. Hint is canvas-only — never saved or sent to
@@ -12890,11 +13164,8 @@ const StyleDesigner = (function () {
             if (node.type === 'semantic'
                 && node.props && node.props._bindings && node.props._bindings.section) {
                 var _sectionLabels = {
-                    breadcrumb:        _sdT('Breadcrumb (category path — filled in by the backend)'),
                     group_tree:        _sdT('Category Tree (nested list — filled by the backend)'),
-                    filter_chips:      _sdT('Active Filter Chips (filled in by the backend)'),
                     filters_offcanvas: _sdT('Filter Offcanvas (filled in by the backend — Bootstrap offcanvas)'),
-                    active_filters:    _sdT('Active Attribute Filters (filled in by the backend)'),
                     attribute_filters: _sdT('Attribute Filter UI (filled in by the backend)'),
                     applied_offers:    _sdT('Applied Offers (filled in by the backend)'),
                     recipient_picker:  _sdT('Recipient Picker (filled by the backend)'),
@@ -13359,6 +13630,7 @@ const StyleDesigner = (function () {
         return s;
     }
 
+    /* @pg-site-output */
     function buildInnerElement(doc, node) {
         switch (node.type) {
             case 'container':
@@ -13424,6 +13696,7 @@ const StyleDesigner = (function () {
                 var rn = node.props.regionName ? ': ' + node.props.regionName : '';
                 rg.innerHTML = '<span class="bi ' + ico + '"></span>' + esc(rl) + esc(rn) +
                     (SD_LEGACY_REGIONS[node.props.regionType] ? ' ' + _sdLegacyBadge() : '');
+                if (_sdLegacyRegionOwn(node)) _sdLegacyRegionAppend(doc, rg);
                 return rg;
             case 'component':
                 var comp = COMPONENTS[node.props.componentType];
@@ -13612,6 +13885,7 @@ const StyleDesigner = (function () {
     // lockstep. The status badge part (_sdPartOrderStatusBadge()) takes a
     // widget's own status_class_* setting, else these; once the part is in
     // the tree each badge's classes are the designer's.
+    /* @pg-site-output */
     var SD_OV_STATUS_CLASS_DEFAULTS = {
         complete:  'badge bg-success',
         pending:   'badge bg-warning text-dark',
@@ -13758,16 +14032,8 @@ const StyleDesigner = (function () {
     // approximation from the SAME markup shapes the PHP renderer emits.
     //
     // Preview only: never saved to the tree, never sent to the server.
+    /* @pg-site-output */
     var _SD_HTML_PREVIEW_TOKENS = {
-        // Mirrors pg_comments_stars_html(): five stars, four of them filled.
-        '__comment_stars_html': function () {
-            var star = function (d, cls) {
-                return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi ' + cls + '" viewBox="0 0 16 16" aria-hidden="true"><path d="' + d + '"/></svg>';
-            };
-            var fill = star('M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z', 'bi-star-fill');
-            return '<span class="pg-comment-stars" role="img" aria-label="' + esc(_sdT('Rated {var:1} out of 5', 4)) + '">' +
-                   fill + fill + fill + fill + star('M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z', 'bi-star') + '</span>';
-        },
         // The comment's text and the store's reply, as the page draws them
         // (convert_text_to_html()).
         '__comment_message_html': function () {
@@ -13828,20 +14094,9 @@ const StyleDesigner = (function () {
                    '<button type="button" class="btn btn-outline-primary" disabled>' + esc(_sdT('Request a return')) + '</button>' +
                    '</div>';
         },
-        // Mirrors pg_returns_list_html(): one bordered box per request with
-        // its status badge, lines and what to do next.
-        '__returns': function () {
-            return '<div class="pg-ov-returns"><div class="pg-ov-return border rounded p-3 mb-3">' +
-                   '<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">' +
-                   '<div><div class="fw-semibold">' + esc(_sdT('Return request')) + ' #12</div>' +
-                   '<div class="small text-muted">' + esc(_sdDateSample(false)) + '</div></div>' +
-                   '<span class="badge text-bg-info">' + esc(_sdT('Return approved')) + '</span></div>' +
-                   '<ul class="small mb-2 ps-3"><li>' + esc(_sdT('Sample Product Name')) + ' × 1</li></ul>' +
-                   '<div class="alert alert-info small py-2 my-2">' + esc(_sdT('Your return was approved. You can send the goods back now.')) + '</div>' +
-                   '</div></div>';
-        },
-        // Mirrors _pg_render_order_item_form_data_readonly() — fieldset +
-        // legend + stacked label/value pairs.
+        // A product form's answers: fieldset, legend and stacked
+        // label/value pairs (the order view draws them with the item form
+        // part, pg_sw_part_order_item_form()).
         '__item_form_data_html': function () {
             return '<div class="pg-ov-item-form mt-2">' +
                    '<fieldset class="pg-ov-item-form-block border rounded p-3 mt-2">' +
@@ -13912,7 +14167,8 @@ const StyleDesigner = (function () {
                    '<div><button type="button" class="btn btn-primary btn-sm" disabled>' + esc(_sdT('Add')) + '</button></div>' +
                    '</div></div>';
         },
-        // Mirrors _pg_render_order_item_gift_card_readonly().
+        // A gift card's details (the order view's gift card part,
+        // pg_sw_part_order_item_gift_card()).
         '__item_gift_card_html': function () {
             return '<div class="pg-ov-item-gift-card mt-2">' +
                    '<fieldset class="pg-ov-item-gift-card-block border rounded p-3 mt-2">' +
@@ -13936,7 +14192,7 @@ const StyleDesigner = (function () {
 
     // Numeric / count tokens — return a small number instead of lorem.
     var _SD_NUMERIC_TOKENS = {
-        '__result_count': '12', '__page_count': '2', '__result_number': '1', '__event_count': '4',
+        '__result_count': '12', '__page_count': '2', '__page_number': '1', '__result_number': '1', '__event_count': '4',
         '__item_qty': '1', '__item_quantity': '1',
         '__cart_count': '3', '__cart_count_label': _sdT('3 items'),
         '__inventory_quantity': '12', '__item_inventory_quantity': '12',
@@ -13952,7 +14208,8 @@ const StyleDesigner = (function () {
         '__has_low_stock': 1, '__has_tax': 1, '__has_shipping': 1,
         '__has_offers': 1, '__has_terms': 1, '__is_cancelled': 1,
         '__can_cancel': 1, '__has_timeline': 1, '__has_notes': 1,
-        '__has_tracking_link': 1
+        '__has_tracking_link': 1, '__has_related': 1,
+        '__has_active_filters': 1, '__has_active_attr_filters': 1
     };
     // A date the way the server prints one when no format suffix is given:
     // day/month/year and a 12-hour clock. Today's date, so the canvas never
@@ -14015,6 +14272,85 @@ const StyleDesigner = (function () {
     }
 
     // Decide preview value for a bound prop based on the prop name + node context.
+    // ── Legacy region preview ────────────────────────────────────────────
+    // The page's own system region of a classic page that draws a custom
+    // layout prints <system></system>, which the server fills from the
+    // layout. Under the region's label the canvas shows it as the server
+    // draws it for the signed-in user (api.php designer/legacy_region_preview):
+    // the page's saved state, read only. A named system region draws another
+    // page's region and keeps the plain placeholder. Canvas-only DOM like the
+    // ghost records: inert, never in the tree JSON, and nothing that would run
+    // in the editor, which shares the site's origin and holds the designer's
+    // session: no scripts, frames, plugins, event attributes or javascript:
+    // addresses, and no ids. Asked for once per page and again after a Save or
+    // a save of the page's layout tab.
+    var _sdLegacyRegionCache = {};   // page id → { html, loading, stale }
+
+    // The page's own system region: the unnamed one, the only one the server
+    // marks for the cut (get_page_content.php).
+    function _sdLegacyRegionOwn(node) {
+        return !!(node && node.props && node.props.regionType === 'system' && !node.props.regionName);
+    }
+
+    // Whether an attribute value is a javascript: address. Read as the browser
+    // reads one, and a little wider: C0 controls and spaces are left out
+    // wherever they stand, and the case does not count.
+    function _sdLegacyRegionJsUrl(value) {
+        return String(value == null ? '' : value).replace(/[\x00-\x20]+/g, '').toLowerCase().indexOf('javascript:') === 0;
+    }
+
+    // Ask again at the next render; the last answer stays on screen meanwhile.
+    function _sdLegacyRegionForget(pageId) {
+        Object.keys(_sdLegacyRegionCache).forEach(function (k) {
+            if (!pageId || String(pageId) === k) _sdLegacyRegionCache[k].stale = true;
+        });
+    }
+
+    function _sdLegacyRegionAppend(doc, rg) {
+        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        if (!_design || !p || !(p.page_id > 0)) return;
+        if ((_design.layoutPages || []).indexOf(p.page_id) === -1) return;
+        var id = p.page_id;
+        var entry = _sdLegacyRegionCache[id] || (_sdLegacyRegionCache[id] = { html: '', loading: false, stale: true });
+        if (entry.stale && !entry.loading) {
+            entry.stale = false;
+            entry.loading = true;
+            _pgApiPost('legacy_region_preview', { page_id: id }).then(function (res) {
+                entry.loading = false;
+                var html = (res && res.status === 'success' && typeof res.html === 'string') ? res.html : '';
+                if (html === entry.html) return;
+                entry.html = html;
+                if (typeof renderCanvas === 'function') renderCanvas();
+            }).catch(function () { entry.loading = false; });
+        }
+        if (!entry.html) return;
+
+        var tpl = doc.createElement('template');
+        tpl.innerHTML = entry.html;
+        // A frame or plugin runs even inside an inert box (a srcdoc or
+        // javascript: frame would run in the editor's origin), so they go
+        // with the scripts.
+        tpl.content.querySelectorAll('script, iframe, object, embed').forEach(function (el) { el.remove(); });
+        tpl.content.querySelectorAll('*').forEach(function (el) {
+            Array.prototype.slice.call(el.attributes).forEach(function (a) {
+                if (a.name === 'id' || a.name.slice(0, 2) === 'on' || _sdLegacyRegionJsUrl(a.value)) el.removeAttribute(a.name);
+            });
+        });
+        var box = doc.createElement('div');
+        box.className = 'sd-legacy-region';
+        box.setAttribute('aria-hidden', 'true');
+        box.setAttribute('inert', '');
+        box.appendChild(tpl.content);
+
+        var band = doc.createElement('div');
+        band.className = 'sd-legacy-band';
+        band.innerHTML = rg.innerHTML + ' <span class="sd-legacy-note">· ' + esc(_sdT('as the site draws it, read only')) + '</span>';
+        rg.innerHTML = '';
+        rg.classList.add('sd-legacy-live');
+        rg.appendChild(band);
+        rg.appendChild(box);
+    }
+
     // ── Ghost records ────────────────────────────────────────────────────
     // A listing widget's repeated part is designed once, on one sample
     // record. The canvas follows that card with real records the server draws
@@ -14125,9 +14461,15 @@ const StyleDesigner = (function () {
             var _sample = _sdCommentSample.values[fieldName];
             return (typeof _sample === 'function') ? _sample() : _sample;
         }
+        // A list's sample row (_sdListGhostEls()).
+        if (_sdListSample && fieldName && Object.prototype.hasOwnProperty.call(_sdListSample, fieldName)) {
+            return _sdListSample[fieldName];
+        }
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
         if (prop === 'href') return '#';
+        // A field of a referenced record ('__ref', SW_REF_TOKEN).
+        if ((prop === 'text' || prop === 'alt') && fieldName === '__ref') return _sdT('Example');
         if (prop === 'text' || prop === 'alt') {
             // Adaptive link caption — preview the DETAIL wording, since the
             // canvas always shows a sample product row and products always
@@ -14332,6 +14674,39 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // Whether a node is a sentence with values: a semantic element whose
+    // words are one translatable text, {var:N} placing its N-th child
+    // (pg_sentence_layout()).
+    function _sdIsSentence(node) {
+        return !!(node && node.type === 'semantic' && node.props && node.props._sentence);
+    }
+
+    // The layout of a sentence with values (pg_sentence_layout()): words
+    // (strings) and the places of the children (numbers from 1). A child is
+    // drawn once, at its first placeholder; a placeholder without a child
+    // draws nothing; a child no placeholder names follows after a space.
+    function _sdSentenceLayout(text, count) {
+        var parts = String(text == null ? '' : text).split(/\{var:([1-9][0-9]?)\}/);
+        var out = [], drawn = {};
+        parts.forEach(function (part, i) {
+            if (!(i % 2)) {
+                if (part !== '') out.push(part);
+                return;
+            }
+            var n = parseInt(part, 10);
+            if (n <= count && !drawn[n]) {
+                drawn[n] = true;
+                out.push(n);
+            }
+        });
+        for (var n = 1; n <= count; n++) {
+            if (drawn[n]) continue;
+            if (out.length) out.push(' ');
+            out.push(n);
+        }
+        return out;
+    }
+
     // Server-render tokens (^^__name^^ and ^^bare_name^^) embedded inside
     // _attrs values — e.g. <input name="quantity[^^__item_id^^]" value="^^__item_qty^^">.
     // PHP substitutes these at request time; canvas needs an in-place preview
@@ -14357,6 +14732,7 @@ const StyleDesigner = (function () {
         });
     }
 
+    /* @pg-site-output */
     function getNodeLabel(node) {
         if (node.props && node.props.customName) return node.props.customName;
         switch (node.type) {
@@ -14487,7 +14863,7 @@ const StyleDesigner = (function () {
             row(_sdT('Icon'),
                 '<div class="sd-pick-group">' +
                     '<input type="text" class="form-control form-control-sm" data-sd-bi-icon value="' + esc(ico) + '" placeholder="bi-icon-name">' +
-                    '<button class="btn btn-sm btn-outline-secondary sd-pick-btn sd-bi-icon-trigger" type="button">' + esc(_sdT('Select')) + '</button>' +
+                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn sd-bi-icon-trigger" type="button">' + esc(_sdT('Select')) + '</button>' +
                 '</div>'));
     }
 
@@ -14627,7 +15003,9 @@ const StyleDesigner = (function () {
                 // <a> is innerEl itself — edit directly, no span wrapper
                 editableTargets.push({ el: innerEl, prop: 'text' });
             }
-        } else if (node.type === 'semantic' && (node.props.text !== undefined || !(node.children && node.children.length))) {
+        } else if (node.type === 'semantic' && !_sdIsSentence(node) && (node.props.text !== undefined || !(node.children && node.children.length))) {
+            // A sentence with values is written in the panel: typing across
+            // it would take its values' words for its own.
             // Semantic elements with direct text (e.g. <button>, <a> with text
             // prop) — and any semantic element that has no children yet (an
             // empty <li>, <td>, <span>): typing into it is how it gets text.
@@ -16041,6 +16419,7 @@ const StyleDesigner = (function () {
         }
     }
 
+    /* @pg-site-output */
     function createFromPalette(type, extra) {
         switch (type) {
             case 'container': return createNode('container', { fluid: false, cssClass: '' }, []);
@@ -21813,6 +22192,7 @@ const StyleDesigner = (function () {
     }
 
     // ========================= NODE ACTIONS =========================
+    /* @pg-site-output */
     function onAddChild(node) {
         saveState();
         var n;
@@ -21947,6 +22327,7 @@ const StyleDesigner = (function () {
         render();
     }
 
+    /* @pg-site-output */
     function setQuickLayout(rowNode, layout) {
         saveState();
         rowNode.children = layout.map(function (w) { return createNode('col', colProps(String(w)), []); });
@@ -22243,7 +22624,7 @@ const StyleDesigner = (function () {
                 var c = CONTENT[k];
                 return { label: c.label, type: 'content', icon: c.icon, extra: { contentType: k } };
             })},
-            // Plain form controls. Each lands as <div class="mb-3"><label><control>
+            // Plain form controls. Each lands as <div class="mb-5"><label><control>
             // (a group as <fieldset><legend>…) with a Turkish default label
             // and a seeded name. Inside a custom form widget the block is a
             // field of the form from the moment it lands.
@@ -22260,6 +22641,8 @@ const StyleDesigner = (function () {
                 { label: _sdT('Images of the product'), type: 'loop_area', icon: 'bi-images', extra: { listSource: 'product.images' } },
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
+                { label: _sdT('Crumbs of the catalog path'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'catalog.crumbs' } },
+                { label: _sdT('Active attribute filters'), type: 'loop_area', icon: 'bi-funnel', extra: { listSource: 'catalog.active_filters' } },
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
                 { label: _sdT('Days of the week'), type: 'loop_area', icon: 'bi-calendar-week', extra: { listSource: 'calendar.weekdays' } },
                 { label: _sdT('Days of the calendar'), type: 'loop_area', icon: 'bi-calendar-day', extra: { listSource: 'calendar.days' } },
@@ -22270,7 +22653,13 @@ const StyleDesigner = (function () {
                 { label: _sdT('Steps of the order'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'order.steps' } },
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
-                { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } }
+                { label: _sdT('Offers applied to the order'), type: 'loop_area', icon: 'bi-tag', extra: { listSource: 'checkout.offers' } },
+                { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
+                { label: _sdT('Gift cards applied to the order'), type: 'loop_area', icon: 'bi-gift', extra: { listSource: 'checkout.gift_cards' } },
+                { label: _sdT('Recipients in the cart'), type: 'loop_area', icon: 'bi-people', extra: { listSource: 'checkout.recipients' } },
+                { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } },
+                { label: _sdT('Passkeys of the member'), type: 'loop_area', icon: 'bi-fingerprint', extra: { listSource: 'security.passkeys' } },
+                { label: _sdT('Page links'), type: 'loop_area', icon: 'bi-three-dots', extra: { listSource: 'paging.pages' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
@@ -22424,7 +22813,7 @@ const StyleDesigner = (function () {
             if (!noted.length) {
                 listEl.innerHTML =
                     '<div class="sd-notes-empty">' +
-                        '<span class="bi bi-chat-dots d-block mb-2" style="font-size:1.3rem;opacity:.5"></span>' +
+                        '<span class="bi bi-chat-dots d-block mb-3" style="font-size:1.3rem;opacity:.5"></span>' +
                         esc(_sdT('No note has been added yet.')) + '<br>' +
                         '<span style="font-size:11px;opacity:.7">' +
                             _sdT('Select an element and click the <span class="bi bi-chat"></span> icon, or press <kbd>N</kbd>.') + '</span>' +
@@ -22648,7 +23037,7 @@ const StyleDesigner = (function () {
                 var html = '';
                 if (!items.length) {
                     html = '<div class="sd-shared-tab-empty">' +
-                        '<span class="bi bi-puzzle d-block mb-2" style="font-size:1.5rem;color:#22c55e;opacity:.6"></span>' +
+                        '<span class="bi bi-puzzle d-block mb-3" style="font-size:1.5rem;color:#22c55e;opacity:.6"></span>' +
                         '<span>' + esc(_sdT('There is no shared component yet.')) + '</span><br>' +
                         '<span style="font-size:.75rem;opacity:.6">' + _sdT('Right-click an element and pick<br>"Convert to Shared Component".') + '</span>' +
                         '</div>';
@@ -23304,23 +23693,21 @@ const StyleDesigner = (function () {
         // Resolves true on Delete, false otherwise.
         function _bulkConfirm(opts) {
             return new Promise(function (resolve) {
-                if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+                if (!window.pgUI) {
                     resolve(opts.need ? (window.prompt(opts.text, '') || '').trim() === opts.need : window.confirm(opts.text));
                     return;
                 }
-                var el = document.createElement('div');
-                el.className = 'modal fade';
+                var el = document.createElement('dialog');
+                el.className = 'dialog pg-dialog-centered dialog-scrollable';
                 el.tabIndex = -1;
                 el.innerHTML =
-                    '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
-                        '<div class="modal-header py-2"><h6 class="modal-title mb-0"><span class="bi bi-trash text-danger me-2"></span>' + esc(opts.title) + '</h6>' +
-                            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
-                        '<div class="modal-body small">' + opts.html + '</div>' +
-                        '<div class="modal-footer py-2">' +
-                            '<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + esc(_sdT('Cancel')) + '</button>' +
-                            '<button type="button" class="btn btn-sm btn-danger" data-bulk-ok' + (opts.need ? ' disabled' : '') + '>' + esc(opts.okLabel) + '</button>' +
-                        '</div>' +
-                    '</div></div>';
+                    '<div class="dialog-header py-3"><h6 class="dialog-title mb-0"><span class="bi bi-trash fg-danger me-3"></span>' + esc(opts.title) + '</h6>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
+                        '<div class="dialog-body small">' + opts.html + '</div>' +
+                        '<div class="dialog-footer py-3">' +
+                            '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' + esc(_sdT('Cancel')) + '</button>' +
+                            '<button type="button" class="btn btn-sm btn-solid theme-danger" data-bulk-ok' + (opts.need ? ' disabled' : '') + '>' + esc(opts.okLabel) + '</button>' +
+                        '</div>';
                 document.body.appendChild(el);
                 var ok = false;
                 var okBtn = el.querySelector('[data-bulk-ok]');
@@ -23334,11 +23721,11 @@ const StyleDesigner = (function () {
                 okBtn.addEventListener('click', function () {
                     if (okBtn.disabled) return;
                     ok = true;
-                    bootstrap.Modal.getOrCreateInstance(el).hide();
+                    pgUI.dialog.hide(el);
                 });
-                el.addEventListener('shown.bs.modal', function () { (input || el.querySelector('[data-bs-dismiss].btn')).focus(); });
-                el.addEventListener('hidden.bs.modal', function () { el.remove(); resolve(ok); });
-                bootstrap.Modal.getOrCreateInstance(el, { backdrop: 'static' }).show();
+                pgUI.dialog.on(el, 'shown', function () { (input || el.querySelector('[data-bs-dismiss].btn')).focus(); });
+                pgUI.dialog.on(el, 'hidden', function () { el.remove(); resolve(ok); });
+                pgUI.dialog.show(el, { backdrop: 'static' });
             });
         }
 
@@ -23357,23 +23744,23 @@ const StyleDesigner = (function () {
             var items = picks.map(function (p) {
                 if (p.lines.length) used++;
                 return '<li><span class="fw-semibold">' + esc(names[p.sid] || ('#' + p.sid)) + '</span>' +
-                       (p.lines.length ? '<div class="text-danger">' + esc(_sdT('Used on: ') + p.lines.join(', ')) + '</div>' : '') +
+                       (p.lines.length ? '<div class="fg-danger">' + esc(_sdT('Used on: ') + p.lines.join(', ')) + '</div>' : '') +
                        '</li>';
             }).join('');
             var need = used ? String(ids.length) : null;
             var html =
-                '<p class="mb-2">' + esc(kind === 'system'
+                '<p class="mb-3">' + esc(kind === 'system'
                     ? _sdT('{var} system widgets will be deleted for good:', ids.length)
                     : _sdT('{var} shared components will be deleted for good:', ids.length)) + '</p>' +
                 '<ul class="sd-bulk-confirm-list">' + items + '</ul>';
             if (used) {
-                html += '<div class="alert alert-danger py-2 px-3 mb-2">' +
+                html += '<div class="alert theme-danger py-3 px-5 mb-3">' +
                             esc(_sdT('{var} of them are still in use. They are taken off this design\'s pages; in other designs their places are left empty.', used)) +
                         '</div>' +
                         '<label class="form-label mb-1" for="sd-bulk-confirm-input">' + esc(_sdT('Type {var} to confirm.', ids.length)) + '</label>' +
                         '<input type="text" class="form-control form-control-sm sd-bulk-confirm-input" id="sd-bulk-confirm-input" inputmode="numeric" autocomplete="off">';
             }
-            html += '<p class="text-muted mt-2 mb-0">' + esc(_sdT('This cannot be undone.')) + '</p>';
+            html += '<p class="fg-secondary mt-3 mb-0">' + esc(_sdT('This cannot be undone.')) + '</p>';
 
             _bulkConfirm({
                 title:   kind === 'system' ? _sdT('Delete system widgets') : _sdT('Delete shared components'),
@@ -25043,7 +25430,7 @@ const StyleDesigner = (function () {
         }
 
         if (!selectedNode) {
-            panel.innerHTML = '<div class="sd-attrs-empty"><span class="bi bi-cursor d-block mb-2" style="font-size:1.1rem"></span>' + esc(_sdT('No element selected')) + '</div>';
+            panel.innerHTML = '<div class="sd-attrs-empty"><span class="bi bi-cursor d-block mb-3" style="font-size:1.1rem"></span>' + esc(_sdT('No element selected')) + '</div>';
             return;
         }
 
@@ -26339,6 +26726,7 @@ const StyleDesigner = (function () {
 
     // ========================= HTML TREE (bottom panel) =========================
     // Returns the real HTML tag info for each node
+    /* @pg-site-output */
     function getNodeHtmlTag(node) {
         var tag = 'div', cls = '', id = node.props.id || '';
         var selfClose = false, preview = '';
@@ -27227,6 +27615,7 @@ const StyleDesigner = (function () {
         host.className = 'sd-html-code';
         host.innerHTML =
             '<div class="sd-code-tabs" id="sd-code-tabs"></div>' +
+            '<div class="sd-code-find d-none" id="sd-code-find"></div>' +
             '<div class="sd-code-panes" id="sd-code-panes">' +
                 '<div class="sd-code-pane pg-code-editor sd-code-pane-active" data-key="page" id="sd-code-pane-page"></div>' +
             '</div>';
@@ -27296,7 +27685,8 @@ const StyleDesigner = (function () {
             lockTitle: _sdCodeLockTitle,
             onSelection: _sdCodeOnSelection,
             onChange: _sdCodeOnChange,
-            onLockHit: _sdCodeOnLockHit
+            onLockHit: _sdCodeOnLockHit,
+            keys: [_sdCodeFindKey()]
         }).then(function (ed) {
             _sdCode.loading = false;
             _sdCode.ed = ed;
@@ -27441,6 +27831,9 @@ const StyleDesigner = (function () {
             // A content role outside its area: the text, nothing else.
             return textOk ? { level: 'half', attrs: false, text: true } : { level: 'full', attrs: false, text: false };
         }
+        // A sentence with values: its attribute values; its words and the
+        // places of its values are the panel's (_sdSentenceLayout()).
+        if (_sdIsSentence(node)) return { level: 'half', attrs: true, text: false };
         // A locked layer, a shared component or a widget (owner's rule:
         // half-locked): values and text, never the structure.
         if ((node.props && node.props._locked) || hasLockedAncestor(node) || _resolveSharedSid(node) > 0) {
@@ -27787,6 +28180,9 @@ const StyleDesigner = (function () {
     // markup itself), 'none' (nothing of its own to read).
     function _sdCodeTextKind(node) {
         if (!node) return 'none';
+        // A sentence's words are written in the panel: its values sit
+        // between them as elements of their own.
+        if (_sdIsSentence(node)) return 'none';
         if (node.type === 'semantic') return 'plain';
         if (node.type === 'content') {
             var ct = node.props.contentType;
@@ -28006,6 +28402,7 @@ const StyleDesigner = (function () {
 
     // A new element around existing nodes: a plain element with the typed
     // tag and attributes, so the nodes inside keep what they are.
+    /* @pg-site-output */
     function _sdCodeNewSemantic(item) {
         var props = { tag: item.tag, cssClass: '' };
         var attrs = [];
@@ -28020,12 +28417,14 @@ const StyleDesigner = (function () {
         return { _id: gid(), type: 'semantic', props: props, children: [] };
     }
 
+    /* @pg-site-output */
     function _sdCodeNewSpan(raw) {
         return { _id: gid(), type: 'content', props: { contentType: 'span', text: raw.trim(), cssClass: '' }, children: [] };
     }
 
     // The place a new element keeps until the converter answers: its own
     // markup as Custom HTML, which prints the same text.
+    /* @pg-site-output */
     function _sdCodeNewHolder(html) {
         return { _id: gid(), type: 'content', props: { contentType: 'custom_html', html: html, cssClass: '', _sdPending: html }, children: [] };
     }
@@ -28135,6 +28534,7 @@ const StyleDesigner = (function () {
         if (_sdCodeApplyBoundValue(node, key || name, now)) return;
         if (key) { p[key] = now || ''; return; }
         if (_sdCodeSetTitleAttr(node, name, now)) return;
+        if (_sdCodeSetFxAttr(node, name, now)) return;
         if (!Array.isArray(p._attrs)) p._attrs = [];
         var idx = -1;
         for (var i = 0; i < p._attrs.length; i++) {
@@ -28228,6 +28628,33 @@ const StyleDesigner = (function () {
         if (now === 'tooltip') return true;
         p.tooltipEnabled = false;
         return now === undefined;
+    }
+
+    // A data-pg-fx attribute edited in the code view goes back to the
+    // interaction it was printed from (_sdFxAttrs()): the node's attributes
+    // as printed, with this one changed, read back into props._fx. A
+    // data-pg-fx naming no known effect ends the interaction; false when the
+    // attribute is not the interaction's (another name, or a value typed on
+    // a node that has none and names no effect), which the caller then
+    // writes to the Attributes panel's list.
+    function _sdCodeSetFxAttr(node, name, now) {
+        if (name !== 'data-pg-fx' && name.indexOf('data-pg-fx-') !== 0) return false;
+        var p = node.props;
+        var had = _sdFxNormalize(p._fx);
+        if (!had && name !== 'data-pg-fx') return false;
+        var attrs = {};
+        _sdFxAttrs(p).replace(/\s(data-pg-fx[a-z-]*)(?:="([^"]*)")?/g, function (all, n, v) { attrs[n] = v === undefined ? '' : v; return all; });
+        if (now === undefined) delete attrs[name]; else attrs[name] = now;
+        var fx = { effect: attrs['data-pg-fx'] };
+        ['trigger', 'duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed'].forEach(function (f) {
+            if (attrs['data-pg-fx-' + f] !== undefined) fx[f] = attrs['data-pg-fx-' + f];
+        });
+        fx.repeat = attrs['data-pg-fx-repeat'] !== undefined;
+        fx = _sdFxNormalize(fx);
+        if (fx) { p._fx = fx; return true; }
+        if (!had) return false;
+        delete p._fx;
+        return true;
     }
 
     // The body tag's id and style live where the Attributes panel keeps the
@@ -28649,7 +29076,7 @@ const StyleDesigner = (function () {
             readOnly: true,
             phrases: _sdCodePhrases(),
             labels: { syntaxError: _sdT('Syntax error') },
-            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }],
+            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }, _sdCodeFindKey()],
             onChange: function () {
                 if (!tab.loaded || tab.dirty) return;
                 tab.dirty = true;
@@ -28747,6 +29174,67 @@ const StyleDesigner = (function () {
         });
     }
 
+    // A classic page's custom layout (the PHP its system region draws) as a
+    // file tab: read, regenerated and saved through api.php's layout_code,
+    // which admits the classic layout editor's role (designers and
+    // administrators) and checks the form token. A text saved equal to the
+    // generated layout, white space aside, leaves the page unmodified.
+    // Regenerate puts the generated layout in the tab; nothing is saved
+    // until the tab is. Read only on a hosted site, which ignores the file.
+    function _sdLayoutCodeOpen(page, regenerate) {
+        if (!page || !(page.page_id > 0)) return;
+        var key = 'layout:' + page.page_id;
+        var readOnly = !!(_design && _design.layoutReadOnly);
+        if (regenerate && readOnly) return;
+        var post = function (sub, extra, cb) {
+            var body = { action: 'layout_code', sub_action: sub, page_id: page.page_id, token: _pgToken() };
+            if (extra) Object.keys(extra).forEach(function (k) { body[k] = extra[k]; });
+            var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+            fetch(url, { method: 'POST', body: JSON.stringify(body), credentials: 'same-origin',
+                         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data && data.status === 'success') cb({ ok: true, content: data.content || '' });
+                    else cb({ ok: false, message: (data && data.message) || _sdT('Network error') });
+                })
+                .catch(function () { cb({ ok: false, message: _sdT('Network error') }); });
+        };
+        if (regenerate && !window.confirm(_sdT('Replace the layout in the editor with a newly generated one? Nothing is saved until you save the file.'))) return;
+        var open = _sdCodeTabFind(key);
+        var spec = {
+            key: key,
+            title: _sdT('Layout (PHP)') + (page.page_name ? ': ' + page.page_name : ''),
+            icon: 'bi-filetype-php',
+            language: 'php',
+            readOnly: readOnly,
+            url: null,
+            load: function (cb) {
+                if (!regenerate) { post('read', null, cb); return; }
+                // A new tab starts from the generated text, unsaved.
+                post('regenerate', null, function (res) {
+                    cb(res);
+                    var tab = _sdCodeTabFind(key);
+                    if (res.ok && tab) { tab.dirty = true; _sdCodeTabsRender(); }
+                });
+            },
+            save: function (content, cb) {
+                post('save', { content: content }, function (res) {
+                    if (res.ok) { _sdLegacyRegionForget(page.page_id); if (typeof renderCanvas === 'function') renderCanvas(); }
+                    cb(res);
+                });
+            }
+        };
+        _sdCodeTabOpen(spec);
+        if (!regenerate || !open) return;
+        if (!open.loaded) return;
+        post('regenerate', null, function (res) {
+            var tab = _sdCodeTabFind(key);
+            if (!tab || !tab.ed) return;
+            if (res.ok) tab.ed.setValue(res.content);
+            else sdToast(esc(res.message || ''), 'error', 5000);
+        });
+    }
+
     // Ctrl+S with the keyboard in a file tab saves that file, not the design.
     function _sdCodeSaveShortcut() {
         var tab = _sdCodeActiveTab();
@@ -28771,6 +29259,7 @@ const StyleDesigner = (function () {
                 '</button>';
         });
         html += '<span class="sd-code-tabs-spacer"></span>';
+        html += '<button type="button" class="sd-code-tab sd-code-find-toggle' + (_sdCodeFind && _sdCodeFind.open ? ' sd-code-tab-active' : '') + '" id="sd-code-find-toggle" title="' + esc(_sdT('Search in all tabs (Ctrl+Shift+F)')) + '"><span class="bi bi-search"></span></button>';
         if (active && active.key !== 'page' && active.spec) {
             if (active.spec.url) {
                 html += '<input type="text" class="sd-code-url" id="sd-code-url" value="' + esc(active.spec.url.value || '') + '" placeholder="https://" title="' + esc(_sdT('External URL:')) + '">';
@@ -28790,6 +29279,7 @@ const StyleDesigner = (function () {
                 if (e.button === 1 && this.getAttribute('data-key') !== 'page') { e.preventDefault(); _sdCodeTabClose(this.getAttribute('data-key')); }
             });
         });
+        strip.querySelector('#sd-code-find-toggle').addEventListener('click', function () { _sdCodeFindShow(!_sdCodeFind.open); });
         var save = strip.querySelector('#sd-code-file-save');
         if (save) save.addEventListener('click', function () { _sdCodeTabSave(active.key); });
         var url = strip.querySelector('#sd-code-url');
@@ -28797,6 +29287,142 @@ const StyleDesigner = (function () {
             url.addEventListener('change', function () { active.spec.url.onSave(this.value.trim()); });
             url.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); this.blur(); } });
         }
+    }
+
+    // ===================== CODE VIEW: SEARCH IN ALL TABS =====================
+    // One search over the page and every loaded file tab: a bar under the
+    // strip lists the hits by tab, a hit opens its tab and selects it. The
+    // texts are read from the editors as they are now (unsaved changes
+    // included); PgCodeEditor.findAll() does the matching. Enter / Shift+
+    // Enter in the field walk the hits, Escape closes the bar.
+    var _sdCodeFind = { open: false, query: { search: '', caseSensitive: false, wholeWord: false, regexp: false }, hits: [], at: -1, timer: 0 };
+    var _SD_CODE_FIND_LIMIT = 500;   // hits per tab
+
+    function _sdCodeFindKey() {
+        return { key: 'Mod-Shift-f', run: function () { _sdCodeFindShow(true); return true; } };
+    }
+
+    function _sdCodeFindShow(on) {
+        var bar = document.getElementById('sd-code-find');
+        if (!bar) return;
+        _sdCodeFind.open = !!on;
+        bar.classList.toggle('d-none', !on);
+        _sdCodeTabsRender();
+        if (!on) { bar.innerHTML = ''; _sdCodeFind.hits = []; return; }
+        // A one-line selection in the active tab is what is looked for.
+        var tab = _sdCodeActiveTab();
+        if (tab && tab.ed) {
+            var sel = tab.ed.selection();
+            var picked = sel.to > sel.from ? tab.ed.sliceDoc(sel.from, sel.to) : '';
+            if (picked && picked.indexOf('\n') === -1) _sdCodeFind.query.search = picked;
+        }
+        var q = _sdCodeFind.query;
+        var opt = function (name, label, icon) {
+            return '<button type="button" class="sd-code-find-opt' + (q[name] ? ' active' : '') + '" data-opt="' + name + '" title="' + esc(label) + '" aria-pressed="' + (q[name] ? 'true' : 'false') + '">' + icon + '</button>';
+        };
+        bar.innerHTML =
+            '<div class="sd-code-find-row">' +
+                '<span class="bi bi-search"></span>' +
+                '<input type="search" class="sd-code-find-input" id="sd-code-find-input" placeholder="' + esc(_sdT('Search in all tabs')) + '" value="' + esc(q.search) + '" spellcheck="false">' +
+                opt('caseSensitive', _sdT('match case'), 'Aa') + opt('wholeWord', _sdT('by word'), 'ab') + opt('regexp', _sdT('regexp'), '.*') +
+                '<span class="sd-code-find-count" id="sd-code-find-count"></span>' +
+                '<button type="button" class="sd-code-find-opt" data-close="1" title="' + esc(_sdT('Close')) + '">&times;</button>' +
+            '</div>' +
+            '<div class="sd-code-find-results" id="sd-code-find-results"></div>';
+        var input = bar.querySelector('#sd-code-find-input');
+        input.addEventListener('input', function () {
+            q.search = this.value;
+            clearTimeout(_sdCodeFind.timer);
+            _sdCodeFind.timer = setTimeout(_sdCodeFindRun, 200);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _sdCodeFindShow(false); return; }
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            clearTimeout(_sdCodeFind.timer);
+            if (q.search !== '' && !_sdCodeFind.hits.length) _sdCodeFindRun();
+            var n = _sdCodeFind.hits.length;
+            if (n) _sdCodeFindPick(((_sdCodeFind.at + (e.shiftKey ? -1 : 1)) % n + n) % n, true);
+        });
+        bar.querySelectorAll('.sd-code-find-opt').forEach(function (b) {
+            b.addEventListener('click', function () {
+                if (this.getAttribute('data-close')) { _sdCodeFindShow(false); return; }
+                var name = this.getAttribute('data-opt');
+                q[name] = !q[name];
+                this.classList.toggle('active', q[name]);
+                this.setAttribute('aria-pressed', q[name] ? 'true' : 'false');
+                _sdCodeFindRun();
+            });
+        });
+        bar.querySelector('#sd-code-find-results').addEventListener('click', function (e) {
+            var hit = e.target.closest('[data-hit]');
+            if (hit) _sdCodeFindPick(parseInt(hit.getAttribute('data-hit'), 10), false);
+        });
+        input.focus();
+        input.select();
+        _sdCodeFindRun();
+    }
+
+    function _sdCodeFindRun() {
+        var list = document.getElementById('sd-code-find-results');
+        var count = document.getElementById('sd-code-find-count');
+        if (!list || !count) return;
+        var q = _sdCodeFind.query;
+        var hits = [], html = '', error = '', truncated = false, tabs = 0;
+        if (q.search !== '' && typeof PgCodeEditor !== 'undefined') {
+            _sdCode.tabs.forEach(function (t) {
+                if (!t.ed || (t.key !== 'page' && !t.loaded) || error) return;
+                var r = PgCodeEditor.findAll(t.ed.getValue(), q, _SD_CODE_FIND_LIMIT);
+                if (r.error) { error = r.error; return; }
+                if (!r.matches.length) return;
+                truncated = truncated || r.truncated;
+                tabs++;
+                var title = t.key === 'page' ? _sdT('Page') : t.title;
+                html += '<div class="sd-code-find-tab"><span class="bi ' + esc(t.icon) + '"></span>' + esc(title) + '<span class="sd-code-find-n">' + r.matches.length + '</span></div>';
+                r.matches.forEach(function (m) {
+                    html += '<div class="sd-code-find-hit" data-hit="' + hits.length + '"><span class="sd-code-find-ln">' + m.line + '</span>' + _sdCodeFindPreview(m) + '</div>';
+                    hits.push({ key: t.key, from: m.from, to: m.to, text: m.text });
+                });
+            });
+        }
+        _sdCodeFind.hits = error ? [] : hits;
+        _sdCodeFind.at = -1;
+        if (error) {
+            count.textContent = _sdT('Invalid regular expression');
+            list.innerHTML = '';
+        } else {
+            count.textContent = q.search === '' ? '' : (hits.length ? _sdT('{var:1} results in {var:2} tabs', [hits.length + (truncated ? '+' : ''), tabs]) : _sdT('No results'));
+            list.innerHTML = html;
+        }
+        count.classList.toggle('fg-danger', !!error);
+    }
+
+    // The hit's line, cut to the words around the match, the match marked.
+    function _sdCodeFindPreview(m) {
+        var line = m.lineText, end = Math.min(line.length, m.col + m.text.length);
+        var start = Math.max(0, m.col - 40);
+        var before = line.slice(start, m.col).replace(/^\s+/, '');
+        var after = line.slice(end, end + 80);
+        return '<span class="sd-code-find-text">' + (start > 0 ? '&hellip;' : '') + esc(before) +
+            '<mark>' + esc(line.slice(m.col, end)) + '</mark>' + esc(after) + (end + 80 < line.length ? '&hellip;' : '') + '</span>';
+    }
+
+    // Opens the hit's tab and selects it; a text that changed since the
+    // search (typed, a canvas edit, a closed tab) is searched again first.
+    function _sdCodeFindPick(i, keepFocus) {
+        var hit = _sdCodeFind.hits[i];
+        if (!hit) return;
+        var tab = _sdCodeTabFind(hit.key);
+        if (!tab || !tab.ed || tab.ed.sliceDoc(hit.from, hit.to) !== hit.text) { _sdCodeFindRun(); return; }
+        _sdCodeFind.at = i;
+        if (_sdCode.active !== hit.key) _sdCodeTabActivate(hit.key);
+        tab.ed.goTo(hit.from, hit.to, { focus: !keepFocus });
+        var list = document.getElementById('sd-code-find-results');
+        if (!list) return;
+        list.querySelectorAll('.sd-code-find-hit.active').forEach(function (el) { el.classList.remove('active'); });
+        var row = list.querySelector('[data-hit="' + i + '"]');
+        if (row) { row.classList.add('active'); row.scrollIntoView({ block: 'nearest' }); }
+        if (keepFocus) { var input = document.getElementById('sd-code-find-input'); if (input) input.focus(); }
     }
 
     // ── Shared Context Menu Builder ────────────────────────────────────────────────
@@ -29877,7 +30503,7 @@ const StyleDesigner = (function () {
         // Render helpers — data-mc-prop (n.props.*) or data-mc-stylegroup (cssClass mutation)
         function _mcSel(prop, opts, uVal) {
             var isMixed = uVal === null;
-            var h = '<select class="form-select form-select-sm" data-mc-prop="' + prop + '">';
+            var h = '<select class="form-control form-control-sm" data-mc-prop="' + prop + '">';
             h += '<option value="">' + (isMixed ? _sdT('— Multiple —') : _sdT('Default')) + '</option>';
             opts.forEach(function(o) {
                 h += '<option value="' + esc(o[0]) + '"' + (!isMixed && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -29886,7 +30512,7 @@ const StyleDesigner = (function () {
         }
         function _mcGroupSel(groupArr, opts, uVal) {
             var isMixed = uVal === null;
-            var h = '<select class="form-select form-select-sm" data-mc-stylegroup="' + groupArr.join(',') + '">';
+            var h = '<select class="form-control form-control-sm" data-mc-stylegroup="' + groupArr.join(',') + '">';
             h += '<option value="">' + (isMixed ? _sdT('— Multiple —') : _sdT('Default')) + '</option>';
             opts.forEach(function(o) {
                 h += '<option value="' + esc(o[0]) + '"' + (!isMixed && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -30282,9 +30908,11 @@ const StyleDesigner = (function () {
         }
         // A value condition's compared text with words in it (the server
         // decides exactly: pg_sw_cond_operand_is_words()).
-        var cp = p._bindParams && p._bindParams.show_if;
-        if (p._bindings && p._bindings.show_if && cp && /^(eq|neq|contains|not_contains|starts)$/.test(String(cp.op || '')) &&
-            /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/.test(String(cp.value || ''))) return true;
+        if (SD_COND_NAMES.some(function (name) {
+            var cp = p._bindParams && p._bindParams[name];
+            return !!(p._bindings && p._bindings[name] && cp && /^(eq|neq|contains|not_contains|starts)$/.test(String(cp.op || '')) &&
+                /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/.test(String(cp.value || '')));
+        })) return true;
         if (Array.isArray(p._attrs)) {
             return p._attrs.some(function (a) {
                 return a && /^(alt|title|placeholder|aria-label|aria-description|data-bs-title|data-bs-content|value)$/i.test(String(a.name || '')) && String(a.value || '').trim() !== '';
@@ -30324,7 +30952,10 @@ const StyleDesigner = (function () {
             headerText: _sdT('Header'), footerText: _sdT('Footer'), brand: _sdT('Brand'), alt: _sdT('Alt text'), html: _sdT('HTML'),
             _labelDetail: _sdT('Caption: to the detail'), _labelExpand: _sdT('Caption: expanding') };
         if (field.indexOf('_attrs:') === 0) return field.slice(7);
-        if (field.indexOf('_cond:') === 0) return _sdT('Condition: compared with');
+        if (field.indexOf('_cond:') === 0) {
+            var condRow = SD_COND_NAMES.indexOf(field.slice(6));
+            return condRow > 0 ? _sdT('Condition {var:1}: compared with', [condRow + 1]) : _sdT('Condition: compared with');
+        }
         // An attribute of a text or of stored HTML (pg_tr_node_texts(),
         // pg_tr_field_segments()): "<field>@<attribute>#n".
         var at = field.indexOf('@');
@@ -30364,7 +30995,7 @@ const StyleDesigner = (function () {
                     '<textarea class="form-control form-control-sm sd-tr-input' + (seg.format === 'inline' ? ' sd-tr-inline' : '') + '" rows="2" spellcheck="true" lang="' + esc(lang.code) + '"' + (seg.locked ? ' readonly' : '') + '>' + esc(t ? t.text : '') + '</textarea>' +
                     (seg.locked ? '' :
                     '<div class="sd-tr-actions">' +
-                        '<button type="button" class="btn btn-sm btn-primary sd-tr-save" disabled>' + esc(_sdT('Save')) + '</button>' +
+                        '<button type="button" class="btn btn-sm btn-solid theme-primary sd-tr-save" disabled>' + esc(_sdT('Save')) + '</button>' +
                         ((t && t.text && t.state !== 'reviewed') ? '<button type="button" class="btn btn-sm btn-link sd-tr-review">' + esc(_sdT('Approve')) + '</button>' : '') +
                     '</div>') +
                 '</div>';
@@ -30445,7 +31076,7 @@ const StyleDesigner = (function () {
                 if (seq === _sdTrSeq && now && now.getAttribute('data-node') === String(n._id || '')) _sdTrDraw(now, data);
             }).catch(function (err) {
                 var now = document.getElementById('sd-tr-box');
-                if (seq === _sdTrSeq && now) now.innerHTML = '<div class="sd-tr-note text-danger">' + esc(err.message) + '</div>';
+                if (seq === _sdTrSeq && now) now.innerHTML = '<div class="sd-tr-note fg-danger">' + esc(err.message) + '</div>';
             });
         }, 250);
     }
@@ -30499,6 +31130,7 @@ const StyleDesigner = (function () {
     // makes one (pg_di_node()): its words, with any inline markup, are the
     // text; address, target, rel and classes are its options; any other
     // attribute stays an attribute.
+    /* @pg-site-output */
     function _sdIlLinkNode(a) {
         var p = {
             contentType: 'link',
@@ -30532,15 +31164,15 @@ const StyleDesigner = (function () {
                 '<div style="display:flex;align-items:center;gap:4px;font-size:.75rem;font-weight:600;margin-bottom:4px">' +
                     '<span class="bi bi-link-45deg" aria-hidden="true"></span>' +
                     '<span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(label) + '">' + esc(label) + '</span>' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" data-sd-il-act="out" title="' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '"><span class="bi bi-box-arrow-down-right" aria-hidden="true"></span></button>' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" data-sd-il-act="unlink" title="' + esc(_sdT('Remove the link, keep the words')) + '"><span class="bi bi-eraser" aria-hidden="true"></span></button>' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary py-0 px-1" data-sd-il-act="out" title="' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '"><span class="bi bi-box-arrow-down-right" aria-hidden="true"></span></button>' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary py-0 px-1" data-sd-il-act="unlink" title="' + esc(_sdT('Remove the link, keep the words')) + '"><span class="bi bi-eraser" aria-hidden="true"></span></button>' +
                 '</div>' +
                 row(_sdT('Link'),
                     '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" id="sd-il-href-' + i + '" data-sd-il="href" value="' + esc(a.getAttribute('href') || '') + '">' +
-                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" data-sd-il-pick="sd-il-href-' + i + '">' + esc(_sdT('Select')) + '</button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" data-sd-il-pick="sd-il-href-' + i + '">' + esc(_sdT('Select')) + '</button>' +
                     '</div>') +
-                row(_sdT('Target'), '<select class="form-select form-select-sm" data-sd-il="target">' +
+                row(_sdT('Target'), '<select class="form-control form-control-sm" data-sd-il="target">' +
                     targets.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === target ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
                     '</select>') +
                 row(_sdT('Classes'), '<input type="text" class="form-control form-control-sm" data-sd-il="class" value="' + esc(a.getAttribute('class') || '') + '" spellcheck="false">') +
@@ -30548,7 +31180,7 @@ const StyleDesigner = (function () {
             '</div>';
         });
         if (_sdIlOnlyLinks(frag)) {
-            h += '<button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2" data-sd-il-act="split"><span class="bi bi-distribute-horizontal me-1" aria-hidden="true"></span>' + esc(_sdT('Split into elements')) + '</button>' +
+            h += '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-3" data-sd-il-act="split"><span class="bi bi-distribute-horizontal me-1" aria-hidden="true"></span>' + esc(_sdT('Split into elements')) + '</button>' +
                 '<div style="font-size:.7rem;opacity:.75;margin-top:4px">' + esc(_sdT('This text is links only: each becomes an element of its own, to select, edit and move.')) + '</div>';
         }
         return sect('bi-link-45deg', _sdT('Links in the text'), '<div class="sd-il" data-sd-il-node="' + esc(n._id || '') + '">' + h + '</div>');
@@ -30572,6 +31204,7 @@ const StyleDesigner = (function () {
     // The text becomes an element of the same tag and classes holding a link
     // element for each link and a span for a separator. The node keeps its
     // id: its name, notes, attributes and place stay.
+    /* @pg-site-output */
     function _sdIlSplit(n) {
         var frag = _sdIlParse(n.props.text);
         if (!_sdIlOnlyLinks(frag)) return;
@@ -31001,7 +31634,7 @@ const StyleDesigner = (function () {
         if (!opaque && !isImg) {
             var tags = _SD_TEXT_INNER_TAGS.slice();
             if (tags.indexOf(tag) === -1) tags.unshift(tag);
-            h += row(esc(_sdT('Tag')), '<select class="form-select form-select-sm" data-sd-inner="tag"' + dis + '>' +
+            h += row(esc(_sdT('Tag')), '<select class="form-control form-control-sm" data-sd-inner="tag"' + dis + '>' +
                 tags.map(function (t) { return '<option value="' + esc(t) + '"' + (t === tag ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') +
                 '</select>');
             if (el.firstElementChild) {
@@ -31021,8 +31654,8 @@ const StyleDesigner = (function () {
             var targets = [['', _sdT('Default/Self')], ['_blank', _sdT('New Window (_blank)')]];
             if (target && target !== '_blank') targets.push([target, target]);
             h += row(esc(_sdT('Link')), '<div class="sd-pick-group">' + attrIn('href', '', 'sd-inner-href') +
-                '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" data-sd-inner-act="pick"' + dis + '>' + esc(_sdT('Select')) + '</button></div>');
-            h += row(esc(_sdT('Target')), '<select class="form-select form-select-sm" data-sd-inner-attr="target"' + dis + '>' +
+                '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" data-sd-inner-act="pick"' + dis + '>' + esc(_sdT('Select')) + '</button></div>');
+            h += row(esc(_sdT('Target')), '<select class="form-control form-control-sm" data-sd-inner-attr="target"' + dis + '>' +
                 targets.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === target ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
                 '</select>');
             h += row('rel', attrIn('rel', 'noopener'));
@@ -31043,23 +31676,23 @@ const StyleDesigner = (function () {
             a += '<div class="sd-inner-attr">' +
                 '<input type="text" class="form-control form-control-sm" data-sd-inner-rename="' + esc(at.name) + '" value="' + esc(at.name) + '" spellcheck="false"' + dis + '>' +
                 '<input type="text" class="form-control form-control-sm" data-sd-inner-attr="' + esc(at.name) + '" value="' + esc(at.value) + '" spellcheck="false"' + dis + '>' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="del-attr" data-sd-inner-name="' + esc(at.name) + '" title="' + esc(_sdT('Delete')) + '"' + dis + '><span class="bi bi-x" aria-hidden="true"></span></button>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-sd-inner-act="del-attr" data-sd-inner-name="' + esc(at.name) + '" title="' + esc(_sdT('Delete')) + '"' + dis + '><span class="bi bi-x" aria-hidden="true"></span></button>' +
             '</div>';
         });
         if (editable) {
             a += '<div class="sd-inner-attr">' +
                 '<input type="text" class="form-control form-control-sm" data-sd-inner-new="name" placeholder="' + esc(_sdT('attribute')) + '" spellcheck="false">' +
                 '<input type="text" class="form-control form-control-sm" data-sd-inner-new="value" placeholder="' + esc(_sdT('value')) + '" spellcheck="false">' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="add-attr" title="' + esc(_sdT('Add an Attribute')) + '"><span class="bi bi-plus-lg" aria-hidden="true"></span></button>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-sd-inner-act="add-attr" title="' + esc(_sdT('Add an Attribute')) + '"><span class="bi bi-plus-lg" aria-hidden="true"></span></button>' +
             '</div>';
         }
 
         var acts = '';
         if (editable) {
             acts = '<div class="sd-inner-acts">' +
-                (!opaque && !isImg ? '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="unwrap"><span class="bi bi-eraser me-1" aria-hidden="true"></span>' + esc(_sdT('Remove the element, keep the words')) + '</button>' : '') +
-                (tag === 'a' && _sdIlTextNode(s.node) ? '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="out"><span class="bi bi-box-arrow-down-right me-1" aria-hidden="true"></span>' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '</button>' : '') +
-                '<button type="button" class="btn btn-sm btn-outline-danger" data-sd-inner-act="delete"><span class="bi bi-trash me-1" aria-hidden="true"></span>' + esc(_sdT('Delete')) + '</button>' +
+                (!opaque && !isImg ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-sd-inner-act="unwrap"><span class="bi bi-eraser me-1" aria-hidden="true"></span>' + esc(_sdT('Remove the element, keep the words')) + '</button>' : '') +
+                (tag === 'a' && _sdIlTextNode(s.node) ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-sd-inner-act="out"><span class="bi bi-box-arrow-down-right me-1" aria-hidden="true"></span>' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '</button>' : '') +
+                '<button type="button" class="btn btn-sm btn-outline theme-danger" data-sd-inner-act="delete"><span class="bi bi-trash me-1" aria-hidden="true"></span>' + esc(_sdT('Delete')) + '</button>' +
             '</div>';
         }
 
@@ -31190,7 +31823,7 @@ const StyleDesigner = (function () {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
         if (!selectedNode) {
-            panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-2" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
+            panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-3" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
             return;
         }
         // Content level: a block the operator does not own gets a panel that
@@ -31208,7 +31841,7 @@ const StyleDesigner = (function () {
                 (_roTr ? '<div class="sd-tab-content">' + _roTr + '</div>' : '') +
                 '<div class="sd-props-readonly">' +
                     '<div class="sd-props-readonly-head">' +
-                        '<span class="bi bi-lock-fill me-2"></span>' +
+                        '<span class="bi bi-lock-fill me-3"></span>' +
                         esc(_isInsideSystemWidget(selectedNode)
                             ? _sdT('System widget')
                             : (_sdInClosedShared(selectedNode) ? _sdT('Shared component') : _sdT('Read-only'))) +
@@ -31227,8 +31860,8 @@ const StyleDesigner = (function () {
                         ? '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Image')) + '</label>' +
                           '<div class="sd-prop-control"><div class="input-group input-group-sm">' +
                             '<input type="text" class="form-control form-control-sm" id="sd-ro-img-src" value="' + esc(_roImage.url) + '" readonly>' +
-                            '<button class="btn btn-sm btn-outline-secondary" type="button" id="sd-ro-img-pick">' + esc(_sdT('Choose')) + '</button>' +
-                            '<button class="btn btn-sm btn-outline-secondary" type="button" id="sd-ro-img-edit" title="' + esc(_sdT('Edit image')) + '"><i class="bi bi-brush"></i></button>' +
+                            '<button class="btn btn-sm btn-outline theme-secondary" type="button" id="sd-ro-img-pick">' + esc(_sdT('Choose')) + '</button>' +
+                            '<button class="btn btn-sm btn-outline theme-secondary" type="button" id="sd-ro-img-edit" title="' + esc(_sdT('Edit image')) + '"><i class="bi bi-brush"></i></button>' +
                           '</div></div></div>'
                         : '') +
                 '</div>';
@@ -31266,10 +31899,10 @@ const StyleDesigner = (function () {
             if (_cellsForMerge.length >= 2) {
                 var _mc = canMergeCells(_cellsForMerge);
                 var _mergeBtn = _mc.ok
-                    ? '<button type="button" class="btn btn-sm btn-primary mt-2" id="sd-merge-cells-btn"><i class="bi bi-table me-1"></i>' + esc(_sdT('Merge')) + ' (' + _cellsForMerge.length + ')</button>'
-                    : '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" disabled title="' + esc(_sdT('Select adjacent cells')) + '"><i class="bi bi-table me-1"></i>' + esc(_sdT('Merge')) + '</button>';
+                    ? '<button type="button" class="btn btn-sm btn-solid theme-primary mt-3" id="sd-merge-cells-btn"><i class="bi bi-table me-1"></i>' + esc(_sdT('Merge')) + ' (' + _cellsForMerge.length + ')</button>'
+                    : '<button type="button" class="btn btn-sm btn-outline theme-secondary mt-3" disabled title="' + esc(_sdT('Select adjacent cells')) + '"><i class="bi bi-table me-1"></i>' + esc(_sdT('Merge')) + '</button>';
                 panel.innerHTML = '<div class="sd-props-empty"><div>' +
-                    '<span class="bi bi-table d-block mb-2" style="font-size:1.5rem"></span>' +
+                    '<span class="bi bi-table d-block mb-3" style="font-size:1.5rem"></span>' +
                     '<strong>' + esc(_sdT('{var} cells selected', _cellsForMerge.length)) + '</strong>' +
                     _mergeBtn + '</div></div>';
                 var _mBtn = document.getElementById('sd-merge-cells-btn');
@@ -31317,6 +31950,10 @@ const StyleDesigner = (function () {
 
         // Search and SERP: the part of the page a site search result points at.
         optHtml += propsSearchSection(selectedNode);
+
+        // Interactions: the node's entrance, hover, click, sticky or
+        // parallax effect (props._fx).
+        optHtml += propsInteractions(selectedNode);
 
         // Data binding section — shown ONLY when selectedNode is inside a system widget.
         // Renders nothing for nodes outside system widgets (zero overhead in the common case).
@@ -31367,6 +32004,7 @@ const StyleDesigner = (function () {
         var _cmtOpenBtn = document.getElementById('sd-cmt-open-settings');
         if (_cmtOpenBtn) _cmtOpenBtn.addEventListener('click', function () { _sdOpenWidgetSection(this.dataset.swId, 'sd-cmt-settings'); });
         _sdIlBind(selectedNode);
+        _sdFxBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
         // Re-apply search filter if user had typed something
@@ -31460,6 +32098,129 @@ const StyleDesigner = (function () {
                 '</div></div>';
         }
         return sect('bi-search', _sdT('Search and SERP'), h);
+    }
+
+    // ── Interactions ──────────────────────────────────────────────────────
+    // One effect per node, kept in props._fx (_sdFxNormalize()) and written
+    // on the page as data-pg-fx-* attributes (_sdFxAttrs(), pg_fx_attrs());
+    // assets/js/pg_fx.src.js plays it on the published page and in the
+    // Preview. Offered only where the page writes it: the content types
+    // whose markup carries the node's attributes, semantic and grid nodes,
+    // and components on the element that takes their id (the language
+    // switcher is a placeholder drawn later). Nodes inside a widget or a
+    // shared component are drawn by the same paths.
+    var _SD_FX_CONTENT = ['heading', 'paragraph', 'span', 'text', 'link', 'icon', 'image', 'divider', 'spacer', 'svg'];
+    function _sdFxTakes(n) {
+        if (!n || !n.props) return false;
+        if (n.type === 'semantic' || n.type === 'container' || n.type === 'row' || n.type === 'col') return true;
+        if (n.type === 'component') return n.props.componentType !== 'language_switcher';
+        return n.type === 'content' && _SD_FX_CONTENT.indexOf(n.props.contentType) !== -1;
+    }
+
+    // A component's markup with its interaction (_sdFxAttrs()) in its first
+    // tag, as _render_component_html() writes it on the element that takes
+    // the component's id.
+    function _sdFxIntoFirstTag(html, p) {
+        var fx = _sdFxAttrs(p);
+        if (!fx) return html;
+        var m = /<[a-zA-Z][^>]*?(\/?)>/.exec(html);
+        if (!m) return html;
+        var at = m.index + m[0].length - 1 - m[1].length;
+        return html.slice(0, at) + fx + html.slice(at);
+    }
+
+    // The node's interaction after one field of the panel changed: the
+    // stored one with `field` set to `value`, normalized; null when the
+    // effect is cleared. Fields that no longer apply drop out; switching
+    // the effect keeps the timing.
+    function _sdFxSet(fx, field, value) {
+        if (field === 'effect' && !value) return null;
+        var cur = _sdFxNormalize(fx) || {}, next = {};
+        for (var k in cur) if (Object.prototype.hasOwnProperty.call(cur, k)) next[k] = cur[k];
+        next[field] = value;
+        return _sdFxNormalize(next);
+    }
+
+    function propsInteractions(n) {
+        if (!_sdFxTakes(n)) return '';
+        var fx = _sdFxNormalize(n.props._fx) || { effect: '' };
+        var spec = _sdFxSpec();
+        var select = function (field, opts) {
+            return '<select class="form-control form-control-sm" data-fx="' + field + '">' + opts.map(function (o) {
+                return '<option value="' + esc(o[0]) + '"' + (o[0] === fx[field] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+            }).join('') + '</select>';
+        };
+        var number = function (field, unit, placeholder) {
+            var r = spec.numbers[field];
+            var v = (field === 'distance' && !fx.distance) ? '' : fx[field];
+            return '<div class="input-group input-group-sm">' +
+                '<input type="number" class="form-control form-control-sm" data-fx="' + field + '" min="' + r[0] + '" max="' + r[1] + '" step="1" value="' + esc(String(v)) + '"' +
+                (placeholder ? ' placeholder="' + esc(String(placeholder)) + '"' : '') + '>' +
+                '<span class="input-group-text">' + unit + '</span></div>';
+        };
+        var h = row(_sdT('Effect'), select('effect', [
+            ['', _sdT('None')], ['fade', _sdT('Fade in')],
+            ['slide-up', _sdT('Slide up')], ['slide-down', _sdT('Slide down')],
+            ['slide-left', _sdT('Slide left')], ['slide-right', _sdT('Slide right')],
+            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')]
+        ]));
+        if (fx.trigger) {
+            var entrance = fx.trigger === 'load' || fx.trigger === 'view';
+            h += row(_sdT('Trigger'), select('trigger', [
+                ['view', _sdT('Scroll into view')], ['load', _sdT('Page load')],
+                ['hover', _sdT('Hover')], ['click', _sdT('Click')]
+            ]));
+            h += row(_sdT('Duration'), number('duration', 'ms'));
+            h += row(_sdT('Delay'), number('delay', 'ms'));
+            h += row(_sdT('Easing'), select('easing', [
+                ['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
+                ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]
+            ]));
+            if (/^slide-/.test(fx.effect)) h += row(_sdT('Distance'), number('distance', 'px', entrance ? 24 : 6));
+            if (entrance) h += row(_sdT('Stagger children'), number('stagger', 'ms'));
+            if (fx.trigger === 'view') h += row(_sdT('Every time'), swAttr('data-fx="repeat"', !!fx.repeat));
+        }
+        if (fx.effect === 'sticky') h += row(_sdT('Top offset'), number('offset', 'px'));
+        if (fx.effect === 'parallax') h += row(_sdT('Speed'), number('speed', '%'));
+        if (fx.trigger) {
+            h += row('', '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-fx-play>' +
+                '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
+        }
+        if (fx.effect) {
+            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                esc(_sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
+                '</div></div>';
+        }
+        return sect('bi-stars', _sdT('Interactions'), h);
+    }
+
+    // The Interactions section's fields write props._fx (_sdFxSet()). A
+    // choice is one undo step and redraws the panel, whose rows follow the
+    // effect and trigger; a typed number is one undo step per focus and
+    // redraws the panel once it is left, showing the value kept.
+    function _sdFxBind(n) {
+        var panel = document.getElementById('sd-properties');
+        if (!panel || !_sdFxTakes(n)) return;
+        var play = panel.querySelector('[data-fx-play]');
+        if (play) play.addEventListener('click', function () { _sdFxReplay(n); });
+        panel.querySelectorAll('[data-fx]').forEach(function (el) {
+            var field = el.getAttribute('data-fx');
+            var typed = el.type === 'number';
+            var before = typed ? _sdUndoBeforeFirstInput(el) : null;
+            el.addEventListener(typed ? 'input' : 'change', function () {
+                if (typed) before(); else saveState();
+                var fx = _sdFxSet(n.props._fx, field, el.type === 'checkbox' ? el.checked : el.value);
+                if (fx) n.props._fx = fx; else delete n.props._fx;
+                if (!typed) { render(); return; }
+                renderCanvas();
+                renderTree();
+                renderStatusBar();
+                renderAttrsPanel();
+                renderHtmlTree();
+                _sdLivePreviewSchedule();
+            });
+            if (typed) el.addEventListener('change', function () { render(); });
+        });
     }
 
     // A design built without a framework (Custom) has nothing that styles
@@ -31580,7 +32341,7 @@ const StyleDesigner = (function () {
         var hasBpW = !!(n.props.sm || n.props.md || n.props.lg || n.props.xl || n.props.xxl);
 
         function colSel(prop, opts, val) {
-            var h = '<select class="form-select form-select-sm" data-prop="' + prop + '">';
+            var h = '<select class="form-control form-control-sm" data-prop="' + prop + '">';
             opts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === val ? ' selected' : '') + '>' + o[1] + '</option>'; });
             return h + '</select>';
         }
@@ -31722,7 +32483,7 @@ const StyleDesigner = (function () {
             // the visitors watching the page. Its System region carries
             // the comment and a "View or Reply" button.
             row(_sdT('E-mail page'),
-                '<select class="form-select form-select-sm" data-cmt-page="pg_comments_email_page">' +
+                '<select class="form-control form-control-sm" data-cmt-page="pg_comments_email_page">' +
                     _swPageOptions(_getCmtVal('pg_comments_email_page'), _allPagesCache, { none: _sdT('— No e-mail —') }) +
                 '</select>' +
                 _cmtHint(_sdT('Sent when a comment is published: to the sender of the record shown (on a Form Item View page) and to the visitors watching the page. A System region on that page shows the comment and a "View or Reply" button.'))
@@ -31757,7 +32518,7 @@ const StyleDesigner = (function () {
         var perPage = String(parseInt(cfg.per_page, 10));
         if (['0', '10', '20', '50'].indexOf(perPage) === -1) perPage = '0';
         var choice = function (key, opts, current) {
-            return '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="choice" data-sw-cfg-choices="' +
+            return '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="choice" data-sw-cfg-choices="' +
                 opts.map(function (o) { return o[0]; }).join(',') + '">' +
                 opts.map(function (o) {
                     return '<option value="' + o[0] + '"' + (o[0] === current ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -31893,7 +32654,7 @@ const StyleDesigner = (function () {
         var limit = (typeof cfg.recent_limit === 'number' || /^\d+$/.test(String(cfg.recent_limit))) ? String(parseInt(cfg.recent_limit, 10)) : '';
         if (['5', '10', '20', '50'].indexOf(limit) === -1) limit = '5';
         var choice = function (key, opts, current) {
-            return '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="choice" data-sw-cfg-choices="' +
+            return '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="choice" data-sw-cfg-choices="' +
                 opts.map(function (o) { return o[0]; }).join(',') + '">' +
                 opts.map(function (o) {
                     return '<option value="' + o[0] + '"' + (o[0] === current ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -31919,11 +32680,11 @@ const StyleDesigner = (function () {
         var n = 0;
         var box = function (value, label, checked) {
             var id = 'sd-sw-rc-' + sid + '-' + (n++);
-            return '<div class="form-check">' +
-                '<input class="form-check-input" type="checkbox" id="' + id + '" value="' + esc(value) + '"' +
+            return '<div class="form-field">' +
+                '<input class="check" type="checkbox" id="' + id + '" value="' + esc(value) + '"' +
                 ' data-sw-id="' + sid + '" data-sw-cfg-list="recent_page_ids" data-sw-cfg-list-kind="page" data-sw-cfg-list-max="5"' +
                 (checked ? ' checked' : '') + ((!checked && full) ? ' disabled' : '') + '>' +
-                '<label class="form-check-label" for="' + id + '">' + esc(label) + '</label>' +
+                '<label class="" for="' + id + '">' + esc(label) + '</label>' +
                 '</div>';
         };
         var boxes = '';
@@ -32007,10 +32768,10 @@ const StyleDesigner = (function () {
             : _sdT('After the card you design, the canvas shows three sample comments: a reply, one awaiting approval, one with stars and a file. They cannot be selected and are not saved.');
         return sect('bi-collection', _sdT('Canvas Preview'),
             row(_sdT('Canvas shows'),
-                '<select class="form-select form-select-sm" id="sd-cmt-canvas-state" data-sw-id="' + sid + '">' + opts + '</select>'
+                '<select class="form-control form-control-sm" id="sd-cmt-canvas-state" data-sw-id="' + sid + '">' + opts + '</select>'
             ) +
             row(_sdT('Sample comments'),
-                '<div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div>' +
+                '<div class="form-field m-0"><div class="switch"><input class="" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div></div>' +
                 '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(samplesText) + '</div>'
             )
         );
@@ -32040,7 +32801,7 @@ const StyleDesigner = (function () {
             if (_sdCommentsSwapOffered(n)) {
                 designableHtml =
                     '<div class="sd-prop-row">' +
-                        '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cmt-make-designable">' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-cmt-make-designable">' +
                             '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Make designable')) +
                         '</button>' +
                     '</div>' +
@@ -32057,7 +32818,10 @@ const StyleDesigner = (function () {
             row(_sdT('Type'), sel('regionType', typeOpts, n.props.regionType)) +
             '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
-            (n.props.regionType === 'designer' ? _sdDesignerRegionPropsHtml(n) : '') +
+            (n.props.regionType === 'system' ? _sdLayoutPropsHtml() : '') +
+            (n.props.regionType === 'designer' || n.props.regionType === 'common' ? _sdDesignerRegionPropsHtml(n) : '') +
+            (n.props.regionType === 'page' ? _sdPageRegionPropsHtml(n) : '') +
+            _sdRegionWidgetPropsHtml(n) +
             designableHtml
         ) + commentsInfo;
     }
@@ -32082,7 +32846,7 @@ const StyleDesigner = (function () {
             srcOpts += '<option value="' + esc(p.source) + '" selected>' + esc(p.source + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
         }
         var html = row(esc(_sdT('What it lists')),
-            '<select class="form-select form-select-sm sd-list-source" aria-label="' + esc(_sdT('What it lists')) + '">' + srcOpts + '</select>' +
+            '<select class="form-control form-control-sm sd-list-source" aria-label="' + esc(_sdT('What it lists')) + '">' + srcOpts + '</select>' +
             note(_sdT('The row stays as it is: bind its elements to the new row values in Bind Data.'), false));
 
         var src = SW_LIST_SOURCES[p.source];
@@ -32113,7 +32877,7 @@ const StyleDesigner = (function () {
                     fOpts += '<option value="' + esc(String(ff.name)) + '"' + (on ? ' selected' : '') + '>' + esc(ff.label || ff.name) + '</option>';
                 });
                 if (!known) fOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
-                fieldCtl = '<select class="form-select form-select-sm sd-list-arg" aria-label="' + esc(_sdT('Field')) + '">' + fOpts + '</select>';
+                fieldCtl = '<select class="form-control form-control-sm sd-list-arg" aria-label="' + esc(_sdT('Field')) + '">' + fOpts + '</select>';
             }
             if (src.arg) html += row(esc(_sdT('Field')), fieldCtl);
             var limit = parseInt(p.limit, 10);
@@ -32124,7 +32888,7 @@ const StyleDesigner = (function () {
             SW_LIST_ORDERS.forEach(function (o) {
                 oOpts += '<option value="' + o[0] + '"' + (o[0] === (p.order || '') ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             });
-            html += row(esc(_sdT('Row order')), '<select class="form-select form-select-sm sd-list-order" aria-label="' + esc(_sdT('Row order')) + '">' + oOpts + '</select>');
+            html += row(esc(_sdT('Row order')), '<select class="form-control form-control-sm sd-list-order" aria-label="' + esc(_sdT('Row order')) + '">' + oOpts + '</select>');
         }
 
         var band = _sdListBand(n);
@@ -32136,6 +32900,8 @@ const StyleDesigner = (function () {
             'product.images':     _sdT('One row for every image of the product, its main image first. Bind a picture to "Image address" in Bind Data. A variant picked on the page does not change the list.'),
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
+            'catalog.crumbs':     _sdT('One row for every crumb of the path to what the page shows: the catalog, its groups, then the group or product itself. A condition on "Kind of crumb" draws a link, words, or where the visitor is.'),
+            'catalog.active_filters': _sdT('One row for every attribute filter the visitor applied, such as "Colour: Red". Bind a link to "Address without the filter": it opens the listing without that filter. With this list on the page the automatic chip row above the products is not added.'),
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
             'calendar.weeks':     _sdT('One row for every week the monthly or weekly view shows. Put a list of the days of the calendar inside the row: it lists that week\'s days.'),
             'calendar.days':      _sdT('One row for every day: inside a list of weeks that week\'s days, else every day the view shows. Days of the next or previous month hold no events; a condition on "Day of another month" or "Today" styles them.'),
@@ -32144,9 +32910,24 @@ const StyleDesigner = (function () {
             'order.items':        _sdT('One row for every item of the order; inside a list of the recipients, that recipient\'s items. The receipt e-mail draws it too.'),
             'order.parcels':      _sdT('One row for every tracking number of the order; inside a list of the recipients, that recipient\'s. A parcel whose carrier is not known has no tracking link: a condition on "Shipment tracking link" shows the number without one.'),
             'order.steps':        _sdT('One row for every step of the order: created, paid, shipped, delivered, cancelled. A shipping or delivery date still to come is estimated; a condition on "Estimated" marks it.'),
+            'order.item_forms':   _sdT('One row for every product form of the item the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
+            'order.item_form_fields': _sdT('One row for every field of the product form the row stands in, with the buyer\'s answer; an information field gives its text. A condition on "Information field" tells them apart.'),
+            'order.item_gift_cards': _sdT('One row for every gift card of the item the row stands in that was filled in: its amount, recipient, sender, message and delivery date.'),
+            'order.returns':      _sdT('One row for every return request of the order, for its owner signed in: its status, products, notes and the customer\'s moves. Put a list of the products of the return inside the row.'),
+            'order.return_lines': _sdT('One row for every product of the return request the row stands in, with the quantity asked back.'),
+            'order.return_deliveries': _sdT('One row for every delivery of the order a return may still be asked for: put the request form in it; the order gives the form its address and its controls their names, and the reason and the button come back when they are deleted.'),
+            'order.return_delivery_lines': _sdT('One row for every product of the delivery the row stands in, with how many may still go back: put the quantity box in it.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
-            'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.')
+            'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
+            'cart.item_schedule': _sdT('One row when the customer may set the payment schedule of the cart line the row stands in: put the frequency, number of payments and start date controls in it; the cart gives them their names, values and the payment gateway\'s rules, and a required control comes back when it is deleted.'),
+            'checkout.offers':    _sdT('One row for every offer applied to the order: a discount on the cart, an item\'s or a recipient\'s bonus. An offer without a message shows its code.'),
+            'checkout.suggestions': _sdT('One row for every offer the cart could still earn, with its message; a condition on "Offer page URL" shows its button only when the offer points to a page.'),
+            'checkout.gift_cards': _sdT('One row for every gift card applied to the order: the masked code, the amount taken, the balance left and a link that removes it.'),
+            'checkout.recipients': _sdT('One row for every recipient of the order. Put a list of the products in the cart inside the row: it lists that recipient\'s. The address fields and shipping choices stay where the widget draws them.'),
+            'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
+            'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.'),
+            'paging.pages':       _sdT('One row for every page link the list shows: the first and the last page, two pages either side of the page shown, a gap between them. With this list in the widget its built-in pagination is not added. Conditions on "Page address" and "The page shown" tell a link, the current page and a gap apart.')
         };
         if (about[p.source]) html += note(about[p.source], false);
         html += note(_sdT('A list without rows draws nothing. The canvas shows its row once.'), false);
@@ -32271,6 +33052,115 @@ const StyleDesigner = (function () {
         );
     }
 
+    // The settings a placement of a widget kind may narrow: the twin of
+    // pg_sw_placement_keys() (widgets_placement.php). The look and texts
+    // stay the widget's; a placement only narrows its content.
+    function _swPlacementKeys(kind) {
+        if (['form_list_view', 'submitted_forms_list', 'form_list', 'blog_list'].indexOf(kind) !== -1) {
+            return ['filters', 'max_results', 'order_by_field', 'order_by_direction'];
+        }
+        var keys = {
+            catalog_listing: ['product_group_id', 'max_results', 'order_by_field', 'order_by_direction'],
+            calendar_view:   ['calendar_ids', 'number_of_upcoming_events'],
+            menu_region:     ['menu_name'],
+            ad_region:       ['ad_region_name']
+        };
+        return keys[kind] || [];
+    }
+
+    // Sets one placement value on a shared_ref node; an empty value goes
+    // back to the widget's own, and a placement left with no value loses
+    // its props.placement, so the page is stored as before.
+    function _swPlacementSet(n, key, value) {
+        if (!n || n.type !== 'shared_ref') return;
+        if (!n.props || Array.isArray(n.props)) n.props = {};
+        var pl = (n.props.placement && typeof n.props.placement === 'object' && !Array.isArray(n.props.placement)) ? n.props.placement : {};
+        var empty = (value === '' || value === null || value === 0 || (Array.isArray(value) && !value.length));
+        if (empty) delete pl[key]; else pl[key] = value;
+        if (Object.keys(pl).length) n.props.placement = pl; else delete n.props.placement;
+    }
+
+    // The "This placement" section of a widget's panel: the values this
+    // placement narrows, each empty for "as the widget". `orderOpts`
+    // gives the order <option>s of a list widget, or null.
+    function _swPlacementSection(n, sid, cfg, orderOpts) {
+        if (_sdIsContentLevel()) return '';
+        var kind = (typeof cfg.regionType !== 'string') ? 'form_list_view' : _swKindOf(cfg);
+        var keys = _swPlacementKeys(kind);
+        if (!keys.length) return '';
+        var pl = (n.props && n.props.placement && typeof n.props.placement === 'object') ? n.props.placement : {};
+        var asWidget = '<option value="">' + esc(_sdT('— As the widget —')) + '</option>';
+        var hint = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(t) + '</div>'; };
+        var names = function (list, cur) {
+            var o = asWidget;
+            (list || []).forEach(function (nm) {
+                o += '<option value="' + esc(nm) + '"' + (nm === cur ? ' selected' : '') + '>' + esc(nm) + '</option>';
+            });
+            if (cur && (list || []).indexOf(cur) === -1) o += '<option value="' + esc(cur) + '" selected>' + esc(_sdT('{var} (not found)', cur)) + '</option>';
+            return o;
+        };
+        var body = '';
+        keys.forEach(function (k) {
+            if (k === 'filters') {
+                var formId = parseInt(cfg.custom_form_page_id || cfg.form_page_id || 0, 10);
+                if (!(formId > 0)) return;
+                var fields = _formFieldsCache[formId] || null;
+                body += row(esc(_sdT('Filters')), '<div>' +
+                    _swFormListFiltersHtml(sid, Array.isArray(pl.filters) ? pl.filters : [], fields || [], fields === null,
+                        _sdT('Added to the widget\'s filters here: a record is listed only when it matches every filter of both.'), true, 'placement') +
+                    '</div>');
+            } else if (k === 'product_group_id') {
+                var g = _swProductGroupOptions(pl.product_group_id, _sdT('— As the widget —'));
+                body += row(esc(_sdT('Product Group')),
+                    '<select class="form-control form-control-sm" data-sw-place="product_group_id" data-sw-place-kind="int">' + g + '</select>' +
+                    hint(_sdT('A group the widget shows, or one under it.')));
+            } else if (k === 'max_results' || k === 'number_of_upcoming_events') {
+                var v = parseInt(pl[k], 10) > 0 ? parseInt(pl[k], 10) : '';
+                body += row(esc(k === 'max_results' ? _sdT('Number of records') : _sdT('Number of events')),
+                    '<input type="number" class="form-control form-control-sm" data-sw-place="' + k + '" data-sw-place-kind="int" min="1" max="100000" value="' + v + '" placeholder="' + esc(_sdT('As the widget')) + '">' +
+                    hint(_sdT('Never more than the widget shows.')));
+            } else if (k === 'order_by_field' && orderOpts) {
+                var cur = typeof pl.order_by_field === 'string' ? pl.order_by_field : '';
+                var opts = asWidget + orderOpts(cur, false).replace(/ selected/g, '');
+                if (cur) opts = opts.replace('value="' + esc(cur) + '"', 'value="' + esc(cur) + '" selected');
+                body += row(esc(_sdT('Sort field')), '<select class="form-control form-control-sm" data-sw-place="order_by_field">' + opts + '</select>');
+            } else if (k === 'order_by_direction' && orderOpts) {
+                var d = pl.order_by_direction === 'ASC' || pl.order_by_direction === 'DESC' ? pl.order_by_direction : '';
+                body += row(esc(_sdT('Sort direction')),
+                    '<select class="form-control form-control-sm" data-sw-place="order_by_direction">' + asWidget +
+                        '<option value="ASC"' + (d === 'ASC' ? ' selected' : '') + '>' + esc(_sdT('Ascending (ASC)')) + '</option>' +
+                        '<option value="DESC"' + (d === 'DESC' ? ' selected' : '') + '>' + esc(_sdT('Descending (DESC)')) + '</option>' +
+                    '</select>');
+            } else if (k === 'calendar_ids') {
+                var list = _swListCache.list_calendars;
+                if (!list) { _swFetchList('list_calendars', 'calendars', function () { renderProperties(); }); }
+                var own = {};
+                (Array.isArray(cfg.calendar_ids) ? cfg.calendar_ids : []).forEach(function (id) { if (parseInt(id, 10) > 0) own[parseInt(id, 10)] = true; });
+                var chosen = {};
+                (Array.isArray(pl.calendar_ids) ? pl.calendar_ids : []).forEach(function (id) { chosen[parseInt(id, 10)] = true; });
+                var checks = (list || []).filter(function (c) { return !Object.keys(own).length || own[parseInt(c.id, 10)]; }).map(function (c) {
+                    var id = parseInt(c.id, 10);
+                    return '<div class="form-field">' +
+                        '<input class="check" type="checkbox" id="sd-sw-place-cal-' + id + '" value="' + id + '" data-sw-place-list="calendar_ids"' + (chosen[id] ? ' checked' : '') + '>' +
+                        '<label for="sd-sw-place-cal-' + id + '">' + esc(c.name || ('#' + id)) + '</label>' +
+                        '</div>';
+                }).join('');
+                body += row(esc(_sdT('Calendars')), (list ? checks : '<div class="small fg-secondary">' + esc(_sdT('Loading...')) + '</div>') +
+                    hint(_sdT('None ticked means the widget\'s calendars.')));
+            } else if (k === 'menu_name') {
+                body += row(esc(_sdT('Menu')), '<select class="form-control form-control-sm" data-sw-place="menu_name">' +
+                    names(regionData && regionData.menu_regions, typeof pl.menu_name === 'string' ? pl.menu_name : '') + '</select>');
+            } else if (k === 'ad_region_name') {
+                body += row(esc(_sdT('Ad Region')), '<select class="form-control form-control-sm" data-sw-place="ad_region_name">' +
+                    names(regionData && regionData.ad_regions, typeof pl.ad_region_name === 'string' ? pl.ad_region_name : '') + '</select>');
+            }
+        });
+        if (!body) return '';
+        return sect('bi-pin-map', esc(_sdT('This placement')),
+            '<div class="sd-prop-row">' + hint(_sdT('Only here: what this place shows of the widget. The look and the texts stay the widget\'s, on every page that places it.')) + '</div>' +
+            body);
+    }
+
     function propsSharedRef(n) {
         var sid   = (n.props && n.props.sharedId)   ? parseInt(n.props.sharedId, 10) : 0;
         var sname = (n.props && n.props.sharedName) ? n.props.sharedName : '?';
@@ -32285,6 +33175,8 @@ const StyleDesigner = (function () {
         if (_cfgRaw) { try { _cfg = JSON.parse(_cfgRaw); } catch(e) {} }
 
         var systemSection = '';
+        // The list widgets' order <option>s, kept for the placement section.
+        var _placeOrderOpts = null;
         if (_cfg) {
             // regionType is the widget's content kind. A row from before the
             // field existed (no key at all) is a form list view — that is what
@@ -32328,6 +33220,9 @@ const StyleDesigner = (function () {
             var _isBillingInfo     = (_regionType === 'billing_information');
             var _isOrderPreview    = (_regionType === 'order_preview');
             var _isMenuRegion      = (_regionType === 'menu_region');
+            var _isMenuSequence    = (_regionType === 'menu_sequence_region');
+            var _isAdRegion        = (_regionType === 'ad_region');
+            var _isTagCloud        = (_regionType === 'tag_cloud_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -32347,7 +33242,7 @@ const StyleDesigner = (function () {
                 _regionTypeOpts += '<option value="' + t.type + '"' + (on ? ' selected' : '') + '>' + esc(t.label) + '</option>';
             });
             var _regionTypeSel =
-                '<select class="form-select form-select-sm" id="sd-sw-region-type" data-sw-id="' + sid + '" data-sw-current="' + esc(_typeUnset ? '' : _regionType) + '">' +
+                '<select class="form-control form-control-sm" id="sd-sw-region-type" data-sw-id="' + sid + '" data-sw-current="' + esc(_typeUnset ? '' : _regionType) + '">' +
                 _regionTypeOpts +
                 '</select>';
 
@@ -32378,6 +33273,12 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isOrderPreview) {
                 _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
+            } else if (_isTagCloud) {
+                _sourceInfoHtml = _sdT('The 25 keywords used most by what a search results page searches (its catalog items, or the site\'s pages), in alphabetical order, each a link to that page searching for it. The keywords are written on the products and pages; the more often a keyword is used, the higher its weight (1 to 5), which the design shows by its size.');
+            } else if (_isAdRegion) {
+                _sourceInfoHtml = _sdT('The ads of an ad region, read on every visit: they are written, ordered and given captions under Ads, by the users who may edit that region. A static region shows one ad picked at random; a dynamic one every ad, in its order, turning by the region\'s slideshow settings. Nothing is drawn while ads are switched off.');
+            } else if (_isMenuSequence) {
+                _sourceInfoHtml = _sdT('Links to the page before and after the one shown, in the order of a menu\'s pages: each item before the items under it, a page once. On the last page the next link goes back to the first; on a page the menu does not link to, the links are not drawn. The menu is edited under Menus.');
             } else if (_isMenuRegion) {
                 _sourceInfoHtml = _sdT('One of the site\'s menus, read on every visit: its items, their order, links and who may see them are edited under Menus, by the users who may edit that menu, and every page that shows the widget follows. The loop repeats the top-level items; a list of the sub-items of a menu item inside a row repeats the items under it.');
             } else if (_isBillingInfo) {
@@ -32424,7 +33325,7 @@ const StyleDesigner = (function () {
                         esc((_formTabPage && _formTabPage.page_name ? _formTabPage.page_name : _sdT('(closed tab)')) + ' (' + _sdT('unsaved') + ')') + '</option>';
                 }
                 var _formSel =
-                    '<select class="form-select form-select-sm" id="sd-sw-form-id" data-sw-id="' + sid + '">' +
+                    '<select class="form-control form-control-sm" id="sd-sw-form-id" data-sw-id="' + sid + '">' +
                     _formOptions +
                     '</select>';
                 _sourceRowsHtml = row(_sdT('Form'), _formSel);
@@ -32472,7 +33373,7 @@ const StyleDesigner = (function () {
                     _fetchProductGroups(function () { renderProperties(); });
                 }
                 var _pgSel =
-                    '<select class="form-select form-select-sm" id="sd-sw-product-group" data-sw-id="' + sid + '">' +
+                    '<select class="form-control form-control-sm" id="sd-sw-product-group" data-sw-id="' + sid + '">' +
                     _pgOptions +
                     '</select>';
                 _sourceRowsHtml = row(_sdT('Product group'), _pgSel);
@@ -32501,7 +33402,7 @@ const StyleDesigner = (function () {
                     _fetchProductGroups(function () { renderProperties(); });
                 }
                 var _civPgSel =
-                    '<select class="form-select form-select-sm" id="sd-sw-product-group" data-sw-id="' + sid + '">' +
+                    '<select class="form-control form-control-sm" id="sd-sw-product-group" data-sw-id="' + sid + '">' +
                     _civPgOptions +
                     '</select>';
                 _sourceRowsHtml = row(_sdT('Product group (security)'), _civPgSel);
@@ -32521,25 +33422,12 @@ const StyleDesigner = (function () {
                     '</div>'
                 );
 
-            // ── Universal "Load the Default Layout" card ────────────────
-            // Every system widget type has a `_buildStarterTree(regionType)`
-            // implementation. Surface it here as a one-click reset so the
-            // operator can recover a sane layout after destructive edits
-            // (or after switching regionType to a new kind). The EO panel
-            // also exposes its own version further below — for backward
-            // compat the EO-specific button stays; this universal one is
-            // primarily for widget types that lacked a reset before.
-            if (_regionType !== '') {
+            // ── Layout gallery: the default layout and the other widgets'
+            // of this kind, tried on the canvas before one is kept
+            // (_sdLgSectionHtml()). Widgets never open to content editors.
+            if (_regionType !== '' && _collab.mayEdit && !_sdIsContentLevel()) {
                 systemSection += sect('bi-magic', _sdT('Layout Template'),
-                    row('',
-                        '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-load-default" ' +
-                            'data-sw-id="' + sid + '" data-region-type="' + esc(_regionType) + '">' +
-                            '<i class="bi bi-arrow-clockwise me-1"></i>' + esc(_sdT('Load the Default Layout')) + '' +
-                        '</button>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:6px">' +
-                            _sdT('<strong>Replaces</strong> the current canvas design with the standard layout prepared for <strong>{var}</strong>. Undo (Ctrl+Z) brings it back.', esc(_regionType)) +
-                        '</div>'
-                    )
+                    row('', _sdLgSectionHtml(sid, _swKindOf(_sdLgCfg(sid)) || _regionType))
                 );
             }
 
@@ -32547,7 +33435,7 @@ const StyleDesigner = (function () {
             if (_isFormListView || _isCatalogListing) {
                 systemSection += sect('bi-collection', _sdT('Canvas Preview'),
                     row(_sdT('Real records'),
-                        '<div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div>' +
+                        '<div class="form-field m-0"><div class="switch"><input class="" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div></div>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('After the card you design, the canvas shows up to ten real records drawn from it. They cannot be selected and are not saved.')) + '</div>'
                     )
                 );
@@ -32669,6 +33557,7 @@ const StyleDesigner = (function () {
                 }
                 var _orderOpts  = _buildOrderOpts(_orderField, false);
                 var _order2Opts = _buildOrderOpts(_order2Field, true);
+                _placeOrderOpts = _buildOrderOpts;
                 // Record statistic orders: the counters and the newest comment
                 // are kept per detail page, so without one the list keeps the
                 // date order (say so), and the recent-views window gets its
@@ -32727,8 +33616,17 @@ const StyleDesigner = (function () {
                         '<input type="number" class="form-control form-control-sm" id="sd-sw-max-results" data-sw-id="' + sid + '" min="1" value="' + _maxResVal + '" placeholder="' + esc(_sdT('Unlimited')) + '">' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty for no limit. Paging happens within this ceiling.')) + '</div>'
                     ) +
+                    // Offset and the list's own page parameter
+                    // (pg_sw_list_offset(), pg_sw_list_page_param()).
+                    ((_isFormListView || _isCatalogListing) ? row(_sdT('Skip the first records'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="offset" data-sw-cfg-kind="int" min="0" max="100000" value="' + _swListOffset(_cfg) + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The list starts after this many records, for example beside a box that shows the newest one.')) + '</div>'
+                    ) + row(_sdT('Page number in the address'),
+                        '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="page_param" data-sw-cfg-kind="param" maxlength="32" value="' + esc(_swUrlParamName(_cfg.page_param)) + '" placeholder="page_number">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty to share page_number with the other lists on the page. A name of its own (letters, digits, underscores) lets this list turn its pages alone.')) + '</div>'
+                    ) : '') +
                     row(_sdT('Detail page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-detail-page" data-sw-id="' + sid + '">' + _detailOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-detail-page" data-sw-id="' + sid + '">' + _detailOpts + '</select>' +
                         _detailHint
                     ) +
                     row(_sdT('Search box'),
@@ -32738,7 +33636,7 @@ const StyleDesigner = (function () {
                         '</label>'
                     ) +
                     (_searchOn ? row(_sdT('Search box width'),
-                        '<select class="form-select form-select-sm" id="sd-sw-search-width" data-sw-id="' + sid + '">' +
+                        '<select class="form-control form-control-sm" id="sd-sw-search-width" data-sw-id="' + sid + '">' +
                             '<option value="full"'    + (_searchWidth === 'full'    ? ' selected' : '') + '>' + esc(_sdT('Full (w-100)')) + '</option>' +
                             '<option value="half"'    + (_searchWidth === 'half'    ? ' selected' : '') + '>' + esc(_sdT('Half (w-50)')) + '</option>' +
                             '<option value="quarter"' + (_searchWidth === 'quarter' ? ' selected' : '') + '>' + esc(_sdT('Quarter (w-25)')) + '</option>' +
@@ -32753,20 +33651,20 @@ const StyleDesigner = (function () {
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-empty-msg" data-sw-id="' + sid + '" value="' + esc(_emptyMsg) + '" maxlength="255">'
                     ) +
                     row(_sdT('Sort field'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>' +
                         (_orderNoDetail ? '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Views and comments are counted on the detail page. Without one the list keeps the date order.')) + '</div>' : '')
                     ) +
                     row(_sdT('Sort direction'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-dir" data-sw-id="' + sid + '">' +
+                        '<select class="form-control form-control-sm" id="sd-sw-orderby-dir" data-sw-id="' + sid + '">' +
                             '<option value="DESC"' + (_orderDir === 'DESC' ? ' selected' : '') + '>' + esc(_sdT('Descending (DESC)')) + '</option>' +
                             '<option value="ASC"'  + (_orderDir === 'ASC'  ? ' selected' : '') + '>' + esc(_sdT('Ascending (ASC)')) + '</option>' +
                         '</select>'
                     ) +
                     row(_sdT('Second sort field'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-2-field" data-sw-id="' + sid + '">' + _order2Opts + '</select>'
+                        '<select class="form-control form-control-sm" id="sd-sw-orderby-2-field" data-sw-id="' + sid + '">' + _order2Opts + '</select>'
                     ) +
                     (_order2Field ? row(_sdT('Second sort direction'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-2-dir" data-sw-id="' + sid + '">' +
+                        '<select class="form-control form-control-sm" id="sd-sw-orderby-2-dir" data-sw-id="' + sid + '">' +
                             '<option value="DESC"' + (_order2Dir === 'DESC' ? ' selected' : '') + '>' + esc(_sdT('Descending (DESC)')) + '</option>' +
                             '<option value="ASC"'  + (_order2Dir === 'ASC'  ? ' selected' : '') + '>' + esc(_sdT('Ascending (ASC)')) + '</option>' +
                         '</select>'
@@ -32844,7 +33742,7 @@ const StyleDesigner = (function () {
 
                     var _navSection =
                         row(_sdT('Group navigation'),
-                            '<select class="form-select form-select-sm" id="sd-sw-group-nav" data-sw-id="' + sid + '">' +
+                            '<select class="form-control form-control-sm" id="sd-sw-group-nav" data-sw-id="' + sid + '">' +
                                 '<option value="none"'       + (_groupNav === 'none'       ? ' selected' : '') + '>' + esc(_sdT('None (products only)')) + '</option>' +
                                 '<option value="drill_down"' + (_groupNav === 'drill_down' ? ' selected' : '') + '>' + esc(_sdT('Drill-down (same page with ?cat)')) + '</option>' +
                                 '<option value="page"'       + (_groupNav === 'page'       ? ' selected' : '') + '>' + esc(_sdT('Target page (a separate catalog page)')) + '</option>' +
@@ -32852,7 +33750,7 @@ const StyleDesigner = (function () {
                         ) +
                         (_groupNav === 'page'
                             ? row(_sdT('Target catalog page'),
-                                '<select class="form-select form-select-sm" id="sd-sw-group-nav-page" data-sw-id="' + sid + '">' +
+                                '<select class="form-control form-control-sm" id="sd-sw-group-nav-page" data-sw-id="' + sid + '">' +
                                     _catalogPageOpts +
                                 '</select>'
                             )
@@ -32938,7 +33836,7 @@ const StyleDesigner = (function () {
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('A filter UI built from the product attributes (color, size, brand and so on), drawn in a container whose section is "{var}".', _sdT('Filter Offcanvas'))) + '</div>'
                         ) +
                         (_attrFilterOn ? row(_sdT('Filter style'),
-                            '<select class="form-select form-select-sm" id="sd-sw-attr-filter-style" data-sw-id="' + sid + '">' +
+                            '<select class="form-control form-control-sm" id="sd-sw-attr-filter-style" data-sw-id="' + sid + '">' +
                                 '<option value="checkboxes"' + (_attrFilterStyle === 'checkboxes' ? ' selected' : '') + '>' + esc(_sdT('Checkbox list')) + '</option>' +
                                 '<option value="buttons"'   + (_attrFilterStyle === 'buttons'    ? ' selected' : '') + '>' + esc(_sdT('Button group')) + '</option>' +
                             '</select>'
@@ -32959,7 +33857,7 @@ const StyleDesigner = (function () {
 
                     var _selectSection =
                         row(_sdT('Attribute display'),
-                            '<select class="form-select form-select-sm" id="sd-sw-attr-display" data-sw-id="' + sid + '">' +
+                            '<select class="form-control form-control-sm" id="sd-sw-attr-display" data-sw-id="' + sid + '">' +
                                 '<option value="buttons"'  + (_attrDisplay === 'buttons'  ? ' selected' : '') + '>' + esc(_sdT('Button group')) + '</option>' +
                                 '<option value="dropdown"' + (_attrDisplay === 'dropdown' ? ' selected' : '') + '>' + esc(_sdT('Dropdown')) + '</option>' +
                             '</select>'
@@ -32972,7 +33870,7 @@ const StyleDesigner = (function () {
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Adds the data-pg-show-cart="1" data attribute to the container.')) + '</div>'
                         ) +
                         row(_sdT('Out of stock behaviour'),
-                            '<select class="form-select form-select-sm" id="sd-sw-oos-behavior" data-sw-id="' + sid + '">' +
+                            '<select class="form-control form-control-sm" id="sd-sw-oos-behavior" data-sw-id="' + sid + '">' +
                                 '<option value="disable"' + (_oosBehavior === 'disable' ? ' selected' : '') + '>' + esc(_sdT('Disable it (the button is disabled)')) + '</option>' +
                                 '<option value="hide"'    + (_oosBehavior === 'hide'    ? ' selected' : '') + '>' + esc(_sdT('Hide it (do not render the variant at all)')) + '</option>' +
                                 '<option value="show"'    + (_oosBehavior === 'show'    ? ' selected' : '') + '>' + esc(_sdT('Show it (ignore the stock status)')) + '</option>' +
@@ -33023,7 +33921,7 @@ const StyleDesigner = (function () {
                     // BOTH mechanisms, so they stay.
                     systemSection += sect('bi-cart-plus', _sdT('Add to Cart Button (per card)'),
                         row(_sdT('Cart page (redirect after shipping)'),
-                            '<select class="form-select form-select-sm" id="sd-sw-cl-atc-next-page" data-sw-id="' + sid + '"' + (_atcStay ? ' disabled' : '') + '>' + _atcPageOpts + '</select>' +
+                            '<select class="form-control form-control-sm" id="sd-sw-cl-atc-next-page" data-sw-id="' + sid + '"' + (_atcStay ? ' disabled' : '') + '>' + _atcPageOpts + '</select>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Only pages with a shopping cart are listed. Disabled while "Stay on the page" is on.')) + '</div>'
                         ) +
                         row(_sdT('Stay on the page (after adding)'),
@@ -33089,7 +33987,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When on, a visitor who is not signed in is sent to the chosen page.')) + '</div>'
                     ) +
                     (_maRedirect ? row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-ma-login-page" data-sw-id="' + sid + '">' + _loginPageOpts + '</select>'
+                        '<select class="form-control form-control-sm" id="sd-sw-ma-login-page" data-sw-id="' + sid + '">' + _loginPageOpts + '</select>'
                     ) : '') +
                     row(_sdT('List form submissions (loop_area)'),
                         '<label class="sd-prop-switch">' +
@@ -33099,15 +33997,15 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When on, the user\'s own form submissions are listed inside the loop_area.')) + '</div>'
                     ) +
                     (_maShowSubs ? row(_sdT('Form filter (optional)'),
-                        '<select class="form-select form-select-sm" id="sd-sw-ma-filter-form" data-sw-id="' + sid + '">' + _maFormOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-ma-filter-form" data-sw-id="' + sid + '">' + _maFormOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When nothing is chosen, all of the user\'s form submissions are listed.')) + '</div>'
                     ) : '') +
                     (_maShowSubs ? row(_sdT('Submission detail page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-ma-detail-page" data-sw-id="' + sid + '">' + _maDetailOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-ma-detail-page" data-sw-id="' + sid + '">' + _maDetailOpts + '</select>' +
                         _swDetailPageHint(_cfg.submissions_detail_page_id, _myAccountDetailPagesCache, ['form_item_view'], null, _sdT('Form Item View'), _sdT('Detail page address'))
                     ) : '') +
                     row(_sdT('Staff page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-ma-staff-page" data-sw-id="' + sid + '">' + _maStaffOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-ma-staff-page" data-sw-id="' + sid + '">' + _maStaffOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swStaffHint('my_account')) + '</div>'
                     )
                 );
@@ -33169,7 +34067,7 @@ const StyleDesigner = (function () {
                         // For now: vanilla select. If page count grows
                         // unmanageable later, a custom Bootstrap-dropdown
                         // picker can replace this without changing config.
-                        '<select class="form-select form-select-sm" id="sd-sw-civ-next-page" data-sw-id="' + sid + '">' + _civNextOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-civ-next-page" data-sw-id="' + sid + '">' + _civNextOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The page to go to after adding to the cart (the cart page, say). Empty means staying on the same product page.')) + '</div>'
                     ) +
                     row(_sdT('Quantity — minimum'),
@@ -33192,7 +34090,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When on, a "Frequently bought together" / "Similar products" row of cards appears under the product detail. When off, it is not rendered at all.')) + '</div>'
                     ) +
                     row(_sdT('Catalog page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-civ-cat-page" data-sw-id="' + sid + '">' + _civCatOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-civ-cat-page" data-sw-id="' + sid + '">' + _civCatOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Choose the catalog list page to make the breadcrumb crumbs (Catalog → Group → …) clickable. The list holds the pages that carry a <code>catalog_listing</code> widget. Empty = the crumbs are plain text.') + '</div>'
                     ) +
                     row(_sdT('Variant attribute style'),
@@ -33210,7 +34108,7 @@ const StyleDesigner = (function () {
                                 ['button_group', _sdT('Button group (horizontal)')],
                                 ['button_list',  _sdT('Button list (vertical)')]
                             ];
-                            return '<select class="form-select form-select-sm" id="sd-sw-civ-variant-style" data-sw-id="' + sid + '">' +
+                            return '<select class="form-control form-control-sm" id="sd-sw-civ-variant-style" data-sw-id="' + sid + '">' +
                                 opts.map(function (o) {
                                     return '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>';
                                 }).join('') +
@@ -33276,12 +34174,12 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('While on, a page with no record shows only what is meant for that case: the elements set to show when there is no record, and the not-found message. With none of those, the message stands in for the layout. Off: the layout is drawn with empty fields.')) + '</div>'
                     ) +
                     row(_sdT('Page title'),
-                        '<select class="form-select form-select-sm" id="sd-sw-fiv-title-field" data-sw-id="' + sid + '">' + _fivTitleOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-fiv-title-field" data-sw-id="' + sid + '">' + _fivTitleOpts + '</select>' +
                         '<input type="text" class="form-control form-control-sm mt-1" id="sd-sw-fiv-title-suffix" data-sw-id="' + sid + '" value="' + esc(_fivTitleSuffix) + '" maxlength="120" placeholder="' + esc(_sdT('Text after the title, e.g. | Inbox')) + '">' +
                         _fivTitleNote
                     ) +
                     row(_sdT('Access control'),
-                        '<select class="form-select form-select-sm" id="sd-sw-fiv-access" data-sw-id="' + sid + '">' +
+                        '<select class="form-control form-control-sm" id="sd-sw-fiv-access" data-sw-id="' + sid + '">' +
                             '<option value="public"'         + (_fivAccess === 'public'         ? ' selected' : '') + '>' + esc(_sdT('Open to everyone')) + '</option>' +
                             '<option value="submitter_only"' + (_fivAccess === 'submitter_only' ? ' selected' : '') + '>' + esc(_sdT('The submitter only')) + '</option>' +
                             '<option value="logged_in"'      + (_fivAccess === 'logged_in'      ? ' selected' : '') + '>' + esc(_sdT('Signed-in users')) + '</option>' +
@@ -33344,7 +34242,7 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-box-arrow-in-right', _sdT('Login Settings'),
                     row(_sdT('Redirect after a successful sign-in'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lf-redirect-page" data-sw-id="' + sid + '">' + _lfPageOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lf-redirect-page" data-sw-id="' + sid + '">' + _lfPageOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When empty, the ?send_to= or ?redirect= on the link is used, and failing that the user\'s home page.')) + '</div>'
                     ) +
                     row(_sdT('Remember Me option'),
@@ -33355,11 +34253,11 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('While off, the <code>remember_me</code> control and its label are not drawn. They are not drawn either when the site setting (Settings → Security → Remember Me) is off.') + '</div>'
                     ) +
                     row(_sdT('Forgot password page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lf-forgot-page" data-sw-id="' + sid + '">' + _lfForgotOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lf-forgot-page" data-sw-id="' + sid + '">' + _lfForgotOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The link is drawn only while the site setting (Forgot Password Link) is on.') + ' ' + _swLinkHint('login_form', '__forgot_password_url')) + '</div>'
                     ) +
                     row(_sdT('Registration page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lf-register-page" data-sw-id="' + sid + '">' + _lfRegisterOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lf-register-page" data-sw-id="' + sid + '">' + _lfRegisterOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('A page carrying a registration widget, or the legacy registration page.') + ' ' + _swLinkHint('login_form', '__register_url')) + '</div>'
                     )
                 );
@@ -33371,7 +34269,7 @@ const StyleDesigner = (function () {
                 if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
                 systemSection += sect('bi-bag', _sdT('Cart Link Settings'),
                     row(_sdT('Cart page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-cl-cart-page" data-sw-id="' + sid + '">' + _clCartOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-cl-cart-page" data-sw-id="' + sid + '">' + _clCartOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the cart page the visitor last saw, else the site\'s cart page.') + ' ' + _swLinkHint('cart_link', '__cart_url')) + '</div>'
                     )
                 );
@@ -33418,13 +34316,13 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The products saved last come first.')) + '</div>'
                     ) +
                     row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="login_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="login_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.login_page_id, _allPagesCache, { types: ['login_form'], none: _sdT('— Automatic —') }) +
                         '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Linked for a visitor who is not signed in; after signing in they come back here.') + ' ' + _swLinkHint('wishlist', '__login_url')) + '</div>'
                     ) +
                     row(_sdT('Shop page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="shop_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="shop_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.shop_page_id, _allPagesCache, { types: ['catalog_listing'], none: _sdT('— Automatic —') }) +
                         '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: a page with a catalog widget, else the legacy catalog page.') + ' ' + _swLinkHint('wishlist', '__shop_url')) + '</div>'
@@ -33441,7 +34339,7 @@ const StyleDesigner = (function () {
                 var _saHint = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + t + '</div>'; };
                 systemSection += sect('bi-truck', _sdT('Shipping Address Settings'),
                     row(_sdT('Next page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.next_page_id, _allPagesCache, { none: _sdT('— The page\'s own setting —') }) +
                         '</select>' +
                         _saHint(esc(_sdT('Where the visitor goes once the address is saved: the shipping method page.')))
@@ -33454,7 +34352,7 @@ const StyleDesigner = (function () {
                         _saHint(_sdT('While on, the residential / business radios (name: <code>address_type</code>) are drawn and required.'))
                     ) +
                     row(_sdT('Address type help page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="address_type_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="address_type_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.address_type_page_id, _allPagesCache, { none: _sdT('— None —') }) +
                         '</select>' +
                         _saHint(esc(_swLinkHint('shipping_address_and_arrival', '__address_type_url')))
@@ -33480,12 +34378,12 @@ const StyleDesigner = (function () {
                 var _biField = function (n) {
                     return row(_sdT('Custom field {var}', String(n)),
                         '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="custom_field_' + n + '_label" maxlength="255" value="' + esc(_cfg['custom_field_' + n + '_label'] || '') + '" placeholder="' + esc(_sdT('Label (empty: no field)')) + '">' +
-                        '<div class="d-flex align-items-center gap-2 mt-1">' + _biSwitch('custom_field_' + n + '_required') + '<span style="font-size:.7rem">' + esc(_sdT('Required')) + '</span></div>' +
+                        '<div class="d-flex align-items-center gap-3 mt-1">' + _biSwitch('custom_field_' + n + '_required') + '<span style="font-size:.7rem">' + esc(_sdT('Required')) + '</span></div>' +
                         _biHint(esc(_sdT('Elements bound to "{var}" show this text.', _swBindLabel('billing_information', '__custom_field_' + n + '_label')))));
                 };
                 systemSection += sect('bi-receipt', _sdT('Billing Information Settings'),
                     row(_sdT('Next page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.next_page_id, _allPagesCache, { none: _sdT('— The page\'s own setting —') }) +
                         '</select>' +
                         _biHint(esc(_sdT('Where the visitor goes once the billing details are saved: the order preview page.')))
@@ -33497,8 +34395,8 @@ const StyleDesigner = (function () {
                 );
             }
 
-            // ── menu_region settings ─────────────────────────────────────────
-            if (_isMenuRegion) {
+            // ── menu_region and menu_sequence_region settings ────────────────
+            if (_isMenuRegion || _isMenuSequence) {
                 var _mrNames = (regionData && regionData.menu_regions) || [];
                 var _mrName = typeof _cfg.menu_name === 'string' ? _cfg.menu_name : '';
                 var _mrOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
@@ -33510,8 +34408,46 @@ const StyleDesigner = (function () {
                 }
                 systemSection += sect('bi-menu-button-wide', _sdT('Menu Settings'),
                     row(_sdT('Menu'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The items are added, ordered and linked under Menus; without a menu the widget draws no items.')) + '</div>'
+                    )
+                );
+            }
+
+            // ── tag_cloud_region settings ────────────────────────────────────
+            if (_isTagCloud) {
+                var _tcNames = (regionData && regionData.tag_cloud_regions) || [];
+                var _tcName = typeof _cfg.search_page_name === 'string' ? _cfg.search_page_name : '';
+                var _tcOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
+                _tcNames.forEach(function (nm) {
+                    _tcOpts += '<option value="' + esc(nm) + '"' + (nm === _tcName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                });
+                if (_tcName !== '' && _tcNames.indexOf(_tcName) === -1) {
+                    _tcOpts += '<option value="' + esc(_tcName) + '" selected>' + esc(_sdT('{var} (not found)', _tcName)) + '</option>';
+                }
+                systemSection += sect('bi-tags', _sdT('Tag Cloud Settings'),
+                    row(_sdT('Search Results Page'),
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="search_page_name">' + _tcOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Each keyword links to this page searching for it; without a page the widget draws no keyword.')) + '</div>'
+                    )
+                );
+            }
+
+            // ── ad_region settings ───────────────────────────────────────────
+            if (_isAdRegion) {
+                var _arNames = (regionData && regionData.ad_regions) || [];
+                var _arName = typeof _cfg.ad_region_name === 'string' ? _cfg.ad_region_name : '';
+                var _arOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
+                _arNames.forEach(function (nm) {
+                    _arOpts += '<option value="' + esc(nm) + '"' + (nm === _arName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                });
+                if (_arName !== '' && _arNames.indexOf(_arName) === -1) {
+                    _arOpts += '<option value="' + esc(_arName) + '" selected>' + esc(_sdT('{var} (not found)', _arName)) + '</option>';
+                }
+                systemSection += sect('bi-badge-ad', _sdT('Ad Region Settings'),
+                    row(_sdT('Ad Region'),
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="ad_region_name">' + _arOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The ads, their order and the slideshow are set under Ads; without a region the widget draws no ad.')) + '</div>'
                     )
                 );
             }
@@ -33524,7 +34460,7 @@ const StyleDesigner = (function () {
                 if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
                 var _opHint = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + t + '</div>'; };
                 var _opPage = function (key, none, hint) {
-                    return '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="page">' +
+                    return '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg[key], _allPagesCache, { none: none }) +
                         '</select>' + _opHint(esc(hint));
                 };
@@ -33555,7 +34491,7 @@ const StyleDesigner = (function () {
                 if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
                 systemSection += sect('bi-box-seam', _sdT('Shipping Method Settings'),
                     row(_sdT('Next page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.next_page_id, _allPagesCache, { none: _sdT('— The page\'s own setting —') }) +
                         '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Where the visitor goes once a method is chosen: the billing information page.')) + '</div>'
@@ -33578,7 +34514,7 @@ const StyleDesigner = (function () {
                 if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
                 var _lrStateBtn = function (state, label) {
                     var on = (_sdSessionPreview === state);
-                    return '<button type="button" class="btn btn-sm ' + (on ? 'btn-primary' : 'btn-outline-secondary') + '" data-sd-session-preview="' + state + '" data-sw-id="' + sid + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(label) + '</button>';
+                    return '<button type="button" class="btn btn-sm ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') + '" data-sd-session-preview="' + state + '" data-sw-id="' + sid + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(label) + '</button>';
                 };
 
                 systemSection += sect('bi-person-badge', _sdT('Login Region Settings'),
@@ -33587,19 +34523,19 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Only on the canvas. Visitors see the part that fits them.')) + '</div>'
                     ) +
                     row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lr-login-page" data-sw-id="' + sid + '">' + _lrLoginOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lr-login-page" data-sw-id="' + sid + '">' + _lrLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('login_region', '__login_url')) + '</div>'
                     ) +
                     row(_sdT('Registration page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lr-register-page" data-sw-id="' + sid + '">' + _lrRegisterOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lr-register-page" data-sw-id="' + sid + '">' + _lrRegisterOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('login_region', '__register_url')) + '</div>'
                     ) +
                     row(_sdT('My account page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lr-account-page" data-sw-id="' + sid + '">' + _lrAccountOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lr-account-page" data-sw-id="' + sid + '">' + _lrAccountOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('login_region', '__my_account_url')) + '</div>'
                     ) +
                     row(_sdT('Staff page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lr-staff-page" data-sw-id="' + sid + '">' + _lrStaffOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lr-staff-page" data-sw-id="' + sid + '">' + _lrStaffOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swStaffHint('login_region')) + '</div>'
                     )
                 );
@@ -33613,11 +34549,11 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-key', _sdT('Forgot Password Settings'),
                     row(_sdT('Continue page (send_to)'),
-                        '<select class="form-select form-select-sm" id="sd-sw-fp-redirect-page" data-sw-id="' + sid + '">' + _fpPageOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-fp-redirect-page" data-sw-id="' + sid + '">' + _fpPageOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The page the visitor can go to after the confirmation screen; the result is shown there.')) + '</div>'
                     ) +
                     row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-fp-login-page" data-sw-id="' + sid + '">' + _fpLoginOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-fp-login-page" data-sw-id="' + sid + '">' + _fpLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('forgot_password', '__back_url')) + '</div>'
                     ) +
                     _swAccountEmailRow(sid, _cfg, 'reset')
@@ -33642,16 +34578,16 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-person-plus', _sdT('Registration Entrance Settings'),
                     row(_sdT('Redirect after registration'),
-                        '<select class="form-select form-select-sm" id="sd-sw-rg-redirect-page" data-sw-id="' + sid + '">' + _rgPageOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-rg-redirect-page" data-sw-id="' + sid + '">' + _rgPageOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When empty, the ?send_to= on the link is used; failing that the visitor stays on this page and sees the "your registration is complete" notice.')) + '</div>'
                     ) +
                     row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('registration', '__login_url')) + '</div>'
                     ) +
                     _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
-                        '<select class="form-select form-select-sm" id="sd-sw-rg-contact-group" data-sw-id="' + sid + '">' + _rgGroupOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-rg-contact-group" data-sw-id="' + sid + '">' + _rgGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The new member\'s contact record joins this group.')) + '</div>'
                     ) +
                     row(_sdT('Remember Me option'),
@@ -33677,7 +34613,7 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-search', _sdT('Search Results Settings'),
                     row(_sdT('Search scope'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="search_scope" data-sw-cfg-kind="choice" data-sw-cfg-choices="all,pages,products">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="search_scope" data-sw-cfg-kind="choice" data-sw-cfg-choices="all,pages,products">' +
                             '<option value="all"'      + (_srScope === 'all'      ? ' selected' : '') + '>' + esc(_sdT('Everything (pages + products)')) + '</option>' +
                             '<option value="pages"'    + (_srScope === 'pages'    ? ' selected' : '') + '>' + esc(_sdT('Pages only')) + '</option>' +
                             '<option value="products"' + (_srScope === 'products' ? ' selected' : '') + '>' + esc(_sdT('Products only (ECOMMERCE required)')) + '</option>' +
@@ -33686,16 +34622,24 @@ const StyleDesigner = (function () {
                     row(_sdT('Results per page'),
                         '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="results_per_page" data-sw-cfg-kind="int" min="1" max="200" value="' + _srPerPage + '">'
                     ) +
+                    // As a form list's (pg_sw_list_offset(), pg_sw_list_page_param()).
+                    row(_sdT('Skip the first results'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="offset" data-sw-cfg-kind="int" min="0" max="100000" value="' + _swListOffset(_cfg) + '">'
+                    ) +
+                    row(_sdT('Page number in the address'),
+                        '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="page_param" data-sw-cfg-kind="param" maxlength="32" value="' + esc(_swUrlParamName(_cfg.page_param)) + '" placeholder="page_number">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty to share page_number with the other lists on the page. A name of its own (letters, digits, underscores) lets this list turn its pages alone.')) + '</div>'
+                    ) +
                     row(_sdT('No results message'),
                         '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="empty_message" value="' + esc(_srNoResults) + '" maxlength="255">'
                     ) +
                     (_srScope !== 'pages'
                         ? row(_sdT('Product group searched'),
-                            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="product_group_id" data-sw-cfg-kind="int" min="0">' +
+                            '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="product_group_id" data-sw-cfg-kind="int" min="0">' +
                                 _swProductGroupOptions(_cfg.product_group_id, _sdT('— Top-level group —')) +
                             '</select>') +
                           row(_sdT('Product detail page'),
-                            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="catalog_detail_page_id" data-sw-cfg-kind="page">' +
+                            '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="catalog_detail_page_id" data-sw-cfg-kind="page">' +
                                 _swPageOptions(_cfg.catalog_detail_page_id, _catalogDetailPagesCache,
                                     { none: _sdT('— Automatic —'), types: ['catalog_item_view'] }) +
                             '</select>' +
@@ -33757,7 +34701,7 @@ const StyleDesigner = (function () {
                 // a custom express checkout page).
                 function _scBuildPagePicker(currentRaw, idAttr, dataAttr) {
                     if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
-                    return '<select class="form-select form-select-sm" id="' + idAttr + '" data-sw-id="' + sid + '">' +
+                    return '<select class="form-control form-control-sm" id="' + idAttr + '" data-sw-id="' + sid + '">' +
                            _swPageOptions(currentRaw, _allPagesCache, { none: _sdT('— Not selected —') }) +
                            '</select>';
                 }
@@ -33772,7 +34716,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The heading text of the quick add block.') + ' ' + _swTextHint('shopping_cart', '__quick_add_label')) + '</div>'
                     ) +
                     row(_sdT('Quick Add Product Group'),
-                        '<select class="form-select form-select-sm" id="sd-sw-sc-qa-group" data-sw-id="' + sid + '">' + _scGroupOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-sc-qa-group" data-sw-id="' + sid + '">' + _scGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The group the products in the Quick Add section come from. Empty means quick add is not shown.')) + '</div>'
                     ) +
                     row(_sdT('Special Offer Code Label'),
@@ -33800,7 +34744,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When the cart holds only digital products, the Checkout button goes to this page (usually the billing/payment page).')) + '</div>'
                     ) +
                     row(_sdT('Catalog Detail Page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-sc-detail-page" data-sw-id="' + sid + '">' + _scDetailOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-sc-detail-page" data-sw-id="' + sid + '">' + _scDetailOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Links bound to "{var}" on the cart rows go to this detail page. Format: <code>/&lt;detail-page&gt;/&lt;product-slug&gt;</code>. When empty, the first page carrying a Catalog Detail widget is used, or else the site\'s catalog detail page.', esc(_swBindLabel('shopping_cart', '__item_url'))) + '</div>'
                     ) +
                     row(_sdT('Empty cart message'),
@@ -33936,10 +34880,10 @@ const StyleDesigner = (function () {
                     var lbl = _eoSectionLabels[k] || k;
                     var isReq = _eoRequiredKeys.indexOf(k) !== -1;
                     var present = !!_eoPresent[k];
-                    var icon = present ? '<i class="bi bi-check-circle-fill text-success me-1"></i>'
-                                       : (isReq ? '<i class="bi bi-x-circle-fill text-danger me-1"></i>'
-                                                : '<i class="bi bi-circle text-muted me-1"></i>');
-                    var note = present ? '' : (isReq ? ' <span class="text-danger">— ' + esc(_sdT('MISSING')) + '</span>' : ' <span class="text-muted">— ' + esc(_sdT('optional')) + '</span>');
+                    var icon = present ? '<i class="bi bi-check-circle-fill fg-success me-1"></i>'
+                                       : (isReq ? '<i class="bi bi-x-circle-fill fg-danger me-1"></i>'
+                                                : '<i class="bi bi-circle fg-secondary me-1"></i>');
+                    var note = present ? '' : (isReq ? ' <span class="fg-danger">— ' + esc(_sdT('MISSING')) + '</span>' : ' <span class="fg-secondary">— ' + esc(_sdT('optional')) + '</span>');
                     _eoChecklistHtml += '<li>' + icon + esc(lbl) + note + '</li>';
                 });
                 _eoChecklistHtml += '</ul>';
@@ -33947,12 +34891,12 @@ const StyleDesigner = (function () {
                 var _eoLayoutWarn = '';
                 if (!_eoHasAnyBinding) {
                     _eoLayoutWarn = ''
-                        + '<div class="alert alert-warning py-2 mb-2" style="font-size:.7rem">'
+                        + '<div class="alert theme-warning py-3 mb-3" style="font-size:.7rem">'
                         +   _sdT('<strong>Designer mode is off.</strong> This widget is still using the automatic minimal layout. The button below loads the default designer layout, and from there you can move and customize the sections as you like.')
                         + '</div>';
                 } else if (_eoMissingReq.length) {
                     _eoLayoutWarn = ''
-                        + '<div class="alert alert-danger py-2 mb-2" style="font-size:.7rem">'
+                        + '<div class="alert theme-danger py-3 mb-3" style="font-size:.7rem">'
                         +   _sdT('<strong>Required sections are missing:</strong> {var}. Customers cannot complete an order without them, and your changes are <strong>not saved</strong> until you add them back.', esc(_eoMissingReq.map(function (k) { return _eoSectionLabels[k] || k; }).join(', ')))
                         + '</div>';
                 }
@@ -33971,14 +34915,14 @@ const StyleDesigner = (function () {
                 // element, so there's nothing to drag onto the canvas.
                 var _eoBody = ''
                     + '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Next Page (once the order is complete)')) + '</label><div class="sd-prop-control">'
-                    +   '<select class="form-select form-select-sm" id="sd-sw-eo-next-page" data-sw-id="' + sid + '">' + _eoNextOpts + '</select>'
+                    +   '<select class="form-control form-control-sm" id="sd-sw-eo-next-page" data-sw-id="' + sid + '">' + _eoNextOpts + '</select>'
                     +   '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The user is sent here once the payment succeeds. A thank-you page holding an Order View (order_view) widget is the usual choice; <code>?order_id=N</code> is appended to the URL automatically.') + '</div>'
                     + '</div></div>'
                     // The order receipt e-mail: a page sent to the billing
                     // address when the order is placed; its Order View widget
                     // draws the order. Nothing chosen: no receipt e-mail.
                     + '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Order receipt e-mail')) + '</label><div class="sd-prop-control">'
-                    +   '<select class="form-select form-select-sm" id="sd-sw-eo-receipt-page" data-sw-id="' + sid + '">'
+                    +   '<select class="form-control form-control-sm" id="sd-sw-eo-receipt-page" data-sw-id="' + sid + '">'
                     +     _swPageOptions(_cfg.order_receipt_email_page_id, _allPagesCache, { none: _sdT('— No receipt e-mail —') })
                     +   '</select>'
                     +   '<input type="text" class="form-control form-control-sm mt-1" id="sd-sw-eo-receipt-subject" data-sw-id="' + sid + '" maxlength="200"'
@@ -34011,7 +34955,7 @@ const StyleDesigner = (function () {
                 if (!_eoHasRlaScan) {
                     _eoRlaRowHtml = ''
                         + '<div class="sd-prop-row" style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:8px"><label class="sd-prop-label">' + esc(_sdT('Multi-Recipient Design')) + '</label><div class="sd-prop-control">'
-                        +   '<button type="button" class="btn btn-sm btn-outline-success" id="sd-sw-eo-add-recipient-loop" data-sw-id="' + sid + '">'
+                        +   '<button type="button" class="btn btn-sm btn-outline theme-success" id="sd-sw-eo-add-recipient-loop" data-sw-id="' + sid + '">'
                         +     '<i class="bi bi-people me-1"></i>' + esc(_sdT('Add a Recipient List Block'))
                         +   '</button>'
                         +   '<div style="font-size:.66rem;color:#888;margin-top:3px">'
@@ -34034,7 +34978,7 @@ const StyleDesigner = (function () {
                     +   _eoChecklistHtml
                     + '</div></div>'
                     + '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Layout Template')) + '</label><div class="sd-prop-control">'
-                    +   '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-eo-load-default" data-sw-id="' + sid + '">'
+                    +   '<button type="button" class="btn btn-sm btn-outline theme-primary" id="sd-sw-eo-load-default" data-sw-id="' + sid + '">'
                     +     '<i class="bi bi-magic me-1"></i>' + esc(_sdT('Load the Default Layout'))
                     +   '</button>'
                     +   '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('<strong>Replaces</strong> the current tree with the standard layout that holds every section. This cannot be undone.') + '</div>'
@@ -34058,7 +35002,7 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-receipt', _sdT('View Order Settings'),
                     row(_sdT('Date format'),
-                        '<select class="form-select form-select-sm" id="sd-sw-ov-date-format" data-sw-id="' + sid + '">' +
+                        '<select class="form-control form-control-sm" id="sd-sw-ov-date-format" data-sw-id="' + sid + '">' +
                             '<option value=""' + (_ovDateFormat === '' ? ' selected' : '') + '>' + esc(_sdT('Site default') + ' (' + _sdDateSample(false) + ')') + '</option>' +
                             '<option value="d.m.Y"' + (_ovDateFormat === 'd.m.Y' ? ' selected' : '') + '>' + esc(_sdT('DD.MM.YYYY (29.01.2026)')) + '</option>' +
                             '<option value="Y-m-d"' + (_ovDateFormat === 'Y-m-d' ? ' selected' : '') + '>' + esc(_sdT('YYYY-MM-DD (2026-01-29)')) + '</option>' +
@@ -34091,16 +35035,16 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-patch-check', _sdT('Membership Entrance Settings'),
                     row(_sdT('Redirect after activation'),
-                        '<select class="form-select form-select-sm" id="sd-sw-mb-redirect-page" data-sw-id="' + sid + '">' + _mbPageOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-mb-redirect-page" data-sw-id="' + sid + '">' + _mbPageOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When empty, the ?send_to= on the link is used; failing that the visitor stays on this page and sees the "your membership is active" notice.')) + '</div>'
                     ) +
                     row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-mb-login-page" data-sw-id="' + sid + '">' + _mbLoginOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-mb-login-page" data-sw-id="' + sid + '">' + _mbLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('membership', '__login_url')) + '</div>'
                     ) +
                     _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
-                        '<select class="form-select form-select-sm" id="sd-sw-mb-contact-group" data-sw-id="' + sid + '">' + _mbGroupOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-mb-contact-group" data-sw-id="' + sid + '">' + _mbGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The activated member\'s contact record joins this group.')) + '</div>'
                     ) +
                     row(_sdT('Remember Me option'),
@@ -34132,7 +35076,7 @@ const StyleDesigner = (function () {
                 var _cfTree     = _sharedCache[sid] ? _sharedCache[sid].tree : null;
 
                 var _cfSourceRow = row(_sdT('Form'),
-                    '<select class="form-select form-select-sm" id="sd-sw-cf-source" data-sw-id="' + sid + '">' +
+                    '<select class="form-control form-control-sm" id="sd-sw-cf-source" data-sw-id="' + sid + '">' +
                         '<option value="page"'     + (_cfOwnsPage  ? ' selected' : '') + '>' + esc(_sdT('New form — this page\'s form')) + '</option>' +
                         '<option value="existing"' + (!_cfOwnsPage ? ' selected' : '') + '>' + esc(_sdT('An existing form')) + '</option>' +
                     '</select>' +
@@ -34181,7 +35125,7 @@ const StyleDesigner = (function () {
                     var _cfNoTitle = _cfFields.length && !_cfRoles.some(function (r) { return r.role === 'title' && r.field; });
                     _cfList += '<div style="font-size:.66rem;color:#888;line-height:1.5;margin-top:4px">' +
                         _cfRoles.map(function (r) {
-                            return '<span class="me-2">' + esc(r.label) + ': ' +
+                            return '<span class="me-3">' + esc(r.label) + ': ' +
                                    (r.field ? '<code>' + esc(r.field.name) + '</code>' : '—') + '</span>';
                         }).join('') +
                         '</div>' +
@@ -34214,9 +35158,9 @@ const StyleDesigner = (function () {
                         // made from the Title field (the server names the
                         // records already there when this is turned on).
                         row(_sdT('Record addresses'),
-                            '<div class="form-check form-switch">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="pretty_urls" type="checkbox" id="sd-sw-cf-pretty"' + (_cfFS.pretty_urls ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-pretty" style="font-size:.72rem">' + esc(_sdT('Enable Pretty URLs')) + '</label>' +
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="pretty_urls" type="checkbox" id="sd-sw-cf-pretty"' + (_cfFS.pretty_urls ? ' checked' : '') + '></div>' +
+                                '<label class="" for="sd-sw-cf-pretty" style="font-size:.72rem">' + esc(_sdT('Enable Pretty URLs')) + '</label>' +
                             '</div>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
                                 esc(_sdT('A record opens at the address of the page that shows it followed by its title (/blog-post/my-first-post), not by a reference code (?r=…). The name is made from the field with the Title role; turning this on names the records already submitted, and old links keep working.')) +
@@ -34246,18 +35190,18 @@ const StyleDesigner = (function () {
                         // list of fields; its Form Item View widget of this form
                         // shows the submission the e-mail is about.
                         row(_sdT('Notification page'),
-                            '<select class="form-select form-select-sm sd-cf-sn" data-s="notify_page_id">' +
+                            '<select class="form-control form-control-sm sd-cf-sn" data-s="notify_page_id">' +
                                 _swPageOptions(_cfFS.notify_page_id, _allPagesCache, { none: _sdT('— Plain text: the list of fields —') }) +
                             '</select>'
                         ) +
                         row(_sdT('Auto-reply to the sender'),
-                            '<div class="form-check form-switch">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="confirm_email" type="checkbox" id="sd-sw-cf-confirm-email"' + (_cfFS.confirm_email ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-confirm-email" style="font-size:.72rem">' + esc(_sdT('Send a copy to the sender as well')) + '</label>' +
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="confirm_email" type="checkbox" id="sd-sw-cf-confirm-email"' + (_cfFS.confirm_email ? ' checked' : '') + '></div>' +
+                                '<label class="" for="sd-sw-cf-confirm-email" style="font-size:.72rem">' + esc(_sdT('Send a copy to the sender as well')) + '</label>' +
                             '</div>' +
                             (_cfFS.confirm_email
                                 ? '<input type="text" class="form-control form-control-sm mt-1 sd-cf-s" data-s="confirm_subject" value="' + esc(_cfFS.confirm_subject || '') + '" maxlength="255" placeholder="' + esc(_sdT('We received your message')) + '">' +
-                                  '<select class="form-select form-select-sm mt-1 sd-cf-sn" data-s="confirm_page_id" title="' + esc(_sdT('Page sent as the e-mail')) + '">' +
+                                  '<select class="form-control form-control-sm mt-1 sd-cf-sn" data-s="confirm_page_id" title="' + esc(_sdT('Page sent as the e-mail')) + '">' +
                                       _swPageOptions(_cfFS.confirm_page_id, _allPagesCache, { none: _sdT('— Plain text: the list of fields —') }) +
                                   '</select>'
                                 : '') +
@@ -34265,7 +35209,7 @@ const StyleDesigner = (function () {
                                 esc(_sdT('An e-mail page is a page of this design with a Form Item View widget of this form: it is drawn for the submission and sent as it looks.')) + '</div>'
                         ) +
                         row(_sdT('Next page'),
-                            '<select class="form-select form-select-sm sd-cf-sn" data-s="confirmation_page_id">' + _cfPageOpts + '</select>' +
+                            '<select class="form-control form-control-sm sd-cf-sn" data-s="confirmation_page_id">' + _cfPageOpts + '</select>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The page the visitor goes to after submitting; when nothing is chosen the message below is shown.')) + ' ' +
                                 esc(_sdT('A page with a Form Item View widget of this form (access: submitter only) shows the visitor the answers they just sent.')) + '</div>'
                         ) +
@@ -34273,7 +35217,7 @@ const StyleDesigner = (function () {
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="confirmation_message" value="' + esc(_cfFS.confirmation_message || '') + '" maxlength="255" placeholder="' + esc(_sdT('Thank you. Your message reached us.')) + '">'
                         ) +
                         row(_sdT('Contact group'),
-                            '<select class="form-select form-select-sm sd-cf-sn" data-s="contact_group_id">' +
+                            '<select class="form-control form-control-sm sd-cf-sn" data-s="contact_group_id">' +
                                 '<option value="0"' + (!(parseInt(_cfFS.contact_group_id || 0, 10) > 0) ? ' selected' : '') + '>' + esc(_sdT('— No group —')) + '</option>' +
                                 (_cfMeta().contactGroups || []).map(function (g) {
                                     return '<option value="' + esc(String(g.id)) + '"' + (String(g.id) === String(parseInt(_cfFS.contact_group_id || 0, 10) || 0) ? ' selected' : '') + '>' + esc(g.name) + '</option>';
@@ -34285,9 +35229,9 @@ const StyleDesigner = (function () {
                             // once the server has the column; until then the
                             // save would drop the value.
                             (_cfMeta().doubleOptIn ? (
-                                '<div class="form-check form-switch mt-2">' +
-                                    '<input class="form-check-input sd-cf-sb" data-s="double_opt_in" type="checkbox" id="sd-sw-cf-double-opt-in"' + (_cfFS.double_opt_in ? ' checked' : '') + '>' +
-                                    '<label class="form-check-label" for="sd-sw-cf-double-opt-in" style="font-size:.72rem">' + esc(_sdT('Ask for confirmation by e-mail before adding to the group (double opt-in)')) + '</label>' +
+                                '<div class="form-field mt-3">' +
+                                    '<div class="switch"><input class="sd-cf-sb" data-s="double_opt_in" type="checkbox" id="sd-sw-cf-double-opt-in"' + (_cfFS.double_opt_in ? ' checked' : '') + '></div>' +
+                                    '<label class="" for="sd-sw-cf-double-opt-in" style="font-size:.72rem">' + esc(_sdT('Ask for confirmation by e-mail before adding to the group (double opt-in)')) + '</label>' +
                                 '</div>' +
                                 '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' + esc(_sdT('The sender gets a link at the address of their contact record and joins the group only after pressing the button behind it.')) + ' ' +
                                     esc(_sdT('Say in the message after submission that a confirmation e-mail is on its way: the form does not say it by itself.')) + '</div>'
@@ -34298,18 +35242,18 @@ const StyleDesigner = (function () {
                         // can follow the conversation, without making them a
                         // member of anything.
                         row(_sdT('Visitors without an account'),
-                            '<div class="form-check form-switch">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="auto_registration" type="checkbox" id="sd-sw-cf-autoreg"' + (_cfFS.auto_registration ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-autoreg" style="font-size:.72rem">' + esc(_sdT('Open an account for a visitor who has none')) + '</label>' +
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="auto_registration" type="checkbox" id="sd-sw-cf-autoreg"' + (_cfFS.auto_registration ? ' checked' : '') + '></div>' +
+                                '<label class="" for="sd-sw-cf-autoreg" style="font-size:.72rem">' + esc(_sdT('Open an account for a visitor who has none')) + '</label>' +
                             '</div>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
                                 esc(_sdT('The account is opened with the email the form asks for and the visitor is signed in. A next page with a Form Item View widget can show the sign-in details (the "the form just opened an account" condition).')) +
                             '</div>'
                         ) +
                         row(_sdT('Membership and quiz'),
-                            '<div class="form-check form-switch">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="membership" type="checkbox" id="sd-sw-cf-membership"' + (_cfFS.membership ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-membership" style="font-size:.72rem">' + esc(_sdT('Give whoever submits this form a membership')) + '</label>' +
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="membership" type="checkbox" id="sd-sw-cf-membership"' + (_cfFS.membership ? ' checked' : '') + '></div>' +
+                                '<label class="" for="sd-sw-cf-membership" style="font-size:.72rem">' + esc(_sdT('Give whoever submits this form a membership')) + '</label>' +
                             '</div>' +
                             (_cfFS.membership
                                 ? '<div class="d-flex gap-1 mt-1">' +
@@ -34320,9 +35264,9 @@ const StyleDesigner = (function () {
                                       esc(_sdT('While automatic registration is off, only a signed-in visitor can submit the form.')) +
                                   '</div>')
                                 : '') +
-                            '<div class="form-check form-switch mt-2">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="quiz" type="checkbox" id="sd-sw-cf-quiz"' + (_cfFS.quiz ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-quiz" style="font-size:.72rem">' + esc(_sdT('A quiz form (so the fields can carry a correct answer)')) + '</label>' +
+                            '<div class="form-field mt-3">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="quiz" type="checkbox" id="sd-sw-cf-quiz"' + (_cfFS.quiz ? ' checked' : '') + '></div>' +
+                                '<label class="" for="sd-sw-cf-quiz" style="font-size:.72rem">' + esc(_sdT('A quiz form (so the fields can carry a correct answer)')) + '</label>' +
                             '</div>'
                         );
                 }
@@ -34340,8 +35284,8 @@ const StyleDesigner = (function () {
                     }
                     _cfExistingRows = row(_sdT('Which form'),
                         '<div class="d-flex gap-1 align-items-center">' +
-                            '<select class="form-select form-select-sm" id="sd-sw-cf-form-id" data-sw-id="' + sid + '">' + _cfFormOpts + '</select>' +
-                            '<button type="button" id="sd-cf-new-form-btn" class="btn btn-sm btn-outline-secondary flex-shrink-0" title="' + esc(_sdT('Create a new form on the form screen')) + '" data-sw-id="' + sid + '">' +
+                            '<select class="form-control form-control-sm" id="sd-sw-cf-form-id" data-sw-id="' + sid + '">' + _cfFormOpts + '</select>' +
+                            '<button type="button" id="sd-cf-new-form-btn" class="btn btn-sm btn-outline theme-secondary flex-shrink-0" title="' + esc(_sdT('Create a new form on the form screen')) + '" data-sw-id="' + sid + '">' +
                                 '<i class="bi bi-plus-lg"></i>' +
                             '</button>' +
                         '</div>' +
@@ -34378,9 +35322,9 @@ const StyleDesigner = (function () {
                                 '</div>';
                             }
                             if (_cfF.settings && _cfF.settings.orphan) {
-                                _cfFL += '<div class="alert alert-warning py-2 px-2 mb-1" style="font-size:.68rem;line-height:1.45">' +
+                                _cfFL += '<div class="alert theme-warning py-3 px-3 mb-1" style="font-size:.68rem;line-height:1.45">' +
                                     _sdT('This form is <strong>orphaned</strong> — the page it belonged to is gone. Move it to this page and it becomes this page\'s form, edited from here.') +
-                                    '<button type="button" class="btn btn-sm btn-warning w-100 mt-1" id="sd-cf-adopt" data-sw-id="' + sid + '">' + esc(_sdT('Move it to this page')) + '</button></div>';
+                                    '<button type="button" class="btn btn-sm btn-solid theme-warning w-100 mt-1" id="sd-cf-adopt" data-sw-id="' + sid + '">' + esc(_sdT('Move it to this page')) + '</button></div>';
                             } else {
                                 _cfFL += '<div style="font-size:.66rem;color:#888;line-height:1.4">' + _sdT('The fields are <strong>read-only</strong>: they are edited on that form\'s own page.') + '</div>';
                             }
@@ -34421,7 +35365,7 @@ const StyleDesigner = (function () {
                 systemSection += sect('bi-calendar3', _sdT('Calendar View Settings'),
                     row(_sdT('Calendars'), _swCalendarChecks(sid, _cfg.calendar_ids)) +
                     row(_sdT('Default view'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="default_view" data-sw-cfg-kind="choice" data-sw-cfg-choices="monthly,weekly,upcoming">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="default_view" data-sw-cfg-kind="choice" data-sw-cfg-choices="monthly,weekly,upcoming">' +
                             '<option value="monthly"'  + (_cvView === 'monthly'  ? ' selected' : '') + '>' + esc(_sdT('Monthly')) + '</option>' +
                             '<option value="weekly"'   + (_cvView === 'weekly'   ? ' selected' : '') + '>' + esc(_sdT('Weekly')) + '</option>' +
                             '<option value="upcoming"' + (_cvView === 'upcoming' ? ' selected' : '') + '>' + esc(_sdT('Upcoming events')) + '</option>' +
@@ -34432,18 +35376,18 @@ const StyleDesigner = (function () {
                         ? row(_sdT('Number of upcoming events'),
                             '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="number_of_upcoming_events" data-sw-cfg-kind="int" min="1" max="500" value="' + _cvUpcoming + '">')
                         : row(_sdT('Week starts on'),
-                            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="week_start" data-sw-cfg-kind="choice" data-sw-cfg-choices="monday,sunday">' +
+                            '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="week_start" data-sw-cfg-kind="choice" data-sw-cfg-choices="monday,sunday">' +
                                 '<option value="monday"' + (_cvWeekStart === 'monday' ? ' selected' : '') + '>' + esc(_sdT('Monday')) + '</option>' +
                                 '<option value="sunday"' + (_cvWeekStart === 'sunday' ? ' selected' : '') + '>' + esc(_sdT('Sunday')) + '</option>' +
                             '</select>')) +
                     row(_sdT('Event page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="event_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="event_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.event_page_id, _cvEventPages, { none: _sdT('— Automatic —'), types: ['calendar_event_view'] }) +
                         '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Where an event links to. Automatic: the first page with a calendar event widget, else the classic calendar event view page.')) + '</div>'
                     ) +
                     row(_sdT('Date format'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="date_format" data-sw-cfg-kind="choice" data-sw-cfg-choices=",d.m.Y,Y-m-d,d M Y">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="date_format" data-sw-cfg-kind="choice" data-sw-cfg-choices=",d.m.Y,Y-m-d,d M Y">' +
                             '<option value=""' + (_cvDateFormat === '' ? ' selected' : '') + '>' + esc(_sdT('Site default') + ' (' + _sdDateSample(false) + ')') + '</option>' +
                             '<option value="d.m.Y"' + (_cvDateFormat === 'd.m.Y' ? ' selected' : '') + '>' + esc(_sdT('DD.MM.YYYY')) + '</option>' +
                             '<option value="Y-m-d"' + (_cvDateFormat === 'Y-m-d' ? ' selected' : '') + '>' + esc(_sdT('YYYY-MM-DD')) + '</option>' +
@@ -34479,7 +35423,7 @@ const StyleDesigner = (function () {
                     var o = { none: none };
                     if (types) o.types = types;
                     return row(label,
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg[key], _allPagesCache, o) +
                         '</select>' + (hint ? _acHint(esc(hint)) : ''));
                 };
@@ -34532,7 +35476,7 @@ const StyleDesigner = (function () {
                     account_profile:   'first_name, last_name, title, company, business_address_1, business_address_2, business_city, business_state, business_zip_code, business_country, business_phone, mobile_phone, home_phone, business_fax, salutation, suffix, tax_number, tax_office, timezone',
                     email_preferences: 'email_address, opt_in, contact_group',
                     address_book:      'ship_to_name, salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number',
-                    account_security:  'code, current_password'
+                    account_security:  'code, current_password, name'
                 }[_regionType];
                 if (_acNames) {
                     _acRows += row(_sdT('Controls'),
@@ -34572,14 +35516,14 @@ const StyleDesigner = (function () {
         if (!_cfg) {
             actionHtml =
                 '<div class="sd-prop-row">' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-sc-detach-btn">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-sc-detach-btn">' +
                         '<span class="bi bi-scissors me-1"></span>' + esc(_sdT('Detach')) + '' +
                     '</button>' +
                 '</div>';
         } else {
             actionHtml =
                 '<div class="sd-prop-row">' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-sw-remove-canvas" data-sw-id="' + sid + '">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-sw-remove-canvas" data-sw-id="' + sid + '">' +
                         '<span class="bi bi-x-lg me-1"></span>' + esc(_sdT('Remove This Placement')) + '' +
                     '</button>' +
                 '</div>' +
@@ -34589,7 +35533,7 @@ const StyleDesigner = (function () {
                     '</div>' +
                 '</div>' +
                 '<div class="sd-prop-row">' +
-                    '<button type="button" class="btn btn-sm btn-outline-danger w-100" id="sd-sw-delete-all" data-sw-id="' + sid + '" data-sw-name="' + esc(sname) + '">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-danger w-100" id="sd-sw-delete-all" data-sw-id="' + sid + '" data-sw-name="' + esc(sname) + '">' +
                         '<span class="bi bi-trash me-1"></span>' + esc(_sdT('Delete the Widget Entirely')) + '' +
                     '</button>' +
                 '</div>' +
@@ -34603,7 +35547,7 @@ const StyleDesigner = (function () {
             if (_swKindOf(_cfg) === 'comments' && _sdCommentsSwapOffered(n)) {
                 actionHtml =
                     '<div class="sd-prop-row">' +
-                        '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-cmt-back-to-block" data-sw-id="' + sid + '">' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-cmt-back-to-block" data-sw-id="' + sid + '">' +
                             '<span class="bi bi-arrow-counterclockwise me-1"></span>' + esc(_sdT('Back to the fixed block')) +
                         '</button>' +
                     '</div>' +
@@ -34635,7 +35579,7 @@ const StyleDesigner = (function () {
             if (_swForkOffer(n)) {
                 usageHtml +=
                     '<div class="sd-prop-row">' +
-                        '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-sw-fork-page" data-sw-id="' + sid + '">' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-sw-fork-page" data-sw-id="' + sid + '">' +
                             '<span class="bi bi-files me-1"></span>' + esc(_sdT('Make a copy for this page')) +
                         '</button>' +
                     '</div>' +
@@ -34665,6 +35609,7 @@ const StyleDesigner = (function () {
             : '';
 
         return systemSection +
+            (_cfg && sid > 0 ? _swPlacementSection(n, sid, _cfg, _placeOrderOpts) : '') +
             sect('bi-puzzle-fill', _cfg ? _sdT('System Widget Record') : _sdT('Shared Component'),
                 nameHtml +
                 row('ID', '<span class="sd-prop-static">' + (sid || '—') + '</span>') +
@@ -34683,6 +35628,29 @@ const StyleDesigner = (function () {
     var _patchSysCfgChain = {};
 
     function _wireSystemWidgetProps() {
+        // ── This placement's own values (_swPlacementSection) ───────────────
+        // Written on the selected shared_ref node: the page changes, the
+        // widget's row does not.
+        document.querySelectorAll('[data-sw-place], [data-sw-place-list]').forEach(function (el) {
+            el.addEventListener('change', function () {
+                if (!selectedNode || selectedNode.type !== 'shared_ref') return;
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); renderProperties(); return; }
+                var key, value;
+                if (el.dataset.swPlaceList) {
+                    key = el.dataset.swPlaceList;
+                    value = [];
+                    document.querySelectorAll('[data-sw-place-list="' + key + '"]').forEach(function (c) {
+                        if (c.checked) value.push(parseInt(c.value, 10));
+                    });
+                } else {
+                    key = el.dataset.swPlace;
+                    value = el.dataset.swPlaceKind === 'int' ? (parseInt(el.value, 10) > 0 ? parseInt(el.value, 10) : 0) : el.value;
+                }
+                saveState();
+                _swPlacementSet(selectedNode, key, value);
+                render();
+            });
+        });
         // ── Remove this canvas placement only (keep widget definition in DB) ────
         var rmCanvasBtn = document.getElementById('sd-sw-remove-canvas');
         if (rmCanvasBtn) {
@@ -34732,11 +35700,11 @@ const StyleDesigner = (function () {
                 var cached = _sharedCache[offer.sid];
                 sdChoose({
                     title: _sdT('This widget is on other pages too'),
-                    html: '<p class="mb-2">' + _sdT('<strong>{var:1}</strong> is used in these places too: {var:2}.', [esc(cached ? cached.name : '#' + offer.sid), esc(offer.others.join(', '))]) + '</p>' +
+                    html: '<p class="mb-3">' + _sdT('<strong>{var:1}</strong> is used in these places too: {var:2}.', [esc(cached ? cached.name : '#' + offer.sid), esc(offer.others.join(', '))]) + '</p>' +
                           '<p class="mb-0">' + esc(_sdT('This page then shows its own copy, with the same layout and settings; the other places keep this widget.')) + ' ' +
                               esc(_sdT('A later change to one of them stays in that one.')) + '</p>' +
                           (offer.unsaved
-                              ? '<p class="mb-0 mt-2">' + esc(_sdT('Its layout has unsaved changes, and the copy takes them. The other places can keep the widget as it was last saved, or get the changes too when you save.')) + '</p>'
+                              ? '<p class="mb-0 mt-3">' + esc(_sdT('Its layout has unsaved changes, and the copy takes them. The other places can keep the widget as it was last saved, or get the changes too when you save.')) + '</p>'
                               : ''),
                     choices: offer.unsaved
                         ? [
@@ -34881,7 +35849,7 @@ const StyleDesigner = (function () {
             var cached = _sharedCache[sid];
             sdChoose({
                 title: _sdT('This widget is on other pages too'),
-                html: '<p class="mb-2">' + _sdT('<strong>{var:1}</strong> is used in these places too: {var:2}.', [esc(cached ? cached.name : '#' + sid), esc(others.join(', '))]) + '</p>' +
+                html: '<p class="mb-3">' + _sdT('<strong>{var:1}</strong> is used in these places too: {var:2}.', [esc(cached ? cached.name : '#' + sid), esc(others.join(', '))]) + '</p>' +
                       '<p class="mb-0">' + _sdT('Changing its type here changes them as well, layouts included. A separate copy can be made for this page instead, and the other pages stay as they are.') + '</p>',
                 choices: [
                     { value: 'fork', label: _sdT('Make a copy for this page'), variant: 'primary', icon: 'bi-files' },
@@ -35265,9 +36233,12 @@ const StyleDesigner = (function () {
         // when none.
         var _swFilterKey = function (el) { return (el && el.getAttribute('data-sw-filter-key')) || 'filters'; };
         var _swFilterEls = document.querySelectorAll('.sd-sw-filter');
-        var _swReadFilters = function () {
+        // The rows of one list: a widget's own filters and its placement's
+        // stand in the same panel.
+        var _swReadFilters = function (key) {
             var out = [];
             document.querySelectorAll('.sd-sw-filter').forEach(function (el) {
+                if (_swFilterKey(el) !== key) return;
                 var q = function (c) { return el.querySelector(c); };
                 var dyn = q('.sd-sw-filter-dyn') ? q('.sd-sw-filter-dyn').value : '';
                 var val = q('.sd-sw-filter-value') ? String(q('.sd-sw-filter-value').value || '') : '';
@@ -35292,29 +36263,41 @@ const StyleDesigner = (function () {
             });
             return out;
         };
-        _swFilterEls.forEach(function (el, idx) {
+        // A placement's rows go on the selected shared_ref node; a widget's
+        // into its config.
+        var _swSaveFilters = function (sid, key, list, rerender) {
+            if (key === 'placement') {
+                if (!selectedNode || selectedNode.type !== 'shared_ref') return;
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); renderProperties(); return; }
+                saveState();
+                _swPlacementSet(selectedNode, 'filters', list);
+                render();
+                return;
+            }
+            _patchSysCfg(sid, function (cfg) { cfg[key] = list; },
+                rerender ? { afterSave: function () { renderProperties(); } } : undefined);
+        };
+        _swFilterEls.forEach(function (el) {
             var sid = 0;
             var any = el.querySelector('[data-sw-id]');
             if (any) sid = parseInt(any.dataset.swId, 10);
             if (!sid) return;
             var key = _swFilterKey(el);
-            var save = function (list, rerender) {
-                _patchSysCfg(sid, function (cfg) { cfg[key] = list; },
-                    rerender ? { afterSave: function () { renderProperties(); } } : undefined);
-            };
+            var idx = parseInt(el.getAttribute('data-idx'), 10) || 0;
+            var save = function (list, rerender) { _swSaveFilters(sid, key, list, rerender); };
             var fieldEl = el.querySelector('.sd-sw-filter-field');
             if (fieldEl) fieldEl.addEventListener('change', function () {
-                var list = _swReadFilters();
+                var list = _swReadFilters(key);
                 // Another field has another type: its value and dynamic
                 // value no longer apply.
                 if (list[idx]) { list[idx].value = ''; list[idx].dynamic_value = ''; list[idx].dynamic_value_attribute = ''; }
                 save(list, true);
             });
             var dynEl = el.querySelector('.sd-sw-filter-dyn');
-            if (dynEl) dynEl.addEventListener('change', function () { save(_swReadFilters(), true); });
+            if (dynEl) dynEl.addEventListener('change', function () { save(_swReadFilters(key), true); });
             ['.sd-sw-filter-op', '.sd-sw-filter-value', '.sd-sw-filter-days'].forEach(function (c) {
                 var inp = el.querySelector(c);
-                if (inp) inp.addEventListener('change', function () { save(_swReadFilters(), false); });
+                if (inp) inp.addEventListener('change', function () { save(_swReadFilters(key), false); });
             });
             // The name being edited is stored normalised (lower case, a-z,
             // 0-9 and _ only, at most 32 characters; the re-rendered input
@@ -35323,26 +36306,25 @@ const StyleDesigner = (function () {
             var paramEl = el.querySelector('.sd-sw-filter-param');
             if (paramEl) paramEl.addEventListener('change', function () {
                 this.value = String(this.value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
-                save(_swReadFilters(), true);
+                save(_swReadFilters(key), true);
             });
             var delEl = el.querySelector('.sd-sw-filter-del');
             if (delEl) delEl.addEventListener('click', function () {
-                var list = _swReadFilters();
+                var list = _swReadFilters(key);
                 list.splice(idx, 1);
                 save(list, true);
             });
         });
-        var fAddEl = document.getElementById('sd-sw-filter-add');
-        if (fAddEl) {
+        document.querySelectorAll('.sd-sw-filter-add').forEach(function (fAddEl) {
             fAddEl.addEventListener('click', function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var key = _swFilterKey(this);
-                var list = _swReadFilters();
+                var list = _swReadFilters(key);
                 list.push({ field: '', operator: 'is equal to', value: '', dynamic_value: '', dynamic_value_attribute: '' });
-                _patchSysCfg(sid, function (cfg) { cfg[key] = list; }, { afterSave: function () { renderProperties(); } });
+                _swSaveFilters(sid, key, list, true);
             });
-        }
+        });
 
         // ── Phase 2: Catalog group navigation (none / drill_down / page) ──
         var gnEl = document.getElementById('sd-sw-group-nav');
@@ -36042,6 +37024,10 @@ const StyleDesigner = (function () {
                     v = _swPageVal(this);
                 } else if (kind === 'bool') {
                     v = !!this.checked;
+                } else if (kind === 'param') {
+                    // A query parameter name, '' when it cannot be used.
+                    v = _swUrlParamName(this.value);
+                    this.value = v;
                 } else {
                     v = ('' + this.value).slice(0, 255);
                 }
@@ -36396,59 +37382,6 @@ const StyleDesigner = (function () {
         // properties panel (context-aware). The widget-level dropdown was a
         // second control writing the same setting.
 
-        // ── Universal "Load the Default Layout" handler ───────────────────
-        // Works for every system widget type that has a _buildStarterTree
-        // entry (form_list_view, catalog_*, my_account, login_form,
-        // forgot_password, search_results, registration, shopping_cart,
-        // order_view, express_order, membership, custom_form, calendar_view).
-        // Uses the LOCAL builder — no API round-trip needed since the
-        // starter tree is fully constructed in JS.
-        var loadDefEl = document.getElementById('sd-sw-load-default');
-        if (loadDefEl) {
-            loadDefEl.addEventListener('click', function () {
-                var sid = parseInt(this.dataset.swId, 10);
-                if (!sid) return;
-                var rt = (this.getAttribute('data-region-type') || '').trim();
-                if (!rt) { sdToast(_sdT('Choose the content type first.'), 'warning'); return; }
-                if (!_sharedCache[sid]) {
-                    sdToast(_sdT('The widget is not in the cache. Refresh the page and try again.'), 'error');
-                    return;
-                }
-                if (typeof _buildStarterTree !== 'function') {
-                    sdToast(_sdT('The layout template builder function was not found.'), 'error');
-                    return;
-                }
-                if (!window.confirm(_sdT('The current canvas design will be replaced completely. Continue? (Ctrl+Z undoes it.)'))) return;
-                // A form view with a form chosen starts from that form's
-                // fields — the same layout picking the form produces.
-                var _fv = _swFormViewConfig(sid);
-                if ((rt === 'form_list_view' || rt === 'form_item_view') && _fv.formId) {
-                    _fetchFormFields(_fv.formId, function (fields) { _swApplyFormLayout(sid, rt, fields); }, true);
-                    return;
-                }
-                var newTree = _buildStarterTree(rt);
-                if (!newTree) {
-                    sdToast(_sdT('There is no default layout for this widget type.'), 'warning');
-                    return;
-                }
-                // Re-id every node so the canvas doesn\'t end up with stale
-                // duplicates of pre-existing _id values.
-                (function reId(nd) {
-                    nd._id = (typeof gid === 'function') ? gid() : ('n' + Math.random().toString(36).slice(2, 10));
-                    if (Array.isArray(nd.children)) nd.children.forEach(reId);
-                })(newTree);
-                if (typeof saveState === 'function') saveState();
-                _sharedCache[sid].tree = newTree;
-                _sharedDirty[sid] = true;
-                // A custom form's starter controls are its fields from this
-                // moment: named the way a drop would name them.
-                if (typeof _cfEnsureNames === 'function' && rt === 'custom_form') _cfEnsureNames(newTree, sid);
-                if (typeof render === 'function') render();
-                if (typeof renderProperties === 'function') renderProperties();
-                sdToast(_sdT('The default layout was loaded.'), 'success');
-            });
-        }
-
         // ── order_view settings ───────────────────────────────────────────────
 
         // date_format (select)
@@ -36739,7 +37672,11 @@ const StyleDesigner = (function () {
     // and the classic list count them; _render_system_widget_form_list()).
     var SW_FORM_LIST_VIEW_TOKENS = [
         ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')],
-        ['__result_count', _sdT('Number of results')]
+        ['__result_count', _sdT('Number of results')],
+        ['__page_number',   _sdT('Page shown')],
+        ['__page_count',    _sdT('Number of pages')],
+        ['__prev_page_url', _sdT('Previous page link')],
+        ['__next_page_url', _sdT('Next page link')]
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
 
@@ -36756,6 +37693,15 @@ const StyleDesigner = (function () {
     // The widget kinds whose renderer expands the link: the form list under
     // its four names and the form detail.
     var _SW_PAGE_LINK_TYPES = { form_list_view: 1, submitted_forms_list: 1, form_list: 1, blog_list: 1, form_item_view: 1 };
+    // A field of a record the record points at: the binding of a text, an
+    // image or a link in the same widget kinds (pg_coll_ref_bindings() in
+    // includes/fn/collections.php). Which own field holds the reference, the
+    // form it points into and the field to print are kept beside it in
+    // props._bindParams.<prop> (_swRefSpec()). In no token palette, like
+    // the link above.
+    var SW_REF_TOKEN = '__ref';
+    // The props it binds: what a text, an image or a link prints.
+    var _SW_REF_PROPS = { text: 1, alt: 1, src: 1, href: 1 };
 
     // Standard names a form's own field overrides on the server
     // (pg_sw_form_field_wins() in includes/fn/widgets.php keeps the same
@@ -36806,9 +37752,14 @@ const StyleDesigner = (function () {
         ['__ai_perplexity_url', _sdT('Summarize with Perplexity (address)')],
         ['__ai_google_url',     _sdT('Summarize with Google AI Mode (address)')]
     ];
+    // A form record's allow-listed values (pg_sw_entity_fields('form_record')),
+    // in the record's own view only: a list would show other people's scores.
+    var SW_FORM_RECORD_ENTITY_TOKENS = [
+        ['__quiz_score', _sdT('Quiz score (percent, quiz forms)')]
+    ];
     var SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat([
         ['not_found', _sdT('Not-found message (filled when there is no record)')]
-    ], SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS, SW_FORM_ITEM_VIEW_AI_TOKENS);
+    ], SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS, SW_FORM_ITEM_VIEW_AI_TOKENS, SW_FORM_RECORD_ENTITY_TOKENS);
 
     // The format a date binding prints in, as the classic screens take it:
     // ^^submitted_date_and_time^^%%d.m.Y%%. The value lives on the node under
@@ -36879,6 +37830,7 @@ const StyleDesigner = (function () {
         out.__event_date = true;
         out.__event_start_date = true;
         out.__event_end_date = true;
+        out.__event_updated_date = true;
         // Order view: typed by _pg_sw_order_view_dates().
         out.__order_date = true;
         out.__arrival_date = true;
@@ -36919,7 +37871,8 @@ const StyleDesigner = (function () {
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
-        order_preview: 1, menu_region: 1
+        order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
+        tag_cloud_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37004,7 +37957,7 @@ const StyleDesigner = (function () {
                     (r ? ' min="' + r.min + '" max="' + r.max + '" value="' + parsed.arg + '" aria-label="' + esc(label) + '"'
                        : ' style="display:none"') + '>';
         return row(esc(_sdT('Format')),
-            '<select class="form-select form-select-sm sd-sw-bindfilter">' + opts + '</select>' + arg + hint);
+            '<select class="form-control form-control-sm sd-sw-bindfilter">' + opts + '</select>' + arg + hint);
     }
 
     // The operators of the "Show only when a value…" row, in the server's
@@ -37032,7 +37985,6 @@ const StyleDesigner = (function () {
     // __page_link_N / __link_label_N go too (_sdCondTokenAllowed()).
     var SW_COND_DENY = [
         '__variant_picker',
-        '__filter_chips',
         '__filters_button',
         '__filters_offcanvas',
         '__clear_filters_button',
@@ -37043,6 +37995,67 @@ const StyleDesigner = (function () {
         '__link_label'
     ];
 
+    // The names a node's conditions are stored under, in order
+    // (pg_sw_cond_names()): the first, then the two an element may add,
+    // joined by _bindParams.show_if.join ('any' or 'all').
+    var SD_COND_NAMES = ['show_if', 'show_if_2', 'show_if_3'];
+
+    // Whether `props` names a condition, set or empty (pg_sw_cond_present()).
+    function _sdCondPresent(props) {
+        var b = props && props._bindings;
+        if (!b || typeof b !== 'object') return false;
+        return SD_COND_NAMES.some(function (name) { return Object.prototype.hasOwnProperty.call(b, name); });
+    }
+
+    // Every condition of `props`, twin of pg_sw_cond_specs(): null without
+    // one, false when one cannot be evaluated, a join is unknown or a later
+    // one stands without the first, else {join, conds: [{token, op, operand}]}.
+    function _sdCondSpecs(props) {
+        var b = (props && props._bindings) || {};
+        var bp = (props && props._bindParams) || {};
+        var conds = [];
+        for (var i = 0; i < SD_COND_NAMES.length; i++) {
+            var raw = b[SD_COND_NAMES[i]];
+            if (raw == null || raw === '' || raw === false) continue;
+            if (typeof raw !== 'string') return false;
+            var token = raw.replace(/[^a-z0-9_\-]/gi, '');
+            if (!token || !_sdCondTokenAllowed(token)) return false;
+            var params = (bp[SD_COND_NAMES[i]] && typeof bp[SD_COND_NAMES[i]] === 'object') ? bp[SD_COND_NAMES[i]] : {};
+            var op = 'not_empty';
+            if (params.op != null && params.op !== '') {
+                if (typeof params.op !== 'string') return false;
+                op = params.op;
+            }
+            var entry = _sdCondOp(op);
+            if (!entry) return false;
+            var operand = '';
+            if (entry[2]) {
+                operand = (typeof params.value === 'string' || typeof params.value === 'number' || typeof params.value === 'boolean')
+                    ? String(params.value === true ? '1' : params.value === false ? '' : params.value).trim() : '';
+                if (operand === '') return false;
+            }
+            if (i > 0 && !conds.length) return false;
+            conds.push({ token: token, op: op, operand: operand });
+        }
+        if (!conds.length) return null;
+        var join = (bp.show_if && typeof bp.show_if === 'object' && bp.show_if.join != null && bp.show_if.join !== '') ? bp.show_if.join : 'all';
+        if (join !== 'all' && join !== 'any') return false;
+        return { join: join, conds: conds };
+    }
+
+    // The joined test, twin of pg_sw_cond_eval_all(): `tests` is a list of
+    // [op, value, operand]; 'any' holds when one holds, any other join when
+    // every one does. No tests hold.
+    function _sdCondEvalAll(join, tests, decimal) {
+        if (!tests || !tests.length) return true;
+        for (var i = 0; i < tests.length; i++) {
+            var ok = _sdCondEval(tests[i][0], tests[i][1], tests[i][2], decimal);
+            if (join === 'any' && ok) return true;
+            if (join !== 'any' && !ok) return false;
+        }
+        return join !== 'any';
+    }
+
     // Whether a condition may read `token` (pg_sw_cond_token_allowed()).
     function _sdCondTokenAllowed(token) {
         var t = String(token == null ? '' : token).toLowerCase();
@@ -37050,6 +38063,160 @@ const StyleDesigner = (function () {
         if (/_html$/.test(t)) return false;
         if (SW_COND_DENY.indexOf(t) !== -1) return false;
         return !/^__(page_link|link_label)_\d+$/.test(t);
+    }
+
+    // The test of a value condition, twin of pg_sw_cond_eval() and its
+    // helpers (includes/fn/widgets_conditions.php); the canvas decides with
+    // it what a state draws. tests/widget_condition_eval_test.php runs the
+    // vectors of tests/fixtures/widget_condition_vectors.json through both.
+
+    // White space as the server reads it (pg_sw_cond_plain()): a set written
+    // out, since JavaScript's \s is not PCRE's.
+    var SD_COND_WS = /[\t\n\x0B\f\r \u0085\u00A0\u1680\u180E\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+/g;
+
+    // Runs of white space as one space, none at either end.
+    function _sdCondPlain(s) {
+        return String(s == null ? '' : s).replace(SD_COND_WS, ' ').replace(/^ +| +$/g, '');
+    }
+
+    // What a visitor reads in a value: tags dropped, entities decoded
+    // (pg_sw_cond_text()).
+    function _sdCondText(html) {
+        var s = String(html == null ? '' : html).replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]*>/g, '');
+        if (s.indexOf('&') !== -1 && typeof document !== 'undefined') {
+            var ta = document.createElement('textarea');
+            ta.innerHTML = s;
+            s = ta.value;
+        }
+        return _sdCondPlain(s);
+    }
+
+    // Folded for comparison (pg_sw_cond_fold()): lower case, the dot of a
+    // capital İ dropped, the dotless ı read as i.
+    function _sdCondFold(s) {
+        return String(s).toLowerCase().replace(/\u0307/g, '').replace(/\u0131/g, 'i');
+    }
+
+    // Whether a figure is grouped as an amount (pg_sw_cond_figure_ok()).
+    function _sdCondFigureOk(figure) {
+        var parts = String(figure).split(/([., ])/);
+        var groups = [], seps = [];
+        parts.forEach(function (part, i) { (i % 2 ? seps : groups).push(part); });
+        var n = seps.length;
+        if (n === 0) return true;
+        var last = seps[n - 1];
+        if (last !== ' ' && seps.filter(function (s) { return s === last; }).length === 1) {
+            if (n === 1) return true;
+            seps.pop();
+            groups.pop();
+        }
+        if (seps.some(function (s) { return s !== seps[0]; }) || groups[0].length > 3) return false;
+        for (var i = 1; i < groups.length; i++) {
+            if (groups[i].length !== 3) return false;
+        }
+        return true;
+    }
+
+    // The number a figure stands for (pg_parse_amount() on digits and
+    // separators): one separator with three digits after it is the decimal
+    // point only when the site writes one so (`decimal`, its language).
+    function _sdCondFigureNumber(figure, decimal) {
+        var v = String(figure).replace(/ /g, '');
+        var dot = v.lastIndexOf('.'), comma = v.lastIndexOf(',');
+        var point = '';
+        if (dot !== -1 && comma !== -1) {
+            point = dot > comma ? '.' : ',';
+        } else if (dot !== -1 || comma !== -1) {
+            var sep = dot !== -1 ? '.' : ',';
+            if (v.split(sep).length === 2) {
+                point = (v.length - v.lastIndexOf(sep) - 1 === 3) ? (decimal === sep ? sep : '') : sep;
+            }
+        }
+        if (point === '') return parseFloat(v.replace(/[.,]/g, '')) || 0;
+        var at = v.lastIndexOf(point);
+        return parseFloat(v.slice(0, at).replace(/[.,]/g, '') + '.' + v.slice(at + 1).replace(/[.,]/g, '')) || 0;
+    }
+
+    // The amount a value shows, {number, units}, or null (pg_sw_cond_amount()).
+    function _sdCondAmount(s, decimal) {
+        s = _sdCondPlain(s);
+        if (s === '') return null;
+        var unit = '\\p{Sc}|[A-Z]{1,2}\\$|[A-Z]{3}|TL';
+        var m = new RegExp('^(-?) ?(?:(' + unit + ') ?)?([0-9]+(?:[., ][0-9]+)*) ?(' + unit + '|%)?$', 'u').exec(s);
+        if (!m || !_sdCondFigureOk(m[3])) return null;
+        var number = _sdCondFigureNumber(m[3], decimal);
+        var units = [];
+        if (m[2]) units.push(m[2]);
+        if (m[4]) units.push(m[4]);
+        return { number: m[1] === '-' ? -number : number, units: units };
+    }
+
+    // The number a value shows, or null (pg_sw_cond_number()).
+    function _sdCondNumber(s, decimal) {
+        var a = _sdCondAmount(s, decimal);
+        return a === null ? null : a.number;
+    }
+
+    // Whether eq and neq compare two amounts as numbers
+    // (pg_sw_cond_comparable()).
+    function _sdCondComparable(a, b) {
+        if (a === null || b === null) return false;
+        if (!a.units.length || !b.units.length) return true;
+        return a.units.some(function (u) { return b.units.indexOf(u) !== -1; });
+    }
+
+    // Whether a number is whole and exact (pg_sw_cond_is_whole()).
+    function _sdCondIsWhole(n) {
+        return typeof n === 'number' && isFinite(n) && Math.abs(n) < 9007199254740992 && Math.floor(n) === n;
+    }
+
+    // The test (pg_sw_cond_eval()). `decimal` is the site's decimal point;
+    // missing, the one software_money_format carries, else '.'.
+    function _sdCondEval(op, value, operand, decimal) {
+        if (decimal == null) {
+            decimal = (typeof software_money_format !== 'undefined' && software_money_format && software_money_format.decimal) || '.';
+        }
+        value = _sdCondPlain(value);
+        operand = _sdCondPlain(operand);
+        var a, b;
+        switch (String(op)) {
+            case 'not_empty':
+                return value !== '';
+            case 'empty':
+                return value === '';
+            case 'eq':
+            case 'neq':
+                a = _sdCondAmount(value, decimal);
+                b = _sdCondAmount(operand, decimal);
+                var same = _sdCondComparable(a, b)
+                    ? Math.abs(a.number - b.number) < 0.000001
+                    : _sdCondFold(value) === _sdCondFold(operand);
+                return op === 'eq' ? same : !same;
+            case 'contains':
+            case 'not_contains':
+                var found = operand === '' || _sdCondFold(value).indexOf(_sdCondFold(operand)) !== -1;
+                return op === 'contains' ? found : !found;
+            case 'starts':
+                var prefix = Array.from(_sdCondFold(operand));
+                return Array.from(_sdCondFold(value)).slice(0, prefix.length).join('') === prefix.join('');
+            case 'gt':
+            case 'gte':
+            case 'lt':
+            case 'lte':
+                a = _sdCondNumber(value, decimal);
+                b = _sdCondNumber(operand, decimal);
+                if (a === null || b === null) return false;
+                if (op === 'gt') return a > b;
+                if (op === 'gte') return a >= b;
+                if (op === 'lt') return a < b;
+                return a <= b;
+            case 'multiple_of':
+                a = _sdCondNumber(value, decimal);
+                b = _sdCondNumber(operand, decimal);
+                if (!_sdCondIsWhole(a) || !_sdCondIsWhole(b) || b <= 0) return false;
+                return a % b === 0;
+        }
+        return false;
     }
 
     // Values of the record in an attribute ({{token}} in an Attributes
@@ -37064,11 +38231,14 @@ const StyleDesigner = (function () {
     ];
     var SW_ATTR_MARKUP = [
         '__description', '__details', '__out_of_stock_message', '__price_formatted', '__price_block_html',
-        '__price_range', '__breadcrumb_html', '__breadcrumb_inner_html', '__cross_sell_html', '__variant_picker',
+        '__price_range', '__variant_picker',
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
-        '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
-        '__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html'
+        '__comment_message_html', '__comment_seller_reply_html',
+        '__field_value_html', '__field_info_html', '__gift_card_message_html',
+        '__return_customer_note_html', '__return_decision_note_html', '__return_actions_html',
+        '__schedule_period_options_html', '__return_reason_options_html',
+        '__ad_content_html', '__ad_caption_html'
     ];
     // Twin of pg_sw_attr_name_ok().
     function _sdAttrBindNameOk(name) {
@@ -37104,84 +38274,396 @@ const StyleDesigner = (function () {
     // (_swBindTokenOptions(), the row position group inside a list
     // included) that a condition may read.
     function _sdCondTokenOptions(node) {
+        if (!_isInsideSystemWidget(node)) {
+            return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; }).concat(_sdPageRecordOptions());
+        }
         return _swBindTokenOptions(node).filter(function (o) { return _sdCondTokenAllowed(o.token); });
     }
 
-    // Writes the condition of `node`: the token as its show_if binding, the
-    // operator and value in _bindParams.show_if. No token clears both; an
-    // operator that takes no value keeps none; an unknown operator reads as
-    // "is not empty". The caller records the undo step and redraws.
-    function _sdCondWrite(node, token, op, value) {
+    // The facts of the visit an element outside a widget may be shown by
+    // (pg_page_fact_tokens()): the page decides them for each visit and
+    // never prints them.
+    var SD_PAGE_FACTS = [
+        ['__visit_signed_in',      _sdT('Visitor is signed in')],
+        ['__visit_cart_has_items', _sdT('Cart has products')],
+        ['__visit_cart_count',     _sdT('Number of products in the cart')]
+    ];
+
+    // The page's record (pg_page_record_tokens()): whether the record the
+    // address opens was found, and the allow-listed values of the kinds
+    // whose detail widget the page holds (a product, an event, a form
+    // record), each read as __record<token>.
+    var SD_PAGE_RECORD_KINDS = {
+        catalog_item_view:   function () { return SW_PRODUCT_ENTITY_TOKENS; },
+        calendar_event_view: function () { return SW_EVENT_ENTITY_TOKENS; },
+        form_item_view:      function () { return SW_FORM_RECORD_ENTITY_TOKENS; }
+    };
+    function _sdPageRecordOptions() {
+        var kinds = {}, seen = {};
+        var walk = function (n) {
+            if (!n) return;
+            if (n.type === 'shared_ref') {
+                var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (!sid || seen[sid]) return;
+                seen[sid] = true;
+                var cached = _sharedCache[sid];
+                var cfg = null;
+                try { cfg = (cached && cached.system_region_config) ? JSON.parse(cached.system_region_config) : null; } catch (e) { cfg = null; }
+                var kind = _swKindOf(cfg);
+                if (SD_PAGE_RECORD_KINDS[kind]) kinds[kind] = true;
+                else if (cached && cached.tree) walk(cached.tree);
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        walk(tree);
+        var out = [], names = Object.keys(kinds);
+        if (!names.length) return out;
+        out.push({ token: '__record_found', label: _sdT('This page\'s record is found') });
+        names.forEach(function (kind) {
+            SD_PAGE_RECORD_KINDS[kind]().forEach(function (t) {
+                out.push({ token: '__record' + t[0], label: _sdT('Record: {var:1}', [t[1]]) });
+            });
+        });
+        return out;
+    }
+
+    // Whether `token` is one the page decides (pg_page_fact_spec()).
+    function _sdPageCondToken(token) {
+        var t = String(token || '').toLowerCase();
+        return t === '__record_found' || t.indexOf('__record__') === 0
+            || SD_PAGE_FACTS.some(function (f) { return f[0] === t; });
+    }
+
+    // Whether every condition of `node` reads a fact of the visit or the
+    // page's record, as the page needs to decide it (pg_page_fact_spec()).
+    function _sdPageFactRows(node) {
+        var rows = _sdCondRowsOf(node);
+        return rows.length > 0 && rows.every(function (r) { return _sdPageCondToken(r.token); });
+    }
+
+    // The conditions of `node` as rows, [{token, op, value}] in the order of
+    // SD_COND_NAMES; a name without a token is skipped.
+    function _sdCondRowsOf(node) {
+        var p = (node && node.props) || {};
+        var b = p._bindings || {};
+        var bp = p._bindParams || {};
+        var rows = [];
+        SD_COND_NAMES.forEach(function (name) {
+            if (!b[name] || typeof b[name] !== 'string') return;
+            var c = (bp[name] && typeof bp[name] === 'object') ? bp[name] : {};
+            rows.push({ token: b[name], op: c.op || 'not_empty', value: c.value == null ? '' : String(c.value) });
+        });
+        return rows;
+    }
+
+    // How the conditions of `node` join: 'any' or 'all' (pg_sw_cond_specs()).
+    function _sdCondJoin(node) {
+        var c = node && node.props && node.props._bindParams && node.props._bindParams.show_if;
+        return (c && c.join === 'any') ? 'any' : 'all';
+    }
+
+    // Writes the conditions of `node`: `rows` ([{token, op, value}], a row
+    // without a token dropped, at most three) under SD_COND_NAMES in order,
+    // so the first row is always show_if, and the join on the first row's
+    // params when there are several and it is 'any'. An operator that takes
+    // no value keeps none; an unknown one reads as "is not empty". The
+    // caller records the undo step and redraws.
+    function _sdCondWriteRows(node, rows, join) {
         if (!node || !node.props) return;
         var p = node.props;
-        _sdNodeSetBinding(node, 'show_if', token || '');
-        if (!token) {
-            if (p._bindParams && typeof p._bindParams === 'object') {
-                delete p._bindParams.show_if;
-                if (Object.keys(p._bindParams).length === 0) delete p._bindParams;
+        var kept = (rows || []).filter(function (r) { return r && r.token; }).slice(0, SD_COND_NAMES.length);
+        SD_COND_NAMES.forEach(function (name, i) {
+            var r = kept[i];
+            var had = !!(p._bindings && Object.prototype.hasOwnProperty.call(p._bindings, name));
+            if (r || had || i === 0) _sdNodeSetBinding(node, name, r ? r.token : '');
+            if (!r) {
+                if (p._bindParams && typeof p._bindParams === 'object') {
+                    delete p._bindParams[name];
+                    if (Object.keys(p._bindParams).length === 0) delete p._bindParams;
+                }
+                return;
             }
-            return;
-        }
-        var entry = _sdCondOp(op) || _sdCondOp('not_empty');
-        var params = { op: entry[0] };
-        if (entry[2]) params.value = (value == null) ? '' : String(value);
-        if (!p._bindParams || typeof p._bindParams !== 'object') p._bindParams = {};
-        p._bindParams.show_if = params;
+            var entry = _sdCondOp(r.op) || _sdCondOp('not_empty');
+            var params = { op: entry[0] };
+            if (entry[2]) params.value = (r.value == null) ? '' : String(r.value);
+            if (i === 0 && kept.length > 1 && join === 'any') params.join = 'any';
+            if (!p._bindParams || typeof p._bindParams !== 'object') p._bindParams = {};
+            p._bindParams[name] = params;
+        });
     }
 
-    // The canvas chip of a node with a condition: "Only when: <value's
-    // name> <operator> <compared text>", the three as numbered parts so a
-    // language can order them. The canvas does not evaluate it; the page
-    // and Preview do.
-    function _sdCondSentence(node) {
-        var b = (node && node.props && node.props._bindings) || {};
-        if (!b.show_if) return '';
-        var params = (node.props._bindParams && node.props._bindParams.show_if) || {};
-        var entry = _sdCondOp(params.op || 'not_empty');
-        var value = (entry && entry[2]) ? (params.value == null ? '' : String(params.value)) : '';
-        return _sdT('Only when: {var:1} {var:2} {var:3}', [
-            _swBindLabel(_getSystemWidgetRegionType(node), b.show_if),
-            entry ? entry[1] : String(params.op),
-            value
-        ]).replace(/\s+/g, ' ').trim();
+    // Writes condition `row` (0 = the first) of `node`: no token removes it
+    // and the rows after it move up. The other rows and the join stay.
+    function _sdCondWrite(node, token, op, value, row) {
+        if (!node || !node.props) return;
+        var rows = _sdCondRowsOf(node);
+        var i = Math.min(row || 0, rows.length);
+        if (token) rows[i] = { token: token, op: op, value: value };
+        else rows.splice(i, 1);
+        _sdCondWriteRows(node, rows, _sdCondJoin(node));
     }
+
+    // The canvas chip of a node with conditions: "Only when: <value's
+    // name> <operator> <compared text>", then "or …" or "and …" for each
+    // further one, the three as numbered parts so a language can order
+    // them. Whether the canvas draws the node is the state's
+    // (_sdCondCanvasShows()).
+    function _sdCondSentence(node) {
+        var rows = _sdCondRowsOf(node);
+        if (!rows.length) return '';
+        var kind = _getSystemWidgetRegionType(node);
+        var any = _sdCondJoin(node) === 'any';
+        return rows.map(function (r, i) {
+            var entry = _sdCondOp(r.op);
+            var fact = kind ? null : SD_PAGE_FACTS.concat(_sdPageRecordOptions().map(function (o) { return [o.token, o.label]; }))
+                .filter(function (f) { return f[0] === r.token; })[0];
+            var parts = [fact ? fact[1] : _swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
+            if (!i) return _sdT('Only when: {var:1} {var:2} {var:3}', parts);
+            return any ? _sdT('or {var:1} {var:2} {var:3}', parts) : _sdT('and {var:1} {var:2} {var:3}', parts);
+        }).join(' ').replace(/\s+/g, ' ').trim();
+    }
+
+    // ── Canvas states of value conditions ────────────────────────────────
+    // A widget whose tree holds a value condition draws one state at a time,
+    // chosen on its band: its sample values, every value empty, or every
+    // element (as before W19). A code token's values are states of their own:
+    // the order view's status stages, so one status badge shows. The canvas
+    // tests each condition with _sdCondEval(), as the page does. Editor only.
+    // Empty draws each widget's first state ("Completed" in the order view);
+    // a page opened in a tab starts there again.
+    var _sdCondCanvasState = '';
+
+    // Tokens whose value is a code the canvas offers one state per value of
+    // (pg_sw_cond_code_tokens() that are a widget's, not a list row's).
+    function _sdCondCodeStates(token) {
+        if (token !== '__order_status_stage') return null;
+        var labels = { complete: _sdT('Completed'), pending: _sdT('Pending'), shipped: _sdT('Shipped'),
+                       cancelled: _sdT('Cancelled'), refunded: _sdT('Refunded'), 'default': _sdT('Other') };
+        return SD_OV_STATUS_STAGES.map(function (stage) { return [stage, labels[stage]]; });
+    }
+
+    // The tokens the value conditions of `tree` read.
+    function _sdCondTreeTokens(tree) {
+        var out = [];
+        (function walk(n) {
+            if (!n || typeof n !== 'object') return;
+            SD_COND_NAMES.forEach(function (name) {
+                var t = n.props && n.props._bindings ? n.props._bindings[name] : '';
+                if (t && typeof t === 'string' && out.indexOf(t) === -1) out.push(t);
+            });
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        })(tree);
+        return out;
+    }
+
+    // The states the band offers for `tree`, [[key, label]]: none without a
+    // condition; a code token's values (code:<token>:<value>) in place of
+    // the sample values; then every value empty and every element.
+    function _sdCondCanvasStates(tree) {
+        var tokens = _sdCondTreeTokens(tree);
+        if (!tokens.length && !_sdTreeHasHideEmpty(tree)) return [];
+        var states = [];
+        tokens.forEach(function (t) {
+            (_sdCondCodeStates(t) || []).forEach(function (s) { states.push(['code:' + t + ':' + s[0], s[1]]); });
+        });
+        if (!states.length) states.push(['sample', _sdT('Sample values')]);
+        states.push(['empty', _sdT('Empty values')]);
+        states.push(['all', _sdT('All elements')]);
+        return states;
+    }
+
+    // The state drawn for `tree`: the one chosen when the tree offers it,
+    // else its first.
+    function _sdCondStateOf(tree) {
+        var states = _sdCondCanvasStates(tree);
+        for (var i = 0; i < states.length; i++) {
+            if (states[i][0] === _sdCondCanvasState) return _sdCondCanvasState;
+        }
+        return states.length ? states[0][0] : 'all';
+    }
+
+    // The value `token` reads in `state` for `node`: empty in the empty
+    // state; a code token its state's value (the first one otherwise); a
+    // flag set; else the text the canvas previews for it.
+    function _sdCondCanvasValue(token, node, state) {
+        if (state === 'empty') return '';
+        var codes = _sdCondCodeStates(token);
+        if (codes) {
+            var prefix = 'code:' + token + ':';
+            return state.indexOf(prefix) === 0 ? state.slice(prefix.length) : codes[0][0];
+        }
+        if (_SD_FLAG_TOKENS[token]) return '1';
+        var v = _displayValueForBinding('text', token, node);
+        return _sdCondText(typeof v === 'function' ? v() : v);
+    }
+
+    // Whether the canvas draws `node` in `state` by its own conditions. An
+    // invalid one draws nothing, as on the page (pg_sw_cond_specs()); those
+    // on a required control are ignored there, and here.
+    function _sdCondCanvasShows(node, state) {
+        if (!node || state === 'all' || !_sdCondPresent(node.props)) return true;
+        var specs = _sdCondSpecs(node.props);
+        if (specs === null || _sdCondHoldsRequired(node)) return true;
+        if (specs === false) return false;
+        return _sdCondEvalAll(specs.join, specs.conds.map(function (c) {
+            return [c.op, _sdCondCanvasValue(c.token, node, state), c.operand];
+        }));
+    }
+
+    // The state that draws `target` of `root`'s tree: the one drawn when it
+    // does, else the first that does, else every element. A node outside
+    // the tree keeps the state.
+    function _sdCondStateFor(root, target) {
+        var current = _sdCondStateOf(root);
+        var path = null;
+        (function walk(n, trail) {
+            if (path || !n) return;
+            var here = trail.concat([n]);
+            if (n === target) { path = here; return; }
+            if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, here); });
+        })(root, []);
+        if (!path) return current;
+        var shows = function (state) { return path.every(function (n) { return _sdCondCanvasShows(n, state) && !_sdHideEmptyCanvasOff(n, state); }); };
+        if (shows(current)) return current;
+        var states = _sdCondCanvasStates(root);
+        for (var i = 0; i < states.length; i++) {
+            if (shows(states[i][0])) return states[i][0];
+        }
+        return 'all';
+    }
+
+    // Switch the state the canvas draws. A selection the new state hides
+    // moves up to the widget (refNode), or the next render would switch back.
+    function _sdSetCondCanvasState(state, refNode) {
+        _sdCondCanvasState = state;
+        if (refNode && selectedNode && selectedNode !== refNode) {
+            var sid = parseInt(refNode.props && refNode.props.sharedId, 10) || 0;
+            var cached = sid ? _sharedCache[sid] : null;
+            if (cached && cached.tree && _sdCondStateFor(cached.tree, selectedNode) !== _sdCondStateOf(cached.tree)) {
+                selectedNode = refNode;
+                selectedNodes = [];
+            }
+        }
+        render();
+    }
+
+    // The "Hide when empty" row of Bind Data, on any element of a system
+    // widget but its root and its loops (the class pg-hide-if-empty), and on
+    // an element inside a marked one, "Value of the box around it" (the class
+    // pg-field-value): the box is judged by that element alone, so its
+    // heading and words go with it.
+    function _sdHideEmptyRows(node) {
+        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
+        var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
+        var html = row(esc(_sdT('Hide when empty')), swAttr('data-sd-hide-empty="1"', _sdNodeClassHas(node, SD_HIDE_EMPTY)) +
+            note(_sdT('The page leaves the element out, with its frame and its words, when what it shows is empty. The canvas leaves it out in the Empty values state.')));
+        var boxed = false;
+        for (var up = _sdAnyParent(node); up && up.parent; up = _sdAnyParent(up.parent)) {
+            if (_sdNodeClassHas(up.parent, SD_HIDE_EMPTY)) { boxed = true; break; }
+            if (up.parent.type === 'root') break;
+        }
+        if (boxed || _sdNodeClassHas(node, SD_FIELD_VALUE)) {
+            html += row(esc(_sdT('Value of the box around it')), swAttr('data-sd-field-value="1"', _sdNodeClassHas(node, SD_FIELD_VALUE)) +
+                note(_sdT('The box marked Hide when empty is judged by this element alone: when it is empty, the heading and the words beside it go too.')));
+        }
+        return html;
+    }
+
+    // Puts `cls` on `node` or takes it off.
+    function _sdNodeToggleClass(node, cls, on) {
+        var arr = String(node.props.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== cls; });
+        if (on) arr.push(cls);
+        node.props.cssClass = arr.join(' ');
+    }
+
+    // When "Hide when empty" is turned on for a box that holds one list
+    // (a heading over related products) and names no value element, the
+    // element the list's rows are drawn in becomes its value, so the heading
+    // goes with an empty list. A list drawn straight into the box changes
+    // nothing: an empty list leaves the box empty anyway.
+    function _sdHideEmptyPickValue(node) {
+        if (_sdHideEmptyValueNode(node) !== node) return;
+        var holders = [];
+        (function walk(n) {
+            if (!n || !Array.isArray(n.children)) return;
+            n.children.forEach(function (c) {
+                if (c && c.type === 'loop_area' && c.props && c.props.source) holders.push(n);
+                else walk(c);
+            });
+        })(node);
+        if (holders.length === 1 && holders[0] !== node && holders[0].props) _sdNodeToggleClass(holders[0], SD_FIELD_VALUE, true);
+    }
+
+    // The node an "Add a condition" click opened one empty row on; the row
+    // is written once a value is chosen in it.
+    var _sdCondOpenRow = null;
 
     // The "Show only when a value…" row of Bind Data, on any element of a
-    // system widget but its root and its loops: the value, the operator,
-    // the compared text. Beside the flag row above, which some kinds have;
-    // when both are set both must pass.
+    // system widget but its root and its loops: up to three conditions, each
+    // a value, an operator and a compared text, and with several of them
+    // the "All must hold / Any is enough" switch. Beside the flag row above,
+    // which some kinds have; when both are set both must pass.
     function _sdConditionRows(node) {
-        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        if (!node || !node.props) return '';
+        // Outside a widget the list holds the visit's facts only
+        // (_sdCondTokenOptions()); a condition written by hand on another
+        // value is still listed, so it can be seen and cleared.
+        var inWidget = _isInsideSystemWidget(node);
         if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
         var label = esc(_sdT('Show only when a value…'));
         var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
-        var cur = (node.props._bindings && node.props._bindings.show_if) || '';
+        var rows = _sdCondRowsOf(node);
         var required = _sdCondHoldsRequired(node);
-        if (required && !cur) {
+        if (required && !rows.length) {
             return row(label, note(_sdT('A required form field cannot be hidden by a condition: the form could not be sent.')));
         }
-        var params = (node.props._bindParams && node.props._bindParams.show_if) || {};
-        var entry = _sdCondOp(params.op || 'not_empty');
-        var tokOpts = '<option value="">' + esc(_sdT('Always')) + '</option>';
-        var found = false;
-        _sdCondTokenOptions(node).forEach(function (o) {
-            if (o.token === cur) found = true;
-            tokOpts += '<option value="' + esc(o.token) + '"' + (o.token === cur ? ' selected' : '') + '>' + esc(o.label) + '</option>';
-        });
-        if (cur && !found) tokOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur) + '</option>';
-        var html = '<select class="form-select form-select-sm sd-sw-cond-token" aria-label="' + esc(_sdT('Value to test')) + '">' + tokOpts + '</select>';
-        if (cur) {
-            var opOpts = '';
-            SW_COND_OPS.forEach(function (o) {
-                opOpts += '<option value="' + o[0] + '"' + (entry && entry[0] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+        if (_sdCondOpenRow !== node || required) _sdCondOpenRow = null;
+        var shown = rows.slice();
+        if (!shown.length || (_sdCondOpenRow === node && shown.length < SD_COND_NAMES.length)) shown.push({ token: '', op: 'not_empty', value: '' });
+        var options = _sdCondTokenOptions(node);
+        var html = '';
+        if (rows.length > 1) {
+            var any = _sdCondJoin(node) === 'any';
+            html += '<select class="form-control form-control-sm mb-1 sd-sw-cond-join" aria-label="' + esc(_sdT('How the conditions join')) + '">' +
+                '<option value="all"' + (any ? '' : ' selected') + '>' + esc(_sdT('All must hold')) + '</option>' +
+                '<option value="any"' + (any ? ' selected' : '') + '>' + esc(_sdT('Any is enough')) + '</option></select>';
+        }
+        shown.forEach(function (r, i) {
+            var cur = r.token;
+            var entry = _sdCondOp(r.op || 'not_empty');
+            var tokOpts = '<option value="">' + esc(i ? _sdT('Remove this condition') : _sdT('Always')) + '</option>';
+            var found = false;
+            options.forEach(function (o) {
+                if (o.token === cur) found = true;
+                tokOpts += '<option value="' + esc(o.token) + '"' + (o.token === cur ? ' selected' : '') + '>' + esc(o.label) + '</option>';
             });
-            html += '<select class="form-select form-select-sm mt-1 sd-sw-cond-op" aria-label="' + esc(_sdT('Condition')) + '">' + opOpts + '</select>' +
-                '<input type="text" class="form-control form-control-sm mt-1 sd-sw-cond-value" value="' + esc(params.value == null ? '' : String(params.value)) + '"' +
-                    ' aria-label="' + esc(_sdT('Compared with')) + '"' + ((entry && entry[2]) ? '' : ' style="display:none"') + '>';
+            if (cur && !found) tokOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur) + '</option>';
+            html += '<div class="sd-sw-cond-row' + (i ? ' mt-2' : '') + '">' +
+                '<select class="form-control form-control-sm sd-sw-cond-token" data-cond-row="' + i + '" aria-label="' + esc(_sdT('Value to test')) + '">' + tokOpts + '</select>';
+            if (cur) {
+                var opOpts = '';
+                SW_COND_OPS.forEach(function (o) {
+                    opOpts += '<option value="' + o[0] + '"' + (entry && entry[0] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                });
+                html += '<select class="form-control form-control-sm mt-1 sd-sw-cond-op" data-cond-row="' + i + '" aria-label="' + esc(_sdT('Condition')) + '">' + opOpts + '</select>' +
+                    '<input type="text" class="form-control form-control-sm mt-1 sd-sw-cond-value" data-cond-row="' + i + '" value="' + esc(r.value) + '"' +
+                        ' aria-label="' + esc(_sdT('Compared with')) + '"' + ((entry && entry[2]) ? '' : ' style="display:none"') + '>';
+            }
+            html += '</div>';
+        });
+        if (!required && rows.length && shown.length === rows.length && rows.length < SD_COND_NAMES.length) {
+            html += '<button type="button" class="btn btn-link btn-sm p-0 mt-1 sd-sw-cond-add">' + esc(_sdT('Add a condition')) + '</button>';
         }
         html += note(required
             ? _sdT('A required form field cannot be hidden by a condition: the site ignores this one. Choose Always to remove it.')
-            : _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.'));
+            : inWidget
+                ? _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.')
+                : (rows.length && !_sdPageFactRows(node))
+                    ? _sdT('Outside a system widget only the facts of the visit decide: with another value here the element is always shown.')
+                    : _sdT('Each visit decides it: the page leaves the element out while the fact does not pass; the canvas keeps showing it. Nothing about the visitor is shown.')
+                        + ' ' + _sdT('The page\'s record is the product, event or form record its address opens.'));
         return row(label, html);
     }
 
@@ -37205,6 +38687,100 @@ const StyleDesigner = (function () {
         ['__is_free_shipping',    _sdT('Ships free'), 'cond'],
         ['__is_gift_card',        _sdT('Is a gift card'), 'cond'],
         ['__is_donation',         _sdT('Is a donation'), 'cond']
+    ];
+
+    // A calendar event's allow-listed values (pg_sw_entity_fields('calendar_event')),
+    // offered by the calendar view's event loop and the event view.
+    var SW_EVENT_ENTITY_TOKENS = [
+        ['__event_spots_left',        _sdT('Places left (when places are limited)')],
+        ['__event_updated_date',      _sdT('Last updated')],
+        ['__event_reservation_price', _sdT('Reservation price (with symbol)')],
+        ['__event_recurrence',        _sdT('Repeats (Daily, Weekly …)')],
+        ['__event_reservations_open', _sdT('Takes reservations'), 'cond'],
+        ['__event_spots_limited',     _sdT('Places are limited'), 'cond'],
+        ['__event_is_recurring',      _sdT('Is a recurring event'), 'cond']
+    ];
+
+    // An order's allow-listed values (pg_sw_entity_fields('order')), offered
+    // by the order view (its receipt e-mail too): the owner's own order only.
+    var SW_ORDER_ENTITY_TOKENS = [
+        ['__order_po_number',            _sdT('PO number')],
+        ['__order_custom_field_1',       _sdT('Custom field 1')],
+        ['__order_custom_field_1_label', _sdT('Custom field 1 label (from the billing information page)')],
+        ['__order_custom_field_2',       _sdT('Custom field 2')],
+        ['__order_custom_field_2_label', _sdT('Custom field 2 label (from the billing information page)')],
+        ['__billing_fax',                _sdT('Fax')],
+        ['__order_gift_card_discount',   _sdT('Gift card discount (with symbol)')],
+        ['__order_currency',             _sdT('Currency code')],
+        ['__order_paid_date',            _sdT('Payment date')],
+        ['__order_cancelled_date',       _sdT('Cancellation date')],
+        ['__order_cancellation_reason',  _sdT('Cancellation reason')],
+        ['__order_refund_status',        _sdT('Refund status (Refunded, Refund in progress)')],
+        ['__order_refunded_amount',      _sdT('Refunded amount (with symbol)')],
+        ['__order_refunded_date',        _sdT('Refund date')],
+        ['__order_is_tax_exempt',        _sdT('Is tax exempt'), 'cond']
+    ];
+
+    // An order line's allow-listed values (pg_sw_entity_fields('order_line')),
+    // offered by the order view's item loop beside the line's product values.
+    var SW_ORDER_LINE_ENTITY_TOKENS = [
+        ['__item_shipped_qty',         _sdT('Quantity shipped (when the shop shows it)')],
+        ['__item_vat',                 _sdT('Line VAT (with symbol)')],
+        ['__item_payment_period',      _sdT('Subscription payment period')],
+        ['__item_payment_count',       _sdT('Subscription number of payments')],
+        ['__item_first_payment_date',  _sdT('First payment date (subscriptions)')],
+        ['__item_event_name',          _sdT('Reserved event name')],
+        ['__item_event_date',          _sdT('Reserved event date and time')],
+        ['__item_added_by_offer',      _sdT('Added by an offer'), 'cond'],
+        ['__item_discounted_by_offer', _sdT('Discounted by an offer'), 'cond']
+    ];
+
+    // An account's allow-listed values (pg_sw_entity_fields('account')),
+    // offered by my account, the profile, the login region and the account
+    // e-mails: the member's own account, or the e-mail's addressee.
+    var SW_MEMBER_ENTITY_TOKENS = [
+        ['__member_reward_points',    _sdT('Reward points (while the reward program runs)')],
+        ['__member_expiry_date',      _sdT('Membership expiration date')],
+        ['__member_salutation',       _sdT('Salutation (Mr/Ms)')],
+        ['__member_nickname',         _sdT('Nickname')],
+        ['__member_company',          _sdT('Company')],
+        ['__member_job_title',        _sdT('Job title')],
+        ['__member_website',          _sdT('Website')],
+        ['__member_mobile_phone',     _sdT('Mobile phone')],
+        ['__member_business_phone',   _sdT('Work phone')],
+        ['__member_home_phone',       _sdT('Home phone')],
+        ['__member_business_city',    _sdT('Business city')],
+        ['__member_business_country', _sdT('Business country')],
+        ['__member_time_zone',        _sdT('Time zone')],
+        ['__member_tax_number',       _sdT('Tax number')],
+        ['__member_tax_office',       _sdT('Tax office')],
+        ['__member_affiliate_code',   _sdT('Affiliate code (approved affiliates)')]
+    ];
+
+    // A recipient's allow-listed values (pg_sw_entity_fields('ship_to')),
+    // offered by the order view (its receipt e-mail too) for the first
+    // recipient and by a list of the order's recipients for each.
+    var SW_SHIP_TO_ENTITY_TOKENS = [
+        ['__ship_to_name',            _sdT('Ship-to name')],
+        ['__shipping_salutation',     _sdT('Salutation (Mr/Ms)')],
+        ['__shipping_address_type',   _sdT('Address type (Residential address, Business address)')],
+        ['__shipping_ship_date',      _sdT('Ship date (shipped or planned)')],
+        ['__shipping_delivered_date', _sdT('Delivered date')]
+    ];
+
+    // A saved recipient's allow-listed values (pg_sw_entity_fields(
+    // 'address_book')), offered by the address book's row loop.
+    var SW_ADDRESS_BOOK_ENTITY_TOKENS = [
+        ['__recipient_salutation',   _sdT('Salutation (Mr/Ms)')],
+        ['__recipient_first_name',   _sdT('First name')],
+        ['__recipient_last_name',    _sdT('Last name')],
+        ['__recipient_address_1',    _sdT('Address line 1')],
+        ['__recipient_address_2',    _sdT('Address line 2')],
+        ['__recipient_city',         _sdT('City')],
+        ['__recipient_state',        _sdT('State / Province')],
+        ['__recipient_zip',          _sdT('Zip Code')],
+        ['__recipient_country',      _sdT('Country')],
+        ['__recipient_address_type', _sdT('Address type (Residential address, Business address)')]
     ];
 
     // Whether a palette entry is offered only as a condition (yes/no).
@@ -37282,7 +38858,8 @@ const StyleDesigner = (function () {
         { label: _sdT('Drill-down / Page'), tokens: [
             ['__active_cat_id',   _sdT('Active category ID')],
             ['__active_cat_name', _sdT('Active category name')],
-            ['__has_children',    _sdT('Whether there is a subgroup (0/1)')]
+            ['__has_children',    _sdT('Whether there is a subgroup (0/1)')],
+            ['__has_breadcrumb',  _sdT('Whether a breadcrumb is drawn (1 or empty)')]
         ]},
         // Legacy HTML tokens — kept for backward compatibility with widgets
         // built before the section-binding system. New designs should use
@@ -37290,11 +38867,9 @@ const StyleDesigner = (function () {
         // instead — designer's wrapper is preserved and only the inner
         // markup comes from the backend.
         { label: _sdT('Old HTML Tokens (legacy)'), tokens: [
-            ['__breadcrumb_html',        _sdT('Breadcrumb HTML (legacy — use the section binding)')],
             ['__group_tree_html',        _sdT('Category tree HTML (old — use a section binding)')],
             ['__filters_button',         _sdT('Filters button (old — use the open_filters action)')],
             ['__filters_offcanvas',      _sdT('Filter offcanvas (legacy — use the section binding)')],
-            ['__filter_chips',           _sdT('Active filter chips (legacy — use the section binding)')],
             ['__clear_filters_button',   _sdT('Clear Filters button (old — use the clear_filters action)')]
         ]},
         { label: _sdT('More product details'), tokens: SW_PRODUCT_ENTITY_TOKENS },
@@ -37316,8 +38891,16 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Filter State'), tokens: [
             ['__attribute_filters_html', _sdT('Attribute filter UI HTML (legacy)')],
-            ['__active_filters_html',    _sdT('Active attribute filter chips HTML (legacy)')],
-            ['__has_active_filters',     _sdT('Whether a filter is active (1/0)')]
+            ['__has_active_filters',     _sdT('Whether a filter is active (1/0)')],
+            ['__has_active_attr_filters', _sdT('Whether an attribute filter is active (1/0)')],
+            ['__clear_filters_url',      _sdT('Address without the filters')]
+        ]},
+        // pg_sw_list_paging(), as in a form list.
+        { label: _sdT('Pages'), tokens: [
+            ['__page_number',   _sdT('Page shown')],
+            ['__page_count',    _sdT('Number of pages')],
+            ['__prev_page_url', _sdT('Previous page link')],
+            ['__next_page_url', _sdT('Next page link')]
         ]}
         // There is no add-to-cart TOKEN. Use the `catalog_add_to_cart` action
         // binding on a real button (that's what the starter tree does): the
@@ -37344,6 +38927,7 @@ const StyleDesigner = (function () {
             ['member',                   _sdT('Active member (1/0)')],
             ['not_logged_in',            _sdT('Signed-out message')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Account Pages (href)'), tokens: [
             ['__profile_url',           _sdT('Profile page (the link drops when there is none)')],
             ['__email_preferences_url', _sdT('Email preferences page (the link drops when there is none)')],
@@ -37477,11 +39061,10 @@ const StyleDesigner = (function () {
             ['__discount_percent',         _sdT('Discount percentage (number, without the % sign)')]
         ]},
         { label: _sdT('Cross-sell / Sold Together'), tokens: [
-            ['__cross_sell_html', _sdT('Frequently bought together (HTML — a row of cards)')]
+            ['__has_related', _sdT('Products bought together: 1 shown, 0 none to suggest, empty switched off')]
         ]},
         { label: _sdT('Breadcrumb / Page Path'), tokens: [
-            ['__breadcrumb_html',       _sdT('Breadcrumb (HTML — Catalog → Group → Product)')],
-            ['__breadcrumb_inner_html', _sdT('Breadcrumb inner HTML (only <ol> — for a section binding)')]
+            ['__has_breadcrumb', _sdT('Whether a breadcrumb is drawn (1 or empty)')]
         ]}
     ];
 
@@ -37581,6 +39164,7 @@ const StyleDesigner = (function () {
             ['__username',       _sdT('User name')],
             ['__email_address',  _sdT('Email')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__my_account_url', _sdT('My account page address (the link drops when there is none)')],
             ['__login_url',      _sdT('Sign-in page address (signed-out view)')]
@@ -37624,6 +39208,7 @@ const StyleDesigner = (function () {
             ['__recipient_edit_url',     _sdT('Edit address (href)')],
             ['__recipient_remove_url',   _sdT('Remove address (href)')]
         ]},
+        { label: _sdT('More recipient details (loop)'), tokens: SW_ADDRESS_BOOK_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__my_account_url',         _sdT('My account page address (the link drops when there is none)')],
             ['__login_url',              _sdT('Sign-in page address (signed-out view)')]
@@ -37645,7 +39230,8 @@ const StyleDesigner = (function () {
             ['__device_ip',                   _sdT('IP address')],
             ['__device_last_used',            _sdT('Last used (relative time)')],
             ['__device_first_seen',           _sdT('First seen (date and time)')],
-            ['__device_selector',             _sdT('Device identifier (the Sign out button carries it)')]
+            ['__device_selector',             _sdT('Device identifier (the Sign out button carries it)')],
+            ['__device_passkey',              _sdT('Passkey the session was signed in with (a Remove button in the row removes it)')]
         ]},
         { label: _sdT('Two-step verification'), tokens: [
             ['__mfa_status_text',             _sdT('Status sentence ("on since …, n recovery codes left")')],
@@ -37659,6 +39245,17 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Connected sign-ins'), tokens: [
             ['__signin_connect_buttons',      _sdT('Connect buttons of the sign-ins not connected yet (HTML)')]
+        ]},
+        { label: _sdT('Passkeys'), tokens: [
+            ['__passkey_count',               _sdT('Number of passkeys')],
+            ['__passkey_notice',              _sdT('Why no passkey can be added (the site, the address or the limit)')]
+        ]},
+        { label: _sdT('Passkey (passkey list)'), tokens: [
+            ['__passkey_id',                  _sdT('Passkey identifier (the Rename and Remove buttons carry it)')],
+            ['__passkey_name',                _sdT('Passkey name')],
+            ['__passkey_added',               _sdT('Added (date)')],
+            ['__passkey_last_used',           _sdT('Last used (relative time, else "Never")')],
+            ['__passkey_is_synced',           _sdT('Synced to the member\'s other devices (1 or empty)')]
         ]},
         { label: _sdT('Signed Out'), tokens: [
             ['__login_url',                   _sdT('Sign-in page address (signed-out view)')],
@@ -37694,6 +39291,7 @@ const StyleDesigner = (function () {
             ['__user_avatar_url', _sdT('Picture (their photo, else the picture of their initials)')],
             ['__user_badge',      _sdT('Badge label')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__login_url',       _sdT('Sign-in page address (signed out; brings the visitor back to this page)')],
             ['__register_url',    _sdT('Registration page address (signed out; the link drops when there is none)')],
@@ -37771,7 +39369,8 @@ const StyleDesigner = (function () {
             ['__comment_date',              _sdT('Date ("2 days ago"; empty when the page hides dates)')],
             ['__comment_datetime',          _sdT('Date and time (takes a format)')],
             ['__comment_rating',            _sdT('Rating (1-5)')],
-            ['__comment_stars_html',        _sdT('Stars (HTML)')],
+            ['__comment_rating_label',      _sdT('Rating (words)')],
+            ['__comment_stars_text',        _sdT('Stars (characters)')],
             ['__comment_badge',             _sdT('Badge label')],
             ['__comment_status',            _sdT('Status ("Awaiting approval", "Not Published")')],
             ['__comment_file_name',         _sdT('Attachment name')],
@@ -37810,7 +39409,8 @@ const StyleDesigner = (function () {
             ['__comment_date',         _sdT('Date ("2 days ago"; empty when its page hides dates)')],
             ['__comment_datetime',     _sdT('Date and time (takes a format)')],
             ['__comment_rating',       _sdT('Rating (1-5)')],
-            ['__comment_stars_html',   _sdT('Stars (HTML)')],
+            ['__comment_rating_label', _sdT('Rating (words)')],
+            ['__comment_stars_text',   _sdT('Stars (characters)')],
             ['__comment_badge',        _sdT('Badge label')],
             ['__comment_status',       _sdT('Status ("Awaiting approval", "Not Published")')],
             ['__comment_label',        _sdT('Comment label of its page ("Reply", "Feedback")')],
@@ -37860,6 +39460,7 @@ const StyleDesigner = (function () {
             ['__user_email',       _sdT('Email')],
             ['__username',         _sdT('User name')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__set_password_url', _sdT('Set password link (password reset e-mail only)')],
             ['__login_url',        _sdT('Sign-in page address (the link drops when there is none)')],
@@ -38020,6 +39621,57 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // tag_cloud_region token palette — has loop_area (one row per keyword).
+    // Mirrors _render_system_widget_tag_cloud_region() in widgets_tag_cloud.php.
+    var SW_TAG_CLOUD_TOKEN_GROUPS = [
+        { label: _sdT('Tag Cloud'), tokens: [
+            ['__search_page_name', _sdT('Search results page name')],
+            ['__tag_total',        _sdT('Number of keywords shown')]
+        ]},
+        { label: _sdT('Keyword (loop_area)'), tokens: [
+            ['__tag_name',         _sdT('Keyword')],
+            ['__tag_keyword',      _sdT('Keyword as stored (untranslated)')],
+            ['__tag_url',          _sdT('Search link of the keyword')],
+            ['__tag_count',        _sdT('Number of items with the keyword')],
+            ['__tag_size',         _sdT('Font size in percent (100 to 200)')],
+            ['__tag_weight',       _sdT('Weight from 1 (used least) to 5 (used most)')]
+        ]}
+    ];
+
+    // ad_region token palette — has loop_area (one row per ad shown).
+    // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
+    var SW_AD_REGION_TOKEN_GROUPS = [
+        { label: _sdT('Ad Region'), tokens: [
+            ['__ad_region_name',  _sdT('Ad region name')],
+            ['__ad_count',        _sdT('Number of ads shown')],
+            ['__ad_ride',         _sdT('Slideshow start ("carousel" or "false", for data-bs-ride)')],
+            ['__ad_interval',     _sdT('Slideshow interval in milliseconds ("false" without a slideshow)')],
+            ['__ad_wrap',         _sdT('Slideshow starts again after the last ad ("true" or "false")')]
+        ]},
+        { label: _sdT('Ad (loop_area)'), tokens: [
+            ['__ad_name',         _sdT('Ad name')],
+            ['__ad_label',        _sdT('Ad label')],
+            ['__ad_content_html', _sdT('Ad content (HTML)')],
+            ['__ad_caption_html', _sdT('Ad caption (HTML)')]
+        ]}
+    ];
+
+    // menu_sequence_region token palette — no loop_area. Mirrors
+    // _render_system_widget_menu_sequence_region() in widgets_menu.php.
+    var SW_MENU_SEQUENCE_TOKEN_GROUPS = [
+        { label: _sdT('Menu'), tokens: [
+            ['__menu_name',           _sdT('Menu name')],
+            ['__sequence_position',   _sdT('Place of the page shown (from 1)')],
+            ['__sequence_count',      _sdT('Pages in the sequence')],
+            ['__previous_name',       _sdT('Previous page name')],
+            ['__next_name',           _sdT('Next page name')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__previous_url',        _sdT('Previous page address')],
+            ['__next_url',            _sdT('Next page address')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -38038,7 +39690,10 @@ const StyleDesigner = (function () {
         shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS,
         billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS,
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
-        menu_region:       SW_MENU_REGION_TOKEN_GROUPS
+        menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
+        menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
+        ad_region:         SW_AD_REGION_TOKEN_GROUPS,
+        tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -38049,6 +39704,9 @@ const StyleDesigner = (function () {
             ['__results_heading',  _sdT('Results heading ("Found 12 results for: …")')],
             ['__result_count',     _sdT('Number of results')],
             ['__page_count',       _sdT('Number of pages')],
+            ['__page_number',      _sdT('Page shown')],
+            ['__prev_page_url',    _sdT('Previous page link')],
+            ['__next_page_url',    _sdT('Next page link')],
             ['__empty_message',    _sdT('No results message')]
         ]},
         { label: _sdT('Result Item (loop_area)'), tokens: [
@@ -38245,7 +39903,6 @@ const StyleDesigner = (function () {
             ['__cancel_status',          _sdT('Post-cancellation notice alert (when ?cancelled=… is present)')]
         ]},
         { label: _sdT('Returns'), tokens: [
-            ['__returns',                _sdT('Return requests of the order with their status and the customer\'s moves (ready-made HTML)')],
             ['__return_form',            _sdT('Return request form: products, quantities, reason (ready-made HTML)')]
         ]},
         { label: _sdT('Billing information'), tokens: [
@@ -38290,8 +39947,13 @@ const StyleDesigner = (function () {
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
             ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
-            ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')]
+            ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')],
+            ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
+        { label: _sdT('More order details'), tokens: SW_ORDER_ENTITY_TOKENS },
+        { label: _sdT('More recipient details'), tokens: SW_SHIP_TO_ENTITY_TOKENS },
+        { label: _sdT('More item details (loop)'), tokens: SW_ORDER_LINE_ENTITY_TOKENS },
+        { label: _sdT('Item\'s product details (loop)'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
             ['__item_name',              _sdT('Product name (products.name)')],
@@ -38306,12 +39968,10 @@ const StyleDesigner = (function () {
             ['__item_image_alt',         _sdT('Image alt text')],
             ['__item_url',               _sdT('Product detail page URL')],
             ['__item_ship_to',           _sdT('This item\'s shipping address')],
-            // Read-only output blocks — the visitor's checkout answers. The
-            // server auto-appends these to the row when the designer hasn't
-            // placed the token, so binding is only needed to control WHERE
-            // they land.
-            ['__item_form_data_html',    _sdT('Product form answers (read-only HTML)')],
-            ['__item_gift_card_html',    _sdT('Gift card details (read-only HTML)')],
+            // The item form and gift card parts' boxes show by these; their
+            // rows are the order.item_forms and order.item_gift_cards lists.
+            ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],
+            ['__item_has_gift_card',     _sdT('Has gift cards (1 or empty)')],
             ['__tracking_codes',         _sdT('Every parcel\'s tracking code (HTML)')]
         ]}
     ];
@@ -38554,7 +40214,8 @@ const StyleDesigner = (function () {
             ['__event_calendar_names', _sdT('Calendars')],
             ['__event_is_all_day',     _sdT('All-day event (1 or empty)')],
             ['__event_ical_url',       _sdT('Add to my calendar — .ics file (href)')]
-        ]}
+        ]},
+        { label: _sdT('More event details (loop)'), tokens: SW_EVENT_ENTITY_TOKENS }
     ];
 
     var SW_CALENDAR_VIEW_FLAT_TOKENS = (function () {
@@ -38586,7 +40247,8 @@ const StyleDesigner = (function () {
             ['__event_ical_url',      _sdT('Add to my calendar — .ics file (href)')],
             ['__reservation_message', _sdT('Why reservations are closed (no spots / out of stock)')],
             ['__not_found_message',   _sdT('Not-found message (filled when there is no event)')]
-        ]}
+        ]},
+        { label: _sdT('More event details'), tokens: SW_EVENT_ENTITY_TOKENS }
     ];
 
     var SW_CALENDAR_EVENT_VIEW_FLAT_TOKENS = (function () {
@@ -38650,7 +40312,44 @@ const StyleDesigner = (function () {
     var SW_DEFAULT_PARTS = {
         order_view: {
             '__timeline':           function (cfg) { return _sdPartOrderTimeline(cfg); },
-            '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); }
+            '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); },
+            '__item_form_data_html': function (cfg) { return _sdPartOrderItemForm(); },
+            '__item_gift_card_html': function (cfg) { return _sdPartOrderItemGiftCard(); },
+            '__returns':             function (cfg) { return _sdPartOrderReturnsList(); },
+            '__cancel_form':         function (cfg) { return _sdPartOrderCancelForm(); },
+            '__return_form':         function (cfg) { return _sdPartOrderReturnForm(); }
+        },
+        comments: {
+            '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
+        },
+        shopping_cart: {
+            '__item_gift_card_html': function (cfg) { return _sdPartCartItemGiftCard(); },
+            '__item_recurring_schedule_html': function (cfg) { return _sdPartCartItemSchedule(); }
+        },
+        // A list of recent comments is a comments widget on the server.
+        comments_recent: {
+            '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
+        },
+        // A section binding and a content type are read as the tokens
+        // 'section:<name>' and 'content:<type>' (_sdPartTokenOf()).
+        catalog_listing: {
+            '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); },
+            '__breadcrumb_inner_html': function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'section:breadcrumb':      function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); },
+            '__filter_chips':              function (cfg) { return _sdPartCatalogFilterChips(); },
+            '__filter_chips_inner_html':   function (cfg) { return _sdPartCatalogFilterChipsInner(); },
+            'section:filter_chips':        function (cfg) { return _sdPartCatalogFilterChipsInner(); },
+            '__active_filters_html':       function (cfg) { return _sdPartCatalogActiveFilters(); },
+            '__active_filters_inner_html': function (cfg) { return _sdPartCatalogActiveFilters(); },
+            'section:active_filters':      function (cfg) { return _sdPartCatalogActiveFilters(); }
+        },
+        catalog_item_view: {
+            '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); },
+            '__breadcrumb_inner_html': function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'section:breadcrumb':      function (cfg) { return _sdPartCatalogCrumbs(true); },
+            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); },
+            '__cross_sell_html':       function (cfg) { return _sdPartCatalogCrossSell(); }
         }
     };
 
@@ -38660,6 +40359,23 @@ const StyleDesigner = (function () {
         var parts = SW_DEFAULT_PARTS[kind];
         if (!parts || !node || typeof node !== 'object') return false;
         var token = _sdPartTokenOf(node, Object.keys(parts));
+        if (token.indexOf('content:') === 0) {
+            // The content node stood for the whole block: the part takes
+            // its place, the node's id kept.
+            var built = parts[token](cfg || null)[0];
+            node.type = built.type;
+            node.props = built.props;
+            node.children = built.children;
+            return true;
+        }
+        if (token.indexOf('section:') === 0) {
+            // The bound element keeps its tag, classes and attributes; the
+            // part replaces what it held.
+            delete node.props._bindings.section;
+            if (!Object.keys(node.props._bindings).length) delete node.props._bindings;
+            node.children = parts[token](cfg || null);
+            return true;
+        }
         if (token) {
             _sdPartHost(node);
             node.children = parts[token](cfg || null).concat(node.children || []);
@@ -38673,11 +40389,16 @@ const StyleDesigner = (function () {
     }
 
     // The token of `tokens` that `node` draws: its text binding, or a text
-    // that is the token alone (^^token^^). '' for none.
+    // that is the token alone (^^token^^); its section binding as
+    // 'section:<name>', a content node as 'content:<type>'. '' for none.
     function _sdPartTokenOf(node, tokens) {
         var p = node.props || {};
+        if (p._bindings && typeof p._bindings.section === 'string' && tokens.indexOf('section:' + p._bindings.section) !== -1) return 'section:' + p._bindings.section;
+        if (node.type === 'content' && typeof p.contentType === 'string' && tokens.indexOf('content:' + p.contentType) !== -1) return 'content:' + p.contentType;
         if (p._bindings && tokens.indexOf(p._bindings.text) !== -1) return p._bindings.text;
-        var m = (typeof p.text === 'string') ? /^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/.exec(p.text) : null;
+        // A custom HTML node holding the token alone counts as its text.
+        var text = (p.contentType === 'custom_html') ? p.html : p.text;
+        var m = (typeof text === 'string') ? /^\s*\^\^([A-Za-z0-9_]+)\^\^\s*$/.exec(text) : null;
         return (m && tokens.indexOf(m[1]) !== -1) ? m[1] : '';
     }
 
@@ -38700,7 +40421,7 @@ const StyleDesigner = (function () {
             if (p.lead && ct === 'paragraph') cls.push('lead');
             if (p.align) cls.push('text-' + p.align);
             if (p.cssClass) cls.push(p.cssClass);
-            delete p.contentType; delete p.lead; delete p.align;
+            delete p.contentType; delete p.lead; delete p.align; delete p.html;
             p.tag = tag;
             p.cssClass = cls.join(' ');
             node.type = 'semantic';
@@ -38715,6 +40436,7 @@ const StyleDesigner = (function () {
     }
 
     // One element of a part (pg_sw_part_el()).
+    /* @pg-site-output */
     function _sdPartEl(tag, cls, name, props, children) {
         var p = { tag: tag, cssClass: cls, customName: name };
         Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
@@ -38730,6 +40452,7 @@ const StyleDesigner = (function () {
 
     // The order timeline (pg_sw_part_order_timeline()): an order.steps list,
     // the icon and colour by the step's kind, an estimated date greyed.
+    /* @pg-site-output */
     function _sdPartOrderTimeline() {
         var icon = function (colour, bi, props) {
             return _sdPartEl('span', 'pg-ov-timeline-icon bg-' + colour, _sdT('Icon'), props, [
@@ -38787,6 +40510,662 @@ const StyleDesigner = (function () {
         });
     }
 
+    // The blocks the server added after a widget whose layout placed none
+    // of their tokens, now parts added to the end of the tree once
+    // (pg_sw_default_tail_parts()): kind => [tokens that place it, part].
+    // A comment's stars (pg_sw_part_comment_stars()): five drawings said
+    // once as "Rated N out of 5", one sentence with the rating in it, the
+    // first N filled by the rating.
+    /* @pg-site-output */
+    function _sdPartCommentStars() {
+        var stars = [];
+        for (var i = 1; i <= 5; i++) stars.push(_sdPartCommentStar(true, i), _sdPartCommentStar(false, i));
+        var p = _sdPartWhen('__comment_rating', 'not_empty');
+        p._attrs = [{ name: 'role', value: 'img' }, { name: 'aria-label', value: _sdT('Rated {var:1} out of 5').replace('{var:1}', '{{__comment_rating}}') }];
+        return [_sdPartEl('span', 'pg-comment-stars', _sdT('Stars'), p, stars)];
+    }
+
+    // The star at `place`, filled or empty (pg_sw_part_comment_star()): the
+    // drawing _pg_comments_star_svg() draws, shown by the rating.
+    /* @pg-site-output */
+    function _sdPartCommentStar(filled, place) {
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi '
+            + (filled ? 'bi-star-fill' : 'bi-star') + '" viewBox="0 0 16 16" aria-hidden="true"><path d="'
+            + (filled ? 'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z' : 'M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z') + '"/></svg>';
+        var p = _sdPartWhen('__comment_rating', filled ? 'gte' : 'lt', String(place));
+        p.contentType = 'svg';
+        p.html = svg;
+        p.customName = filled ? _sdT('Filled star') : _sdT('Empty star');
+        return createNode('content', p, []);
+    }
+
+    // The crumbs of the catalog path (pg_sw_part_catalog_crumbs()): an
+    // ol.breadcrumb of one item per crumb (catalog.crumbs), a link, words,
+    // or where the visitor is, by the crumb's kind; drawn only when the
+    // widget draws a path, unless `when` is false (the nav around it asks).
+    /* @pg-site-output */
+    function _sdPartCatalogCrumbs(when) {
+        var crumb = function (tag, cls, name, kind, props) {
+            var p = props || {};
+            p.text = '';
+            p._bindings = p._bindings || {};
+            p._bindings.text = '__crumb_label';
+            p._bindings.show_if = '__crumb_kind';
+            p._bindParams = { show_if: { op: 'eq', value: kind } };
+            return _sdPartEl(tag, cls, name, p);
+        };
+        return [_sdPartEl('ol', 'breadcrumb mb-0', _sdT('Breadcrumb List'), when ? _sdPartWhen('__has_breadcrumb', 'not_empty') : {}, [
+            createNode('loop_area', { source: 'catalog.crumbs' }, [
+                _sdPartEl('li', 'breadcrumb-item', _sdT('Crumb'), {}, [
+                    crumb('a', '', _sdT('Link'), 'link', { href: '#', _bindings: { href: '__crumb_url' } }),
+                    crumb('span', 'active', _sdT('Where the visitor is'), 'active'),
+                    crumb('span', '', _sdT('Words'), 'text')
+                ])
+            ])
+        ])];
+    }
+
+    // A catalog widget's breadcrumb (pg_sw_part_catalog_breadcrumb()): a nav
+    // of `cls` said as "breadcrumb" around the crumbs.
+    /* @pg-site-output */
+    function _sdPartCatalogBreadcrumb(cls) {
+        var p = _sdPartWhen('__has_breadcrumb', 'not_empty');
+        p._attrs = [{ name: 'aria-label', value: 'breadcrumb' }];
+        return [_sdPartEl('nav', cls, _sdT('Breadcrumb'), p, _sdPartCatalogCrumbs(false))];
+    }
+
+    // A listing's active attribute filters
+    // (pg_sw_part_catalog_active_filters()): a box drawn when there are any,
+    // one badge per filter (catalog.active_filters) linking to the listing
+    // without it, its words, then a cross.
+    /* @pg-site-output */
+    function _sdPartCatalogActiveFilters() {
+        return [_sdPartEl('div', 'pg-sw-attr-active-filters mb-3', _sdT('Active attribute filters'), _sdPartWhen('__has_active_attr_filters', 'eq', '1'), [
+            createNode('loop_area', { source: 'catalog.active_filters' }, [
+                _sdPartEl('a', 'badge text-bg-secondary text-decoration-none me-2 mb-1 d-inline-flex align-items-center', _sdT('Filter chip'), {
+                    href: '#', text: '', textPosition: 'start',
+                    _bindings: { text: '__filter_chip_label', href: '__filter_chip_url' }
+                }, [
+                    _sdPartEl('span', 'bi bi-x-lg ms-2', _sdT('Remove icon'))
+                ])
+            ])
+        ])];
+    }
+
+    // What the filter chip strip held (pg_sw_part_catalog_filter_chips_inner()):
+    // the active attribute filters, then, while any filter is active, the
+    // button that clears them all.
+    /* @pg-site-output */
+    function _sdPartCatalogFilterChipsInner() {
+        return _sdPartCatalogActiveFilters().concat([
+            _sdPartEl('span', 'ms-auto', _sdT('Clear Filters'), _sdPartWhen('__has_active_filters', 'eq', '1'), [
+                _sdPartEl('a', 'btn btn-sm btn-outline-danger', _sdT('Clear Filters button'), {
+                    href: '#', text: _sdT('Clear Filters'), _bindings: { href: '__clear_filters_url' }
+                }, [
+                    _sdPartEl('i', 'bi bi-x-circle me-1', _sdT('Icon'))
+                ])
+            ])
+        ]);
+    }
+
+    // The filter chip strip (pg_sw_part_catalog_filter_chips()), drawn while
+    // any filter is active.
+    /* @pg-site-output */
+    function _sdPartCatalogFilterChips() {
+        return [_sdPartEl('div', 'pg-sw-filter-chips d-flex align-items-center gap-2 flex-wrap py-2', _sdT('Filter Chips'),
+            _sdPartWhen('__has_active_filters', 'eq', '1'), _sdPartCatalogFilterChipsInner())];
+    }
+
+    // The blocks the server put before the main loop of a widget whose
+    // layout placed none of their tokens, now parts added just before the
+    // main loop once (pg_sw_default_lead_parts()): kind => [tokens that
+    // place it, part].
+    var SW_DEFAULT_LEADS = {
+        catalog_listing: [
+            [['__breadcrumb_html', '__breadcrumb_inner_html', 'catalog.crumbs'], function () { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); }]
+        ]
+    };
+
+    // Puts `nodes` just before the main loop under `node`
+    // (pg_sw_insert_before_main_loop()). Returns whether there was one.
+    function _sdInsertBeforeMainLoop(node, nodes) {
+        if (!node || typeof node !== 'object' || _sdListIsSourced(node) || !node.children) return false;
+        for (var i = 0; i < node.children.length; i++) {
+            var c = node.children[i];
+            if (c && c.type === 'loop_area' && !_sdListIsSourced(c)) {
+                Array.prototype.splice.apply(node.children, [i, 0].concat(nodes));
+                return true;
+            }
+            if (_sdInsertBeforeMainLoop(c, nodes)) return true;
+        }
+        return false;
+    }
+
+    // Adds before the main loop of `tree` each lead block of `kind` it does
+    // not place. Returns whether anything was added.
+    function _sdDefaultLeads(tree, kind, cfg) {
+        var leads = SW_DEFAULT_LEADS[kind];
+        if (!leads || !tree || typeof tree !== 'object') return false;
+        var added = false;
+        leads.forEach(function (l) {
+            if (!_sdPartPlaced(tree, l[0]) && _sdInsertBeforeMainLoop(tree, l[1](cfg || null))) added = true;
+        });
+        return added;
+    }
+
+    var SW_DEFAULT_TAILS = {
+        order_view: [
+            [['__return_form', '__returns', 'order.returns', 'order.return_deliveries'], function (cfg, tree) { return _sdPartOrderReturns(); }],
+            [['__legal_preinfo_url', '__legal_contract_url'], function (cfg, tree) { return _sdPartOrderLegal(tree); }]
+        ]
+    };
+
+    // Whether `tree` places any of `tokens` (pg_sw_placed()): anywhere in
+    // the tree but a value condition, the name matched whole.
+    function _sdPartPlaced(tree, tokens) {
+        var copy = JSON.parse(JSON.stringify(tree || {}));
+        (function strip(n) {
+            if (!n || typeof n !== 'object') return;
+            var p = n.props || {};
+            SD_COND_NAMES.forEach(function (name) {
+                if (p._bindings && typeof p._bindings === 'object') delete p._bindings[name];
+                if (p._bindParams && typeof p._bindParams === 'object') delete p._bindParams[name];
+            });
+            (n.children || []).forEach(strip);
+        })(copy);
+        var json = JSON.stringify(copy);
+        return tokens.some(function (t) {
+            return t !== '' && new RegExp('(^|[^A-Za-z0-9_])' + t + '(?![A-Za-z0-9_])').test(json);
+        });
+    }
+
+    // Adds to the end of `tree` each block of `kind` it does not place.
+    // Returns whether anything was added.
+    function _sdDefaultTails(tree, kind, cfg) {
+        var tails = SW_DEFAULT_TAILS[kind];
+        if (!tails || !tree || typeof tree !== 'object') return false;
+        var placed = JSON.parse(JSON.stringify(tree));
+        var due = tails.filter(function (t) { return !_sdPartPlaced(placed, t[0]); });
+        tree.children = tree.children || [];
+        due.forEach(function (t) { tree.children = tree.children.concat(t[1](cfg || null, placed)); });
+        return due.length > 0;
+    }
+
+    // The blocks the server added after each row of the main loop whose row
+    // placed none of their tokens, now parts added to the end of the main
+    // loop once (pg_sw_default_loop_tail_parts()): kind => [tokens that
+    // place it, part, 'tree' when placed anywhere in the tree (added to
+    // the end of the tree without a main loop)].
+    var SW_DEFAULT_LOOP_TAILS = {
+        order_view: [
+            [['__item_form_data_html', 'order.item_forms'], function () { return _sdPartOrderItemForm(); }],
+            [['__item_gift_card_html', 'order.item_gift_cards'], function () { return _sdPartOrderItemGiftCard(); }]
+        ],
+        shopping_cart: [
+            [['__item_gift_card_html', 'cart.item_gift_cards'], function () { return _sdPartCartItemGiftCard(); }],
+            [['__item_recurring_schedule_html', 'cart.item_schedule'], function () { return _sdPartCartItemSchedule(); }]
+        ],
+        catalog_item_view: [
+            [['__cross_sell_html', 'product.related'], function () { return _sdPartCatalogCrossSell(); }, 'tree']
+        ]
+    };
+
+    // The main loop of a widget tree (pg_sw_main_loop_ref()): its first
+    // loop_area without a source, lists not searched. null for none.
+    function _sdMainLoop(node) {
+        if (!node || typeof node !== 'object' || _sdListIsSourced(node)) return null;
+        if (node.type === 'loop_area') return node;
+        var kids = node.children || [];
+        for (var i = 0; i < kids.length; i++) {
+            var found = _sdMainLoop(kids[i]);
+            if (found) return found;
+        }
+        return null;
+    }
+
+    // Adds to the end of the main loop of `tree` each row block of `kind`
+    // its row does not place (pg_sw_default_loop_tails()). Returns whether
+    // anything was added.
+    function _sdDefaultLoopTails(tree, kind, cfg) {
+        var tails = SW_DEFAULT_LOOP_TAILS[kind];
+        if (!tails || !tree || typeof tree !== 'object') return false;
+        var placed = JSON.parse(JSON.stringify(tree));
+        var loop = _sdMainLoop(tree);
+        var row = { type: 'root', children: loop ? (loop.children || []) : [] };
+        var added = false;
+        tails.forEach(function (t) {
+            var whole = t[2] === 'tree';
+            if (_sdPartPlaced(whole ? placed : row, t[0])) return;
+            var host = loop || (whole ? tree : null);
+            if (!host) return;
+            host.children = (host.children || []).concat(t[1](cfg || null));
+            added = true;
+        });
+        return added;
+    }
+
+    // The products bought together (pg_sw_part_catalog_cross_sell()): a box
+    // the variant script finds, unless switched off (__has_related empty),
+    // holding a heading and a row of up to four cards (product.related)
+    // when there are any (__has_related 1).
+    /* @pg-site-output */
+    function _sdPartCatalogCrossSell() {
+        var value = function (tag, cls, name, token, op, test) {
+            var p = { text: '', _bindings: { text: token } };
+            if (op) {
+                p._bindings.show_if = test || token;
+                p._bindParams = { show_if: { op: op } };
+            }
+            return _sdPartEl(tag, cls, name, p);
+        };
+        var card = _sdPartEl('a', 'card h-100 text-decoration-none text-body', _sdT('Product card'), { href: '#', _bindings: { href: '__related_url' } }, [
+            createNode('content', {
+                contentType: 'image', src: '', alt: '', fluid: false, rounded: false, loading: 'lazy',
+                cssClass: 'card-img-top', customName: _sdT('Picture'),
+                _bindings: { src: '__related_image_url', show_if: '__related_image_url' },
+                _bindParams: { show_if: { op: 'not_empty' } }
+            }, []),
+            _sdPartEl('div', 'card-img-top bg-body-tertiary', _sdT('No picture'), _sdPartWhen('__related_image_url', 'empty')),
+            _sdPartEl('div', 'card-body p-2', _sdT('Card Body'), {}, [
+                value('div', 'small fw-semibold text-truncate', _sdT('Short Description'), '__related_short_description', 'not_empty'),
+                value('div', 'small fw-semibold text-truncate', _sdT('Name'), '__related_name', 'empty', '__related_short_description'),
+                _sdPartEl('div', 'small mt-1', _sdT('Price'), {}, [
+                    _sdPartEl('span', 'pg-price-block has-discount', _sdT('Discounted price'), _sdPartWhen('__related_original_price', 'not_empty'), [
+                        value('span', 'pg-price-original', _sdT('Price before the discount'), '__related_original_price'),
+                        value('span', 'pg-price-current', _sdT('Price'), '__related_price')
+                    ]),
+                    _sdPartEl('span', 'pg-price-block', _sdT('Price'), _sdPartWhen('__related_original_price', 'empty'), [
+                        value('span', 'pg-price', _sdT('Price'), '__related_price')
+                    ])
+                ])
+            ])
+        ]);
+        var box = _sdPartWhen('__has_related', 'not_empty');
+        box._attrs = [{ name: 'data-pg-civ-cross-sell', value: '1' }];
+        return [_sdPartEl('div', 'pg-civ-cross-sell mt-4', _sdT('Products bought together'), box, [
+            _sdPartEl('h3', 'h5 mb-3', _sdT('Heading'), { text: _sdT('Frequently bought together'), _bindings: { show_if: '__has_related' }, _bindParams: { show_if: { op: 'eq', value: '1' } } }),
+            _sdPartEl('div', 'row g-3', _sdT('Products'), _sdPartWhen('__has_related', 'eq', '1'), [
+                createNode('loop_area', { source: 'product.related', limit: 4 }, [
+                    _sdPartEl('div', 'col-6 col-md-3', _sdT('Product'), {}, [card])
+                ])
+            ])
+        ])];
+    }
+
+    // The props of an element showing `token`, `sample` on the canvas,
+    // drawn only when `token` passes `op` when one is given
+    // (pg_sw_part_value()).
+    function _sdPartValue(token, sample, op) {
+        var p = { text: sample, _bindings: { text: token } };
+        if (op) {
+            p._bindings.show_if = token;
+            p._bindParams = { show_if: { op: op } };
+        }
+        return p;
+    }
+
+    // The heading of an item's form or gift card (pg_sw_part_order_item_legend()).
+    /* @pg-site-output */
+    function _sdPartItemLegend(props, name, number, count) {
+        var num = _sdPartWhen(count, 'gt', '1');
+        num.text = ' (^^' + number + '^^ / ^^' + count + '^^)';
+        return _sdPartEl('legend', 'float-none w-auto px-2 fs-6 fw-semibold', _sdT('Heading'), props, [
+            _sdPartEl('span', '', _sdT('Name'), name),
+            _sdPartEl('span', '', _sdT('Number'), num)
+        ]);
+    }
+
+    // One label above its value (pg_sw_part_order_item_line()).
+    /* @pg-site-output */
+    function _sdPartItemLine(label, props, children) {
+        return _sdPartEl('div', 'mb-2', label, {}, [
+            _sdPartEl('div', 'form-label mb-0 fw-semibold', _sdT('Label'), { text: label }),
+            _sdPartEl('div', 'pg-ov-form-value', label, props, children || [])
+        ]);
+    }
+
+    // The answers of an item's product form (pg_sw_part_order_item_form()).
+    /* @pg-site-output */
+    function _sdPartOrderItemForm() {
+        var box = _sdPartWhen('__item_has_form_data', 'not_empty');
+        box._attrs = [{ name: 'data-pg-ov-item-form', value: '{{__item_id}}' }];
+        return [_sdPartEl('div', 'pg-ov-item-form mt-2', _sdT('Product Form Answers'), box, [
+            createNode('loop_area', { source: 'order.item_forms' }, [
+                _sdPartEl('fieldset', 'pg-ov-item-form-block border rounded p-3 mt-2', _sdT('Form'), {}, [
+                    _sdPartItemLegend(_sdPartWhen('__form_has_legend', 'not_empty'),
+                        _sdPartValue('__form_name', _sdT('Order Form')), '__form_number', '__form_count'),
+                    createNode('loop_area', { source: 'order.item_form_fields' }, [
+                        _sdPartEl('div', 'mb-2', _sdT('Field'), _sdPartWhen('__field_is_info', 'empty'), [
+                            _sdPartEl('div', 'form-label mb-0 fw-semibold', _sdT('Label'), _sdPartValue('__field_label', _sdT('Label'))),
+                            _sdPartEl('div', 'pg-ov-form-value', _sdT('Answer'), _sdPartValue('__field_value_html', _sdT('Answer')))
+                        ]),
+                        _sdPartEl('div', 'mb-2 small', _sdT('Information'), _sdPartWhen('__field_is_info', 'not_empty'), [
+                            _sdPartEl('div', 'fw-semibold', _sdT('Label'), _sdPartValue('__field_label', _sdT('Label'), 'not_empty')),
+                            _sdPartEl('div', 'text-muted', _sdT('Information'), _sdPartValue('__field_info_html', ''))
+                        ])
+                    ])
+                ])
+            ])
+        ])];
+    }
+
+    // An item's gift cards (pg_sw_part_order_item_gift_card()).
+    /* @pg-site-output */
+    function _sdPartOrderItemGiftCard() {
+        var box = _sdPartWhen('__item_has_gift_card', 'not_empty');
+        box._attrs = [{ name: 'data-pg-ov-item-gift-card', value: '{{__item_id}}' }];
+        return [_sdPartEl('div', 'pg-ov-item-gift-card mt-2', _sdT('Gift Card Details'), box, [
+            createNode('loop_area', { source: 'order.item_gift_cards' }, [
+                _sdPartEl('fieldset', 'pg-ov-item-gift-card-block border rounded p-3 mt-2', _sdT('Gift card'), {}, [
+                    _sdPartItemLegend({}, { text: _sdT('Gift card') }, '__gift_card_number', '__gift_card_count'),
+                    _sdPartItemLine(_sdT('Amount'), {}, [
+                        _sdPartEl('strong', '', _sdT('Amount'), _sdPartValue('__gift_card_amount', _sdMoney(100)))
+                    ]),
+                    _sdPartItemLine(_sdT('Recipient Email'), _sdPartValue('__gift_card_email', 'name@example.com')),
+                    _sdPartItemLine(_sdT('Your Name'), _sdPartValue('__gift_card_from_name', _sdT('Name'))),
+                    _sdPartItemLine(_sdT('Message'), _sdPartValue('__gift_card_message_html', _sdT('Message'))),
+                    _sdPartItemLine(_sdT('Delivery Date'), _sdPartValue('__gift_card_delivery', _sdDateSample(false)))
+                ])
+            ])
+        ])];
+    }
+
+    // The cart's gift card controls (pg_sw_cart_gift_card_control_specs()):
+    // binding value => [column, list token, type, required]. The server
+    // gives each its name, value, type and required.
+    var SW_CART_GIFT_CARD_CONTROLS = {
+        gift_card_email:         ['recipient_email_address', '__gift_card_email', 'email', true],
+        gift_card_from_name:     ['from_name', '__gift_card_from_name', 'text', false],
+        gift_card_message:       ['message', '__gift_card_message', 'textarea', false],
+        gift_card_delivery_date: ['delivery_date', '__gift_card_delivery_date', 'date', false]
+    };
+
+    // One gift card field of the cart (pg_sw_part_cart_gift_card_field()).
+    /* @pg-site-output */
+    function _sdPartCartGiftCardField(value) {
+        var spec = SW_CART_GIFT_CARD_CONTROLS[value];
+        var labels = { gift_card_email: _sdT('Recipient Email'), gift_card_from_name: _sdT('From Name'),
+            gift_card_message: _sdT('Message'), gift_card_delivery_date: _sdT('Delivery Date') };
+        var label = labels[value] || '';
+        var words = [_sdPartEl('span', '', _sdT('Text'), { text: label })];
+        if (spec[3]) words.push(_sdPartEl('span', 'text-danger', _sdT('Required mark'), { text: '*' }));
+        var control = (spec[2] === 'textarea')
+            ? _sdPartEl('textarea', 'form-control', label, { _bindings: { value: value }, _attrs: [{ name: 'rows', value: '3' }] })
+            : _sdPartEl('input', 'form-control', label, { _bindings: { value: value } });
+        var children = [_sdPartEl('label', 'form-label', _sdT('Label'), {}, words), control];
+        if (value === 'gift_card_delivery_date') {
+            children.push(_sdPartEl('div', 'form-text', _sdT('Help'), { text: _sdT('Leave blank to send immediately.') }));
+        }
+        return _sdPartEl('div', 'mb-3 pg-cart-gc-field', label, { _attrs: [{ name: 'data-pg-gc-field', value: spec[0] }] }, children);
+    }
+
+    // The gift cards of a cart line (pg_sw_part_cart_item_gift_card()): a
+    // box of controls per card of the cart.item_gift_cards list.
+    /* @pg-site-output */
+    function _sdPartCartItemGiftCard() {
+        var fields = Object.keys(SW_CART_GIFT_CARD_CONTROLS).map(function (v) { return _sdPartCartGiftCardField(v); });
+        return [_sdPartEl('div', 'pg-cart-gift-cards pg-hide-if-empty', _sdT('Gift Card Details'),
+            { _attrs: [{ name: 'data-pg-cart-gc-item', value: '{{__item_id}}' }] }, [
+            createNode('loop_area', { source: 'cart.item_gift_cards' }, [
+                _sdPartEl('fieldset', 'pg-cart-gc-set border rounded p-3 mb-3', _sdT('Gift card'),
+                    { _attrs: [{ name: 'data-pg-gc-set', value: '{{__gift_card_number}}' }] },
+                    [_sdPartItemLegend({}, { text: _sdT('Gift card') }, '__gift_card_number', '__gift_card_count')].concat(fields))
+            ])
+        ])];
+    }
+
+    // The cart's payment schedule controls (pg_sw_cart_schedule_control_specs()):
+    // binding value => [name without the item id, list token, kind]. The
+    // server gives each its name, value and the gateway's rules.
+    var SW_CART_SCHEDULE_CONTROLS = {
+        schedule_period:   ['recurring_payment_period_', '__schedule_period', 'select'],
+        schedule_payments: ['recurring_number_of_payments_', '__schedule_payments', 'number'],
+        schedule_start:    ['recurring_start_date_', '__schedule_start', 'date']
+    };
+
+    // One schedule field of the cart (pg_sw_part_cart_schedule_field()).
+    /* @pg-site-output */
+    function _sdPartCartScheduleField(value) {
+        var labels = { schedule_period: _sdT('Frequency'), schedule_payments: _sdT('Number of Payments'),
+            schedule_start: _sdT('Start Date') };
+        var label = labels[value] || '';
+        var star = (value === 'schedule_payments') ? _sdPartWhen('__schedule_payments_required', 'not_empty') : {};
+        star.text = '*';
+        var words = [_sdPartEl('span', '', _sdT('Text'), { text: label }), _sdPartEl('span', 'text-danger', _sdT('Required mark'), star)];
+        var control = (value === 'schedule_period')
+            ? _sdPartEl('select', 'form-select', label, { _bindings: { value: value } })
+            : _sdPartEl('input', 'form-control', label, { _bindings: { value: value } });
+        var children = [_sdPartEl('label', 'form-label', _sdT('Label'), {}, words), control];
+        if (value === 'schedule_payments') {
+            var help = _sdPartWhen('__schedule_payments_help', 'not_empty');
+            help._bindings.text = '__schedule_payments_help';
+            children.push(_sdPartEl('div', 'form-text', _sdT('Help'), help));
+        }
+        return _sdPartEl('div', 'mb-3 pg-cart-recurring-field', label,
+            (value === 'schedule_start') ? _sdPartWhen('__schedule_start_shown', 'not_empty') : {}, children);
+    }
+
+    // The payment schedule of a cart line (pg_sw_part_cart_item_schedule()):
+    // a box of controls from the cart.item_schedule list.
+    /* @pg-site-output */
+    function _sdPartCartItemSchedule() {
+        var fields = Object.keys(SW_CART_SCHEDULE_CONTROLS).map(function (v) { return _sdPartCartScheduleField(v); });
+        return [createNode('loop_area', { source: 'cart.item_schedule' }, [
+            _sdPartEl('fieldset', 'pg-cart-recurring-set border rounded p-3 mb-3', _sdT('Payment Schedule'),
+                { _attrs: [{ name: 'data-pg-recurring-item', value: '{{__schedule_item}}' }] },
+                [_sdPartEl('legend', 'float-none w-auto px-2 fs-6 fw-semibold', _sdT('Heading'), { text: _sdT('Payment Schedule') })].concat(fields))
+        ])];
+    }
+
+    // A card added after the order view (pg_sw_part_order_card()).
+    function _sdPartOrderCard(cls, name, flag, heading, body) {
+        return _sdPartEl('div', 'container pb-4 ' + cls, name, { _bindings: { eo_visible_if: flag } }, [
+            _sdPartEl('div', 'card', _sdT('Card'), {}, [
+                _sdPartEl('div', 'card-header', _sdT('Card header'), {}, [
+                    _sdPartEl('h6', 'mb-0 fw-semibold', _sdT('Heading'), { text: heading })
+                ]),
+                _sdPartEl('div', 'card-body', _sdT('Card body'), {}, body)
+            ])
+        ]);
+    }
+
+    // The returns card (pg_sw_part_order_returns()).
+    /* @pg-site-output */
+    function _sdPartOrderReturns() {
+        return [_sdPartOrderCard('pg-ov-returns-block', _sdT('Returns'), 'show_returns_card', _sdT('Returns'), [
+            _sdPartEl('div', '', _sdT('Return requests'), {}, _sdPartOrderReturnsList()),
+            _sdPartEl('div', '', _sdT('Return request form'), {}, _sdPartOrderReturnForm())
+        ])];
+    }
+
+    // The cancel form's submit button (pg_sw_part_order_cancel_submit()).
+    /* @pg-site-output */
+    function _sdPartOrderCancelSubmit() {
+        return _sdPartEl('button', 'btn btn-outline-danger', _sdT('Cancel button'), { _bindings: { action: 'order_cancel_submit' } }, [
+            _sdPartEl('i', 'bi bi-x-circle me-1', _sdT('Icon')),
+            _sdPartEl('span', '', _sdT('Text'), { text: _sdT('Cancel Order') })
+        ]);
+    }
+
+    // The order's cancel form (pg_sw_part_order_cancel_form()): the server
+    // gives it its address, hidden fields and the reason's name.
+    /* @pg-site-output */
+    function _sdPartOrderCancelForm() {
+        return [_sdPartEl('form', 'pg-ov-cancel-form', _sdT('Cancellation form'), { _bindings: { action: 'order_cancel_form' } }, [
+            _sdPartEl('div', 'alert alert-warning small mb-3', _sdT('Refund warning'),
+                { _bindings: { eo_visible_if: 'cancel_needs_refund' }, _attrs: [{ name: 'role', value: 'alert' }] }, [
+                _sdPartEl('i', 'bi bi-exclamation-triangle me-1', _sdT('Icon')),
+                _sdPartEl('span', '', _sdT('Text'), { text: _sdT('Payment refunds are processed manually. Please contact us for refund status.') })
+            ]),
+            _sdPartEl('div', 'mb-3', _sdT('Reason'), {}, [
+                _sdPartEl('label', 'form-label small fw-semibold', _sdT('Label'), { text: _sdT('Cancellation reason (optional)') }),
+                _sdPartEl('textarea', 'form-control', _sdT('Reason'), { _bindings: { value: 'cancel_reason' }, _attrs: [
+                    { name: 'rows', value: '2' },
+                    { name: 'placeholder', value: _sdT('Tell us why you\'re cancelling — helps us improve.') }
+                ] })
+            ]),
+            _sdPartOrderCancelSubmit()
+        ])];
+    }
+
+    // A delivery line's quantity cell (pg_sw_part_order_return_qty_cell()).
+    /* @pg-site-output */
+    function _sdPartOrderReturnQtyCell() {
+        var box = _sdPartWhen('__return_item_left', 'gt', '0');
+        box._bindings.value = 'return_qty';
+        var done = _sdPartWhen('__return_item_left', 'eq', '0');
+        done.text = _sdT('Already in a return');
+        return _sdPartEl('td', 'text-end', _sdT('To return'), {}, [
+            _sdPartEl('input', 'form-control form-control-sm text-end', _sdT('Quantity'), box),
+            _sdPartEl('span', 'small text-muted', _sdT('Already in a return'), done)
+        ]);
+    }
+
+    // A sentence with one value (pg_sw_part_sentence()).
+    /* @pg-site-output */
+    function _sdPartSentence(tag, cls, name, text, token, props) {
+        var p = { text: text, _sentence: true };
+        Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+        return _sdPartEl(tag, cls, name, p, [_sdPartEl('span', '', _sdT('Value'), { _bindings: { text: token } })]);
+    }
+
+    // The return request form (pg_sw_part_order_return_form()): a form per
+    // delivery of the order.return_deliveries list; the server gives it its
+    // address, hidden fields and the controls' names.
+    /* @pg-site-output */
+    function _sdPartOrderReturnForm() {
+        var th = function (cls, text) {
+            return _sdPartEl('th', cls, text, { text: text, _attrs: [{ name: 'scope', value: 'col' }] });
+        };
+        return [createNode('loop_area', { source: 'order.return_deliveries' }, [
+            _sdPartEl('form', 'pg-ov-return-form mb-4', _sdT('Return request form'), { _bindings: { action: 'order_return_form' } }, [
+                _sdPartSentence('h6', 'fw-semibold mb-2', _sdT('Recipient'), _sdT('Sent to {var:1}'), '__return_delivery_label',
+                    _sdPartWhen('__return_delivery_several', 'not_empty')),
+                _sdPartSentence('p', 'small text-muted mb-2', _sdT('Last day'), _sdT('You can ask to return these items until {var:1}.'), '__return_delivery_deadline',
+                    _sdPartWhen('__return_delivery_deadline', 'not_empty')),
+                _sdPartEl('div', 'table-responsive', _sdT('Products'), {}, [
+                    _sdPartEl('table', 'table table-sm align-middle mb-3', _sdT('Table'), {}, [
+                        _sdPartEl('thead', '', _sdT('Head'), {}, [
+                            _sdPartEl('tr', '', _sdT('Row'), {}, [th('', _sdT('Product')), th('text-end', _sdT('Ordered')), th('text-end', _sdT('To return'))])
+                        ]),
+                        _sdPartEl('tbody', '', _sdT('Body'), {}, [
+                            createNode('loop_area', { source: 'order.return_delivery_lines' }, [
+                                _sdPartEl('tr', '', _sdT('Product'), {}, [
+                                    _sdPartEl('td', '', _sdT('Name'), { _bindings: { text: '__return_item_name' } }),
+                                    _sdPartEl('td', 'text-end', _sdT('Ordered'), { _bindings: { text: '__return_item_ordered' } }),
+                                    _sdPartOrderReturnQtyCell()
+                                ])
+                            ])
+                        ])
+                    ])
+                ]),
+                _sdPartOrderReturnReason(),
+                _sdPartEl('div', 'mb-3', _sdT('Note'), {}, [
+                    _sdPartEl('label', 'form-label small fw-semibold', _sdT('Label'), { text: _sdT('Note (optional)') }),
+                    _sdPartEl('textarea', 'form-control', _sdT('Note'), { _bindings: { value: 'return_note' }, _attrs: [{ name: 'rows', value: '2' }] }),
+                    _sdPartEl('div', 'form-text', _sdT('Help'), { text: _sdT('Needed when the reason is "Another reason".') })
+                ]),
+                _sdPartOrderReturnSubmit()
+            ])
+        ])];
+    }
+
+    // A return request's reason (pg_sw_part_order_return_reason()).
+    /* @pg-site-output */
+    function _sdPartOrderReturnReason() {
+        return _sdPartEl('div', 'mb-3', _sdT('Reason'), {}, [
+            _sdPartEl('label', 'form-label small fw-semibold', _sdT('Label'), { text: _sdT('Reason for the return') }),
+            _sdPartEl('select', 'form-select', _sdT('Reason'), { _bindings: { value: 'return_reason' } })
+        ]);
+    }
+
+    // The return request's button (pg_sw_part_order_return_submit()).
+    /* @pg-site-output */
+    function _sdPartOrderReturnSubmit() {
+        return _sdPartEl('button', 'btn btn-outline-primary', _sdT('Request button'), { _bindings: { action: 'order_return_submit' } }, [
+            _sdPartEl('i', 'bi bi-arrow-return-left me-1', _sdT('Icon'), { _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+            _sdPartEl('span', '', _sdT('Text'), { text: _sdT('Request a return') })
+        ]);
+    }
+
+    // A return's status badge classes by status (pg_sw_return_badge_classes()).
+    /* @pg-site-output */
+    var SD_RETURN_BADGE_CLASSES = {
+        requested: 'badge text-bg-warning',
+        approved:  'badge text-bg-info',
+        rejected:  'badge text-bg-danger',
+        shipped:   'badge text-bg-primary',
+        received:  'badge text-bg-primary',
+        refunded:  'badge text-bg-success',
+        closed:    'badge text-bg-secondary'
+    };
+
+    // The order's return requests (pg_sw_part_order_returns_list()).
+    /* @pg-site-output */
+    function _sdPartOrderReturnsList() {
+        var detail = function (label, token, sample, test) {
+            return _sdPartEl('div', 'small mb-1', label, _sdPartWhen(test || token, 'not_empty'), [
+                _sdPartEl('span', 'text-muted', _sdT('Label'), { text: label + ':' }),
+                _sdPartEl('span', '', label, _sdPartValue(token, sample))
+            ]);
+        };
+        var badges = Object.keys(SD_RETURN_BADGE_CLASSES).map(function (status) {
+            return _sdPartEl('span', SD_RETURN_BADGE_CLASSES[status], _sdT('Status') + ': ' + status, {
+                text: _sdT('Return approved'),
+                _bindings: { text: '__return_status_label', show_if: '__return_status' },
+                _bindParams: { show_if: { op: 'eq', value: status } }
+            });
+        });
+        var how = _sdPartWhen('__return_status', 'eq', 'approved');
+        how._attrs = [{ name: 'role', value: 'status' }];
+        return [_sdPartEl('div', 'pg-ov-returns', _sdT('Return requests'), { _bindings: { eo_visible_if: 'has_returns' } }, [
+            createNode('loop_area', { source: 'order.returns' }, [
+                _sdPartEl('div', 'pg-ov-return border rounded p-3 mb-3', _sdT('Return request'), {}, [
+                    _sdPartEl('div', 'd-flex flex-wrap justify-content-between align-items-start gap-2 mb-2', _sdT('Heading'), {}, [
+                        _sdPartEl('div', '', _sdT('Heading'), {}, [
+                            _sdPartEl('div', 'fw-semibold', _sdT('Heading'), _sdPartValue('__return_title', _sdT('Return request') + ' #12')),
+                            _sdPartEl('div', 'small text-muted', _sdT('Date asked'), _sdPartValue('__return_asked', _sdDateSample(false), 'not_empty'))
+                        ])
+                    ].concat(badges)),
+                    _sdPartEl('ul', 'small mb-2 ps-3', _sdT('Products'), _sdPartWhen('__return_has_lines', 'not_empty'), [
+                        createNode('loop_area', { source: 'order.return_lines' }, [
+                            _sdPartEl('li', '', _sdT('Product'), { text: '^^__return_line_name^^ × ^^__return_line_qty^^' })
+                        ])
+                    ]),
+                    detail(_sdT('Reason'), '__return_reason', _sdT('It arrived damaged')),
+                    detail(_sdT('Your note'), '__return_customer_note_html', '', '__return_customer_note'),
+                    detail(_sdT('Note from the shop'), '__return_decision_note_html', '', '__return_decision_note'),
+                    _sdPartEl('div', 'alert alert-info small py-2 my-2', _sdT('How to send it back'), how, [
+                        _sdPartEl('span', '', _sdT('How to send it back'), _sdPartValue('__return_how', _sdT('Your return was approved. You can send the goods back now.'))),
+                        _sdPartEl('strong', '', _sdT('Return code'), _sdPartValue('__return_code', '', 'not_empty'))
+                    ]),
+                    detail(_sdT('Tracking number'), '__return_tracking_number', ''),
+                    detail(_sdT('Refund due by'), '__return_refund_deadline', ''),
+                    _sdPartEl('div', '', _sdT('The customer\'s moves'), _sdPartValue('__return_actions_html', ''))
+                ])
+            ])
+        ])];
+    }
+
+    // The legal documents card (pg_sw_part_order_legal_documents()).
+    function _sdPartOrderLegal(tree) {
+        var link = function (label, token, flag) {
+            return _sdPartEl('li', '', label, { _bindings: { eo_visible_if: flag } }, [
+                _sdPartEl('a', '', label, { text: label, href: '#', target: '_blank', rel: 'noopener', _bindings: { href: token } })
+            ]);
+        };
+        var body = [_sdPartEl('ul', 'list-unstyled mb-0', _sdT('Links'), {}, [
+            link(_sdT('Pre-Information Form'), '__legal_preinfo_url', 'has_legal_preinfo'),
+            link(_sdT('Distance Sales Contract'), '__legal_contract_url', 'has_legal_contract')
+        ])];
+        if (!_sdPartPlaced(tree, ['__withdrawal_deadline', '__withdrawal_text'])) {
+            body.push(_sdPartEl('p', 'small text-muted mt-2 mb-0', _sdT('Right of Withdrawal'), {
+                text: '', _bindings: { text: '__withdrawal_text', eo_visible_if: 'has_withdrawal_deadline' }
+            }));
+        }
+        return [_sdPartOrderCard('pg-ov-legal-documents', _sdT('Legal Documents'), 'has_legal_documents', _sdT('Legal Documents'), body)];
+    }
+
     // One-time migration for trees saved before the "bind content, not layout"
     // rule. Walks the tree; whenever a structural tag carries a text/src/href
     // binding, the binding (and the cell's preview text) moves into a <span>
@@ -38795,6 +41174,7 @@ const StyleDesigner = (function () {
     //
     // Idempotent: after the move the cell has no binding left, so a second pass
     // finds nothing to do.
+    /* @pg-site-output */
     function _sdMigrateStructuralBindings(node) {
         if (!node || typeof node !== 'object') return false;
         var changed = false;
@@ -38951,11 +41331,13 @@ const StyleDesigner = (function () {
             ['withdrawal_deadline_estimated', _sdT('The withdrawal deadline is an estimate')],
             ['withdrawal_ended',        _sdT('The right of withdrawal has ended')],
             ['can_cancel',              _sdT('The order can be cancelled')],
+            ['cancel_needs_refund',     _sdT('The order was paid through a payment provider (refund by hand)')],
             ['is_cancelled',            _sdT('The order is cancelled')],
             ['cancel_flash_success',    _sdT('Just cancelled (notice after the redirect)')],
             ['cancel_flash_already',    _sdT('Already cancelled (notice after the redirect)')],
             ['cancel_flash_shipped',    _sdT('Could not cancel, already shipped (notice after the redirect)')],
             ['show_returns',            _sdT('There is a return to follow, or one can be requested')],
+            ['show_returns_card',       _sdT('Returns are on, and there is a return to follow or one can be requested')],
             ['can_request_return',      _sdT('A return can be requested')],
             ['has_returns',             _sdT('The order has return requests')]
         ],
@@ -38983,13 +41365,20 @@ const StyleDesigner = (function () {
         search_results: [
             ['has_query',   _sdT('Something was searched')],
             ['has_results', _sdT('The search found results')],
-            ['no_results',  _sdT('The search found nothing')]
+            ['no_results',  _sdT('The search found nothing')],
+            ['has_prev_page',  _sdT('A previous page exists')],
+            ['has_next_page',  _sdT('A next page exists')],
+            ['has_more_pages', _sdT('The list runs over more than one page')]
         ],
         // The rating of the card's product (listing) or of the product shown
         // (detail): verified, starred reviews, as __rating_count counts them.
         catalog_listing: [
             ['has_rating', _sdT('Row: the product has a rating from verified reviews')],
-            ['no_rating',  _sdT('Row: the product has no rating yet')]
+            ['no_rating',  _sdT('Row: the product has no rating yet')],
+            // Outside the card only (the listing's surround).
+            ['has_prev_page',  _sdT('A previous page exists')],
+            ['has_next_page',  _sdT('A next page exists')],
+            ['has_more_pages', _sdT('The list runs over more than one page')]
         ],
         catalog_item_view: [
             ['has_rating', _sdT('The product has a rating from verified reviews')],
@@ -39021,7 +41410,10 @@ const StyleDesigner = (function () {
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
             ['no_filter_value',  _sdT('No value from the page address is applied')],
             ['has_records',      _sdT('The list found records')],
-            ['no_records',       _sdT('The list found nothing')]
+            ['no_records',       _sdT('The list found nothing')],
+            ['has_prev_page',    _sdT('A previous page exists')],
+            ['has_next_page',    _sdT('A next page exists')],
+            ['has_more_pages',   _sdT('The list runs over more than one page')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
@@ -39088,6 +41480,7 @@ const StyleDesigner = (function () {
             ['device_offline',      _sdT('Row: not used in the last five minutes')],
             ['device_is_locked',    _sdT('Row: locked by the site owner')],
             ['device_can_sign_out', _sdT('Row: can be signed out here')],
+            ['device_by_passkey',   _sdT('Row: signed in with a passkey the account still has')],
             ['mfa_ready',           _sdT('Two-step verification is installed on the site')],
             ['mfa_off',             _sdT('Two-step verification is off')],
             ['mfa_no_key',          _sdT('It is off and cannot be turned on (no encryption key)')],
@@ -39096,7 +41489,18 @@ const StyleDesigner = (function () {
             ['mfa_on',              _sdT('Two-step verification is on')],
             ['mfa_key_unreadable',  _sdT('It is on but the key cannot be read (recovery codes only)')],
             ['mfa_can_regenerate',  _sdT('New recovery codes can be made')],
-            ['mfa_required',        _sdT('The member\'s role requires two-step verification')]
+            ['mfa_required',        _sdT('The member\'s role requires two-step verification')],
+            ['passkeys_shown',        _sdT('The passkeys part has something to say (the site can use them, or the account keeps some)')],
+            ['has_passkeys',          _sdT('The account has passkeys')],
+            ['no_passkeys',           _sdT('The account has no passkey')],
+            ['passkey_can_change',    _sdT('Passkeys can be renamed and removed here (not while signed in as the member)')],
+            ['passkey_can_add',       _sdT('A passkey can be added')],
+            ['passkey_needs_mfa',     _sdT('Adding a passkey waits for two-step verification')],
+            ['passkey_limit',         _sdT('The account keeps as many passkeys as it may')],
+            ['passkey_unavailable',   _sdT('Passkeys cannot be used on this site or at this address')],
+            ['passkey_asks_password', _sdT('Adding or removing a passkey asks for the password')],
+            ['passkey_asks_code',     _sdT('Adding or removing a passkey asks for a code from the authenticator app')],
+            ['passkey_asks_email_code', _sdT('Adding a passkey asks for a code sent by e-mail (two-step verification is off)')]
         ],
         account_invoices: [
             ['has_documents',      _sdT('There are documents to list')],
@@ -39113,6 +41517,22 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        tag_cloud_region: [
+            ['has_tags',        _sdT('The search results page has a keyword to show')],
+            ['no_tags',         _sdT('No page is chosen, or it has no keyword')]
+        ],
+        ad_region: [
+            ['has_ads',         _sdT('The region has an ad to show')],
+            ['no_ads',          _sdT('No region is chosen, or it has no ad')],
+            ['has_several_ads', _sdT('More than one ad is shown')],
+            ['ad_has_caption',  _sdT('Row: the ad has a caption')]
+        ],
+        menu_sequence_region: [
+            ['in_sequence',     _sdT('The page shown is one of the menu\'s pages')],
+            ['not_in_sequence', _sdT('The page shown is not one of the menu\'s pages')],
+            ['has_previous',    _sdT('A page comes before the one shown')],
+            ['next_wraps',      _sdT('The page shown is the last; the next link goes to the first')]
         ],
         menu_region: [
             ['has_menu_items',             _sdT('The menu has an item the visitor may see')],
@@ -39296,7 +41716,7 @@ const StyleDesigner = (function () {
         var mkSelect = function (attr, current, opts, label, hint) {
             if (opts.length <= 1) return '';
             return row(label,
-                '<select class="form-select form-select-sm" ' + attr + '>' +
+                '<select class="form-control form-control-sm" ' + attr + '>' +
                 opts.map(function (o) {
                     return '<option value="' + esc(o[0]) + '"' +
                            (o[0] === current ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -39377,6 +41797,13 @@ const StyleDesigner = (function () {
                 aOpts.push(['mfa_codes_seen',          _sdT('Recovery codes saved')]);
                 aOpts.push(['mfa_recovery_regenerate', _sdT('New recovery codes')]);
                 aOpts.push(['mfa_disable',             _sdT('Turn off two-step verification')]);
+                aOpts.push(['passkey_rename',          _sdT('Rename the passkey (passkey list)')]);
+                aOpts.push(['passkey_remove',          _sdT('Remove the passkey (passkey list)')]);
+                aOpts.push(['passkey_send_code',       _sdT('Send the code by e-mail (add a passkey form)')]);
+            }
+            if (region === 'order_view') {
+                aOpts.push(['order_cancel_submit', _sdT('Cancel the order (cancellation form)')]);
+                aOpts.push(['order_return_submit', _sdT('Request a return (return request form)')]);
             }
             // Only a button can post a list action's form; a link bound to
             // one is dropped on the page (_pg_wishlist_wire_actions()), so a
@@ -39394,7 +41821,14 @@ const StyleDesigner = (function () {
             if (region === 'shopping_cart')        fOpts.push(['coupon_form', _sdT('Offer Code Form (shopping_cart)')]);
             else if (region === 'catalog_listing') fOpts.push(['search_form', _sdT('Search Form (catalog_listing)')]);
             else if (region === 'search_results')  fOpts.push(['search_form', _sdT('Search Form')]);
-            else if (region === 'account_security') fOpts.push(['account_security_form', _sdT('Account security form')]);
+            else if (region === 'account_security') {
+                fOpts.push(['account_security_form', _sdT('Account security form')]);
+                fOpts.push(['passkey_add_form',      _sdT('Add a passkey form')]);
+            }
+            else if (region === 'order_view') {
+                fOpts.push(['order_cancel_form', _sdT('Cancellation form')]);
+                fOpts.push(['order_return_form', _sdT('Return request form (order.return_deliveries)')]);
+            }
             else if (region === 'comments') {
                 fOpts.push(['comment_form',           _sdT('Add-comment form')]);
                 fOpts.push(['comment_watch_form',     _sdT('Watch form (notify me of new comments)')]);
@@ -39411,10 +41845,24 @@ const StyleDesigner = (function () {
                 vOpts.push(['recipient_name',   _sdT('New recipient name (add_name) — catalog_item_view')]);
                 vOpts.push(['recipient_select', _sdT('Recipient picker (ship_to) — catalog_item_view')]);
                 vOpts.push(['stock_notify_email', _sdT('E-mail for the back-in-stock notice (email_address) — catalog_item_view')]);
+                vOpts.push(['stock_notify_phone', _sdT('Mobile number for the back-in-stock text message (phone) — catalog_item_view')]);
+            }
+            if (region === 'order_view') {
+                vOpts.push(['cancel_reason', _sdT('Cancellation reason (cancellation form)')]);
+                vOpts.push(['return_qty',    _sdT('Quantity to return (order.return_delivery_lines)')]);
+                vOpts.push(['return_reason', _sdT('Reason for the return (required)')]);
+                vOpts.push(['return_note',   _sdT('Note of the return request')]);
             }
             if (region === 'shopping_cart') {
                 vOpts.push(['cart_qty',    _sdT('Row quantity (cart_qty) — shopping_cart loop_area')]);
                 vOpts.push(['coupon_code', _sdT('Offer code (special_offer_code) — shopping_cart')]);
+                vOpts.push(['gift_card_email',         _sdT('Gift card: recipient e-mail (required)')]);
+                vOpts.push(['gift_card_from_name',     _sdT('Gift card: from name')]);
+                vOpts.push(['gift_card_message',       _sdT('Gift card: message')]);
+                vOpts.push(['gift_card_delivery_date', _sdT('Gift card: delivery date')]);
+                vOpts.push(['schedule_period',         _sdT('Payment schedule: frequency (required)')]);
+                vOpts.push(['schedule_payments',       _sdT('Payment schedule: number of payments')]);
+                vOpts.push(['schedule_start',          _sdT('Payment schedule: start date')]);
             }
             if (region === 'catalog_listing' || region === 'search_results') {
                 vOpts.push(['search_query', _sdT('Search text (query)')]);
@@ -39433,8 +41881,10 @@ const StyleDesigner = (function () {
         // Show-only-when: any element of a widget that evaluates visibility
         // flags. A flag written by an older starter that is no longer in the
         // list is still shown, so it can be seen and cleared.
-        var visFlags = SW_VISIBILITY_FLAGS[region];
-        if (visFlags && node.type !== 'loop_area' && node.type !== 'root') {
+        // Inside a list, the flags of its rows and of the lists around it
+        // too: the row decides (pg_sw_list_flag_alias()).
+        var visFlags = (SW_VISIBILITY_FLAGS[region] || []).concat(_sdListRowFlags(node));
+        if (visFlags.length && node.type !== 'loop_area' && node.type !== 'root') {
             var vis = [['', _sdT('Always')]].concat(visFlags);
             var curVis = cur.eo_visible_if || '';
             if (curVis && !visFlags.some(function (f) { return f[0] === curVis; })) vis.push([curVis, curVis]);
@@ -39451,7 +41901,7 @@ const StyleDesigner = (function () {
     // `sect(...)` returns inside the core keeps the two concerns separate.
     function propsDataBinding(node) {
         var html  = _propsDataBindingCore(node);
-        var extra = _sdBindingActionRows(node) + _sdFormatRows(node) + _sdConditionRows(node);
+        var extra = _sdBindingActionRows(node) + _sdFormatRows(node) + _sdConditionRows(node) + _sdHideEmptyRows(node);
         if (html) {
             var note = _sdBindingTextNote(node);
             if (note) extra = note + (extra || '');
@@ -39460,7 +41910,7 @@ const StyleDesigner = (function () {
         // Node has an action/value binding but no token bindings (a plain
         // "Add to Cart" button, say) — still show the section, so every
         // binding is reachable from the panel named after the job.
-        if (!html) return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'), extra);
+        if (!html) return sect('bi-link-45deg', _isInsideSystemWidget(node) ? _sdT('Bind Data (System Widget)') : _sdT('Show by the visit'), extra);
         // sect() closes with `</div></div>`; slot the rows in just before it
         // so they land INSIDE the section body.
         var idx = html.lastIndexOf('</div></div>');
@@ -39501,13 +41951,13 @@ const StyleDesigner = (function () {
             ? _sdT('The text has markup around several pieces of words. A bound value takes the place of the whole text, and the markup is lost. Put the words that should show the value in an element of their own and bind that.')
             : _sdT('The text has markup around it, such as a link or bold. A bound value goes in place of the words inside the markup, so the markup stays.');
         var split = _sdSoleTextLink(node.props.text)
-            ? '<button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" id="sd-bind-split-link">' +
+            ? '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100 mt-3" id="sd-bind-split-link">' +
                   '<span class="bi bi-link-45deg me-1"></span>' + esc(_sdT('Make the link its own element')) +
               '</button>' +
               '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The element keeps its look, and the link\'s address can be bound as well, for example to the detail page.')) + '</div>'
             : '';
         var warn = several && bound;
-        return '<div class="mt-2" style="font-size:.7rem;line-height:1.45;padding:6px 8px;border-radius:3px;' +
+        return '<div class="mt-3" style="font-size:.7rem;line-height:1.45;padding:6px 8px;border-radius:3px;' +
                    (warn ? 'color:#b45309;background:rgba(245,158,11,.08)' : 'color:#4b5563;background:rgba(99,102,241,.06)') + '">' +
                    '<span class="bi ' + (warn ? 'bi-exclamation-triangle' : 'bi-info-circle') + ' me-1"></span>' + esc(msg) +
                    split +
@@ -39517,6 +41967,7 @@ const StyleDesigner = (function () {
     // A heading, paragraph or span whose whole text is one link, split into
     // the element and a link element inside it: the text binding moves to
     // the link, the look (tag, classes, style) stays on the outer element.
+    /* @pg-site-output */
     function _sdSplitTextLink(node) {
         var a = node && node.props ? _sdSoleTextLink(node.props.text) : null;
         if (!a) return;
@@ -39635,7 +42086,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildCatalogOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -39702,7 +42153,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildCatalogItemOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -39744,7 +42195,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildMyAccountOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -39785,7 +42236,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildLoginFormOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -39826,7 +42277,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildForgotPasswordOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -39867,7 +42318,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildSearchResultsOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -39908,7 +42359,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildRegistrationOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -39949,7 +42400,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildShoppingCartOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -39977,6 +42428,7 @@ const StyleDesigner = (function () {
                 SW_ORDER_VIEW_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -39990,7 +42442,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildOrderViewOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -40031,7 +42483,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildMembershipOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -40072,7 +42524,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildCustomFormOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -40105,6 +42557,7 @@ const StyleDesigner = (function () {
                 SW_CALENDAR_VIEW_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -40118,7 +42571,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildCalendarViewOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -40157,7 +42610,7 @@ const StyleDesigner = (function () {
                 var isCustom = !!(current && epFlat.indexOf(current) === -1);
                 html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
                 rowsHtmlEP += row(b.label,
-                    '<select class="form-select form-select-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
                     ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
@@ -40195,7 +42648,7 @@ const StyleDesigner = (function () {
                 var isCustom = !!(current && cmFlat.indexOf(current) === -1);
                 html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
                 rowsHtmlCM += row(b.label,
-                    '<select class="form-select form-select-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
                     ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
@@ -40235,7 +42688,7 @@ const StyleDesigner = (function () {
                 var isCustom = !!(current && acFlat.indexOf(current) === -1);
                 html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
                 rowsHtmlAC += row(b.label,
-                    '<select class="form-select form-select-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
                     ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
@@ -40261,6 +42714,7 @@ const StyleDesigner = (function () {
                 SW_CALENDAR_EVENT_VIEW_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== current) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === current ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -40268,7 +42722,7 @@ const StyleDesigner = (function () {
                 var isCustom = !!(current && SW_CALENDAR_EVENT_VIEW_FLAT_TOKENS.indexOf(current) === -1);
                 html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
                 rowsHtmlCE += row(b.label,
-                    '<select class="form-select form-select-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
                     ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
@@ -40308,7 +42762,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildExpressOrderOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -40353,7 +42807,7 @@ const StyleDesigner = (function () {
                         '<div class="sd-prop-row" style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:8px">' +
                             '<label class="sd-prop-label">' + esc(_sdT('Express Order Field (name)')) + '</label>' +
                             '<div class="sd-prop-control">' +
-                                '<select class="form-select form-select-sm sd-sw-eo-field-sel">' + _eoFieldOpts + '</select>' +
+                                '<select class="form-control form-control-sm sd-sw-eo-field-sel">' + _eoFieldOpts + '</select>' +
                                 '<input type="text" class="form-control form-control-sm mt-1 sd-sw-eo-field-custom"' +
                                     ' placeholder="custom_name_attr"' +
                                     ' value="' + esc(_eoFieldIsCustom ? _eoCurField : '') + '"' +
@@ -40429,10 +42883,12 @@ const StyleDesigner = (function () {
         function _buildOptionsHtml(currentVal, prop) {
             if (currentVal && Object.prototype.hasOwnProperty.call(_bindAlias, currentVal)) currentVal = _bindAlias[currentVal];
             var withPageLink = (prop === 'href' && _pageLinkOffered);
+            var withRef = _pageLinkOffered && _SW_REF_PROPS[prop] === 1;
             var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
             if (_listRows.length) {
                 html += '<optgroup label="' + esc(_sdT('Row of the list')) + '">';
                 _listRows.forEach(function (o) {
+                    if (o.cond && o.token !== currentVal) return;
                     html += '<option value="' + esc(o.token) + '"' + (o.token === currentVal ? ' selected' : '') + '>' + esc(o.label) + '</option>';
                 });
                 html += '</optgroup>';
@@ -40469,9 +42925,13 @@ const StyleDesigner = (function () {
             if (withPageLink) {
                 html += '<option value="' + esc(SW_PAGE_LINK_TOKEN) + '"' + (currentVal === SW_PAGE_LINK_TOKEN ? ' selected' : '') + '>' + esc(_sdT('Another page, with values from the record')) + '</option>';
             }
+            if (withRef) {
+                html += '<option value="' + esc(SW_REF_TOKEN) + '"' + (currentVal === SW_REF_TOKEN ? ' selected' : '') + '>' + esc(_sdT('A field of a referenced record')) + '</option>';
+            }
             // Custom — shown when the saved binding doesn't match any known token
             var isCustom = !!(currentVal &&
                               !(withPageLink && currentVal === SW_PAGE_LINK_TOKEN) &&
+                              !(withRef && currentVal === SW_REF_TOKEN) &&
                               !_listRows.some(function (o) { return o.token === currentVal; }) &&
                               !formFields.some(function (ff) { return ((ff.name && ('' + ff.name).trim()) || ('field_' + ff.id)) === currentVal; }) &&
                               !(_withLabels && formFields.some(function (ff) { return _labelToken(ff) === currentVal; })) &&
@@ -40492,9 +42952,9 @@ const StyleDesigner = (function () {
                            (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
             };
             var cur = spec.page_id ? String(spec.page_id) : '0';
-            var html = '<div class="sd-sw-plink mt-2">' +
+            var html = '<div class="sd-sw-plink mt-3">' +
                 '<div style="font-size:.7rem;font-weight:600;margin-bottom:2px">' + esc(_sdT('Page to open')) + '</div>' +
-                '<select class="form-select form-select-sm sd-sw-plink-page" aria-label="' + esc(_sdT('Page to open')) + '">' +
+                '<select class="form-control form-control-sm sd-sw-plink-page" aria-label="' + esc(_sdT('Page to open')) + '">' +
                     _swPageOptions(cur, _allPagesCache, { none: _sdT('— Choose a page —') }) +
                 '</select>';
             if (!spec.page_id) {
@@ -40536,16 +42996,67 @@ const StyleDesigner = (function () {
                 html +=
                     '<div class="d-flex gap-1 mt-1 align-items-center">' +
                         '<input type="text" class="form-control form-control-sm sd-sw-plink-name" data-plink-i="' + i + '" value="' + esc(p.name) + '" maxlength="32" placeholder="board" style="width:96px;flex:none" aria-label="' + esc(_sdT('Parameter name')) + '">' +
-                        '<select class="form-select form-select-sm sd-sw-plink-token" data-plink-i="' + i + '" aria-label="' + esc(_sdT('Value')) + '">' + tokenOptions(p.token) + '</select>' +
-                        '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-plink-remove" data-plink-i="' + i + '" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '"><span class="bi bi-x-lg"></span></button>' +
+                        '<select class="form-control form-control-sm sd-sw-plink-token" data-plink-i="' + i + '" aria-label="' + esc(_sdT('Value')) + '">' + tokenOptions(p.token) + '</select>' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-danger sd-sw-plink-remove" data-plink-i="' + i + '" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '"><span class="bi bi-x-lg"></span></button>' +
                     '</div>' +
                     '<div class="sd-sw-plink-warn" data-plink-i="' + i + '">' + _swPageLinkNameWarn(spec.params, i) + '</div>';
             });
             html +=
-                '<button type="button" class="btn btn-sm btn-outline-primary mt-1 sd-sw-plink-add"' + (spec.params.length >= _SW_PAGE_LINK_MAX ? ' disabled' : '') + '>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary mt-1 sd-sw-plink-add"' + (spec.params.length >= _SW_PAGE_LINK_MAX ? ' disabled' : '') + '>' +
                     '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add a value')) + '</button>' +
                 note(_sdT('Each value goes into the address as the record stores it (?name=value). A value that is empty, longer than 100 characters or on several lines is left out.'), false) +
             '</div>';
+            return html;
+        }
+
+        // Which own field holds the reference, the form it points into and
+        // that form's field to print (props._bindParams[prop]), under the
+        // select. The other form's fields come with the first panel that
+        // asks for them.
+        function _sdRefRows(n, fields, prop) {
+            var spec = _swRefSpec(n.props && n.props._bindParams && n.props._bindParams[prop]);
+            if (!_customFormsCache && typeof _fetchCustomForms === 'function') _fetchCustomForms(function () { renderProperties(); });
+            var target = (typeof spec.page_id === 'number') ? spec.page_id : 0;
+            var targetFields = target ? _formFieldsCache[target] : [];
+            if (target && !targetFields) _fetchFormFields(target, function () { renderProperties(); });
+            var label = function (text) { return '<div style="font-size:.7rem;font-weight:600;margin:8px 0 2px">' + esc(text) + '</div>'; };
+            // The other form's staff-only fields are never read; this form's
+            // own may hold the reference (a category staff choose).
+            var fieldOptions = function (list, cur, extra) {
+                var known = (cur === '');
+                var out = '<option value=""' + (cur === '' ? ' selected' : '') + '>' + esc(_sdT('— Choose a field —')) + '</option>';
+                (list || []).forEach(function (ff) {
+                    if (extra ? !_swFormFieldShown(ff) : (ff.type === 'information')) return;
+                    var t = _swFormFieldToken(ff).toLowerCase();
+                    if (t === cur) known = true;
+                    out += '<option value="' + esc(t) + '"' + (t === cur ? ' selected' : '') + '>' + esc(ff.label || ff.name || ('#' + ff.id)) + '</option>';
+                });
+                (extra || []).forEach(function (o) {
+                    if (o[0] === cur) known = true;
+                    out += '<option value="' + esc(o[0]) + '"' + (o[0] === cur ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                });
+                if (!known) out += '<option value="' + esc(cur) + '" selected>' + esc(cur + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+                return out;
+            };
+            var pageOptions = '<option value="0"' + (spec.page_id ? '' : ' selected') + '>' + esc(_sdT('— Choose a form —')) + '</option>';
+            if (typeof spec.page_id === 'string') {
+                pageOptions += '<option value="' + esc(spec.page_id) + '" selected>' + esc(_sdT('A page of this design (not published yet)')) + '</option>';
+            }
+            pageOptions += _swFormOptions(target);
+            var html = '<div class="sd-sw-ref mt-3">' +
+                label(_sdT('Field holding the reference')) +
+                '<select class="form-control form-control-sm sd-sw-ref-field" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field holding the reference')) + '">' + fieldOptions(fields, spec.field) + '</select>' +
+                label(_sdT('Form it points into')) +
+                '<select class="form-control form-control-sm sd-sw-ref-page" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Form it points into')) + '">' + pageOptions + '</select>';
+            if (target) {
+                html += label(_sdT('Field to show')) +
+                    '<select class="form-control form-control-sm sd-sw-ref-show" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field to show')) + '">' +
+                        fieldOptions(targetFields || [], spec.show, [['reference_code', _sdT('Reference code')], ['address_name', _sdT('Address name')]]) +
+                    '</select>';
+            }
+            html += '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:#888">' +
+                esc(_sdT('The field holds the reference code or the address name of the other record; several are separated by commas. Only complete records are read, and never a field kept for staff only.')) +
+                '</div></div>';
             return html;
         }
 
@@ -40554,7 +43065,7 @@ const StyleDesigner = (function () {
             var current = bindings[b.prop] || '';
             var built = _buildOptionsHtml(current, b.prop);
             var sel =
-                '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                 ' data-bind-prop="' + esc(b.prop) + '">' +
                 built.html +
                 '</select>';
@@ -40566,7 +43077,9 @@ const StyleDesigner = (function () {
                 (built.isCustom ? '' : ' style="display:none"') + '>';
             var pageLinkRows = (b.prop === 'href' && _pageLinkOffered && current === SW_PAGE_LINK_TOKEN)
                 ? _sdPageLinkRows(node, formFields) : '';
-            rowsHtml += row(b.label, sel + customInp + pageLinkRows + _sdBindFormatRow(b.prop, current, node));
+            var refRows = (_pageLinkOffered && _SW_REF_PROPS[b.prop] === 1 && current === SW_REF_TOKEN)
+                ? _sdRefRows(node, formFields, b.prop) : '';
+            rowsHtml += row(b.label, sel + customInp + pageLinkRows + refRows + _sdBindFormatRow(b.prop, current, node));
         });
 
         return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
@@ -40642,6 +43155,9 @@ const StyleDesigner = (function () {
             if (bp && value === SW_PAGE_LINK_TOKEN) {
                 if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
                 if (!bp._bindParams[propName]) bp._bindParams[propName] = { page_id: 0, params: [{ name: '', token: '' }] };
+            } else if (bp && value === SW_REF_TOKEN) {
+                if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
+                if (!bp._bindParams[propName]) bp._bindParams[propName] = { field: '', page_id: 0, show: '' };
             } else if (bp && bp._bindParams) {
                 delete bp._bindParams[propName];
                 if (!Object.keys(bp._bindParams).length) delete bp._bindParams;
@@ -40666,6 +43182,36 @@ const StyleDesigner = (function () {
             renderCanvas();
             if (repaint && typeof renderProperties === 'function') renderProperties();
         }
+        // One edit of a reference spec: `fn` changes it, stored back
+        // normalised, and the panel is drawn again.
+        function _sdRefEdit(prop, fn) {
+            if (!selectedNode || !selectedNode.props || !prop) return;
+            saveState();
+            var p = selectedNode.props;
+            if (!p._bindParams || typeof p._bindParams !== 'object' || Array.isArray(p._bindParams)) p._bindParams = {};
+            var spec = _swRefSpec(p._bindParams[prop]);
+            fn(spec);
+            p._bindParams[prop] = _swRefSpec(spec);
+            var sid = _isInsideSystemWidget(selectedNode);
+            if (sid) _sharedDirty[sid] = true;
+            renderCanvas();
+            if (typeof renderProperties === 'function') renderProperties();
+        }
+        document.querySelectorAll('.sd-sw-ref-field, .sd-sw-ref-page, .sd-sw-ref-show').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                var v = this.value;
+                var key = this.classList.contains('sd-sw-ref-field') ? 'field' : (this.classList.contains('sd-sw-ref-page') ? 'page_id' : 'show');
+                _sdRefEdit(this.dataset.refProp, function (spec) {
+                    if (key === 'page_id') {
+                        // Another form: its fields are other fields.
+                        if (String(spec.page_id) !== v) spec.show = '';
+                        spec.page_id = /^tab:/.test(v) ? v : (parseInt(v, 10) || 0);
+                    } else {
+                        spec[key] = v;
+                    }
+                });
+            });
+        });
         var plinkPage = document.querySelector('.sd-sw-plink-page');
         if (plinkPage) {
             plinkPage.addEventListener('change', function () {
@@ -40865,46 +43411,82 @@ const StyleDesigner = (function () {
             });
         }
 
-        // The "Show only when a value…" row (_sdConditionRows()). A new value
-        // to test redraws the panel (the operator and value boxes come or go);
-        // the operator and the compared text change in place, so typing keeps
-        // the focus. One undo step for each choice and for each word typed.
-        var condTok = document.querySelector('.sd-sw-cond-token');
-        var condOp  = document.querySelector('.sd-sw-cond-op');
-        var condVal = document.querySelector('.sd-sw-cond-value');
-        var _sdCondNow = function () {
-            var p = (selectedNode && selectedNode.props) || {};
-            var c = (p._bindParams && p._bindParams.show_if) || {};
-            return { token: (p._bindings && p._bindings.show_if) || '', op: c.op || 'not_empty' };
+        // The "Show only when a value…" rows (_sdConditionRows()). A new
+        // value to test, the switch and "Add a condition" redraw the panel
+        // (boxes come or go); the operator and the compared text change in
+        // place, so typing keeps the focus. One undo step for each choice and
+        // for each word typed.
+        var _sdCondNow = function (i) {
+            return _sdCondRowsOf(selectedNode)[i] || { token: '', op: 'not_empty', value: '' };
         };
-        if (condTok) {
-            condTok.addEventListener('change', function () {
+        var _sdCondEl = function (cls, i) { return document.querySelector('.' + cls + '[data-cond-row="' + i + '"]'); };
+        var _sdCondRedraw = function () {
+            renderCanvas();
+            if (typeof renderProperties === 'function') renderProperties();
+        };
+        document.querySelectorAll('.sd-sw-cond-token').forEach(function (el) {
+            el.addEventListener('change', function () {
+                if (!selectedNode) return;
+                var i = parseInt(this.getAttribute('data-cond-row'), 10) || 0;
+                var val = _sdCondEl('sd-sw-cond-value', i);
+                saveState();
+                _sdCondOpenRow = null;
+                _sdCondWrite(selectedNode, this.value, _sdCondNow(i).op, val ? val.value : '', i);
+                _sdCondRedraw();
+            });
+        });
+        document.querySelectorAll('.sd-sw-cond-op').forEach(function (el) {
+            el.addEventListener('change', function () {
+                if (!selectedNode) return;
+                var i = parseInt(this.getAttribute('data-cond-row'), 10) || 0;
+                var val = _sdCondEl('sd-sw-cond-value', i);
+                saveState();
+                _sdCondWrite(selectedNode, _sdCondNow(i).token, this.value, val ? val.value : '', i);
+                var entry = _sdCondOp(this.value);
+                if (val) val.style.display = (entry && entry[2]) ? '' : 'none';
+                renderCanvas();
+            });
+        });
+        document.querySelectorAll('.sd-sw-cond-value').forEach(function (el) {
+            el.addEventListener('input', function () {
+                if (!selectedNode) return;
+                var i = parseInt(this.getAttribute('data-cond-row'), 10) || 0;
+                saveState(_sdEditRun('cond:value:' + i));
+                var now = _sdCondNow(i);
+                _sdCondWrite(selectedNode, now.token, now.op, this.value, i);
+                renderCanvas();
+            });
+        });
+        var condJoin = document.querySelector('.sd-sw-cond-join');
+        if (condJoin) {
+            condJoin.addEventListener('change', function () {
                 if (!selectedNode) return;
                 saveState();
-                _sdCondWrite(selectedNode, this.value, _sdCondNow().op, condVal ? condVal.value : '');
-                renderCanvas();
+                _sdCondWriteRows(selectedNode, _sdCondRowsOf(selectedNode), this.value);
+                _sdCondRedraw();
+            });
+        }
+        var condAdd = document.querySelector('.sd-sw-cond-add');
+        if (condAdd) {
+            condAdd.addEventListener('click', function () {
+                if (!selectedNode) return;
+                _sdCondOpenRow = selectedNode;
                 if (typeof renderProperties === 'function') renderProperties();
             });
         }
-        if (condOp) {
-            condOp.addEventListener('change', function () {
-                if (!selectedNode) return;
+
+        // "Hide when empty" and "Value of the box around it"
+        // (_sdHideEmptyRows()): one undo step each.
+        document.querySelectorAll('#sd-properties input[data-sd-hide-empty], #sd-properties input[data-sd-field-value]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                if (!selectedNode || !selectedNode.props) return;
                 saveState();
-                _sdCondWrite(selectedNode, _sdCondNow().token, this.value, condVal ? condVal.value : '');
-                var entry = _sdCondOp(this.value);
-                if (condVal) condVal.style.display = (entry && entry[2]) ? '' : 'none';
-                renderCanvas();
+                var hide = this.hasAttribute('data-sd-hide-empty');
+                _sdNodeToggleClass(selectedNode, hide ? SD_HIDE_EMPTY : SD_FIELD_VALUE, this.checked);
+                if (hide && this.checked) _sdHideEmptyPickValue(selectedNode);
+                render();
             });
-        }
-        if (condVal) {
-            condVal.addEventListener('input', function () {
-                if (!selectedNode) return;
-                saveState(_sdEditRun('cond:value'));
-                var now = _sdCondNow();
-                _sdCondWrite(selectedNode, now.token, now.op, this.value);
-                renderCanvas();
-            });
-        }
+        });
 
         // EO field binding dropdown — express_order specific. Sets
         // node.props._bindings.eo_field which the PHP walker
@@ -40963,12 +43545,12 @@ const StyleDesigner = (function () {
             if (has('btn-' + variants[vi]))          { currentVariant = variants[vi]; break; }
         }
         var currentSize = has('btn-sm') ? 'btn-sm' : has('btn-lg') ? 'btn-lg' : '';
-        return row(_sdT('Variant'), '<select class="form-select form-select-sm" data-btn-variant>' +
+        return row(_sdT('Variant'), '<select class="form-control form-control-sm" data-btn-variant>' +
                 [['',_sdT('None')],['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success',_sdT('Success')],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]].map(function(o) {
                     return '<option value="' + o[0] + '"' + (o[0] === currentVariant ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') + '</select>') +
             row(_sdT('Outlined'), swAttr('data-btn-outlined', isOutlined)) +
-            row(_sdT('Size'), '<select class="form-select form-select-sm" data-stylegroup="btn-sm,btn-lg">' +
+            row(_sdT('Size'), '<select class="form-control form-control-sm" data-stylegroup="btn-sm,btn-lg">' +
                 [['',_sdT('Default')],['btn-sm',_sdT('Small')],['btn-lg',_sdT('Large')]].map(function(o) {
                     return '<option value="' + o[0] + '"' + (o[0] === currentSize ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') + '</select>');
@@ -40988,7 +43570,7 @@ const StyleDesigner = (function () {
         // "Default" and offered no way to change the colour or size.
         var lsVal = (cls.indexOf('btn') !== -1) ? (cls.indexOf('btn-link') !== -1 ? 'btn-link' : 'btn') :
                     (cls.indexOf('nav-link') !== -1) ? 'nav-link' : '';
-        var linkStyleSel = '<select class="form-select form-select-sm" data-link-style>' +
+        var linkStyleSel = '<select class="form-control form-control-sm" data-link-style>' +
             '<option value="">' + esc(_sdT('Default')) + '</option>' +
             '<option value="nav-link"' + (lsVal === 'nav-link' ? ' selected' : '') + '>' + esc(_sdT('Nav Link')) + '</option>' +
             '<option value="btn"'      + (lsVal === 'btn'      ? ' selected' : '') + '>' + esc(_sdT('Button')) + '</option>' +
@@ -40998,7 +43580,7 @@ const StyleDesigner = (function () {
         // Bound href → the URL box would be a decoy (server overwrites it).
         var urlRowLO = _sdHrefIsBound(n)
             ? _sdBoundHrefNotice(n)
-            : '<div class="input-group input-group-sm"><input type="text" id="sd-prop-lo-href" class="form-control" data-prop="href" value="' + esc(href) + '" placeholder="#"><button class="btn btn-outline-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-lo-href\',\'href\')" title="' + esc(_sdT('Choose a File')) + '"><i class="bi bi-folder2-open"></i></button></div>';
+            : '<div class="input-group input-group-sm"><input type="text" id="sd-prop-lo-href" class="form-control" data-prop="href" value="' + esc(href) + '" placeholder="#"><button class="btn btn-outline theme-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-lo-href\',\'href\')" title="' + esc(_sdT('Choose a File')) + '"><i class="bi bi-folder2-open"></i></button></div>';
 
         return sect('bi-link-45deg', _sdT('Link Options'),
             row(_sdT('URL'), urlRowLO) +
@@ -41147,7 +43729,7 @@ const StyleDesigner = (function () {
                  '</div>';
         }
         h += row(_sdT('Element'),
-            '<select class="form-select form-select-sm" data-btn-element>' +
+            '<select class="form-control form-control-sm" data-btn-element>' +
             '<option value="a"'        + (isLink     ? ' selected' : '') + '>Link (&lt;a&gt;)</option>' +
             '<option value="button"'   + (isButton   ? ' selected' : '') + '>Button (&lt;button&gt;)</option>' +
             '<option value="input"'    + (isInput    ? ' selected' : '') + '>Input (&lt;input&gt;)</option>' +
@@ -41175,7 +43757,7 @@ const StyleDesigner = (function () {
                 ? _sdBoundHrefNotice(n)
                 : '<div class="input-group input-group-sm">' +
                   '<input type="text" id="sd-prop-bl-href" class="form-control" data-prop="href" value="' + esc(n.props.href || '') + '" placeholder="#">' +
-                  '<button class="btn btn-outline-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-bl-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button>' +
+                  '<button class="btn btn-outline theme-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-bl-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button>' +
                   '</div>');
             h += row(_sdT('Target'), sel('target', [['',_sdT('Default')],['_blank',_sdT('New Tab')],['_self',_sdT('Same Window')]], n.props.target || ''));
             h += row(_sdT('Relationship'), sel('rel', relOpts, n.props.rel || ''));
@@ -41187,7 +43769,7 @@ const StyleDesigner = (function () {
                 if (hasCls(_linkColors[_lci])) { _currentLinkColor = _linkColors[_lci]; break; }
             }
             h += row(_sdT('Link Color'),
-                '<select class="form-select form-select-sm" data-stylegroup="' + _linkColors.join(',') + '">' +
+                '<select class="form-control form-control-sm" data-stylegroup="' + _linkColors.join(',') + '">' +
                 [['',_sdT('Default')],['link-primary',_sdT('Primary')],['link-secondary',_sdT('Secondary')],['link-success', _sdT('Success variant')],
                  ['link-danger',_sdT('Danger')],['link-warning',_sdT('Warning')],['link-info',_sdT('Info')],
                  ['link-light',_sdT('Light')],['link-dark',_sdT('Dark')],['link-body-emphasis',_sdT('Body Emphasis')]].map(function(o) {
@@ -41197,7 +43779,7 @@ const StyleDesigner = (function () {
         } else if (isButton) {
             var btnTypeVal = isSemantic ? (getAttr('type') || 'button') : (n.props.btnType || 'button');
             h += row(_sdT('Button Type'),
-                '<select class="form-select form-select-sm" data-btn-type>' +
+                '<select class="form-control form-control-sm" data-btn-type>' +
                 [['button',_sdT('Button')],['submit',_sdT('Submit')],['reset',_sdT('Reset')]].map(function(o) {
                     return '<option value="' + o[0] + '"' + (o[0] === btnTypeVal ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') + '</select>');
@@ -41218,7 +43800,7 @@ const StyleDesigner = (function () {
             var inputValueVal = isSemantic ? getAttr('value') : (n.props.text || '');
             var inputPlaceholder = isSemantic ? getAttr('placeholder') : '';
             h += row(_sdT('Type'),
-                '<select class="form-select form-select-sm" data-btn-type>' +
+                '<select class="form-control form-control-sm" data-btn-type>' +
                 _inputTypes.map(function(t) {
                     return '<option value="' + t + '"' + (t === inputTypeVal ? ' selected' : '') + '>' + t + '</option>';
                 }).join('') + '</select>');
@@ -41275,7 +43857,7 @@ const StyleDesigner = (function () {
         var displayStyle  = hasBtnLinkCls ? 'btn-link' : (hasBtnCls ? 'btn' : '');
 
         h += row(_sdT('Button Style'),
-            '<select class="form-select form-select-sm" data-btn-display>' +
+            '<select class="form-control form-control-sm" data-btn-display>' +
             [['',_sdT('No styling')],['btn',_sdT('Button')],['btn-link',_sdT('Link style')]].map(function(o) {
                 return '<option value="' + o[0] + '"' + (o[0] === displayStyle ? ' selected' : '') + '>' + o[1] + '</option>';
             }).join('') + '</select>'
@@ -41290,7 +43872,7 @@ const StyleDesigner = (function () {
                     if (hasCls('btn-outline-' + btnVariants[vi])) { currentVariant = btnVariants[vi]; isOutlined = true; break; }
                     if (hasCls('btn-' + btnVariants[vi]))          { currentVariant = btnVariants[vi]; break; }
                 }
-                h += row(_sdT('Variant'), '<select class="form-select form-select-sm" data-btn-variant>' +
+                h += row(_sdT('Variant'), '<select class="form-control form-control-sm" data-btn-variant>' +
                     [['',_sdT('None')],['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success',_sdT('Success')],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]].map(function(o) {
                         return '<option value="' + o[0] + '"' + (o[0] === currentVariant ? ' selected' : '') + '>' + o[1] + '</option>';
                     }).join('') + '</select>');
@@ -41312,7 +43894,7 @@ const StyleDesigner = (function () {
             // the row is a control that changes nothing, so it is not drawn.
             if (displayStyle === 'btn') {
                 var currentSize = hasCls('btn-sm') ? 'btn-sm' : hasCls('btn-lg') ? 'btn-lg' : '';
-                h += row(_sdT('Size'), '<select class="form-select form-select-sm" data-stylegroup="btn-sm,btn-lg">' +
+                h += row(_sdT('Size'), '<select class="form-control form-control-sm" data-stylegroup="btn-sm,btn-lg">' +
                     [['',_sdT('Default')],['btn-sm',_sdT('Small')],['btn-lg',_sdT('Large')]].map(function(o) {
                         return '<option value="' + o[0] + '"' + (o[0] === currentSize ? ' selected' : '') + '>' + o[1] + '</option>';
                     }).join('') + '</select>');
@@ -41344,7 +43926,7 @@ const StyleDesigner = (function () {
         // Position: mutex sticky-top / fixed-top / fixed-bottom
         var posCls = ['sticky-top','fixed-top','fixed-bottom'];
         var posVal = posCls.filter(function(c) { return cls.indexOf(c) !== -1; })[0] || '';
-        var posH = '<select class="form-select form-select-sm" data-stylegroup="sticky-top,fixed-top,fixed-bottom">' +
+        var posH = '<select class="form-control form-control-sm" data-stylegroup="sticky-top,fixed-top,fixed-bottom">' +
             '<option value="">' + esc(_sdT('None')) + '</option>' +
             '<option value="sticky-top"' + (posVal === 'sticky-top' ? ' selected' : '') + '>' + esc(_sdT('Sticky top')) + '</option>' +
             '<option value="fixed-top"' + (posVal === 'fixed-top'   ? ' selected' : '') + '>' + esc(_sdT('Fixed top')) + '</option>' +
@@ -41353,7 +43935,7 @@ const StyleDesigner = (function () {
         // Theme: mutex navbar-dark / navbar-light
         var themeCls = ['navbar-dark','navbar-light'];
         var themeVal = themeCls.filter(function(c) { return cls.indexOf(c) !== -1; })[0] || '';
-        var themeH = '<select class="form-select form-select-sm" data-stylegroup="navbar-dark,navbar-light">' +
+        var themeH = '<select class="form-control form-control-sm" data-stylegroup="navbar-dark,navbar-light">' +
             '<option value="">' + esc(_sdT('Default')) + '</option>' +
             '<option value="navbar-dark"' + (themeVal === 'navbar-dark'  ? ' selected' : '') + '>' + esc(_sdT('Dark (dark)')) + '</option>' +
             '<option value="navbar-light"' + (themeVal === 'navbar-light' ? ' selected' : '') + '>' + esc(_sdT('Light')) + '</option>' +
@@ -41361,7 +43943,7 @@ const StyleDesigner = (function () {
         // Expand breakpoint: mutex navbar-expand-*
         var expCls = ['navbar-expand-sm','navbar-expand-md','navbar-expand-lg','navbar-expand-xl','navbar-expand-xxl'];
         var expVal = expCls.filter(function(c) { return cls.indexOf(c) !== -1; })[0] || '';
-        var expH = '<select class="form-select form-select-sm" data-stylegroup="navbar-expand-sm,navbar-expand-md,navbar-expand-lg,navbar-expand-xl,navbar-expand-xxl">' +
+        var expH = '<select class="form-control form-control-sm" data-stylegroup="navbar-expand-sm,navbar-expand-md,navbar-expand-lg,navbar-expand-xl,navbar-expand-xxl">' +
             '<option value="">' + esc(_sdT('None')) + '</option>' +
             '<option value="navbar-expand-sm"'  + (expVal === 'navbar-expand-sm'  ? ' selected' : '') + '>SM (576px+)</option>' +
             '<option value="navbar-expand-md"'  + (expVal === 'navbar-expand-md'  ? ' selected' : '') + '>MD (768px+)</option>' +
@@ -41492,7 +44074,7 @@ const StyleDesigner = (function () {
             // Bound href → read-only note instead of an input the server ignores.
             linkRows = row(_sdT('Href'), _sdHrefIsBound(n)
                 ? _sdBoundHrefNotice(n)
-                : '<div class="input-group input-group-sm"><input type="text" class="form-control" id="sd-prop-sem-href" data-prop="href" value="' + esc(n.props.href || '') + '" placeholder="#"><button class="btn btn-outline-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-sem-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button></div>') +
+                : '<div class="input-group input-group-sm"><input type="text" class="form-control" id="sd-prop-sem-href" data-prop="href" value="' + esc(n.props.href || '') + '" placeholder="#"><button class="btn btn-outline theme-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-sem-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button></div>') +
                 row(_sdT('Target'), sel('target', [['',_sdT('Default/Self')],['_blank',_sdT('New Window (_blank)')]], n.props.target || ''));
         }
 
@@ -41513,6 +44095,11 @@ const StyleDesigner = (function () {
         var inlineTextRow = (n.props.text !== undefined)
             ? row(_sdT('Text'), '<input type="text" class="form-control form-control-sm" data-prop="text" value="' + esc(n.props.text || '') + '">')
             : '';
+
+        // A value placed inside the words (a sentence with values,
+        // pg_sentence_layout()): offered inside a system widget on an
+        // element without children of its own, or one that is a sentence.
+        var sentenceRow = _sdSentenceRow(n);
 
         // Dropdown container → show Dropdown Options section
         var DIRS = ['dropdown','dropup','dropend','dropstart'];
@@ -41581,11 +44168,8 @@ const StyleDesigner = (function () {
             var _curSection = (n.props._bindings && n.props._bindings.section) || '';
             var _sectionOpts = [['', _sdT('None')]];
             if (_semSwRegion === 'catalog_listing') {
-                _sectionOpts.push(['breadcrumb',        _sdT('Breadcrumb (category path)')]);
                 _sectionOpts.push(['group_tree',        _sdT('Category Tree (nested list)')]);
-                _sectionOpts.push(['filter_chips',      _sdT('Active Filter Chips')]);
                 _sectionOpts.push(['filters_offcanvas', _sdT('Filter Offcanvas')]);
-                _sectionOpts.push(['active_filters',    _sdT('Active Attribute Filters')]);
                 _sectionOpts.push(['attribute_filters', _sdT('Attribute Filter UI (legacy)')]);
             } else if (_semSwRegion === 'shopping_cart') {
                 _sectionOpts.push(['applied_offers',    _sdT('Applied Offers Info Box')]);
@@ -41595,7 +44179,6 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['quick_add',         _sdT('Quick Add Box (its own form)')]);
                 _sectionOpts.push(['pending_offers',    _sdT('Campaign Gifts (with an Add button — its own form)')]);
             } else if (_semSwRegion === 'catalog_item_view') {
-                _sectionOpts.push(['breadcrumb',        _sdT('Breadcrumb (Catalog → Group → Product)')]);
                 _sectionOpts.push(['recipient_picker',  _sdT('Recipient Picker (hidden on a product that is not shipped)')]);
             } else if (_semSwRegion === 'custom_form') {
                 // Site-wide CAPTCHA (Settings → CAPTCHA). Absent for a signed-in
@@ -41653,7 +44236,7 @@ const StyleDesigner = (function () {
             }
             if (_sectionOpts.length > 1) {
                 sectionBindRow = row(_sdT('Section binding (system widget)'),
-                    '<select class="form-select form-select-sm" data-bind-section>' +
+                    '<select class="form-control form-control-sm" data-bind-section>' +
                     _sectionOpts.map(function(o) {
                         return '<option value="' + o[0] + '"' + (o[0] === _curSection ? ' selected' : '') + '>' + o[1] + '</option>';
                     }).join('') + '</select>' +
@@ -41664,7 +44247,7 @@ const StyleDesigner = (function () {
 
         var labelSection = (tag === 'label') ? propsLabelOptions(n) : '';
         var semSection = (isInteractiveTag || isFormInputTag) ? '' : sect('bi-code-square', _sdT('Semantic Element'),
-            row(_sdT('Tag'), sel('tag', tags, tag)) + fontRow + inlineTextRow +
+            row(_sdT('Tag'), sel('tag', tags, tag)) + fontRow + inlineTextRow + sentenceRow +
             sectionBindRow +
             (sysAttrsHtml ? '<div class="sd-prop-row" style="padding:0">' + sysAttrsHtml + '</div>' : '')
         );
@@ -41786,7 +44369,7 @@ const StyleDesigner = (function () {
         var _styleOpts = [['nav-tabs',_sdT('Tabs')],['nav-pills',_sdT('Pills')],['nav-underline',_sdT('Underline')]];
         var _curStyle = '';
         _styleOpts.forEach(function(o) { if (cls.indexOf(o[0]) !== -1) _curStyle = o[0]; });
-        var styleSel = '<select class="form-select form-select-sm" data-stylegroup="' +
+        var styleSel = '<select class="form-control form-control-sm" data-stylegroup="' +
             _styleOpts.map(function(o) { return o[0]; }).join(',') + '">' +
             '<option value="">' + esc(_sdT('Plain')) + '</option>';
         _styleOpts.forEach(function(o) {
@@ -41798,7 +44381,7 @@ const StyleDesigner = (function () {
         var _alignOpts = [['justify-content-center',_sdT('Center')],['justify-content-end',_sdT('End')]];
         var _curAlign = '';
         _alignOpts.forEach(function(o) { if (cls.indexOf(o[0]) !== -1) _curAlign = o[0]; });
-        var alignSel = '<select class="form-select form-select-sm" data-stylegroup="' +
+        var alignSel = '<select class="form-control form-control-sm" data-stylegroup="' +
             _alignOpts.map(function(o) { return o[0]; }).join(',') + '">' +
             '<option value="">' + esc(_sdT('Start')) + '</option>';
         _alignOpts.forEach(function(o) {
@@ -41810,7 +44393,7 @@ const StyleDesigner = (function () {
         var _fillOpts = [['nav-fill',_sdT('Fill')],['nav-justified',_sdT('Justified')]];
         var _curFill = '';
         _fillOpts.forEach(function(o) { if (cls.indexOf(o[0]) !== -1) _curFill = o[0]; });
-        var fillSel = '<select class="form-select form-select-sm" data-stylegroup="' +
+        var fillSel = '<select class="form-control form-control-sm" data-stylegroup="' +
             _fillOpts.map(function(o) { return o[0]; }).join(',') + '">' +
             '<option value="">' + esc(_sdT('None')) + '</option>';
         _fillOpts.forEach(function(o) {
@@ -41844,7 +44427,7 @@ const StyleDesigner = (function () {
             barGroup.push('text-bg-' + c[0], 'bg-' + c[0]);
             if (cls.indexOf('text-bg-' + c[0]) !== -1 || cls.indexOf('bg-' + c[0]) !== -1) barCurrent = c[0];
         });
-        var colorSel = '<select class="form-select form-select-sm" data-stylegroup="' + barGroup.join(',') + '">' +
+        var colorSel = '<select class="form-control form-control-sm" data-stylegroup="' + barGroup.join(',') + '">' +
             '<option value="">' + _sdT('Default') + '</option>' +
             barColors.map(function (c) {
                 return '<option value="text-bg-' + c[0] + '"' + (c[0] === barCurrent ? ' selected' : '') + '>' + c[1] + '</option>';
@@ -41858,9 +44441,8 @@ const StyleDesigner = (function () {
         var pct = pctMatch ? Math.round(parseFloat(pctMatch[1])) : 50;
 
         return sect('bi-bar-chart-steps', _sdT('Progress Bar'),
-            row(_sdT('Value'), '<div class="d-flex align-items-center gap-2">' +
-                '<input type="range" class="form-range flex-grow-1" min="0" max="100" value="' + pct + '" data-pb-value>' +
-                '<span class="sd-pb-pct-lbl" style="min-width:2.5rem;font-size:.75rem;text-align:right">' + pct + '%</span>' +
+            row(_sdT('Value'), '<div class="form-range pg-range-bubble">' +
+                '<input type="range" class="form-range-input" min="0" max="100" value="' + pct + '" data-pb-value aria-label="' + esc(_sdT('Value')) + '">' +
                 '</div>') +
             row(_sdT('Color'), colorSel) +
             row(_sdT('Striped'),   swAttr('data-util-toggle="progress-bar-striped"',  isStriped)) +
@@ -41872,7 +44454,7 @@ const StyleDesigner = (function () {
     function propsAlertOptions(n) {
         var cls = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
         var variants = ['primary','secondary','success','danger','warning','info','light','dark'];
-        var variantSel = '<select class="form-select form-select-sm" data-stylegroup="' +
+        var variantSel = '<select class="form-control form-control-sm" data-stylegroup="' +
             variants.map(function(v){ return 'alert-' + v; }).join(',') + '">';
         variantSel += '<option value="">—</option>';
         variants.forEach(function(v) {
@@ -41904,7 +44486,7 @@ const StyleDesigner = (function () {
         function ha(nm) { return (n.props._attrs || []).some(function(a) { return a.name === nm; }); }
         var cls = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
         function fOpt(attr, opts, cur) {
-            var h = '<select class="form-select form-select-sm" data-form-attr="' + attr + '">';
+            var h = '<select class="form-control form-control-sm" data-form-attr="' + attr + '">';
             opts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>'; });
             return h + '</select>';
         }
@@ -41970,7 +44552,7 @@ const StyleDesigner = (function () {
         // that is in fact pointing at nothing.
         if (cur && !seen[cur]) ids.unshift(cur);
 
-        var selHtml = '<select class="form-select form-select-sm" data-label-for>' +
+        var selHtml = '<select class="form-control form-control-sm" data-label-for>' +
                       '<option value="">' + esc(_sdT('(automatic)')) + '</option>';
         ids.forEach(function (id) {
             selHtml += '<option value="' + esc(id) + '"' + (id === cur ? ' selected' : '') + '>' + esc(id) + '</option>';
@@ -41996,7 +44578,7 @@ const StyleDesigner = (function () {
         function ga(nm) { var a = n.props._attrs || []; for (var i = 0; i < a.length; i++) if (a[i].name === nm) return a[i].value || ''; return ''; }
         function ha(nm) { return (n.props._attrs || []).some(function(a) { return a.name === nm; }); }
         function fOpt(dAttr, opts, cur) {
-            var h = '<select class="form-select form-select-sm" data-form-input-attr="' + dAttr + '">';
+            var h = '<select class="form-control form-control-sm" data-form-input-attr="' + dAttr + '">';
             opts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>'; });
             return h + '</select>';
         }
@@ -42267,6 +44849,7 @@ const StyleDesigner = (function () {
     // tree root is left out: a widget is already a bounded area, so
     // elements go straight into it. A column into a column comes in a new
     // row there. Returns `node` itself when nothing wraps it.
+    /* @pg-site-output */
     function _sdWrapForParent(parent, node, payload) {
         var map = { 'container-fluid': 'container', 'system_widget': 'shared_ref' };
         var t = payload ? (map[payload.type] || payload.type) : node.type;
@@ -42521,19 +45104,19 @@ const StyleDesigner = (function () {
             '<div class="sd-prop-row"><div class="sd-prop-control">' +
                 '<div class="sd-choice-list">' + rows + '</div>' +
                 '<div class="d-flex gap-1 mt-1">' +
-                    '<button type="button" class="btn btn-sm btn-outline-primary flex-grow-1" id="sd-choice-add">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-primary flex-grow-1" id="sd-choice-add">' +
                         '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add an option')) + '</button>' +
                     (kind === 'select' && !list.some(function (c) { return c.value === ''; })
-                        ? '<button type="button" class="btn btn-sm btn-outline-secondary" id="sd-choice-prompt" title="' + esc(_sdT('Add an empty &quot;Please choose&quot; row')) + '">' +
+                        ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" id="sd-choice-prompt" title="' + esc(_sdT('Add an empty &quot;Please choose&quot; row')) + '">' +
                           '<span class="bi bi-chevron-bar-down"></span></button>'
                         : '') +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary" id="sd-choice-bulk-toggle" title="' + esc(_sdT('Bulk edit')) + '">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary" id="sd-choice-bulk-toggle" title="' + esc(_sdT('Bulk edit')) + '">' +
                         '<span class="bi bi-textarea-t"></span></button>' +
                 '</div>' +
                 '<div id="sd-choice-bulk" style="display:none;margin-top:6px">' +
                     '<textarea class="form-control form-control-sm" id="sd-choice-bulk-text" rows="5" spellcheck="false">' + esc(bulk) + '</textarea>' +
                     '<div class="sd-choice-hint">' + _sdT('One option per line: <code>value</code> · <code>value|label</code> · <code>value|label|on</code> (selected by default).') + '</div>' +
-                    '<button type="button" class="btn btn-sm btn-primary w-100 mt-1" id="sd-choice-bulk-apply">' + esc(_sdT('Apply')) + '</button>' +
+                    '<button type="button" class="btn btn-sm btn-solid theme-primary w-100 mt-1" id="sd-choice-bulk-apply">' + esc(_sdT('Apply')) + '</button>' +
                 '</div>' +
             '</div></div>'
         );
@@ -42548,6 +45131,7 @@ const StyleDesigner = (function () {
      * cloned — a designer who styled the first checkbox keeps that styling on
      * every choice, and does not lose it by adding a fifth answer.
      */
+    /* @pg-site-output */
     function _sdWriteChoices(n, list) {
         var kind = _sdChoiceKind(n);
         if (kind === 'select') {
@@ -42774,8 +45358,8 @@ const StyleDesigner = (function () {
         if (colspan > 1 || rowspan > 1) {
             var spanInfo = [colspan > 1 ? 'colspan=' + colspan : '', rowspan > 1 ? 'rowspan=' + rowspan : ''].filter(Boolean).join(', ');
             splitRow = row(_sdT('Merged'),
-                '<span class="me-2 small text-muted">' + spanInfo + '</span>' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary" data-split-cell="' + n._id + '"><i class="bi bi-grid"></i> ' + esc(_sdT('Split')) + '</button>');
+                '<span class="me-3 small fg-secondary">' + spanInfo + '</span>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-split-cell="' + n._id + '"><i class="bi bi-grid"></i> ' + esc(_sdT('Split')) + '</button>');
         }
         return sect('bi-table', _sdT('Cell Options'), row(_sdT('Color'), variantSel) + splitRow);
     }
@@ -42806,9 +45390,9 @@ const StyleDesigner = (function () {
 
         var rows = '';
         if (hId) rows += row(_sdT('Header'), swAttr('data-card-section-vis="header" data-card-section-id="' + hId + '"', headerVisible));
-        else     rows += row(_sdT('Header'), '<button type="button" class="btn btn-sm btn-outline-secondary" data-card-add="header" data-card-node-id="' + n._id + '"><i class="bi bi-plus-lg"></i>' + esc(_sdT(' Add')) + '</button>');
+        else     rows += row(_sdT('Header'), '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-card-add="header" data-card-node-id="' + n._id + '"><i class="bi bi-plus-lg"></i>' + esc(_sdT(' Add')) + '</button>');
         if (fId) rows += row(_sdT('Footer'), swAttr('data-card-section-vis="footer" data-card-section-id="' + fId + '"', footerVisible));
-        else     rows += row(_sdT('Footer'), '<button type="button" class="btn btn-sm btn-outline-secondary" data-card-add="footer" data-card-node-id="' + n._id + '"><i class="bi bi-plus-lg"></i>' + esc(_sdT(' Add')) + '</button>');
+        else     rows += row(_sdT('Footer'), '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-card-add="footer" data-card-node-id="' + n._id + '"><i class="bi bi-plus-lg"></i>' + esc(_sdT(' Add')) + '</button>');
 
         // ── Card image (top / bottom / none) ──────────────────────────────
         // Image lives as a content/image child of the card with class
@@ -42825,7 +45409,7 @@ const StyleDesigner = (function () {
         var imgSrc = imgNode && imgNode.props ? (imgNode.props.src || '') : '';
         var imgAlt = imgNode && imgNode.props ? (imgNode.props.alt || '') : '';
         rows += row(_sdT('Image'),
-            '<select class="form-select form-select-sm" data-card-img-pos data-card-node-id="' + n._id + '">' +
+            '<select class="form-control form-control-sm" data-card-img-pos data-card-node-id="' + n._id + '">' +
                 '<option value=""'       + (imgPos === ''       ? ' selected' : '') + '>' + esc(_sdT('None')) + '</option>' +
                 '<option value="top"'    + (imgPos === 'top'    ? ' selected' : '') + '>' + esc(_sdT('On top (card-img-top)')) + '</option>' +
                 '<option value="bottom"' + (imgPos === 'bottom' ? ' selected' : '') + '>' + esc(_sdT('At the bottom (card-img-bottom)')) + '</option>' +
@@ -42859,7 +45443,7 @@ const StyleDesigner = (function () {
         if (bodyNode) {
             var bodyHasP0 = (bodyNode.props.cssClass || '').split(/\s+/).indexOf('p-0') !== -1;
             rows += row(_sdT('Body padding'),
-                '<select class="form-select form-select-sm" data-card-body-pad data-card-body-id="' + bodyNode._id + '">' +
+                '<select class="form-control form-control-sm" data-card-body-pad data-card-body-id="' + bodyNode._id + '">' +
                     '<option value=""'    + (bodyHasP0 ? '' : ' selected') + '>' + esc(_sdT('Standard')) + '</option>' +
                     '<option value="p-0"' + (bodyHasP0 ? ' selected' : '') + '>' + esc(_sdT('None (p-0)')) + '</option>' +
                 '</select>'
@@ -42910,7 +45494,7 @@ const StyleDesigner = (function () {
             _countOpts += '<option value="' + _ci + '"' + (_ci === _curCount ? ' selected' : '') + '>' + _ci + '</option>';
         }
         rows += row(_sdT('Number of cards'),
-            '<select class="form-select form-select-sm" data-cardgroup-count data-cardgroup-id="' + n._id + '">' + _countOpts + '</select>'
+            '<select class="form-control form-control-sm" data-cardgroup-count data-cardgroup-id="' + n._id + '">' + _countOpts + '</select>'
         );
 
         // Background / Text / Border / Shadow colour pickers — same lists
@@ -42965,14 +45549,14 @@ const StyleDesigner = (function () {
             row(_sdT('Title'),    '<input type="text" class="form-control form-control-sm" data-popover-prop="title" value="' + esc(titleVal) + '" placeholder="' + esc(_sdT('Popover title')) + '">') +
             row(_sdT('Content'),  '<textarea class="form-control form-control-sm" data-popover-prop="content" rows="2" placeholder="' + esc(_sdT('Popover content...')) + '">' + esc(contentVal) + '</textarea>') +
             row(_sdT('Placement'),
-                '<select class="form-select form-select-sm" data-popover-prop="placement">' +
+                '<select class="form-control form-control-sm" data-popover-prop="placement">' +
                 ['top','bottom','start','end'].map(function (pl) {
                     return '<option value="' + pl + '"' + (pl === placement ? ' selected' : '') + '>' + capFirst(pl) + '</option>';
                 }).join('') +
                 '</select>'
             ) +
             row(_sdT('Trigger'),
-                '<select class="form-select form-select-sm" data-popover-prop="trigger">' +
+                '<select class="form-control form-control-sm" data-popover-prop="trigger">' +
                 [['click',_sdT('Click')],['hover',_sdT('Hover')],['focus',_sdT('Focus')],['hover focus',_sdT('Hover + Focus')]].map(function (opt) {
                     return '<option value="' + opt[0] + '"' + (opt[0] === trigger ? ' selected' : '') + '>' + opt[1] + '</option>';
                 }).join('') +
@@ -43014,7 +45598,7 @@ const StyleDesigner = (function () {
                 optsHtml += '<option value="' + esc(target) + '" selected>' + esc(target) + ' ' + esc(_sdT('(custom)')) + '</option>';
             }
             targetField =
-                '<select class="form-select form-select-sm" data-dropdown-trigger-prop="target">' + optsHtml + '</select>';
+                '<select class="form-control form-control-sm" data-dropdown-trigger-prop="target">' + optsHtml + '</select>';
         } else {
             targetField =
                 '<input type="text" class="form-control form-control-sm" data-dropdown-trigger-prop="target" value="' + esc(target) + '" placeholder="' + esc(_sdT('Empty = the adjacent .dropdown-menu')) + '">';
@@ -43022,7 +45606,7 @@ const StyleDesigner = (function () {
 
         var rows =
             row(_sdT('Drop direction'),
-                '<select class="form-select form-select-sm" data-dropdown-trigger-prop="placement">' +
+                '<select class="form-control form-control-sm" data-dropdown-trigger-prop="placement">' +
                 [['',_sdT('Down (default)')],['dropup',_sdT('Up')],['dropend',_sdT('Right')],['dropstart',_sdT('Left')]].map(function (opt) {
                     var sel = (n.props.cssClass || '').split(/\s+/).indexOf(opt[0]) !== -1;
                     return '<option value="' + opt[0] + '"' + (sel ? ' selected' : '') + '>' + opt[1] + '</option>';
@@ -43030,14 +45614,14 @@ const StyleDesigner = (function () {
                 '</select>'
             ) +
             row(_sdT('Auto-close'),
-                '<select class="form-select form-select-sm" data-dropdown-trigger-prop="autoclose">' +
+                '<select class="form-control form-control-sm" data-dropdown-trigger-prop="autoclose">' +
                 [['true',_sdT('On every click (default)')],['inside',_sdT('On a click inside')],['outside',_sdT('On a click outside')],['false',_sdT('Close manually')]].map(function (opt) {
                     return '<option value="' + opt[0] + '"' + (opt[0] === autoClose ? ' selected' : '') + '>' + opt[1] + '</option>';
                 }).join('') +
                 '</select>'
             ) +
             row(_sdT('Reference'),
-                '<select class="form-select form-select-sm" data-dropdown-trigger-prop="reference">' +
+                '<select class="form-control form-control-sm" data-dropdown-trigger-prop="reference">' +
                 [['toggle',_sdT('Toggle (default)')],['parent',_sdT('Parent')],['#id…',_sdT('Element by id')]].map(function (opt) {
                     return '<option value="' + opt[0] + '"' + (opt[0] === reference ? ' selected' : '') + '>' + opt[1] + '</option>';
                 }).join('') +
@@ -43155,27 +45739,27 @@ const StyleDesigner = (function () {
         var h = '';
         h += row(_sdT('Slides'),
             '<div class="btn-group btn-group-sm w-100">' +
-            '<button type="button" class="btn btn-outline-secondary" data-cr-action="remove-slide" data-cr-node-id="' + n._id + '" title="' + esc(_sdT('Remove last slide')) + '"' + (slideCount <= 1 ? ' disabled' : '') + '><i class="bi bi-dash-lg"></i></button>' +
-            '<span class="btn btn-outline-secondary disabled" style="cursor:default">' + slideCount + '</span>' +
-            '<button type="button" class="btn btn-outline-secondary" data-cr-action="add-slide" data-cr-node-id="' + n._id + '" title="' + esc(_sdT('Add slide')) + '"' + (slideCount >= 8 ? ' disabled' : '') + '><i class="bi bi-plus-lg"></i></button>' +
+            '<button type="button" class="btn btn-outline theme-secondary" data-cr-action="remove-slide" data-cr-node-id="' + n._id + '" title="' + esc(_sdT('Remove last slide')) + '"' + (slideCount <= 1 ? ' disabled' : '') + '><i class="bi bi-dash-lg"></i></button>' +
+            '<span class="btn btn-outline theme-secondary disabled" style="cursor:default">' + slideCount + '</span>' +
+            '<button type="button" class="btn btn-outline theme-secondary" data-cr-action="add-slide" data-cr-node-id="' + n._id + '" title="' + esc(_sdT('Add slide')) + '"' + (slideCount >= 8 ? ' disabled' : '') + '><i class="bi bi-plus-lg"></i></button>' +
             '</div>');
         h += row(_sdT('Transition'),
             '<div class="btn-group btn-group-sm w-100">' +
-            '<button type="button" class="btn btn-outline-secondary' + (!isFade ? ' active' : '') + '" data-cr-toggle="slide" data-cr-node-id="' + n._id + '">' + esc(_sdT('Slide transition')) + '</button>' +
-            '<button type="button" class="btn btn-outline-secondary' + (isFade ? ' active' : '') + '" data-cr-toggle="fade" data-cr-node-id="' + n._id + '">' + esc(_sdT('Fade')) + '</button>' +
+            '<button type="button" class="btn btn-outline theme-secondary' + (!isFade ? ' active' : '') + '" data-cr-toggle="slide" data-cr-node-id="' + n._id + '">' + esc(_sdT('Slide transition')) + '</button>' +
+            '<button type="button" class="btn btn-outline theme-secondary' + (isFade ? ' active' : '') + '" data-cr-toggle="fade" data-cr-node-id="' + n._id + '">' + esc(_sdT('Fade')) + '</button>' +
             '</div>');
         h += row(_sdT('Dark'),       swAttr('data-cr-dark="1" data-cr-node-id="' + n._id + '"', isDark));
         h += row(_sdT('Indicators'), swAttr('data-cr-section-vis="indicators" data-cr-node-id="' + n._id + '"', indicatorsVisible));
         h += row(_sdT('Controls'),   swAttr('data-cr-section-vis="controls" data-cr-node-id="' + n._id + '"', controlsVisible));
         h += row(_sdT('Autoplay'),
-            '<select class="form-select form-select-sm" data-cr-attr="data-bs-ride" data-cr-node-id="' + n._id + '">' +
+            '<select class="form-control form-control-sm" data-cr-attr="data-bs-ride" data-cr-node-id="' + n._id + '">' +
             '<option value=""' + (!ride ? ' selected' : '') + '>' + esc(_sdT('Off')) + '</option>' +
             '<option value="carousel"' + (ride === 'carousel' ? ' selected' : '') + '>' + esc(_sdT('On (at load)')) + '</option>' +
             '<option value="true"' + (ride === 'true' ? ' selected' : '') + '>' + esc(_sdT('On (after first interaction)')) + '</option>' +
             '</select>');
         h += row(_sdT('Interval'),   '<input type="number" class="form-control form-control-sm" data-cr-attr="data-bs-interval" data-cr-node-id="' + n._id + '" value="' + esc(interval) + '" placeholder="5000" min="100" step="100">');
         h += row(_sdT('Pause'),
-            '<select class="form-select form-select-sm" data-cr-attr="data-bs-pause" data-cr-node-id="' + n._id + '">' +
+            '<select class="form-control form-control-sm" data-cr-attr="data-bs-pause" data-cr-node-id="' + n._id + '">' +
             '<option value="hover"' + (pause === 'hover' ? ' selected' : '') + '>' + esc(_sdT('Hover')) + '</option>' +
             '<option value="false"' + (pause === 'false' ? ' selected' : '') + '>' + esc(_sdT('Never')) + '</option>' +
             '</select>');
@@ -43251,11 +45835,11 @@ const StyleDesigner = (function () {
                 // Bound href → read-only note instead of an input the server ignores.
                 h += row(_sdT('Link'), _sdHrefIsBound(n)
                     ? _sdBoundHrefNotice(n)
-                    : '<div class="input-group input-group-sm"><input type="text" class="form-control" id="sd-prop-href" data-prop="href" value="' + esc(String(val)) + '"><button class="btn btn-outline-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button></div>');
+                    : '<div class="input-group input-group-sm"><input type="text" class="form-control" id="sd-prop-href" data-prop="href" value="' + esc(String(val)) + '"><button class="btn btn-outline theme-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button></div>');
             } else if (key === 'target') {
                 h += row(_sdT('Target'), sel(key, [['',_sdT('Default/Self')],['_blank',_sdT('New Window (_blank)')]], String(val)));
             } else if (key === 'iconName') {
-                h += row(_sdT('Icon'), '<div class="input-group input-group-sm"><input type="text" class="form-control" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="bi-icon-name"><button class="btn btn-outline-secondary sd-icon-trigger" type="button" title="' + esc(_sdT('Browse icons')) + '"><i class="bi bi-grid-3x3-gap"></i></button></div>');
+                h += row(_sdT('Icon'), '<div class="input-group input-group-sm"><input type="text" class="form-control" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="bi-icon-name"><button class="btn btn-outline theme-secondary sd-icon-trigger" type="button" title="' + esc(_sdT('Browse icons')) + '"><i class="bi bi-grid-3x3-gap"></i></button></div>');
             } else if (typeof val === 'number') {
                 h += row(capFirst(key), '<input type="number" class="form-control form-control-sm" data-prop="' + key + '" value="' + val + '" min="1" max="20">');
             } else if (typeof val === 'string' && val.indexOf('\n') !== -1) {
@@ -43302,7 +45886,7 @@ const StyleDesigner = (function () {
         if (!activated.length) {
             opts += '<option disabled>' + esc(_sdT('— Add a font from the Design panel first —')) + '</option>';
         }
-        return row(_sdT('Font'), '<select class="form-select form-select-sm" data-prop="fontFamily">' + opts + '</select>');
+        return row(_sdT('Font'), '<select class="form-control form-control-sm" data-prop="fontFamily">' + opts + '</select>');
     }
 
     // ── Image loading choice ─────────────────────────────────────────────────
@@ -43375,7 +45959,7 @@ const StyleDesigner = (function () {
             // Use Radio or Button group for single-pick semantics.
             var _vaStyle = n.props.renderStyle || 'select';
             h += row(_sdT('Render style'),
-                '<select class="form-select form-select-sm" data-prop="renderStyle">' +
+                '<select class="form-control form-control-sm" data-prop="renderStyle">' +
                 _vaStyleOpts.map(function(o) {
                     return '<option value="' + o[0] + '"' + (o[0] === _vaStyle ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') +
@@ -43419,7 +46003,7 @@ const StyleDesigner = (function () {
                 ['none',   _sdT('Hidden')]
             ];
             h += row(_sdT('Thumbnail position'),
-                '<select class="form-select form-select-sm" data-prop="thumbsPosition">' +
+                '<select class="form-control form-control-sm" data-prop="thumbsPosition">' +
                 _crPosOpts.map(function(o) {
                     return '<option value="' + o[0] + '"' + (o[0] === _crPos ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') +
@@ -43477,7 +46061,7 @@ const StyleDesigner = (function () {
                 ['bottom left',_sdT('Bottom Left')],['bottom right',_sdT('Bottom Right')]
             ];
             h += row(_sdT('Object Fit'), selStyleGroup(n.props, ['object-fit-contain','object-fit-cover','object-fit-fill','object-fit-scale-down','object-fit-none'], 'Default'));
-            h += row(_sdT('Object Pos'), '<select class="form-select form-select-sm" data-prop="objectPosition">' +
+            h += row(_sdT('Object Pos'), '<select class="form-control form-control-sm" data-prop="objectPosition">' +
                 objPosOpts.map(function(o) {
                     return '<option value="' + o[0] + '"' + ((n.props.objectPosition || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') +
@@ -43486,7 +46070,7 @@ const StyleDesigner = (function () {
             // Bootstrap's .ratio class needs a wrapper div + direct-child absolute positioning;
             // applying .ratio directly to an <img> does nothing.
             var arOpts = [['',_sdT('None')],['1x1',_sdT('1:1 (Square)')],['4x3','4:3'],['16x9','16:9'],['21x9','21:9']];
-            h += row(_sdT('Aspect Ratio'), '<select class="form-select form-select-sm" data-prop="aspectRatio">' +
+            h += row(_sdT('Aspect Ratio'), '<select class="form-control form-control-sm" data-prop="aspectRatio">' +
                 arOpts.map(function(o) {
                     return '<option value="' + o[0] + '"' + ((n.props.aspectRatio || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') +
@@ -43499,7 +46083,7 @@ const StyleDesigner = (function () {
             var _ldOpts = [['', _sdT('Default')], ['lazy', _sdT('Lazy')], ['eager', _sdT('Eager')]];
             if (_ldCur !== '' && _ldCur !== 'lazy' && _ldCur !== 'eager') _ldOpts.push([_ldCur, _ldCur]);
             h += row(_sdT('Loading attribute'),
-                '<select class="form-select form-select-sm" data-img-loading title="' + esc(_sdT('Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.')) + '">' +
+                '<select class="form-control form-control-sm" data-img-loading title="' + esc(_sdT('Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.')) + '">' +
                 _ldOpts.map(function(o) {
                     return '<option value="' + esc(o[0]) + '"' + (o[0] === _ldCur ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
                 }).join('') +
@@ -43567,7 +46151,7 @@ const StyleDesigner = (function () {
                     ? _sdBoundHrefNotice(n)
                     : '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" id="sd-prop-href2" data-prop="href" value="' + esc(String(val)) + '">' +
-                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-href2\',\'href\')">' + esc(_sdT('Select')) + '</button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-href2\',\'href\')">' + esc(_sdT('Select')) + '</button>' +
                     '</div>');
             } else if (key === 'target') {
                 h += row(_sdT('Target'), sel(key, [['',_sdT('Default/Self')],['_blank',_sdT('New Window (_blank)')]], String(val)));
@@ -43575,15 +46159,15 @@ const StyleDesigner = (function () {
                 h += row(_sdT('Icon'),
                     '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="bi-icon-name">' +
-                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn sd-icon-trigger" type="button">' + esc(_sdT('Select')) + '</button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn sd-icon-trigger" type="button">' + esc(_sdT('Select')) + '</button>' +
                     '</div>');
             } else if (ct === 'image' && key === 'src') {
                 // Image src: normal input + separate pick button (Unsplash + library + quick upload)
                 h += row(capFirst(key),
                     '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" id="sd-prop-img-src" data-prop="src" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
-                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-prop-img-src\')">' + esc(_sdT('Select')) + '</button>' +
-                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image')) + '" onclick="window.sdOpenImageEditor(\'sd-prop-img-src\')"><i class="bi bi-brush"></i></button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-prop-img-src\')">' + esc(_sdT('Select')) + '</button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image')) + '" onclick="window.sdOpenImageEditor(\'sd-prop-img-src\')"><i class="bi bi-brush"></i></button>' +
                     '</div>');
             } else if (key === 'width' || key === 'height') {
                 h += row(capFirst(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('e.g. 100% or 50px')) + '">');
@@ -43596,7 +46180,7 @@ const StyleDesigner = (function () {
                 h += '<div class="sd-prop-row"><label class="sd-prop-label">' + (key === 'php' ? 'PHP' : 'HTML') + '</label>' +
                         '<div class="sd-prop-control sd-prop-control-edit">' +
                             '<textarea class="sd-hidden-prop" data-prop="' + key + '" hidden>' + esc(String(val)) + '</textarea>' +
-                            '<button class="btn btn-sm btn-outline-primary" type="button" data-sd-code-edit="' + key + '" title="' + esc(_sdT('Code Editor')) + '">' +
+                            '<button class="btn btn-sm btn-outline theme-primary" type="button" data-sd-code-edit="' + key + '" title="' + esc(_sdT('Code Editor')) + '">' +
                                 '<i class="bi bi-code-square me-1"></i>' + esc(_sdT('Edit')) + _hint +
                             '</button>' +
                         '</div>' +
@@ -43643,7 +46227,7 @@ const StyleDesigner = (function () {
             '</div></div>';
         if (_design && _design.dynamicRegionCode && n.props.regionName) {
             h += '<div class="sd-prop-row">' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-dregion-code">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-dregion-code">' +
                         '<span class="bi bi-filetype-php me-1"></span>' + esc(_sdT('Edit PHP code')) +
                     '</button>' +
                 '</div>';
@@ -43653,16 +46237,22 @@ const StyleDesigner = (function () {
 
     // A designer region becomes a designer-only shared component on this
     // page (_sdDesignerRegionConvert()), for the roles that edit designer
-    // regions today.
+    // regions today. A common region becomes a component opened to content
+    // editors that its tag draws on every page; it needs the schema that
+    // opens components (the people who edit the region keep it).
     function _sdDesignerRegionPropsHtml(n) {
         if (!_design || !_design.designerRegionConvert || !n.props.regionName) return '';
+        var common = n.props.regionType === 'common';
+        if (common && !_design.sharedContentReady) return '';
         return '<div class="sd-prop-row">' +
-                '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-designer-region-convert">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-designer-region-convert">' +
                     '<span class="bi bi-puzzle-fill me-1"></span>' + esc(_sdT('Make shared component')) +
                 '</button>' +
             '</div>' +
             '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
-                esc(_sdT('Puts a shared component with the region\'s content in its place on this page, edited here. Other pages keep the region until they are converted.')) +
+                esc(common
+                    ? _sdT('Makes the region a shared component its content editors edit in the designer; its tag draws the component on every page, and front-end inline editing of the region ends. This page places the component.')
+                    : _sdT('Puts a shared component with the region\'s content in its place on this page, edited here. Other pages keep the region until they are converted.')) +
             '</div></div>';
     }
 
@@ -43671,13 +46261,14 @@ const StyleDesigner = (function () {
     // its shared_ref takes the region node's place.
     function _sdDesignerRegionConvert(regionNode) {
         if (!regionNode || regionNode.type !== 'region' || !regionNode.props ||
-            regionNode.props.regionType !== 'designer' || !regionNode.props.regionName) return;
+            (regionNode.props.regionType !== 'designer' && regionNode.props.regionType !== 'common') || !regionNode.props.regionName) return;
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var regionName = regionNode.props.regionName;
+        var common = regionNode.props.regionType === 'common';
         var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
         fetch(url, { method: 'POST', credentials: 'same-origin',
                      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                     body: JSON.stringify({ action: 'shared_component', sub_action: 'from_designer_region', name: regionName, token: _pgToken() }) })
+                     body: JSON.stringify({ action: 'shared_component', sub_action: common ? 'from_common_region' : 'from_designer_region', name: regionName, token: _pgToken() }) })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!data || data.status !== 'success') {
@@ -43704,12 +46295,198 @@ const StyleDesigner = (function () {
                 if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
                 if (!_sharedCache[sid] || !_sharedCache[sid].tree) prefetchShared([sid], render);
                 render();
-                sdToast(esc(data.created
+                sdToast(esc(common
+                    ? _sdT('The common region "{var}" is now a shared component; every page draws it, and its content editors edit it in the designer.', regionName)
+                    : data.created
                     ? _sdT('The designer region "{var}" is now a shared component on this page. Other pages keep the region until they are converted.', regionName)
                     : _sdT('This page now shows "{var}", the shared component made from this designer region before.', data.name || regionName)), 'success', 7000);
                 (Array.isArray(data.warnings) ? data.warnings : []).forEach(function (w) { sdToast(esc(String(w)), 'warning', 12000); });
             })
             .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
+    }
+
+    // A page region node in the open page's own tree: its content (the
+    // page's pregion row) moves into the tree as a block content editors
+    // edit (_sdPageRegionsConvert()), for the roles that convert regions.
+    function _sdPageRegionPropsHtml(n) {
+        var page = _pgActivePage();
+        if (!_design || !_design.designerRegionConvert || !page || !(page.page_id > 0)) return '';
+        var hit = _sdAnyParent(n);
+        if (!hit || hit.sid) return '';
+        return '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-page-region-convert">' +
+                    '<span class="bi bi-box-arrow-in-down me-1"></span>' + esc(_sdT('Move page content into the page')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Every page region of this page becomes a block with its content, edited here by the people who edit the page today; front-end inline editing of the page ends. Saving the page keeps it.')) +
+            '</div></div>';
+    }
+
+    // The page region nodes of the open page, the way the site fills them
+    // (the Nth <pregion> tag takes the page's Nth row): own holds the nodes
+    // of the page tree in document order, shared counts those inside the
+    // shared components and widgets it places, loading tells a component
+    // not fetched yet.
+    function _sdPageRegionNodes() {
+        var out = { own: [], shared: 0, loading: false };
+        var open = {};
+        function walk(node, sid) {
+            if (!node) return;
+            if (node.type === 'region' && node.props && node.props.regionType === 'page') {
+                if (sid) out.shared++; else out.own.push(node);
+            }
+            if (node.type === 'shared_ref') {
+                var rid = parseInt(node.props && node.props.sharedId, 10) || 0;
+                if (rid <= 0 || open[rid]) return;
+                var c = _sharedCache[rid];
+                if (!c || !c.tree) { out.loading = true; return; }
+                open[rid] = true;
+                walk(c.tree, rid);
+                delete open[rid];
+                return;
+            }
+            (node.children || []).forEach(function (k) { walk(k, sid); });
+        }
+        walk(tree, 0);
+        return out;
+    }
+
+    // Every page region node of the open page is replaced by the block the
+    // server made from its row (designer sub-action page_regions_import),
+    // in one undo step. All of them at once: a node left behind would be
+    // filled with another row once the ones before it are gone. A page
+    // region inside a shared component is drawn from every placing page's
+    // rows, so such a page is refused. The rows stay; the saved tree no
+    // longer asks for them.
+    function _sdPageRegionsConvert() {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var page = _pgActivePage();
+        if (!page || !(page.page_id > 0)) return;
+        var found = _sdPageRegionNodes();
+        if (found.loading) { sdToast(esc(_sdT('The shared components are still loading — wait a second.')), 'warning'); return; }
+        if (found.shared) {
+            sdToast(esc(_sdT('A page region inside a shared component shows the content of every page that places it, so it cannot move into one page. Put it on the page first.')), 'error', 9000);
+            return;
+        }
+        if (!found.own.length) return;
+        var key = _activeKey;
+        _pgApiPost('page_regions_import', { page_id: page.page_id, count: found.own.length }).then(function (data) {
+            if (!data || data.status !== 'success') {
+                sdToast(esc((data && data.message) || _sdT('Network error')), 'error');
+                return;
+            }
+            // Another tab, an undo or an edit meanwhile: the rows would no
+            // longer match the nodes.
+            var blocks = Array.isArray(data.blocks) ? data.blocks : [];
+            var spots = (_activeKey === key && blocks.length === found.own.length) ? found.own.map(function (node) {
+                var parent = findParent(node, tree);
+                var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(node) : -1;
+                return idx === -1 ? null : { parent: parent, node: node };
+            }) : [];
+            if (!spots.length || spots.indexOf(null) !== -1) {
+                sdToast(esc(_sdT('The page changed meanwhile; try again.')), 'warning');
+                return;
+            }
+            saveState();
+            var first = null;
+            spots.forEach(function (s, i) {
+                var block = blocks[i];
+                _backfillIds(block);
+                s.parent.children.splice(s.parent.children.indexOf(s.node), 1, block);
+                if (!first) first = block;
+            });
+            selectedNode  = first;
+            selectedNodes = [];
+            if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(first);
+            render();
+            sdToast(esc(_sdT('The page\'s content is now part of the page; save the page to keep it.')), 'success', 7000);
+            (Array.isArray(data.warnings) ? data.warnings : []).forEach(function (w) { sdToast(esc(String(w)), 'warning', 12000); });
+        }).catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
+    }
+
+    // The classic data-driven regions, the widget kind that draws each and
+    // the widget setting that names the region (the same name the region
+    // node holds).
+    var SD_REGION_WIDGETS = {
+        menu:          { kind: 'menu_region',          key: 'menu_name' },
+        menu_sequence: { kind: 'menu_sequence_region', key: 'menu_name' },
+        ad:            { kind: 'ad_region',            key: 'ad_region_name' },
+        tag_cloud:     { kind: 'tag_cloud_region',     key: 'search_page_name' }
+    };
+
+    function _sdRegionWidgetPropsHtml(n) {
+        if (!SD_REGION_WIDGETS[n.props.regionType] || !n.props.regionName) return '';
+        return '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-region-make-widget">' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Make designable')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Puts a widget showing the same region in its place, in a layout you design; the items stay where they are edited today. Inside a shared component every page that places it changes; elsewhere only this page.')) +
+            '</div></div>';
+    }
+
+    // A new widget of the region's kind, named after the region, takes the
+    // region node's place, in the page tree or in the shared component the
+    // node sits in; one undo step.
+    function _sdRegionMakeWidget(regionNode) {
+        var map = (regionNode && regionNode.type === 'region' && regionNode.props) ? SD_REGION_WIDGETS[regionNode.props.regionType] : null;
+        if (!map || !regionNode.props.regionName) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var regionName = regionNode.props.regionName;
+        var cfg = _swTypeDefaults({}, map.kind);
+        cfg[map.key] = regionName;
+        var start = _sdAnyParent(regionNode);
+        var name = _swAutoName(map.kind, null, { target: start ? start.parent : null });
+        _swCreateRow(name, cfg, _buildStarterTree(map.kind), function (newId, newName) {
+            // The node may have gone meanwhile (another tab, an undo); the
+            // widget is then listed in the design, unplaced.
+            var hit = _sdAnyParent(regionNode);
+            var parent = hit ? hit.parent : null;
+            var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(regionNode) : -1;
+            if (idx === -1) {
+                if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                return;
+            }
+            saveState();
+            if (hit.sid) _sharedDirty[hit.sid] = true;
+            var ref = { _id: gid(), type: 'shared_ref', props: { sharedId: newId, sharedName: newName }, children: [] };
+            parent.children.splice(idx, 1, ref);
+            selectedNode  = ref;
+            selectedNodes = [];
+            if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+            render();
+            if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+            sdToast(esc(_sdT('"{var}" is now a widget you design; its items are still edited where they were.', regionName)), 'success', 7000);
+        });
+    }
+
+    // The system region of a page that draws a custom layout: its PHP in a
+    // code-view tab, for the classic layout editor's role (_design.layoutCode),
+    // and the generated layout to start again from.
+    function _sdLayoutPropsHtml() {
+        var p = _pgActivePage();
+        if (!_design || !_design.layoutCode || !p || !(p.page_id > 0)) return '';
+        if ((_design.layoutPages || []).indexOf(p.page_id) === -1) return '';
+        var h = '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-layout-code">' +
+                    '<span class="bi bi-filetype-php me-1"></span>' + esc(_sdT('Edit layout (PHP)')) +
+                '</button>' +
+            '</div>';
+        if (!_design.layoutReadOnly) {
+            h += '<div class="sd-prop-row">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-layout-regenerate">' +
+                        '<span class="bi bi-arrow-counterclockwise me-1"></span>' + esc(_sdT('Regenerate layout')) +
+                    '</button>' +
+                '</div>';
+        }
+        h += '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_design.layoutReadOnly
+                    ? _sdT('This site draws the generated layout; a custom layout cannot be saved here.')
+                    : _sdT('This page draws its system region with a custom layout. Saved unchanged from the generated one, it keeps following the form\'s fields.')) +
+            '</div></div>';
+        return h;
     }
 
     function needsName(t) { return ['ad','common','designer','dynamic','login','menu','menu_sequence','tag_cloud','system'].indexOf(t) !== -1; }
@@ -43760,7 +46537,7 @@ const StyleDesigner = (function () {
         var found = '';
         var clsArr = cls.split(' ');
         classes.forEach(function(c) { if (c !== '' && clsArr.indexOf(c) !== -1) found = c; });
-        var h = '<select class="form-select form-select-sm" data-stylegroup="' + classes.join(',') + '">';
+        var h = '<select class="form-control form-control-sm" data-stylegroup="' + classes.join(',') + '">';
         h += '<option value="">' + (placeholder || 'Default') + '</option>';
         classes.forEach(function(c) {
             if (!c) return;
@@ -43770,13 +46547,13 @@ const StyleDesigner = (function () {
         return h + '</select>';
     }
     function sel(prop, opts, val) {
-        var h = '<select class="form-select form-select-sm" data-prop="' + prop + '">';
+        var h = '<select class="form-control form-control-sm" data-prop="' + prop + '">';
         opts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === val ? ' selected' : '') + '>' + o[1] + '</option>'; });
         return h + '</select>';
     }
     // Dropdown-specific helpers — use data-dd-prop (handled separately in bindPropEvents)
     function selDD(ddProp, opts, val) {
-        var h = '<select class="form-select form-select-sm" data-dd-prop="' + ddProp + '">';
+        var h = '<select class="form-control form-control-sm" data-dd-prop="' + ddProp + '">';
         opts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === val ? ' selected' : '') + '>' + o[1] + '</option>'; });
         return h + '</select>';
     }
@@ -43845,12 +46622,12 @@ const StyleDesigner = (function () {
             sizeHtml = row(_sdT('Size'),
                 '<div class="btn-group btn-group-sm">' +
                 sizes.map(function(p) {
-                    return '<button type="button" class="btn btn-outline-secondary' + (curSize === p[0] ? ' active' : '') +
+                    return '<button type="button" class="btn btn-outline theme-secondary' + (curSize === p[0] ? ' active' : '') +
                         '" data-modal-size="' + esc(p[0]) + '" data-modal-dlg-id="' + dlgId + '">' + p[1] + '</button>';
                 }).join('') + '</div>');
             var fulls = [['',_sdT('Off')],['modal-fullscreen',_sdT('Always')],['modal-fullscreen-sm-down','<SM'],['modal-fullscreen-md-down','<MD'],['modal-fullscreen-lg-down','<LG'],['modal-fullscreen-xl-down','<XL'],['modal-fullscreen-xxl-down','<XXL']];
             sizeHtml += row(_sdT('Fullscreen'),
-                '<select class="form-select form-select-sm" data-modal-fullscreen="1" data-modal-dlg-id="' + dlgId + '">' +
+                '<select class="form-control form-control-sm" data-modal-fullscreen="1" data-modal-dlg-id="' + dlgId + '">' +
                 fulls.map(function(p) { return '<option value="' + esc(p[0]) + '"' + (p[0] === curFull ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') +
                 '</select>');
             sizeHtml += row(_sdT('Centered'),   swAttr('data-modal-cls="modal-dialog-centered"   data-modal-dlg-id="' + dlgId + '"', isCentered)) +
@@ -43899,11 +46676,11 @@ const StyleDesigner = (function () {
 
         return sect('bi-layout-sidebar', _sdT('Offcanvas Options'),
             row(_sdT('Position'),
-                '<select class="form-select form-select-sm" data-oc-pos-sel="1" data-oc-node-id="' + n._id + '">' +
+                '<select class="form-control form-control-sm" data-oc-pos-sel="1" data-oc-node-id="' + n._id + '">' +
                 positions.map(function(p) { return '<option value="' + esc(p[0]) + '"' + (p[0] === curPos ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') +
                 '</select>') +
             row(_sdT('Responsive'),
-                '<select class="form-select form-select-sm" data-oc-resp="1" data-oc-node-id="' + n._id + '">' +
+                '<select class="form-control form-control-sm" data-oc-resp="1" data-oc-node-id="' + n._id + '">' +
                 respOpts.map(function(p) { return '<option value="' + esc(p[0]) + '"' + (p[0] === curResp ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') +
                 '</select>') +
             (hId ? row(_sdT('Header'), swAttr('data-oc-header-vis="1" data-oc-header-id="' + hId + '"', headerVisible)) : '')
@@ -44057,7 +46834,7 @@ const StyleDesigner = (function () {
         opts.forEach(function(o) {
             var active = (o[0] === val) ? ' active' : '';
             var title = o[2] ? ' title="' + esc(o[2]) + '"' : '';
-            h += '<button type="button" class="btn btn-outline-secondary btn-sm' + active + '" data-prop="' + prop + '" data-val="' + o[0] + '"' + title + '>' + o[1] + '</button>';
+            h += '<button type="button" class="btn btn-outline theme-secondary btn-sm' + active + '" data-prop="' + prop + '" data-val="' + o[0] + '"' + title + '>' + o[1] + '</button>';
         });
         h += '</div>';
         return h;
@@ -44150,7 +46927,7 @@ const StyleDesigner = (function () {
         h += '</select>';
 
         // Visible trigger — shows the current selection's dot + name.
-        h += '<button type="button" class="sd-cp-trigger form-select form-select-sm" aria-haspopup="listbox">';
+        h += '<button type="button" class="sd-cp-trigger form-control form-control-sm" aria-haspopup="listbox">';
         h += '<span class="sd-color-preview ' + dotCls(currentColor) + '"></span>';
         h += '<span class="sd-cp-label">' + currentLabel + '</span>';
         h += '</button>';
@@ -44251,7 +47028,7 @@ const StyleDesigner = (function () {
             classes.forEach(function (c) {
                 if (c !== '' && clsArr.indexOf(c) !== -1) found = c;
             });
-            var h = '<select class="form-select form-select-sm" data-stylegroup="' + classes.join(',') + '">';
+            var h = '<select class="form-control form-control-sm" data-stylegroup="' + classes.join(',') + '">';
             h += '<option value="">' + title + '</option>';
             classes.forEach(function (c) {
                 if (c === '') return;
@@ -44275,7 +47052,7 @@ const StyleDesigner = (function () {
                 if (allPresent) found = p[0];
             });
             var classes = pairs.map(function(p) { return p[0]; }).filter(Boolean);
-            var h = '<select class="form-select form-select-sm" data-stylegroup="' + classes.join(',') + '">';
+            var h = '<select class="form-control form-control-sm" data-stylegroup="' + classes.join(',') + '">';
             h += '<option value="">' + (placeholder || 'Default') + '</option>';
             pairs.forEach(function(p) {
                 if (!p[0]) return;
@@ -44296,7 +47073,7 @@ const StyleDesigner = (function () {
                 var words = c.split(/\s+/);
                 if (words.every(function(w) { return clsArr.indexOf(w) !== -1; })) found = c;
             });
-            var h = '<select class="form-select form-select-sm" data-stylegroup="' + classes.join(',') + '">';
+            var h = '<select class="form-control form-control-sm" data-stylegroup="' + classes.join(',') + '">';
             h += '<option value="">' + (placeholder || 'Default') + '</option>';
             valuePairs.forEach(function(p) {
                 var c = prefix + p[0];
@@ -44368,7 +47145,7 @@ const StyleDesigner = (function () {
         }
         function mkOverflowSel(propName, propVal) {
             var ovOpts = [['',_sdT('Default')],['visible',_sdT('Visible')],['hidden',_sdT('Hidden')],['auto',_sdT('Auto')],['scroll',_sdT('Scroll')],['clip',_sdT('Clip')]];
-            var h = '<select class="form-select form-select-sm" data-prop="' + propName + '">';
+            var h = '<select class="form-control form-control-sm" data-prop="' + propName + '">';
             ovOpts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === (propVal||'') ? ' selected' : '') + '>' + o[1] + '</option>'; });
             return h + '</select>';
         }
@@ -44432,7 +47209,7 @@ const StyleDesigner = (function () {
         var _arValue   = p.aspectRatio || '16x9';
         var _arHtml = '<div class="sd-sp-row"><span class="sd-sp-toggle-spacer"></span><span class="sd-sp-label">' + esc(_sdT('Aspect Ratio')) + '</span>' + sw('aspectRatioEnabled', _arEnabled) + '</div>';
         if (_arEnabled) {
-            var _arPresetSel = '<select class="form-select form-select-sm" data-prop="aspectRatio">';
+            var _arPresetSel = '<select class="form-control form-control-sm" data-prop="aspectRatio">';
             [['1x1','1:1'],['4x3','4:3'],['16x9','16:9'],['21x9','21:9'],['custom',_sdT('Custom')]].forEach(function(pair) {
                 _arPresetSel += '<option value="' + pair[0] + '"' + (pair[0] === _arValue ? ' selected' : '') + '>' + pair[1] + '</option>';
             });
@@ -44462,7 +47239,7 @@ const StyleDesigner = (function () {
             ['1080', '1080 (toast)']
         ];
         var _zCur = (p.zIndex == null) ? '' : String(p.zIndex);
-        var _zIdxSel = '<select class="form-select form-select-sm" data-prop="zIndex">' +
+        var _zIdxSel = '<select class="form-control form-control-sm" data-prop="zIndex">' +
             _zIndexOpts.map(function(o) {
                 return '<option value="' + o[0] + '"' + (o[0] === _zCur ? ' selected' : '') + '>' + o[1] + '</option>';
             }).join('') +
@@ -44555,7 +47332,7 @@ const StyleDesigner = (function () {
             var cur = spVal(pfx);
             // Bootstrap 5.3 ships spacing scale 0-5 by default (values 6-10 would require a Sass recompile
             // with a custom $spacers map). Stay within the shipped scale so the classes actually apply.
-            var h = '<select class="form-select form-select-sm" data-util="' + pfx + '">';
+            var h = '<select class="form-control form-control-sm" data-util="' + pfx + '">';
             h += '<option value="">' + esc(_sdT('Default')) + '</option>';
             [0,1,2,3,4,5].forEach(function(v) {
                 h += '<option value="' + pfx + v + '"' + (String(v) === cur ? ' selected' : '') + '>' + v + '</option>';
@@ -44594,7 +47371,7 @@ const StyleDesigner = (function () {
         var clsArr2 = cls.split(' ');
         var foundBorderSide = '';
         borderSides.forEach(function(s) { if (s && clsArr2.indexOf(s) !== -1) foundBorderSide = s; });
-        var borderSideSel = '<select class="form-select form-select-sm" data-stylegroup="' + borderSides.filter(Boolean).join(',') + '">';
+        var borderSideSel = '<select class="form-control form-control-sm" data-stylegroup="' + borderSides.filter(Boolean).join(',') + '">';
         borderSides.forEach(function(s) {
             borderSideSel += '<option value="' + s + '"' + (s === foundBorderSide ? ' selected' : '') + '>' + borderSideLabels[s] + '</option>';
         });
@@ -44717,8 +47494,9 @@ const StyleDesigner = (function () {
                     '</div>' +
                     '<div class="sd-bcp-mid-row">' +
                         '<span class="sd-bcp-clabel">' + esc(_sdT('Mid')) + '</span>' +
-                        '<input type="range" class="form-range" id="sd-bcp-lin-mid" min="0" max="100" value="' + _grad.mid + '" style="flex:1">' +
-                        '<span class="sd-bcp-mid-val" id="sd-bcp-lin-mid-val">' + _grad.mid + '%</span>' +
+                        '<div class="form-range pg-range-bubble">' +
+                            '<input type="range" class="form-range-input" id="sd-bcp-lin-mid" min="0" max="100" value="' + _grad.mid + '" aria-label="' + esc(_sdT('Mid')) + '">' +
+                        '</div>' +
                     '</div>' +
                     '<div class="sd-bcp-preview" id="sd-bcp-lin-prev" style="background:' + buildGradientStr(Object.assign({}, _grad, {type:'linear'})) + '"></div>' +
                 '</div>' +
@@ -44727,13 +47505,13 @@ const StyleDesigner = (function () {
                     '<div class="sd-bcp-opt-row">' +
                         '<span class="sd-bcp-clabel">' + esc(_sdT('Shape')) + '</span>' +
                         '<div class="btn-group btn-group-sm">' +
-                            '<button type="button" class="btn btn-outline-secondary' + (_grad.shape === 'circle' ? ' active' : '') + '" data-bcp-radial-shape="circle">' + esc(_sdT('Circle')) + '</button>' +
-                            '<button type="button" class="btn btn-outline-secondary' + (_grad.shape === 'ellipse' ? ' active' : '') + '" data-bcp-radial-shape="ellipse">' + esc(_sdT('Ellipse')) + '</button>' +
+                            '<button type="button" class="btn btn-outline theme-secondary' + (_grad.shape === 'circle' ? ' active' : '') + '" data-bcp-radial-shape="circle">' + esc(_sdT('Circle')) + '</button>' +
+                            '<button type="button" class="btn btn-outline theme-secondary' + (_grad.shape === 'ellipse' ? ' active' : '') + '" data-bcp-radial-shape="ellipse">' + esc(_sdT('Ellipse')) + '</button>' +
                         '</div>' +
                     '</div>' +
                     '<div class="sd-bcp-opt-row mt-1">' +
                         '<span class="sd-bcp-clabel">' + esc(_sdT('Pos')) + '</span>' +
-                        '<select class="form-select form-select-sm" id="sd-bcp-rad-pos">' +
+                        '<select class="form-control form-control-sm" id="sd-bcp-rad-pos">' +
                             _posOpts.map(function(o){ return '<option value="' + o[0] + '"' + (_grad.pos === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
                         '</select>' +
                     '</div>' +
@@ -44745,8 +47523,9 @@ const StyleDesigner = (function () {
                     '</div>' +
                     '<div class="sd-bcp-mid-row">' +
                         '<span class="sd-bcp-clabel">' + esc(_sdT('Mid')) + '</span>' +
-                        '<input type="range" class="form-range" id="sd-bcp-rad-mid" min="0" max="100" value="' + _grad.mid + '" style="flex:1">' +
-                        '<span class="sd-bcp-mid-val" id="sd-bcp-rad-mid-val">' + _grad.mid + '%</span>' +
+                        '<div class="form-range pg-range-bubble">' +
+                            '<input type="range" class="form-range-input" id="sd-bcp-rad-mid" min="0" max="100" value="' + _grad.mid + '" aria-label="' + esc(_sdT('Mid')) + '">' +
+                        '</div>' +
                     '</div>' +
                     '<div class="sd-bcp-preview" id="sd-bcp-rad-prev" style="background:' + buildGradientStr(Object.assign({}, _grad, {type:'radial'})) + '"></div>' +
                 '</div>' +
@@ -44779,17 +47558,17 @@ const StyleDesigner = (function () {
             row(_sdT('Bg Image'),
                 '<div class="sd-pick-group">' +
                     '<input type="text" class="form-control form-control-sm" id="sd-bg-img-inp" data-bg-prop="background-image" value="' + esc(_bgImgUrl) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
-                    '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-bg-img-inp\')">' + esc(_sdT('Select')) + '</button>' +
-                    '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image')) + '" onclick="window.sdOpenImageEditor(\'sd-bg-img-inp\')"><i class="bi bi-brush"></i></button>' +
-                    (_bgImgUrl ? '<button class="btn btn-sm btn-outline-danger sd-pick-btn" type="button" data-bg-clear="background-image" title="' + esc(_sdT('Remove')) + '"><i class="bi bi-x-lg"></i></button>' : '') +
+                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-bg-img-inp\')">' + esc(_sdT('Select')) + '</button>' +
+                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image')) + '" onclick="window.sdOpenImageEditor(\'sd-bg-img-inp\')"><i class="bi bi-brush"></i></button>' +
+                    (_bgImgUrl ? '<button class="btn btn-sm btn-outline theme-danger sd-pick-btn" type="button" data-bg-clear="background-image" title="' + esc(_sdT('Remove')) + '"><i class="bi bi-x-lg"></i></button>' : '') +
                 '</div>') +
-            row(_sdT('Bg Size'),   '<select class="form-select form-select-sm" data-bg-prop="background-size">' +
+            row(_sdT('Bg Size'),   '<select class="form-control form-control-sm" data-bg-prop="background-size">' +
                 [['',_sdT('Default')],['cover', _sdT('Cover (background)')],['contain',_sdT('Contain')],['auto',_sdT('Auto')],['100% 100%',_sdT('Stretch')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgSize===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
-            row(_sdT('Bg Pos'),    '<select class="form-select form-select-sm" data-bg-prop="background-position">' +
+            row(_sdT('Bg Pos'),    '<select class="form-control form-control-sm" data-bg-prop="background-position">' +
                 [['',_sdT('Default')],['center',_sdT('Center')],['top','Top'],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgPos===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
-            row(_sdT('Bg Repeat'), '<select class="form-select form-select-sm" data-bg-prop="background-repeat">' +
+            row(_sdT('Bg Repeat'), '<select class="form-control form-control-sm" data-bg-prop="background-repeat">' +
                 [['',_sdT('Default')],['no-repeat',_sdT('No Repeat')],['repeat',_sdT('Repeat')],['repeat-x',_sdT('Repeat X')],['repeat-y',_sdT('Repeat Y')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgRep===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
-            row(_sdT('Bg Attach'), '<select class="form-select form-select-sm" data-bg-prop="background-attachment">' +
+            row(_sdT('Bg Attach'), '<select class="form-control form-control-sm" data-bg-prop="background-attachment">' +
                 [['',_sdT('Default')],['scroll',_sdT('Scroll')],['fixed',_sdT('Fixed')],['local',_sdT('Local')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgAtt===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>');
 
         var bgSection =
@@ -45195,14 +47974,13 @@ const StyleDesigner = (function () {
                 });
             });
             var linMid = document.getElementById('sd-bcp-lin-mid');
-            var linMidVal = document.getElementById('sd-bcp-lin-mid-val');
             if (linMid) {
+                pgUI.range.bubble(linMid.parentNode, _sdPercent);
                 linMid.addEventListener('input', function() {
                     if (!selectedNode) return;
                     saveState(_sdEditRun('grad:lin-mid'));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
                     g.mid = Number(this.value);
-                    if (linMidVal) linMidVal.textContent = this.value + '%';
                     applyGrad();
                 });
             }
@@ -45252,14 +48030,13 @@ const StyleDesigner = (function () {
                 });
             });
             var radMid = document.getElementById('sd-bcp-rad-mid');
-            var radMidVal = document.getElementById('sd-bcp-rad-mid-val');
             if (radMid) {
+                pgUI.range.bubble(radMid.parentNode, _sdPercent);
                 radMid.addEventListener('input', function() {
                     if (!selectedNode) return;
                     saveState(_sdEditRun('grad:rad-mid'));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
                     g.mid = Number(this.value);
-                    if (radMidVal) radMidVal.textContent = this.value + '%';
                     applyGrad();
                 });
             }
@@ -45543,12 +48320,8 @@ const StyleDesigner = (function () {
 
         // Progress bar: value range slider
         document.querySelectorAll('#sd-properties [data-pb-value]').forEach(function(el) {
-            var lbl = el.parentElement ? el.parentElement.querySelector('.sd-pb-pct-lbl') : null;
-            // Live preview while dragging
-            el.addEventListener('input', function() {
-                if (lbl) lbl.textContent = this.value + '%';
-            });
-            // Commit on release
+            // The bubble follows the thumb while dragging; commit on release.
+            pgUI.range.bubble(el.parentNode, _sdPercent);
             el.addEventListener('change', function() {
                 if (!selectedNode) return;
                 saveState();
@@ -45560,7 +48333,6 @@ const StyleDesigner = (function () {
                     if (attrs[i].name === 'aria-valuenow') { attrs[i].value = String(val); }
                 }
                 if (!hasStyle) attrs.push({ name: 'style', value: 'width:' + val + '%' });
-                if (lbl) lbl.textContent = val + '%';
                 renderCanvas();
                 renderAttrsPanel();
                 renderHtmlTree();
@@ -46086,7 +48858,7 @@ const StyleDesigner = (function () {
                 if (!this.checked && idx !== -1) arr.splice(idx, 1);
                 n.props.cssClass = arr.join(' ');
                 var innerEl = getCanvasInnerEl(nodeId);
-                if (innerEl) innerEl.classList.toggle('carousel-dark', this.checked);
+                if (innerEl) innerEl.classList.toggle('carousel-dark', this.checked); /* @pg-site-output */
             });
         });
 
@@ -46250,7 +49022,7 @@ const StyleDesigner = (function () {
                 // just-edited row/col prop into selectedNode.props.cssClass and
                 // strip the transient prop so cssClass remains the single source
                 // of truth. This is what makes the Row/Col Options panel work
-                // for hand-classed divs (`<div class="row g-3">`) — the standard
+                // for hand-classed divs (`<div class="row g-5">`) — the standard
                 // [data-prop] handler above wrote into props[gutter], we now
                 // translate that into a `g-3` class on the div.
                 var _ROW_CLASS_PROPS = ['gutter', 'justify', 'align'];
@@ -46321,6 +49093,17 @@ const StyleDesigner = (function () {
             });
         });
 
+        // A value put inside the words (_sdSentenceRow()).
+        document.querySelectorAll('#sd-properties select[data-sentence-add]').forEach(function (el) {
+            el.addEventListener('change', function () {
+                if (!selectedNode || !this.value) return;
+                saveState();
+                _sdSentenceAdd(selectedNode, this.value);
+                render();
+                renderProperties();
+            });
+        });
+
         // data-nodeattr="name" inputs bind directly to p._attrs via setNodeAttr. Used by the
         // Accessibility section (role, aria-label, aria-labelledby, aria-describedby) so the
         // Options panel and Attrs panel edit the same backing store.
@@ -46374,11 +49157,23 @@ const StyleDesigner = (function () {
         // A designer region becomes a shared component on this page.
         var dsgRegionBtn = document.getElementById('sd-designer-region-convert');
         if (dsgRegionBtn) dsgRegionBtn.addEventListener('click', function () { _sdDesignerRegionConvert(selectedNode); });
+        // The page's own regions move into its tree.
+        var pageRegionBtn = document.getElementById('sd-page-region-convert');
+        if (pageRegionBtn) pageRegionBtn.addEventListener('click', function () { _sdPageRegionsConvert(); });
+        // A menu, menu sequence, ad or tag cloud region becomes its widget.
+        var regionWidgetBtn = document.getElementById('sd-region-make-widget');
+        if (regionWidgetBtn) regionWidgetBtn.addEventListener('click', function () { _sdRegionMakeWidget(selectedNode); });
         // A dynamic region's PHP code opens as a code-view tab.
         var dregionCodeBtn = document.getElementById('sd-dregion-code');
         if (dregionCodeBtn) dregionCodeBtn.addEventListener('click', function () {
             if (selectedNode && selectedNode.props) _sdDregionCodeOpen(selectedNode.props.regionName);
         });
+        // A custom layout's PHP opens as a code-view tab, or starts again
+        // from the generated layout.
+        var layoutCodeBtn = document.getElementById('sd-layout-code');
+        if (layoutCodeBtn) layoutCodeBtn.addEventListener('click', function () { _sdLayoutCodeOpen(_pgActivePage(), false); });
+        var layoutRegenBtn = document.getElementById('sd-layout-regenerate');
+        if (layoutRegenBtn) layoutRegenBtn.addEventListener('click', function () { _sdLayoutCodeOpen(_pgActivePage(), true); });
 
         // Spacing toggle — expand/collapse responsive breakpoint rows
         document.querySelectorAll('#sd-properties .sd-sp-toggle').forEach(function(btn) {
@@ -47772,7 +50567,7 @@ const StyleDesigner = (function () {
         gfModalEl.innerHTML =
             '<div class="sd-gf-modal-dialog">' +
                 '<div class="sd-gf-modal-hdr">' +
-                    '<span class="bi bi-fonts me-2"></span><span class="sd-gf-modal-title">Google Fonts</span>' +
+                    '<span class="bi bi-fonts me-3"></span><span class="sd-gf-modal-title">Google Fonts</span>' +
                     '<button id="sd-gf-modal-close" class="sd-gf-modal-close" type="button"><span class="bi bi-x-lg"></span></button>' +
                 '</div>' +
                 '<div class="sd-gf-modal-body">' +
@@ -48065,7 +50860,7 @@ const StyleDesigner = (function () {
             _coEl.innerHTML =
                 '<div class="sd-as-co-dialog">' +
                     '<div class="sd-as-co-hdr">' +
-                        '<span class="bi bi-file-earmark-plus me-2"></span>' +
+                        '<span class="bi bi-file-earmark-plus me-3"></span>' +
                         '<span class="sd-as-co-title">' + esc(_sdT('New File')) + '</span>' +
                         '<button type="button" class="sd-as-co-close" id="sd-as-co-close"><span class="bi bi-x-lg"></span></button>' +
                     '</div>' +
@@ -48310,7 +51105,7 @@ const StyleDesigner = (function () {
             _fpEl.innerHTML =
                 '<div class="sd-fp-dialog">' +
                     '<div class="sd-fp-hdr">' +
-                        '<span class="bi bi-folder2-open me-2"></span>' +
+                        '<span class="bi bi-folder2-open me-3"></span>' +
                         '<span class="sd-fp-title">' + esc(_sdT('Choose from a File')) + '</span>' +
                         '<button type="button" class="sd-fp-close" id="sd-fp-close"><span class="bi bi-x-lg"></span></button>' +
                     '</div>' +
@@ -49316,7 +52111,7 @@ const StyleDesigner = (function () {
             var _modeTabs = wrap.querySelector('.sd-theme-mode-tabs');
             if (_modeTabs) _modeTabs.style.display = _sdUsesBootstrap() ? '' : 'none';
             if (!_sdUsesBootstrap()) {
-                host.innerHTML = '<p class="form-text small px-2 mb-0">' +
+                host.innerHTML = '<p class="form-text small px-3 mb-0">' +
                     esc(_sdT('This design is built without Bootstrap, so the Bootstrap variables (colours, fonts, borders) are not offered here. Put your own variables in one of the design\'s stylesheets, or choose a theme file above.')) + '</p>';
                 return;
             }
@@ -49612,10 +52407,10 @@ const StyleDesigner = (function () {
                             '</label>';
                 }).join('') + '</div>' +
                 '<div class="sd-gf-det-actions">' +
-                    '<button class="sd-gf-det-add btn btn-primary btn-sm" type="button"><span class="bi bi-plus-circle me-1"></span>' +
+                    '<button class="sd-gf-det-add btn btn-solid theme-primary btn-sm" type="button"><span class="bi bi-plus-circle me-1"></span>' +
                         (existing ? _sdT('Update') : _sdT('Add')) +
                     '</button>' +
-                    (existing ? '<button class="sd-gf-det-remove btn btn-outline-danger btn-sm" type="button"><span class="bi bi-trash me-1"></span>' + esc(_sdT('Remove')) + '</button>' : '') +
+                    (existing ? '<button class="sd-gf-det-remove btn btn-outline theme-danger btn-sm" type="button"><span class="bi bi-trash me-1"></span>' + esc(_sdT('Remove')) + '</button>' : '') +
                 '</div>';
             // Active state on weight chips so the user sees their selection
             // without staring at the tiny native checkbox.
@@ -49988,7 +52783,7 @@ const StyleDesigner = (function () {
                 picker.innerHTML =
                     '<div class="sd-styles-extract-dialog">' +
                         '<div class="sd-styles-extract-hdr">' +
-                            '<span class="bi bi-box-arrow-up-right me-2"></span>' +
+                            '<span class="bi bi-box-arrow-up-right me-3"></span>' +
                             esc(_sdT('Which file should it go into?')) +
                         '</div>' +
                         '<div class="sd-styles-extract-body" id="sd-styles-extract-list"></div>' +
@@ -50011,7 +52806,7 @@ const StyleDesigner = (function () {
                     btn.type = 'button';
                     btn.className = 'sd-styles-extract-item';
                     btn.innerHTML =
-                        '<span class="bi bi-file-earmark-code me-2"></span>' +
+                        '<span class="bi bi-file-earmark-code me-3"></span>' +
                         '<span class="sd-styles-extract-item-name">' + esc(t.name) + '</span>' +
                         (t._file ? '<span class="sd-styles-extract-item-tag">disk</span>' : '<span class="sd-styles-extract-item-tag">inline</span>');
                     btn.addEventListener('click', function () {
@@ -50415,7 +53210,7 @@ const StyleDesigner = (function () {
                 ' placeholder="' + esc(_sdT('Name, e.g. theme-color or og:image')) + '" aria-label="' + esc(_sdT('Name')) + '" value="' + esc(m.name) + '">' +
             '<input type="text" class="form-control form-control-sm sd-meta-content" maxlength="1000" autocomplete="off"' +
                 ' placeholder="' + esc(_sdT('Content')) + '" aria-label="' + esc(_sdT('Content')) + '" value="' + esc(m.content) + '">' +
-            '<button type="button" class="btn btn-sm btn-outline-danger sd-meta-del px-2" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '">' +
+            '<button type="button" class="btn btn-sm btn-outline theme-danger sd-meta-del px-3" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '">' +
                 '<span class="bi bi-trash" aria-hidden="true"></span>' +
             '</button>';
         _sdMetaRowMark(row);
@@ -50502,7 +53297,7 @@ const StyleDesigner = (function () {
         });
 
         // ── Reset Layout: the editor's panels, not the design ──
-        var footer = phpModal.querySelector('.modal-footer');
+        var footer = phpModal.querySelector('.dialog-footer');
         if (footer) {
             var resetBtn = document.createElement('button');
             resetBtn.type = 'button';
@@ -50511,8 +53306,7 @@ const StyleDesigner = (function () {
             resetBtn.innerHTML = '<span class="bi bi-layout-three-columns me-1" aria-hidden="true"></span>' + esc(_sdT('Reset Layout'));
             resetBtn.addEventListener('click', function() {
                 resetLayout();
-                var bsModal = bootstrap.Modal.getInstance(phpModal);
-                if (bsModal) bsModal.hide();
+                if (pgUI.dialog.find(phpModal)) pgUI.dialog.hide(phpModal);
             });
             footer.insertBefore(resetBtn, footer.firstChild);
         }
@@ -50523,10 +53317,10 @@ const StyleDesigner = (function () {
             saveBtn.addEventListener('click', function () {
                 var main = document.getElementById('sd-ajax-save');
                 if (!main || main.disabled || !_collab.mayEdit) return;
-                phpModal.addEventListener('hidden.bs.modal', function () {
+                pgUI.dialog.on(phpModal, 'hidden', function () {
                     if (!main.disabled) main.click();
                 }, { once: true });
-                bootstrap.Modal.getOrCreateInstance(phpModal).hide();
+                pgUI.dialog.hide(phpModal);
             });
         }
         // A draft saves and stays off the site; the word follows the switch.
@@ -50561,7 +53355,13 @@ const StyleDesigner = (function () {
         // ── Panes ──
         // The head code and the page's JSON-LD become code fields the first
         // time their pane opens (_sdSettingsCodeFields()).
-        phpModal.addEventListener('shown.bs.tab', _sdSettingsCodeFields);
+        pgUI.tab.on(phpModal, 'shown', _sdSettingsCodeFields);
+        // The Page Type pane reads its fields when it opens.
+        pgUI.tab.on(phpModal, 'shown', function (e) {
+            if (e.target && e.target.id === 'tab-page-type-btn') _sdPageTypeLoad();
+        });
+        var pageTypeSave = document.getElementById('sd-page-type-save');
+        if (pageTypeSave) pageTypeSave.addEventListener('click', _sdPageTypeSave);
         var jsonld = document.getElementById('pg_page_custom_jsonld');
         if (jsonld) jsonld.addEventListener('input', _sdJsonLdStatus);
         ['pg_page_canonical_url', 'pg_page_max_snippet'].forEach(function (id) {
@@ -50570,7 +53370,7 @@ const StyleDesigner = (function () {
         });
 
         // ── Refresh dynamic values on modal open ──
-        phpModal.addEventListener('show.bs.modal', function() {
+        pgUI.dialog.on(phpModal, 'show', function() {
             _sdMetaListRender('design');
             _sdMetaListRender('page');
             _sdSettingsSyncSave();
@@ -50581,12 +53381,12 @@ const StyleDesigner = (function () {
         // Every way out keeps what was changed: the meta tag lists and the
         // page fields have written their inputs by now, the HTML tree shows
         // them from there.
-        phpModal.addEventListener('hide.bs.modal', function () {
+        pgUI.dialog.on(phpModal, 'hide', function () {
             renderHtmlTree();
         });
         // Page and design settings reach an open preview window once the
         // modal is closed.
-        phpModal.addEventListener('hidden.bs.modal', function() {
+        pgUI.dialog.on(phpModal, 'hidden', function() {
             _sdLivePreviewSchedule();
         });
 
@@ -50598,16 +53398,158 @@ const StyleDesigner = (function () {
     // page-meta), with a row of it in view when one is named.
     function _sdOpenSettingsPane(pane, rowId) {
         var modalEl = document.getElementById('styleSettingsModal');
-        if (!modalEl || typeof bootstrap === 'undefined') return;
+        if (!modalEl || !window.pgUI) return;
         var btn = document.getElementById('tab-' + pane + '-btn');
-        if (btn && bootstrap.Tab && !btn.classList.contains('d-none')) bootstrap.Tab.getOrCreateInstance(btn).show();
+        if (btn && !btn.classList.contains('d-none')) pgUI.tab.show(btn);
         if (rowId) {
-            modalEl.addEventListener('shown.bs.modal', function () {
+            pgUI.dialog.on(modalEl, 'shown', function () {
                 var row = document.getElementById(rowId);
                 if (row && row.scrollIntoView) row.scrollIntoView({ block: 'center' });
             }, { once: true });
         }
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        pgUI.dialog.show(modalEl);
+    }
+
+    // ── Page Type pane ────────────────────────────────────────────────
+    // A classic page placed in the design (its page_type is not standard)
+    // keeps the fields of its type and its Layout Type. The pane reads them
+    // from edit_page.php?properties=1 and saves them there with its own
+    // button, at once and apart from the design: the endpoint applies the
+    // rights of edit_page.php, the form token and the page lock
+    // (includes/fn/page_type_pane.php).
+    var _sdPageType = { pageId: 0, busy: false };
+
+    function _sdPageTypeUrl(pageId) {
+        var base = (_design && _design.pageTypeUrl) ? _design.pageTypeUrl : 'edit_page.php';
+        return base + '?properties=1&id=' + encodeURIComponent(pageId);
+    }
+
+    function _sdPageTypeShown(p) {
+        return !!(p && p.page_id > 0 && p.page_type && p.page_type !== 'standard');
+    }
+
+    // The pill follows the page on screen; the fields of another page are
+    // dropped and read again when the pane opens.
+    function _sdPageTypeSync(p) {
+        var btn = document.getElementById('tab-page-type-btn');
+        var box = document.getElementById('sd-page-type-fields');
+        if (!btn || !box) return;
+        var show = _sdPageTypeShown(p);
+        btn.classList.toggle('d-none', !show);
+        if (!show && btn.classList.contains('active')) {
+            var pageBtn = document.getElementById('tab-page-btn');
+            if (pageBtn) pgUI.tab.show(pageBtn);
+        }
+        if (!show || _sdPageType.pageId !== p.page_id) {
+            _sdPageType.pageId = 0;
+            box.innerHTML = '';
+            _sdPageTypeLinks([]);
+            var status = document.getElementById('sd-page-type-status');
+            if (status) status.textContent = '';
+            var save = document.getElementById('sd-page-type-save');
+            if (save) save.disabled = true;
+        }
+        if (show && btn.classList.contains('active')) _sdPageTypeLoad();
+    }
+
+    function _sdPageTypeLoad() {
+        var p = _pgActivePage();
+        var box = document.getElementById('sd-page-type-fields');
+        var save = document.getElementById('sd-page-type-save');
+        if (!box || !_sdPageTypeShown(p) || _sdPageType.pageId === p.page_id) return;
+        _sdPageType.pageId = p.page_id;
+        box.innerHTML = '<div class="small fg-secondary">' + esc(_sdT('Loading...')) + '</div>';
+        if (save) save.disabled = true;
+        var failed = function (message) {
+            if (_sdPageType.pageId !== p.page_id) return;
+            box.innerHTML = '<div class="alert theme-info py-3 px-5 small mb-0">' + esc(message || _sdT('Network error')) + '</div>';
+        };
+        fetch(_sdPageTypeUrl(p.page_id), { credentials: 'same-origin',
+                                           headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (_sdPageType.pageId !== p.page_id) return;
+                if (!data || !data.ok) { failed(data && data.message); return; }
+                var name = document.getElementById('sd-page-type-name');
+                if (name) name.textContent = data.page_type_name || p.page_type;
+                // jQuery runs the scripts the fields carry with them.
+                if (window.jQuery) window.jQuery(box).html(data.html || '');
+                else box.innerHTML = data.html || '';
+                // The classic screen prints every type's rows hidden for its
+                // type picker; the pane keeps the page's own type, so the
+                // hidden rows of the other types go. Its own rows stay, shown
+                // or hidden by their switches (show_or_hide_*()).
+                var prefix = String(data.page_type || '').replace(/ /g, '_') + '_';
+                box.querySelectorAll('#options_row .card-body > .row > [style*="display: none"]').forEach(function (row) {
+                    if (row.id === 'layout_type_row' || row.id.indexOf(prefix) === 0) return;
+                    row.remove();
+                });
+                // The notices point at the classic screen's "Save & Continue";
+                // the pane links to the form's editor once it is saved.
+                box.querySelectorAll('[id$="_form_notice"]').forEach(function (el) { el.classList.add('d-none'); });
+                var options = box.querySelector('#options_row');
+                if (options) options.classList.remove('collapse');
+                if (typeof pgInitInjected === 'function') pgInitInjected(box);
+                _sdPageTypeLinks(data.links);
+                if (save) save.disabled = !_collab.mayEdit;
+            })
+            .catch(function () { failed(''); _sdPageType.pageId = 0; });
+    }
+
+    // The editors of the page type's own forms and views, as the classic
+    // screen's button bar offers them; they open beside the designer.
+    function _sdPageTypeLinks(links) {
+        var box = document.getElementById('sd-page-type-links');
+        if (!box) return;
+        var back = '&send_to=' + encodeURIComponent(window.location.href);
+        box.innerHTML = (links || []).map(function (l) {
+            return '<a class="btn btn-sm btn-outline-light" target="_blank" rel="noopener" href="' + esc(l.url + back) + '">' +
+                '<span class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></span>' + esc(l.label) + '</a>';
+        }).join('');
+    }
+
+    function _sdPageTypeSave() {
+        var p = _pgActivePage();
+        var box = document.getElementById('sd-page-type-fields');
+        var save = document.getElementById('sd-page-type-save');
+        var status = document.getElementById('sd-page-type-status');
+        if (!box || !save || _sdPageType.busy || !p || _sdPageType.pageId !== p.page_id) return;
+        // The fields sit inside the designer's own form, so they are posted
+        // one by one, as a form submit would: unticked boxes not at all.
+        var body = new FormData();
+        body.append('id', p.page_id);
+        body.append('token', _pgToken());
+        body.append('collab_key', _collabKey());
+        box.querySelectorAll('input[name], select[name], textarea[name]').forEach(function (el) {
+            if (el.disabled) return;
+            if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
+            if (el.tagName === 'SELECT' && el.multiple) {
+                Array.prototype.forEach.call(el.selectedOptions, function (o) { body.append(el.name, o.value); });
+                return;
+            }
+            body.append(el.name, el.value);
+        });
+        _sdPageType.busy = true;
+        save.disabled = true;
+        if (status) status.textContent = '';
+        var done = function (ok, message) {
+            _sdPageType.busy = false;
+            save.disabled = !_collab.mayEdit;
+            if (status) status.textContent = message || (ok ? _sdT('Saved.') : _sdT('Network error'));
+            if (!ok) sdToast(esc(message || _sdT('Network error')), 'danger', 5000);
+        };
+        fetch(_sdPageTypeUrl(p.page_id), { method: 'POST', body: body, credentials: 'same-origin',
+                                           headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var ok = !!(data && data.ok);
+                // What a basic user may not change was kept as stored; the
+                // server says which.
+                if (ok && data.warnings && data.warnings.length) sdToast(esc(data.warnings.join(' ')), 'warning', 8000);
+                if (ok) _sdPageTypeLinks(data.links);
+                done(ok, data && data.message);
+            })
+            .catch(function () { done(false, ''); });
     }
 
     // The footer's main button says what the toolbar's says: a draft is
@@ -50918,7 +53860,7 @@ const StyleDesigner = (function () {
         var nameEl  = document.getElementById('sd-make-template-name');
         var descEl  = document.getElementById('sd-make-template-description');
         var runBtn  = document.getElementById('sd-make-template-run');
-        if (!btn || !modalEl || !nameEl || !descEl || !runBtn || typeof bootstrap === 'undefined') return;
+        if (!btn || !modalEl || !nameEl || !descEl || !runBtn || !window.pgUI) return;
 
         var styleId = function () { return (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0; };
 
@@ -50929,16 +53871,16 @@ const StyleDesigner = (function () {
             nameEl.value = designName ? designName.value.trim() : '';
             nameEl.classList.remove('is-invalid');
             descEl.value = '';
-            var show = function () { bootstrap.Modal.getOrCreateInstance(modalEl).show(); };
+            var show = function () { pgUI.dialog.show(modalEl); };
             var settings = document.getElementById('styleSettingsModal');
-            if (settings && settings.classList.contains('show')) {
-                settings.addEventListener('hidden.bs.modal', show, { once: true });
-                bootstrap.Modal.getOrCreateInstance(settings).hide();
+            if (settings && pgUI.dialog.isOpen(settings)) {
+                pgUI.dialog.on(settings, 'hidden', show, { once: true });
+                pgUI.dialog.hide(settings);
             } else {
                 show();
             }
         };
-        modalEl.addEventListener('shown.bs.modal', function () { nameEl.focus(); nameEl.select(); });
+        pgUI.dialog.on(modalEl, 'shown', function () { nameEl.focus(); nameEl.select(); });
 
         btn.addEventListener('click', function () {
             if (styleId() <= 0) {
@@ -50973,7 +53915,7 @@ const StyleDesigner = (function () {
                         sdToast(esc((res && res.message) ? res.message : _sdT('Sorry, we could not accept your request.')), 'error');
                         return;
                     }
-                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                    pgUI.dialog.hide(modalEl);
                     if (res.message) sdToast(esc(res.message), 'success', 6000);
                 })
                 .catch(function () { done(); sdToast(esc(_sdT('Network error.')), 'error'); });
@@ -51470,14 +54412,17 @@ const StyleDesigner = (function () {
         { type: 'shipping_method',   label: _sdT('Shipping Method'),   slug: _sdT('shipping-method'),   icon: 'bi-box-seam' },
         { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' },
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
-        { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' }
+        { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
+        { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
+        { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
+        { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
     var _SW_ACCOUNT_TYPES  = { logout: 1, change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1, account_security: 1 };
     var _SW_ACCOUNT_SINGLE = { logout: 1, change_password: 1, set_password: 1, account_profile: 1 };
     // Other widgets that show one screen and never repeat their loop_area.
-    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1, account_email: 1 };
+    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1, account_email: 1, menu_sequence_region: 1 };
     function _swTypeInfo(type) {
         for (var i = 0; i < SW_TYPES.length; i++) if (SW_TYPES[i].type === type) return SW_TYPES[i];
         return null;
@@ -51649,7 +54594,13 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
-        } else if (newType === 'menu_region') {
+        } else if (newType === 'tag_cloud_region') {
+            // The site's first search results page, so a new widget shows keywords at once.
+            if (cfg.search_page_name === undefined) cfg.search_page_name = ((regionData && regionData.tag_cloud_regions) || [])[0] || '';
+        } else if (newType === 'ad_region') {
+            // The site's first ad region, so a new widget shows ads at once.
+            if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
+        } else if (newType === 'menu_region' || newType === 'menu_sequence_region') {
             // The site's first menu, so a new widget shows items at once.
             if (cfg.menu_name === undefined) cfg.menu_name = ((regionData && regionData.menu_regions) || [])[0] || '';
         } else if (newType === 'language_switcher') {
@@ -51683,6 +54634,7 @@ const StyleDesigner = (function () {
     // The bare tree a blank widget starts with: a root holding one empty
     // loop_area, the per-record repetition zone. Nodes dropped beside it
     // (heading, search box, pagination) render once.
+    /* @pg-site-output */
     function _swBlankTree() {
         var t = createNode('root', {}, [createNode('loop_area', {}, [])]);
         t._id = 'sw-root-' + gid();
@@ -52380,6 +55332,11 @@ const StyleDesigner = (function () {
         'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
         'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact'
     ];
+    // Twin of pg_sw_list_offset(): records a list skips, 0 to 100000.
+    function _swListOffset(cfg) {
+        var n = parseInt(cfg && cfg.offset, 10);
+        return (n > 0) ? Math.min(100000, n) : 0;
+    }
     // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
     function _swUrlParamName(v) {
         var n = String(v == null ? '' : v).trim().toLowerCase();
@@ -52387,6 +55344,18 @@ const StyleDesigner = (function () {
         if (n.indexOf('utm_') === 0 || n.indexOf('pg_') === 0) return '';
         if (_SW_URL_PARAM_RESERVED.indexOf(n) !== -1) return '';
         return n;
+    }
+    // A field of a record the record points at (props._bindParams.<prop>
+    // beside the binding SW_REF_TOKEN), as the panel edits it: twin of
+    // pg_coll_ref_spec(), except that a tab of this design not published
+    // yet ('tab:<key>') stays the form until Publish resolves it.
+    function _swRefSpec(spec) {
+        spec = (spec && typeof spec === 'object') ? spec : {};
+        var tok = function (v) { return (typeof v === 'string') ? v.replace(/[^a-z0-9_-]/gi, '').toLowerCase() : ''; };
+        var pid = spec.page_id, page = 0;
+        if (typeof pid === 'string' && /^tab:/.test(pid)) page = pid;
+        else if (parseInt(pid, 10) > 0 && /^\d+$/.test(String(pid))) page = parseInt(pid, 10);
+        return { field: tok(spec.field), page_id: page, show: tok(spec.show) };
     }
     // A link's page and values (props._bindParams.href) as the panel edits
     // them. Not the server's normaliser (pg_sw_page_link_spec()): the page
@@ -52450,7 +55419,8 @@ const StyleDesigner = (function () {
         return !hit || _swPageBinned(hit);
     }
     // `key`: the config key the rows are written to, 'filters' unless
-    // another is named (a recent comments list's recent_filters).
+    // another is named (a recent comments list's recent_filters); 'placement'
+    // writes them to the selected placement (_swPlacementSet()).
     function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl, key) {
         var formFields = _swFilterFormFields(fields);
         var keyAttr = (key && key !== 'filters') ? ' data-sw-filter-key="' + esc(key) + '"' : '';
@@ -52517,17 +55487,17 @@ const StyleDesigner = (function () {
             html +=
                 '<div class="sd-sw-filter" data-idx="' + i + '"' + keyAttr + (dynBad ? ' data-attr="' + esc(urlParam) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
                     '<div style="display:flex;gap:4px">' +
-                        '<select class="form-select form-select-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
-                        '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
+                        '<select class="form-control form-control-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
                     '</div>' +
                     (rowWarn
                         ? '<div class="sd-sw-filter-warn" style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(rowWarn) + '</div>'
                         : '') +
-                    '<select class="form-select form-select-sm sd-sw-filter-op" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Operator')) + '">' + opOpts + '</select>' +
+                    '<select class="form-control form-control-sm sd-sw-filter-op" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Operator')) + '">' + opOpts + '</select>' +
                     '<input type="' + inputType + '" class="form-control form-control-sm sd-sw-filter-value" data-sw-id="' + sid + '" value="' + esc(val) + '" maxlength="255" placeholder="' + esc(_sdT('Value')) + '"' + (dyn ? ' disabled' : '') + '>' +
                     (dynOpts.length
                         ? '<div style="display:flex;gap:4px">' +
-                              '<select class="form-select form-select-sm sd-sw-filter-dyn" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Dynamic Value')) + '">' +
+                              '<select class="form-control form-control-sm sd-sw-filter-dyn" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Dynamic Value')) + '">' +
                                   '<option value="">— ' + esc(_sdT('Dynamic Value')) + ' —</option>' +
                                   dynOpts.map(function (d) { return '<option value="' + d[0] + '"' + (d[0] === dyn ? ' selected' : '') + '>' + esc(d[1]) + '</option>'; }).join('') +
                               '</select>' +
@@ -52550,7 +55520,7 @@ const StyleDesigner = (function () {
                 '</div>';
         });
         html +=
-            '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"' + keyAttr + '><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline theme-primary sd-sw-filter-add"' + (keyAttr ? '' : ' id="sd-sw-filter-add"') + ' data-sw-id="' + sid + '"' + keyAttr + '><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
             '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(note || _sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
         return html;
     }
@@ -52671,6 +55641,30 @@ const StyleDesigner = (function () {
                 ['__related_original_price',    _sdT('Price before the discount')]
             ]
         },
+        // The crumbs of the catalog path (pg_sw_list_crumb_sources()): the
+        // page's, so a list of them stands anywhere in either widget.
+        'catalog.crumbs': {
+            label: _sdT('Crumbs of the catalog path'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view', 'catalog_listing'],
+            rows: [
+                ['__crumb_label', _sdT('Crumb')],
+                ['__crumb_url',   _sdT('Crumb address')],
+                ['__crumb_kind',  _sdT('Kind of crumb (link, text, active)')]
+            ]
+        },
+        // The listing's active attribute filters
+        // (pg_sw_list_active_filter_sources()): the page's, so a list of
+        // them stands anywhere in the listing.
+        'catalog.active_filters': {
+            label: _sdT('Active attribute filters'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_listing'],
+            rows: [
+                ['__filter_chip_label', _sdT('Filter (attribute: option)')],
+                ['__filter_chip_url',   _sdT('Address without the filter')]
+            ]
+        },
         // The calendar grid sources (pg_sw_list_calendar_sources()): the
         // monthly and weekly views' heads, weeks, days and a day's events;
         // none takes a field.
@@ -52749,7 +55743,7 @@ const StyleDesigner = (function () {
                 ['__shipping_method',       _sdT('Shipping method / carrier')],
                 ['__arrival_date',          _sdT('Estimated delivery date')],
                 ['__ship_to_item_count',    _sdT('Number of items')]
-            ]
+            ].concat(SW_SHIP_TO_ENTITY_TOKENS)
         },
         'order.items': {
             label: _sdT('Items of the order'),
@@ -52767,8 +55761,10 @@ const StyleDesigner = (function () {
                 ['__item_image',             _sdT('Image URL')],
                 ['__item_image_alt',         _sdT('Image alt text')],
                 ['__item_url',               _sdT('Product detail page URL')],
-                ['__item_ship_to',           _sdT('This item\'s shipping address')]
-            ]
+                ['__item_ship_to',           _sdT('This item\'s shipping address')],
+                ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],
+                ['__item_has_gift_card',     _sdT('Has gift cards (1 or empty)')]
+            ].concat(SW_ORDER_LINE_ENTITY_TOKENS, SW_PRODUCT_ENTITY_TOKENS)
         },
         'order.parcels': {
             label: _sdT('Parcels of the order'),
@@ -52792,6 +55788,99 @@ const StyleDesigner = (function () {
                 ['__step_is_estimate', _sdT('Estimated (1 or empty)')]
             ]
         },
+        'order.item_forms': {
+            label: _sdT('Product forms of the item'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__form_key',        _sdT('Form in the order')],
+                ['__form_name',       _sdT('Form name')],
+                ['__form_number',     _sdT('Number of the form')],
+                ['__form_count',      _sdT('Number of forms')],
+                ['__form_has_legend', _sdT('Has a heading (1 or empty)')]
+            ]
+        },
+        'order.item_form_fields': {
+            label: _sdT('Fields of the product form'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__field_label',      _sdT('Label')],
+                ['__field_value_html', _sdT('Answer (HTML)')],
+                ['__field_info_html',  _sdT('Information (HTML)')],
+                ['__field_is_info',    _sdT('Information field (1 or empty)')]
+            ]
+        },
+        'order.item_gift_cards': {
+            label: _sdT('Gift cards of the item'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__gift_card_number',       _sdT('Number of the gift card')],
+                ['__gift_card_count',        _sdT('Number of gift cards')],
+                ['__gift_card_amount',       _sdT('Amount')],
+                ['__gift_card_email',        _sdT('Recipient Email')],
+                ['__gift_card_from_name',    _sdT('Your Name')],
+                ['__gift_card_message_html', _sdT('Message (HTML)')],
+                ['__gift_card_delivery',     _sdT('Delivery Date')]
+            ]
+        },
+        'order.returns': {
+            label: _sdT('Return requests of the order'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__return_id',                 _sdT('Return request ID')],
+                ['__return_title',              _sdT('Heading (Return request #12)')],
+                ['__return_asked',              _sdT('Date asked (Asked on …)')],
+                ['__return_status',             _sdT('Status code (requested, approved, rejected, shipped, received, refunded, closed)')],
+                ['__return_status_label',       _sdT('Status')],
+                ['__return_has_lines',          _sdT('Has products (1 or empty)')],
+                ['__return_reason',             _sdT('Reason')],
+                ['__return_customer_note',      _sdT('Your note')],
+                ['__return_customer_note_html', _sdT('Your note (HTML)')],
+                ['__return_decision_note',      _sdT('Note from the shop')],
+                ['__return_decision_note_html', _sdT('Note from the shop (HTML)')],
+                ['__return_how',                _sdT('How to send the goods back')],
+                ['__return_code',               _sdT('Return code')],
+                ['__return_tracking_number',    _sdT('Tracking number')],
+                ['__return_refund_deadline',    _sdT('Refund due by')],
+                ['__return_actions_html',       _sdT('The customer\'s moves: sent, withdraw (HTML)')]
+            ]
+        },
+        'order.return_lines': {
+            label: _sdT('Products of the return request'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__return_line_name', _sdT('Product name')],
+                ['__return_line_qty',  _sdT('Quantity')]
+            ]
+        },
+        'order.return_deliveries': {
+            label: _sdT('Deliveries a return may be asked for'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__return_delivery_id',         _sdT('Recipient ID')],
+                ['__return_delivery_label',      _sdT('Recipient')],
+                ['__return_delivery_several',    _sdT('The order has several deliveries (1 or empty)')],
+                ['__return_delivery_deadline',   _sdT('Return requests accepted until')],
+                ['__return_reason_options_html', _sdT('Choices of the reason (HTML)')]
+            ]
+        },
+        'order.return_delivery_lines': {
+            label: _sdT('Products of the delivery'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__return_item_id',        _sdT('Order item ID')],
+                ['__return_item_name',      _sdT('Product name')],
+                ['__return_item_ordered',   _sdT('Ordered')],
+                ['__return_item_left',      _sdT('How many may go back')],
+                ['__return_item_qty_label', _sdT('Label of the quantity box')]
+            ]
+        },
         'account.orders': {
             label: _sdT('Orders of the member'),
             arg: '', argRequired: false,
@@ -52809,7 +55898,7 @@ const StyleDesigner = (function () {
         'cart.items': {
             label: _sdT('Products in the cart'),
             arg: '', argRequired: false,
-            kinds: ['cart_link', 'shopping_cart'],
+            kinds: ['cart_link', 'shopping_cart', 'express_order'],
             rows: [
                 ['__item_id',                _sdT('Row ID (order_items.id)')],
                 ['__item_name',              _sdT('Product name (products.name)')],
@@ -52821,6 +55910,92 @@ const StyleDesigner = (function () {
                 ['__item_image_alt',         _sdT('Image alt text')],
                 ['__item_url',               _sdT('Product detail page URL')],
                 ['__item_remove_url',        _sdT('Remove from cart URL')]
+            ]
+        },
+        'cart.item_gift_cards': {
+            label: _sdT('Gift cards of the item'),
+            arg: '', argRequired: false,
+            kinds: ['shopping_cart'],
+            rows: [
+                ['__gift_card_number',        _sdT('Number of the gift card')],
+                ['__gift_card_count',         _sdT('Number of gift cards')],
+                ['__gift_card_field',         _sdT('Name of the card\'s fields')],
+                ['__gift_card_email',         _sdT('Recipient Email')],
+                ['__gift_card_from_name',     _sdT('From Name')],
+                ['__gift_card_message',       _sdT('Message')],
+                ['__gift_card_delivery_date', _sdT('Delivery Date')]
+            ]
+        },
+        'cart.item_schedule': {
+            label: _sdT('Payment schedule of the item'),
+            arg: '', argRequired: false,
+            kinds: ['shopping_cart'],
+            rows: [
+                ['__schedule_item',                _sdT('Number of the cart line')],
+                ['__schedule_period',              _sdT('Frequency')],
+                ['__schedule_payments',            _sdT('Number of Payments')],
+                ['__schedule_start',               _sdT('Start Date')],
+                ['__schedule_payments_required',   _sdT('Whether the number of payments is required (1 / empty)')],
+                ['__schedule_payments_help',       _sdT('The accepted number of payments')],
+                ['__schedule_start_shown',         _sdT('Whether the start date may be chosen (1 / empty)')],
+                ['__schedule_period_invalid',      _sdT('Error class of the frequency')],
+                ['__schedule_payments_invalid',    _sdT('Error class of the number of payments')],
+                ['__schedule_start_invalid',       _sdT('Error class of the start date')],
+                ['__schedule_period_options_html', _sdT('Choices of the frequency (HTML)')]
+            ]
+        },
+        // The express order's sources (pg_sw_list_checkout_sources()): rows
+        // under the whole order only; a cart list inside a recipients row
+        // lists that recipient's products.
+        'checkout.offers': {
+            label: _sdT('Offers applied to the order'),
+            arg: '', argRequired: false,
+            kinds: ['express_order'],
+            rows: [
+                ['__offer_code', _sdT('Offer code')],
+                ['__offer_text', _sdT('Offer text')]
+            ]
+        },
+        'checkout.suggestions': {
+            label: _sdT('Offers to suggest'),
+            arg: '', argRequired: false,
+            kinds: ['express_order'],
+            rows: [
+                ['__offer_text',         _sdT('Offer text')],
+                ['__offer_action_url',   _sdT('Offer page URL')],
+                ['__offer_action_label', _sdT('Offer button label')]
+            ]
+        },
+        'checkout.gift_cards': {
+            label: _sdT('Gift cards applied to the order'),
+            arg: '', argRequired: false,
+            kinds: ['express_order'],
+            rows: [
+                ['__gift_card_code',       _sdT('Gift card code (masked)')],
+                ['__gift_card_amount',     _sdT('Amount taken from the card')],
+                ['__gift_card_balance',    _sdT('Remaining Balance')],
+                ['__gift_card_remove_url', _sdT('Remove gift card URL')]
+            ]
+        },
+        'checkout.recipients': {
+            label: _sdT('Recipients in the cart'),
+            arg: '', argRequired: false,
+            kinds: ['express_order'],
+            rows: [
+                ['__ship_to_key',                    _sdT('Recipient in the order')],
+                ['__recipient_index',                _sdT('Recipient number')],
+                ['__recipient_name',                 _sdT('Recipient name')],
+                ['__recipient_address_first_name',   _sdT('Recipient First Name')],
+                ['__recipient_address_last_name',    _sdT('Recipient Last Name')],
+                ['__recipient_address_company',      _sdT('Company')],
+                ['__recipient_address_address_1',    _sdT('Address line 1')],
+                ['__recipient_address_address_2',    _sdT('Address line 2')],
+                ['__recipient_address_city',         _sdT('City')],
+                ['__recipient_address_state',        _sdT('State / Province')],
+                ['__recipient_address_zip_code',     _sdT('Zip Code')],
+                ['__recipient_address_country',      _sdT('Country')],
+                ['__recipient_address_phone_number', _sdT('Phone')],
+                ['__ship_to_item_count',             _sdT('Number of items')]
             ]
         },
         // The menu source (pg_sw_list_menu_sources()): the items under the
@@ -52838,11 +56013,45 @@ const StyleDesigner = (function () {
                 ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
                 ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
             ]
+        },
+        'security.passkeys': {
+            label: _sdT('Passkeys of the member'),
+            arg: '', argRequired: false,
+            kinds: ['account_security'],
+            rows: [
+                ['__passkey_id',        _sdT('Passkey identifier (the Rename and Remove buttons carry it)')],
+                ['__passkey_name',      _sdT('Passkey name')],
+                ['__passkey_added',     _sdT('Added (date)')],
+                ['__passkey_last_used', _sdT('Last used (relative time, else "Never")')],
+                ['__passkey_is_synced', _sdT('Synced to the member\'s other devices (1 or empty)')]
+            ]
+        },
+        // The page links of a paged widget (pg_sw_list_paging_sources()),
+        // keyed by the page shown: anywhere in the widget.
+        'paging.pages': {
+            label: _sdT('Page links'),
+            arg: '', argRequired: false,
+            kinds: ['form_list_view', 'catalog_listing', 'search_results'],
+            rows: [
+                ['__pager_number',     _sdT('Page number (empty for a gap)')],
+                ['__pager_url',        _sdT('Page address (empty for a gap and the page shown)')],
+                ['__pager_is_current', _sdT('The page shown (1 or empty)')],
+                ['__pager_is_gap',     _sdT('A gap between page numbers (1 or empty)')]
+            ]
         }
     };
 
     // What the canvas shows for a list row's value: one sample row.
     var _SD_LIST_ROW_PREVIEWS = {
+        __offer_code:          'WELCOME10',
+        __offer_text:          _sdT('10% off your first order'),
+        __offer_action_url:    '#',
+        __offer_action_label:  _sdT('More Info'),
+        __gift_card_code:      '************1234',
+        __gift_card_amount:    '₺25,00',
+        __gift_card_balance:   '₺50,00',
+        __gift_card_remove_url: '#',
+        __recipient_index:     '1',
         __value_text:  _sdT('Example'),
         __value_param: 'example',
         __file_name:   'document.pdf',
@@ -52858,6 +56067,9 @@ const StyleDesigner = (function () {
         __related_image_url: '',
         __related_price: '99.90',
         __related_original_price: '',
+        __crumb_label:   _sdT('Main Catalog'),
+        __crumb_url:     '#',
+        __crumb_kind:    'link',
         __weekday_name:  _sdT('Monday'),
         __weekday_short: _sdT('Mon'),
         __week_key:      '1',
@@ -52884,7 +56096,16 @@ const StyleDesigner = (function () {
         __menu_item_target: '',
         __menu_item_has_children: '',
         __menu_item_is_current: '',
-        __menu_item_holds_current: ''
+        __menu_item_holds_current: '',
+        __passkey_id:        '1',
+        __passkey_name:      _sdT('My phone'),
+        __passkey_added:     '20.10.2026',
+        __passkey_last_used: _sdT('2 days ago'),
+        __passkey_is_synced: '1',
+        __pager_number:      '1',
+        __pager_url:         '#',
+        __pager_is_current:  '',
+        __pager_is_gap:      ''
     };
 
     // The orders a list's rows take (props.order).
@@ -52931,6 +56152,25 @@ const StyleDesigner = (function () {
     }
 
     // The sources a widget kind offers, in their order (pg_sw_kind_lists()).
+    // The flags the rows of the lists `node` is drawn in answer, nearest
+    // list first: each list's "1 or empty" row values (__menu_item_has_children
+    // as menu_item_has_children), labelled with the list's name.
+    function _sdListRowFlags(node) {
+        var out = [];
+        var seen = {};
+        _sdListsAbove(node).forEach(function (l) {
+            var src = SW_LIST_SOURCES[l.props.source];
+            if (!src) return;
+            src.rows.forEach(function (r) {
+                var name = String(r[0]).replace(/^__/, '');
+                if (seen[name] || !/_(is|has|holds)_/.test(r[0])) return;
+                seen[name] = true;
+                out.push([name, src.label + ': ' + r[1]]);
+            });
+        });
+        return out;
+    }
+
     function _sdKindLists(kind) {
         return Object.keys(SW_LIST_SOURCES).filter(function (s) { return SW_LIST_SOURCES[s].kinds.indexOf(kind) !== -1; });
     }
@@ -52956,7 +56196,8 @@ const StyleDesigner = (function () {
     }
 
     // The row tokens of the lists `node` is drawn in, as { token, label },
-    // the nearest list's first; a token a nearer list gives is that list's
+    // with cond: true on a yes/no value (offered as a condition only), the
+    // nearest list's first; a token a nearer list gives is that list's
     // (the site fills it so) and is not offered twice.
     function _sdListRowOptions(node) {
         var out = [], seen = {};
@@ -52965,19 +56206,19 @@ const StyleDesigner = (function () {
             (src ? src.rows : []).forEach(function (r) {
                 if (seen[r[0]]) return;
                 seen[r[0]] = true;
-                out.push({ token: r[0], label: r[1] });
+                out.push(r[2] === 'cond' ? { token: r[0], label: r[1], cond: true } : { token: r[0], label: r[1] });
             });
         });
         return out;
     }
 
     // The row tokens of the nearest list `node` is drawn in, as [token,
-    // label] pairs: the values a page link may take from the row
-    // (_pg_sw_page_link_walk() reads the nearest list alone).
+    // label] pairs: the values a page link may take from the row, a yes/no
+    // value left out (_pg_sw_page_link_walk() reads the nearest list alone).
     function _sdPageLinkRowTokens(node) {
         var list = _sdListsAbove(node)[0];
         var src = list ? SW_LIST_SOURCES[list.props.source] : null;
-        return src ? src.rows.slice() : [];
+        return src ? src.rows.filter(function (r) { return r[2] !== 'cond'; }) : [];
     }
 
     // The label of a list row token, or '' for any other token.
@@ -53000,11 +56241,15 @@ const StyleDesigner = (function () {
     // A new list of `source` from the palette: a list without its field
     // yet (the panel asks for it) around one row, a badge showing the value
     // or a link opening the file. The row is the designer's to restyle.
+    /* @pg-site-output */
     function _sdListStarter(source) {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
+        if (source === 'catalog.crumbs') return _sdPartCatalogCrumbs(false)[0];
+        if (source === 'catalog.active_filters') return _sdPartCatalogActiveFilters()[0];
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
+        if (source.indexOf('checkout.') === 0) return _sdCheckoutListStarter(source, bs);
         if (source === 'menu.children') {
             return createNode('semantic', { tag: 'ul', cssClass: bs ? 'list-unstyled ps-3' : '', customName: _sdT('Sub-items of a menu item') }, [
                 createNode('loop_area', { source: source }, [
@@ -53012,6 +56257,17 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'a', cssClass: '', text: _sdT('Menu item'), href: '#', customName: _sdT('Link'),
                             _bindings: { href: '__menu_item_url', text: '__menu_item_name' } })
                     ])
+                ])
+            ]);
+        }
+        if (source === 'paging.pages') return _sdPagingListStarter(bs);
+        if (source === 'security.passkeys') {
+            return createNode('loop_area', { source: source }, [
+                createNode('semantic', { tag: 'div', cssClass: bs ? 'list-group-item d-flex flex-wrap align-items-center gap-2' : '', customName: _sdT('Passkey') }, [
+                    createNode('semantic', { tag: 'span', cssClass: bs ? 'fw-semibold' : '', text: _sdT('My phone'), customName: _sdT('Passkey name'),
+                        _bindings: { text: '__passkey_name' } }),
+                    createNode('semantic', { tag: 'span', cssClass: bs ? 'small text-body-secondary' : '', text: '20.10.2026', customName: _sdT('Added (date)'),
+                        _bindings: { text: '__passkey_added' } })
                 ])
             ]);
         }
@@ -53038,6 +56294,7 @@ const StyleDesigner = (function () {
     // badge and the cancellation's reason. The member's orders: a list
     // group of links, a "Cancelled" badge on a cancelled one. Every word is
     // the designer's to restyle or translate.
+    /* @pg-site-output */
     function _sdOrderListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
             var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
@@ -53146,12 +56403,99 @@ const StyleDesigner = (function () {
         ])]);
     }
 
+    // A new express order list (pg_sw_list_checkout_sources()): the applied
+    // offers as a success alert's list, the suggestions as info alerts with
+    // a link shown only when the offer points to a page, the gift cards as a
+    // list group with a remove link, the recipients as cards holding a list
+    // of their products. Every word is the designer's to restyle or
+    // translate.
+    /* @pg-site-output */
+    function _sdCheckoutListStarter(source, bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var text = function (tag, cls, name, sample, token) {
+            return sem(tag, cls, name, { text: sample, _bindings: { text: token } });
+        };
+        var list = function (kids) { return createNode('loop_area', { source: source }, kids); };
+        if (source === 'checkout.offers') {
+            return sem('div', 'alert alert-success small', _sdT('Offers applied to the order'), {}, [
+                sem('div', 'fw-semibold mb-1', _sdT('Heading'), { text: _sdT('Applied Offers') }),
+                sem('ul', 'mb-0 ps-3', _sdT('Offers applied to the order'), {}, [list([
+                    text('li', '', _sdT('Offer text'), _sdT('10% off your first order'), '__offer_text')
+                ])])
+            ]);
+        }
+        if (source === 'checkout.suggestions') {
+            return sem('div', '', _sdT('Offers to suggest'), {}, [list([
+                sem('div', 'alert alert-info small mb-2', _sdT('Offer'), {}, [
+                    text('span', '', _sdT('Offer text'), _sdT('Add one more product for free shipping'), '__offer_text'),
+                    sem('a', 'alert-link ms-2', _sdT('Offer button label'), { text: _sdT('More Info'), href: '#',
+                        _bindings: { href: '__offer_action_url', text: '__offer_action_label', show_if: '__offer_action_url' },
+                        _bindParams: { show_if: { op: 'not_empty' } } })
+                ])
+            ])]);
+        }
+        if (source === 'checkout.gift_cards') {
+            return sem('ul', 'list-group mb-3', _sdT('Gift cards applied to the order'), {}, [list([
+                sem('li', 'list-group-item d-flex flex-wrap justify-content-between gap-2 small', _sdT('Gift Card'), {}, [
+                    sem('span', '', _sdT('Gift Card'), {}, [
+                        text('span', 'fw-semibold', _sdT('Gift card code (masked)'), '************1234', '__gift_card_code'),
+                        sem('span', 'text-body-secondary ms-2', _sdT('Remaining Balance'), {}, [
+                            sem('span', '', _sdT('Remaining Balance'), { text: _sdT('Remaining Balance') + ': ' }),
+                            text('span', '', _sdT('Remaining Balance'), '₺50,00', '__gift_card_balance')
+                        ])
+                    ]),
+                    sem('span', '', _sdT('Amount taken from the card'), {}, [
+                        sem('span', '', '-', { text: '-' }),
+                        text('span', '', _sdT('Amount taken from the card'), '₺25,00', '__gift_card_amount'),
+                        sem('a', 'ms-2', _sdT('Remove'), { text: _sdT('Remove'), href: '#', _bindings: { href: '__gift_card_remove_url' } })
+                    ])
+                ])
+            ])]);
+        }
+        var products = _sdOrderListStarter('cart.items', bs);
+        return sem('div', 'd-grid gap-3', _sdT('Recipients in the cart'), {}, [list([
+            sem('div', 'card', _sdT('Recipient'), {}, [
+                sem('div', 'card-header d-flex justify-content-between', _sdT('Recipient'), {}, [
+                    text('span', 'fw-semibold', _sdT('Recipient name'), _sdT('Recipient name'), '__recipient_name'),
+                    text('span', 'small text-body-secondary', _sdT('City'), _sdT('City'), '__recipient_address_city')
+                ]),
+                products
+            ])
+        ])]);
+    }
+
     // Whether a list of `source` draws nothing where it stands for want of
-    // its key: a list of the recipients or the steps inside a list of the
-    // recipients (they list the whole order alone).
+    // its key: a list of the recipients, the steps or the returns inside a
+    // list of the recipients (they list the whole order alone); an express
+    // order list but the cart's inside a list of its recipients.
     function _sdOrderListKeyless(source, node) {
-        if (source !== 'order.shipments' && source !== 'order.steps') return false;
+        if (source.indexOf('checkout.') === 0) {
+            return _sdListsAbove(node).some(function (l) { return l.props.source === 'checkout.recipients'; });
+        }
+        var key = _sdOrderItemListKey(source);
+        if (key) {
+            // An item's lists read the item they stand in: the items loop's
+            // row (the order's, the cart's) or a list of the items (the
+            // fields, a form's row).
+            return !_sdListsAbove(node).some(function (l) { return l.props.source === key; })
+                && ((key !== 'order.items' && key !== 'cart.items') || !_sdInMainLoopAt(node));
+        }
+        if (source !== 'order.shipments' && source !== 'order.steps' && source !== 'order.returns' && source !== 'order.return_deliveries') return false;
         return _sdListsAbove(node).some(function (l) { return l.props.source === 'order.shipments'; });
+    }
+
+    // For a list of an order item, the list whose row gives its key
+    // (order.items: the item, as the items loop's row does); '' for any
+    // other source.
+    function _sdOrderItemListKey(source) {
+        var keys = { 'order.item_forms': 'order.items', 'order.item_gift_cards': 'order.items', 'order.item_form_fields': 'order.item_forms',
+            'cart.item_gift_cards': 'cart.items', 'cart.item_schedule': 'cart.items',
+            'order.return_lines': 'order.returns', 'order.return_delivery_lines': 'order.return_deliveries' };
+        return keys.hasOwnProperty(source) ? keys[source] : '';
     }
 
     // A new calendar list. The month grid: a table, its heads from the days
@@ -53159,6 +56503,45 @@ const StyleDesigner = (function () {
     // (dimmed on a day of another month), a "Today" badge and its events as
     // links. The others: a list of their own rows, the days list with its
     // events. Every word is the designer's to restyle or translate.
+    // A new list of the page links: a Bootstrap pagination whose previous
+    // and next items show only when there is such a page (the widget's
+    // flags), around the list's row: a link, the page shown, or a gap, each
+    // picked by a condition on the row (pg_sw_list_paging_rows()).
+    /* @pg-site-output */
+    function _sdPagingListStarter(bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var when = function (token, op) {
+            return { _bindings: { show_if: token }, _bindParams: { show_if: { op: op } } };
+        };
+        var step = function (flag, token, text, name) {
+            return sem('li', 'page-item', name, { _bindings: { eo_visible_if: flag } }, [
+                sem('a', 'page-link', name, { text: text, href: '#', _attrs: [{ name: 'aria-label', value: name }], _bindings: { href: token } })
+            ]);
+        };
+        return sem('nav', 'mt-3', _sdT('Page links'), { _attrs: [{ name: 'aria-label', value: _sdT('Page navigation') }] }, [
+            sem('ul', 'pagination pagination-sm justify-content-center mb-0', _sdT('Page links'), {}, [
+                step('has_prev_page', '__prev_page_url', '\u00ab', _sdT('Previous')),
+                createNode('loop_area', { source: 'paging.pages' }, [
+                    sem('li', 'page-item', _sdT('Page link'), when('__pager_url', 'not_empty'), [
+                        sem('a', 'page-link', _sdT('Page link'), { text: '1', href: '#', _bindings: { href: '__pager_url', text: '__pager_number' } })
+                    ]),
+                    sem('li', 'page-item active', _sdT('The page shown'), when('__pager_is_current', 'not_empty'), [
+                        sem('span', 'page-link', _sdT('The page shown'), { text: '2', _attrs: [{ name: 'aria-current', value: 'page' }], _bindings: { text: '__pager_number' } })
+                    ]),
+                    sem('li', 'page-item disabled', _sdT('Gap'), when('__pager_is_gap', 'not_empty'), [
+                        sem('span', 'page-link', _sdT('Gap'), { text: '\u2026' })
+                    ])
+                ]),
+                step('has_next_page', '__next_page_url', '\u00bb', _sdT('Next'))
+            ])
+        ]);
+    }
+
+    /* @pg-site-output */
     function _sdCalendarListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
             var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
@@ -53232,6 +56615,7 @@ const StyleDesigner = (function () {
     // as a table of name and value, the products bought together as cards
     // in a grid (the list inside its row, at most four shown). Pictures
     // carry the product's short description as their text.
+    /* @pg-site-output */
     function _sdProductListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
             var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
@@ -53283,9 +56667,12 @@ const StyleDesigner = (function () {
         return (kind === 'submitted_forms_list' || kind === 'form_list' || kind === 'blog_list') ? 'form_list_view' : kind;
     }
 
-    // Whether a list in a widget of `kind` must sit in the main loop: in a
-    // list of records only the record template fills it.
-    function _sdListNeedsMainLoop(kind) {
+    // Whether a list of `source` in a widget of `kind` must sit in the main
+    // loop: in a list of records only the record template fills it. The
+    // crumbs, the active filters and the page links are the page's, filled
+    // anywhere.
+    function _sdListNeedsMainLoop(kind, source) {
+        if (source === 'catalog.crumbs' || source === 'catalog.active_filters' || source === 'paging.pages') return false;
         return kind === 'form_list_view' || kind === 'catalog_listing';
     }
 
@@ -53333,13 +56720,15 @@ const StyleDesigner = (function () {
         var kind = _sdListWidgetKind(sid);
         if (!kind) return false;
         if (_sdKindLists(kind).indexOf(source) === -1 && !(list && _isInsideSystemWidget(list) === sid)) return false;
-        if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(target)) return false;
+        if (_sdListNeedsMainLoop(kind, source) && !_sdInMainLoopAt(target)) return false;
         // The calendar's grid lists read the calendar, not an event: never
         // in the event loop.
         if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
         // The order and cart lists read the order or the cart, not an item
-        // row: never in the items loop.
-        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(target)) return false;
+        // row: never in the items loop, but for the lists of an item.
+        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(target) && !_sdOrderItemListKey(source)) return false;
+        // The passkeys are the account's, not a device row's.
+        if (kind === 'account_security' && _sdInMainLoopAt(target)) return false;
         var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : _sdListStarterDepth(source));
         return depth <= SW_LIST_MAX_DEPTH;
     }
@@ -53423,10 +56812,14 @@ const StyleDesigner = (function () {
         }
         var kind = _sdListWidgetKind(_isInsideSystemWidget(node));
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
-        if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
+        if (_sdListNeedsMainLoop(kind, spec.source) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
-        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
-        if (_sdOrderListKeyless(spec.source, node)) return { off: true, text: _sdT('{var}: inside a list of the recipients, nothing is drawn', src.label) };
+        if ((kind === 'order_view' || kind === 'shopping_cart' || kind === 'express_order') && _sdInMainLoopAt(node) && !_sdOrderItemListKey(spec.source)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
+        if (_sdOrderListKeyless(spec.source, node)) {
+            return { off: true, text: _sdOrderItemListKey(spec.source)
+                ? _sdT('{var}: outside an item of the order, nothing is drawn', src.label)
+                : _sdT('{var}: inside a list of the recipients, nothing is drawn', src.label) };
+        }
         if (spec.source === 'calendar.events' && !_sdListsAbove(node).some(function (l) { return l.props.source === 'calendar.days'; })) {
             return { off: true, text: _sdT('{var}: outside a list of days, nothing is drawn', src.label) };
         }
@@ -53484,6 +56877,52 @@ const StyleDesigner = (function () {
     // Inside a list inside the record its row's values follow
     // (_sdListRowOptions()); inside a loop the row position tokens, in
     // every kind.
+    // The Properties row that puts a widget value inside an element's
+    // words: a list of the values; picking one adds it as an element of its
+    // own (a span bound to it) and writes its {var:N} at the end of the
+    // words, where the operator moves it. '' when it does not apply.
+    function _sdSentenceRow(n) {
+        if (!n || n.type !== 'semantic' || !_isInsideSystemWidget(n)) return '';
+        var tag = String(n.props.tag || '').toLowerCase();
+        if (['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr',
+             'pre','textarea','code','select','option','script','style'].indexOf(tag) !== -1) return '';
+        if (n.props._bindings && n.props._bindings.text) return '';
+        var isSentence = _sdIsSentence(n);
+        if (!isSentence && n.children && n.children.length) return '';
+        var seen = {};
+        var opts = '<option value="">' + esc(_sdT('Choose a value')) + '</option>';
+        _swBindTokenOptions(n).forEach(function (o) {
+            if (!o.token || seen[o.token]) return;
+            seen[o.token] = true;
+            opts += '<option value="' + esc(o.token) + '">' + esc(String(o.label || o.token).replace(/<[^>]*>/g, '')) + '</option>';
+        });
+        return '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Value in the text')) + '</label>' +
+            '<div class="sd-prop-control"><select class="form-control form-control-sm" data-sentence-add>' + opts + '</select>' +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(isSentence
+                ? _sdT('{var:1} in the text is where the first value stands, {var:2} the second. Move it where the words need it; a translation keeps it.')
+                : _sdT('The value becomes an element inside the words, styled on its own; the words stay one translatable sentence.')) +
+            '</div></div></div>';
+    }
+
+    // Adds `token` to the words of `n` (_sdSentenceRow()).
+    /* @pg-site-output */
+    function _sdSentenceAdd(n, token) {
+        if (!n || !token) return;
+        if (!n.children) n.children = [];
+        n.props._sentence = true;
+        var label = token;
+        _swBindTokenOptions(n).some(function (o) {
+            if (o.token !== token) return false;
+            label = String(o.label || token).replace(/<[^>]*>/g, '');
+            return true;
+        });
+        n.children.push(createNode('semantic', { tag: 'span', cssClass: '', text: '', customName: label, _bindings: { text: token } }, []));
+        var text = String(n.props.text || '');
+        var mark = '{var:' + n.children.length + '}';
+        n.props.text = (text.trim() === '') ? mark : text.replace(/\s+$/, '') + ' ' + mark;
+        _sdSharedMarkEdited(n);
+    }
+
     function _swBindTokenOptions(node) {
         var type = _getSystemWidgetRegionType(node);
         if (!type) return [];
@@ -53530,6 +56969,7 @@ const StyleDesigner = (function () {
         if (listRow) return listRow;
         if (type === 'form_list_view' || type === 'form_item_view') {
             if (token === SW_PAGE_LINK_TOKEN) return _sdT('Another page, with values from the record');
+            if (token === '__ref') return _sdT('A field of a referenced record'); // SW_REF_TOKEN
             // Names the settings once gave these values (see _bindAlias).
             if (token === '__detail_url' && type === 'form_list_view') token = 'form_item_view';
             if (token === '__not_found_message' && type === 'form_item_view') token = 'not_found';
@@ -53621,7 +57061,7 @@ const StyleDesigner = (function () {
             hint = note(_sdT('Sent to the new member\'s address once they have signed up. Nothing chosen: no welcome e-mail.'), false);
         }
         return row(reset ? _sdT('Password reset e-mail') : _sdT('Welcome e-mail'),
-            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + pageKey + '" data-sw-cfg-kind="page" data-sw-cfg-repaint="1">' + opts + '</select>' +
+            '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + pageKey + '" data-sw-cfg-kind="page" data-sw-cfg-repaint="1">' + opts + '</select>' +
             '<input type="text" class="form-control form-control-sm mt-1" data-sw-id="' + sid + '" data-sw-cfg="' + subjKey + '" maxlength="200"' +
                 ' value="' + esc(cfg[subjKey] || '') + '" placeholder="' + esc(reset ? _sdT('Reset Password') : _sdT('Welcome to {var}', _sdT('Site name'))) + '">' +
             hint +
@@ -53820,39 +57260,37 @@ const StyleDesigner = (function () {
     function sdChoose(opts) {
         opts = opts || {};
         return new Promise(function (resolve) {
-            if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+            if (!window.pgUI) {
                 var first = (opts.choices || [])[0];
                 resolve(window.confirm(opts.message || '') && first ? first.value : null);
                 return;
             }
-            var el = document.createElement('div');
-            el.className = 'modal fade';
+            var el = document.createElement('dialog');
+            el.className = 'dialog pg-dialog-centered';
             el.tabIndex = -1;
             el.innerHTML =
-                '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
-                    '<div class="modal-header py-2"><h6 class="modal-title mb-0">' + esc(opts.title || '') + '</h6>' +
-                        '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
-                    '<div class="modal-body small">' + (opts.html || esc(opts.message || '')) + '</div>' +
-                    '<div class="modal-footer py-2 flex-wrap">' +
+                '<div class="dialog-header py-3"><h6 class="dialog-title mb-0">' + esc(opts.title || '') + '</h6>' +
+                        '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>' +
+                    '<div class="dialog-body small">' + (opts.html || esc(opts.message || '')) + '</div>' +
+                    '<div class="dialog-footer py-3 flex-wrap">' +
                         (opts.choices || []).map(function (c) {
                             return '<button type="button" class="btn btn-sm btn-' + esc(c.variant || 'outline-secondary') + '" data-choice="' + esc(c.value) + '">' +
                                    (c.icon ? '<span class="bi ' + esc(c.icon) + ' me-1"></span>' : '') + esc(c.label) + '</button>';
                         }).join('') +
-                    '</div>' +
-                '</div></div>';
+                    '</div>';
             document.body.appendChild(el);
             var done = false, picked = null;
             el.addEventListener('click', function (e) {
                 var b = e.target.closest('[data-choice]');
                 if (!b) return;
                 picked = b.dataset.choice;
-                bootstrap.Modal.getOrCreateInstance(el).hide();
+                pgUI.dialog.hide(el);
             });
-            el.addEventListener('hidden.bs.modal', function () {
+            pgUI.dialog.on(el, 'hidden', function () {
                 if (!done) { done = true; resolve(picked); }
                 el.remove();
             });
-            bootstrap.Modal.getOrCreateInstance(el, { backdrop: 'static' }).show();
+            pgUI.dialog.show(el, { backdrop: 'static' });
         });
     }
 
@@ -53902,6 +57340,7 @@ const StyleDesigner = (function () {
     // throughout, real <table> for totals with token-bound value cells.
     // Designers see what visitors see at /siparis the moment they drop
     // the widget. KEEP IN SYNC with functions.php:_eo_default_designer_tree.
+    /* @pg-site-output */
     function _buildExpressOrderStarterTree() {
         function sem(tag, cssClass, childrenOrText, extra) {
             var p = { tag: tag };
@@ -54606,6 +58045,7 @@ const StyleDesigner = (function () {
     }
     // `view`: 'list' (a card per submission) or 'item' (the one record).
     // Returns the children of the record's body.
+    /* @pg-site-output */
     function _swFormFieldNodes(fields, view) {
         var isList     = (view === 'list');
         var titleField = _swFormTitleField(fields);
@@ -54701,6 +58141,7 @@ const StyleDesigner = (function () {
     // ── Account widget starters: shared pieces ──────────────────────────────
     // A labelled control in an mb-3 wrapper, as the member widget starters
     // draw them. `o`: { required, autocomplete, attrs, colCss }.
+    /* @pg-site-output */
     function _swAcctField(label, id, type, name, o) {
         o = o || {};
         var attrs = [{ name: 'type', value: type }, { name: 'name', value: name }];
@@ -54715,6 +58156,7 @@ const StyleDesigner = (function () {
     }
     // A <select> the server fills with the site's choices (countries, time
     // zones, salutations); the starter carries one empty option.
+    /* @pg-site-output */
     function _swAcctSelect(label, id, name, colCss) {
         return createNode('semantic', { tag: 'div', cssClass: ((colCss || '') + ' mb-3').trim(), customName: label }, [
             createNode('semantic', { tag: 'label', cssClass: 'form-label', text: label, customName: _sdT('Label'),
@@ -54725,14 +58167,17 @@ const StyleDesigner = (function () {
             ])
         ]);
     }
+    /* @pg-site-output */
     function _swAcctSubmit(text, name) {
         return createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: text,
             customName: name || _sdT('Save Button'), _attrs: [{ name: 'type', value: 'submit' }] });
     }
+    /* @pg-site-output */
     function _swAcctLinks(children) {
         return createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, children);
     }
     // What a visitor who is not signed in sees on a members-only account page.
+    /* @pg-site-output */
     function _swAcctSignedOut() {
         return createNode('semantic', { tag: 'div', cssClass: 'text-center', customName: _sdT('Signed Out'),
             _bindings: { eo_visible_if: 'is_signed_out' } }, [
@@ -54745,6 +58190,7 @@ const StyleDesigner = (function () {
     // The centred card every account widget starter sits in. A widget that
     // repeats nothing still carries an empty loop_area, hidden, as the member
     // widgets do.
+    /* @pg-site-output */
     function _swAcctPage(cardName, md, lg, body, hasLoop) {
         var col = [
             createNode('semantic', { tag: 'div', cssClass: 'card shadow-sm', customName: cardName }, [
@@ -54769,6 +58215,7 @@ const StyleDesigner = (function () {
     // script (pg_wishlist.js) shows it, filled for a saved product. A
     // product group's card has none. Starters only: the design templates
     // build their own cards.
+    /* @pg-site-output */
     function _sdWishlistHeart(action) {
         return createNode('component', { componentType: 'btn',
             btnElement: 'button', btnType: 'button',
@@ -54784,6 +58231,7 @@ const StyleDesigner = (function () {
 
     // `opts.formFields` — the chosen form's fields (list_form_fields rows).
     // Only the two form views read it; every other kind ignores it.
+    /* @pg-site-output */
     function _buildStarterTree(regionType, opts) {
         opts = opts || {};
         var _formFields = Array.isArray(opts.formFields) ? opts.formFields : null;
@@ -54881,13 +58329,9 @@ const StyleDesigner = (function () {
                 // py-4, as for the form list: room under the pagination.
                 return createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [
-                        // Breadcrumb — semantic <nav> bound to section=breadcrumb.
-                        // Backend keeps the wrapper, replaces children with the
-                        // breadcrumb HTML at render time. Designer can re-style
-                        // the wrapper freely.
-                        createNode('semantic', { tag: 'nav', cssClass: 'pg-sw-breadcrumb mb-3',
-                            customName: 'Breadcrumb',
-                            _bindings: { section: 'breadcrumb' } }),
+                        // Breadcrumb — a nav around the crumbs of the catalog
+                        // path (catalog.crumbs), each element designable.
+                        _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3')[0],
                         // Toolbar — Filters button + search form + Clear.
                         // Each piece is a real component bound to its action /
                         // value so the designer can re-style them individually.
@@ -54939,14 +58383,12 @@ const StyleDesigner = (function () {
                                     _bindings: { action: 'submit_search' } })
                             ])
                         ]),
-                        // Active filter chips — semantic <div> bound to
-                        // section=filter_chips. Backend fills with active
-                        // filter pinleri (chips) when any filter is active;
-                        // empty otherwise (designer can hide via CSS :empty).
+                        // Active filter chips: the active attribute
+                        // filters (catalog.active_filters) and the clear
+                        // button, each drawn only while a filter is active.
                         createNode('semantic', { tag: 'div',
                             cssClass: 'pg-sw-filter-chips mb-3',
-                            customName: _sdT('Filter Chips'),
-                            _bindings: { section: 'filter_chips' } }),
+                            customName: _sdT('Filter Chips') }, _sdPartCatalogFilterChipsInner()),
                         createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [loopArea]),
                         // Filters offcanvas — semantic <div> bound to
                         // section=filters_offcanvas. Backend stamps the
@@ -55119,7 +58561,9 @@ const StyleDesigner = (function () {
                         ]),
                         // Back-in-stock form: shown only while the product
                         // cannot be bought for want of stock (can_notify);
-                        // the address field (stock_notify_email) and the
+                        // the address field (stock_notify_email), the number
+                        // field (stock_notify_phone, drawn only while the
+                        // notice can go out as a text message) and the
                         // button (stock_notify) post stock_notify.php.
                         createNode('semantic', { tag: 'div', cssClass: 'mt-3',
                             customName: _sdT('Back-in-stock notice'),
@@ -55136,7 +58580,14 @@ const StyleDesigner = (function () {
                                 createNode('component', { componentType: 'btn',
                                     text: _sdT('Notify me'), variant: 'outline-primary', size: '', href: '#',
                                     _bindings: { action: 'stock_notify' } })
-                            ])
+                            ]),
+                            createNode('semantic', { tag: 'input',
+                                cssClass: 'form-control mt-2', customName: _sdT('Mobile number'),
+                                _attrs: [{ name: 'placeholder', value: _sdT('Mobile number for a text message (optional)') },
+                                         { name: 'aria-label', value: _sdT('Mobile number for a text message (optional)') }],
+                                _bindings: { value: 'stock_notify_phone' } }),
+                            createNode('content', { contentType: 'paragraph',
+                                text: _sdT('We will send you one message when it is back in stock.'), cssClass: 'form-text mb-0' })
                         ])
                     ])
                 ]);
@@ -55232,15 +58683,13 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
-                var loopArea = createNode('loop_area', {}, []);
-                // Breadcrumb at the top — designer can move/style/remove.
-                // Backend (catalog_item_view render) substitutes the
-                // <!--pg-breadcrumb-placeholder--> marker with the live
-                // "Ana Katalog → Group → Subgroup → Product" trail.
-                var breadcrumbNode = createNode('content', {
-                    contentType: 'breadcrumb',
-                    cssClass: 'mb-3'
-                });
+                // The products bought together at the end of the record, where
+                // the widget drew them when no layout placed them.
+                var loopArea = createNode('loop_area', {}, _sdPartCatalogCrossSell());
+                // Breadcrumb at the top — designer can move/style/remove:
+                // "Main Catalog → Group → Subgroup → Product", drawn by the
+                // catalog.crumbs list.
+                var breadcrumbNode = _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3')[0];
                 return createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [breadcrumbNode, starterRow, tabsSection, loopArea])
                 ]);
@@ -55999,27 +59448,12 @@ const StyleDesigner = (function () {
                                     text: _sdMoney(0), cssClass: 'fw-semibold mb-0',
                                     _bindings: { text: '__item_total' } })
                             ])
-                        ]),
-                        // What the visitor filled in at checkout — printed, not
-                        // editable. Empty (and therefore invisible) on ordinary
-                        // products; the server only fills these for rows whose
-                        // product carries an order form / is a gift card.
-                        // Sits OUTSIDE the flex strip on purpose: inside it the
-                        // block would become a flex item and squeeze the columns.
-                        //
-                        // Bound to a <div>, NOT a paragraph: the server emits a
-                        // <fieldset> here and a block element inside <p> makes
-                        // the browser close the <p> early — the designer's
-                        // classes stay on an empty shell while the content
-                        // orphans out beside it. Same pattern the express order
-                        // tree uses for __item_form_html.
-                        createNode('semantic', { tag: 'div', cssClass: '',
-                            customName: _sdT('Product Form Answers'),
-                            _bindings: { text: '__item_form_data_html' } }),
-                        createNode('semantic', { tag: 'div', cssClass: '',
-                            customName: _sdT('Gift Card Details'),
-                            _bindings: { text: '__item_gift_card_html' } })
-                    ])
+                        ])
+                        // What the visitor filled in at checkout and a gift
+                        // card's details, printed: the item form and gift card
+                        // parts, outside the flex strip so they do not squeeze
+                        // its columns.
+                    ].concat(_sdPartOrderItemForm(), _sdPartOrderItemGiftCard()))
                 ]);
 
                 // Totals breakdown row helper — label left, amount right.
@@ -56056,7 +59490,7 @@ const StyleDesigner = (function () {
                     ]);
                 };
 
-                return createNode('root', {}, [
+                var ovTree = createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [
 
                         // ── Cancel status alert (appears after redirect) ─
@@ -56144,13 +59578,11 @@ const StyleDesigner = (function () {
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
                                         createNode('semantic', { tag: 'div',
-                                            customName: _sdT('Return Requests (HTML)'),
-                                            _bindings: { text: '__returns' } }),
+                                            customName: _sdT('Return requests') }, _sdPartOrderReturnsList()),
                                         createNode('semantic', { tag: 'div', customName: _sdT('Return Request Form'),
                                             _bindings: { eo_visible_if: 'can_request_return' } }, [
                                             createNode('semantic', { tag: 'div',
-                                                customName: _sdT('Return Request Form (HTML)'),
-                                                _bindings: { text: '__return_form' } })
+                                                customName: _sdT('Return request form') }, _sdPartOrderReturnForm())
                                         ])
                                     ])
                                 ])
@@ -56380,9 +59812,9 @@ const StyleDesigner = (function () {
                                 // Card is wrapped in eo_visible_if='can_cancel': site
                                 // must have ECOMMERCE_ORDER_CANCEL_ALLOWED=true AND the
                                 // order must not be already cancelled or shipped.
-                                // The form HTML (CSRF, hidden order_id, reason
-                                // textarea, destructive submit, refund warning if
-                                // gateway payment) comes from __cancel_form token.
+                                // The form (reason, destructive submit, refund
+                                // warning on a gateway payment) is the cancel
+                                // form part; CSRF and order_id are the server's.
                                 createNode('semantic', { tag: 'div',
                                     cssClass: 'card border-danger', customName: _sdT('Order Cancellation Card'),
                                     _bindings: { eo_visible_if: 'can_cancel' } }, [
@@ -56391,19 +59823,20 @@ const StyleDesigner = (function () {
                                             text: _sdT('Cancel Order'), cssClass: 'mb-0 fw-semibold' })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
-                                        // <div> for the same reason as the
-                                        // cancel-status slot above: the token
-                                        // expands to a <form> with a textarea
-                                        // and a button.
+                                        // The cancel form part: the server gives
+                                        // it its address, hidden fields and the
+                                        // reason's name (pg_sw_order_cancel_wire()).
                                         createNode('semantic', { tag: 'div',
-                                            customName: _sdT('Cancellation Form (HTML)'),
-                                            _bindings: { text: '__cancel_form' } })
+                                            customName: _sdT('Cancellation form') }, _sdPartOrderCancelForm())
                                     ])
                                 ])
                             ])
                         ])
                     ])
                 ]);
+                // The legal documents and returns cards (_sdDefaultTails()).
+                _sdDefaultTails(ovTree, 'order_view', null);
+                return ovTree;
             }
 
             case 'express_order': {
@@ -56969,6 +60402,18 @@ const StyleDesigner = (function () {
                     return _swAcctField(label, asId + suffix, 'text', 'code', { required: true, autocomplete: 'one-time-code',
                         attrs: [{ name: 'inputmode', value: 'numeric' }, { name: 'maxlength', value: '20' }, { name: 'spellcheck', value: 'false' }] });
                 };
+                var asPassword = function (suffix) {
+                    return createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password'),
+                        _bindings: { eo_visible_if: 'passkey_asks_password' } }, [
+                        _swAcctField(_sdT('Current password'), asId + suffix, 'password', 'current_password',
+                            { required: true, autocomplete: 'current-password' })
+                    ]);
+                };
+                var asDetails = function (summary, kids) {
+                    return createNode('semantic', { tag: 'details', cssClass: '', customName: summary }, [
+                        createNode('semantic', { tag: 'summary', cssClass: 'small', text: summary, customName: _sdT('Summary') })
+                    ].concat(kids));
+                };
                 var asDevice = createNode('loop_area', {}, [
                     createNode('semantic', { tag: 'div', cssClass: 'list-group-item d-flex justify-content-between align-items-center gap-3', customName: _sdT('Device') }, [
                         createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Device Info') }, [
@@ -56985,6 +60430,29 @@ const StyleDesigner = (function () {
                                     _bindings: { eo_visible_if: 'device_online' } }),
                                 createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('2 days ago'), customName: _sdT('Last Used'),
                                     _bindings: { text: '__device_last_used', eo_visible_if: 'device_offline' } })
+                            ]),
+                            // A session opened with a passkey names it and
+                            // can end with it (pg_account_security_section()).
+                            createNode('semantic', { tag: 'div', cssClass: 'small', customName: _sdT('Signed In With Passkey'),
+                                _bindings: { eo_visible_if: 'device_by_passkey' } }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Signed in with the passkey'), customName: _sdT('Label') }),
+                                createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('My phone'), customName: _sdT('Value'),
+                                    _bindings: { text: '__device_passkey' } }),
+                                createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Remove Passkey'),
+                                    _bindings: { eo_visible_if: 'passkey_can_change' } }, [
+                                    asDetails(_sdT('Sign out and remove the passkey'), [
+                                        asForm(_sdT('Remove Form'), '', 'mt-2', [
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'small mb-2',
+                                                text: _sdT('Removing it also signs out the sessions it opened. Delete it from your device or password manager as well.') }),
+                                            asPassword('_dev_pk_password'),
+                                            createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Code'),
+                                                _bindings: { eo_visible_if: 'passkey_asks_code' } }, [
+                                                asCode(_sdT('Code from your authenticator app or a recovery code'), '_dev_pk_code')
+                                            ]),
+                                            asButton(_sdT('Sign out and remove the passkey'), 'passkey_remove', 'btn btn-sm btn-outline-danger', _sdT('Remove Button'))
+                                        ])
+                                    ])
+                                ])
                             ])
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'flex-shrink-0', customName: _sdT('Device Action') }, [
@@ -56993,6 +60461,117 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-secondary fw-normal', text: _sdT('Locked'), customName: _sdT('Locked Badge'),
                                 _bindings: { eo_visible_if: 'device_is_locked' } })
                         ])
+                    ])
+                ]);
+                // Passkeys: the list of the member's passkeys, each with a
+                // rename and a remove form, and the add form, which
+                // pg_passkey_add_form_script() keeps hidden until the
+                // browser can make passkeys. Mirrors
+                // pg_passkey_account_section().
+                var asPasskey = createNode('loop_area', { source: 'security.passkeys' }, [
+                    createNode('semantic', { tag: 'div', cssClass: 'list-group-item', customName: _sdT('Passkey') }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-2', customName: _sdT('Passkey name') }, [
+                            createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('My phone'), customName: _sdT('Name'),
+                                _bindings: { text: '__passkey_name' } }),
+                            createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-secondary fw-normal', text: _sdT('Synced'), customName: _sdT('Synced Badge'),
+                                _attrs: [{ name: 'title', value: _sdT('Kept in a password manager or cloud account, so your other devices can use it too.') }],
+                                _bindings: { show_if: '__passkey_is_synced' }, _bindParams: { show_if: { op: 'not_empty' } } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'small text-muted d-flex flex-wrap gap-3', customName: _sdT('Dates') }, [
+                            createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Added') }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Added'), customName: _sdT('Label') }),
+                                createNode('semantic', { tag: 'span', cssClass: '', text: '20.10.2026', customName: _sdT('Value'),
+                                    _bindings: { text: '__passkey_added' } })
+                            ]),
+                            createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Last used') }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Last used'), customName: _sdT('Label') }),
+                                createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('2 days ago'), customName: _sdT('Value'),
+                                    _bindings: { text: '__passkey_last_used' } })
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-4 mt-2', customName: _sdT('Passkey Actions'),
+                            _bindings: { eo_visible_if: 'passkey_can_change' } }, [
+                            asDetails(_sdT('Rename'), [
+                                asForm(_sdT('Rename Form'), '', 'mt-2', [
+                                    _swAcctField(_sdT('Name'), asId + '_pk_name', 'text', 'name', {
+                                        attrs: [{ name: 'maxlength', value: '100' }, { name: 'value', value: '{{__passkey_name}}' }] }),
+                                    asButton(_sdT('Save'), 'passkey_rename', 'btn btn-sm btn-primary', _sdT('Rename Button'))
+                                ])
+                            ]),
+                            asDetails(_sdT('Remove'), [
+                                asForm(_sdT('Remove Form'), '', 'mt-2', [
+                                    createNode('content', { contentType: 'paragraph', cssClass: 'small mb-2',
+                                        text: _sdT('After removing it here, delete it from your device or password manager as well.') }),
+                                    asPassword('_pk_remove_password'),
+                                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Code'),
+                                        _bindings: { eo_visible_if: 'passkey_asks_code' } }, [
+                                        asCode(_sdT('Code from your authenticator app or a recovery code'), '_pk_remove_code')
+                                    ]),
+                                    asButton(_sdT('Remove'), 'passkey_remove', 'btn btn-sm btn-outline-danger', _sdT('Remove Button'))
+                                ])
+                            ])
+                        ])
+                    ])
+                ]);
+                var asPasskeys = createNode('semantic', { tag: 'div', cssClass: 'border-top pt-4 mt-4', customName: _sdT('Passkeys'),
+                    _bindings: { eo_visible_if: 'passkeys_shown' } }, [
+                    createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Passkeys'), cssClass: 'mb-2' }),
+                    createNode('content', { contentType: 'paragraph', cssClass: 'mb-3',
+                        text: _sdT('A passkey lets your fingerprint, face or screen lock, or a security key, stand in for the code from your authenticator app when you sign in.'),
+                        _bindings: { eo_visible_if: 'passkey_asks_code' } }),
+                    createNode('content', { contentType: 'paragraph', cssClass: 'mb-3',
+                        text: _sdT('A passkey lets your fingerprint, face or screen lock, or a security key, sign you in. Once the account has one, signing in with the password asks for it too.'),
+                        _bindings: { eo_visible_if: 'passkey_asks_email_code' } }),
+                    createNode('semantic', { tag: 'p', cssClass: 'mb-0', customName: _sdT('Passkey Count'),
+                        _bindings: { eo_visible_if: 'is_impersonated' } }, [
+                        createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Passkeys of this account:'), customName: _sdT('Label') }),
+                        createNode('semantic', { tag: 'span', cssClass: '', text: '2', customName: _sdT('Value'),
+                            _bindings: { text: '__passkey_count' } })
+                    ]),
+                    createNode('content', { contentType: 'paragraph', text: _sdT('This account has no passkey.'), cssClass: 'text-muted mb-3',
+                        _bindings: { eo_visible_if: 'no_passkeys' } }),
+                    createNode('semantic', { tag: 'div', cssClass: 'list-group mb-3', customName: _sdT('Passkey List'),
+                        _bindings: { eo_visible_if: 'has_passkeys' } }, [asPasskey]),
+                    createNode('content', { contentType: 'paragraph', text: _sdT('Passkeys cannot be used on this site.'), cssClass: 'text-muted mb-0',
+                        _bindings: { text: '__passkey_notice', eo_visible_if: 'passkey_unavailable' } }),
+                    createNode('content', { contentType: 'paragraph', text: _sdT('Turn on two-step verification first; a passkey then stands in for its code.'), cssClass: 'text-muted mb-0',
+                        _bindings: { eo_visible_if: 'passkey_needs_mfa' } }),
+                    createNode('content', { contentType: 'paragraph', text: _sdT('An account can keep at most 20 passkeys. Remove one first.'), cssClass: 'text-muted mb-0',
+                        _bindings: { text: '__passkey_notice', eo_visible_if: 'passkey_limit' } }),
+                    createNode('semantic', { tag: 'form', cssClass: '', customName: _sdT('Add Passkey Form'),
+                        _bindings: { action: 'passkey_add_form', eo_visible_if: 'passkey_can_add' } }, [
+                        createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Add a passkey'), cssClass: 'mb-2' }),
+                        _swAcctField(_sdT('Name'), asId + '_pk_add_name', 'text', 'name', {
+                            attrs: [{ name: 'maxlength', value: '100' }, { name: 'placeholder', value: _sdT('My phone') }] }),
+                        asPassword('_pk_add_password'),
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Code'),
+                            _bindings: { eo_visible_if: 'passkey_asks_code' } }, [
+                            asCode(_sdT('Code from your authenticator app or a recovery code'), '_pk_add_code')
+                        ]),
+                        // Without two-step verification: a code e-mailed to
+                        // the account. The field's name (email_code) is what
+                        // lets such an account add a passkey here.
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('E-mailed Code'),
+                            _bindings: { eo_visible_if: 'passkey_asks_email_code' } }, [
+                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('Code we e-mail you'), customName: _sdT('Label'),
+                                _attrs: [{ name: 'for', value: asId + '_pk_add_email_code' }] }),
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2', customName: _sdT('Code and Button') }, [
+                                createNode('semantic', { tag: 'input', cssClass: 'form-control w-auto', customName: _sdT('Code Field'),
+                                    _attrs: [{ name: 'type', value: 'text' }, { name: 'id', value: asId + '_pk_add_email_code' }, { name: 'name', value: 'email_code' },
+                                        { name: 'required', value: '' }, { name: 'inputmode', value: 'numeric' }, { name: 'autocomplete', value: 'one-time-code' },
+                                        { name: 'maxlength', value: '12' }, { name: 'spellcheck', value: 'false' }] }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary', text: _sdT('Send the code'), customName: _sdT('Send Button'),
+                                    _attrs: [{ name: 'type', value: 'button' }], _bindings: { action: 'passkey_send_code' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'form-text', customName: _sdT('Sent'),
+                                _attrs: [{ name: 'role', value: 'status' }, { name: 'data-pg-passkey-sent', value: '' }] }),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'small text-muted mt-2 mb-0',
+                                text: _sdT('Once you add a passkey, signing in with your password also asks for it. You get recovery codes for when the passkey is lost.') })
+                        ]),
+                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Add a passkey'), customName: _sdT('Add Button'),
+                            _attrs: [{ name: 'type', value: 'submit' }] }),
+                        createNode('semantic', { tag: 'div', cssClass: 'text-danger small mt-2', customName: _sdT('Message'),
+                            _attrs: [{ name: 'role', value: 'alert' }, { name: 'data-pg-passkey-message', value: '' }] })
                     ])
                 ]);
                 return _swAcctPage(_sdT('Account Security Card'), '10', '8', [
@@ -57117,7 +60696,8 @@ const StyleDesigner = (function () {
                                     asButton(_sdT('Turn off'), 'mfa_disable', 'btn btn-outline-danger', _sdT('Turn Off Button'))
                                 ])
                             ])
-                        ])
+                        ]),
+                        asPasskeys
                     ]),
                     _swAcctSignedOut()
                 ], true);
@@ -57470,6 +61050,92 @@ const StyleDesigner = (function () {
                                 _bindings: { href: '__cart_url' } })
                         ])
                     ])
+                ]);
+            }
+
+            case 'tag_cloud_region': {
+                // The keywords of a search results page as a row of links:
+                // the loop repeats the keywords in alphabetical order, each
+                // drawn by the link of its weight (1 used least, 5 used
+                // most), larger as the weight grows, as the classic cloud
+                // sizes them. Mirrors _render_system_widget_tag_cloud_region().
+                var tcSizes = ['fs-6', 'fs-5', 'fs-4', 'fs-3', 'fs-2'];
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'nav', cssClass: 'd-flex flex-wrap align-items-baseline column-gap-3 row-gap-1', customName: _sdT('Tag Cloud'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Tag Cloud') }],
+                        _bindings: { eo_visible_if: 'has_tags' } }, [
+                        createNode('loop_area', {}, [
+                            createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Keyword') }, tcSizes.map(function (cls, i) {
+                                return createNode('semantic', { tag: 'a', cssClass: cls + ' text-decoration-none', text: _sdT('Keyword'), href: '#',
+                                    customName: _sdT('Weight {var}', String(i + 1)),
+                                    _bindings: { href: '__tag_url', text: '__tag_name', show_if: '__tag_weight' },
+                                    _bindParams: { show_if: { op: 'eq', value: String(i + 1) } } });
+                            }))
+                        ])
+                    ])
+                ]);
+            }
+
+            case 'ad_region': {
+                // The ads of a region as a Bootstrap carousel: the loop
+                // repeats the ads (the server marks the first one active),
+                // the controls show with more than one ad, and the region's
+                // slideshow settings fill the carousel's data-bs-* values.
+                // Mirrors _render_system_widget_ad_region().
+                var arId = 'ads_' + Math.random().toString(36).slice(2, 7);
+                var arControl = function (dir, label) {
+                    return createNode('semantic', { tag: 'button', cssClass: 'carousel-control-' + dir, customName: label,
+                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + arId }, { name: 'data-bs-slide', value: dir }],
+                        _bindings: { eo_visible_if: 'has_several_ads' } }, [
+                        createNode('semantic', { tag: 'span', cssClass: 'carousel-control-' + dir + '-icon', customName: _sdT('Icon'),
+                            _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+                        createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', text: label, customName: _sdT('Label') })
+                    ]);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: 'carousel slide', id: arId, customName: _sdT('Ad Region'),
+                        _attrs: [{ name: 'data-bs-ride', value: '{{__ad_ride}}' }, { name: 'data-bs-interval', value: '{{__ad_interval}}' },
+                                 { name: 'data-bs-wrap', value: '{{__ad_wrap}}' }],
+                        _bindings: { eo_visible_if: 'has_ads' } }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'carousel-inner', customName: _sdT('Ads') }, [
+                            createNode('loop_area', {}, [
+                                createNode('semantic', { tag: 'div', cssClass: 'carousel-item', customName: _sdT('Ad') }, [
+                                    createNode('semantic', { tag: 'div', cssClass: '', text: _sdT('Ad content (HTML)'), customName: _sdT('Ad Content'),
+                                        _bindings: { text: '__ad_content_html' } }),
+                                    createNode('semantic', { tag: 'div', cssClass: 'carousel-caption d-none d-md-block', text: _sdT('Ad caption (HTML)'), customName: _sdT('Caption'),
+                                        _bindings: { text: '__ad_caption_html', eo_visible_if: 'ad_has_caption' } })
+                                ])
+                            ])
+                        ]),
+                        arControl('prev', _sdT('Previous')),
+                        arControl('next', _sdT('Next'))
+                    ])
+                ]);
+            }
+
+            case 'menu_sequence_region': {
+                // The pages before and after this one in a menu: two links
+                // at either end of a row, the previous one only when a page
+                // comes before. Mirrors
+                // _render_system_widget_menu_sequence_region().
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'nav', cssClass: 'd-flex justify-content-between align-items-center gap-3 my-4', customName: _sdT('Menu Sequence'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Previous and next page') }],
+                        _bindings: { eo_visible_if: 'in_sequence' } }, [
+                        createNode('semantic', { tag: 'a', cssClass: 'btn btn-outline-secondary d-inline-flex align-items-center gap-2', href: '#', customName: _sdT('Previous'),
+                            _attrs: [{ name: 'rel', value: 'prev' }],
+                            _bindings: { href: '__previous_url', eo_visible_if: 'has_previous' } }, [
+                            createNode('semantic', { tag: 'i', cssClass: 'bi bi-arrow-left', customName: _sdT('Icon'), _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+                            createNode('semantic', { tag: 'span', text: _sdT('Previous page name'), customName: _sdT('Label'), _bindings: { text: '__previous_name' } })
+                        ]),
+                        createNode('semantic', { tag: 'a', cssClass: 'btn btn-outline-secondary d-inline-flex align-items-center gap-2 ms-auto', href: '#', customName: _sdT('Next'),
+                            _attrs: [{ name: 'rel', value: 'next' }],
+                            _bindings: { href: '__next_url' } }, [
+                            createNode('semantic', { tag: 'span', text: _sdT('Next page name'), customName: _sdT('Label'), _bindings: { text: '__next_name' } }),
+                            createNode('semantic', { tag: 'i', cssClass: 'bi bi-arrow-right', customName: _sdT('Icon'), _attrs: [{ name: 'aria-hidden', value: 'true' }] })
+                        ])
+                    ]),
+                    createNode('loop_area', {}, [])
                 ]);
             }
 
@@ -57876,7 +61542,7 @@ const StyleDesigner = (function () {
                                             createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
                                                 customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
                                             createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
-                                                _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                                _bindings: { eo_visible_if: 'comment_has_rating' } }, _sdPartCommentStars()),
                                             createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
                                                 createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
                                                     _bindings: { text: '__comment_name' } }),
@@ -58054,7 +61720,7 @@ const StyleDesigner = (function () {
                                             _bindings: { text: '__comment_date' } })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'text-warning small mt-1', customName: _sdT('Stars'),
-                                        _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                        _bindings: { eo_visible_if: 'comment_has_rating' } }, _sdPartCommentStars()),
                                     createNode('semantic', { tag: 'p', cssClass: 'small mb-0 mt-1', text: _sdT('Comment text'), customName: _sdT('Excerpt'),
                                         _bindings: { text: '__comment_excerpt' } })
                                 ])
@@ -58082,6 +61748,7 @@ const StyleDesigner = (function () {
     //
     // (Future: drag-drop / delete invariants — cannot be deleted, cannot be
     //  moved outside the widget — to be added, following the loop_area pattern.)
+    /* @pg-site-output */
     function _ensureMessagesNode(tree) {
         if (!tree || !tree.children) return tree;
         var msgNode = createNode('content', { contentType: 'messages', cssClass: '' });
@@ -58116,7 +61783,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
@@ -58165,6 +61832,372 @@ const StyleDesigner = (function () {
             formId:     parseInt(cfg.custom_form_page_id || cfg.form_page_id || 0, 10) || 0
         };
     }
+
+    // ── Layout gallery ────────────────────────────────────────────────────
+    // The layouts a system widget can take: the default one and those of
+    // the other widgets of the same kind on this site. Try puts a copy on
+    // the canvas without marking anything unsaved; Keep makes it the
+    // widget's layout as one undo step; Cancel puts the old one back. A
+    // layout from another widget is copied with fresh node ids, never
+    // linked, and the widget's settings stay as they are.
+    var _sdLgState = null;   // { sid, original: json, label, key } while a layout is tried
+    var _sdLgSite  = {};     // sid → { kind, loading, items: [{ id, name, tree }] }
+    var _sdLgTpl   = {};     // sid → { kind, loading, items: [{ key, label, tree }] }
+    var _sdLgDrawing = false; // the gallery's own redraw is not an edit
+
+    function _sdLgApi(body, cb) {
+        var apiBase = (typeof path !== 'undefined' ? path : '') +
+                      (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
+        body.token = (typeof software_token !== 'undefined') ? software_token : '';
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', apiBase, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            var resp = null;
+            try { resp = JSON.parse(xhr.responseText); } catch (e) {}
+            cb(resp && resp.status === 'success' ? resp : null);
+        };
+        xhr.send(JSON.stringify(body));
+    }
+
+    function _sdLgCfg(sid) {
+        var cfg = null;
+        try { cfg = JSON.parse((_sharedCache[sid] && _sharedCache[sid].system_region_config) || 'null'); } catch (e) {}
+        return (cfg && typeof cfg === 'object') ? cfg : {};
+    }
+
+    function _sdLgFormId(cfg) {
+        return parseInt(cfg.custom_form_page_id || cfg.form_page_id || 0, 10) || 0;
+    }
+
+    // The sorted field names of a form, or of a custom form's controls.
+    function _sdLgNames(list) {
+        var out = [];
+        (list || []).forEach(function (f) { if (f && f.name) out.push(String(f.name).toLowerCase()); });
+        out.sort();
+        return out.filter(function (n, i) { return n !== out[i - 1]; }).join('|');
+    }
+
+    function _sdLgReId(nd) {
+        nd._id = gid();
+        if (Array.isArray(nd.children)) nd.children.forEach(_sdLgReId);
+        return nd;
+    }
+
+    // A stored tree read the way prefetchShared() reads one, so the copy
+    // matches what the canvas would draw for the other widget.
+    function _sdLgPrepare(json, kind, cfg) {
+        var t = null;
+        try { t = JSON.parse(json); } catch (e) {}
+        if (!t || typeof t !== 'object') return null;
+        _sdTreeObjects(t);
+        _normalizeToggleableShowState(t);
+        _sdMigrateStructuralBindings(t);
+        _cfMigrateWidgetTree(t, null);
+        if (_SW_NO_MESSAGES[kind]) _sdDropMessagesNodes(t);
+        _sdDefaultParts(t, kind, cfg);
+        return t;
+    }
+
+    // Reads the other widgets of this kind once per widget. Form views keep
+    // only widgets whose form has the same field names as this one's.
+    function _sdLgLoadSite(sid, kind) {
+        var have = _sdLgSite[sid];
+        if (have && have.kind === kind) return;
+        var entry = _sdLgSite[sid] = { kind: kind, loading: true, items: [] };
+        var done = function () {
+            entry.loading = false;
+            if (_sdLgSite[sid] !== entry || typeof renderProperties !== 'function') return;
+            _sdLgDrawing = true;
+            try { renderProperties(); } finally { _sdLgDrawing = false; }
+        };
+        _sdLgApi({ action: 'shared_component', sub_action: 'list' }, function (resp) {
+            var cands = [];
+            ((resp && resp.items) || []).forEach(function (it) {
+                var id = parseInt(it.id, 10);
+                if (!id || id === sid || !it.system_region_config) return;
+                var cfg = null;
+                try { cfg = JSON.parse(it.system_region_config); } catch (e) {}
+                if (_swKindOf(cfg) === kind) cands.push({ id: id, name: it.name || '', cfg: cfg });
+            });
+            cands = cands.slice(0, 40);
+            if (!cands.length) { done(); return; }
+            _sdLgApi({ action: 'shared_component', sub_action: 'prefetch',
+                       ids: cands.map(function (c) { return c.id; }) }, function (pre) {
+                var trees = {};
+                ((pre && pre.items) || []).forEach(function (it) { trees[parseInt(it.id, 10)] = it.tree_json; });
+                cands.forEach(function (c) {
+                    var t = trees[c.id] ? _sdLgPrepare(trees[c.id], kind, c.cfg) : null;
+                    if (!t || _isDefaultEmptyTree(t) || _swIsTemplatePlaceholder(t)) return;
+                    entry.items.push({ id: c.id, name: c.name, tree: t, formId: _sdLgFormId(c.cfg) });
+                });
+                if (kind !== 'form_list_view' && kind !== 'form_item_view') { done(); return; }
+                // Same field names, or the layout's bindings point nowhere.
+                var ids = [_sdLgFormId(_sdLgCfg(sid))];
+                entry.items.forEach(function (it) { if (ids.indexOf(it.formId) === -1) ids.push(it.formId); });
+                var left = ids.length;
+                ids.forEach(function (fid) {
+                    _fetchFormFields(fid, function () {
+                        if (--left) return;
+                        var mine = _sdLgNames(_formFieldsCache[ids[0]]);
+                        entry.items = entry.items.filter(function (it) {
+                            return it.formId > 0 && ids[0] > 0 && _sdLgNames(_formFieldsCache[it.formId]) === mine;
+                        });
+                        done();
+                    });
+                });
+            });
+        });
+    }
+
+    // The site layouts that fit this widget now: a custom form's controls
+    // are its fields, so only a layout with the same control names; never
+    // one equal to the widget's own, and each distinct layout once.
+    function _sdLgSiteItems(sid, kind) {
+        var entry = _sdLgSite[sid];
+        return (entry && entry.kind === kind) ? _sdLgFit(sid, kind, entry.items) : [];
+    }
+
+    function _sdLgFit(sid, kind, items) {
+        var cur = _sharedCache[sid] && _sharedCache[sid].tree;
+        if (_sdLgState && _sdLgState.sid === sid) {
+            try { cur = JSON.parse(_sdLgState.original); } catch (e) {}
+        }
+        var seen = {};
+        if (cur) seen[_sdSharedTreeJSON(_sdLgStrip(cur))] = true;
+        var mineNames = (kind === 'custom_form' && cur) ? _sdLgNames(_cfControls(cur)) : null;
+        return items.filter(function (it) {
+            if (mineNames !== null && _sdLgNames(_cfControls(it.tree)) !== mineNames) return false;
+            var key = _sdSharedTreeJSON(_sdLgStrip(it.tree));
+            if (seen[key]) return false;
+            seen[key] = true;
+            return true;
+        });
+    }
+
+    // The design's template, when it was made from one: the saved row's,
+    // else the one being opened.
+    function _sdLgTemplateId() {
+        var el = document.querySelector('[name="style_template"]');
+        var v = el ? String(el.value || '') : '';
+        if (!v && _design && _design.template && typeof _design.template.id === 'string') v = _design.template.id;
+        return v;
+    }
+
+    // The layouts the design's template ships for this kind
+    // (pg_sw_template_layouts()), once per widget. A form view keeps only
+    // those made for a form with the same field names as this one's.
+    function _sdLgLoadTemplate(sid, kind, tplId) {
+        var have = _sdLgTpl[sid];
+        if (have && have.kind === kind) return;
+        var entry = _sdLgTpl[sid] = { kind: kind, loading: true, items: [] };
+        var done = function () {
+            entry.loading = false;
+            if (_sdLgTpl[sid] !== entry || typeof renderProperties !== 'function') return;
+            _sdLgDrawing = true;
+            try { renderProperties(); } finally { _sdLgDrawing = false; }
+        };
+        var styleId = (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0;
+        _sdLgApi({ action: 'shared_component', sub_action: 'template_layouts', kind: kind,
+                   style_id: styleId, template: tplId }, function (resp) {
+            var cfg = _sdLgCfg(sid);
+            ((resp && resp.layouts) || []).forEach(function (l) {
+                var t = l && l.tree ? _sdLgPrepare(JSON.stringify(l.tree), kind, cfg) : null;
+                if (!t || _isDefaultEmptyTree(t)) return;
+                entry.items.push({ key: String(l.key), label: String(l.label || l.key), tree: t,
+                                   fields: Array.isArray(l.fields) ? _sdLgNames(l.fields.map(function (n) { return { name: n }; })) : null });
+            });
+            if (kind !== 'form_list_view' && kind !== 'form_item_view') { done(); return; }
+            var fid = _sdLgFormId(cfg);
+            _fetchFormFields(fid, function () {
+                var mine = fid ? _sdLgNames(_formFieldsCache[fid]) : null;
+                entry.items = entry.items.filter(function (it) { return mine !== null && it.fields === mine; });
+                done();
+            });
+        });
+    }
+
+    // A tree without its node ids, for comparing two layouts.
+    function _sdLgStrip(t) {
+        return JSON.parse(JSON.stringify(t, function (k, v) { return k === '_id' ? undefined : v; }));
+    }
+
+    // The section of the widget panel.
+    function _sdLgSectionHtml(sid, kind) {
+        _sdLgLoadSite(sid, kind);
+        var trying = (_sdLgState && _sdLgState.sid === sid) ? _sdLgState.key : '';
+        var rowHtml = function (key, name, icon) {
+            var on = (trying === key);
+            return '<div class="d-flex align-items-center gap-3 py-1 border-bottom">' +
+                       '<span class="bi ' + icon + ' fg-secondary"></span>' +
+                       '<span class="flex-grow-1 text-truncate" style="font-size:.78rem">' + esc(name) + '</span>' +
+                       (on
+                           ? '<span class="badge theme-primary">' + esc(_sdT('On the canvas')) + '</span>'
+                           : '<button type="button" class="btn btn-sm btn-outline theme-primary py-0" data-lg-try="' + esc(key) + '" data-sw-id="' + sid + '">' + esc(_sdT('Try')) + '</button>') +
+                   '</div>';
+        };
+        var head = function (text) {
+            return '<div class="text-uppercase fg-secondary mt-3 mb-1" style="font-size:.62rem;letter-spacing:.04em">' + esc(text) + '</div>';
+        };
+        var muted = function (text) {
+            return '<div class="fg-secondary py-1" style="font-size:.72rem">' + esc(text) + '</div>';
+        };
+        var h = head(_sdT('Default')) + rowHtml('default', _sdT('Default layout'), 'bi-stars');
+        // Only the template this design was made from: its layouts carry
+        // that template's styles.
+        var tplId = _sdLgTemplateId();
+        if (tplId) {
+            _sdLgLoadTemplate(sid, kind, tplId);
+            h += head(_sdT('From the template'));
+            var tEntry = _sdLgTpl[sid];
+            if (!tEntry || tEntry.loading) {
+                h += muted(_sdT('Loading…'));
+            } else {
+                var tItems = _sdLgFit(sid, kind, tEntry.items);
+                if (!tItems.length) h += muted(_sdT('The design\'s template has no layout for this widget that fits here.'));
+                tItems.forEach(function (it) { h += rowHtml('tpl:' + it.key, it.label, 'bi-grid-1x2'); });
+            }
+        }
+        h += head(_sdT('On this site'));
+        var entry = _sdLgSite[sid];
+        if (!entry || entry.loading) {
+            h += '<div class="fg-secondary py-1" style="font-size:.72rem">' + esc(_sdT('Loading…')) + '</div>';
+        } else {
+            var items = _sdLgSiteItems(sid, kind);
+            if (!items.length) h += '<div class="fg-secondary py-1" style="font-size:.72rem">' + esc(_sdT('No other widget of this kind has a layout that fits this one.')) + '</div>';
+            items.forEach(function (it) { h += rowHtml('site:' + it.id, it.name || ('#' + it.id), 'bi-window-stack'); });
+        }
+        h += '<div style="font-size:.66rem;color:#888;margin-top:6px">' +
+                 esc(_sdT('Try shows a layout on the canvas; nothing changes until you keep it. A layout from another widget is copied, and this widget\'s settings stay. Undo (Ctrl+Z) brings the previous layout back.')) +
+             '</div>';
+        return h;
+    }
+
+    // The bar at the foot of the window while a layout is tried.
+    function _sdLgBar() {
+        var bar = document.getElementById('sd-lg-bar');
+        if (!_sdLgState) { if (bar) bar.remove(); return; }
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'sd-lg-bar';
+            bar.setAttribute('role', 'status');
+            bar.className = 'd-flex align-items-center gap-3 px-5 py-3 rounded-4 shadow bg-black fg-white';
+            bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:1080;max-width:calc(100vw - 32px);font-size:.82rem';
+            document.body.appendChild(bar);
+        }
+        bar.innerHTML = '<span class="bi bi-eye"></span>' +
+            '<span class="text-truncate">' + esc(_sdT('Trying the layout: {var}', _sdLgState.label)) + '</span>' +
+            '<button type="button" class="btn btn-sm btn-solid theme-primary" data-lg-act="keep">' + esc(_sdT('Keep')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-light" data-lg-act="cancel">' + esc(_sdT('Cancel')) + '</button>';
+    }
+
+    function _sdLgRedraw() {
+        _sdLgBar();
+        _sdLgDrawing = true;
+        try {
+            if (typeof render === 'function') render();
+            if (typeof renderProperties === 'function') renderProperties();
+        } finally { _sdLgDrawing = false; }
+    }
+
+    function _sdLgShow(sid, key, label, newTree) {
+        var c = _sharedCache[sid];
+        if (!c || !newTree) return;
+        if (_sdLgState && _sdLgState.sid !== sid) _sdLgCancel(true);
+        if (!_sdLgState) _sdLgState = { sid: sid, original: JSON.stringify(c.tree) };
+        _sdLgState.key = key;
+        _sdLgState.label = label;
+        _sdLgReId(newTree);
+        if (_swKindOf(_sdLgCfg(sid)) === 'custom_form') _cfEnsureNames(newTree, null);
+        c.tree = newTree;
+        _sdLgRedraw();
+    }
+
+    function _sdLgTry(sid, key) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (_sdIsContentLevel()) { _sdContentNudge('shared'); return; }
+        if (!_sharedCache[sid]) {
+            sdToast(_sdT('The widget is not in the cache. Refresh the page and try again.'), 'error');
+            return;
+        }
+        var cfg = _sdLgCfg(sid), kind = _swKindOf(cfg);
+        if (key === 'default') {
+            var label = _sdT('Default layout');
+            var fid = _sdLgFormId(cfg);
+            // A form view with a form chosen starts from that form's fields.
+            if ((kind === 'form_list_view' || kind === 'form_item_view') && fid) {
+                _fetchFormFields(fid, function (fields) {
+                    _sdLgShow(sid, key, label, _buildStarterTree(kind, { formFields: fields || [] }));
+                });
+                return;
+            }
+            var t = _buildStarterTree(cfg.regionType || kind);
+            if (!t) { sdToast(_sdT('There is no default layout for this widget type.'), 'warning'); return; }
+            _sdLgShow(sid, key, label, t);
+            return;
+        }
+        if (String(key).indexOf('tpl:') === 0) {
+            var tk = String(key).slice(4);
+            var te = _sdLgTpl[sid];
+            var ti = te ? _sdLgFit(sid, kind, te.items).filter(function (x) { return x.key === tk; })[0] : null;
+            if (ti) _sdLgShow(sid, key, ti.label, JSON.parse(JSON.stringify(ti.tree)));
+            return;
+        }
+        var id = parseInt(String(key).replace('site:', ''), 10);
+        var it = _sdLgSiteItems(sid, kind).filter(function (x) { return x.id === id; })[0];
+        if (!it) return;
+        _sdLgShow(sid, key, it.name || ('#' + it.id), JSON.parse(JSON.stringify(it.tree)));
+    }
+
+    // Keep: the old layout goes into the undo history, the tried one stays.
+    function _sdLgKeep() {
+        var st = _sdLgState;
+        if (!st) return;
+        _sdLgState = null;
+        var c = _sharedCache[st.sid];
+        if (c) {
+            var tried = c.tree;
+            c.tree = JSON.parse(st.original);
+            saveState();
+            c.tree = tried;
+            _sharedDirty[st.sid] = true;
+            if (_swKindOf(_sdLgCfg(st.sid)) === 'custom_form') _cfEnsureNames(tried, st.sid);
+        }
+        _sdLgBar();
+    }
+
+    function _sdLgCancel(quiet) {
+        var st = _sdLgState;
+        if (!st) return false;
+        _sdLgState = null;
+        var c = _sharedCache[st.sid];
+        if (c) {
+            c.tree = JSON.parse(st.original);
+            var max = reindex(c.tree);
+            if (max > nodeIdCounter) nodeIdCounter = max;
+        }
+        if (quiet) _sdLgBar(); else _sdLgRedraw();
+        return true;
+    }
+
+    document.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest ? e.target.closest('[data-lg-try],[data-lg-act]') : null;
+        if (!t) return;
+        e.preventDefault();
+        if (t.hasAttribute('data-lg-try')) {
+            _sdLgTry(parseInt(t.getAttribute('data-sw-id'), 10), t.getAttribute('data-lg-try'));
+            return;
+        }
+        if (t.getAttribute('data-lg-act') === 'keep') {
+            var sid = _sdLgState && _sdLgState.sid;
+            _sdLgKeep();
+            if (typeof renderProperties === 'function') renderProperties();
+            if (sid) sdToast(_sdT('The layout was kept. Undo (Ctrl+Z) brings the previous one back.'), 'success');
+        } else {
+            _sdLgCancel();
+        }
+    });
 
     // Returns true when the cached tree has never been edited: just the bare
     // root → lone empty loop_area that _createSystemWidgetNode creates.
@@ -58588,6 +62621,7 @@ const StyleDesigner = (function () {
     // widgets are written whole, their loop areas as comment markers, so the
     // code view shows what the canvas shows. Without a sink nothing here
     // differs from before: generateHTML() passes none.
+    /* @pg-site-output */
     function _sdEmitNode(n, indent, base, sink) {
         var pad = '    '.repeat(indent);
         var h = '';
@@ -58652,6 +62686,20 @@ const StyleDesigner = (function () {
                     });
                     if (P.text) _wsInner += esc(P.text);
                     h += _wsInner + '</' + stg + '>\n';
+                } else if (_sdIsSentence(n)) {
+                    // A sentence with values on one line, its children in
+                    // their places (pg_sentence_html()).
+                    var _snInner = '';
+                    _sdSentenceLayout(n.props.text, (n.children || []).length).forEach(function (piece) {
+                        if (typeof piece !== 'number') { _snInner += esc(piece); return; }
+                        var c = n.children[piece - 1];
+                        var _snMark = sink ? sink.ranges.length : 0;
+                        var _snPart = _sdEmitNode(c, 0, base + h.length + _snInner.length, sink);
+                        var _snKept = _snPart.replace(/\n+$/, '');
+                        if (sink && sink.ranges[_snMark] && sink.ranges[_snMark].node === c) sink.ranges[_snMark].to -= (_snPart.length - _snKept.length);
+                        _snInner += _snKept;
+                    });
+                    h += _snInner + '</' + stg + '>\n';
                 } else {
                     h += '\n';
                     // Button/a honor textPosition — matches canvas virtual-text placement.
@@ -58687,7 +62735,7 @@ const StyleDesigner = (function () {
                 if (comp && comp.toHTML) {
                     var _pcChildren = '';
                     if (n.children) n.children.forEach(function(c) { _pcChildren += _sdEmitNode(c, indent + 1, _pcChildren.length, sink); });
-                    h += comp.toHTML(P, pad, _pcChildren);
+                    h += n.props.componentType === 'language_switcher' ? comp.toHTML(P, pad, _pcChildren) : _sdFxIntoFirstTag(comp.toHTML(P, pad, _pcChildren), n.props);
                     if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pcChildren, base);
                 }
                 break; }
@@ -58830,8 +62878,71 @@ const StyleDesigner = (function () {
         return out;
     }
 
-    // The id, the title and tooltip, then the Attributes panel's entries
-    // (`list`, the node's _attrs) of a content, semantic or grid node.
+    // A node's interaction (props._fx) with every field known and in
+    // range, or null without one. Twin of pg_fx_normalize()
+    // (includes/fn/designer_fx.php): the same fields, ranges and defaults.
+    // The lists are first-is-default; a number is [min, max, default].
+    function _sdFxSpec() {
+        return {
+            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax'],
+            triggers: ['view', 'load', 'hover', 'click'],
+            easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
+            numbers: {
+                duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0],
+                distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20]
+            }
+        };
+    }
+    function _sdFxNormalize(fx) {
+        if (!fx || typeof fx !== 'object' || typeof fx.effect !== 'string') return null;
+        var spec = _sdFxSpec(), effect = fx.effect.toLowerCase();
+        if (spec.effects.indexOf(effect) === -1) return null;
+        var num = function (name) {
+            var r = spec.numbers[name], v = fx[name];
+            if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '' || !isFinite(Number(v))) return r[2];
+            // PHP's round() rounds halves away from zero.
+            v = Number(v);
+            v = v < 0 ? -Math.round(-v) : Math.round(v);
+            return Math.max(r[0], Math.min(r[1], v));
+        };
+        var out = { effect: effect };
+        if (effect === 'sticky') { out.offset = num('offset'); return out; }
+        if (effect === 'parallax') { out.speed = num('speed'); return out; }
+        var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
+        var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
+        out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
+        out.duration = num('duration');
+        out.delay = num('delay');
+        out.easing = spec.easings.indexOf(easing) !== -1 ? easing : spec.easings[0];
+        if (effect !== 'fade') out.distance = num('distance');
+        if (out.trigger === 'load' || out.trigger === 'view') out.stagger = num('stagger');
+        if (out.trigger === 'view') out.repeat = !!fx.repeat;
+        return out;
+    }
+
+    // The data-pg-fx-* attributes of a node's interaction, '' without one:
+    // the effect, its trigger, then only the values that differ from
+    // pg_fx.src.js's defaults. Twin of pg_fx_attrs().
+    function _sdFxAttrs(p) {
+        var fx = _sdFxNormalize(p ? p._fx : null), spec = _sdFxSpec();
+        if (!fx) return '';
+        var out = ' data-pg-fx="' + fx.effect + '"';
+        if (fx.trigger) out += ' data-pg-fx-trigger="' + fx.trigger + '"';
+        ['duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed'].forEach(function (name) {
+            if (fx[name] === undefined) return;
+            if (name === 'easing') {
+                if (fx.easing !== spec.easings[0]) out += ' data-pg-fx-easing="' + fx.easing + '"';
+                return;
+            }
+            if (fx[name] !== spec.numbers[name][2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
+        });
+        if (fx.repeat) out += ' data-pg-fx-repeat';
+        return out;
+    }
+
+    // The id, the title and tooltip, the interaction, then the Attributes
+    // panel's entries (`list`, the node's _attrs) of a content, semantic or
+    // grid node.
     // `skip`: lower-case names the caller wrote itself; 'id' in it leaves
     // the id out. class, style and id are never written from the list.
     // Twin of _render_extra_attrs($props, $skip, true), less the search
@@ -58840,11 +62951,13 @@ const StyleDesigner = (function () {
     function _sdNodeExtraAttrs(p, list, skip) {
         var out = '';
         if (skip.indexOf('id') === -1 && p.id) out += ' id="' + esc(p.id) + '"';
-        out += _sdNodeTitleAttrs(p, list);
+        var fx = _sdFxAttrs(p);
+        out += _sdNodeTitleAttrs(p, list) + fx;
         (Array.isArray(list) ? list : []).forEach(function (a) {
             if (!a || !a.name) return;
             var name = String(a.name), lname = name.toLowerCase();
             if (lname === 'class' || lname === 'style' || lname === 'id' || skip.indexOf(lname) !== -1) return;
+            if (fx && (lname === 'data-pg-fx' || lname.indexOf('data-pg-fx-') === 0)) return;
             if (lname === 'data-pg-search-section' && p.id && p.searchSection) return;
             var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
             out += ' ' + esc(name) + '="' + esc(val) + '"';
@@ -58903,6 +63016,7 @@ const StyleDesigner = (function () {
     // `treeOverride`: another tree drawn with this page's frame (a published
     // revision, for the History panel's compare); the page's own tree
     // otherwise.
+    /* @pg-site-output */
     function generateHTML(styleName, additionalBodyClasses, treeOverride) {
         var root = treeOverride || tree;
         if (!root) return '';
@@ -58927,7 +63041,9 @@ const StyleDesigner = (function () {
                    '        <link rel="stylesheet" href="' + googleFontUrl(f) + '">\n';
         }).join('');
 
-        var code = '<!DOCTYPE html>\n\n<html lang="' + esc(_sdDocLang()) + '">\n\n    <head>\n\n        <meta charset="utf-8">\n\n        <title></title>\n\n' +
+        // A converted classic style's title (generate_style_code_from_tree()).
+        var rootTitle = (root.props && typeof root.props.title === 'string') ? root.props.title.trim() : '';
+        var code = '<!DOCTYPE html>\n\n<html lang="' + esc(_sdDocLang()) + '">\n\n    <head>\n\n        <meta charset="utf-8">\n\n        <title>' + esc(rootTitle) + '</title>\n\n' +
             '        <meta name="viewport" content="width=device-width, initial-scale=1">\n\n' +
             '        <meta_tags></meta_tags>\n\n        <stylesheet></stylesheet>\n\n' +
             (fontImports ? fontImports + '\n' : '') +
@@ -58995,6 +63111,7 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    /* @pg-site-output */
     function _sdThemeHeadHtml(indent) {
         return _sdThemeAssets().map(function (a) {
             return (indent || '') + (a.css
@@ -59204,7 +63321,7 @@ const StyleDesigner = (function () {
         var h = '<div class="sd-th-builder">' +
                     '<div class="sd-th-builder-title"><span class="bi bi-sliders me-1"></span>' + esc(_sdT('Your own look')) + '</div>' +
                     '<div class="sd-th-grid">' +
-                        '<label class="sd-th-field"><span>' + esc(_sdT('Start from')) + '</span><select class="form-select form-select-sm" data-th-lb="base">';
+                        '<label class="sd-th-field"><span>' + esc(_sdT('Start from')) + '</span><select class="form-control form-control-sm" data-th-lb="base">';
         (th.looks || []).forEach(function (l) {
             h += '<option value="' + _thAttr(l.key) + '"' + (st.base === l.key ? ' selected' : '') + '>' + esc(l.name) + '</option>';
         });
@@ -59212,7 +63329,7 @@ const StyleDesigner = (function () {
         var ctl = th.lookControls || {};
         Object.keys(ctl).forEach(function (k) {
             var def = ctl[k];
-            h += '<label class="sd-th-field"><span>' + esc(def.label) + '</span><select class="form-select form-select-sm" data-th-lb-ctl="' + _thAttr(k) + '">' +
+            h += '<label class="sd-th-field"><span>' + esc(def.label) + '</span><select class="form-control form-control-sm" data-th-lb-ctl="' + _thAttr(k) + '">' +
                      '<option value="">' + esc(_sdT('As in the look')) + '</option>';
             Object.keys(def.options || {}).forEach(function (o) {
                 h += '<option value="' + _thAttr(o) + '"' + (st.controls[k] === o ? ' selected' : '') + '>' + esc(def.options[o].label) + '</option>';
@@ -59225,7 +63342,7 @@ const StyleDesigner = (function () {
                     '<div class="sd-th-actions">' +
                         '<span class="sd-th-status" data-th-lb="status">' + esc(_sdT('The canvas shows the look as you change it.')) + '</span>' +
                         '<button type="button" class="btn btn-sm btn-outline-light" data-th-act="look-cancel">' + esc(_sdT('Cancel')) + '</button>' +
-                        '<button type="button" class="btn btn-sm btn-primary" data-th-act="look-save"><span class="bi bi-save me-1"></span>' + esc(_sdT('Save the look')) + '</button>' +
+                        '<button type="button" class="btn btn-sm btn-solid theme-primary" data-th-act="look-save"><span class="bi bi-save me-1"></span>' + esc(_sdT('Save the look')) + '</button>' +
                     '</div>' +
                 '</div>';
         return h;
@@ -59249,7 +63366,7 @@ const StyleDesigner = (function () {
                    '<div class="sd-th-actions">' +
                        '<span class="sd-th-status" data-th-pb="status"></span>' +
                        '<button type="button" class="btn btn-sm btn-outline-light" data-th-act="pal-cancel">' + esc(_sdT('Cancel')) + '</button>' +
-                       '<button type="button" class="btn btn-sm btn-primary" data-th-act="pal-save"><span class="bi bi-save me-1"></span>' + esc(_sdT('Save the palette')) + '</button>' +
+                       '<button type="button" class="btn btn-sm btn-solid theme-primary" data-th-act="pal-save"><span class="bi bi-save me-1"></span>' + esc(_sdT('Save the palette')) + '</button>' +
                    '</div>' +
                '</div>';
     }
@@ -59425,6 +63542,7 @@ const StyleDesigner = (function () {
     // Without widgetHtml: the page markup with the widget markers left in.
     // With it: the finished preview document. `raw` is a markup from an
     // earlier call without widgetHtml, so the page is not generated twice.
+    /* @pg-site-output */
     function _sdPreviewDocHtml(widgetHtml, raw) {
         var html;
         if (typeof raw === 'string') {
@@ -59590,7 +63708,7 @@ const StyleDesigner = (function () {
         html = _sdInsertBeforeBodyEnd(html, _pvJsInject);
 
         // The preview's own harness, ahead of the page's scripts.
-        html = html.replace('</head>', function () { return _sdPreviewHarness(html) + '</head>'; });
+        html = html.replace('</head>', function () { return _sdPreviewHarness(html) + _sdPreviewPlayHarness(_siteUrl) + '</head>'; });
 
         return html;
     }
@@ -59644,12 +63762,14 @@ const StyleDesigner = (function () {
     // Platform scripts a visitor page gets when its markup holds their
     // marker. The server's twins add the same file to the published page:
     // pg_theme_switcher_inject(), pg_bs_tips_inject() (its expression is
-    // pg_bs_tips_pattern()) and pg_scroller_inject() (pg_scroller_pattern()).
+    // pg_bs_tips_pattern()), pg_scroller_inject() (pg_scroller_pattern())
+    // and pg_fx_inject() (pg_fx_pattern()).
     // A new row here needs its server step too.
     var _SD_PAGE_SCRIPTS = [
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover)\b/i, file: 'assets/js/pg_bs_tips.js' },
-        { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' }
+        { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
+        { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the
@@ -59709,6 +63829,88 @@ const StyleDesigner = (function () {
         }
         return '    <script id="pg-preview-harness">' + js + '<\/script>\n';
     }
+
+    // The open tabs a Preview link plays, by lower-cased page name: the
+    // name typed on each tab (saved or not) first, then a renamed tab's
+    // saved name; '' is the home page's tab. Locked tabs do not open, so
+    // their links go to the site.
+    function _sdPreviewPlayMap() {
+        var map = {}, nameEl = document.getElementById('sd-page-name');
+        var add = function (name, key) {
+            name = String(name == null ? '' : name).trim().toLowerCase();
+            if (!Object.prototype.hasOwnProperty.call(map, name)) map[name] = key;
+        };
+        var open = _pages.filter(function (p) { return p && p.access !== 'locked'; });
+        open.forEach(function (p) {
+            var n = (p.key === _activeKey && nameEl) ? nameEl.value : p.page_name;
+            if (String(n || '').trim()) add(n, p.key);
+        });
+        open.forEach(function (p) { if (p.savedName) add(p.savedName, p.key); });
+        open.forEach(function (p) { if (p.page_home) add('', p.key); });
+        return map;
+    }
+
+    // The Preview as a prototype: a plain click on a link to a page of an
+    // open tab asks the editor to play that tab (_sdPreviewPlay()), any
+    // other web link opens the site in a new tab, so the preview window
+    // stays. A link one path segment below the site address is a page link.
+    // The hotspots button outlines the links (page links solid, site links
+    // dashed); its state lives in the window's sessionStorage, so it
+    // survives the live preview's reloads.
+    /* @pg-site-output */
+    function _sdPreviewPlayHarness(siteUrl) {
+        var json = function (v) { return JSON.stringify(v).replace(/</g, '\\u003c'); };
+        var js = '(function(){var S=' + json(siteUrl) + ',M=' + json(_sdPreviewPlayMap()) + ',C=' + json(_activeKey) + ',' +
+                'L=' + json(_sdT('Hotspots')) + ',T=' + json(_sdT('Outline the links you can click')) + ',K="pgPreviewHotspots";' +
+            'function link(e){if(!e.target||!e.target.closest)return null;var a=e.target.closest("a[href]");' +
+                'if(!a||(a.getAttribute("href")||"").charAt(0)==="#"||!/^https?:$/.test(a.protocol))return null;return a;}' +
+            'function tab(a){var u=a.href;if(u.indexOf(S)!==0)return null;' +
+                'var r=u.slice(S.length).split(/[?#]/)[0];if(r.indexOf("/")!==-1)return null;' +
+                'try{r=decodeURIComponent(r);}catch(x){}r=r.trim().toLowerCase();' +
+                'return Object.prototype.hasOwnProperty.call(M,r)?M[r]:null;}' +
+            'window.addEventListener("click",function(e){if(e.defaultPrevented||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;' +
+                'var a=link(e);if(!a)return;var k=tab(a);e.preventDefault();' +
+                'if(k!==null&&k===C){window.scrollTo(0,0);return;}' +
+                'if(k!==null&&window.opener){try{window.opener.postMessage({pgPreviewPlay:k},location.origin);return;}catch(x){}}' +
+                'window.open(a.href,"_blank","noopener");});' +
+            'function on(){try{return sessionStorage.getItem(K)==="1";}catch(x){return false;}}' +
+            'function mark(){var l=document.querySelectorAll("a[href]");for(var i=0;i<l.length;i++){var a=l[i];' +
+                'if(a.hasAttribute("data-bs-toggle")||!/^https?:$/.test(a.protocol)||(a.getAttribute("href")||"").charAt(0)==="#")continue;' +
+                'a.setAttribute("data-pg-pv",tab(a)!==null?"tab":"site");}}' +
+            'function show(b,v){document.documentElement.classList.toggle("pg-pv-hot",v);b.setAttribute("aria-pressed",v?"true":"false");' +
+                'b.style.background=v?"#0d6efd":"#fff";b.style.color=v?"#fff":"#212529";if(v)mark();}' +
+            'function init(){var st=document.createElement("style");' +
+                'st.textContent="html.pg-pv-hot a[data-pg-pv]{outline:2px solid rgba(13,110,253,.8)!important;outline-offset:2px!important}' +
+                    'html.pg-pv-hot a[data-pg-pv=site]{outline-style:dashed!important;outline-color:rgba(108,117,125,.9)!important}";' +
+                'document.head.appendChild(st);var b=document.createElement("button");b.type="button";b.id="pg-pv-hotspots";' +
+                'b.textContent=L;b.title=T;b.style.cssText="position:fixed;left:12px;bottom:12px;z-index:2147483647;' +
+                    'font:13px/1.2 system-ui,sans-serif;padding:6px 10px;border:1px solid #adb5bd;border-radius:6px;' +
+                    'box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer";' +
+                'b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var v=!on();' +
+                    'try{sessionStorage.setItem(K,v?"1":"0");}catch(x){}show(b,v);});' +
+                'document.body.appendChild(b);show(b,on());}' +
+            'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();' +
+            '})();';
+        return '    <script id="pg-preview-play">' + js + '<\/script>\n';
+    }
+
+    // A page link clicked in the Preview (_sdPreviewPlayHarness()): the
+    // editor opens that tab and the preview draws it at once, from the top.
+    function _sdPreviewPlay(key) {
+        var p = _pgPageByKey(key);
+        if (!p || p.access === 'locked') return;
+        if (key !== _activeKey) _pgTabsSwitch(key);
+        if (key !== _activeKey) return;
+        _sdLive.top = true;
+        clearTimeout(_sdLive.timer);
+        _sdLivePreviewRefresh();
+    }
+
+    window.addEventListener('message', function (e) {
+        if (!_sdPreviewWin || e.source !== _sdPreviewWin || e.origin !== location.origin) return;
+        var d = e.data;
+        if (d && typeof d.pgPreviewPlay === 'string') _sdPreviewPlay(d.pgPreviewPlay);
+    });
 
     // The request body of designer/preview_widgets for the system widgets
     // in a marked-up page, or null when the page has none.
@@ -59816,7 +64018,8 @@ const StyleDesigner = (function () {
     //     drawing the widgets queues exactly one more pass.
     // busy counts the preview_widgets requests in flight (the live pass and
     // an explicit Preview may overlap once).
-    var _sdLive = { timer: 0, busy: 0, again: false, sig: null, widgetHtml: null };
+    // top: the next document starts at the top (a page played from a link).
+    var _sdLive = { timer: 0, busy: 0, again: false, sig: null, widgetHtml: null, top: false };
 
     // Whether the preview window is still open; forgets it once closed.
     function _sdLivePreviewOpen() {
@@ -59876,11 +64079,13 @@ const StyleDesigner = (function () {
     // operator was reading. A window that has followed a link to another
     // site cannot be read; it is simply brought back to the preview.
     function _sdLivePreviewWrite(html) {
+        var top = _sdLive.top;
+        _sdLive.top = false;
         if (html === _sdPreviewSent) return;
         var w = _sdPreviewWin;
         var x = 0, y = 0, oldDoc = null;
         try {
-            if (w.location.href === _sdPreviewUrl) {
+            if (!top && w.location.href === _sdPreviewUrl) {
                 x = w.scrollX || 0;
                 y = w.scrollY || 0;
                 oldDoc = w.document;
@@ -60097,7 +64302,7 @@ const StyleDesigner = (function () {
         overlay.innerHTML =
             '<div class="sd-fr-modal" role="dialog" aria-label="' + esc(_sdT('Find and Replace')) + '">' +
                 '<div class="sd-fr-header">' +
-                    '<span class="bi bi-search me-2"></span>' + esc(_sdT('Find and Replace')) + '' +
+                    '<span class="bi bi-search me-3"></span>' + esc(_sdT('Find and Replace')) + '' +
                     '<button type="button" class="sd-fr-close" id="sd-fr-close" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg"></span></button>' +
                 '</div>' +
                 '<div class="sd-fr-body">' +
@@ -60199,7 +64404,7 @@ const StyleDesigner = (function () {
         overlay.innerHTML =
             '<div class="sd-note-modal" role="dialog" aria-modal="true">' +
                 '<div class="sd-note-header">' +
-                    '<span class="bi bi-chat-left-text me-2"></span>' +
+                    '<span class="bi bi-chat-left-text me-3"></span>' +
                     '<span class="sd-note-title">' + esc(_sdT('Note')) + ' — <em>' + typeLabel + '</em></span>' +
                     '<button type="button" class="sd-note-close bi bi-x-lg" id="sd-note-close" title="' + esc(_sdT('Close')) + '"></button>' +
                 '</div>' +
@@ -60658,7 +64863,7 @@ const StyleDesigner = (function () {
         overlay.innerHTML =
             '<div class="sd-fr-modal sd-rev-modal" role="dialog" aria-label="' + esc(_sdT('Compare revision')) + '">' +
                 '<div class="sd-fr-header">' +
-                    '<span class="bi bi-arrow-left-right me-2"></span>' + esc(_sdT('Revision #{var}', rev.revision_no)) + ' <span class="sd-rev-who">' + who + '</span>' +
+                    '<span class="bi bi-arrow-left-right me-3"></span>' + esc(_sdT('Revision #{var}', rev.revision_no)) + ' <span class="sd-rev-who">' + who + '</span>' +
                     '<div class="sd-rev-tabs" role="tablist">' +
                         '<button type="button" class="sd-rev-tab is-active" data-view="preview">' + esc(_sdT('Preview')) + '</button>' +
                         '<button type="button" class="sd-rev-tab" data-view="code">' + esc(_sdT('Code')) + '</button>' +
@@ -60807,6 +65012,8 @@ const StyleDesigner = (function () {
     // Returns false if validation found hard errors (caller should cancel form submit).
     // Returns true (or undefined) on success.
     function prepareFormData() {
+        // A tried layout is never saved: only Keep makes it the widget's.
+        _sdLgCancel(true);
         // D4 / D6: Validate + clean tree before serialising
         var vr = _validateTree(tree);
 
@@ -60942,6 +65149,33 @@ const StyleDesigner = (function () {
     // The flush the last prepareFormData() started; the AJAX save awaits it.
     var _sharedFlushPromise = null;
 
+    // A shared component opened on its own (edit_system_style.php
+    // ?component=): its one tab is never a page of the design.
+    function _sdComponentOnly() {
+        return !!(_design && _design.componentOnly);
+    }
+
+    // Save in that mode: the component and the ones placed in it, through
+    // the same flush a design save makes (content_update at content level);
+    // the design and its pages are not sent.
+    function _sdSaveComponentOnly(opts) {
+        _sdSharedCatchEdits();
+        Object.keys(_sharedCache).forEach(function (k) {
+            if (_sharedDirty[k] && _sharedCache[k] && _sharedCache[k].tree) _normalizeToggleableShowState(_sharedCache[k].tree);
+        });
+        var had = Object.keys(_sharedDirty).filter(function (k) { return !!_sharedDirty[k]; }).length;
+        _flushDirtyShared().then(function () {
+            var left = Object.keys(_sharedDirty).filter(function (k) { return !!_sharedDirty[k]; }).length;
+            if (left) {
+                if (typeof opts.onError === 'function') opts.onError();
+                return;
+            }
+            sdToast(esc(had ? _sdT('The shared component was saved.') : _sdT('There are no changes to save.')), had ? 'success' : 'info');
+            _pgTabsRender();
+            if (typeof opts.onSuccess === 'function') opts.onSuccess({});
+        });
+    }
+
     // AJAX save: serialise + POST the style_designer_form via fetch, surface
     // a Bootstrap toast (success/error), and keep the user on the page.
     // Replaces the legacy "Save → form submit → redirect to view_styles.php" flow.
@@ -60968,6 +65202,7 @@ const StyleDesigner = (function () {
             _abandon();
             return;
         }
+        if (_sdComponentOnly()) { _sdSaveComponentOnly(opts); return; }
 
         // Every tab is saved, but only the open one had its shared
         // components loaded. A shared_ref that is not in the cache counts
@@ -61026,6 +65261,7 @@ const StyleDesigner = (function () {
         // as the legacy submit handler. A `false` return means a hard error
         // already surfaced its own toast — bail out quietly.
         var _abandon = function () { if (typeof opts.onError === 'function') opts.onError(); };
+        _sdLgCancel(true);
         // Saving a draft is not publishing it, and the reply says which it
         // was. Read before the save serialises and flushes: one save writes
         // the whole design, so a change waiting on a page on the site (or in
@@ -61084,6 +65320,8 @@ const StyleDesigner = (function () {
                     _okDur = _liveToo ? 4500 : 2500;
                 }
                 sdToast(esc(_okMsg || _pgSavedMessage(res.data)) + ' <span class="bi bi-check2"></span>', 'success', _okDur);
+                // The canvas's classic system regions are drawn from the saved pages.
+                _sdLegacyRegionForget();
                 // Update last-modified statusbar label without a full page reload
                 var _lmLabel = document.getElementById('sd-last-modified-label');
                 if (_lmLabel && res.data.saved_ts && res.data.saved_by) {
@@ -61212,6 +65450,7 @@ const StyleDesigner = (function () {
 
     function _pgPageDirty(p) {
         if (!p) return false;
+        if (_sdComponentOnly()) return false;             // never saved as a page
         if (p.page_id === 0) return true;                 // never saved
         if (p.key === _activeKey) _pgReadFieldsIntoPage(p);
         return _pgBaselineOf(p) !== p.baseline;
@@ -61237,6 +65476,11 @@ const StyleDesigner = (function () {
 
     // Replaces the old isDirty(): any page, or the shared design, changed.
     function isDirty() {
+        // A shared component opened on its own: only the component is saved.
+        if (_sdComponentOnly()) {
+            _sdSharedCatchEdits();
+            return Object.keys(_sharedDirty).some(function (k) { return !!_sharedDirty[k]; });
+        }
         if (_styleBaseline !== null && _pgStyleJSON() !== _styleBaseline) return true;
         for (var i = 0; i < _pages.length; i++) if (_pgPageDirty(_pages[i])) return true;
         return false;
@@ -61283,18 +65527,17 @@ const StyleDesigner = (function () {
                 p[k] = (k === 'page_folder') ? (parseInt(el.value, 10) || 0) : el.value;
                 if (wasClean) p.baseline = _pgBaselineOf(p);
             }
-            // tagin draws its own chips from the input value; redraw them.
-            if (el.classList.contains('tagin') && typeof tagin === 'function') {
-                var sib = el.nextElementSibling;
-                if (sib && sib.classList.contains('tagin-wrapper')) sib.remove();
-                if (document.body.contains(el)) tagin(el);
-            }
         });
         _PG_CMT_FIELDS.forEach(function (k) {
             var el = document.querySelector('input[type="hidden"][name="' + k + '"]');
             if (!el) return;
             el.value = _PG_BOOL_FIELDS[k] ? (p[k] ? '1' : '0') : (p[k] == null ? '' : String(p[k]));
         });
+        // The keyword chips are drawn from their input; set() redraws them.
+        // Its change event reads every field back into the active page, so
+        // it runs only once all of them hold this page's values.
+        var kw = document.getElementById('pg_search_keywords');
+        if (kw && window.pgChips) pgChips.set(kw, pgChips.get(kw));
         _pgSyncDraftBox(p);
         // The page's meta tag rows are drawn from its hidden field.
         _sdMetaListRender('page');
@@ -61313,6 +65556,7 @@ const StyleDesigner = (function () {
         // code field follow it.
         _sdSettingsCodeSync('pg_page_custom_jsonld');
         _sdSettingsPageLabel(p.page_name);
+        _sdPageTypeSync(p);
         _sdSettingsRefresh();
     }
 
@@ -61343,7 +65587,9 @@ const StyleDesigner = (function () {
             // active tab carries the menu so the strip stays quiet; every
             // tab opens the same menu on right-click.
             var extra = '';
-            if (p.key === _activeKey) {
+            if (_sdComponentOnly()) {
+                extra = '';
+            } else if (p.key === _activeKey) {
                 extra = '<span class="sd-tab-menu" data-menu="' + esc(p.key) + '" title="' + esc(_sdT('Page options')) + '"><span class="bi bi-three-dots-vertical"></span></span>';
             } else if (p.page_id === 0) {
                 extra = '<span class="sd-tab-close" data-close="' + esc(p.key) + '" title="' + esc(_sdT('Remove')) + '">&times;</span>';
@@ -61403,7 +65649,7 @@ const StyleDesigner = (function () {
         if (count) count.textContent = _pages.length > 1 ? String(_pages.length) : '';
         var hidden = list.scrollWidth <= list.clientWidth + 1 && !list.querySelector('.sd-tab-folded');
         if (wrap.hidden !== hidden) {
-            if (hidden && wrap.classList.contains('show')) return;
+            if (hidden && pgUI.menu.isOpen(wrap.querySelector('[data-bs-toggle="dropdown"]'))) return;
             wrap.hidden = hidden;
         }
     }
@@ -61436,16 +65682,16 @@ const StyleDesigner = (function () {
         if (all && !all._pgBound) {
             all._pgBound = true;
             var filter = document.getElementById('sd-tabs-all-filter');
-            all.addEventListener('show.bs.dropdown', function () {
+            pgUI.menu.on(all, 'show', function () {
                 if (filter) filter.value = '';
                 _pgTabsAllFill();
             });
-            all.addEventListener('shown.bs.dropdown', function () {
+            pgUI.menu.on(all, 'shown', function () {
                 if (filter) filter.focus();
                 var act = all.querySelector('.sd-tabs-all-item.active');
                 if (act) act.scrollIntoView({ block: 'nearest' });
             });
-            all.addEventListener('hidden.bs.dropdown', function () { _pgTabsAllSync(); });
+            pgUI.menu.on(all, 'hidden', function () { _pgTabsAllSync(); });
             if (filter) {
                 filter.addEventListener('input', _pgTabsAllFill);
                 filter.addEventListener('keydown', function (e) {
@@ -61459,7 +65705,7 @@ const StyleDesigner = (function () {
                 var it = e.target.closest('.sd-tabs-all-item');
                 if (!it || it.disabled) return;
                 var btn = all.querySelector('[data-bs-toggle="dropdown"]');
-                if (btn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) bootstrap.Dropdown.getOrCreateInstance(btn).hide();
+                if (btn) pgUI.menu.hide(btn);
                 if (it.dataset.key !== _activeKey) _pgTabsSwitch(it.dataset.key);
             });
             window.addEventListener('resize', function () { _pgTabsAllSync(); });
@@ -61773,6 +66019,7 @@ const StyleDesigner = (function () {
         nodeIdCounter = next.nodeIdCounter || reindex(tree);
         selectedNode  = null;
         selectedNodes = [];
+        _sdCondCanvasState = '';
 
         _pgLoadPageIntoFields(next);
         _pgTabsRender();
@@ -62048,6 +66295,7 @@ const StyleDesigner = (function () {
     // cursor for the right-click path, where the strip has just been rebuilt
     // and there is no stable element to hang from.
     function _pgTabsOpenMenu(anchor, key, at) {
+        if (_sdComponentOnly()) return;
         _pgTabsCloseMenu();
         var p = _pgPageByKey(key);
         if (!p) return;
@@ -62059,8 +66307,8 @@ const StyleDesigner = (function () {
             return '<button type="button" class="sd-tab-popmenu-item' + (opts.danger ? ' danger' : '') + '" data-act="' + act + '"' +
                    (opts.group ? ' data-group="' + esc(opts.group) + '"' : '') +
                    (opts.disabled ? ' disabled title="' + esc(opts.title || '') + '"' : '') + '>' +
-                   (opts.color ? '<span class="sd-tab-color-dot me-2" data-color="' + esc(opts.color) + '" aria-hidden="true"></span>'
-                               : '<span class="bi ' + icon + ' me-2"></span>') + esc(label) + '</button>';
+                   (opts.color ? '<span class="sd-tab-color-dot me-3" data-color="' + esc(opts.color) + '" aria-hidden="true"></span>'
+                               : '<span class="bi ' + icon + ' me-3"></span>') + esc(label) + '</button>';
         };
         var lastHint = _sdT('The last page cannot be removed from its design. Delete the design instead.');
         var viewUrl = _pgPageViewUrl(p);
@@ -62188,6 +66436,7 @@ const StyleDesigner = (function () {
     // the menu). Enter / blur commit, Escape restores. The toolbar name box
     // and the page object follow, the same as typing in the box would.
     function _pgTabsRename(key) {
+        if (_sdComponentOnly()) return;
         key = key || _activeKey;
         var p = _pgPageByKey(key);
         var label = document.querySelector('.sd-tab[data-key="' + key + '"] .sd-tab-name');
@@ -62621,7 +66870,7 @@ const StyleDesigner = (function () {
         var folded = !!_pgTabGroupsCollapsed[gid];
         var item = function (act, icon, label) {
             return '<button type="button" class="sd-tab-popmenu-item" data-act="' + act + '">' +
-                   '<span class="bi ' + icon + ' me-2"></span>' + esc(label) + '</button>';
+                   '<span class="bi ' + icon + ' me-3"></span>' + esc(label) + '</button>';
         };
         var dots = _PG_TAB_GROUP_COLORS.map(function (c) {
             var name = _pgTabColorLabel(c);
@@ -63149,12 +67398,14 @@ const StyleDesigner = (function () {
     function _collabAvatarEl(person, editing) {
         var el = document.createElement('span');
         el.className = 'sd-presence-avatar' + (editing ? ' is-editing' : '');
-        if (person.avatar) {
+        // A picture of letters (data:image/svg+xml) is drawn as the letters
+        // themselves, the way the panel's Avatar draws them.
+        if (person.avatar && String(person.avatar).indexOf('data:image/svg+xml') !== 0) {
             var img = document.createElement('img');
             img.src = person.avatar; img.alt = '';
             el.appendChild(img);
         } else {
-            el.appendChild(document.createTextNode(_collabInitial(person.name || person.username)));
+            el.appendChild(document.createTextNode(person.initials ? String(person.initials) : _collabInitial(person.name || person.username)));
         }
         var dot = document.createElement('span');
         dot.className = 'sd-presence-dot';
@@ -63243,7 +67494,7 @@ const StyleDesigner = (function () {
                 '</span>' +
                 '<span class="sd-vm-actions">' +
                     (mine
-                        ? '<button type="button" class="btn btn-sm btn-warning py-0" id="sd-vm-takeover">' +
+                        ? '<button type="button" class="btn btn-sm btn-solid theme-warning py-0" id="sd-vm-takeover">' +
                               '<span class="bi bi-box-arrow-in-down me-1"></span>' + esc(_sdT('Take over the design')) +
                           '</button>'
                         : '') +
@@ -63498,8 +67749,8 @@ const StyleDesigner = (function () {
             if (locked) {
                 if (!note) {
                     note = document.createElement('div');
-                    note.className = 'alert alert-warning py-2 px-3 small mb-3 sd-page-locked-note';
-                    note.innerHTML = '<span class="bi bi-lock me-2"></span>' +
+                    note.className = 'alert theme-warning py-3 px-5 small mb-5 sd-page-locked-note';
+                    note.innerHTML = '<span class="bi bi-lock me-3"></span>' +
                         esc(_sdT('These settings belong to the page somebody else is editing right now, so they are locked until they move on.'));
                     pane.insertBefore(note, pane.firstChild);
                 }
@@ -63553,38 +67804,36 @@ const StyleDesigner = (function () {
         var id = 'sdLockedModal';
         var el = document.getElementById(id);
         if (!el) {
-            el = document.createElement('div');
+            el = document.createElement('dialog');
             el.id = id;
-            el.className = 'modal fade';
+            el.className = 'dialog pg-dialog-centered';
             el.tabIndex = -1;
             el.innerHTML =
-                '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
-                    '<div class="modal-header py-2">' +
-                        '<h6 class="modal-title mb-0"><span class="bi bi-eye me-2"></span>' +
+                '<div class="dialog-header py-3">' +
+                        '<h6 class="dialog-title mb-0"><span class="bi bi-eye me-3"></span>' +
                         esc(_sdT('View mode')) + '</h6>' +
-                        '<button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
+                        '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>' +
                     '</div>' +
-                    '<div class="modal-body small" id="sd-locked-body"></div>' +
-                    '<div class="modal-footer py-2">' +
-                        '<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' +
+                    '<div class="dialog-body small" id="sd-locked-body"></div>' +
+                    '<div class="dialog-footer py-3">' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' +
                             esc(_sdT('Understood')) + '</button>' +
-                        '<button type="button" class="btn btn-sm btn-warning" id="sd-locked-takeover" style="display:none">' +
+                        '<button type="button" class="btn btn-sm btn-solid theme-warning" id="sd-locked-takeover" style="display:none">' +
                             '<span class="bi bi-box-arrow-in-down me-1"></span>' + esc(_sdT('Take over the design')) +
                         '</button>' +
-                        '<button type="button" class="btn btn-sm btn-primary" id="sd-locked-comment">' +
+                        '<button type="button" class="btn btn-sm btn-solid theme-primary" id="sd-locked-comment">' +
                             '<span class="bi bi-chat-left-text me-1"></span>' + esc(_sdT('Add a note')) +
                         '</button>' +
-                    '</div>' +
-                '</div></div>';
+                    '</div>';
             document.body.appendChild(el);
             var btn = el.querySelector('#sd-locked-comment');
             if (btn) btn.addEventListener('click', function () {
-                bootstrap.Modal.getOrCreateInstance(el).hide();
+                pgUI.dialog.hide(el);
                 _collabOpenNote();
             });
             var tk = el.querySelector('#sd-locked-takeover');
             if (tk) tk.addEventListener('click', function () {
-                bootstrap.Modal.getOrCreateInstance(el).hide();
+                pgUI.dialog.hide(el);
                 _collabTakeOver();
             });
         }
@@ -63593,18 +67842,18 @@ const StyleDesigner = (function () {
         var body = el.querySelector('#sd-locked-body');
         if (body) {
             body.innerHTML = mine
-                ? '<p class="mb-2">' + esc(_sdT('This page is open for editing in another tab of yours.')) + '</p>' +
-                  '<p class="mb-2">' + esc(_sdT('Two tabs saving one page would overwrite each other, so this one is in view mode. You can take the page over here — then the other tab becomes the read-only one, and anything it has not saved stays there.')) + '</p>' +
-                  '<p class="mb-0 text-muted">' + esc(_sdT('Or simply continue in the other tab.')) + '</p>'
-                : '<p class="mb-2">' +
+                ? '<p class="mb-3">' + esc(_sdT('This page is open for editing in another tab of yours.')) + '</p>' +
+                  '<p class="mb-3">' + esc(_sdT('Two tabs saving one page would overwrite each other, so this one is in view mode. You can take the page over here — then the other tab becomes the read-only one, and anything it has not saved stays there.')) + '</p>' +
+                  '<p class="mb-0 fg-secondary">' + esc(_sdT('Or simply continue in the other tab.')) + '</p>'
+                : '<p class="mb-3">' +
                     esc(_sdT('This page is open for editing by ')) +
                     '<strong>' + esc(who) + '</strong>' +
                     esc(_sdT('.')) +
                   '</p>' +
-                  '<p class="mb-2">' + esc(_sdT('Two people saving one page would overwrite each other, so you are in view mode: the canvas is read-only and Publish is off for this page.')) + '</p>' +
-                  '<p class="mb-0 text-muted">' + esc(_sdT('You can still leave a note on any element — the same notes panel as always. When they move to another page, refresh and the page is yours.')) + '</p>';
+                  '<p class="mb-3">' + esc(_sdT('Two people saving one page would overwrite each other, so you are in view mode: the canvas is read-only and Publish is off for this page.')) + '</p>' +
+                  '<p class="mb-0 fg-secondary">' + esc(_sdT('You can still leave a note on any element — the same notes panel as always. When they move to another page, refresh and the page is yours.')) + '</p>';
         }
-        try { bootstrap.Modal.getOrCreateInstance(el).show(); } catch (e) {}
+        try { pgUI.dialog.show(el); } catch (e) {}
     }
 
     function _pgTabsOpenPicker() {
@@ -63612,9 +67861,9 @@ const StyleDesigner = (function () {
         var list    = document.getElementById('sd-pick-page-list');
         var filter  = document.getElementById('sd-pick-page-filter');
         if (!modalEl || !list) return;
-        list.innerHTML = '<div class="list-group-item bg-transparent text-muted small">' + esc(_sdT('Loading...')) + '</div>';
+        list.innerHTML = '<div class="list-group-item bg-transparent fg-secondary small">' + esc(_sdT('Loading...')) + '</div>';
         if (filter) filter.value = '';
-        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        var modal = pgUI.dialog.get(modalEl);
         modal.show();
 
         _pgApiPost('selectable_pages', { style_id: (_design && _design.styleId) || 0 }).then(function (res) {
@@ -63627,15 +67876,15 @@ const StyleDesigner = (function () {
                     return !q || sp.page_name.toLowerCase().indexOf(q) !== -1 || (sp.page_title || '').toLowerCase().indexOf(q) !== -1;
                 });
                 if (!rows.length) {
-                    list.innerHTML = '<div class="list-group-item bg-transparent text-muted small">' + esc(_sdT('There is no other visual designer page to add.')) + '</div>';
+                    list.innerHTML = '<div class="list-group-item bg-transparent fg-secondary small">' + esc(_sdT('There is no other visual designer page to add.')) + '</div>';
                     return;
                 }
                 list.innerHTML = rows.map(function (sp) {
-                    return '<button type="button" class="list-group-item list-group-item-action bg-transparent text-body sd-pick-page-row" data-page-id="' + sp.page_id + '">' +
-                           '<div class="d-flex justify-content-between align-items-center gap-2">' +
+                    return '<button type="button" class="list-group-item list-group-item-action bg-transparent fg-body sd-pick-page-row" data-page-id="' + sp.page_id + '">' +
+                           '<div class="d-flex justify-content-between align-items-center gap-3">' +
                            '<span><span class="fw-semibold">' + esc(sp.page_name) + '</span>' +
-                           (sp.page_title ? '<span class="text-muted small ms-2">' + esc(sp.page_title) + '</span>' : '') + '</span>' +
-                           (sp.current_style_name ? '<span class="badge text-bg-secondary fw-normal">' + esc(sp.current_style_name) + '</span>' : '') +
+                           (sp.page_title ? '<span class="fg-secondary small ms-3">' + esc(sp.page_title) + '</span>' : '') + '</span>' +
+                           (sp.current_style_name ? '<span class="badge theme-secondary fw-normal">' + esc(sp.current_style_name) + '</span>' : '') +
                            '</div></button>';
                 }).join('');
             };
@@ -63661,7 +67910,7 @@ const StyleDesigner = (function () {
                 });
             };
         }).catch(function () {
-            list.innerHTML = '<div class="list-group-item bg-transparent text-danger small">' + esc(_sdT('The list could not be fetched.')) + '</div>';
+            list.innerHTML = '<div class="list-group-item bg-transparent fg-danger small">' + esc(_sdT('The list could not be fetched.')) + '</div>';
         });
     }
 
@@ -63728,7 +67977,7 @@ const StyleDesigner = (function () {
             run._pgBound = true;
             run.addEventListener('click', _pgImportRun);
         }
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        pgUI.dialog.show(modalEl);
     }
 
     function _pgImportRun() {
@@ -63751,7 +68000,7 @@ const StyleDesigner = (function () {
         fd.append('framework_bootstrap', _sdUsesBootstrap() ? '1' : '0');
 
         if (run) { run.disabled = true; }
-        if (status) { status.style.display = ''; status.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>' + esc(_sdT('Importing…')); }
+        if (status) { status.style.display = ''; status.innerHTML = '<span class="spinner-border spinner-border-sm me-3"></span>' + esc(_sdT('Importing…')); }
 
         var url = (window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/designer_import.php';
         fetch(url, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
@@ -63760,14 +68009,14 @@ const StyleDesigner = (function () {
             if (run) run.disabled = false;
             if (!res.data || res.data.status !== 'success') {
                 var msg = (res.data && res.data.message) ? res.data.message : (_sdT('Import failed') + ' (' + res.status + ').');
-                if (status) status.innerHTML = '<span class="text-danger"><span class="bi bi-x-circle me-1"></span>' + esc(msg) + '</span>';
+                if (status) status.innerHTML = '<span class="fg-danger"><span class="bi bi-x-circle me-1"></span>' + esc(msg) + '</span>';
                 return;
             }
             _pgImportApply(res.data, projEl ? projEl.value : '');
         })
         .catch(function () {
             if (run) run.disabled = false;
-            if (status) status.innerHTML = '<span class="text-danger">' + esc(_sdT('Network error.')) + '</span>';
+            if (status) status.innerHTML = '<span class="fg-danger">' + esc(_sdT('Network error.')) + '</span>';
         });
     }
 
@@ -63899,41 +68148,37 @@ const StyleDesigner = (function () {
             var rows = groups.map(function (g, i) {
                 var preview = _pgImportText(g.nodes[0]).slice(0, 70);
                 var tag = (g.nodes[0].props && g.nodes[0].props.tag) || g.nodes[0].type;
-                return '<label class="list-group-item d-flex gap-2 align-items-start">' +
-                    '<input class="form-check-input flex-shrink-0 mt-1" type="checkbox" checked data-sd-imp-group="' + i + '">' +
+                return '<label class="list-group-item d-flex gap-3 align-items-start">' +
+                    '<input class="check flex-shrink-0 mt-1" type="checkbox" checked data-sd-imp-group="' + i + '">' +
                     '<span class="flex-grow-1 min-w-0">' +
                         '<span class="d-block fw-semibold">' + esc(_pgImportBlockName(g.nodes[0], '')) +
                             ' <code class="small">&lt;' + esc(tag) + '&gt;</code></span>' +
-                        '<span class="d-block small text-body-secondary">' + esc(_sdT('On {var} pages', Object.keys(g.pages).length)) +
+                        '<span class="d-block small fg-secondary">' + esc(_sdT('On {var} pages', Object.keys(g.pages).length)) +
                             (preview ? ' · ' + esc(preview) : '') + '</span>' +
                     '</span>' +
                 '</label>';
             }).join('');
-            var el = document.createElement('div');
-            el.className = 'modal fade';
+            var el = document.createElement('dialog');
+            el.className = 'dialog pg-dialog-centered dialog-scrollable';
             el.tabIndex = -1;
             el.setAttribute('role', 'dialog');
             el.setAttribute('aria-modal', 'true');
             el.setAttribute('aria-labelledby', 'sd-imp-shared-title');
             el.innerHTML =
-                '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">' +
-                    '<div class="modal-content">' +
-                        '<div class="modal-header">' +
-                            '<h5 class="modal-title" id="sd-imp-shared-title"><span class="bi bi-puzzle me-2" aria-hidden="true"></span>' + esc(_sdT('Make the repeated parts shared?')) + '</h5>' +
+                '<div class="dialog-header">' +
+                            '<h5 class="dialog-title" id="sd-imp-shared-title"><span class="bi bi-puzzle me-3" aria-hidden="true"></span>' + esc(_sdT('Make the repeated parts shared?')) + '</h5>' +
                         '</div>' +
-                        '<div class="modal-body">' +
-                            '<p class="small mb-3">' + esc(_sdT('These blocks are the same on more than one imported page. As shared components they are edited once and change on every page; left as they are, each page keeps its own copy.')) + '</p>' +
+                        '<div class="dialog-body">' +
+                            '<p class="small mb-5">' + esc(_sdT('These blocks are the same on more than one imported page. As shared components they are edited once and change on every page; left as they are, each page keeps its own copy.')) + '</p>' +
                             '<div class="list-group">' + rows + '</div>' +
                         '</div>' +
-                        '<div class="modal-footer">' +
-                            '<button type="button" class="btn btn-secondary" data-sd-imp="keep">' + esc(_sdT('Keep them on each page')) + '</button>' +
-                            '<button type="button" class="btn btn-primary" data-sd-imp="share">' + esc(_sdT('Make shared')) + '</button>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
+                        '<div class="dialog-footer">' +
+                            '<button type="button" class="btn btn-solid theme-secondary" data-sd-imp="keep">' + esc(_sdT('Keep them on each page')) + '</button>' +
+                            '<button type="button" class="btn btn-solid theme-primary" data-sd-imp="share">' + esc(_sdT('Make shared')) + '</button>' +
+                        '</div>';
             document.body.appendChild(el);
             var chosen = [];
-            var modal = new bootstrap.Modal(el, { backdrop: 'static', keyboard: false });
+            var modal = pgUI.dialog.get(el, { backdrop: 'static', keyboard: false });
             el.querySelector('[data-sd-imp="share"]').addEventListener('click', function () {
                 el.querySelectorAll('[data-sd-imp-group]').forEach(function (cb) {
                     if (cb.checked) chosen.push(groups[parseInt(cb.getAttribute('data-sd-imp-group'), 10)]);
@@ -63941,7 +68186,7 @@ const StyleDesigner = (function () {
                 modal.hide();
             });
             el.querySelector('[data-sd-imp="keep"]').addEventListener('click', function () { modal.hide(); });
-            el.addEventListener('hidden.bs.modal', function () {
+            pgUI.dialog.on(el, 'hidden', function () {
                 if (el.parentNode) el.parentNode.removeChild(el);
                 resolve(chosen);
             });
@@ -64004,7 +68249,7 @@ const StyleDesigner = (function () {
         var groups = (pages.length > 1) ? _pgImportFindShared(pages) : [];
         if (!groups.length) { _pgImportApplyPages(d, projectName, 0); return; }
         var im = document.getElementById('sdImportModal');
-        if (im) bootstrap.Modal.getOrCreateInstance(im).hide();
+        if (im) pgUI.dialog.hide(im);
         _pgImportAskShared(groups, projectName).then(function (chosen) {
             if (!chosen.length) return 0;
             return _pgImportMakeShared(chosen, pages, projectName).catch(function () {
@@ -64087,7 +68332,7 @@ const StyleDesigner = (function () {
                 if (!firstKey) firstKey = p.key;
             });
             var im = document.getElementById('sdImportModal');
-            if (im) bootstrap.Modal.getOrCreateInstance(im).hide();
+            if (im) pgUI.dialog.hide(im);
             if (firstKey) _pgTabsSwitch(firstKey); else _pgTabsRender();
             var summary = (d.pages || []).length + ' ' + _sdT('page(s)') + ', ' + added.css + ' CSS, ' + added.js + ' JS, ' + added.fonts + ' ' + _sdT('font(s)') +
                 (sharedMade ? ', ' + _sdT('{var} shared component(s)', sharedMade) : '');
@@ -64161,7 +68406,7 @@ const StyleDesigner = (function () {
                     '<p>' + esc(message || _sdT('The template could not be opened.')) + '</p>' +
                     '<div class="sd-tpl-prep-actions">' +
                         '<a class="btn btn-sm btn-outline-light" href="' + esc(back) + '">' + esc(_sdT('Back to the designs')) + '</a>' +
-                        '<button type="button" class="btn btn-sm btn-primary" data-sd-tpl-blank>' + esc(_sdT('Start with a blank page')) + '</button>' +
+                        '<button type="button" class="btn btn-sm btn-solid theme-primary" data-sd-tpl-blank>' + esc(_sdT('Start with a blank page')) + '</button>' +
                     '</div>';
                 box.hidden = false;
                 var blank = box.querySelector('[data-sd-tpl-blank]');
@@ -64394,7 +68639,7 @@ const StyleDesigner = (function () {
                 return;
             }
             _pgTabsPersistActive();
-            sdToast('<span class="spinner-border spinner-border-sm me-2"></span>' +
+            sdToast('<span class="spinner-border spinner-border-sm me-3"></span>' +
                     esc(_sdT('Reading the markup…')), 'info', 4000);
             _pgApiPost('import_paste', {
                 html: code,
@@ -64642,7 +68887,7 @@ const StyleDesigner = (function () {
     // asks first. Below, the form for a new link. A link always shows the
     // drafts as last saved.
     function _pgPrototypeShareDialog(startPageId) {
-        if (typeof bootstrap === 'undefined' || !bootstrap.Modal || !_pgPrototypeShareReady()) return;
+        if (!window.pgUI || !_pgPrototypeShareReady()) return;
         var styleId = _design.styleId;
         var state = { pages: [], durations: [], canShow: true };
         var when = function (unix) {
@@ -64650,43 +68895,41 @@ const StyleDesigner = (function () {
             try { return new Date(unix * 1000).toLocaleString(_sdLocale(), { dateStyle: 'medium', timeStyle: 'short' }); }
             catch (e) { return new Date(unix * 1000).toLocaleString(); }
         };
-        var el = document.createElement('div');
-        el.className = 'modal fade';
+        var el = document.createElement('dialog');
+        el.className = 'dialog dialog-lg pg-dialog-centered dialog-scrollable';
         el.tabIndex = -1;
         el.setAttribute('aria-labelledby', 'ps-title');
         el.innerHTML =
-            '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
-                '<div class="modal-header py-2"><h6 class="modal-title mb-0" id="ps-title"><span class="bi bi-share me-2" aria-hidden="true"></span>' + esc(_sdT('Share prototype')) + '</h6>' +
-                    '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
-                '<div class="modal-body small">' +
-                    '<p class="text-body-secondary mb-2">' + esc(_sdT('A link opens the saved drafts of this design as a clickable prototype, always as they were saved last.')) + '</p>' +
-                    '<div class="alert alert-success d-none" data-ps-made role="status"></div>' +
-                    '<div data-ps-list><div class="text-body-secondary py-2">' + esc(_sdT('Loading…')) + '</div></div>' +
-                    '<hr class="my-3">' +
-                    '<h6 class="mb-2">' + esc(_sdT('New link')) + '</h6>' +
+            '<div class="dialog-header py-3"><h6 class="dialog-title mb-0" id="ps-title"><span class="bi bi-share me-3" aria-hidden="true"></span>' + esc(_sdT('Share prototype')) + '</h6>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
+                '<div class="dialog-body small">' +
+                    '<p class="fg-secondary mb-3">' + esc(_sdT('A link opens the saved drafts of this design as a clickable prototype, always as they were saved last.')) + '</p>' +
+                    '<div class="alert theme-success d-none" data-ps-made role="status"></div>' +
+                    '<div data-ps-list><div class="fg-secondary py-3">' + esc(_sdT('Loading…')) + '</div></div>' +
+                    '<hr class="my-5">' +
+                    '<h6 class="mb-3">' + esc(_sdT('New link')) + '</h6>' +
                     '<form data-ps-form novalidate>' +
-                        '<div class="mb-2" role="radiogroup" aria-labelledby="ps-audience-label">' +
+                        '<div class="mb-3" role="radiogroup" aria-labelledby="ps-audience-label">' +
                             '<div class="form-label mb-1" id="ps-audience-label">' + esc(_sdT('Who can open it')) + '</div>' +
-                            '<label class="form-check"><input class="form-check-input" type="radio" name="ps-audience" value="anyone" checked>' +
-                                '<span class="form-check-label">' + esc(_sdT('Anyone who has the link')) + '</span></label>' +
-                            '<label class="form-check"><input class="form-check-input" type="radio" name="ps-audience" value="team">' +
-                                '<span class="form-check-label">' + esc(_sdT('The team: signed-in administrators, designers and managers')) + '</span></label>' +
+                            '<label class="form-field"><input class="radio" type="radio" name="ps-audience" value="anyone" checked>' +
+                                '<span class="">' + esc(_sdT('Anyone who has the link')) + '</span></label>' +
+                            '<label class="form-field"><input class="radio" type="radio" name="ps-audience" value="team">' +
+                                '<span class="">' + esc(_sdT('The team: signed-in administrators, designers and managers')) + '</span></label>' +
                         '</div>' +
-                        '<div class="row g-2 mb-2">' +
-                            '<div class="col-sm-6"><label class="form-label mb-1" for="ps-start">' + esc(_sdT('Start page')) + '</label>' +
-                                '<select class="form-select form-select-sm" id="ps-start" data-ps-start></select></div>' +
-                            '<div class="col-sm-6"><label class="form-label mb-1" for="ps-duration">' + esc(_sdT('Expires')) + '</label>' +
-                                '<select class="form-select form-select-sm" id="ps-duration" data-ps-duration></select></div>' +
+                        '<div class="row g-3 mb-3">' +
+                            '<div class="sm:col-6"><label class="form-label mb-1" for="ps-start">' + esc(_sdT('Start page')) + '</label>' +
+                                '<select class="form-control form-control-sm" id="ps-start" data-ps-start></select></div>' +
+                            '<div class="sm:col-6"><label class="form-label mb-1" for="ps-duration">' + esc(_sdT('Expires')) + '</label>' +
+                                '<select class="form-control form-control-sm" id="ps-duration" data-ps-duration></select></div>' +
                         '</div>' +
-                        '<div class="mb-2"><label class="form-label mb-1" for="ps-password">' + esc(_sdT('Password (optional)')) + '</label>' +
+                        '<div class="mb-3"><label class="form-label mb-1" for="ps-password">' + esc(_sdT('Password (optional)')) + '</label>' +
                             '<input type="password" class="form-control form-control-sm" id="ps-password" data-ps-password autocomplete="new-password" maxlength="128">' +
                             '<div class="form-text">' + esc(_sdT('6 to 128 characters. Give it to the people you share the link with; it is not shown again.')) + '</div></div>' +
-                        '<div class="text-danger mb-2 d-none" data-ps-error role="alert"></div>' +
-                        '<button type="submit" class="btn btn-sm btn-primary" data-ps-create><span class="bi bi-link-45deg me-1" aria-hidden="true"></span>' + esc(_sdT('Create link')) + '</button>' +
+                        '<div class="fg-danger mb-3 d-none" data-ps-error role="alert"></div>' +
+                        '<button type="submit" class="btn btn-sm btn-solid theme-primary" data-ps-create><span class="bi bi-link-45deg me-1" aria-hidden="true"></span>' + esc(_sdT('Create link')) + '</button>' +
                     '</form>' +
                 '</div>' +
-                '<div class="modal-footer py-2"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + esc(_sdT('Close')) + '</button></div>' +
-            '</div></div>';
+                '<div class="dialog-footer py-3"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' + esc(_sdT('Close')) + '</button></div>';
         document.body.appendChild(el);
 
         var listEl = el.querySelector('[data-ps-list]');
@@ -64741,17 +68984,17 @@ const StyleDesigner = (function () {
             navigator.clipboard.writeText(text).then(copied, function () { copyFailed(text, field); });
         };
         var addressBox = function (url) {
-            return '<div class="input-group input-group-sm mt-2">' +
+            return '<div class="input-group input-group-sm mt-3">' +
                        '<input type="text" class="form-control" readonly value="' + esc(url) + '" aria-label="' + esc(_sdT('Address')) + '">' +
-                       '<button type="button" class="btn btn-outline-secondary" data-ps-copy-url="' + esc(url) + '"><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy')) + '</button>' +
+                       '<button type="button" class="btn btn-outline theme-secondary" data-ps-copy-url="' + esc(url) + '"><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy')) + '</button>' +
                    '</div>';
         };
         var row = function (l) {
-            var badges = '<span class="badge ' + (l.audience === 'anyone' ? 'text-bg-warning' : 'text-bg-info') + ' me-1">' +
+            var badges = '<span class="badge ' + (l.audience === 'anyone' ? 'theme-warning' : 'theme-info') + ' me-1">' +
                              esc(l.audience === 'anyone' ? _sdT('Anyone who has it') : _sdT('Team')) + '</span>' +
-                         (l.password ? '<span class="badge text-bg-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
-                         (l.locked ? '<span class="badge text-bg-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
-                         (l.state === 'expired' ? '<span class="badge text-bg-dark me-1">' + esc(_sdT('Expired')) + '</span>' : '');
+                         (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
+                         (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
+                         (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '');
             var facts = [
                 _sdT('Starts at: {var}', l.start_page ? l.start_page + (l.start_first ? ' (' + _sdT('the first draft') + ')' : '') : '-'),
                 l.expires_at > 0 ? (l.state === 'expired' ? _sdT('Expired: {var}', when(l.expires_at)) : _sdT('Expires: {var}', when(l.expires_at))) : _sdT('Expires: never'),
@@ -64759,23 +69002,23 @@ const StyleDesigner = (function () {
                 l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
             ];
             var showable = state.canShow && l.can_show;
-            return '<li class="list-group-item px-2 py-2" data-ps-id="' + esc(String(l.id)) + '">' +
-                       '<div class="d-flex flex-wrap align-items-center gap-2">' +
-                           '<div class="me-auto">' + badges + '<code class="text-body-secondary">' + esc(l.hint) + '…</code></div>' +
+            return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '">' +
+                       '<div class="d-flex flex-wrap align-items-center gap-3">' +
+                           '<div class="me-auto">' + badges + '<code class="fg-secondary">' + esc(l.hint) + '…</code></div>' +
                            '<div class="btn-group btn-group-sm" role="group">' +
-                               (showable ? '<button type="button" class="btn btn-outline-secondary" data-ps-copy><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy address')) + '</button>' +
-                                           '<button type="button" class="btn btn-outline-secondary" data-ps-show><span class="bi bi-eye me-1" aria-hidden="true"></span>' + esc(_sdT('Show address')) + '</button>' : '') +
-                               '<button type="button" class="btn btn-outline-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>' +
+                               (showable ? '<button type="button" class="btn btn-outline theme-secondary" data-ps-copy><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy address')) + '</button>' +
+                                           '<button type="button" class="btn btn-outline theme-secondary" data-ps-show><span class="bi bi-eye me-1" aria-hidden="true"></span>' + esc(_sdT('Show address')) + '</button>' : '') +
+                               '<button type="button" class="btn btn-outline theme-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>' +
                            '</div>' +
                        '</div>' +
-                       '<div class="text-body-secondary mt-1">' + facts.map(esc).join(' · ') +
+                       '<div class="fg-secondary mt-1">' + facts.map(esc).join(' · ') +
                            (l.created_by_name ? ' · ' + esc(_sdT('Made by {var}', l.created_by_name)) : '') + '</div>' +
                        '<div data-ps-address></div>' +
                    '</li>';
         };
         var render = function (links) {
             if (!links.length) {
-                listEl.innerHTML = '<div class="text-body-secondary py-2">' + esc(_sdT('No links yet. Make one below.')) + '</div>';
+                listEl.innerHTML = '<div class="fg-secondary py-3">' + esc(_sdT('No links yet. Make one below.')) + '</div>';
                 return;
             }
             listEl.innerHTML = '<ul class="list-group">' + links.map(row).join('') + '</ul>';
@@ -64783,7 +69026,7 @@ const StyleDesigner = (function () {
         var load = function () {
             return _pgApiPost('prototype_links', { style_id: styleId }).then(function (res) {
                 if (!res || res.status !== 'success') {
-                    listEl.innerHTML = '<div class="text-danger py-2">' + esc((res && res.message) || _sdT('Sorry, we could not accept your request.')) + '</div>';
+                    listEl.innerHTML = '<div class="fg-danger py-3">' + esc((res && res.message) || _sdT('Sorry, we could not accept your request.')) + '</div>';
                     return;
                 }
                 state.pages = res.pages || [];
@@ -64792,7 +69035,7 @@ const StyleDesigner = (function () {
                 if (!startEl.options.length) fillPages();
                 fillDurations();
                 render(res.links || []);
-            }).catch(function () { listEl.innerHTML = '<div class="text-danger py-2">' + esc(_sdT('Network error.')) + '</div>'; });
+            }).catch(function () { listEl.innerHTML = '<div class="fg-danger py-3">' + esc(_sdT('Network error.')) + '</div>'; });
         };
         // The address is asked for again on each use, never kept here.
         var fetchAddress = function (id) {
@@ -64912,8 +69155,8 @@ const StyleDesigner = (function () {
                 errorEl.classList.remove('d-none');
             });
         });
-        el.addEventListener('hidden.bs.modal', function () { el.remove(); });
-        bootstrap.Modal.getOrCreateInstance(el).show();
+        pgUI.dialog.on(el, 'hidden', function () { el.remove(); });
+        pgUI.dialog.show(el);
         load();
     }
 
@@ -65143,7 +69386,7 @@ const StyleDesigner = (function () {
             text = _pgScheduleNote(p);
         }
         line.textContent = text;
-        line.classList.toggle('text-warning', warn);
+        line.classList.toggle('fg-warning', warn);
     }
 
     // The keys of the editor's save, as the panel writes a shortcut.
@@ -65163,7 +69406,7 @@ const StyleDesigner = (function () {
     // it, and on its own would add the browser's tooltip beside it.
     function _sdSetButtonTitle(el, text) {
         if (!el) return;
-        var pop = (window.bootstrap && bootstrap.Popover && bootstrap.Popover.getInstance) ? bootstrap.Popover.getInstance(el) : null;
+        var pop = window.pgUI ? pgUI.popover.find(el) : null;
         if (pop) {
             el.removeAttribute('title');
             el.setAttribute('data-bs-original-title', text);
@@ -65179,6 +69422,14 @@ const StyleDesigner = (function () {
     function _pgTabsSyncPublishButton() {
         var btn = document.getElementById('sd-ajax-save');
         if (!btn) return;
+        // A shared component opened on its own is saved, never published:
+        // the server wrote that label.
+        if (_sdComponentOnly()) {
+            var ctitle = _sdT('Saves the shared component.') + ' (' + _SD_SAVE_KEYS + ')';
+            if (!btn.classList.contains('sd-saving-blocked')) _sdSetButtonTitle(btn, ctitle);
+            btn.dataset.origTitle = ctitle;
+            return;
+        }
         var a = _pgActivePage();
         var draft = _pgDraftsReady() && !!(a && a.page_draft);
         var label = draft ? _sdT('Save') : _sdT('Publish');
@@ -65388,6 +69639,20 @@ const StyleDesigner = (function () {
         if (design && design.startAction) {
             setTimeout(function () { _pgStartAction(design.startAction); }, 400);
         }
+        // Ctrl+G on a page that draws a custom layout (?layout=1): its layout
+        // tab, where the classic page designer used to open. The parameter
+        // leaves the address so a reload opens the canvas.
+        if (design && design.openLayout) {
+            setTimeout(function () {
+                try {
+                    var u = new URL(window.location.href);
+                    u.searchParams.delete('layout');
+                    history.replaceState(null, '', u.toString());
+                } catch (e) {}
+                var lp = _pgActivePage();
+                if (lp && lp.page_id === design.openLayout) _sdLayoutCodeOpen(lp, false);
+            }, 400);
+        }
         if (design && design.autoPasteHtml) {
             setTimeout(function () { if (typeof _pgPasteHtmlOpen === 'function') _pgPasteHtmlOpen(''); }, 400);
         }
@@ -65510,7 +69775,7 @@ const StyleDesigner = (function () {
         });
         var designOpen = document.querySelector('#settingsTabs .nav-link.active[data-sd-settings-scope="design"]');
         var pageBtn = document.getElementById('tab-page-btn');
-        if (designOpen && pageBtn && window.bootstrap && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(pageBtn).show();
+        if (designOpen && pageBtn && window.pgUI) pgUI.tab.show(pageBtn);
         // …and the panels that edit the design's stylesheets, scripts, fonts
         // and themes, wherever they live in the left rail.
         ['sd-assets-panel', 'sd-themes-panel', 'sd-bp-assets', 'sd-bp-themes'].forEach(function (id) {
@@ -65651,22 +69916,20 @@ const StyleDesigner = (function () {
     function initIconModal() {
         // Header: title (left) | search (center) | close (right) via grid
         // Body: all categories stacked with sticky titles (no tabs, no zoom)
-        var modalHtml = '<div class="modal fade" id="sdIconModal" tabindex="-1" aria-hidden="true">' +
-            '<div class="modal-dialog modal-dialog-scrollable modal-xl">' +
-            '<div class="modal-content">' +
-            '<div class="modal-header py-2 sd-icon-header">' +
-                '<h5 class="modal-title mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>' + esc(_sdT('Select an Icon')) + '</h5>' +
+        var modalHtml = '<dialog class="dialog dialog-scrollable dialog-xl" id="sdIconModal">' +
+            '<div class="dialog-header py-3 sd-icon-header">' +
+                '<h5 class="dialog-title mb-0"><i class="bi bi-grid-3x3-gap me-3"></i>' + esc(_sdT('Select an Icon')) + '</h5>' +
                 '<div class="sd-icon-search-wrap">' +
                     '<i class="bi bi-search sd-icon-search-icon"></i>' +
                     '<input type="text" class="form-control form-control-sm sd-icon-search" id="sdIconSearch" placeholder="' + esc(_sdT('Search icons...')) + '">' +
                 '</div>' +
-                '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button>' +
+                '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button>' +
             '</div>' +
-            '<div class="modal-body p-0">' +
+            '<div class="dialog-body p-0">' +
                 '<div class="sd-icon-sections" id="sdIconSections"></div>' +
                 '<div class="sd-icon-empty d-none" id="sdIconEmpty">' + esc(_sdT('No icons found')) + '</div>' +
             '</div>' +
-            '</div></div></div>';
+            '</dialog>';
 
         var d = document.createElement('div');
         d.innerHTML = modalHtml;
@@ -65810,10 +70073,7 @@ const StyleDesigner = (function () {
                 currentIconInput.dispatchEvent(evt);
             }
             var mEl = document.getElementById('sdIconModal');
-            if (window.bootstrap) {
-                var modalIns = window.bootstrap.Modal.getInstance(mEl);
-                if (modalIns) modalIns.hide();
-            }
+            if (window.pgUI && pgUI.dialog.find(mEl)) pgUI.dialog.hide(mEl);
         }
 
         function renderSections(filter) {
@@ -65874,10 +70134,8 @@ const StyleDesigner = (function () {
     function openIconModal(inputEl) {
         currentIconInput = inputEl;
         var mHtml = document.getElementById('sdIconModal');
-        if (window.bootstrap) {
-            var modal = window.bootstrap.Modal.getInstance(mHtml);
-            if (!modal) modal = new window.bootstrap.Modal(mHtml);
-            modal.show();
+        if (window.pgUI) {
+            pgUI.dialog.show(mHtml);
         } else {
             alert(_sdT('Bootstrap framework is not loaded.'));
         }
@@ -65928,28 +70186,24 @@ const StyleDesigner = (function () {
                     '</div>';
             }).join('');
 
-            _sdShortcutsModalEl = document.createElement('div');
-            _sdShortcutsModalEl.className = 'modal fade sd-settings-modal-dark';
+            _sdShortcutsModalEl = document.createElement('dialog');
+            _sdShortcutsModalEl.className = 'dialog sd-settings-modal-dark dialog-sm sd-modal-content';
             _sdShortcutsModalEl.tabIndex = -1;
             _sdShortcutsModalEl.setAttribute('aria-hidden', 'true');
             _sdShortcutsModalEl.innerHTML =
-                '<div class="modal-dialog modal-sm">' +
-                  '<div class="modal-content sd-modal-content">' +
-                    '<div class="modal-header sd-modal-header">' +
-                      '<span class="bi bi-keyboard me-2"></span>' +
-                      '<h5 class="modal-title" style="font-size:.8rem">' + esc(_sdT('Keyboard Shortcuts')) + '</h5>' +
-                      '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button>' +
+                '<div class="dialog-header sd-modal-header">' +
+                      '<span class="bi bi-keyboard me-3"></span>' +
+                      '<h5 class="dialog-title" style="font-size:.8rem">' + esc(_sdT('Keyboard Shortcuts')) + '</h5>' +
+                      '<button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button>' +
                     '</div>' +
-                    '<div class="modal-body sd-modal-body">' + _bodyHtml + '</div>' +
-                    '<div class="modal-footer sd-modal-footer">' +
-                      '<button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' + esc(_sdT('Close')) + '</button>' +
-                    '</div>' +
-                  '</div>' +
-                '</div>';
+                    '<div class="dialog-body sd-modal-body">' + _bodyHtml + '</div>' +
+                    '<div class="dialog-footer sd-modal-footer">' +
+                      '<button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' + esc(_sdT('Close')) + '</button>' +
+                    '</div>';
             document.body.appendChild(_sdShortcutsModalEl);
         }
-        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            bootstrap.Modal.getOrCreateInstance(_sdShortcutsModalEl).show();
+        if (window.pgUI) {
+            pgUI.dialog.show(_sdShortcutsModalEl);
         }
     }
 
@@ -66627,6 +70881,7 @@ const StyleDesigner = (function () {
     //   v  drawing key, _sdPalDrawing()
     // Built on first use: the descriptions are read through _sdT().
     var _sdPalInfoMap = null;
+    /* @pg-site-output */
     function _sdPalInfo() {
         if (_sdPalInfoMap) return _sdPalInfoMap;
         _sdPalInfoMap = {
@@ -67958,16 +72213,10 @@ const StyleDesigner = (function () {
     // safety), like choices, files and buttons.
     var _SD_ENTRY_NOT_TYPED = ['hidden', 'password', 'submit', 'button', 'reset', 'image', 'checkbox', 'radio', 'file', 'range', 'color'];
 
-    // Asked twice by the software itself: the registration and membership
-    // forms post to pg_member_register() / pg_member_activate(), which
-    // require the address again; a design cannot drop the field.
-    var _SD_ENTRY_SOFTWARE_TWICE = ['email_verify', 'email_address_verify'];
-
     // What a field asks for: its autocomplete purpose, or its name without a
     // "confirm" / "repeat" / "tekrar" part. '' when it says nothing usable.
     function _sdEntryPurpose(el) {
         var name = String(el.getAttribute('name') || '').toLowerCase().replace(/\[\]$/, '');
-        if (_SD_ENTRY_SOFTWARE_TWICE.indexOf(name) !== -1) return '';
         var ac = String(el.getAttribute('autocomplete') || '').toLowerCase().replace(/\s+/g, ' ').trim();
         if (ac && ac !== 'on' && ac !== 'off') return 'ac:' + ac;
         name = name.replace(/(^|[_\-.])(confirm|confirmation|repeat|again|verify|retype|tekrar|dogrula|dogrulama|onay)(?=$|[_\-.])/g, '$1')
@@ -68227,7 +72476,7 @@ const StyleDesigner = (function () {
         if (!host) return;
         var draw = function (res) {
             if (!res || res.status !== 'success') {
-                host.innerHTML = '<div class="sd-val-empty text-warning"><span class="bi bi-exclamation-triangle me-1"></span>' + esc((res && res.message) || _sdT('The SEO check could not be run.')) + '</div>';
+                host.innerHTML = '<div class="sd-val-empty fg-warning"><span class="bi bi-exclamation-triangle me-1"></span>' + esc((res && res.message) || _sdT('The SEO check could not be run.')) + '</div>';
                 return;
             }
             var score = res.score == null ? null : parseInt(res.score, 10);
@@ -68247,7 +72496,7 @@ const StyleDesigner = (function () {
             if (bad.length) {
                 h += '<div class="sd-val-list">';
                 bad.forEach(function (c) {
-                    h += '<div class="sd-val-item"><div class="sd-val-rule"><span class="bi ' + (c.status === 'fail' ? 'bi-x-circle text-danger' : 'bi-exclamation-circle text-warning') + ' sd-val-icon"></span>' + esc(c.label) + '</div>' +
+                    h += '<div class="sd-val-item"><div class="sd-val-rule"><span class="bi ' + (c.status === 'fail' ? 'bi-x-circle fg-danger' : 'bi-exclamation-circle fg-warning') + ' sd-val-icon"></span>' + esc(c.label) + '</div>' +
                          '<div class="sd-val-node">' + esc(_sdT('Page settings')) + ' · ' + c.earned + '/' + c.weight + '</div></div>';
                 });
                 h += '</div>';
@@ -68378,7 +72627,7 @@ const StyleDesigner = (function () {
             if (!e.ctrlKey && !e.metaKey && !e.altKey
                 && typeof e.key === 'string' && e.key.toLowerCase() === 'n'
                 && !e.target.isContentEditable
-                && !(e.target.closest && e.target.closest('.modal, .sd-note-overlay'))) {
+                && !(e.target.closest && e.target.closest('dialog, .sd-note-overlay'))) {
                 e.preventDefault();
                 _collabOpenNote();
                 return;

@@ -296,5 +296,381 @@ function test_code_editor_escape_it_used_stays_in_the_editor()
 	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
 
 	pg_assert_contains("{ key: 'Escape', run: _leaveFullscreen }", $modal, 'Escape leaves the full window first');
-	pg_assert_contains("if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;", $modal, 'outside the full window it is the dialog\'s');
+	pg_assert_contains("if (!_modalEl || !_modalEl.classList.contains('dialog-fullscreen')) return false;", $modal, 'outside the full window it is the dialog\'s');
+}
+
+// Runs PgCodeEditor.findAll() under Node: the function cut from the facade
+// and the script's JSON. Null when there is no Node.
+function code_editor_test_find_all_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, '    function findAll(');
+	$to = ($from !== false) ? strpos($facade, "\n    }\n", $from) : false;
+
+	if ($to === false) {
+		return array('error' => 'findAll() was not found');
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodefind');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, substr($facade, $from, $to - $from + 6) . "\n"
+		. 'function hits(r) { return r.matches.map(function (m) { return [m.from, m.to, m.line, m.col, m.lineText]; }); }' . "\n"
+		. $script);
+
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	if ($code !== 0) {
+		return array('error' => implode("\n", $out));
+	}
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// A plain search ignores case unless asked, takes regexp characters
+// literally, and gives each hit its line, column and line text.
+function test_code_editor_find_all_plain_search()
+{
+	$result = code_editor_test_find_all_node(
+		'var t = ".a { color: red }\n.b { COLOR: blue }\n/* a.b */";' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' any: hits(findAll(t, "color")),'
+		. ' cased: hits(findAll(t, { search: "COLOR", caseSensitive: true })),'
+		. ' literal: hits(findAll(t, "a.b")),'
+		. ' empty: findAll(t, "").matches.length,'
+		. ' none: findAll(t, "zzz").matches.length }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same(array(array(5, 10, 1, 5, '.a { color: red }'), array(23, 28, 2, 5, '.b { COLOR: blue }')), $result['any'], 'both lines, case ignored');
+	pg_assert_same(array(array(23, 28, 2, 5, '.b { COLOR: blue }')), $result['cased'], 'match case');
+	pg_assert_same(array(array(40, 43, 3, 3, '/* a.b */')), $result['literal'], 'the dot is literal');
+	pg_assert_same(0, $result['empty'], 'an empty search finds nothing');
+	pg_assert_same(0, $result['none'], 'no hit');
+}
+
+// A regexp reads ^ per line and skips empty matches; whole words leave a
+// hit inside a longer word out; an invalid pattern is an error, and the
+// limit cuts the list and says so.
+function test_code_editor_find_all_regexp_words_and_limit()
+{
+	$result = code_editor_test_find_all_node(
+		'var t = "var x = 1;\nvar xy = x;\n";' . "\n"
+		. 'var bad = findAll(t, { search: "(", regexp: true });' . "\n"
+		. 'var cut = findAll("aaaa", "a", 3);' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' starts: hits(findAll(t, { search: "^var", regexp: true })),'
+		. ' blank: findAll(t, { search: "^", regexp: true }).matches.length,'
+		. ' words: hits(findAll(t, { search: "x", wholeWord: true })),'
+		. ' bad: [!!bad.error, bad.matches.length],'
+		. ' cut: [cut.matches.length, cut.truncated] }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same(array(array(0, 3, 1, 0, 'var x = 1;'), array(11, 14, 2, 0, 'var xy = x;')), $result['starts'], 'one hit per line start');
+	pg_assert_same(0, $result['blank'], 'empty matches are skipped');
+	pg_assert_same(array(array(4, 5, 1, 4, 'var x = 1;'), array(20, 21, 2, 9, 'var xy = x;')), $result['words'], 'xy is not the word x');
+	pg_assert_same(array(true, 0), $result['bad'], 'an invalid pattern');
+	pg_assert_same(array(3, true), $result['cut'], 'three hits, more left out');
+}
+
+// Runs the facade's formatter under Node: _formatText() cut from the facade
+// on the bundle's window.PgCM. Null when there is no Node.
+function code_editor_test_format_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, '    function _formatText(');
+	$to = ($from !== false) ? strpos($facade, "\n    }\n", $from) : false;
+
+	if ($to === false) {
+		return array('error' => '_formatText() was not found');
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodeformat');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, 'global.window = global;' . "\n"
+		. '(0, eval)(require("fs").readFileSync(' . json_encode(PG_FUNCTIONS_DIR . '/assets/lib/code_editor/cm6.bundle.js') . ', "utf8"));' . "\n"
+		. substr($facade, $from, $to - $from + 6) . "\n"
+		. $script);
+
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	if ($code !== 0) {
+		return array('error' => implode("\n", $out));
+	}
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// CSS, JavaScript and JSON are formatted with the editor's indent unit; HTML
+// and an unknown language are not formatted (the designer's page view is
+// printed by its emitter already), and the result ends without a new line
+// when the text did.
+function test_code_editor_format_text_by_language()
+{
+	$result = code_editor_test_format_node(
+		'var cm = window.PgCM;' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' css: _formatText(cm, "css", "a{color:red;margin:0}", "    "),'
+		. ' js: _formatText(cm, "javascript", "function f(a){if(a){return 1}return 2}", "  "),'
+		. ' json: _formatText(cm, "json", "{\"a\":[1,2],\"b\":{\"c\":true}}", "\t"),'
+		. ' newline: _formatText(cm, "css", "a{color:red}\n", "    "),'
+		. ' html: _formatText(cm, "html", "<p><b>x</b></p>", "    "),'
+		. ' other: _formatText(cm, "php", "x", "    ") }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same("a {\n    color: red;\n    margin: 0\n}", $result['css'], 'css, four spaces');
+	pg_assert_same("function f(a) {\n  if (a) {\n    return 1\n  }\n  return 2\n}", $result['js'], 'javascript, two spaces');
+	pg_assert_same("{\n\t\"a\": [1, 2],\n\t\"b\": {\n\t\t\"c\": true\n\t}\n}", $result['json'], 'json, a tab');
+	pg_assert_same("a {\n    color: red\n}\n", $result['newline'], 'the closing new line stays');
+	pg_assert_same(null, $result['html'], 'html is not formatted');
+	pg_assert_same(null, $result['other'], 'an unknown language is not formatted');
+}
+
+// ed.format() changes nothing in a read-only editor or across a lock, and
+// replaces only the part that differs in one change through the lock
+// filter: one undo step that onChange hears like typing. Shift+Alt+F runs
+// it in both keymaps.
+function test_code_editor_format_command()
+{
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, '        inst.format = function');
+	$format = ($from !== false) ? substr($facade, $from, strpos($facade, "\n        };\n", $from) - $from) : '';
+
+	pg_assert_true($format !== '', 'ed.format() is found');
+	pg_assert_contains('if (view.state.readOnly) return false;', $format, 'read-only refuses');
+	pg_assert_contains('if (!inst.canEdit(from, toA)) return false;', $format, 'a lock over the changed part refuses');
+	pg_assert_contains("userEvent: 'input.format'", $format, 'one change, as an edit');
+	pg_assert_false(strpos($format, 'filter: false') !== false, 'the lock filter is not bypassed');
+	pg_assert_false(strpos($format, 'addToHistory') !== false, 'the change is undoable');
+
+	$keys = strpos($facade, 'function keymapExtensions()');
+	$keymap = ($keys !== false) ? substr($facade, $keys, strpos($facade, "\n        }\n", $keys) - $keys) : '';
+	$vscode = strpos($keymap, 'if (useVscode)');
+	$shortcut = strpos($keymap, "{ key: 'Shift-Alt-f', run: function () { return inst.format(); } }");
+
+	pg_assert_true(($vscode !== false) && ($shortcut !== false) && ($shortcut < $vscode), 'Shift+Alt+F comes before either keymap');
+}
+
+// Runs the facade's minimap part under Node: _minimapExtension() cut from
+// the facade on the bundle's window.PgCM. Null when there is no Node.
+function code_editor_test_minimap_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, '    function _minimapExtension(');
+	$to = ($from !== false) ? strpos($facade, "\n    }\n", $from) : false;
+
+	if ($to === false) {
+		return array('error' => '_minimapExtension() was not found');
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodeminimap');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, 'global.window = global;' . "\n"
+		. '(0, eval)(require("fs").readFileSync(' . json_encode(PG_FUNCTIONS_DIR . '/assets/lib/code_editor/cm6.bundle.js') . ', "utf8"));' . "\n"
+		. substr($facade, $from, $to - $from + 6) . "\n"
+		. $script);
+
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	if ($code !== 0) {
+		return array('error' => implode("\n", $out));
+	}
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// The bundle carries the minimap; an editor opened with `minimap` gets the
+// engine's showMinimap facet (drawn as blocks, its overlay only on hover),
+// one without it gets nothing.
+function test_code_editor_minimap_extension()
+{
+	$result = code_editor_test_minimap_node(
+		'var cm = window.PgCM;' . "\n"
+		. 'function conf(on) {'
+		. ' var st = cm.state.EditorState.create({ doc: "a", extensions: _minimapExtension(cm, on) });'
+		. ' var c = st.facet(cm.minimap.showMinimap);'
+		. ' return c ? { create: typeof c.create, text: c.displayText, overlay: c.showOverlay } : null; }' . "\n"
+		. 'console.log(JSON.stringify({ bundled: !!(cm.minimap && cm.minimap.showMinimap), on: conf(true), off: conf(false) }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_true($result['bundled'], 'the bundle exports PgCM.minimap');
+	pg_assert_same(array('create' => 'function', 'text' => 'blocks', 'overlay' => 'mouse-over'), $result['on'], 'minimap on');
+	pg_assert_same(null, $result['off'], 'minimap off');
+}
+
+// The option is opt-in per editor, with a page default from configure(), and
+// can be switched while the editor is open; the designer turns it on.
+function test_code_editor_minimap_option()
+{
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+
+	pg_assert_contains("if (typeof opts.minimap === 'boolean') _cfg.minimap = opts.minimap;", $facade, 'configure() takes the page default');
+	pg_assert_contains('minimapComp.of(_minimapExtension(cm, _minimapOn(opts)))', $facade, 'the editor reads the option');
+	pg_assert_contains('inst.setMinimap = function', $facade, 'the instance can switch it');
+	pg_assert_contains('inst.hasMinimap = function () { return _minimapOn(opts); };', $facade, 'and tells whether it is on');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+
+	pg_assert_contains('PgCodeEditor.configure({ minimap: true, bundle:', $screen, 'the designer turns it on');
+}
+
+// A code field that can be edited gets a "Format code" button that follows
+// the editor's language (create_file.php changes it after the start); a
+// read-only field gets none. The button runs the instance's format().
+// Drawn in a PHP process of its own: the field's first script names the
+// facade on OUTPUT_PATH, which the tests after this one must not find defined.
+function test_code_editor_attach_offers_a_format_button()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodeattach');
+
+	if ($file === false) {
+		return;
+	}
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('PG_TEST_RUNNER', true);\n"
+		. "define('OUTPUT_PATH', '/');\n"
+		. "define('OUTPUT_SOFTWARE_DIRECTORY', 'pinegrap');\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. "echo json_encode(array("
+		. "'css' => pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css')),"
+		. "'ro' => pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css', 'readonly' => true))));\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$res = json_decode(implode("\n", $out), true);
+
+	pg_assert_same(0, $code, 'drawn: ' . implode("\n", array_slice($out, 0, 8)));
+	if (!is_array($res)) {
+		pg_assert_true(false, 'the process answers');
+		return;
+	}
+
+	$css = $res['css'];
+	$ro = $res['ro'];
+
+	pg_assert_contains('pg-code-field-format', $css, 'an editable field draws the button');
+	pg_assert_contains(lang('Format code'), $css, 'with a translated label');
+	pg_assert_contains('editor.format()', $css, 'which runs the instance\'s format()');
+	pg_assert_contains('["css","javascript","json"]', $css, 'shown only for the languages with a formatter');
+	pg_assert_contains('editor.setLanguage = function', $css, 'and kept in step with a language change');
+	pg_assert_false(strpos($ro, 'pg-code-field-format') !== false, 'a read-only field has no button');
+
+	// Every field, read-only too, gets the minimap toggle, which starts from
+	// the editor's own state and switches it with setMinimap().
+	foreach (array('css' => $css, 'ro' => $ro) as $kind => $html) {
+		pg_assert_contains('pg-code-field-minimap', $html, $kind . ': the minimap toggle is drawn');
+		pg_assert_contains(lang('Minimap'), $html, $kind . ': with a translated label');
+		pg_assert_contains('aria-pressed', $html, $kind . ': as a toggle button');
+		pg_assert_contains('editor.hasMinimap()', $html, $kind . ': starting from the current state');
+		pg_assert_contains('editor.setMinimap(', $html, $kind . ': switching the instance');
+	}
+}
+
+// The code editor dialog's footer shows "Format code" only for CSS,
+// JavaScript and JSON when it is not read-only; its label comes from the
+// designer's PgCodeModalLabels map.
+function test_code_editor_dialog_offers_a_format_button()
+{
+	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+
+	pg_assert_contains('id="pgCodeEditorFormat"', $modal, 'the footer has the button');
+	pg_assert_contains("_t('Format code')", $modal, 'its label is read from the map');
+	pg_assert_contains('_editor.format()', $modal, 'it runs the editor\'s format()');
+	pg_assert_contains("_formatBtn.classList.toggle('d-none', !!opts.readonly || !_formats(opts.mode));", $modal, 'hidden for read-only and other languages');
+	pg_assert_contains("'Format code'  => lang('Format code'),", $screen, 'the designer prints the label');
+}
+
+// The dialog's footer has a minimap toggle beside "Format code": a toggle
+// button (aria-pressed) that starts from the editor's state and switches it.
+function test_code_editor_dialog_offers_a_minimap_toggle()
+{
+	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+
+	pg_assert_contains('id="pgCodeEditorMinimap"', $modal, 'the footer has the toggle');
+	pg_assert_contains('aria-pressed="false"', $modal, 'as a toggle button');
+	pg_assert_contains("_t('Minimap')", $modal, 'its label is read from the map');
+	pg_assert_contains('_editor.setMinimap(', $modal, 'it switches the editor');
+	pg_assert_contains('_editor.hasMinimap()', $modal, 'and starts from the editor\'s state');
+	pg_assert_contains("'Minimap'      => lang('Minimap'),", $screen, 'the designer prints the label');
 }

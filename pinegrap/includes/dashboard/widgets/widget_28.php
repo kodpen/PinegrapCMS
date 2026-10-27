@@ -76,8 +76,8 @@ function pg_dashboard_widget_28($request, $user)
 
         $output_talk .= pg_widget_row(array(
             'href'  => h($item['url']),
-            'badge' => !empty($sender['avatar'])
-                ? '<img src="' . h($sender['avatar']) . '" alt="">'
+            'badge' => (!empty($sender['avatar']) || !empty($sender['initials']))
+                ? pg_avatar_markup(array('name' => '') + $sender)
                 : '<i class="bi ' . (($item['kind'] === 'mention') ? 'bi-at' : 'bi-reply') . '"></i>',
             'name'  => h(($sender['name'] ?? '') !== '' ? $sender['name'] : lang('Unknown')),
             'aside' => h($item['time']),

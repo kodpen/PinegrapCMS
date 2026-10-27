@@ -530,7 +530,7 @@ function test_prototype_links_end_with_their_design()
 	// Every path that deletes a design's style row ends its links: a later
 	// design given the same id (InnoDB on MySQL 5.7 after a restart) never
 	// opens for them.
-	foreach (array('includes/fn/designer.php', 'view_folder_and_files_f.php', 'delete_styles.php', 'includes/install_design_template.php') as $file) {
+	foreach (array('includes/fn/designer.php', 'includes/explorer/recycle_pages_styles.php', 'delete_styles.php', 'includes/install_design_template.php') as $file) {
 		pg_assert_contains('pg_proto_links_revoke_design(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file);
 	}
 }

@@ -711,7 +711,7 @@ function ws_api_message_threads($viewer, $message_ids)
     return $out;
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null)
 {
     // The messages the reader deleted for themselves (ws_message_hide()).
     if ($hidden === null) {
@@ -721,6 +721,11 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
     // The poll it asks (interact.php).
     if ($polls === null) {
         $polls = ws_polls_map(array($row['id']), $viewer);
+    }
+
+    // The note it shares (notes.php).
+    if ($note_cards === null) {
+        $note_cards = function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, array($row['id'])) : array();
     }
 
     if ($reactions === null) {
@@ -808,6 +813,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'thread'         => $deleted ? null : ($threads['threads'][(int) $row['id']] ?? null),
         'from_thread_id' => $deleted ? null : ($threads['copies'][(int) $row['id']] ?? null),
         'poll'           => (!$deleted && isset($polls[(int) $row['id']])) ? ws_api_poll_present($polls[(int) $row['id']]) : null,
+        'note_card'      => ws_api_message_note_card($row, $note_cards),
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -833,6 +839,7 @@ function ws_api_message_schema()
         'thread'         => 'WorkspaceMessageThread?',
         'from_thread_id' => 'integer?',
         'poll'           => 'WorkspacePoll?',
+        'note_card'      => 'WorkspaceMessageNoteCard?',
         'created_at'  => 'string',
     );
 }
@@ -856,6 +863,31 @@ function ws_api_message_thread_schema()
     return array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'string?', 'closed' => 'boolean');
 }
 
+function ws_api_message_note_card_schema()
+{
+    return array('id' => 'integer', 'name' => 'string', 'excerpt' => 'string');
+}
+
+/**
+ * The note a message shares, from the page's ws_note_cards_map(). Null when
+ * it shares none or the share was taken back (the share row is gone), and
+ * on a deleted message, as on the channel screen.
+ *
+ * @param array $row        ws_messages row
+ * @param array $note_cards ws_note_cards_map() by message id
+ * @return array|null
+ */
+function ws_api_message_note_card($row, $note_cards)
+{
+    $card = $note_cards[(int) $row['id']] ?? null;
+
+    if (((int) $row['deleted_at'] > 0) || !is_array($card)) {
+        return null;
+    }
+
+    return array('id' => (int) $card['id'], 'name' => (string) $card['name'], 'excerpt' => (string) $card['excerpt']);
+}
+
 /**
  * The poll a message asks, as the API shows it, from what the channel screen
  * shows of it for this reader (ws_polls_map()). Who chose an option is left
@@ -872,6 +904,7 @@ function ws_api_poll_present($poll)
         'anonymous'         => !empty($poll['anonymous']),
         'closed'            => !empty($poll['closed']),
         'closes_at'         => api_time($poll['closes_at']),
+        'closed_at'         => api_time($poll['closed_at'] ?? 0),
         'voters'            => (int) $poll['voters'],
         'voted'             => !empty($poll['voted']),
         'can_vote'          => !empty($poll['can_vote']),
@@ -915,6 +948,7 @@ function ws_api_poll_schema()
         'anonymous'         => 'boolean',
         'closed'            => 'boolean',
         'closes_at'         => 'string?',
+        'closed_at'         => 'string?',
         'voters'            => 'integer',
         'voted'             => 'boolean',
         'can_vote'          => 'boolean',
@@ -973,8 +1007,8 @@ function ws_api_messages_list($params)
 }
 
 /**
- * Messages as the API shows them, with their tags, reactions, read receipts
- * and discussions read once for the whole set.
+ * Messages as the API shows them, with their tags, reactions, read receipts,
+ * discussions and shared notes read once for the whole set.
  *
  * @param array   $viewer
  * @param array[] $rows ws_messages rows
@@ -1001,12 +1035,13 @@ function ws_api_messages_present($viewer, $rows)
     $hidden = ws_message_hidden_ids($viewer['id'], $ids);
     $polls = ws_polls_map($ids, $viewer);
     $proposals = function_exists('ws_proposals_by_reply') ? ws_proposals_by_reply($ids) : array();
+    $note_cards = function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, $ids) : array();
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards);
     }
 
     return $out;
@@ -1083,6 +1118,55 @@ function ws_api_messages_create($params)
     if (ws_api_message_asks_assistants($app_id, $kind)) {
         ws_api_assistants_carry_on(ws_message_ask_assistants($viewer, $channel, $row['id'], (string) $params['text']));
     }
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
+}
+
+/**
+ * Forwards messages into a channel, as the panel's Forward does: a new
+ * message there carrying a copy of each. It is an ordinary write, not a
+ * change to the person's words: the copies are frozen as they were, and the
+ * new message carries the writer's name like any other message, so an
+ * application writes it as itself (ws_api_writer_app_id()).
+ */
+function ws_api_messages_forward($params)
+{
+    $viewer = ws_api_viewer();
+    $target = ws_api_channel_or_404($viewer, $params['id']);
+    $text = (string) ($params['text'] ?? '');
+    $app_id = ws_api_writer_app_id();
+
+    $checked = ws_forward_to_channel_check($viewer, (array) $params['message_ids'], $target, $text, array('app_id' => $app_id));
+
+    if (!$checked['ok']) {
+        if ($checked['field'] === '') {
+            api_fail(503, 'service_unavailable', $checked['error']);
+        }
+
+        if ($checked['field'] === 'channel') {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        api_fail_validation($checked['error'], ($checked['field'] === 'text') ? 'text' : 'message_ids');
+    }
+
+    // The channel the messages come from is read under the same rules as
+    // any other: Claude's application reads only where Claude may be asked.
+    $source = ws_api_channel_or_404($viewer, $checked['channel']['id']);
+
+    api_dry_run_stop('created', 'workspace_message', array(
+        'channel_id'        => (int) $target['id'],
+        'source_channel_id' => (int) $source['id'],
+        'forwards'          => count($checked['rows']),
+    ));
+
+    $result = ws_forward_to_channel($viewer, (array) $params['message_ids'], $target, $text, array('app_id' => $app_id));
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'message_ids');
+    }
+
+    $row = ws_message($result['message_id']);
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
 }
@@ -1250,6 +1334,12 @@ function ws_api_upload_input($params)
 
     if ($name === '') {
         api_fail_validation(lang('Name the file, with its extension.'), 'name');
+    }
+
+    // An MCP tool call carries the file inside its own message: the small
+    // file path, measured before the text is decoded.
+    if ((api_send_hook() !== null) && (ws_upload_base64_bytes($base64) > ws_mcp_upload_max_bytes())) {
+        api_fail_validation(lang(array('string' => 'Through MCP a file may be at most {var:1} KB; post a larger one over the REST API.', 'vars' => (int) floor(ws_mcp_upload_max_bytes() / 1024))), 'content_base64');
     }
 
     // Line breaks some encoders add are still the file.
@@ -2596,16 +2686,13 @@ function ws_api_polls_vote($params)
 
     if (!$checked['ok']) {
         // A vote after the poll's time closes it, as in the panel; a dry run
-        // leaves that to the next vote or the hourly job.
+        // leaves that to the next vote or the next read of the channel
+        // (ws_polls_autoclose()).
         if ($checked['expired'] && !api_dry_run_requested()) {
             ws_poll_close(null, $poll);
         }
 
-        if ($checked['error'] === lang('You cannot post in that channel.')) {
-            api_fail(403, 'forbidden', $checked['error']);
-        }
-
-        api_fail_validation($checked['error']);
+        ws_api_poll_refused($checked['error'], $checked['field']);
     }
 
     $options = array_map('intval', (array) db_values("SELECT id FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "'"));
@@ -2632,7 +2719,7 @@ function ws_api_polls_vote($params)
     $result = ws_poll_vote($viewer, $poll, $chosen);
 
     if (!$result['ok']) {
-        api_fail_validation($result['error']);
+        ws_api_poll_refused($result['error']);
     }
 
     ws_api_poll_message_ok($viewer, $poll);
@@ -2661,7 +2748,7 @@ function ws_api_poll_or_404($viewer, $id)
 
     // An earlier version of a conversation is kept as it was (eras.php).
     if (function_exists('ws_message_in_past') && ws_message_in_past($message)) {
-        api_fail_validation(lang('This message is in an earlier version of the conversation, which is kept as it was.'));
+        ws_api_poll_refused(lang('This message is in an earlier version of the conversation, which is kept as it was.'), 'message_id');
     }
 
     return $poll;
@@ -2682,7 +2769,7 @@ function ws_api_poll_message_ok($viewer, $poll, $status = 200)
 }
 
 /**
- * A refusal of ws_poll_edit() or ws_poll_close() as the API answers it.
+ * A refusal of a vote, ws_poll_edit() or ws_poll_close() as the API answers it.
  *
  * @param string $error
  * @param string $field
@@ -2701,6 +2788,11 @@ function ws_api_poll_refused($error, $field = '')
 
     if ($error === lang('That poll could not be found.')) {
         api_fail_not_found(lang('Poll'));
+    }
+
+    // A closed poll, or one whose time ran out, is refused on its closing time.
+    if (($field === '') && ($error === lang('The poll is closed.'))) {
+        $field = 'closes_at';
     }
 
     api_fail_validation($error, ($field !== '') ? $field : null);
@@ -3668,6 +3760,43 @@ function ws_api_tasks_create($params)
     api_ok(ws_api_task_present($viewer, ws_task($result['task_id']), $warnings), 201);
 }
 
+/**
+ * Makes one checklist item of a message a task, the way the button beside
+ * the item does (task_work.php, ws_checklist_item_task()).
+ */
+function ws_api_messages_item_task($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_api_message_or_404($viewer, $params['id']);
+    $item = (int) $params['item'];
+
+    // The checks ws_checklist_item_task() makes, made first so that a dry
+    // run meets the same refusals.
+    $checked = ws_checklist_item_task_check($viewer, $message, $item);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], 'item');
+    }
+
+    api_dry_run_stop('created', 'workspace_task', array(
+        'title'      => $checked['data']['title'],
+        'channel_id' => (int) $checked['data']['channel_id'],
+        'message_id' => (int) $message['id'],
+        'item'       => $item,
+        'assignees'  => $checked['data']['assignees'],
+    ));
+
+    $result = ws_checklist_item_task($viewer, $message, $item);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'item');
+    }
+
+    ws_api_log(lang(array('string' => 'workspace task ({var:1}) was created', 'vars' => ws_task_number($result['task_id']))));
+
+    api_ok(ws_api_task_present($viewer, ws_task($result['task_id']), array()), 201);
+}
+
 function ws_api_tasks_update($params)
 {
     $viewer = ws_api_viewer();
@@ -4101,18 +4230,100 @@ function ws_api_refs_get($params)
 function ws_api_plan_row_schema()
 {
     return array(
-        'user_id' => 'integer',
-        'name'    => 'string',
-        'days'    => array(array(
-            'date'     => 'string',
-            'workday'  => 'boolean',
-            'leave'    => 'boolean',
-            'holiday'  => 'boolean',
-            'capacity' => 'integer',
-            'minutes'  => 'integer',
-            'load'     => 'integer',
-            'tasks'    => array('integer'),
+        'user_id'     => 'integer',
+        'name'        => 'string',
+        'unscheduled' => 'integer',
+        'days'        => array(array(
+            'date'       => 'string',
+            'workday'    => 'boolean',
+            'leave'      => 'boolean',
+            'holiday'    => 'boolean',
+            'capacity'   => 'integer',
+            'minutes'    => 'integer',
+            'load'       => 'integer',
+            'tasks'      => array('integer'),
+            'task_items' => array(array(
+                'id'         => 'integer',
+                'minutes'    => 'integer',
+                'due'        => 'boolean',
+                'upcoming'   => 'boolean',
+                'repeat'     => 'string',
+                'moved_from' => 'string',
+                'waits_for'  => 'string',
+            )),
+            'events'     => array(array(
+                'id'          => 'integer',
+                'kind'        => 'string',
+                'title'       => 'string',
+                'time'        => 'string',
+                'minutes'     => 'integer',
+                'meeting_url' => 'string',
+            )),
         )),
+    );
+}
+
+/**
+ * One person's row of the planning board as the API answers it: the cells
+ * ws_plan_grid() filled, with the task entries and plan items it placed on
+ * each day, and the count of the person's tasks with neither date.
+ *
+ * @param array $row a ws_board() row
+ * @return array
+ */
+function ws_api_plan_present($row)
+{
+    $days = array();
+
+    foreach ($row['cells'] as $cell) {
+        $task_ids = array();
+        $task_items = array();
+
+        foreach ($cell['tasks'] as $task) {
+            $task_ids[] = (int) $task['id'];
+            $task_items[] = array(
+                'id'         => (int) $task['id'],
+                'minutes'    => (int) $task['minutes'],
+                'due'        => !empty($task['due']),
+                'upcoming'   => !empty($task['upcoming']),
+                'repeat'     => (string) ($task['repeat'] ?? ''),
+                'moved_from' => (string) ($task['moved_from'] ?? ''),
+                'waits_for'  => (string) ($task['waits_for'] ?? ''),
+            );
+        }
+
+        $events = array();
+
+        foreach ($cell['events'] ?? array() as $event) {
+            $events[] = array(
+                'id'          => (int) $event['id'],
+                'kind'        => (string) $event['kind'],
+                'title'       => (string) $event['title'],
+                'time'        => (string) $event['time'],
+                'minutes'     => (int) $event['minutes'],
+                'meeting_url' => (string) ($event['meeting_url'] ?? ''),
+            );
+        }
+
+        $days[] = array(
+            'date'       => (string) $cell['date'],
+            'workday'    => (bool) $cell['workday'],
+            'leave'      => (bool) $cell['leave'],
+            'holiday'    => (bool) $cell['holiday'],
+            'capacity'   => (int) $cell['capacity'],
+            'minutes'    => (int) $cell['minutes'],
+            'load'       => (int) $cell['load'],
+            'tasks'      => $task_ids,
+            'task_items' => $task_items,
+            'events'     => $events,
+        );
+    }
+
+    return array(
+        'user_id'     => (int) $row['person']['id'],
+        'name'        => (string) $row['person']['name'],
+        'unscheduled' => (int) ($row['unscheduled'] ?? 0),
+        'days'        => $days,
     );
 }
 
@@ -4123,32 +4334,7 @@ function ws_api_plan_get($params)
     $out = array();
 
     foreach ($board['rows'] as $row) {
-        $days = array();
-
-        foreach ($row['cells'] as $cell) {
-            $task_ids = array();
-
-            foreach ($cell['tasks'] as $task) {
-                $task_ids[] = (int) $task['id'];
-            }
-
-            $days[] = array(
-                'date'     => (string) $cell['date'],
-                'workday'  => (bool) $cell['workday'],
-                'leave'    => (bool) $cell['leave'],
-                'holiday'  => (bool) $cell['holiday'],
-                'capacity' => (int) $cell['capacity'],
-                'minutes'  => (int) $cell['minutes'],
-                'load'     => (int) $cell['load'],
-                'tasks'    => $task_ids,
-            );
-        }
-
-        $out[] = array(
-            'user_id' => (int) $row['person']['id'],
-            'name'    => (string) $row['person']['name'],
-            'days'    => $days,
-        );
+        $out[] = ws_api_plan_present($row);
     }
 
     api_ok_list($out, count($out));
@@ -5747,6 +5933,40 @@ function ws_api_task_time_schema()
 }
 
 /**
+ * A row of the owner's time across tasks: the per-task row and its task.
+ *
+ * @param array $row  ws_task_time row
+ * @param array $task ws_task_time_task_ref()
+ * @return array
+ */
+function ws_api_task_time_range_present($row, $task)
+{
+    return ws_api_task_time_present($row) + array(
+        'task' => array(
+            'id'      => (int) $task['id'],
+            'title'   => (string) $task['title'],
+            'visible' => (bool) $task['visible'],
+        ),
+    );
+}
+
+// What ws_api_task_time_range_present() returns.
+function ws_api_task_time_range_schema()
+{
+    return ws_api_task_time_schema() + array('task' => 'WorkspaceTimeTask');
+}
+
+// The task of a WorkspaceTimeEntry.
+function ws_api_task_time_task_schema()
+{
+    return array(
+        'id'      => 'integer',
+        'title'   => 'string',
+        'visible' => 'boolean',
+    );
+}
+
+/**
  * The task of a time request, with the schema there.
  *
  * @return array viewer, task
@@ -5811,6 +6031,87 @@ function ws_api_task_time_create($params)
     ws_api_log(lang(array('string' => 'time was written on workspace task ({var:1})', 'vars' => ws_task_number($task['id']))));
 
     api_ok(ws_api_task_time_present(ws_task_time_entry($result['id'])), 201);
+}
+
+function ws_api_time_list($params)
+{
+    $viewer = ws_api_viewer();
+
+    if (!ws_task_time_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $range = ws_task_time_range_check((string) ($params['from'] ?? ''), (string) ($params['to'] ?? ''));
+
+    if (!$range['ok']) {
+        api_fail_validation($range['error'], $range['field']);
+    }
+
+    $after = null;
+
+    if (isset($params['cursor']) && ($params['cursor'] !== '')) {
+        $cursor = api_cursor_decode($params['cursor']);
+        $day = ($cursor === null) ? null : ws_task_time_position_unpack($cursor['v']);
+
+        if ($day === null) {
+            api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+        }
+
+        $after = array('day' => $day, 'id' => (int) $cursor['i']);
+    }
+
+    $limit = (int) ($params['limit'] ?? 250);
+    $page = ws_task_time_range($viewer, $range['from'], $range['to'], $after, $limit);
+    $out = array();
+
+    foreach ($page['rows'] as $row) {
+        $out[] = ws_api_task_time_range_present($row, $row['task']);
+    }
+
+    $next = ($page['next'] !== null) ? api_cursor_encode(ws_task_time_position_pack($page['next']['day']), $page['next']['id']) : null;
+
+    api_ok_list($out, $limit, $next, null, array('total_minutes' => (int) $page['total_minutes']));
+}
+
+function ws_api_task_time_update($params)
+{
+    list($viewer, $task) = ws_api_task_time_task($params);
+    $entry = ws_task_time_entry((int) $params['entry_id']);
+
+    if (!$entry || ((int) $entry['task_id'] !== (int) $task['id'])) {
+        api_fail_not_found(lang('Time entry'));
+    }
+
+    // Only the fields sent change; a cleared note arrives as ''.
+    $changes = array();
+
+    foreach (array('minutes', 'worked_on', 'note', 'billable') as $field) {
+        if (array_key_exists($field, $params)) {
+            $changes[$field] = $params[$field];
+        }
+    }
+
+    $checked = ws_task_time_update_check($viewer, $entry, $changes);
+
+    if (!$checked['ok']) {
+        if ((int) $checked['status'] === 403) {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        api_fail_validation($checked['error'], $checked['field'] ?: null);
+    }
+
+    api_dry_run_stop('updated', 'workspace_task_time', array('id' => (int) $entry['id'], 'changes' => array_keys($changes)));
+
+    $result = ws_task_time_update($viewer, $entry, $changes);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], $result['field'] ?: null);
+    }
+
+    ws_api_log(lang(array('string' => 'time was changed on workspace task ({var:1})', 'vars' => ws_task_number($task['id']))));
+
+    api_ok(ws_api_task_time_present(ws_task_time_entry($entry['id'])));
 }
 
 function ws_api_task_time_delete($params)

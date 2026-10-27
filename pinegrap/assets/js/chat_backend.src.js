@@ -421,7 +421,7 @@
         // Tabs live inside the header ("Users | Conversations") — no
         // separate tab row, saving vertical space. Flat header (no
         // gradient).
-        var header = el('div', 'card-header border-0 d-flex align-items-center justify-content-between py-2 gap-2');
+        var header = el('div', 'card-header border-0 d-flex align-items-center justify-content-between py-3 gap-3');
 
         var tabsWrap = el('ul', 'nav nav-pills pg-chat-tabs flex-nowrap mb-0');
         var onlineTab = el('li', 'nav-item');
@@ -446,9 +446,9 @@
             refreshLists();
         });
 
-        var headerActions = el('div', 'd-flex align-items-center gap-2 flex-shrink-0');
+        var headerActions = el('div', 'd-flex align-items-center gap-3 flex-shrink-0');
 
-        var soundButton = el('button', 'btn btn-sm btn-link text-muted p-0');
+        var soundButton = el('button', 'btn btn-sm btn-link fg-secondary p-0');
         soundButton.type = 'button';
         soundButton.title = STR.sound;
         soundButton.appendChild(el('i', soundEnabled() ? 'bi bi-bell' : 'bi bi-bell-slash'));
@@ -469,11 +469,11 @@
         header.appendChild(headerActions);
         panel.appendChild(header);
 
-        var body = el('div', 'pg-chat-body bg-body-tertiary');
+        var body = el('div', 'pg-chat-body bg-1');
         panel.appendChild(body);
 
         if (!data) {
-            body.appendChild(el('div', 'text-center text-muted small py-4', STR.loading + '...'));
+            body.appendChild(el('div', 'text-center fg-secondary small py-7', STR.loading + '...'));
             return body;
         }
 
@@ -516,7 +516,7 @@
     // Header link to a profile page. Opens in a new tab so the panel keeps
     // its place, and stops the click so the header does not act on it.
     function headerLink(iconClass, title, href) {
-        var link = el('a', 'btn btn-sm btn-link text-muted p-0 me-2 pg-chat-link');
+        var link = el('a', 'btn btn-sm btn-link fg-secondary p-0 me-3 pg-chat-link');
 
         link.href = href;
         link.target = '_blank';
@@ -531,31 +531,45 @@
         return link;
     }
 
-    // A person's picture with their presence on it, or - for a visitor who
-    // has no account and therefore no picture - the first letter of the
-    // name they gave.
+    // The eight tones a person's letters are drawn on, in the order
+    // pg_avatar_theme_class() gives them (includes/fn/contacts.php).
+    var AVATAR_THEMES = ['theme-primary', 'theme-info', 'theme-warning', 'theme-accent', 'theme-danger', 'theme-secondary', 'theme-success', 'theme-inverse'];
+
+    // A person as a Bootstrap 6 Avatar with their presence dot: the photo, or
+    // their letters on their tone (a login without a name: a grey rounded
+    // square); a visitor who has no account, the first letter of the name
+    // they gave. A picture of letters is drawn as letters, never as an <img>.
     function avatarNode(user, fallbackName) {
-        var wrap = el('div', 'position-relative flex-shrink-0');
+        var face = el('span', 'avatar pg-chat-face');
+        var src = (user && user.avatar) ? String(user.avatar) : '';
 
-        if (user && user.avatar) {
-            var avatar = el('img', 'rounded-circle pg-chat-avatar');
-            avatar.src = user.avatar;
-            avatar.alt = '';
-            wrap.appendChild(avatar);
+        if (src && (src.indexOf('data:image/svg+xml') !== 0)) {
+            var img = el('img', 'avatar-img');
+            img.src = src;
+            img.alt = '';
+            face.appendChild(img);
+        } else if (user && user.initials) {
+            if (user.avatar_kind === 'user') {
+                face.classList.add('avatar-subtle', 'theme-secondary', 'pg-avatar-user');
+            } else {
+                face.classList.add(AVATAR_THEMES[((parseInt(user.tone, 10) || 0) % 8 + 8) % 8]);
+            }
 
-            var dot = el('span', 'position-absolute rounded-circle border border-2 border-white pg-chat-dot pg-chat-dot-' + user.presence);
-            dot.title = presenceLabel(user.presence);
-            wrap.appendChild(dot);
+            face.textContent = String(user.initials);
+        } else {
+            var source = (user && user.name) ? user.name : (fallbackName || '');
 
-            return wrap;
+            face.classList.add('avatar-subtle', 'theme-secondary');
+            face.textContent = source.replace(/^\s+/, '').charAt(0).toUpperCase() || '?';
         }
 
-        var source = (user && user.name) ? user.name : (fallbackName || '');
-        var initial = source.replace(/^\s+/, '').charAt(0).toUpperCase();
+        if (user && (['online', 'away', 'offline'].indexOf(user.presence) !== -1)) {
+            var dot = el('span', 'avatar-status status-' + user.presence);
+            dot.title = presenceLabel(user.presence);
+            face.appendChild(dot);
+        }
 
-        wrap.appendChild(el('div', 'pg-chat-letter', initial || '?'));
-
-        return wrap;
+        return face;
     }
 
     function userRow(user, onClick) {
@@ -628,7 +642,7 @@
         var nameLine = el('div', 'd-flex align-items-center gap-1');
         nameLine.appendChild(el('span', 'pg-chat-row-name fw-semibold', config.ai.label));
 
-        var badgeAi = el('span', 'badge rounded-pill text-bg-success flex-shrink-0', 'AI');
+        var badgeAi = el('span', 'badge rounded-pill theme-success flex-shrink-0', 'AI');
         badgeAi.style.fontSize = '10px';
         nameLine.appendChild(badgeAi);
 
@@ -651,9 +665,9 @@
 
         panel.textContent = '';
 
-        var header = el('div', 'card-header border-0 d-flex align-items-center py-2');
+        var header = el('div', 'card-header border-0 d-flex align-items-center py-3');
 
-        var backButton = el('button', 'btn btn-sm btn-link text-muted p-0 me-2');
+        var backButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-3');
         backButton.type = 'button';
         backButton.title = STR.back;
         backButton.appendChild(el('i', 'bi bi-arrow-left'));
@@ -664,7 +678,7 @@
         var titleLine = el('div', 'fw-semibold text-truncate', config.ai.label);
         titleLine.style.fontSize = '13px';
         titleWrap.appendChild(titleLine);
-        titleWrap.appendChild(el('small', 'text-muted', STR.online));
+        titleWrap.appendChild(el('small', 'fg-secondary', STR.online));
         header.appendChild(titleWrap);
 
         panel.appendChild(header);
@@ -724,7 +738,7 @@
         }
 
         if (!users.length) {
-            body.appendChild(el('div', 'text-center text-muted small py-4 px-3', STR.no_online_users));
+            body.appendChild(el('div', 'text-center fg-secondary small py-7 px-5', STR.no_online_users));
             return;
         }
 
@@ -741,11 +755,11 @@
         if (!conversations.length) {
             // Empty state centered + a start button that switches to the
             // Users tab.
-            var empty = el('div', 'd-flex flex-column align-items-center justify-content-center text-center gap-2 px-3');
+            var empty = el('div', 'd-flex flex-column align-items-center justify-content-center text-center gap-3 px-5');
             empty.style.height = '100%';
-            empty.appendChild(el('div', 'text-muted small', STR.no_conversations));
+            empty.appendChild(el('div', 'fg-secondary small', STR.no_conversations));
 
-            var startButton = el('button', 'btn btn-sm btn-primary');
+            var startButton = el('button', 'btn btn-sm btn-solid theme-primary');
             startButton.type = 'button';
             startButton.textContent = STR.start_chat;
             startButton.addEventListener('click', function () {
@@ -895,9 +909,9 @@
 
         // Header: back + name/presence + manage buttons (flat header, no
         // gradient).
-        var header = el('div', 'card-header border-0 d-flex align-items-center py-2');
+        var header = el('div', 'card-header border-0 d-flex align-items-center py-3');
 
-        var backButton = el('button', 'btn btn-sm btn-link text-muted p-0 me-2');
+        var backButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-3');
         backButton.type = 'button';
         backButton.title = STR.back;
         backButton.appendChild(el('i', 'bi bi-arrow-left'));
@@ -918,12 +932,12 @@
         titleLine.textContent = state.conversation.title;
 
         if (headerPeer && headerPeer.username) {
-            var accountName = el('span', 'text-muted ms-1', '@' + headerPeer.username);
+            var accountName = el('span', 'fg-secondary ms-1', '@' + headerPeer.username);
             accountName.style.fontSize = '11px';
             accountName.style.fontWeight = 'normal';
             titleLine.appendChild(accountName);
         }
-        var presenceLine = el('small', 'text-muted');
+        var presenceLine = el('small', 'fg-secondary');
         if (state.conversation.peer) {
             presenceLine.textContent = presenceText(state.conversation.peer);
             presenceLine.title = presenceTitle(state.conversation.peer);
@@ -977,7 +991,7 @@
         }
 
         if (state.conversation.canManage) {
-            var closeConversationButton = el('button', 'btn btn-sm btn-link text-muted p-0 me-2');
+            var closeConversationButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-3');
             closeConversationButton.type = 'button';
             closeConversationButton.title = STR.close_conversation;
             closeConversationButton.appendChild(el('i', 'bi bi-check2-circle'));
@@ -993,7 +1007,7 @@
             });
             header.appendChild(closeConversationButton);
 
-            var deleteButton = el('button', 'btn btn-sm btn-link text-danger p-0');
+            var deleteButton = el('button', 'btn btn-sm btn-link fg-danger p-0');
             deleteButton.type = 'button';
             deleteButton.title = STR.delete_conversation;
             deleteButton.appendChild(el('i', 'bi bi-trash'));
@@ -1003,14 +1017,14 @@
 
         panel.appendChild(header);
 
-        var body = el('div', 'pg-chat-body bg-body-tertiary px-2 py-2');
+        var body = el('div', 'pg-chat-body bg-1 px-3 py-3');
         panel.appendChild(body);
 
         // ── Composer ────────────────────────────────────────────────────
         // A framed box: the text area on top, the tool row (attach, emoji,
         // microphone) and the round send button underneath. The same shape
         // the site widget draws, so the two windows read as one feature.
-        var compose = el('div', 'card-footer p-2 pg-chat-compose');
+        var compose = el('div', 'card-footer p-3 pg-chat-compose');
         var composer = el('div', 'pg-chat-composer');
         var textarea = el('textarea');
         textarea.placeholder = STR.type_a_message;

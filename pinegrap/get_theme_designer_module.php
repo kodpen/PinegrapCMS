@@ -394,7 +394,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td>' . lang('Position') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][position]', 'options'=>array(lang('Top Left') => 'top_left', lang('Top Right') => 'top_right', lang('Bottom Left') => 'bottom_left', lang('Bottom Right') => 'bottom_right'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][position]', 'options'=>array(lang('Top Left') => 'top_left', lang('Top Right') => 'top_right', lang('Bottom Left') => 'bottom_left', lang('Bottom Right') => 'bottom_right'))) . '</td>
                     </tr>';
                 break;
 
@@ -414,7 +414,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td><label for="' . $area . '_' . $object . '_' . $module . '_previous_and_next_buttons_toggle">' . lang('Show Buttons') . ':<label></td>
-                        <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_previous_and_next_buttons_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][previous_and_next_buttons_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_previous_and_next_buttons_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox')) . '</td>
+                        <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_previous_and_next_buttons_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][previous_and_next_buttons_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_previous_and_next_buttons_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox check')) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_previous_and_next_buttons_horizontal_offset_row"' . $previous_and_next_buttons_option_row_style . '>
                         <td style="padding-left: 2em">' . lang('Horizontal Offset') . ':</td>
@@ -454,7 +454,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td><label for="' . $area . '_' . $object . '_' . $module . '_borders_toggle">' . lang('Borders') . ':<label></td>
-                        <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_borders_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][borders_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_border_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox')) . '</td>
+                        <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_borders_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][borders_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_border_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox check')) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_border_size_row"' . $border_options_row_style . '>
                         <td style="padding-left: 2em">' . lang('Size') . ':</td>
@@ -466,11 +466,11 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_border_style_row"' . $border_options_row_style . '>
                         <td style="padding-left: 2em">' . lang('Style') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][border_style]', 'options'=>array(lang('Solid') => 'solid', lang('Dashed') => 'dashed', lang('Dotted') => 'dotted', lang('Double') => 'double', lang('Groove') => 'groove', lang('Hidden') => 'hidden', lang('Inset') => 'inset', lang('Inherit') => 'inherit', lang('Outset') => 'outset', lang('Ridge') => 'ridge'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][border_style]', 'options'=>array(lang('Solid') => 'solid', lang('Dashed') => 'dashed', lang('Dotted') => 'dotted', lang('Double') => 'double', lang('Groove') => 'groove', lang('Hidden') => 'hidden', lang('Inset') => 'inset', lang('Inherit') => 'inherit', lang('Outset') => 'outset', lang('Ridge') => 'ridge'))) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_border_position_row"' . $border_options_row_style . '>
                         <td style="padding-left: 2em">' . lang('Position') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][border_position]', 'options'=>array(lang('All') => 'all', lang('Top') => 'top', lang('Right') => 'right', lang('Bottom') => 'bottom', lang('Left') => 'left'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][border_position]', 'options'=>array(lang('All') => 'all', lang('Top') => 'top', lang('Right') => 'right', lang('Bottom') => 'bottom', lang('Left') => 'left'))) . '</td>
                     </tr>';
                 break;
                 
@@ -515,7 +515,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td>' . lang('Background') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_type]', 'options'=>array('' => '', lang('Solid Color') => 'solid_color', lang('Image') => 'image'), 'onchange'=>'show_or_hide_background_options(this.options[this.selectedIndex].value, \'' . $area . '_' . $object . '_' . $module . '\')')) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_type]', 'options'=>array('' => '', lang('Solid Color') => 'solid_color', lang('Image') => 'image'), 'onchange'=>'show_or_hide_background_options(this.options[this.selectedIndex].value, \'' . $area . '_' . $object . '_' . $module . '\')')) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_color_row"' . $background_color_row_style . '>
                         <td style="padding-left: 2em">' . lang('Color') . ':</td>
@@ -523,19 +523,19 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_image_row"' . $background_image_row_style . '>
                         <td style="padding-left: 2em">' . lang('File') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_image]', 'options'=>select_files_for_theme_designer())) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_image]', 'options'=>select_files_for_theme_designer())) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_horizontal_position_row"' . $background_horizontal_position_row_style . '>
                         <td style="padding-left: 2em">' . lang('Horizontal Position') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_horizontal_position]', 'options'=>array(lang('Left') => 'left', lang('Center') => 'center', lang('Right') => 'right'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_horizontal_position]', 'options'=>array(lang('Left') => 'left', lang('Center') => 'center', lang('Right') => 'right'))) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_vertical_position_row"' . $background_vertical_position_row_style . '>
                         <td style="padding-left: 2em">' . lang('Vertical Position') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_vertical_position]', 'options'=>array(lang('Top') => 'top', lang('Center') => 'center', lang('Bottom') => 'bottom'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_vertical_position]', 'options'=>array(lang('Top') => 'top', lang('Center') => 'center', lang('Bottom') => 'bottom'))) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_repeat_row"' . $background_repeat_row_style . '>
                         <td style="padding-left: 2em">' . lang('Repeat') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_repeat]', 'options'=>array(lang('Yes') => '', lang('Horizontal') => 'repeat_x', lang('Vertical') => 'repeat_y', lang('No') => 'no_repeat'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_repeat]', 'options'=>array(lang('Yes') => '', lang('Horizontal') => 'repeat_x', lang('Vertical') => 'repeat_y', lang('No') => 'no_repeat'))) . '</td>
                     </tr>
                     ';
                 break;
@@ -561,7 +561,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     $output_font_size_row = 
                         '<tr>
                             <td>' . lang('Font Size') . ':</td>
-                            <td>' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][font_size][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_size][unit]', 'options'=>array('%' => '%', 'px' => 'px', 'em' => 'em'))) . '</td>
+                            <td>' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][font_size][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_size][unit]', 'options'=>array('%' => '%', 'px' => 'px', 'em' => 'em'))) . '</td>
                         </tr>';
                 
                 $liveform->assign_field_value($area . '[' . $object . '][' . $module . '][font_style]', $properties['font_style']);
@@ -580,7 +580,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td>' . lang('Font Family') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_family]', 'options'=>array('' => '',
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_family]', 'options'=>array('' => '',
 'Arial' => 'Arial,sans-serif',
 'Arial Black' => '\'Arial Black\',Gadget,sans-serif',
 'Arial Narrow' => '\'Arial Narrow\',sans-serif',
@@ -760,11 +760,11 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     ' . $output_font_size_row . '
                     <tr>
                         <td>' . lang('Font Style') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_style]', 'options'=>array('' => '', lang('Italic') => 'italic', lang('Normal') => 'normal', lang('Oblique') => 'oblique'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_style]', 'options'=>array('' => '', lang('Italic') => 'italic', lang('Normal') => 'normal', lang('Oblique') => 'oblique'))) . '</td>
                     </tr>
                     <tr>
                         <td>' . lang('Font Weight') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_weight]', 'options'=>array('' => '', lang('Bold') => 'bold', lang('Bolder') => 'bolder', lang('Lighter') => 'lighter', lang('Normal') => 'normal'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][font_weight]', 'options'=>array('' => '', lang('Bold') => 'bold', lang('Bolder') => 'bolder', lang('Lighter') => 'lighter', lang('Normal') => 'normal'))) . '</td>
                     </tr>';
                 break;
             
@@ -798,7 +798,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     
                 // else output the UOM picklist
                 } else {
-                    $unit_of_measure = $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][height][unit]', 'options'=>array('%' => '%', 'px' => 'px', 'em' => 'em')));
+                    $unit_of_measure = $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][height][unit]', 'options'=>array('%' => '%', 'px' => 'px', 'em' => 'em')));
                 }
                 
                 $output .= 
@@ -815,7 +815,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td>' . lang('Menu Orientation') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][menu_orientation]', 'options'=>array(lang('Horizontal') => 'horizontal', lang('Vertical') => 'vertical'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][menu_orientation]', 'options'=>array(lang('Horizontal') => 'horizontal', lang('Vertical') => 'vertical'))) . '</td>
                     </tr>';
                 break;
             
@@ -836,7 +836,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td>' . lang('Line Height') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][line_height][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][line_height][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
+                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][line_height][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][line_height][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>';
                 break;
             
@@ -900,19 +900,19 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     </tr>
                     <tr>
                         <td style="padding-left: 2em">' . lang('Top') . ':</td>
-                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_top][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_top][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
+                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_top][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_top][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
                         <td style="padding-left: 2em">' . lang('Right') . ':</td>
-                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_right][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_right][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
+                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_right][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_right][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
                         <td style="padding-left: 2em">' . lang('Bottom') . ':</td>
-                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_bottom][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_bottom][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
+                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_bottom][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_bottom][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
                         <td style="padding-left: 2em">' . lang('Left') . ':</td>
-                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_left][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_left][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
+                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][margin_left][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][margin_left][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>';
                 break;
                 
@@ -976,19 +976,19 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     </tr>
                     <tr>
                         <td style="padding-left: 2em">' . lang('Top') . ':</td>
-                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_top][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_top][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
+                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_top][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_top][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
                         <td style="padding-left: 2em">' . lang('Right') . ':</td>
-                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_right][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_right][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
+                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_right][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_right][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
                         <td style="padding-left: 2em">' . lang('Bottom') . ':</td>
-                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_bottom][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_bottom][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
+                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_bottom][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_bottom][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>
                     <tr>
                         <td style="padding-left: 2em">' . lang('Left') . ':</td>
-                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_left][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_left][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
+                        <td style="white-space: nowrap">' . $liveform->output_field(array('type'=>'text', 'name'=> $area . '[' . $object . '][' . $module . '][padding_left][amount]', 'value'=>'', 'size'=>'3')) . '&nbsp;' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][padding_left][unit]', 'options'=>array('px' => 'px', 'em' => 'em'))) . '</td>
                     </tr>';
                 break;
             
@@ -998,7 +998,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td>' . lang('Position') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][position]', 'options'=>array('' => '', lang('Left') => 'left', lang('Center') => 'center', lang('Right') => 'right'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][position]', 'options'=>array('' => '', lang('Left') => 'left', lang('Center') => 'center', lang('Right') => 'right'))) . '</td>
                     </tr>';
                 break;
             
@@ -1020,7 +1020,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td><label for="' . $area . '_' . $object . '_' . $module . '_rounded_corners_toggle">' . lang('Rounded Corners') . ':<label></td>
-                        <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_rounded_corners_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][rounded_corners_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_rounded_corner_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox')) . '</td>
+                        <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_rounded_corners_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][rounded_corners_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_rounded_corner_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox check')) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_rounded_corner_top_left_row"' . $rounded_corners_option_row_style . '>
                         <td style="padding-left: 2em">' . lang('Top Left') . ':</td>
@@ -1068,7 +1068,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td><label for="' . $area . '_' . $object . '_' . $module . '_shadows_toggle">' . lang('Shadows') . ':<label></td>
-                        <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_shadows_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][shadows_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_shadow_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox')) . '</td>
+                        <td>' . $liveform->output_field(array('type'=>'checkbox', 'id'=>$area . '_' . $object . '_' . $module . '_shadows_toggle', 'name'=>$area . '[' . $object . '][' . $module . '][shadows_toggle]', 'value'=>'1', 'onclick'=>'show_or_hide_css_rule_shadow_options(\'' . $area . '_' . $object . '_' . $module . '\', this)', 'class'=>'checkbox check')) . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_shadow_horizontal_offset_row"' . $shadow_option_row_style . '>
                         <td style="padding-left: 2em">' . lang('Horizontal Offset') . ':</td>
@@ -1129,7 +1129,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                 $output .= 
                     '<tr>
                         <td>' . lang('Text Decoration') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][text_decoration]', 'options'=>array('' => '', lang('None') => 'none', lang('Underline') => 'underline', lang('Overline') => 'overline', lang('Line Through') => 'line-through', lang('Inherit') => 'inherit'))) . '</td>
+                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][text_decoration]', 'options'=>array('' => '', lang('None') => 'none', lang('Underline') => 'underline', lang('Overline') => 'overline', lang('Line Through') => 'line-through', lang('Inherit') => 'inherit'))) . '</td>
                     </tr>';
                 break;
             
@@ -1163,7 +1163,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     
                 // else output the UOM picklist
                 } else {
-                    $unit_of_measure = $liveform->output_field(array('type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][width][unit]', 'options'=>array('%' => '%', 'px' => 'px', 'em' => 'em')));
+                    $unit_of_measure = $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][width][unit]', 'options'=>array('%' => '%', 'px' => 'px', 'em' => 'em')));
                 }
                 
                 $output .= 

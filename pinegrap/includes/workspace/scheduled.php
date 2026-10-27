@@ -105,6 +105,13 @@ define('WS_SCHEDULED_MAX_FOLLOW', 5);
 define('WS_SCHEDULED_MIN_MINUTES', 5);
 
 /**
+ * How many channels for customers one person's lead steps open in an hour:
+ * a form sent again and again with new addresses must not fill the
+ * Workspace. A channel the customer already has is reused, not counted.
+ */
+define('WS_SCHEDULED_LEAD_HOURLY', 20);
+
+/**
  * Are the tables there (2026.4.5, 5.81)?
  *
  * @return bool
@@ -174,6 +181,19 @@ function ws_scheduled_actions_only($alias = '')
 }
 
 /**
+ * The condition that leaves the hidden scheduled actions that start a flow
+ * (their anchors, flow_anchors.php) out of the lists of scheduled actions.
+ * The starts by event and join read them: they are what starts the flow.
+ *
+ * @param string $alias the table's alias in the query
+ * @return string " AND ..." or ""
+ */
+function ws_scheduled_anchors_out($alias = '')
+{
+    return (function_exists('ws_flows_ready') && ws_flows_ready()) ? " AND " . (($alias !== '') ? $alias . '.' : '') . "flow_id = 0" : '';
+}
+
+/**
  * Can a start in the queue carry who it is about (2026.4.8, 8.81)? The join
  * rule names the newcomer that way.
  *
@@ -230,7 +250,8 @@ function ws_scheduled_action($id)
 {
     $row = ws_scheduled($id);
 
-    return ($row && ((string) ($row['kind'] ?? 'action') === 'action')) ? $row : null;
+    // A flow's anchor is the flow's, changed and run only through it.
+    return ($row && ((string) ($row['kind'] ?? 'action') === 'action') && ((int) ($row['flow_id'] ?? 0) === 0)) ? $row : null;
 }
 
 /**
@@ -344,13 +365,13 @@ function ws_scheduled_webhook_formats()
 /**
  * The kinds of change a scheduled action does not make: a channel's summary,
  * the workspace's own tasks and notes, which an assistant proposes, and a
- * sales quote, which is only ever added.
+ * sales quote or a variant set, which is only ever added.
  *
  * @return string[]
  */
 function ws_scheduled_change_skipped()
 {
-    return array('channel', 'task', 'task_note', 'note', 'erp_quote');
+    return array('channel', 'task', 'task_note', 'note', 'erp_quote', 'variant_set');
 }
 
 /**
@@ -366,9 +387,9 @@ function ws_scheduled_record_types()
     $out = array();
 
     foreach (ws_change_types() as $type => $info) {
-        // A task note, a note or a sales quote is only ever added from here:
-        // nothing to wait on.
-        if (in_array($type, array('channel', 'task_note', 'note', 'erp_quote'), true)) {
+        // A task note, a note, a sales quote or a variant set is only ever
+        // added from here: nothing to wait on.
+        if (in_array($type, array('channel', 'task_note', 'note', 'erp_quote', 'variant_set'), true)) {
             continue;
         }
 
@@ -451,9 +472,29 @@ function ws_scheduled_metrics()
 }
 
 /**
+ * The keys of the counts in money, whose condition is kept in minor units
+ * and sent by the form in major units.
+ *
+ * @return string[]
+ */
+function ws_scheduled_money_metrics()
+{
+    $keys = array();
+
+    foreach (ws_scheduled_metrics() as $key => $metric) {
+        if ($metric['kind'] === 'money') {
+            $keys[] = $key;
+        }
+    }
+
+    return $keys;
+}
+
+/**
  * One count now.
  *
- * @param array  $viewer the creator: a count they may not see is refused
+ * @param array  $viewer the creator: a count they may not see, or one of a
+ *                       channel they do not read, is refused
  * @param string $key
  * @param int    $param  a channel (scope channel) or a threshold
  * @param int    $since  the action's previous run, 0 for the last day
@@ -470,6 +511,16 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
 
     if (($metric['right'] !== '') && empty($viewer[$metric['right']])) {
         return array('ok' => false, 'value' => 0, 'text' => '', 'error' => lang('You may not see this count.'));
+    }
+
+    // A channel's count needs the creator to read that channel, asked at
+    // every count: they may have left it after the action was saved.
+    if (($metric['scope'] === 'channel') && ((int) $param > 0)) {
+        $channel_row = ws_channel((int) $param);
+
+        if (!$channel_row || !ws_can_read_channel($viewer, $channel_row)) {
+            return array('ok' => false, 'value' => 0, 'text' => '', 'error' => lang('You may not see this count.'));
+        }
     }
 
     $since = ((int) $since > 0) ? (int) $since : time() - 86400;
@@ -634,7 +685,9 @@ function ws_scheduled_placeholders()
 }
 
 /**
- * Fills the placeholders of a text.
+ * Fills the placeholders of a text in one pass over the text as written:
+ * a value (a customer's name, a form field, a follow-up's result) is never
+ * read again as a placeholder, a count included.
  *
  * @param string $text
  * @param array  $context viewer, row, result, status, source, source_result
@@ -674,20 +727,27 @@ function ws_scheduled_fill($text, $context)
             : array_fill_keys($asked[0], '');
     }
 
-    $text = strtr($text, $values);
-
     // A count by its key: {{count:orders_new}}, {{count:stock_low:5}}.
-    return preg_replace_callback('/\{\{count:([a-z_]+)(?::(\d+))?\}\}/', function ($match) use ($context, $row) {
+    if (preg_match_all('/\{\{count:([a-z_]+)(?::(\d+))?\}\}/', $text, $counts, PREG_SET_ORDER)) {
         $viewer = $context['viewer'] ?? null;
 
-        if (!is_array($viewer)) {
-            return '';
+        foreach ($counts as $match) {
+            if (isset($values[$match[0]])) {
+                continue;
+            }
+
+            if (!is_array($viewer)) {
+                $values[$match[0]] = '';
+                continue;
+            }
+
+            $count = ws_scheduled_metric_value($viewer, $match[1], (int) ($match[2] ?? 0), (int) ($row['last_run_at'] ?? 0));
+            $values[$match[0]] = $count['ok'] ? $count['text'] : '?';
         }
+    }
 
-        $count = ws_scheduled_metric_value($viewer, $match[1], (int) ($match[2] ?? 0), (int) ($row['last_run_at'] ?? 0));
-
-        return $count['ok'] ? $count['text'] : '?';
-    }, $text);
+    // strtr() never looks again at what it put in.
+    return strtr($text, $values);
 }
 
 /**
@@ -1194,7 +1254,16 @@ function ws_scheduled_rule_input($viewer, $rule)
                 return $fail(lang('You may not see records of this kind.'));
             }
 
-            if (($id <= 0) || (ws_scheduled_record($record_type, $id) === null)) {
+            $record = ($id > 0) ? ws_scheduled_record($record_type, $id) : null;
+
+            if ($record === null) {
+                return $fail(lang('Choose the record the condition looks at.'));
+            }
+
+            // A task the creator may not see is refused as one that is not
+            // there: the words of the condition name the task by its title,
+            // and a refusal of its own would tell that it exists.
+            if (($record_type === 'task') && !ws_can_see_task($viewer, $record)) {
                 return $fail(lang('Choose the record the condition looks at.'));
             }
 
@@ -1554,6 +1623,15 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 $param = is_array($item) ? max(0, (int) ($item['param'] ?? 0)) : 0;
 
                 if (isset($metrics[$key]) && (($metrics[$key]['right'] === '') || !empty($viewer[$metrics[$key]['right']]))) {
+                    // A channel's count, as a count condition checks it.
+                    if (($metrics[$key]['scope'] === 'channel') && ($param > 0)) {
+                        $channel = ws_channel($param);
+
+                        if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+                            return $fail(lang('That channel could not be found.'));
+                        }
+                    }
+
                     $list[] = array('key' => $key, 'param' => $param);
                 }
             }
@@ -1708,6 +1786,24 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 'action' => $verb,
                 'id'     => $id,
                 'fields' => $fields,
+            ));
+
+        // A submitted form's customer brought into a channel
+        // (ws_scheduled_lead()): the creator chooses contacts and may open
+        // channels with a template.
+        case 'lead':
+            if (!function_exists('ws_template') || !ws_templates_ready()) {
+                return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
+            }
+
+            if (!isset(ws_ref_types($viewer)['contact'])) {
+                return $fail(lang('Only somebody who may choose contacts can bring customers into channels.'));
+            }
+
+            return array('ok' => true, 'error' => '', 'action' => array(
+                'type'     => 'lead',
+                'private'  => !empty($action['private']),
+                'user_ids' => ws_scheduled_people($action['user_ids'] ?? array()),
             ));
     }
 
@@ -2348,6 +2444,11 @@ function ws_scheduled_action_text($viewer, $action)
             }
 
             return lang(array('string' => 'Change {var:1}: {var:2}', 'vars' => array($name, implode(', ', $parts))));
+
+        case 'lead':
+            return !empty($action['private'])
+                ? lang('Bring the customer of the submitted form into their channel, or open a private one for them')
+                : lang('Bring the customer of the submitted form into their channel, or open one for them');
     }
 
     return '';
@@ -2717,6 +2818,28 @@ function ws_scheduled_form_data($viewer, $row)
 }
 
 /**
+ * Rules as they are kept, or as the form reads them, turned into the rules
+ * the form sends (pure): a count in money back in major units with two
+ * decimals, since ws_scheduled_input() multiplies it by 100 again. Anything
+ * else is left as it is.
+ *
+ * @param array    $rules as kept
+ * @param string[] $money the counts in money (ws_scheduled_money_metrics())
+ * @return array
+ */
+function ws_scheduled_rules_as_sent($rules, $money)
+{
+    foreach ($rules as $i => $rule) {
+        if (is_array($rule) && (($rule['type'] ?? '') === 'metric') && isset($rule['value'])
+            && in_array((string) ($rule['metric'] ?? ''), (array) $money, true)) {
+            $rules[$i]['value'] = number_format(((int) $rule['value']) / 100, 2, '.', '');
+        }
+    }
+
+    return $rules;
+}
+
+/**
  * The word for how a run went.
  *
  * @param string $status
@@ -2812,7 +2935,7 @@ function ws_scheduled_list($viewer, $filters = array())
         return array();
     }
 
-    $where = array('1 = 1' . ws_scheduled_actions_only());
+    $where = array('1 = 1' . ws_scheduled_actions_only() . ws_scheduled_anchors_out());
     $status = (string) ($filters['status'] ?? '');
 
     if (isset(ws_scheduled_states()[$status])) {
@@ -2848,7 +2971,7 @@ function ws_scheduled_targets($viewer)
 
     $out = array();
 
-    foreach ((array) db_items("SELECT * FROM ws_scheduled_actions WHERE status IN ('active', 'paused', 'failed')" . ws_scheduled_actions_only() . " ORDER BY name, id LIMIT 300") as $row) {
+    foreach ((array) db_items("SELECT * FROM ws_scheduled_actions WHERE status IN ('active', 'paused', 'failed')" . ws_scheduled_actions_only() . ws_scheduled_anchors_out() . " ORDER BY name, id LIMIT 300") as $row) {
         $row = ws_scheduled_decode($row);
         $out[] = array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'status' => (string) $row['status'], 'trigger_only' => ws_scheduled_trigger_only($row));
     }
@@ -2857,6 +2980,65 @@ function ws_scheduled_targets($viewer)
 }
 
 // ─── Writing ────────────────────────────────────────────────────────────
+
+/**
+ * May this scheduled action be created or changed as sent? The panel's save
+ * and the API meet the same refusals; nothing is written. A new one is made
+ * in a channel the person may post in, or in a note they may change.
+ *
+ * @param array $viewer
+ * @param array $data as ws_scheduled_save() takes it
+ * @return array ok, status (403 | 404 | 422 on a refusal), error, field,
+ *               row (columns to write), existing, channel, note_id
+ */
+function ws_scheduled_save_check($viewer, $data)
+{
+    $fail = function ($status, $error, $field = '') {
+        return array('ok' => false, 'status' => $status, 'error' => $error, 'field' => $field, 'row' => null, 'existing' => null, 'channel' => null, 'note_id' => 0);
+    };
+
+    if (!ws_can_schedule($viewer)) {
+        return $fail(403, lang('Only staff can schedule actions.'));
+    }
+
+    $id = (int) ($data['id'] ?? 0);
+    $existing = ($id > 0) ? ws_scheduled_action($id) : null;
+
+    if (($id > 0) && !$existing) {
+        return $fail(404, lang('That scheduled action could not be found.'));
+    }
+
+    if ($existing && !in_array($existing['status'], array('active', 'paused', 'failed'), true)) {
+        return $fail(422, lang('A scheduled action that is done or cancelled cannot be changed.'));
+    }
+
+    $checked = ws_scheduled_input($viewer, $data, $existing);
+
+    if (!$checked['ok']) {
+        return $fail(422, $checked['error'], $checked['field']);
+    }
+
+    $channel = null;
+    $note_id = 0;
+
+    if (!$existing && ((int) ($data['channel_id'] ?? 0) > 0)) {
+        $channel = ws_channel((int) $data['channel_id']);
+
+        if (!$channel || !ws_can_post_channel($viewer, $channel)) {
+            return $fail(422, lang('You cannot post in that channel.'));
+        }
+    } elseif (!$existing && ((int) ($data['note_id'] ?? 0) > 0)) {
+        $note = function_exists('ws_note_for') ? ws_note_for($viewer, (int) $data['note_id'], 'edit') : null;
+
+        if (!$note) {
+            return $fail(422, lang('That note could not be found.'));
+        }
+
+        $note_id = (int) $note['id'];
+    }
+
+    return array('ok' => true, 'status' => 200, 'error' => '', 'field' => '', 'row' => $checked['row'], 'existing' => $existing, 'channel' => $channel, 'note_id' => $note_id);
+}
 
 /**
  * Creates or changes a scheduled action. A new one written in a channel
@@ -2873,27 +3055,13 @@ function ws_scheduled_save($viewer, $data)
         return array('ok' => false, 'error' => $error, 'field' => $field, 'id' => 0, 'message_id' => 0);
     };
 
-    if (!ws_can_schedule($viewer)) {
-        return $fail(lang('Only staff can schedule actions.'));
-    }
-
-    $id = (int) ($data['id'] ?? 0);
-    $existing = ($id > 0) ? ws_scheduled_action($id) : null;
-
-    if (($id > 0) && !$existing) {
-        return $fail(lang('That scheduled action could not be found.'));
-    }
-
-    if ($existing && !in_array($existing['status'], array('active', 'paused', 'failed'), true)) {
-        return $fail(lang('A scheduled action that is done or cancelled cannot be changed.'));
-    }
-
-    $checked = ws_scheduled_input($viewer, $data, $existing);
+    $checked = ws_scheduled_save_check($viewer, $data);
 
     if (!$checked['ok']) {
         return $fail($checked['error'], $checked['field']);
     }
 
+    $existing = $checked['existing'];
     $row = $checked['row'];
     $now = time();
     $json = function ($value) {
@@ -2934,24 +3102,8 @@ function ws_scheduled_save($viewer, $data)
         return array('ok' => true, 'error' => '', 'field' => '', 'id' => (int) $existing['id'], 'message_id' => (int) $existing['message_id']);
     }
 
-    $channel = null;
-    $note_id = 0;
-
-    if ((int) ($data['channel_id'] ?? 0) > 0) {
-        $channel = ws_channel((int) $data['channel_id']);
-
-        if (!$channel || !ws_can_post_channel($viewer, $channel)) {
-            return $fail(lang('You cannot post in that channel.'));
-        }
-    } elseif ((int) ($data['note_id'] ?? 0) > 0) {
-        $note = function_exists('ws_note_for') ? ws_note_for($viewer, (int) $data['note_id'], 'edit') : null;
-
-        if (!$note) {
-            return $fail(lang('That note could not be found.'));
-        }
-
-        $note_id = (int) $note['id'];
-    }
+    $channel = $checked['channel'];
+    $note_id = (int) $checked['note_id'];
 
     db("INSERT INTO ws_scheduled_actions (name, channel_id, note_id, created_by, rules, action, " . implode(', ', array_keys($follow_columns)) . ", status, next_run_at,
             updated_by, created_at, updated_at)
@@ -3450,7 +3602,11 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
             $steps[] = array('step' => 'rules', 'ok' => false, 'text' => $hold['reason']);
             $fill['result'] = $hold['reason'];
         } else {
-            $done = ws_scheduled_do($viewer, $row, $row['action'], $fill);
+            // A flow's anchor starts a run of its flow (flow_anchors.php);
+            // it is no step a scheduled action takes.
+            $done = (((int) ($row['flow_id'] ?? 0) > 0) && function_exists('ws_flow_anchor_start'))
+                ? ws_flow_anchor_start($viewer, $row, $fill)
+                : ws_scheduled_do($viewer, $row, $row['action'], $fill);
             $steps[] = array('step' => 'action', 'ok' => $done['ok'], 'text' => $done['text']);
             $posted = (int) $done['message_id'];
             $outcome = $done['ok'] ? 'done' : 'failed';
@@ -3545,6 +3701,22 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
  */
 function ws_scheduled_report($row, $status, $steps, $news = true)
 {
+    // A flow's anchor has no card or channel: the flow's runs say how it
+    // went. Only a start that did not happen is written to the Site Log.
+    if ((int) ($row['flow_id'] ?? 0) > 0) {
+        if ($status === 'failed') {
+            $why = array();
+
+            foreach ($steps as $step) {
+                $why[] = (string) $step['text'];
+            }
+
+            log_activity(lang(array('string' => 'workspace flow “{var:1}” did not start on its own: {var:2}', 'vars' => array($row['name'], implode(' · ', $why)))), ws_person_name($row['created_by']));
+        }
+
+        return;
+    }
+
     $lines = array();
 
     foreach ($steps as $step) {
@@ -3772,7 +3944,9 @@ function ws_scheduled_compare($current, $operator, $value, $kind)
  * @param array $row     the scheduled action
  * @param array $action
  * @param array $context what placeholders read (ws_scheduled_fill()), the run and its depth
- * @return array ok, text, message_id
+ * @return array ok, text, message_id; task_id, channel_id where a task or a
+ *               channel was opened; data: the values a flow's box gives the
+ *               boxes after it (ws_step_result_data())
  */
 function ws_scheduled_do($viewer, $row, $action, $context = array())
 {
@@ -3826,10 +4000,11 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
             $sent = ws_scheduled_mail((array) $action['to'], $subject, $body, $format);
 
             if ($sent === 0) {
-                return $fail(lang(array('string' => 'The e-mail to {var:1} could not be sent.', 'vars' => implode(', ', (array) $action['to']))));
+                return $fail(lang(array('string' => 'The e-mail to {var:1} could not be sent.', 'vars' => implode(', ', (array) $action['to'])))) + array('data' => array('sent' => 0));
             }
 
-            return array('ok' => true, 'text' => lang(array('string' => 'e-mail “{var:1}” sent to {var:2}', 'vars' => array($subject, implode(', ', (array) $action['to'])))), 'message_id' => 0);
+            return array('ok' => true, 'text' => lang(array('string' => 'e-mail “{var:1}” sent to {var:2}', 'vars' => array($subject, implode(', ', (array) $action['to'])))), 'message_id' => 0,
+                'data' => array('sent' => $sent));
 
         case 'notify':
             return ws_scheduled_notify($viewer, $row, $action, $context);
@@ -3855,6 +4030,9 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
         case 'change':
             return ws_scheduled_change($viewer, $row, $action);
 
+        case 'lead':
+            return ws_scheduled_lead($viewer, $action, $context);
+
         // An approval request, with the creator's rights; somebody who left
         // the channel since is no longer asked.
         case 'approval':
@@ -3869,13 +4047,15 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
                 'text'      => mb_substr(ws_scheduled_fill((string) $action['text'], $context), 0, WS_MESSAGE_MAX),
                 'approvers' => (array) $action['approvers'],
                 'rule'      => (string) $action['rule'],
+                // A flow's approval box gives its request a deadline.
+                'closes_at' => (int) ($action['closes_at'] ?? 0),
             ), 0, false);
 
             if (!$created['ok']) {
                 return $fail(lang(array('string' => 'Could not ask for approval in #{var:1}: {var:2}', 'vars' => array($channel['name'], $created['error']))));
             }
 
-            return array('ok' => true, 'text' => lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $created['message_id']);
+            return array('ok' => true, 'text' => lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $created['message_id'], 'approval_id' => (int) $created['approval_id']);
 
         // A check-in, asked in the creator's name; somebody no longer able
         // to write in the channel cannot ask there.
@@ -3942,10 +4122,13 @@ function ws_scheduled_notify($viewer, $row, $action, $context)
     $told = array();
 
     foreach (ws_scheduled_people($action['user_ids'] ?? array()) as $user_id) {
+        // A flow's box (no action row) gets a line of its own each time: the
+        // inbox keys a line by its channel, message and task, all 0 then.
         $inbox_id = ws_notify($user_id, 'scheduled_notice', array(
             'channel_id' => 0,
             'message_id' => (int) $row['message_id'],
             'actor_id'   => (int) $viewer['id'],
+            'separate'   => ((int) $row['id'] <= 0),
         ));
 
         if ($inbox_id > 0) {
@@ -3956,10 +4139,10 @@ function ws_scheduled_notify($viewer, $row, $action, $context)
     }
 
     if (empty($told)) {
-        return array('ok' => false, 'text' => lang('Nobody could be told: the people are no longer in the team.'), 'message_id' => 0);
+        return array('ok' => false, 'text' => lang('Nobody could be told: the people are no longer in the team.'), 'message_id' => 0, 'data' => array('told' => 0));
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => '{var:1} told', 'vars' => implode(', ', $told))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => '{var:1} told', 'vars' => implode(', ', $told))), 'message_id' => 0, 'data' => array('told' => count($told)));
 }
 
 /**
@@ -4100,15 +4283,17 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
         }
     }
 
+    $data = array('sent' => $sent, 'tasks' => $listed);
+
     if ($tried === 0) {
-        return array('ok' => true, 'text' => lang('no task e-mail went out: nobody had a task to list'), 'message_id' => 0);
+        return array('ok' => true, 'text' => lang('no task e-mail went out: nobody had a task to list'), 'message_id' => 0, 'data' => $data);
     }
 
     if ($sent === 0) {
-        return array('ok' => false, 'text' => lang('The task e-mail could not be sent.'), 'message_id' => 0);
+        return array('ok' => false, 'text' => lang('The task e-mail could not be sent.'), 'message_id' => 0, 'data' => $data);
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => 'task e-mail sent to {var:1} people ({var:2} tasks listed)', 'vars' => array($sent, $listed))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => 'task e-mail sent to {var:1} people ({var:2} tasks listed)', 'vars' => array($sent, $listed))), 'message_id' => 0, 'data' => $data);
 }
 
 /**
@@ -4263,7 +4448,7 @@ function ws_scheduled_task($viewer, $row, $action, $context)
         return array('ok' => false, 'text' => lang(array('string' => 'The task could not be opened: {var:1}', 'vars' => $made['error'])), 'message_id' => 0);
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => 'task {var:1} “{var:2}” opened', 'vars' => array(ws_task_number($made['task_id']), $data['title']))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => 'task {var:1} “{var:2}” opened', 'vars' => array(ws_task_number($made['task_id']), $data['title']))), 'message_id' => 0, 'task_id' => (int) $made['task_id']);
 }
 
 /**
@@ -4301,23 +4486,36 @@ function ws_scheduled_webhook($viewer, $row, $action, $context)
                 'source' => (string) ($context['source'] ?? ''),
                 'at'     => date('c'),
             );
+
+            // A flow's box (steps.php): which flow, run and box called.
+            if (!empty($context['flow'])) {
+                $payload['flow'] = $context['flow'];
+            }
+    }
+
+    $headers = array('Content-Type: application/json; charset=utf-8');
+
+    if ((string) ($context['idempotency_key'] ?? '') !== '') {
+        $headers[] = 'Idempotency-Key: ' . preg_replace('/[^A-Za-z0-9_.:-]/', '', (string) $context['idempotency_key']);
     }
 
     $answer = api_http_request('POST', (string) $action['url'], array(
         'body'    => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        'headers' => array('Content-Type: application/json; charset=utf-8'),
+        'headers' => $headers,
         'timeout' => 10,
         'agent'   => 'workspace',
     ));
 
     $host = ws_scheduled_host($action['url']);
+    // No status when nothing answered.
+    $data = array('status_code' => ($answer['status'] > 0) ? (int) $answer['status'] : null, 'duration_ms' => (int) $answer['duration_ms']);
 
     if (!$answer['ok']) {
         return array('ok' => false, 'text' => lang(array('string' => 'the webhook {var:1} did not take it: {var:2}', 'vars' => array(
-            $host, ($answer['status'] > 0) ? 'HTTP ' . $answer['status'] : lang((string) $answer['error'])))), 'message_id' => 0);
+            $host, ($answer['status'] > 0) ? 'HTTP ' . $answer['status'] : lang((string) $answer['error'])))), 'message_id' => 0, 'data' => $data);
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => 'webhook {var:1} called (HTTP {var:2}, {var:3} ms)', 'vars' => array($host, $answer['status'], $answer['duration_ms']))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => 'webhook {var:1} called (HTTP {var:2}, {var:3} ms)', 'vars' => array($host, $answer['status'], $answer['duration_ms']))), 'message_id' => 0, 'data' => $data);
 }
 
 /**
@@ -4341,10 +4539,13 @@ function ws_scheduled_web_check($action)
         'agent'    => 'uptime-check',
     ));
 
-    $url = (string) $action['url'];
+    // Only the host in the sentence: a flow's run shows it to whoever reads
+    // the run, and the address may carry a secret (user:pass@, a token).
+    $url = ws_scheduled_host((string) $action['url']);
     $status = (int) $answer['status'];
-    $fail = function ($text) {
-        return array('ok' => false, 'text' => $text, 'message_id' => 0);
+    $data = array('status_code' => ($status > 0) ? $status : null, 'duration_ms' => (int) $answer['duration_ms']);
+    $fail = function ($text) use ($data) {
+        return array('ok' => false, 'text' => $text, 'message_id' => 0, 'data' => $data);
     };
 
     if ($status === 0) {
@@ -4369,7 +4570,7 @@ function ws_scheduled_web_check($action)
         return $fail(lang(array('string' => '{var:1} answered in {var:2} ms, slower than {var:3} ms', 'vars' => array($url, $answer['duration_ms'], (int) $action['max_ms']))));
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => '{var:1} answered HTTP {var:2} in {var:3} ms', 'vars' => array($url, $status, $answer['duration_ms']))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => '{var:1} answered HTTP {var:2} in {var:3} ms', 'vars' => array($url, $status, $answer['duration_ms']))), 'message_id' => 0, 'data' => $data);
 }
 
 /**
@@ -4429,15 +4630,18 @@ function ws_scheduled_ssl_check($action)
     $ends = (int) $parsed['validTo_time_t'];
     $left = (int) floor(($ends - time()) / 86400);
 
+    // Below 0 once it ran out.
+    $data = array('days_left' => $left);
+
     if ($ends <= time()) {
-        return $fail(lang(array('string' => 'The certificate of {var:1} ran out on {var:2}', 'vars' => array($host, date('d.m.Y', $ends)))));
+        return $fail(lang(array('string' => 'The certificate of {var:1} ran out on {var:2}', 'vars' => array($host, date('d.m.Y', $ends))))) + array('data' => $data);
     }
 
     if ($left < (int) $action['days']) {
-        return $fail(lang(array('string' => 'The certificate of {var:1} ends in {var:2} days ({var:3})', 'vars' => array($host, $left, date('d.m.Y', $ends)))));
+        return $fail(lang(array('string' => 'The certificate of {var:1} ends in {var:2} days ({var:3})', 'vars' => array($host, $left, date('d.m.Y', $ends))))) + array('data' => $data);
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => 'the certificate of {var:1} has {var:2} days left ({var:3})', 'vars' => array($host, $left, date('d.m.Y', $ends)))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => 'the certificate of {var:1} has {var:2} days left ({var:3})', 'vars' => array($host, $left, date('d.m.Y', $ends)))), 'message_id' => 0, 'data' => $data);
 }
 
 /**
@@ -4450,11 +4654,21 @@ function ws_scheduled_summary($viewer, $row, $action, $context)
     $title = ws_scheduled_fill(((string) ($action['title'] ?? '') !== '') ? (string) $action['title'] : (string) $row['name'], $context);
     $lines = array();
     $plain = array();
+    $counts = array();
 
     foreach ((array) $action['metrics'] as $item) {
-        $count = ws_scheduled_metric_value($viewer, $item['key'], (int) ($item['param'] ?? 0), (int) ($row['last_run_at'] ?? 0));
-        $label = ws_scheduled_metric_label($item['key'], (int) ($item['param'] ?? 0));
+        $param = (int) ($item['param'] ?? 0);
+        $count = ws_scheduled_metric_value($viewer, $item['key'], $param, (int) ($row['last_run_at'] ?? 0));
+
+        // A refused count of a channel is named without the channel; a
+        // threshold is still given.
+        if (!$count['ok'] && ((ws_scheduled_metrics()[$item['key']]['scope'] ?? '') === 'channel')) {
+            $param = 0;
+        }
+
+        $label = ws_scheduled_metric_label($item['key'], $param);
         $value = $count['ok'] ? $count['text'] : '—';
+        $counts[] = $count['ok'] ? (int) $count['value'] : null;
 
         $lines[] = '• ' . $label . ': **' . $value . '**';
         $plain[] = '- ' . $label . ': ' . $value;
@@ -4488,7 +4702,9 @@ function ws_scheduled_summary($viewer, $row, $action, $context)
         $where[] = implode(', ', (array) $action['to']);
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => 'summary sent to {var:1}', 'vars' => implode(' · ', $where))), 'message_id' => $message_id);
+    // The counts in the order of the metrics, null where one was refused.
+    return array('ok' => true, 'text' => lang(array('string' => 'summary sent to {var:1}', 'vars' => implode(' · ', $where))), 'message_id' => $message_id,
+        'data' => array('counts' => $counts));
 }
 
 /**
@@ -4642,7 +4858,105 @@ function ws_scheduled_change($viewer, $row, $action)
 
     log_activity(lang(array('string' => 'scheduled action “{var:1}”: {var:2}', 'vars' => array($row['name'], $text))), ws_person_name($viewer['id']));
 
-    return array('ok' => true, 'text' => $text, 'message_id' => $decision_id);
+    return array('ok' => true, 'text' => $text, 'message_id' => $decision_id, 'data' => array('record_id' => (int) $action['id']));
+}
+
+/**
+ * Brings the customer of a submitted form into a channel, with the
+ * creator's rights: the contact the form tied the submission to, else the
+ * one with its e-mail address (ws_lead_contact_find()). A channel about that
+ * customer the creator reads is reused and told the form came; else one is
+ * opened for the customer with the "New customer" template, within
+ * WS_SCHEDULED_LEAD_HOURLY an hour. Two contacts of one person stay for the
+ * contacts screen's duplicates and merge to settle.
+ *
+ * @param array $viewer  the creator
+ * @param array $action  private, user_ids
+ * @param array $context event, event_payload (form.submitted)
+ * @return array ok, text, message_id, channel_id
+ */
+function ws_scheduled_lead($viewer, $action, $context)
+{
+    $fail = function ($text) {
+        return array('ok' => false, 'text' => $text, 'message_id' => 0);
+    };
+
+    $payload = (array) ($context['event_payload'] ?? array());
+    $submission = ws_lead_submission_of((string) ($context['event'] ?? ''), $payload);
+
+    if ($submission === null) {
+        return $fail(lang('Only a submitted form brings a customer in.'));
+    }
+
+    $contact_id = ws_lead_contact_find($submission);
+
+    if ($contact_id <= 0) {
+        return $fail(lang('The submitted form names no contact, and no contact has its e-mail address.'));
+    }
+
+    $form_name = trim((string) preg_replace('/\s+/u', ' ', (string) ($payload['form_name'] ?? '')));
+    $form_name = ($form_name !== '') ? mb_substr($form_name, 0, 100) : lang('a form');
+
+    // The customer's own channel, the newest one the creator reads.
+    $channels = array_filter(ws_customer_channels('contact', $contact_id), function ($channel) use ($viewer) {
+        return ws_can_read_channel($viewer, $channel);
+    });
+    $channel_id = ws_lead_channel_pick($channels);
+
+    if ($channel_id > 0) {
+        $channel = ws_channel($channel_id);
+        ws_message_system($channel_id, lang(array('string' => 'The customer sent the form “{var:1}”.', 'vars' => $form_name)));
+
+        return array('ok' => true, 'text' => lang(array('string' => 'the customer was brought into #{var:1}', 'vars' => $channel['name'])), 'message_id' => 0, 'channel_id' => $channel_id);
+    }
+
+    $recent = (int) db_value("SELECT COUNT(*) FROM ws_channels
+        WHERE created_by = '" . (int) $viewer['id'] . "' AND created_at > '" . (time() - 3600) . "' AND contact_id > 0");
+
+    if ($recent >= WS_SCHEDULED_LEAD_HOURLY) {
+        return $fail(lang(array('string' => 'At most {var:1} channels for customers are opened an hour, so none was opened for this one.', 'vars' => WS_SCHEDULED_LEAD_HOURLY)));
+    }
+
+    $template = ws_template('builtin:new_customer');
+
+    if (!$template) {
+        return $fail(lang('That template could not be found.'));
+    }
+
+    $contact = db_item("SELECT first_name, last_name, company, email_address FROM contacts WHERE id = '" . $contact_id . "'");
+    $made = null;
+
+    foreach (ws_lead_channel_names(ws_lead_channel_name(is_array($contact) ? $contact : array(), $contact_id)) as $name) {
+        if (!ws_channel_name_taken($name)) {
+            $made = ws_channel_create($viewer, array(
+                'name'          => $name,
+                'kind'          => !empty($action['private']) ? 'private' : 'public',
+                'customer_type' => 'contact',
+                'customer_id'   => $contact_id,
+                'members'       => ws_scheduled_people($action['user_ids'] ?? array()),
+            ));
+            break;
+        }
+    }
+
+    if ($made === null) {
+        return $fail(lang('There are already channels with every name tried for this customer.'));
+    }
+
+    if (!$made['ok']) {
+        return $fail(lang(array('string' => 'The channel could not be opened: {var:1}', 'vars' => $made['error'])));
+    }
+
+    $channel = ws_channel($made['channel_id']);
+    ws_message_system($made['channel_id'], lang(array('string' => 'Opened for the customer who sent the form “{var:1}”.', 'vars' => $form_name)));
+    $applied = ws_template_apply($viewer, $channel, $template, array('new_channel' => true));
+    $text = lang(array('string' => '#{var:1} opened for the customer', 'vars' => $channel['name']));
+
+    if (!$applied['ok']) {
+        $text .= '; ' . lang(array('string' => 'the template could not be applied: {var:1}', 'vars' => $applied['error']));
+    }
+
+    return array('ok' => true, 'text' => $text, 'message_id' => 0, 'channel_id' => (int) $made['channel_id']);
 }
 
 /**

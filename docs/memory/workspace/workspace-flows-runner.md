@@ -4,7 +4,7 @@ description: Workspace flow runs (flow_runs.php, no schema change): start, run c
 ---
 
 ## Where is it?
-- `includes/workspace/flow_runs.php`; handlers end `api_flows.php`; tests `tests/workspace_flow_runs_test.php`. Columns of 11.0.80 only. Panel and run view: `workspace-flows-canvas.md`, `workspace-flows-run-view.md`.
+- `includes/workspace/flow_runs.php`; handlers end `api_flows.php`; tests `tests/workspace_flow_runs_test.php`. Columns of 11.0.80 only. Panel, run view: `workspace-flows-canvas.md`, `workspace-flows-run-view.md`.
 
 ## How does a run start?
 - `ws_flow_run_start_check()` / `ws_flow_run_start()`: run or edit access, then the token (`start_key` = `ws_flow_start_key()`, manual: + sha1: the column ignores case) answers its run (200) before the live, manual-start, owner-on-staff, 500-open and 60-an-hour refusals. Paused or a view share: the token's run answers to its readers (`ws_flow_run_for_token()`), else 404 / 403. The run row is `INSERT … SELECT` from a live flow. `context` (once): trigger, box, the flow's `channel_id` and `flow_name` then.
@@ -20,10 +20,10 @@ description: Workspace flow runs (flow_runs.php, no schema change): start, run c
 - Owner's rights now; `ws_task_create()`, due = ready day + `due_in`, last line `ws_flow_task_marker()` (context's flow name, run, `ws_flow_box_unique_name()`: label, plus id when shared). One UPDATE: effect and wait_key `task:<id>`, waiting, wake_at +1 h.
 
 ## How is a box woken?
-- `ws_events_awaited()` adds waiting `wait_event`s; `ws_events_process()` calls `ws_flow_wake()`: done → done; cancelled or gone → `cancelled` if an arrow takes it, else failed. A passed `wake_at` rechecks; a box of an ended run is let go.
+- `ws_events_awaited()` adds waiting `wait_event`s; `ws_events_process()` calls `ws_flow_wake()`: done → done; cancelled or gone → `cancelled` if an arrow takes it, else failed; timeout → `timeout`. A passed `wake_at` rechecks; an ended run lets it go.
 
 ## What if a request dies half way?
-- Running over 600 s: effect → waits again; none → one retry, which adopts the task ending with its marker that no other box of the run holds (LIKE escapes `\ % _`) and looks at it at once; then failed (manual retry/skip: F5).
+- Running over 600 s: effect → waits again; none → one retry, which adopts the task ending with its marker that no other box of the run holds , looks at it at once; then failed (`workspace-flows-retry-skip.md`).
 - `ws_flow_step_settle()` marks the run running first (`ws_flow_run_touch()`); `ws_flow_runs_heal()` walks again, 600 s untouched, a running run (missing start box written; in `ws_flow_due()`) and a waiting one with a box ended at or after its `updated_at` (an early walk wrote waiting over the mark; not in `ws_flow_due()`).
 - A box of a deleted flow's run cancels it (`ws_flow_runs_cancel_ids()`); deleting cancels every open run.
 
@@ -36,4 +36,4 @@ description: Workspace flow runs (flow_runs.php, no schema change): start, run c
 - Cancel: flow editors and the starter; open boxes skipped, tasks stay. A task box rereads the run before `ws_task_create()`; a task opened mid-cancel goes on its box if skipped or failed (a ready one's retry finds it).
 
 ## Which routes?
-- GET/POST `/workspace/flows/{id}/runs`, GET `/workspace/flow-runs/{id}` (with `channel_id`), POST `/cancel`. Writes rehearse, carry `'mcp' => false` and refuse `ws_api_is_assistant()`: Claude's routine calls REST. Claude's key: `workspace-flows-shares.md` (`ws_api_flow_reachable()`, `ws_api_flow_run_reachable()`).
+- GET/POST `/workspace/flows/{id}/runs`, GET `/workspace/flow-runs/{id}` (with `channel_id`), POST `/cancel`, `/steps/{node}/retry|skip`. Writes rehearse, `'mcp' => false`, refuse `ws_api_is_assistant()`. Claude's key: `workspace-flows-shares.md` (`ws_api_flow_reachable()`, `ws_api_flow_run_reachable()`).

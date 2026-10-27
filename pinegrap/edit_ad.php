@@ -36,8 +36,8 @@ if (($user['role'] == 3) && (count(get_items_user_can_edit('ad_regions', $user['
 // if the user has a user role, then determine if user has access to the ad region that this ad is in
 if ($user['role'] == 3) {
     // get this ad's name and ad region id
-    $query = "SELECT name, ad_region_id FROM ads WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT name, ad_region_id FROM ads WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $name = $row['name'];
     $ad_region_id = $row['ad_region_id'];
@@ -66,8 +66,8 @@ if (!$_POST) {
             ad_regions.name as ad_region_name
         FROM ads
         LEFT JOIN ad_regions ON ads.ad_region_id = ad_regions.id
-        WHERE ads.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE ads.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $name = $row['name'];
@@ -119,24 +119,24 @@ if (!$_POST) {
                         <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                         <div class="row">
                             <div class="col-12">
-                                <div class="card my-4">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card my-7">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Options') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Ad'))) . '</label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'name', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="ad_region_id" class="form-label">' . lang('Ad Region') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'ad_region_id', 'id'=>'ad_region_id', 'class'=>'form-select', 'options'=>get_ad_region_options())) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'ad_region_id', 'id'=>'ad_region_id', 'class'=>'form-control', 'options'=>get_ad_region_options())) . '
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 <div class="form-text">' . lang('Assign to Ad Region') . '</div>
                                             </div>
-                                            <div class="col-12 mt-1 mb-2">
+                                            <div class="col-12 mt-1 mb-3">
                                                 <label for="content_textarea" class="form-label">' . lang('Ad Content') . '</label>
                                                 ' . $liveform->output_field(array('type'=>'textarea', 'id'=>'content_textarea', 'name'=>'content')) . '
                                             </div>
@@ -145,22 +145,22 @@ if (!$_POST) {
                                 </div>
                             </div>
                             <div class="col-12">
-                                <div class="card my-4">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card my-7">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Dynamic Ad Region Display Options') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-12 col-md-4 my-2">
+                                            <div class="col-12 md:col-4 my-3">
                                                 <label for="label" class="form-label">' . lang('Label') . '</label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'label', 'name'=>'label', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'255')) . '
                                             </div>
-                                            <div class="col-12 col-md-4 my-2">
+                                            <div class="col-12 md:col-4 my-3">
                                                 <label for="sort_order" class="form-label">' . lang('Sort Order') . '</label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'sort_order', 'name'=>'sort_order', 'size'=>'5', 'class'=>'form-control', 'maxlength'=>'4')) . '
                                                 <div class="form-text">' . lang('leave blank for random order') . '</div>
                                             </div>
-                                            <div class="col-12 mt-1 mb-2">
+                                            <div class="col-12 mt-1 mb-3">
                                                 <label for="caption" class="form-label">' . lang('Caption') . ' ( ' . lang('Add Caption on Top of Content') . ' )</label>
                                                 ' . $liveform->output_field(array('type'=>'textarea', 'id'=>'caption', 'name'=>'caption')) . '
                                             </div>
@@ -169,11 +169,11 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>
@@ -195,8 +195,8 @@ if (!$_POST) {
     // if the user selected to delete the ad
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
         // delete ad
-        $query = "DELETE FROM ads WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM ads WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('ad'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);
 
@@ -229,9 +229,9 @@ if (!$_POST) {
                 "SELECT id
                 FROM ads
                 WHERE
-                    (name = '" . escape($liveform->get_field_value('name')) . "')
-                    AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (name = ?)
+                    AND (id != ?)";
+            $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
             
             // if the name is already in use by a different ad, then mark error
             if (mysqli_num_rows($result) > 0) {
@@ -254,16 +254,16 @@ if (!$_POST) {
         $query =
             "UPDATE ads
             SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                content = '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('content'))) . "',
-                caption = '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('caption'))) . "',
-                ad_region_id = '" . escape($liveform->get_field_value('ad_region_id')) . "',
-                label = '" . escape($liveform->get_field_value('label')) . "',
-                sort_order = '" . escape($liveform->get_field_value('sort_order')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                content = ?,
+                caption = ?,
+                ad_region_id = ?,
+                label = ?,
+                sort_order = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) (prepare_rich_text_editor_content_for_input($liveform->get_field_value('content'))), (string) (prepare_rich_text_editor_content_for_input($liveform->get_field_value('caption'))), (string) ($liveform->get_field_value('ad_region_id')), (string) ($liveform->get_field_value('label')), (string) ($liveform->get_field_value('sort_order')), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('ad'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);
         // if there is a send to, then forward user to send to

@@ -1,6 +1,6 @@
 ---
 name: decisions-made-data
-description: Decisions list, data part: starter dumps, orders.notes and tracking_company, user.secret_key*, order_items.tax, orders.tracking_code, fixing a released migration, MySQL 5.7 support.
+description: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
 ---
 
 ## Which columns and dumps stay as they are?
@@ -13,3 +13,6 @@ description: Decisions list, data part: starter dumps, orders.notes and tracking
 ## Which migration and server rules are decisions?
 - A released version's migration may still be fixed for the sites that have not taken it yet (an installation past that version never runs it again): `upgrade_to_2022_2()` now calls `install_drop_column_default()` (issue #464, PR #470). What the version brings, its `versions.php` row and its changelog heading stay fixed (`release/released-vs-open-version.md`).
 - MySQL 5.7 stays supported, with MariaDB 10.2 and later: syntax that runs only on newer servers is not used. MySQL 5.6 and MariaDB 10.1 are refused before a table is touched (`release/database-server-compatibility.md`).
+- ERP schema (2026-10-26, #1773): adding the columns and tables an ERP step needs is approved in advance ("erp şeması eklemek serbest (gerekliler)"); the step still goes through a migration with the idempotent helpers and is named in the PR. First use: `config.erp_efatura_web_threshold` / `erp_efatura_general_threshold` (11.0.61).
+- İYS status on contacts (owner, 2026-10-26, "1 v 2 soruna evet onay veriyortum", step 5 of `plans/sms-and-iys.md`): one column, `contacts.iys_email_status` (11.0.39), holds what İYS last said about the address on the e-mail channel. Why: a refusal pulled from İYS must stop commercial campaigns in the same window, and the consent log (keyed by a hash, no address) cannot be filtered per recipient. The İYS account, the cursors and the switches live in `connect_apps` (`iys` row), so no other column was asked for (`platform/iys-client.md`).
+- `marketplace_product_map.remote_code` becomes `utf8mb4_bin` (owner, 2026-10-26, "marketplace_product_map.remote_code onaylıyorum", done in #2095, `commerce/marketplace-order-import.md`). Why: under `unicode_ci` "ABC-1" and "abc-1" are one code, so an order for one is matched to the other's product. The order import falls back to the case-insensitive match when no code matches exactly.

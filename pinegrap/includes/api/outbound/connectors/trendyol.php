@@ -22,9 +22,10 @@
 // stock and price, read the result of a batch, read order
 // packages (pulled, or delivered by their webhook), accept one (Picking),
 // report one shipped with the seller's own carrier, send the link of a
-// package's invoice, read the buyers' returns and approve the ones that came
-// back, read the buyers' questions and answer them, and register or remove
-// that webhook. What it does not
+// package's invoice, read the buyers' returns and approve or reject the ones
+// that came back, read the buyers' questions and answer them, register or remove
+// that webhook, and read the seller's catalogue a page at a time for matching
+// it to the shop's products. What it does not
 // name in the table below mp_can() answers no for, so nothing queues work this
 // connector cannot do.
 //
@@ -83,11 +84,14 @@ function mp_trendyol_connector() {
 		'send_invoice_link'   => 'mp_trendyol_send_invoice_link',
 		'claims'              => 'mp_trendyol_claims',
 		'approve_claim'       => 'mp_trendyol_approve_claim',
+		'claim_issue_reasons' => 'mp_trendyol_claim_issue_reasons',
+		'reject_claim'        => 'mp_trendyol_reject_claim',
 		'questions'           => 'mp_trendyol_questions',
 		'answer_question'     => 'mp_trendyol_answer_question',
 		'webhook_packages'    => 'mp_trendyol_webhook_packages',
 		'register_webhook'    => 'mp_trendyol_register_webhook',
-		'remove_webhook'      => 'mp_trendyol_remove_webhook'
+		'remove_webhook'      => 'mp_trendyol_remove_webhook',
+		'remote_products'     => 'mp_trendyol_remote_products'
 	);
 
 }
@@ -175,12 +179,13 @@ function mp_trendyol_credentials_problem($account) {
 
 // One call, with their answer already read. A GET unless a body is given, in
 // which case it is a POST of that body as JSON; $method names another verb
-// (PUT, DELETE), sent with the body when there is one.
+// (PUT, DELETE), sent with the body when there is one. A body given as text
+// is sent as it is, with $content_type as its type (a multipart upload).
 //
 // $allow_empty reads a 2xx whose body is empty or not JSON as success, for a
 // call whose answer carries nothing but its status. Every other call keeps
 // reading such an answer as an error.
-function mp_trendyol_call($account, $path, $max_body, $transport = null, $body = null, $method = null, $allow_empty = false) {
+function mp_trendyol_call($account, $path, $max_body, $transport = null, $body = null, $method = null, $allow_empty = false, $content_type = 'application/json') {
 
 	$problem = mp_trendyol_credentials_problem($account);
 
@@ -204,7 +209,13 @@ function mp_trendyol_call($account, $path, $max_body, $transport = null, $body =
 		'agent'    => 'marketplace'
 	);
 
-	if ($body !== null) {
+	if (is_string($body)) {
+
+		$headers[] = 'Content-Type: ' . $content_type;
+
+		$options['body'] = $body;
+
+	} elseif ($body !== null) {
 
 		$headers[] = 'Content-Type: application/json';
 
@@ -3012,6 +3023,280 @@ function mp_trendyol_approve_claim($account, $claim_id, $unit_ids, $transport = 
 
 }
 
+/* ---------------------------------------------------------- return rejection */
+
+// The reasons a return can be rejected with, as their claimIssueReasonId.
+//
+// GET /integration/order/claim-issue-reasons, not seller-scoped: a list of
+// {id, name}, the name in Turkish. They answer the reasons of the Turkish and
+// the global marketplace together, and the list does not say which is which,
+// so every reason is offered and a wrong one is refused by them.
+//
+// Answers data['reasons'] in the shape of mp_trendyol_claim_reason_rows().
+function mp_trendyol_claim_issue_reasons($account, $transport = null) {
+
+	$result = mp_trendyol_call($account, '/integration/order/claim-issue-reasons', 262144, $transport);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(array('reasons' => mp_trendyol_claim_reason_rows($result['data'])));
+
+}
+
+// Their list of reasons as [{id, name, file}], in their order; file says
+// whether a rejection with that reason has to carry a document. A reason
+// whose id could not be sent back, or without a name, is left out.
+function mp_trendyol_claim_reason_rows($decoded) {
+
+	$rows = array();
+
+	foreach (is_array($decoded) ? $decoded : array() as $entry) {
+
+		if (!is_array($entry)) {
+
+			continue;
+
+		}
+
+		$id = mp_trendyol_text($entry, array('id'));
+
+		$name = mb_substr(mp_trendyol_text($entry, array('name')), 0, 200);
+
+		if (!mp_trendyol_id_fits($id) || ($name === '') || isset($rows[$id])) {
+
+			continue;
+
+		}
+
+		$rows[$id] = array('id' => $id, 'name' => $name, 'file' => mp_trendyol_claim_reason_needs_file($id));
+
+	}
+
+	return array_values($rows);
+
+}
+
+// Whether a rejection with this reason has to carry a document. Their guide
+// names the three that do not: the return never arrived (1651), the product
+// goes to analysis (451), and an exchange the buyer asked for in a question
+// (2101). Every other reason needs at least one file.
+function mp_trendyol_claim_reason_needs_file($reason_id) {
+
+	return !in_array((string)$reason_id, array('451', '1651', '2101'), true);
+
+}
+
+// The documents a rejection may carry: the extensions their guide names, with
+// the type each is sent as, at most mp_trendyol_claim_file_bytes() each
+// (their limit) and mp_trendyol_claim_file_count() in all (this screen's, so
+// one request stays within what a PHP server usually takes in a post).
+function mp_trendyol_claim_file_types() {
+
+	return array(
+		'jpg'  => 'image/jpeg',
+		'jpeg' => 'image/jpeg',
+		'png'  => 'image/png',
+		'pdf'  => 'application/pdf',
+		'tif'  => 'image/tiff',
+		'tiff' => 'image/tiff',
+		'doc'  => 'application/msword',
+		'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+		'mp4'  => 'video/mp4',
+		'mov'  => 'video/quicktime'
+	);
+
+}
+
+function mp_trendyol_claim_file_bytes() {
+
+	return 5242880;
+
+}
+
+function mp_trendyol_claim_file_count() {
+
+	return 5;
+
+}
+
+// What stops a rejection from being sent, in words for the operator, or ''.
+// $files is a list of {name, data}: the name the operator's file had, and its
+// bytes.
+function mp_trendyol_claim_reject_problem($reason_id, $description, $files) {
+
+	if (!mp_trendyol_id_fits((string)$reason_id)) {
+
+		return lang('Choose why the return is rejected.');
+
+	}
+
+	$description = is_string($description) ? trim($description) : '';
+
+	if ($description === '') {
+
+		return lang('Write why the return is rejected.');
+
+	}
+
+	if (!mb_check_encoding($description, 'UTF-8') || (mb_strlen($description) > 500)) {
+
+		return lang('The explanation can be at most 500 characters.');
+
+	}
+
+	$files = is_array($files) ? $files : array();
+
+	if (count($files) > mp_trendyol_claim_file_count()) {
+
+		return lang(array(
+			'string' => 'At most {var:1} files can be attached.',
+			'vars'   => array(mp_trendyol_claim_file_count())
+		));
+
+	}
+
+	$types = mp_trendyol_claim_file_types();
+
+	foreach ($files as $file) {
+
+		$name = (is_array($file) && isset($file['name']) && is_string($file['name'])) ? $file['name'] : '';
+
+		$data = (is_array($file) && isset($file['data']) && is_string($file['data'])) ? $file['data'] : '';
+
+		$extension = strtolower((string)substr(strrchr($name, '.'), 1));
+
+		if (!isset($types[$extension])) {
+
+			return lang(array(
+				'string' => '{var:1} is not a file type the marketplace takes: send a picture, PDF, Word document or video.',
+				'vars'   => array($name)
+			));
+
+		}
+
+		if (($data === '') || (strlen($data) > mp_trendyol_claim_file_bytes())) {
+
+			return lang(array(
+				'string' => '{var:1} is empty or larger than 5 MB.',
+				'vars'   => array($name)
+			));
+
+		}
+
+	}
+
+	if (!$files && mp_trendyol_claim_reason_needs_file($reason_id)) {
+
+		return lang('This reason needs a document: attach a photo, video or report of what came back.');
+
+	}
+
+	return '';
+
+}
+
+// The files of a rejection as a multipart/form-data body, each a part named
+// "files" as their guide asks. The name sent is the operator's, without the
+// characters that would end the header line or the quoted name.
+function mp_trendyol_claim_multipart($files, $boundary) {
+
+	$types = mp_trendyol_claim_file_types();
+
+	$body = '';
+
+	foreach ($files as $file) {
+
+		$name = str_replace(array('"', '\\'), '', preg_replace('/[\x00-\x1F\x7F]/', '', (string)$file['name']));
+
+		$extension = strtolower((string)substr(strrchr($name, '.'), 1));
+
+		$body .= '--' . $boundary . "\r\n"
+			. 'Content-Disposition: form-data; name="files"; filename="' . $name . '"' . "\r\n"
+			. 'Content-Type: ' . (isset($types[$extension]) ? $types[$extension] : 'application/octet-stream') . "\r\n"
+			. "\r\n"
+			. $file['data'] . "\r\n";
+
+	}
+
+	return $body . '--' . $boundary . "--\r\n";
+
+}
+
+// Reject units of a return that came back to the warehouse: this opens a
+// case that Trendyol decides on, with the reason and the documents sent.
+//
+// POST /integration/order/sellers/{sellerId}/claims/{claimId}/issue. Their
+// guide (modified 2026-10-14) puts claimIssueReasonId, claimItemIdList (the
+// unit ids, comma separated) and description in the query and the documents
+// in a multipart body as "files"; the API reference (2026-01-28) lists the
+// three fields in the multipart body instead. The guide's form is sent, the
+// fields once only: a field both in the query and in the body could be read
+// as two values. A successful answer has no body worth reading.
+//
+// Only units WaitingInAction can be rejected; the caller sends units of the
+// return as it read them, never ids the browser made up.
+function mp_trendyol_reject_claim($account, $claim_id, $unit_ids, $reason_id, $description, $files, $transport = null) {
+
+	if (!mp_trendyol_claim_id_fits($claim_id)) {
+
+		return mp_error(lang('That return has no number to reject.'));
+
+	}
+
+	$ids = array();
+
+	foreach (is_array($unit_ids) ? $unit_ids : array() as $unit_id) {
+
+		if (!mp_trendyol_claim_id_fits($unit_id)) {
+
+			return mp_error(lang('Choose the units to reject.'));
+
+		}
+
+		$ids[$unit_id] = true;
+
+	}
+
+	if (!$ids) {
+
+		return mp_error(lang('Choose the units to reject.'));
+
+	}
+
+	$files = is_array($files) ? array_values($files) : array();
+
+	$problem = mp_trendyol_claim_reject_problem($reason_id, $description, $files);
+
+	if ($problem !== '') {
+
+		return mp_error($problem);
+
+	}
+
+	$boundary = 'pg' . bin2hex(random_bytes(16));
+
+	$result = mp_trendyol_call($account,
+		'/integration/order/sellers/' . mp_trendyol_seller_id($account) . '/claims/' . $claim_id . '/issue'
+			. '?claimIssueReasonId=' . (string)$reason_id
+			. '&claimItemIdList=' . implode(',', array_keys($ids))
+			. '&description=' . rawurlencode(trim($description)),
+		65536, $transport, mp_trendyol_claim_multipart($files, $boundary), 'POST', true,
+		'multipart/form-data; boundary=' . $boundary);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(array('rejected' => count($ids)));
+
+}
+
 /* --------------------------------------------------------------- questions */
 
 // How many questions one page asks for, and how many pages one read takes.
@@ -3372,5 +3657,152 @@ function mp_trendyol_webhook_id($value) {
 	$value = is_scalar($value) ? trim((string)$value) : '';
 
 	return (preg_match('/^[A-Za-z0-9_-]{1,64}$/', $value) === 1) ? $value : '';
+
+}
+
+/* ------------------------------------------------------- their catalogue */
+
+// One page of the seller's approved products on Trendyol, for matching them to
+// the shop's (includes/api/outbound/remote_products.php).
+//
+// GET /integration/product/sellers/{id}/products/approved lists the seller's
+// contents a page at a time, pages counted from 0, each content with its
+// variants. One row is given per variant: a variant is what Trendyol sells,
+// stocks and prices, and its barcode is the key every stock and price push
+// names, so the barcode is the code a match is written with. A variant
+// without a barcode is left out.
+//
+// remote_id is the content id, the one the listing status read writes on a
+// mapping row; group_code is productMainId, shared by a content's variants.
+//
+// Answers data: products (remote_code, remote_id, group_code, barcode, title,
+// image_url, price in minor units as sold there, quantity, status), page,
+// pages, total, last.
+function mp_trendyol_remote_products($account, $page, $transport = null) {
+
+	$page = max(0, (int) $page);
+
+	$result = mp_trendyol_call($account,
+		'/integration/product/sellers/' . mp_trendyol_seller_id($account)
+			. '/products/approved?page=' . $page . '&size=' . mp_trendyol_remote_page_size(),
+		8388608, $transport);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	$data = $result['data'];
+
+	$content = (isset($data['content']) && is_array($data['content'])) ? $data['content'] : array();
+
+	$products = array();
+
+	foreach ($content as $entry) {
+
+		if (!is_array($entry)) {
+
+			continue;
+
+		}
+
+		$variants = (isset($entry['variants']) && is_array($entry['variants'])) ? $entry['variants'] : array();
+
+		$content_image = mp_trendyol_remote_image($entry);
+
+		foreach ($variants as $variant) {
+
+			if (!is_array($variant)) {
+
+				continue;
+
+			}
+
+			$barcode = mp_trendyol_text($variant, array('barcode'));
+
+			if ($barcode === '') {
+
+				continue;
+
+			}
+
+			$image = mp_trendyol_remote_image($variant);
+
+			$price = (isset($variant['price']) && is_array($variant['price']))
+				? mp_trendyol_first($variant['price'], array('salePrice'))
+				: mp_trendyol_first($variant, array('salePrice'));
+
+			$quantity = (isset($variant['stock']) && is_array($variant['stock']))
+				? mp_trendyol_first($variant['stock'], array('quantity'))
+				: mp_trendyol_first($variant, array('quantity'));
+
+			$status = array();
+
+			foreach (array('onSale', 'locked', 'archived', 'blacklisted') as $flag) {
+
+				if (!empty($variant[$flag])) {
+
+					$status[] = $flag;
+
+				}
+
+			}
+
+			$products[] = array(
+				'remote_code' => $barcode,
+				'remote_id'   => mp_trendyol_text($entry, array('contentId')),
+				'group_code'  => mp_trendyol_text($entry, array('productMainId')),
+				'barcode'     => $barcode,
+				'title'       => mp_trendyol_text($entry, array('title')),
+				'image_url'   => ($image !== '') ? $image : $content_image,
+				'price'       => mp_trendyol_minor($price),
+				'quantity'    => is_numeric($quantity) ? (int) round((float) $quantity) : 0,
+				'status'      => implode('/', $status)
+			);
+
+		}
+
+	}
+
+	$pages = isset($data['totalPages']) ? (int) $data['totalPages'] : 0;
+
+	// An empty page or the page count, whichever says so first.
+	$last = !$content || (($pages > 0) && ($page + 1 >= $pages));
+
+	return mp_ok(array(
+		'products' => $products,
+		'page'     => $page,
+		'pages'    => $pages,
+		'total'    => isset($data['totalElements']) ? (int) $data['totalElements'] : count($products),
+		'last'     => $last
+	));
+
+}
+
+function mp_trendyol_remote_page_size() {
+
+	return 100;
+
+}
+
+// The first https picture in $row's images[] ({url} objects or plain
+// addresses), or ''. Shown on a panel served over https, so a plain http
+// address of theirs is not kept.
+function mp_trendyol_remote_image($row) {
+
+	foreach ((isset($row['images']) && is_array($row['images'])) ? $row['images'] : array() as $image) {
+
+		$url = is_array($image) ? (isset($image['url']) ? $image['url'] : '') : $image;
+
+		if (is_string($url) && preg_match('#^https://[^\s"<>]+$#i', $url)) {
+
+			return $url;
+
+		}
+
+	}
+
+	return '';
 
 }

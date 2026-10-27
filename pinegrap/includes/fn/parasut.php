@@ -120,13 +120,8 @@ function _parasut_request($method, $url, $body = null, $token = null, $retry_429
 {
     parasut_throttle();
 
-    $ch = curl_init($url);
-    // Identify this installation on outgoing requests. Sent with no
-    // User-Agent, a request looks like an anonymous client to the receiving
-    // server's firewall and gets rejected — which is how Pinegrap ended up
-    // blocking its own licence and update checks.
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
     $headers = ['Accept: application/json'];
+    $options = ['timeout' => 30, 'connect_timeout' => 30];
 
     if ($token) {
         $headers[] = 'Authorization: Bearer ' . $token;
@@ -136,35 +131,22 @@ function _parasut_request($method, $url, $body = null, $token = null, $retry_429
         $json = json_encode($body);
         $headers[] = 'Content-Type: application/json';
         $headers[] = 'Content-Length: ' . strlen($json);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+        $options['body'] = $json;
     }
 
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CUSTOMREQUEST => $method,
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_SSL_VERIFYPEER => true,
-    ]);
+    $options['headers'] = $headers;
 
-    // The certificate is checked against the bundle the rest of the software
-    // uses (CURL_CA_BUNDLE), the way the update channel and the e-document
-    // layer do; without it a host with a stale CA store fails every call
-    // with a bare "cURL error 60".
-    if (function_exists('pg_curl_tls')) {
-        pg_curl_tls($ch);
-    }
-
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_error = curl_error($ch);
-    $curl_errno = curl_errno($ch);
-    unset($ch);
+    // pg_curl_run() checks the certificate against the bundle the rest of the
+    // software uses (CURL_CA_BUNDLE), the way the update channel and the
+    // e-document layer do; without it a host with a stale CA store fails
+    // every call with a bare "cURL error 60".
+    $answer = pg_curl_run($method, $url, $options);
+    $response = $answer['body'];
+    $http_code = $answer['status'];
+    $curl_error = $answer['error'];
 
     if ($curl_error) {
-        if (function_exists('pg_curl_tls_hint')) {
-            $curl_error .= pg_curl_tls_hint($curl_errno);
-        }
+        $curl_error .= pg_curl_tls_hint($answer['errno']);
         return ['http_code' => 0, 'body' => null, 'raw' => '', 'curl_error' => $curl_error];
     }
 
@@ -743,30 +725,16 @@ function _parasut_token_exchange($body, $credentials)
 
     parasut_throttle();
 
-    $ch = curl_init(_parasut_base() . '/oauth/token');
-    // Identify this installation on outgoing requests. Sent with no
-    // User-Agent, a request looks like an anonymous client to the receiving
-    // server's firewall and gets rejected — which is how Pinegrap ended up
-    // blocking its own licence and update checks.
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => http_build_query($body),
-        CURLOPT_USERPWD => $client_id . ':' . $client_secret,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_SSL_VERIFYPEER => true,
+    $answer = pg_curl_run('POST', _parasut_base() . '/oauth/token', [
+        'body'            => http_build_query($body),
+        'userpwd'         => $client_id . ':' . $client_secret,
+        'headers'         => ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
+        'timeout'         => 30,
+        'connect_timeout' => 30,
     ]);
-
-    if (function_exists('pg_curl_tls')) {
-        pg_curl_tls($ch);
-    }
-
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_error = curl_error($ch);
-    unset($ch);
+    $response = $answer['body'];
+    $http_code = $answer['status'];
+    $curl_error = $answer['error'];
 
     if ($curl_error) {
         return ['error_description' => 'cURL error: ' . $curl_error];
@@ -2786,7 +2754,7 @@ function parasut_order_invoice_status_badge($value, $in_button = false, $edoc_co
 
     if (parasut_order_invoice_unsure($value)) {
         return ($in_button ? ' ' : '')
-            . '<span class="badge bg-warning text-dark' . ($in_button ? ' ms-1' : '') . '" title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '">'
+            . '<span class="badge theme-warning fg-black' . ($in_button ? ' ms-1' : '') . '" title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '">'
             . h(lang('Check Paraşüt')) . '</span>';
     }
 
@@ -2794,19 +2762,19 @@ function parasut_order_invoice_status_badge($value, $in_button = false, $edoc_co
         $title = h(lang('Pinegrap did not see the conversion finish: the e-document failed, was rejected or was still being processed. Check the invoice in Paraşüt.'));
 
         return $in_button
-            ? ' <span class="badge bg-warning text-dark ms-1" title="' . $title . ' ' . lang('Parasut ID') . ': ' . h($value) . '">' . h(lang('E-document not confirmed')) . '</span>'
-            : '<span class="badge bg-warning text-dark" title="' . $title . '">' . h(lang('Sales invoice created, e-document not confirmed')) . '</span>'
-                . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
+            ? ' <span class="badge theme-warning fg-black ms-1" title="' . $title . ' ' . lang('Parasut ID') . ': ' . h($value) . '">' . h(lang('E-document not confirmed')) . '</span>'
+            : '<span class="badge theme-warning fg-black" title="' . $title . '">' . h(lang('Sales invoice created, e-document not confirmed')) . '</span>'
+                . ' <small class="fg-secondary">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
     }
 
     if ($value !== '') {
         return $in_button
-            ? ' <span class="badge bg-success ms-1" title="' . lang('Parasut ID') . ': ' . h($value) . '">' . lang('Sent') . '</span>'
-            : '<span class="badge bg-success">' . lang('Sent') . '</span>'
-                . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
+            ? ' <span class="badge theme-success ms-1" title="' . lang('Parasut ID') . ': ' . h($value) . '">' . lang('Sent') . '</span>'
+            : '<span class="badge theme-success">' . lang('Sent') . '</span>'
+                . ' <small class="fg-secondary">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
     }
 
-    return $in_button ? '' : '<span class="badge bg-secondary">' . lang('Not Sent') . '</span>';
+    return $in_button ? '' : '<span class="badge theme-secondary">' . lang('Not Sent') . '</span>';
 }
 
 /**
@@ -2860,8 +2828,8 @@ function parasut_order_erp_invoice_badge($record)
         $facts[] = h(lang('Check Paraşüt'));
     }
 
-    return '<span class="badge bg-' . h($tone) . (($tone === 'warning') ? ' text-dark' : '') . '">' . h(lang('Invoiced through the ERP')) . '</span>'
-        . ' <small class="text-muted">' . implode(' · ', $facts) . '</small>';
+    return '<span class="badge theme-' . h($tone) . '">' . h(lang('Invoiced through the ERP')) . '</span>'
+        . ' <small class="fg-secondary">' . implode(' · ', $facts) . '</small>';
 }
 
 /**

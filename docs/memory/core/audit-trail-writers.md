@@ -18,16 +18,17 @@ description: Which save paths write audit_log rows, how they read the row before
 - Orders: `edit_orders.php`, `view_order.php` (cancel, refund, marked paid, marked refunded, restore), API `orders.php`, `view_orders.php` exports (`complete` → `exported` from the row the export read; one line per order the UPDATE changed).
 - Files: `add_file.php`, `edit_file.php`, `edit_files.php`, API `files.php`, file manager (create, upload, paste, folder copy, zip create and extract, rename, move, bin, restore, delete, WebP, save, rotate, bulk edit, design flag).
 - Users: `add_user.php`, `edit_user.php` (save, contact link, delete), `delete_users.php` (row read before its tokens go).
+- Contacts: `core/audit-trail-contacts.md`.
 - Workspace (proposals, drawer, bulk, scheduled): `ws_change_write()`, `core/audit-trail-workspace.md`.
 - Personal data, type `person`: `privacy_export.php` (`export`), `privacy_erase.php` (`erase`).
 - Before #1237 bulk page edit, zip, product Copy, variant set on/off wrote nothing (#993).
 
 ## What is not hooked yet?
 - `pg_catalog_bin_product()` itself (`includes/fn/ecommerce.php`): its callers write the `recycle` line, the Workspace in `ws_change_write()`; if it ever writes its own, theirs must go or they double.
-- Not attempted: designer publish (page revisions keep it), imports, `update_order.php` / the order screen's Save (only ship_tos change), API webhooks, `edit_user.php` sign-in unlock, identity disconnect, two-step reset.
+- Not attempted: designer publish (page revisions keep it), other imports, `update_order.php` / the order screen's Save (only ship_tos change), API webhooks, `edit_user.php` sign-in unlock, identity disconnect, two-step reset.
 
 ## What did the sandbox show (PR #905)?
-- MariaDB, panel requests (settings, API apps, file manager, catalog, page editor, order cancel/restore): one line each, changed fields only. Pages with 35 KB and 1.1 MB trees deleted from the bin keep name and title. A first save after an upgrade writes NULL → '' once. The page editor writes `page_home = ''`, not `no`, off the home page (not fixed).
+- MariaDB, panel requests (settings, API apps, files, catalog, pages, orders): one line each, changed fields only. Pages with 1.1 MB trees deleted from the bin keep name and title. A first save after an upgrade writes NULL → '' once. The page editor writes `page_home = ''`, not `no`, off the home page (not fixed).
 
 ## Personal data?
 - A deleted order or user keeps its whole row in `before_json` (card fields masked) until the person is erased.

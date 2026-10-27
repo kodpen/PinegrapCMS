@@ -237,6 +237,216 @@ function pg_common_regions_from_rows(array $names, array $rows)
     return $regions;
 }
 
+/**
+ * The shared component category that marks a component made from a common
+ * region (pg_common_region_component()); the classic <cregion> tag of that
+ * region draws the component from then on.
+ *
+ * @param int $cregion_id
+ * @return string
+ */
+function pg_common_region_component_category($cregion_id)
+{
+    return 'common_region:' . (int) $cregion_id;
+}
+
+/**
+ * The shared components that draw converted common regions, read once per
+ * request like pg_common_regions(): one query for the ids no earlier call
+ * asked about.
+ *
+ * @param array $cregion_ids  common region ids
+ * @return array  cregion_id => shared component id, 0 for a region that is
+ *                not converted
+ */
+function pg_common_region_components(array $cregion_ids)
+{
+    static $read = array();
+
+    return pg_common_region_components_read($read, $cregion_ids, 'db_items');
+}
+
+/**
+ * pg_common_region_components() with the request's store and the query
+ * runner passed in. Of several components made from one region (a second
+ * conversion after the first row's category was changed by hand) the one
+ * with the lowest id draws it, as the conversion gives that one back.
+ *
+ * @param array    $read   cregion_id => component id or 0, filled in place
+ * @param array    $ids    common region ids
+ * @param callable $fetch  runs a SELECT and returns its rows (db_items())
+ * @return array  cregion_id => component id or 0, for every id asked for
+ */
+function pg_common_region_components_read(array &$read, array $ids, $fetch)
+{
+    $wanted = array();
+
+    foreach ($ids as $id) {
+        $id = (int) $id;
+
+        if (($id > 0) && !array_key_exists($id, $read)) {
+            $wanted[$id] = "'" . pg_common_region_component_category($id) . "'";
+        }
+    }
+
+    foreach (array_chunk($wanted, 100, true) as $chunk) {
+        foreach (array_keys($chunk) as $id) {
+            $read[$id] = 0;
+        }
+
+        $rows = call_user_func($fetch,
+            "SELECT id, category
+            FROM shared_components
+            WHERE
+                category IN (" . implode(', ', $chunk) . ")
+                AND ((system_region_config IS NULL) OR (system_region_config = ''))
+            ORDER BY id");
+
+        foreach ((is_array($rows) ? $rows : array()) as $row) {
+            $id = (int) substr((string) $row['category'], strlen('common_region:'));
+
+            if (isset($read[$id]) && ($read[$id] === 0)) {
+                $read[$id] = (int) $row['id'];
+            }
+        }
+    }
+
+    $out = array();
+
+    foreach ($ids as $id) {
+        $id = (int) $id;
+        $out[$id] = isset($read[$id]) ? $read[$id] : 0;
+    }
+
+    return $out;
+}
+
+/**
+ * The common regions made shared components, every one of them: the screens
+ * that list or write region rows leave these out (user grants, find and
+ * replace, the image editor). One query, kept for the request.
+ *
+ * @return int[]  cregion ids
+ */
+function pg_common_region_converted_ids()
+{
+    static $ids = null;
+
+    if ($ids === null) {
+        $rows = pg_schema_has('shared_components')
+            ? db_values("SELECT category FROM shared_components
+                WHERE
+                    category LIKE 'common\\_region:%'
+                    AND ((system_region_config IS NULL) OR (system_region_config = ''))")
+            : array();
+        $ids = pg_common_region_ids_from_categories(is_array($rows) ? $rows : array());
+    }
+
+    return $ids;
+}
+
+/**
+ * The region ids named by shared component categories of the
+ * "common_region:<id>" form; any other category is passed over.
+ *
+ * @param array $categories
+ * @return int[]  ids, each once, in ascending order
+ */
+function pg_common_region_ids_from_categories(array $categories)
+{
+    $ids = array();
+
+    foreach ($categories as $category) {
+        if (preg_match('/^common_region:([1-9][0-9]*)$/', (string) $category, $m)) {
+            $ids[(int) $m[1]] = (int) $m[1];
+        }
+    }
+
+    ksort($ids);
+
+    return array_values($ids);
+}
+
+/**
+ * An SQL condition leaving the converted common regions out, '1' when there
+ * are none.
+ *
+ * @param string $column  the cregion id column as the query names it
+ * @return string
+ */
+function pg_common_region_not_converted_sql($column = 'cregion_id')
+{
+    $ids = pg_common_region_converted_ids();
+
+    return $ids ? '(' . $column . ' NOT IN (' . implode(',', $ids) . '))' : '1';
+}
+
+/**
+ * The shared components that print a page region, directly or through a
+ * component they place: a page placing one still reads its page region
+ * rows. Read once per request.
+ *
+ * @return int[]
+ */
+function pg_page_region_component_ids()
+{
+    static $ids = null;
+
+    if ($ids !== null) {
+        return $ids;
+    }
+
+    $ids = array();
+    $new = array_map('intval', (array) db_values("SELECT id FROM shared_components
+        WHERE tree_json LIKE '%\"regionType\":\"page\"%'"));
+
+    // Components placing one of those, until none is added (nesting is
+    // shallow; the bound only stops a loop written by hand).
+    for ($round = 0; $new && $round < 10; $round++) {
+        foreach ($new as $id) {
+            $ids[$id] = $id;
+        }
+        $like = array();
+        foreach ($new as $id) {
+            $like[] = "tree_json LIKE '%\"sharedId\":$id,%'";
+            $like[] = "tree_json LIKE '%\"sharedId\":$id}%'";
+            $like[] = "tree_json LIKE '%\"sharedId\":\"$id\"%'";
+        }
+        $new = array_diff(array_map('intval', (array) db_values("SELECT id FROM shared_components
+            WHERE " . implode(' OR ', $like))), $ids);
+    }
+
+    $ids = array_values($ids);
+    sort($ids);
+
+    return $ids;
+}
+
+/**
+ * An SQL condition keeping the page regions their page still draws: a page
+ * whose content moved into its designer tree saves a tree that prints no
+ * <pregion> tag and places no component printing one, and its rows are no
+ * longer read. A classic page has no tree of its own; a row of no page is
+ * kept as it was. '1' before the column exists.
+ *
+ * @param string $column  the pregion page column as the query names it
+ * @return string
+ */
+function pg_page_region_read_sql($column = 'pregion_page')
+{
+    if (!pg_multi_page_design_ready()) {
+        return '1';
+    }
+
+    $none = "page_tree_code NOT LIKE '%<pregion>%'";
+    foreach (pg_page_region_component_ids() as $id) {
+        $none .= " AND page_tree_code NOT LIKE '%<!--pg-shared-ref:" . (int) $id . "-->%'";
+    }
+
+    return "($column NOT IN (SELECT page_id FROM page
+                WHERE page_tree_code IS NOT NULL AND page_tree_code <> '' AND $none))";
+}
+
 // Outputs dynamic menu system using values from the database.
 // We don't currently support multiple menu items being set as the current menu item
 // because it causes problems for the accordion menu.  The logic for the accordion menu
@@ -386,14 +596,14 @@ function get_menu_item_options($menu_id, $exception_menu_item_id = 0, $parent_id
 
         WHERE
 
-            (menu_id = '" . escape($menu_id) . "')
+            (menu_id = ?)
 
-            AND (id != '" . escape($exception_menu_item_id) . "')
+            AND (id != ?)
 
-            AND (parent_id = '" . escape($parent_id) . "')
+            AND (parent_id = ?)
 
         ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $menu_id, (string) $exception_menu_item_id, (string) $parent_id)) or output_error(lang('Query failed.'));
     $menu_items = array();
     // loop through menu items in order to build array
     while ($row = mysqli_fetch_assoc($result)) {
@@ -419,10 +629,10 @@ function get_menu_item_options($menu_id, $exception_menu_item_id = 0, $parent_id
 
             WHERE
 
-                (parent_id = '" . $menu_item['id'] . "')
+                (parent_id = ?)
 
-                AND (id != '" . escape($exception_menu_item_id) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (id != ?)";
+        $result = db_q($query, array((string) $menu_item['id'], (string) $exception_menu_item_id)) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_row($result);
         // if there is a sub menu, then get options for sub menu
         if ($row[0] > 0) {
@@ -525,8 +735,8 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
     // if page id is not equal to 0, then this is a page form
     if ($page_id != 0) {
         // get page type
-        $query = "SELECT page_type FROM page WHERE page_id = '" . escape($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT page_type FROM page WHERE page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $page_type = $row['page_type'];
         $form_type = '';
@@ -569,8 +779,8 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
 
             LEFT JOIN contacts ON user.user_contact = contacts.id
 
-            WHERE user.user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE user.user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
         $contact = mysqli_fetch_assoc($result);
     }
     $office_use_only_target_options = array();
@@ -727,6 +937,8 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
     }
     $label_column_width_added = false;
     $form_info['wysiwyg_fields'] = array();
+    // Picker kinds of the hooked fields (backend only), for picker_scripts.
+    $picker_kinds = array();
     foreach ($fields as $field) {
         $output_label_column_width = '';
         // if the label column width is not blank and it has not been added and this field type is not information, then add it to this field
@@ -802,10 +1014,10 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
 
                 FROM form_field_options
 
-                WHERE form_field_id = '" . $field['id'] . "'
+                WHERE form_field_id = ?
 
                 ORDER BY sort_order";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $result = db_q($query, array((string) $field['id'])) or output_error(lang('Query failed.'));
             $options = array();
             while ($row = mysqli_fetch_assoc($result)) {
                 // If there are not target options for this field,
@@ -1095,6 +1307,19 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 $form_info['file_upload_exists'] = true;
                 break;
             case 'date':
+                // The panel preview hooks the field for pgDatePicker; the site
+                // keeps its jQuery UI call.
+                if ($interface == 'backend') {
+                    $date_hook = array('data-pg-date' => '');
+                    $date_script = '';
+                    $picker_kinds['date'] = true;
+                } else {
+                    $date_hook = array();
+                    $date_script = get_date_picker_format() . '
+                            <script>
+                                software_$("#' . $html_field_name . '").datepicker(datetimepicker_options);
+                            </script>';
+                }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
                         <td style="' . $output_label_column_width . '">' . $field['label'] . '</td>
@@ -1110,21 +1335,27 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                                 'maxlength' => '10',
                                 'class' => 'software_input_text',
                                 'required' => $required
-                            )) . '
+                            ) + $date_hook) . '
 
-                            ' . get_date_picker_format() . '
-
-                            <script>
-
-                                software_$("#' . $html_field_name . '").datepicker(datetimepicker_options);
-
-                            </script>
+                            ' . $date_script . '
 
                         </td>
 
                     </tr>';
                 break;
             case 'date and time':
+                if ($interface == 'backend') {
+                    $date_hook = array('data-pg-datetime' => '');
+                    $date_script = '';
+                    $picker_kinds['date and time'] = true;
+                } else {
+                    $date_hook = array();
+                    $date_script = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+                            ' . get_date_time_picker_format() . '
+                            <script>
+                                software_$("#' . $html_field_name . '").datetimepicker(datetimepicker_options);
+                            </script>';
+                }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
                         <td style="' . $output_label_column_width . '">' . $field['label'] . '</td>
@@ -1140,13 +1371,9 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                                 'maxlength' => '22',
                                 'class' => 'software_input_text',
                                 'required' => $required
-                            )) . '
+                            ) + $date_hook) . '
 
-                            <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-                            ' . get_date_time_picker_format() . '
-                            <script>
-                                software_$("#' . $html_field_name . '").datetimepicker(datetimepicker_options);
-                            </script>
+                            ' . $date_script . '
 
                         </td>
 
@@ -1203,6 +1430,20 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 </tr>';
         }
     }
+    // What the hooked panel fields need, printed once after the table: the
+    // pickers are drawn when the page has loaded and all read the one
+    // datetimepicker_options, so a form with a date and time field gets the
+    // variant with the time wording.
+    $form_info['picker_scripts'] = '';
+    if (isset($picker_kinds['date and time'])) {
+        $form_info['picker_scripts'] = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
+        ' . get_date_time_picker_format();
+    } elseif (isset($picker_kinds['date'])) {
+        $form_info['picker_scripts'] = get_date_picker_format();
+    }
+    if ($picker_kinds) {
+        $form_info['picker_scripts'] .= pg_fields_script();
+    }
     return $form_info;
 }
 // get the table rows of content for a submitted product form and use data from form fields (e.g. label)
@@ -1219,8 +1460,8 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
 
         LEFT JOIN products ON order_items.product_id = products.id
 
-        WHERE order_items.id = '$order_item_id'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE order_items.id = ?";
+    $result = db_q($query, array((string) $order_item_id)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $product_id = $row['id'];
     $label_column_width = $row['form_label_column_width'];
@@ -1252,10 +1493,10 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
 
         FROM form_fields
 
-        WHERE (product_id = '$product_id') AND (form_type = 'product')
+        WHERE (product_id = ?) AND (form_type = 'product')
 
         ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $product_id)) or output_error(lang('Query failed.'));
     $form_fields = array();
     while ($row = mysqli_fetch_assoc($result)) {
         $form_fields[] = $row;
@@ -1294,14 +1535,14 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
 
                 WHERE
 
-                    (order_item_id = '$order_item_id')
+                    (order_item_id = ?)
 
-                    AND (quantity_number = '$quantity_number')
+                    AND (quantity_number = ?)
 
-                    AND (form_field_id = '" . $form_field['id'] . "')
+                    AND (form_field_id = ?)
 
                 ORDER BY id";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $result = db_q($query, array((string) $order_item_id, (string) $quantity_number, (string) $form_field['id'])) or output_error(lang('Query failed.'));
             // if there is one value, then set data to value
             if (mysqli_num_rows($result) == 1) {
                 $row = mysqli_fetch_assoc($result);
@@ -1362,14 +1603,14 @@ function get_submitted_product_form_content_without_form_fields($order_item_id, 
 
         WHERE
 
-            (order_item_id = '$order_item_id')
+            (order_item_id = ?)
 
-            AND (quantity_number = '$quantity_number')
+            AND (quantity_number = ?)
 
         GROUP BY form_field_id
 
         ORDER BY id";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $order_item_id, (string) $quantity_number)) or output_error(lang('Query failed.'));
     $form_data_items = array();
     // loop through form data items in order to add them to array
     while ($row = mysqli_fetch_assoc($result)) {
@@ -1387,14 +1628,14 @@ function get_submitted_product_form_content_without_form_fields($order_item_id, 
 
                 WHERE
 
-                    (order_item_id = '$order_item_id')
+                    (order_item_id = ?)
 
-                    AND (quantity_number = '$quantity_number')
+                    AND (quantity_number = ?)
 
-                    AND (form_field_id = '" . $form_data_item['form_field_id'] . "')
+                    AND (form_field_id = ?)
 
                 ORDER BY id";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $result = db_q($query, array((string) $order_item_id, (string) $quantity_number, (string) $form_data_item['form_field_id'])) or output_error(lang('Query failed.'));
             while ($row = mysqli_fetch_assoc($result)) {
                 // if data is not empty, then add comma and space
                 if ($data != '') {
@@ -2477,8 +2718,8 @@ function get_query_string_for_page_url($page_type, $item_id, $item_type)
                 break;
             case 'form item view':
                 // get the reference code for this item
-                $query = "SELECT reference_code FROM forms WHERE id = '" . escape($item_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "SELECT reference_code FROM forms WHERE id = ?";
+                $result = db_q($query, array((string) $item_id)) or output_error(lang('Query failed.'));
                 $row = mysqli_fetch_assoc($result);
                 $query_string = '?r=' . $row['reference_code'];
                 break;
@@ -2491,15 +2732,15 @@ function get_duplicate_catalog_item_address_name_number($address_name, $number =
     // assume that the address name does not already exist until we find out otherwise
     $address_name_exists = false;
     // check products table to see if there is already a product with an address name that matches the one we want to use
-    $query = "SELECT id FROM products where address_name = '" . escape($address_name) . "[" . $number . "]'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM products where address_name = ?";
+    $result = db_q($query, array($address_name . '[' . $number . ']')) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
     }
     // check product groups table to see if there is already a product group with an address name that matches the one we want to use
-    $query = "SELECT id FROM product_groups where address_name = '" . escape($address_name) . "[" . $number . "]'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM product_groups where address_name = ?";
+    $result = db_q($query, array($address_name . '[' . $number . ']')) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product group with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
@@ -2588,15 +2829,15 @@ function prepare_catalog_item_address_name($address_name, $item_id = '')
     // assume that the address name does not already exist until we find out otherwise
     $address_name_exists = false;
     // check products table to see if there is already a product with an address name that matches the one we want to use
-    $query = "SELECT id FROM products where address_name = '" . escape($address_name) . "' AND id != '" . escape($item_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM products where address_name = ? AND id != ?";
+    $result = db_q($query, array((string) $address_name, (string) $item_id)) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
     }
     // check product groups table to see if there is already a product group with an address name that matches the one we want to use
-    $query = "SELECT id FROM product_groups where address_name = '" . escape($address_name) . "' AND id != '" . escape($item_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM product_groups where address_name = ? AND id != ?";
+    $result = db_q($query, array((string) $address_name, (string) $item_id)) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product group with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
@@ -2661,8 +2902,8 @@ function get_catalog_item_from_url($forget = false)
             address_name
         FROM product_groups
 
-        WHERE address_name = '" . e($address_name) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE address_name = ?";
+    $result = db_q($query, array((string) $address_name)) or output_error(lang('Query failed.'));
     // if a product group was found, then set its information
     if (mysqli_num_rows($result) > 0) {
         $row = mysqli_fetch_assoc($result);
@@ -2694,8 +2935,8 @@ function get_catalog_item_from_url($forget = false)
                 backorder
             FROM products
 
-            WHERE address_name = '" . escape($address_name) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE address_name = ?";
+        $result = db_q($query, array((string) $address_name)) or output_error(lang('Query failed.'));
         // if a product was found, then set its information
         if (mysqli_num_rows($result) > 0) {
             $row = mysqli_fetch_assoc($result);
@@ -2755,8 +2996,8 @@ function get_catalog_item_address_name_from_id($item_id, $item_type)
         $sql_table = 'products';
     }
     // get the item id based off of the item type
-    $query = "SELECT address_name FROM $sql_table WHERE id = '" . escape($item_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT address_name FROM $sql_table WHERE id = ?";
+    $result = db_q($query, array((string) $item_id)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     // A deleted item (a stale catalog menu or link) has no address name.
     $address_name = $row ? $row['address_name'] : '';
@@ -2788,7 +3029,8 @@ function get_checkboxes_for_items_user_can_edit($item_type, $selected_ids = arra
                 cregion_name as name';
             $sql_where = '
 
-                WHERE cregion_designer_type = "no"';
+                WHERE cregion_designer_type = "no"
+                AND ' . pg_common_region_not_converted_sql() . '';
             break;
         case 'shared_components':
             // The visual designer's components a designer opened to content
@@ -2833,7 +3075,7 @@ function get_checkboxes_for_items_user_can_edit($item_type, $selected_ids = arra
         if (in_array($item['id'], $selected_ids) == true) {
             $checked = ' checked="checked"';
         }
-        $output .= '<div class="form-check"><input type="checkbox" name="' . $item_type . '_' . $item['id'] . '" id="' . $item_type . '_' . $item['id'] . '" value="1" class="form-check-input multiselect-checkbox"' . $checked . ' /><label class="form-check-label" for="' . $item_type . '_' . $item['id'] . '">' . h($item['name']) . '</label></div>';
+        $output .= '<div class="form-field"><input type="checkbox" name="' . $item_type . '_' . $item['id'] . '" id="' . $item_type . '_' . $item['id'] . '" value="1" class="check multiselect-checkbox"' . $checked . ' /><label class="" for="' . $item_type . '_' . $item['id'] . '">' . h($item['name']) . '</label></div>';
     }
     return $output;
 }
@@ -2873,8 +3115,8 @@ function get_items_user_can_edit($item_type, $user_id)
 
         FROM $sql_table
 
-        WHERE user_id = '" . escape($user_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE user_id = ?";
+    $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         $items_user_can_edit[] = $row['id'];
     }
@@ -3112,14 +3354,14 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
 
             LEFT JOIN user as last_modifier ON forms.last_modified_user_id = last_modifier.user_id
 
-            LEFT JOIN submitted_form_info ON ((forms.id = submitted_form_info.submitted_form_id) AND (submitted_form_info.page_id = '" . e($current_page_id) . "'))
+            LEFT JOIN submitted_form_info ON ((forms.id = submitted_form_info.submitted_form_id) AND (submitted_form_info.page_id = ?))
 
             LEFT JOIN comments AS newest_comment ON submitted_form_info.newest_comment_id = newest_comment.id
 
             LEFT JOIN user AS newest_comment_submitter ON newest_comment.created_user_id = newest_comment_submitter.user_id
 
-            WHERE forms.id = '" . e($submitted_form_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE forms.id = ?";
+        $result = db_q($query, array((string) $current_page_id, (string) $submitted_form_id)) or output_error(lang('Query failed.'));
         $submitted_form = mysqli_fetch_assoc($result);
         // get form data for all custom fields
         $query = "SELECT
@@ -3144,10 +3386,10 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
 
             LEFT JOIN files on form_data.file_id = files.id
 
-            WHERE form_data.form_id = '" . escape($submitted_form['id']) . "'
+            WHERE form_data.form_id = ?
 
             GROUP BY form_data.form_field_id";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $result = db_q($query, array((string) $submitted_form['id'])) or output_error(lang('Query failed.'));
         // initialize array to remember which fields have data, for use with conditionals later
         $custom_fields_with_data = array();
         $fields = array();
@@ -3162,10 +3404,10 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
 
                     FROM form_data
 
-                    WHERE (form_id = '" . escape($submitted_form['id']) . "') AND (form_field_id = '" . $field['form_field_id'] . "')
+                    WHERE (form_id = ?) AND (form_field_id = ?)
 
                     ORDER BY id";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $result = db_q($query, array((string) $submitted_form['id'], (string) $field['form_field_id'])) or output_error(lang('Query failed.'));
                 $field['data'] = array();
                 while ($row = mysqli_fetch_assoc($result)) {
                     $field['data'][] = $row['data'];
@@ -3209,8 +3451,8 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
 
             FROM form_fields
 
-            WHERE page_id = '" . escape($submitted_form['custom_form_page_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) $submitted_form['custom_form_page_id'])) or output_error(lang('Query failed.'));
         $custom_fields = array();
         while ($row = mysqli_fetch_assoc($result)) {
             $custom_fields[] = $row;

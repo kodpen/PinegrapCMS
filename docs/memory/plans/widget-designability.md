@@ -1,10 +1,10 @@
 ---
 name: widget-designability
-description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W10, W11, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets
+description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in widgets
 ---
 
 ## What is built, and why?
-- Legacy layouts (`data/layouts/<id>.php`, 89 in the starter site) branch on any value, loop nested arrays, place every piece. Widgets: one loop, fixed flags (none in 7 kinds) and tokens, server-built blocks.
+- Legacy layouts (`data/layouts/<id>.php`) branch on any value, loop nested arrays, place every piece. Widgets: one loop, fixed flags (none in 7 kinds) and tokens, server-built blocks.
 - One mechanism for every kind (30 today): a finish pass in the outer callback of `_expand_system_widgets()` (page, e-mail, Preview, ghosts, nested) resolves the markers `_render_tree_node()` and `_split_widget_tree()` write. `_apply_bindings()` is not edited.
 
 ## What are the rules?
@@ -18,29 +18,29 @@ description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1
 ## What is decided?
 - Chosen 2026-10-24 of three designs: the finish pass, with the layout gallery, widget parts, condition vectors, filters and code areas.
 - Missing page types stay in [[system-widget-missing-types]], built on this engine.
-- Owner (2026-10-24): a value condition starts as one per element; OR stays open below.
 - Owner (2026-10-26): words translatable wherever possible; design elements over placeholder tokens. So no "default text": a sibling with `show_if empty` holds it ([[widget-fill-shop]]).
-- Owner (2026-10-26), detail and reasons in [[widget-designability-decisions]]: W16 equal look and behaviour, not bytes; W5 sources Default, From templates, On this site, filtered, copied; W8 the allow-list of [[widget-entity-fields]].
+- Owner (2026-10-26), detail and reasons in [[widget-designability-decisions]]: W16 equal look and behaviour, not bytes; W5 three sources, filtered, copied; W8 the allow-list of [[widget-entity-fields]].
+- Owner (2026-10-27), every proposal accepted, reasons in [[widget-designability-decisions-2]].
 
 ## What does the owner still answer?
-OR in conditions; pg-hide-if-empty everywhere; words beside a value; code areas; page-level facts; per-placement settings; parts with controls; express order lists; classic bridge.
+- W17/W18 (#2334): record = what the address opens? Its values shown outside widgets (W17)? A form record's own fields too?
 
 ## What are the steps? (one PR each)
 - W1 done (#1592, [[widget-finish-pass]], [[widget-conditions]]).
-- W2 done (#1582): palette double-click lands beside it.
-- W3 done (#1597): row position ([[widget-loop-position]]).
-- W4 done (#1665, [[widget-condition-panel]]).
-- W5 Layout gallery: Default, From templates, On this site; Try/Keep/Cancel. Not waiting.
-- W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 Entity fields: product family #1809; the rest by family ([[widget-entity-fields]]).
-- W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 done (#1758).
+- W2 done (#1582). W3 done (#1597, [[widget-loop-position]]). W4 done (#1665, [[widget-condition-panel]]).
+- W5 done (#1879, #1905, [[widget-layout-gallery]]).
+- W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 done (seven PRs #1809 to #1917, [[widget-entity-fields-list]]).
+- W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 done #1924 to #2245 ([[widget-list-paging]]). W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
-- W15 done (#1734). W16 Placed beats pushed, default parts: order view #1808 ([[widget-default-parts]]); other kinds left. Not waiting.
-- W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
-- W19 Canvas: ghosts for every loop, state preview, `_sdCondEval` twin.
-- W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
+- W15 done (#1734). W16 default parts: #1808 #1824 #1863 #1908 #1945 #1973 #2067 #2218, cart gift card #2260, schedule #2311, cancel and return forms #2330; left: each return's moves, then the product order form.
+- W17 Parts anywhere, record values outside widgets. W18 done #2308 #2334 ([[page-conditions]]).
+- W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
+- W20 Parts palette, starter library. W21 done #2326 #2345. W22: W22a #2317 ([[layout-form-converter]]); W22b editor, after owner. W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).
+- W25 done (#2221, [[widget-condition-rows]]).
+- W26 done #2264 ([[sentence-with-values]]); order view's ended line left.
 
 ## How are other sessions kept clear?
-- Claim with a draft PR `[plan:widget-designability] Wn`. A new kind reads its saved-tree checks through `pg_sw_cond_tree_json()`.
+- Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W16, W5, or W8's next family (calendar event, form record, order, address, account).
+- W16's rest ([[widget-default-parts]]); W17 after the answer ([[page-conditions]]).

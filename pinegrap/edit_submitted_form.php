@@ -43,8 +43,8 @@ $query =
     FROM forms
     LEFT JOIN page on forms.page_id = page.page_id
     LEFT JOIN custom_form_pages ON forms.page_id = custom_form_pages.page_id
-    WHERE forms.id = '" . escape($_REQUEST['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE forms.id = ?";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // The id comes straight from the query string, so it can point at a form that
@@ -76,9 +76,9 @@ if (!empty($_POST['form_item_view_page_id'])) {
             hook_code
         FROM form_item_view_pages
         WHERE
-            (page_id = '" . escape($_POST['form_item_view_page_id'] ?? '') . "')
+            (page_id = ?)
             AND (collection = 'a')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['form_item_view_page_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $form_item_view_custom_form_page_id = $row['custom_form_page_id'];
@@ -167,8 +167,8 @@ if (!$_POST) {
         LEFT JOIN user as form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
         LEFT JOIN user as submitted_user ON forms.user_id = submitted_user.user_id
         LEFT JOIN user as last_modified_user ON forms.last_modified_user_id = last_modified_user.user_id
-        WHERE forms.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE forms.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // Same as above: a stale id gives null here, and the 17 reads that follow
@@ -200,16 +200,16 @@ if (!$_POST) {
     // if this is for a quiz custom form, prepare to output quiz score row
     if ($quiz == 1) {
         $output_quiz_score_row =
-            '<div class="col-12 col-md-6 col-lg-4 my-2">
+            '<div class="col-12 md:col-6 lg:col-4 my-3">
                 <div class="form-text">' . lang('Quiz Score') . '</div>
                 <h5>' . $quiz_score . '</h5>
             </div>';
     }
 
     if ($complete) {
-        $status = '<span class="badge bg-success fw-light">' . lang('Complete') . '</span>';
+        $status = '<span class="badge theme-success fw-light">' . lang('Complete') . '</span>';
     } else {
-        $status = '<span class="badge bg-secondary fw-light">' . lang('Incomplete') . '</span>';
+        $status = '<span class="badge theme-secondary fw-light">' . lang('Incomplete') . '</span>';
     }
 
     $output_address_name = '';
@@ -223,7 +223,7 @@ if (!$_POST) {
 
     if (AFFILIATE_PROGRAM == true) {
         $output_affiliate_code =
-            '<div class="col-12 col-md-6 col-lg-4 my-2">
+            '<div class="col-12 md:col-6 lg:col-4 my-3">
                 <div class="form-text">' . lang('Affiliate Code') . '</div>
                 <h5>' . h($affiliate_code ? $affiliate_code : '-') . '</h5>
             </div>';
@@ -270,11 +270,11 @@ if (!$_POST) {
                  FROM form_data
                  LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
                  WHERE
-                    (form_data.form_id = '" . escape($_GET['id']) . "')
+                    (form_data.form_id = ?)
                     AND (form_fields.type != 'file upload')
                     AND (form_fields.type != 'signature')
                  GROUP BY form_data.form_field_id";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
         $fields = array();
 
@@ -288,9 +288,9 @@ if (!$_POST) {
             if ($field['number_of_values'] > 1) {
                 $query = "SELECT data
                          FROM form_data
-                         WHERE (form_id = '" . escape($_GET['id']) . "') AND (form_field_id = '" . $field['form_field_id'] . "')
+                         WHERE (form_id = ?) AND (form_field_id = ?)
                          ORDER BY id";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $_GET['id'], (string) $field['form_field_id'])) or output_error('Query failed.');
                 
                 $field['data'] = array();
                 
@@ -330,9 +330,9 @@ if (!$_POST) {
                 contact_field,
                 office_use_only
              FROM form_fields
-             WHERE page_id = '$page_id'
+             WHERE page_id = ?
              ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
     
     $fields = array();
     
@@ -359,7 +359,7 @@ if (!$_POST) {
         ) {
             // if field is for office use only, then prepare to apply office use only style to row
             if ($field['office_use_only'] == 1) {
-                $row_class = 'text-muted';
+                $row_class = 'fg-secondary';
                 
             // else field is not for office use only, so don't prepare any special styling
             } else {
@@ -396,9 +396,9 @@ if (!$_POST) {
                             value,
                             default_selected
                          FROM form_field_options
-                         WHERE form_field_id = '" . $field['id'] . "'
+                         WHERE form_field_id = ?
                          ORDER BY sort_order";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $field['id'])) or output_error('Query failed.');
                 
                 $options = array();
                 
@@ -410,14 +410,14 @@ if (!$_POST) {
             // if field should have spacing above, add spacing
             if ($field['spacing_above']) {
                 $output_fields .=
-                    '<div class="py-2 ' . $row_class . '"></div>';
+                    '<div class="py-3 ' . $row_class . '"></div>';
             }
             
             switch ($field['type']) {
                 case 'text box':
                 case 'email address':
                     $output_fields .=
-                        '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
+                        '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                             ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $custom_form_page_id, $field['id'])) . '
                             ' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength'])) . '
                             ' . $field_required . '
@@ -444,7 +444,7 @@ if (!$_POST) {
                     }
                     
                     $output_fields .=
-                        '<div class="col-12 my-2 ' . $row_class . '">
+                        '<div class="col-12 my-3 ' . $row_class . '">
                             ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $custom_form_page_id, $field['id'])) . '
                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'maxlength'=>$field['maxlength'], 'class'=>'form-control', 'rows'=>$field['rows'], 'cols'=>$field['cols'], 'style'=>$style)) . '
                             ' . $field_required . '
@@ -471,9 +471,9 @@ if (!$_POST) {
                     }
                     
                     $output_fields .=
-                        '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
+                        '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
-                            ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-select', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
+                            ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-control', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
                             ' . $field_required . '
                         </div>';
                     
@@ -491,14 +491,14 @@ if (!$_POST) {
                         }
                         
                         $output_options .= '
-                        <div class="form-check">
-                            ' . $liveform->output_field(array('type'=>'radio', 'name'=>$field['id'], 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'form-check-input')) . '
+                        <div class="form-field">
+                            ' . $liveform->output_field(array('type'=>'radio', 'name'=>$field['id'], 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'radio')) . '
                             <label for="software_option_' . $option['id'] . '"> ' . h($option['label']) . '</label>
                         </div>';
                     }
                     
                     $output_fields .=
-                        '<div class="col-12 my-2 ' . $row_class . '">
+                        '<div class="col-12 my-3 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
                             ' . $output_options . '
                         </div>';
@@ -529,8 +529,8 @@ if (!$_POST) {
                         }
                         
                         $output_options .= '
-                        <div class="form-check">
-                            ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>$name, 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'form-check-input')) . '
+                        <div class="form-field">
+                            ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>$name, 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'check')) . '
                             <label for="software_option_' . $option['id'] . '"> ' . h($option['label']) . '</label>
                         </div>';
                         
@@ -546,7 +546,7 @@ if (!$_POST) {
                     // array with an empty string instead, and every checked value would be lost.
                     
                     $output_fields .=
-                        '<div class="col-12 my-2 ' . $row_class . '">
+                        '<div class="col-12 my-3 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
                             <input type="hidden" name="' . $field['id'] . '" />
                             ' . $output_options . '
@@ -565,11 +565,11 @@ if (!$_POST) {
                         : false;
 
                     $output_fields .=
-                    '<div class="col-12 border py-2 my-2 ' . $row_class . '">
+                    '<div class="col-12 border py-3 my-3 ' . $row_class . '">
                         <label class="form-label">' . h($field['label']) . '</label>
                         ' . ($signature_record
                             ? pg_signature_display($signature_record)
-                            : '<div class="text-body-secondary">' . lang('Not signed') . '</div>') . '
+                            : '<div class="fg-secondary">' . lang('Not signed') . '</div>') . '
                     </div>';
 
                     break;
@@ -589,7 +589,7 @@ if (!$_POST) {
                     // If there is an existing file for this field, then output info for that.
                     if ($file['name'] != '') {
                         $output_file_info = '
-                        <a class=" btn btn-light border" href="' . OUTPUT_PATH . h(encode_url_path($file['name'])) . '" target="_blank">
+                        <a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file['name'])) . '" target="_blank">
                             <span class="material-icons">attach_file</span>
                             ' . h($file['name']) . ' (' . convert_bytes_to_string($file['size']) . ') 
                         </a>';
@@ -601,9 +601,9 @@ if (!$_POST) {
                             <div class="input-group-text">' . lang('or') . '</div>
                             <div class="input-group-text">
                                 <div class="col-12">
-                                    <div class="form-check form-switch">
-                                        ' . $liveform->output_field(array('type'=>'checkbox', 'name'=> $field['id'] . '_delete_file', 'id'=> $field['id'] . '_delete_file', 'value'=>'1', 'class'=>'form-check-input danger')) . '
-                                        <label class="form-check-label text-danger" for="' . $field['id'] . '_delete_file">' . lang('Delete File') . '</label>
+                                    <div class="form-field">
+                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=> $field['id'] . '_delete_file', 'id'=> $field['id'] . '_delete_file', 'value'=>'1', 'class'=>'danger no-bs')) . '</div>
+                                        <label class="fg-danger" for="' . $field['id'] . '_delete_file">' . lang('Delete File') . '</label>
                                     </div>
                                 </div>
                             </div>';
@@ -619,7 +619,7 @@ if (!$_POST) {
                     }
 
                     $output_fields .=
-                    '<div class="col-12 border py-2 my-2 ' . $row_class . '">
+                    '<div class="col-12 border py-3 my-3 ' . $row_class . '">
                         <label class="form-label">' . h($field['label']) . '</label>
                         <div class="input-group d-flex flex-row flex-wrap">
                             ' . $output_file_info . '
@@ -634,7 +634,7 @@ if (!$_POST) {
                 case 'date':
                     $picker_kinds['date'] = true;
                     $output_fields .=
-                        '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
+                        '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
                             ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'10', 'data-pg-date' => '')) . '
                             ' . $field_required . '
@@ -644,7 +644,7 @@ if (!$_POST) {
                 case 'date and time':
                     $picker_kinds['date and time'] = true;
                     $output_fields .=
-                        '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
+                        '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
                             ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'22', 'data-pg-datetime' => '')) . '
                             ' . $field_required . '
@@ -653,13 +653,13 @@ if (!$_POST) {
                     
                 case 'information':
                     $output_fields .=
-                        '<div class="py-3 ' . $row_class . '">' . $field['information'] . '</div>';
+                        '<div class="py-5 ' . $row_class . '">' . $field['information'] . '</div>';
                     break;
                     
                 case 'time':
                     $picker_kinds['time'] = true;
                     $output_fields .=
-                        '<div class="col-12 col-md-6 col-lg-4 my-2 ' . $row_class . '">
+                        '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
                             ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11', 'data-pg-time' => '')) . '
                             ' . $field_required . '
@@ -669,7 +669,7 @@ if (!$_POST) {
                     
                 default:
                     $output_fields .=
-                        '<div class="col-12 my-2 ' . $row_class . '">
+                        '<div class="col-12 my-3 ' . $row_class . '">
                             <label class="form-label">' . h($field['label']) . '</label>
                         </div>';
                     
@@ -679,7 +679,7 @@ if (!$_POST) {
             // if field should have spacing below, add spacing
             if ($field['spacing_below']) {
                 $output_fields .=
-                    '<div class="py-2 ' . $row_class . '"></div>';
+                    '<div class="py-3 ' . $row_class . '"></div>';
             }
         }
     }
@@ -720,14 +720,14 @@ if (!$_POST) {
     // If the form is incomplete then show certain buttons.
     if (!$complete) {
         $output_buttons =
-            '<button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-success "><span class="material-icons me-2">save_as</span><span class="pg-btn-label" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
-            <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-secondary"><span class="material-icons me-2">radio_button_unchecked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Complete') ) . '</span></button>';
+            '<button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save_as</span><span class="pg-btn-label" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
+            <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-solid theme-secondary"><span class="material-icons me-3">radio_button_unchecked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Complete') ) . '</span></button>';
 
     // Otherwise the form is complete, so show different buttons.
     } else {
         $output_buttons =
-            '<button type="submit" name="save_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-            <button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-warning "><span class="material-icons me-2">radio_button_checked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>';
+            '<button type="submit" name="save_button" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+            <button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-solid theme-warning "><span class="material-icons me-3">radio_button_checked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>';
     }
     
     // Where it was talked about in the workspace, and the tasks about it.
@@ -767,15 +767,15 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-                        <div class="row mb-2">
-                            <div class="col-12 col-md">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
+                        <div class="row mb-3">
+                            <div class="col-12 md:col">
                                 
                                 <p class="p-0 m-0">' . lang('Reference Code') . ': ' . $reference_code . '</p>
                                 <p class="p-0 m-0">' . lang('Submitted') . ': ' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . $submitted_username . '</p>
                             </div>
-                            <div class="col-12 col-md-auto">' . $output_workspace_button . '</div>
+                            <div class="col-12 md:col-auto">' . $output_workspace_button . '</div>
                         </div>
                     </div>
                     <form' . $output_enctype . ' name="form" action="edit_submitted_form.php" method="post">
@@ -784,55 +784,55 @@ if (!$_POST) {
                         ' . (($send_to !== '') ? '<input type="hidden" name="send_to" value="' . h($send_to) . '" />' : '') . '
                         <div class="row">
                             <div class="col-12">
-                                <div class="card my-4 ">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card my-7 ">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Form Properties') . '
                                     </div>
-                                    <div class="card-body text-center text-md-start">
+                                    <div class="card-body text-center md:text-start">
                                         <div class="row">
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Custom Form') . '</div>
                                                 <h5>' . h($form_name) . '</h5>
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Reference Code') . '</div>
                                                 <h5>' . $reference_code . '</h5>
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Status') . '</div>
                                                 ' . $status . '
                                             </div>
                                             ' . $output_quiz_score_row . '
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Address Name') . '</div>
                                                 <h6>' . ($output_address_name ? $output_address_name : '-') . '</h6>
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Tracking Code') . '</div>
                                                 <h5>' . h($tracking_code ? $tracking_code : '-') . '</h5>
                                             </div>
                                             ' . $output_affiliate_code . '
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Referring URL') . '</div>
-                                                ' . ($http_referer_text ? '<a class="link-secondary" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($http_referer_text) . '</a>' : '-') . '
+                                                ' . ($http_referer_text ? '<a class="pg-link-secondary" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($http_referer_text) . '</a>' : '-') . '
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . h(MEMBER_ID_LABEL) . '</div>
                                                 <h5>' . h($member_id ? $member_id : '-') . '</h5>
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('IP Address') . '</div>
                                                 <h5>' . $output_ip_address . '</h5>
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Submitted Date') . '</div>
                                                 <h6>' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . $submitted_username . '</h6>
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Last Modified Date') . '</div>
                                                 <h6>' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $last_modified_username . '</h6>
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label class="form-text">' . lang('Form Editor') . '</label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'form_editor_username', 'value'=>$form_editor_username, 'class'=>'form-control', 'maxlength'=>'100')) . '
                                                 <div class="form-text text-end">' . lang('enter username') . '</div>
@@ -842,8 +842,8 @@ if (!$_POST) {
                                 </div>
                             </div>
                             <div class="col-12">
-                                <div class="card my-4">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card my-7">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Form Data') . '
                                     </div>
                                     <div class="card-body">
@@ -854,11 +854,11 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
                                     ' . $output_buttons . '
-                                    <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                    <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>
@@ -908,8 +908,8 @@ if (!$_POST) {
                     files.name
                  FROM form_data
                  LEFT JOIN files ON form_data.file_id = files.id
-                 WHERE (form_data.form_id = '" . escape($_POST['id'] ?? '') . "') AND (form_data.file_id > 0)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE (form_data.form_id = ?) AND (form_data.file_id > 0)";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         $files = array();
         
@@ -922,8 +922,8 @@ if (!$_POST) {
             // if file still exists, delete file
             if ($file['id']) {
                 // delete file record
-                $query = "DELETE FROM files WHERE id = '" . $file['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "DELETE FROM files WHERE id = ?";
+                $result = db_q($query, array((string) $file['id'])) or output_error('Query failed.');
                 
                 // delete file
                 @unlink(FILE_DIRECTORY_PATH . '/' . $file['name']);
@@ -932,12 +932,12 @@ if (!$_POST) {
         }
         
         // delete form
-        $query = "DELETE FROM forms WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM forms WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete form data
-        $query = "DELETE FROM form_data WHERE (form_id = '" . escape($_POST['id'] ?? '') . "') AND (form_id != '0')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM form_data WHERE (form_id = ?) AND (form_id != '0')";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // delete signature records for this submitted form
         pg_signature_delete($_POST['id'] ?? 0);
@@ -950,8 +950,8 @@ if (!$_POST) {
         // if the there is a form list view send to, then forward user there
         if ((isset($_POST['form_list_view_send_to']) == TRUE) && ($_POST['form_list_view_send_to'] != '')) {
             // Get the form list view page id for this form item view in order to setup liveform correctly.
-            $query = "SELECT page_id FROM form_list_view_pages WHERE form_item_view_page_id = '" . escape($_POST['form_item_view_page_id'] ?? '')  . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT page_id FROM form_list_view_pages WHERE form_item_view_page_id = ?";
+            $result = db_q($query, array((string) ($_POST['form_item_view_page_id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $form_list_view_page_id = $row['page_id'];
 
@@ -996,8 +996,8 @@ if (!$_POST) {
             // if a username was entered, then validate username
             if ($liveform->get_field_value('form_editor_username') != '') {
                 // try to find a user with the username that was entered for the form editor
-                $query = "SELECT user_id FROM user WHERE user_username = '" . escape($liveform->get_field_value('form_editor_username')) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT user_id FROM user WHERE user_username = ?";
+                $result = db_q($query, array((string) $liveform->get_field_value('form_editor_username'))) or output_error('Query failed.');
                 
                 // if a user was found, then prepare SQL for updating form editor
                 if (mysqli_num_rows($result) > 0) {
@@ -1018,8 +1018,8 @@ if (!$_POST) {
         // get page id
         $query = "SELECT page_id
                  FROM forms
-                 WHERE forms.id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE forms.id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         $page_id = $row['page_id'];
@@ -1270,15 +1270,15 @@ if (!$_POST) {
                                             attachment,
                                             timestamp)
                                          VALUES (
-                                            '" . escape($file_name) . "',
-                                            '" . escape($field['upload_folder_id']) . "',
-                                            '" . escape($file_extension) . "',
-                                            '" . escape($file_size) . "',
-                                            '$user_id',
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
                                             '0',
                                             '1',
                                             UNIX_TIMESTAMP())";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $result = db_q($query, array((string) $file_name, (string) $field['upload_folder_id'], (string) $file_extension, (string) $file_size, (string) $user_id)) or output_error('Query failed.');
 
                                 $file_id = mysqli_insert_id(db::$con);
                                 
@@ -1349,8 +1349,8 @@ if (!$_POST) {
                         if (isset($_POST[$field['id']]) == true) {
                             // delete existing values for this field
                             $query = "DELETE FROM form_data
-                                     WHERE (form_id = '" . escape($_POST['id'] ?? '') . "') AND (form_id != '0') AND (form_field_id = '" . $field['id'] . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                     WHERE (form_id = ?) AND (form_id != '0') AND (form_field_id = ?)";
+                            $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $field['id'])) or output_error('Query failed.');
                             
                             // assume that the form data type is standard until we find out otherwise
                             $form_data_type = 'standard';
@@ -1381,12 +1381,12 @@ if (!$_POST) {
                                                 name,
                                                 type)
                                              VALUES (
-                                                '" . escape($_POST['id'] ?? '') . "',
-                                                '" . $field['id'] . "',
-                                                '" . escape(prepare_form_data_for_input($value, $field['type'])) . "',
-                                                '" . escape($field['name']) . "',
-                                                '$form_data_type')";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                                ?,
+                                                ?,
+                                                ?,
+                                                ?,
+                                                ?)";
+                                    $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $field['id'], (string) prepare_form_data_for_input($value, $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
                                 }
 
                             // else this field does not have multiple values
@@ -1399,12 +1399,12 @@ if (!$_POST) {
                                             name,
                                             type)
                                          VALUES (
-                                            '" . escape($_POST['id'] ?? '') . "',
-                                            '" . $field['id'] . "',
-                                            '" . escape(prepare_form_data_for_input($liveform->get_field_value($field['id']), $field['type'])) . "',
-                                            '" . escape($field['name']) . "',
-                                            '$form_data_type')";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?)";
+                                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $field['id'], (string) prepare_form_data_for_input($liveform->get_field_value($field['id']), $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
                             }
                         }
                     }

@@ -184,3 +184,21 @@ button.pg-civ-out-of-stock {
 .pg-ov-timeline-icon{position:absolute;left:0;top:0;width:2.3rem;height:2.3rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem}
 .pg-ov-timeline-label{font-weight:600;line-height:1.2}
 .pg-ov-timeline-ts{color:#6c757d;font-size:.875rem}
+
+/* ── Comment stars (the comments widget's stars part) ────────────────── */
+/* Each star is its own node, so the markup has white space between them;
+   a flex box keeps them touching, as the one-line drawing did. */
+.pg-comment-stars{display:inline-flex}
+
+/* ── Products bought together (the catalog detail view's cross-sell part) */
+/* Square pictures, cropped; the grey box without a picture keeps the same
+   shape. */
+.pg-civ-cross-sell .card-img-top{aspect-ratio:1/1;object-fit:cover}
+
+/* ── Active attribute filters (the catalog listing's filter chip parts) ─ */
+/* Each badge is its own node, so the markup has white space between them;
+   a flex row keeps the gaps to the badges' own margins. Normal weight and
+   a small cross, as the badges wrote inline before. */
+.pg-sw-attr-active-filters{display:flex;flex-wrap:wrap;align-items:center}
+.pg-sw-attr-active-filters > .badge{font-weight:normal}
+.pg-sw-attr-active-filters > .badge > .bi-x-lg{font-size:.7em}

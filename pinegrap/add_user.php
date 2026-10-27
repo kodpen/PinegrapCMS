@@ -62,7 +62,7 @@ if (!$_POST) {
         $result = mysqli_query(db::$con, "SELECT id, name FROM calendars ORDER BY name") or output_error('Query failed.');
 
         while ($row = mysqli_fetch_assoc($result)) {
-            $output_calendars .= '<div class="form-check"><input type="checkbox" name="calendar_' . $row['id'] . '" id="calendar_' . $row['id'] . '" value="1" class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="calendar_' . $row['id'] . '"> ' . h($row['name']) . '</label></div>';
+            $output_calendars .= '<div class="form-field"><input type="checkbox" name="calendar_' . $row['id'] . '" id="calendar_' . $row['id'] . '" value="1" class="check multiselect-checkbox" /><label class="" for="calendar_' . $row['id'] . '"> ' . h($row['name']) . '</label></div>';
         }
 
         $permission_panels['calendars'] = $output_calendars;
@@ -105,7 +105,7 @@ if (!$_POST) {
     $result = mysqli_query(db::$con, "SELECT id, name FROM contact_groups ORDER BY name") or output_error('Query failed.');
 
     while ($row = mysqli_fetch_assoc($result)) {
-        $output_contact_groups .= '<div class="form-check"><input type="checkbox" name="contact_group_' . $row['id'] . '" id="contact_group_' . $row['id'] . '" value="1" class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="contact_group_' . $row['id'] . '">' . h($row['name']) . '</label></div>';
+        $output_contact_groups .= '<div class="form-field"><input type="checkbox" name="contact_group_' . $row['id'] . '" id="contact_group_' . $row['id'] . '" value="1" class="check multiselect-checkbox" /><label class="" for="contact_group_' . $row['id'] . '">' . h($row['name']) . '</label></div>';
     }
 
     $permission_panels['contact_groups'] = $output_contact_groups;
@@ -163,78 +163,78 @@ if (!$_POST) {
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <input type="hidden" name="contact_id" value="' . h(isset($_GET['contact_id']) ? $_GET['contact_id'] : '') . '" />
-                    <div class="card mb-3">
+                    <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Role') . '</span>
-                            <span class="small text-body-secondary">' . lang('The role decides which rights the account carries by itself.') . '</span>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Role') . '</span>
+                            <span class="small fg-secondary">' . lang('The role decides which rights the account carries by itself.') . '</span>
                         </div>
                         <div class="card-body">
                             ' . pg_user_role_cards(3, $user['role'], $role_cards_disabled) . '
                         </div>
                     </div>
 
-                    <div class="card mb-3">
+                    <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Account') . '</span>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Account') . '</span>
                         </div>
                         <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-12 col-lg-4">
+                            <div class="row g-5">
+                                <div class="col-12 lg:col-4">
                                     <label for="username" class="form-label">' . lang('Username') . '</label>
                                     <input type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required />
                                     <div class="form-text">' . lang('Used when signing in.') . '</div>
                                 </div>
-                                <div class="col-12 col-lg-4">
+                                <div class="col-12 lg:col-4">
                                     <label class="form-label" for="email">' . lang('User Email') . '</label>
                                     <input value="' . h($email_address) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required/>
                                     <div class="form-text">' . lang('Password reset goes to this address.') . '</div>
                                 </div>
-                                <div class="col-12 col-lg-4">
+                                <div class="col-12 lg:col-4">
                                     <label for="home_page" class="form-label">' . lang('User Start Page') . '</label>
-                                    <select class="form-select" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page() . '</select>
+                                    <select class="form-control" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page() . '</select>
                                     <div class="form-text">' . lang('Opened after signing in.') . '</div>
                                 </div>
                             </div>
 
-                            <hr class="border-secondary-subtle opacity-50 my-3">
-                            <div class="text-uppercase small fw-semibold text-body-secondary mb-2">' . lang('Optional') . '</div>
+                            <hr class="border-subtle-secondary opacity-50 my-5">
+                            <div class="text-uppercase small fw-semibold fg-secondary mb-3">' . lang('Optional') . '</div>
 
-                            <div class="row g-3">
-                                <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="row g-5">
+                                <div class="col-12 sm:col-6 lg:col-4">
                                     <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
                                     <input type="number" class="form-control" id="reward_points" name="reward_points" maxlength="9"/>
                                 </div>
                                 <div class="col-12">
-                                    <div class="form-check form-switch">
-                                        <input type="checkbox" id="badge" name="badge" value="1" class="form-check-input collapse-switcher" data-bs-target="#badge_row"/>
-                                        <label class="form-check-label" for="badge">' . lang('Show badge next to username') . '</label>
+                                    <div class="form-field">
+                                        <div class="switch"><input type="checkbox" id="badge" name="badge" value="1" class="collapse-switcher" data-bs-target="#badge_row"/></div>
+                                        <label class="" for="badge">' . lang('Show badge next to username') . '</label>
                                     </div>
-                                    <div class="collapse ms-4 mt-1 mb-2" id="badge_row" style="max-width:22rem">
+                                    <div class="collapse ms-7 mt-1 mb-3" id="badge_row" style="max-width:22rem">
                                         <input type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" class="form-control form-control-sm" value="" size="20" maxlength="100" />
                                         ' . $output_badge_label_info . '
                                     </div>
-                                    <div class="form-check form-switch">
-                                        <input type="checkbox" id="notify_user" name="notify_user" value="1" class="form-check-input"/>
-                                        <label class="form-check-label" for="notify_user">' . lang('Notify User: Send email with login info to User') . '</label>
+                                    <div class="form-field">
+                                        <div class="switch"><input type="checkbox" id="notify_user" name="notify_user" value="1" class=""/></div>
+                                        <label class="" for="notify_user">' . lang('Notify User: Send email with login info to User') . '</label>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="card mb-3 d-none" id="pg_permissions_everything">
+                    <div class="card mb-5 d-none" id="pg_permissions_everything">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('User Rights') . '</span>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</span>
                         </div>
                         <div class="card-body">
                             ' . pg_user_permission_everything() . '
                         </div>
                     </div>
 
-                    <div class="card mb-3" id="pg_permissions_block">
+                    <div class="card mb-5" id="pg_permissions_block">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('User Rights') . '</span>
-                            <span class="small text-body-secondary" data-pg-tally="' . h(lang(array('string' => '{var:1} of {var:2} areas on', 'vars' => array('{n}', '{m}')))) . '"></span>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</span>
+                            <span class="small fg-secondary" data-pg-tally="' . h(lang(array('string' => '{var:1} of {var:2} areas on', 'vars' => array('{n}', '{m}')))) . '"></span>
                         </div>
                         <div class="card-body p-0">
                             <div class="pg-perms" id="pg_permissions" data-pg-empty="' . h(lang('No selection')) . '">' . $permission_ui['rows'] . '
@@ -244,10 +244,10 @@ if (!$_POST) {
 
                     ' . $permission_ui['panels'] . '
 
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -294,13 +294,13 @@ if (!$_POST) {
     }
 
     // determine if username is already in use
-    $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_username = '" . escape($_POST['username'] ?? '') . "') OR (user_email = '" . escape($_POST['username'] ?? '') . "')") or output_error('Query failed');
+    $result = db_q("SELECT user_id FROM user WHERE (user_username = ?) OR (user_email = ?)", array((string) ($_POST['username'] ?? ''), (string) ($_POST['username'] ?? ''))) or output_error('Query failed');
     if (mysqli_num_rows($result) > 0)
     {
         output_error(lang('The username that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
     // determine if e-mail address is already in use
-    $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_email = '" . escape($_POST['email'] ?? '') . "') OR (user_username = '" . escape($_POST['email'] ?? '') . "')") or output_error('Query failed');
+    $result = db_q("SELECT user_id FROM user WHERE (user_email = ?) OR (user_username = ?)", array((string) ($_POST['email'] ?? ''), (string) ($_POST['email'] ?? ''))) or output_error('Query failed');
     if (mysqli_num_rows($result) > 0)
     {
         output_error(lang('The email address that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
@@ -518,7 +518,7 @@ if (!$_POST) {
             $rights = 0;
         }
         
-        $result2 = mysqli_query(db::$con, "INSERT INTO aclfolder (aclfolder_user, aclfolder_folder, aclfolder_rights, expiration_date) VALUES ('$user_id', '$folder_id', '$rights', '" . escape($sql_expiration_date) . "')") or output_error('Query failed.');
+        $result2 = db_q("INSERT INTO aclfolder (aclfolder_user, aclfolder_folder, aclfolder_rights, expiration_date) VALUES (?, ?, ?, ?)", array((string) $user_id, (string) $folder_id, (string) $rights, (string) $sql_expiration_date)) or output_error('Query failed.');
     }
     
     // if user that was created has a user role, then prepare to assign access to various items for user
@@ -542,9 +542,9 @@ if (!$_POST) {
                         user_id,
                         common_region_id)
                     VALUES (
-                        '" . escape($user_id) . "',
-                        '" . escape($common_region['cregion_id']) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $user_id, (string) $common_region['cregion_id'])) or output_error('Query failed.');
             }
         }
         
@@ -570,9 +570,9 @@ if (!$_POST) {
                         user_id,
                         menu_id)
                     VALUES (
-                        '" . escape($user_id) . "',
-                        '" . escape($menu['id']) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $user_id, (string) $menu['id'])) or output_error('Query failed.');
             }
         }
         
@@ -597,9 +597,9 @@ if (!$_POST) {
                             user_id,
                             contact_group_id)
                         VALUES (
-                            '" . $user_id . "',
-                            '" . $contact_group['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $user_id, (string) $contact_group['id'])) or output_error('Query failed.');
                 }
             }
         }
@@ -625,9 +625,9 @@ if (!$_POST) {
                             user_id,
                             calendar_id)
                         VALUES (
-                            '" . $user_id . "',
-                            '" . $calendar['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $user_id, (string) $calendar['id'])) or output_error('Query failed.');
                 }
             }
         }
@@ -653,9 +653,9 @@ if (!$_POST) {
                             user_id,
                             ad_region_id)
                         VALUES (
-                            '" . escape($user_id) . "',
-                            '" . escape($ad_region['id']) . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $user_id, (string) $ad_region['id'])) or output_error('Query failed.');
                 }
             }
         }

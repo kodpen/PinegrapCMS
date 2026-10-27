@@ -78,13 +78,13 @@ if (!$_POST) {
         }
 
         $output_link_mode = '
-                                                <div class="col-12 col-md-8 col-lg-6 my-2" id="link_mode_row">
+                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="link_mode_row">
                                                     <label for="link_mode" class="form-label">' . lang('How it opens') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_mode', 'id'=>'link_mode', 'class'=>'form-select', 'options'=>$link_mode_options, 'onchange'=>'change_short_link_mode(this.options[this.selectedIndex].value)')) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_mode', 'id'=>'link_mode', 'class'=>'form-control', 'options'=>$link_mode_options, 'onchange'=>'change_short_link_mode(this.options[this.selectedIndex].value)')) . '
                                                 </div>
-                                                <div class="col-12 col-md-4 col-lg-3 my-2" id="duration_row" style="display: none">
+                                                <div class="col-12 md:col-4 lg:col-3 my-3" id="duration_row" style="display: none">
                                                     <label for="duration" class="form-label">' . lang('Valid for') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'duration', 'id'=>'duration', 'class'=>'form-select', 'options'=>$duration_options)) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'duration', 'id'=>'duration', 'class'=>'form-control', 'options'=>$duration_options)) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <script>
@@ -111,9 +111,9 @@ if (!$_POST) {
         }
 
         $output_redirect_code = '
-                                                <div class="col-12 col-md-8 col-lg-6 my-2" id="redirect_code_row">
+                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="redirect_code_row">
                                                     <label for="redirect_code" class="form-label">' . lang('How it answers') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'redirect_code', 'id'=>'redirect_code', 'class'=>'form-select', 'options'=>pg_short_link_answer_options())) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'redirect_code', 'id'=>'redirect_code', 'class'=>'form-control', 'options'=>pg_short_link_answer_options())) . '
                                                     <div class="form-text">' . lang('A redirect sends visitors to the destination\'s own address and keeps their query string: 301 for the old address of a page that moved, 302 for a while.') . '</div>
                                                 </div>';
     }
@@ -172,15 +172,15 @@ if (!$_POST) {
                 <form name="form" action="add_short_link.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
-                        <div class="col-12 col-md-4 col-lg-3 col-xl-2">
-                            <div class="card my-4 position-sticky" style="top:56px;">
-                                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-4 lg:col-3 xl:col-2">
+                            <div class="card my-7 position-sticky" style="top:56px;">
+                                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Destination Type') . '
                                 </label>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12">
-                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'destination_type', 'class'=>'form-select collapse-if-selected', 'name'=>'destination_type', 'options'=>$destination_type_options, 'onchange'=>'change_short_link_destination_type(this.options[this.selectedIndex].value)', 'data-bs-target'=>'#options_row', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'destination_type', 'class'=>'form-control collapse-if-selected', 'name'=>'destination_type', 'options'=>$destination_type_options, 'onchange'=>'change_short_link_destination_type(this.options[this.selectedIndex].value)', 'data-bs-target'=>'#options_row', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             <script>
                                                 $(document).ready(function() {
@@ -192,16 +192,16 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-8 col-lg-9 col-xl-10">
+                        <div class="col-12 md:col-8 lg:col-9 xl:col-10">
                             <div class="row">
                                 <div class="col-12">
-                                    <div class="card my-4 position-sticky" style="top:56px;">
-                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7 position-sticky" style="top:56px;">
+                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Main Informations') . '
                                         </label>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-md-8 col-lg-6 my-2" id="name_row">
+                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="name_row">
                                                     <label for="name" class="form-label">' . lang('Name') . '</label>
                                                     <div class="input-group ">
                                                         <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the short link.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}">public</label>
@@ -218,54 +218,54 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 <div class="col-12 collapse" id="options_row">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Function Options') . '
                                         </div>
 
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-md-6 col-lg-4 my-2" id="page_id_row"' . $output_page_id_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-4 my-3" id="page_id_row"' . $output_page_id_row_style . '>
                                                     <label for="page_id" class="form-label">' . lang('Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-select', 'options'=>get_page_options('', '', 'edit', FALSE))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', FALSE))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-5 my-2" id="catalog_page_id_row"' . $output_catalog_page_id_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_page_id_row"' . $output_catalog_page_id_row_style . '>
                                                     <label for="catalog_page_id" class="form-label">' . lang('Catalog Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog', 'edit', FALSE), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog', 'edit', FALSE), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
-                                                <div class="col-12 col-lg-2 my-2 text-lg-center" id="or_row"' . $output_or_row_style . '>
+                                                <div class="col-12 lg:col-2 my-3 lg:text-center" id="or_row"' . $output_or_row_style . '>
                                                 -' . lang('or') . '-
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-5 my-2" id="catalog_detail_page_id_row"' . $output_catalog_detail_page_id_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_detail_page_id_row"' . $output_catalog_detail_page_id_row_style . '>
                                                     <label for="catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-5 my-2" id="product_group_id_row"' . $output_product_group_id_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="product_group_id_row"' . $output_product_group_id_row_style . '>
                                                     <label for="product_group_id" class="form-label">' . lang('Product Group') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-select', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE, TRUE, FALSE))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-control', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE, TRUE, FALSE))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-7 my-2" id="product_id_row"' . $output_product_id_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-7 my-3" id="product_id_row"' . $output_product_id_row_style . '>
                                                     <label for="product_id" class="form-label">' . lang('Product') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-select', 'options'=>get_product_options())) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options())) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
-                                                <div class="col-12 col-md-8 col-lg-6 my-2" id="url_row"' . $output_url_row_style . '>
+                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="url_row"' . $output_url_row_style . '>
                                                     <label for="url" class="form-label">' . lang('Destination URL') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder' => lang('Enter URL that visitor should be redirected to'))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                     <div class="form-text">' . lang('With a * in the name, $1 to $9 put here what each * matched, after the host name.') . '</div>
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg my-2" id="tracking_code_row"' . $output_tracking_code_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col my-3" id="tracking_code_row"' . $output_tracking_code_row_style . '>
                                                     <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'text', 'name'=>'tracking_code', 'id'=>'tracking_code', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-4 my-2" id="file_row"' . $output_file_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-4 my-3" id="file_row"' . $output_file_row_style . '>
                                                      <label for="file" class="form-label">' . lang('File') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-select', 'options'=>get_file_options($design=true))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-control', 'options'=>get_file_options($design=true))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                             </div>
@@ -275,10 +275,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

@@ -127,12 +127,12 @@ function pg_dashboard_widget_4($request, $user)
 
             // Past a quarter of an hour with no answer this is no
             // longer a notification, it is a lost conversation.
-            $eg_wait_class = ($eg_waited >= 900) ? 'text-danger' : 'text-warning';
+            $eg_wait_class = ($eg_waited >= 900) ? 'fg-danger' : 'fg-warning';
 
             $eg_waiting_html .= '
-            <div class="d-flex align-items-center px-2 py-1 pointer"
+            <div class="d-flex align-items-center px-3 py-1 pointer"
                  onclick="if (window.pgChatOpenConversation) { window.pgChatOpenConversation(' . (int) $eg_chat['id'] . '); }">
-                <div class="me-2 flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle"
+                <div class="me-3 flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle"
                      style="width:34px;height:34px;background:rgba(245,158,11,.12)">
                     <i class="bi bi-chat-dots" style="color:#f59e0b"></i>
                 </div>
@@ -141,7 +141,7 @@ function pg_dashboard_widget_4($request, $user)
                         <span class="text-truncate fw-semibold" style="font-size:13px">' . h($eg_title) . '</span>
                         <span class="' . $eg_wait_class . ' flex-shrink-0" style="font-size:11px">' . get_relative_time(array('timestamp' => (int) $eg_chat['last_message_at'])) . '</span>
                     </div>
-                    <small class="text-muted text-truncate d-block">' . h($eg_chat['last_message_preview']) . '</small>
+                    <small class="fg-secondary text-truncate d-block">' . h($eg_chat['last_message_preview']) . '</small>
                 </div>
             </div>';
         }
@@ -189,7 +189,6 @@ function pg_dashboard_widget_4($request, $user)
             $eg_is_recent = (($eg_now - $eg_seen) < $eg_recent_seconds);
 
             if ($eg_presence == 'online') {
-                $eg_dot = '#10b981';
                 $eg_status_label = lang('Online');
                 // Already-escaped HTML in every branch, because
                 // get_relative_time() emits a <time> element with
@@ -197,11 +196,9 @@ function pg_dashboard_widget_4($request, $user)
                 // thing at the print site would print the tag.
                 $eg_seen_text = h(lang('Online'));
             } elseif ($eg_presence == 'away') {
-                $eg_dot = '#f59e0b';
                 $eg_status_label = lang('Away');
                 $eg_seen_text = get_relative_time(array('timestamp' => $eg_seen));
             } else {
-                $eg_dot = '#a1a1a1';
                 $eg_status_label = lang('Offline');
                 $eg_seen_text = get_relative_time(array('timestamp' => $eg_seen));
             }
@@ -231,6 +228,22 @@ function pg_dashboard_widget_4($request, $user)
                 isset($eg_person['last_name']) ? $eg_person['last_name'] : '',
                 $eg_person['username'],
                 $eg_person['id']);
+
+            // The same face as the chat's: the photo or the letters on the
+            // person's tone, with the presence dot (includes/fn/contacts.php).
+            $eg_face = pg_avatar_markup(array(
+                'avatar'      => $eg_avatar,
+                'avatar_kind' => pg_chat_avatar_kind(
+                    isset($eg_person['image']) ? $eg_person['image'] : '',
+                    isset($eg_person['image_file_id']) ? $eg_person['image_file_id'] : 0,
+                    isset($eg_person['image_file_name']) ? $eg_person['image_file_name'] : '',
+                    isset($eg_person['first_name']) ? $eg_person['first_name'] : '',
+                    isset($eg_person['last_name']) ? $eg_person['last_name'] : ''),
+                'presence'    => $eg_presence,
+            ) + pg_avatar_letters(pg_initials(
+                isset($eg_person['first_name']) ? $eg_person['first_name'] : '',
+                isset($eg_person['last_name']) ? $eg_person['last_name'] : '',
+                $eg_person['username']), $eg_person['id']), '', 'pg-avatar-34');
 
             $eg_name = pg_chat_display_name(
                 isset($eg_person['first_name']) ? $eg_person['first_name'] : '',
@@ -265,11 +278,9 @@ function pg_dashboard_widget_4($request, $user)
             }
 
             $eg_row = '
-            <div class="d-flex align-items-center px-2 py-1' . $eg_pointer . '" ' . $eg_click . '>
-                <div class="position-relative me-2 flex-shrink-0">
-                    <img src="' . h($eg_avatar) . '" class="rounded-circle" style="width:34px;height:34px;object-fit:cover;" alt="" />
-                    <span class="position-absolute rounded-circle border border-2 border-white" title="' . h($eg_status_label) . '"
-                          style="width:10px;height:10px;bottom:0;right:0;background:' . $eg_dot . '"></span>
+            <div class="d-flex align-items-center px-3 py-1' . $eg_pointer . '" ' . $eg_click . '>
+                <div class="me-3 flex-shrink-0" title="' . h($eg_status_label) . '">
+                    ' . $eg_face . '
                 </div>
                 <div class="flex-grow-1 overflow-hidden">
                     <div class="d-flex justify-content-between align-items-center">
@@ -277,7 +288,7 @@ function pg_dashboard_widget_4($request, $user)
                         <span class="badge rounded-pill flex-shrink-0" style="background:' . $eg_role_color . '22;color:' . $eg_role_color . ';font-size:10px">' . h(pg_chat_role_label($eg_person['user_role'])) . '</span>
                         ' . $eg_chat_icon . '
                     </div>
-                    <small class="text-muted">' . $eg_seen_text . '</small>
+                    <small class="fg-secondary">' . $eg_seen_text . '</small>
                 </div>
             </div>';
 
@@ -295,9 +306,9 @@ function pg_dashboard_widget_4($request, $user)
         // fault, and three empty headings would fill the card.
         $eg_heading = function ($eg_label, $eg_count) {
             return '
-            <div class="d-flex align-items-center justify-content-between px-2 pt-2 pb-1">
-                <span class="text-muted text-uppercase" style="font-size:10px;letter-spacing:.06em">' . h($eg_label) . '</span>
-                <span class="text-muted" style="font-size:10px">' . pg_format_number($eg_count, 0) . '</span>
+            <div class="d-flex align-items-center justify-content-between px-3 pt-3 pb-1">
+                <span class="fg-secondary text-uppercase" style="font-size:10px;letter-spacing:.06em">' . h($eg_label) . '</span>
+                <span class="fg-secondary" style="font-size:10px">' . pg_format_number($eg_count, 0) . '</span>
             </div>';
         };
 
@@ -315,9 +326,9 @@ function pg_dashboard_widget_4($request, $user)
 
         if ($eg_chats_panel === '') {
             $eg_chats_panel = '
-            <div class="text-center py-3">
-                <i class="bi bi-chat-left-dots d-block mb-2" style="font-size:20px;opacity:.35"></i>
-                <p class="text-muted mb-0" style="font-size:12px">' . lang('Nobody is waiting for a reply.') . '</p>
+            <div class="text-center py-5">
+                <i class="bi bi-chat-left-dots d-block mb-3" style="font-size:20px;opacity:.35"></i>
+                <p class="fg-secondary mb-0" style="font-size:12px">' . lang('Nobody is waiting for a reply.') . '</p>
             </div>';
         }
 
@@ -333,16 +344,16 @@ function pg_dashboard_widget_4($request, $user)
 
         if ($eg_people_panel === '') {
             $eg_people_panel = '
-            <div class="text-center py-4">
-                <i class="bi bi-person-dash d-block mb-2" style="font-size:22px;opacity:.35"></i>
-                <p class="text-muted mb-0" style="font-size:12px">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Online User'))) . '</p>
+            <div class="text-center py-7">
+                <i class="bi bi-person-dash d-block mb-3" style="font-size:22px;opacity:.35"></i>
+                <p class="fg-secondary mb-0" style="font-size:12px">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Online User'))) . '</p>
             </div>';
         }
 
         $output_data = '
         <div class="card-body p-0 pg-split">
             <div class="pg-split-half">
-                <div class="d-flex flex-column gap-1 p-2">
+                <div class="d-flex flex-column gap-1 p-3">
                     <div class="pg-eg-stat" style="--pg-eg-ink:#10b981">
                         <i class="bi bi-people-fill"></i>
                         <span class="pg-eg-stat-value">' . pg_format_number($eg_active_visitors, 0) . '</span>
@@ -356,7 +367,7 @@ function pg_dashboard_widget_4($request, $user)
                         <span class="pg-eg-stat-window">' . lang('Last 20 min') . '</span>
                     </div>
                 </div>
-                <div class="border-top mx-2 mb-1">
+                <div class="border-top mx-3 mb-1">
                     ' . $eg_chats_panel . '
                 </div>
             </div>

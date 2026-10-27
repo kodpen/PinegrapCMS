@@ -145,7 +145,7 @@ function ws_js_strings()
         'go_to_message'          => lang('Go to the message'),
         'holiday'                => lang('Holiday'),
         'inbox'                  => lang('Inbox'),
-        'inbox_empty'            => lang('Nothing waiting for you.'),
+        'inbox_empty'            => lang('Inbox zero - nothing is waiting for you.'),
         'insert'                 => lang('Insert a table, calculation, checklist or poll'),
         'insert_calc'            => lang('Calculation'),
         'insert_checklist'       => lang('Checklist'),
@@ -202,7 +202,7 @@ function ws_js_strings()
         'next'                   => lang('Later days'),
         'no_archived'            => lang('No archived channels.'),
         'no_channel'             => lang('No channel'),
-        'no_channels'            => lang('No channels yet.'),
+        'no_channels'            => lang('All quiet here - no channels yet.'),
         'no_conflicts'           => lang('No clashes in the next two weeks.'),
         'no_customer'            => lang('Not about a customer'),
         'no_decisions'           => lang('No decisions or notes yet. Any message can be kept as one from its menu.'),
@@ -212,7 +212,7 @@ function ws_js_strings()
         'no_notes'               => lang('No notes yet.'),
         'no_private_channels'    => lang('No private channels you are not in.'),
         'no_records'             => lang('No records tagged.'),
-        'no_tasks'               => lang('No tasks.'),
+        'no_tasks'               => lang('All clear - no tasks here.'),
         'not_discussed'          => lang('Not talked about in any channel you can read.'),
         'not_estimated'          => lang('no estimate'),
         'not_joined'             => lang('You are reading this channel without being a member.'),
@@ -483,20 +483,29 @@ function ws_editor_js_strings()
         'designer_checklist'        => lang('Design a checklist'),
         'designer_code'             => lang('Share code'),
         'designer_table'            => lang('Design a table'),
+        'emoji_suggest'             => lang('Matching emoji'),
         'fmt_bold'                  => lang('Bold'),
         'fmt_code'                  => lang('Code'),
         'fmt_italic'                => lang('Italic'),
         'fmt_link'                  => lang('Link'),
         'fmt_strike'                => lang('Strikethrough'),
+        'fmt_highlight'             => lang('Highlight'),
         'insert_code'               => lang('Code block'),
         'insert_to_message'         => lang('Add to the message'),
         'item_done'                 => lang('Mark as done'),
         'item_placeholder'          => lang('What needs doing?'),
+        'keys_close'                => lang('Close'),
+        'keys_newline'              => lang('New line'),
+        'keys_redo'                 => lang('Redo'),
+        'keys_send'                 => lang('Send the message'),
+        'keys_title'                => lang('Keyboard shortcuts'),
+        'keys_undo'                 => lang('Undo'),
         'link_invalid'              => lang('Only http, https and mailto addresses can be linked.'),
         'link_open'                 => lang('Open the link'),
         'link_placeholder'          => lang('Paste or type the address'),
         'link_remove'               => lang('Remove the link'),
         'link_save'                 => lang('Apply the link'),
+        'link_text'                 => lang('Text to show (the address when left empty)'),
         'move_down'                 => lang('Move down'),
         'move_up'                   => lang('Move up'),
         'row_above'                 => lang('Insert a row above'),
@@ -560,12 +569,24 @@ function ws_editor_js_strings()
         'tool_bold'                 => lang('Bold (Ctrl+B)'),
         'tool_italic'               => lang('Italic (Ctrl+I)'),
         'tool_strike'               => lang('Strikethrough (Ctrl+Shift+X)'),
+        'tool_highlight'            => lang('Highlight (Ctrl+Shift+H)'),
         'tool_code'                 => lang('Code (Ctrl+E)'),
         'tool_link'                 => lang('Link (Ctrl+K)'),
+        'tool_bullets'              => lang('Bulleted list'),
+        'tool_numbers'              => lang('Numbered list'),
+        'tool_quote'                => lang('Quote'),
         'tool_checklist'            => lang('Checklist'),
         'tool_table'                => lang('Table'),
         'tool_calc'                 => lang('Calculation'),
         'tool_codeblock'            => lang('Code block'),
+        'slash_inserts'             => lang('Insert into the note'),
+        // The composer's length meter near WS_MESSAGE_MAX, spoken to screen
+        // readers, and the server's own refusal past it.
+        'meter_near'                => ws_js_template('{var:1} characters left', 1),
+        'meter_over'                => ws_js_template('{var:1} characters over the limit of {var:2}', 2),
+        'msg_too_long'              => ws_js_template('A message can be at most {var:1} characters long.', 1),
+        // The composer's "Rewrite with AI" (the ai_write panel action).
+        'tool_ai_rewrite'           => lang('Rewrite with AI'),
     );
 }
 
@@ -586,6 +607,18 @@ function ws_screen_board_from()
 
     // The week the day falls in, from its Monday.
     return date('Y-m-d', strtotime('monday this week', $time));
+}
+
+/**
+ * The model that rewrites a message in the composer of the channel screen,
+ * '' where the screen has no composer or the site writes no drafts.
+ *
+ * @param string $mode
+ * @return string pinegrap | browser | ''
+ */
+function ws_screen_ai_rewrite($mode)
+{
+    return (($mode === 'channels') && function_exists('pg_ai_write_engine')) ? pg_ai_write_engine() : '';
 }
 
 /**
@@ -730,6 +763,12 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'meetings'     => ws_meetings_ready(),
         'poll'         => array('active' => 4),
         'open_channel' => 0,
+        // The longest message body the server takes (the composer's meter).
+        'message_max'  => WS_MESSAGE_MAX,
+        // Which model rewrites a message in the composer (pg_ai_write_engine():
+        // pinegrap | browser), '' for no button. The screen's gate has
+        // already let only the team in (pg_ai_write_user_may()'s rule).
+        'ai_rewrite'   => ws_screen_ai_rewrite($mode),
         'urls'         => array(
             'workspace' => $base . 'workspace.php',
             'tasks'     => $base . 'workspace_tasks.php',
@@ -837,6 +876,13 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 
     if ($mode === 'record') {
         return $output . ws_record_loader(pg_js_bundle_urls('assets/js/workspace.min.js'));
+    }
+
+    // "Rewrite with AI" in the composer: the draft panel's script and words
+    // (assets/js/pg_ai_write.js), before the composer is drawn.
+    if (ws_screen_ai_rewrite($mode) !== '') {
+        pg_ai_write_buttons_drawn(true);
+        $output .= pg_ai_write_assets();
     }
 
     $output .= pg_js_bundle_tags('assets/js/workspace.min.js')
@@ -953,7 +999,7 @@ function ws_screen_gate($user)
  * @param string $class the button's classes
  * @return string
  */
-function ws_record_button($user, $type, $id, $label = '', $class = 'btn btn-sm btn-outline-secondary')
+function ws_record_button($user, $type, $id, $label = '', $class = 'btn btn-sm btn-outline theme-secondary')
 {
     if (((int) $id <= 0) || !ws_ready() || !ws_enabled()) {
         return '';
@@ -969,6 +1015,6 @@ function ws_record_button($user, $type, $id, $label = '', $class = 'btn btn-sm b
 
     return '<a href="#" class="' . h($class) . '" data-ws-record="' . h($type . ':' . (int) $id) . '" data-ws-label="' . h($label) . '" title="' . h(lang('Conversations and tasks about this record')) . '">'
         . '<i class="bi bi-clipboard2-check me-1" aria-hidden="true"></i>' . h(lang('Workspace'))
-        . (($count > 0) ? ' <span class="badge rounded-pill text-bg-secondary ms-1">' . (int) $count . '</span>' : '')
+        . (($count > 0) ? ' <span class="badge rounded-pill theme-secondary ms-1">' . (int) $count . '</span>' : '')
         . '</a>' . ws_screen_assets($viewer, 'record');
 }

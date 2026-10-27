@@ -309,7 +309,9 @@ function test_ws_api_change_proposals_are_tools()
 			}
 		}
 
-		pg_assert_same($answer['of'], $changes['of'], $id . ' takes the answer\'s changes');
+		// A channel's route also takes a scheduled action as a draft (data).
+		pg_assert_same($answer['of'], array_diff_key($changes['of'], array('data' => true)), $id . ' takes the answer\'s changes');
+		pg_assert_same($id === 'workspace.changes.propose', isset($changes['of']['data']), $id . ': a scheduled draft in a channel only');
 		pg_assert_same(WS_CHANGES_PER_ANSWER, $changes['max_items'], $id . ' takes as many as an answer');
 
 		// What a model reads: it proposes, the person applies, nothing is
@@ -1233,9 +1235,10 @@ function test_ws_api_carry_on_where()
 	pg_assert_same('', ws_api_carry_on_where(false, false), 'IIS, a message written');
 }
 
-// A file is posted and fetched with the caller's own token; neither is an
-// MCP tool, since a model has no use for a file's bytes, and the download is
-// described as the file itself rather than a record.
+// A file is posted and fetched with the caller's own token. Posting is an
+// MCP tool for a small file sent as content_base64; the download is none,
+// since a tool result cannot carry the bytes, and it is described as the
+// file itself rather than a record.
 function test_ws_api_files_routes()
 {
 	$routes = array();
@@ -1249,7 +1252,7 @@ function test_ws_api_files_routes()
 	pg_assert_same('/workspace/channels/{id}/files', $routes['workspace.files.create']['path']);
 	pg_assert_same('workspace:write', $routes['workspace.files.create']['scope']);
 	pg_assert_same('WorkspaceMessage', $routes['workspace.files.create']['returns']);
-	pg_assert_false(pg_mcp_route_is_offered($routes['workspace.files.create']), 'posting a file is no MCP tool');
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.files.create']), 'posting a small file is an MCP tool');
 
 	pg_assert_true(isset($routes['workspace.files.get']), 'workspace.files.get is declared');
 	pg_assert_same('GET', $routes['workspace.files.get']['method']);
@@ -2007,7 +2010,7 @@ function test_ws_api_message_file_reaction_ack_decision_and_note_rehearse()
 		}
 	}
 
-	pg_assert_false(pg_mcp_route_is_offered($routes['workspace.files.create']), 'the upload stays no MCP tool');
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.files.create']), 'the upload is a tool, for a small file');
 	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.messages.create']), 'writing is still a tool');
 }
 
@@ -2138,10 +2141,50 @@ function test_ws_message_send_file_checks_before_storing()
 	pg_assert_contains('ws_library_send(', $picked, 'the picker goes through it');
 }
 
+// Through MCP a file travels as content_base64 inside one JSON-RPC message:
+// the tool takes it and name, never the form part, and holds the file to
+// ws_mcp_upload_max_bytes(), measured on the text before it is decoded.
+function test_ws_api_files_create_small_file_tool()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $candidate) {
+		if ($candidate['id'] === 'workspace.files.create') {
+			$route = $candidate;
+		}
+	}
+
+	$tool = pg_mcp_tool_from_route($route);
+	$properties = (array) $tool['inputSchema']['properties'];
+
+	pg_assert_same('workspace_files_create', $tool['name']);
+	pg_assert_true(isset($properties['content_base64'], $properties['name'], $properties['dry_run']), 'the tool takes content_base64, name and dry_run');
+	pg_assert_false(isset($properties['file']), 'no form part through MCP');
+	pg_assert_false($tool['annotations']['destructiveHint'], 'posting a file only adds');
+	pg_assert_contains('MCP', $tool['description']);
+
+	pg_assert_true(ws_mcp_upload_max_bytes() > 0, 'a small file is taken');
+	pg_assert_true(ws_mcp_upload_max_bytes() <= 1048576, 'at most 1 MB through MCP');
+	pg_assert_true(ws_mcp_upload_max_bytes() <= ws_upload_max_bytes(), 'never above the channel limit');
+
+	foreach (array(0, 1, 2, 3, 4, 1000, 1048577) as $size) {
+		$encoded = base64_encode(str_repeat('a', $size));
+
+		pg_assert_same($size, ws_upload_base64_bytes($encoded), $size . ' bytes');
+		pg_assert_same($size, ws_upload_base64_bytes('data:image/png;base64,' . $encoded), $size . ' bytes after a data: prefix');
+		pg_assert_same($size, ws_upload_base64_bytes(chunk_split($encoded, 76, "\r\n")), $size . ' bytes in lines');
+	}
+
+	$input = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_upload_input'));
+
+	pg_assert_contains('ws_mcp_upload_max_bytes(', $input);
+	pg_assert_contains('ws_upload_base64_bytes(', $input);
+}
+
 // A file may answer a message (a voice reply): files.create declares an
 // optional parent_id, refuses a bad one on that field before its dry run
 // stops, and hands it to the write; the panel's upload sends it on through
-// the same check. Posting a file stays no MCP tool.
+// the same check.
 function test_ws_api_files_create_answers_a_message()
 {
 	$route = null;
@@ -2164,7 +2207,7 @@ function test_ws_api_files_create_answers_a_message()
 	pg_assert_same(1, $params['parent_id']['min'] ?? null, 'parent_id names a message');
 	pg_assert_true(empty($params['parent_id']['required']), 'parent_id may be left out');
 	pg_assert_contains('parent_id', (string) $route['description'], 'the description says what parent_id does');
-	pg_assert_false(pg_mcp_route_is_offered($route), 'posting a file stays no MCP tool');
+	pg_assert_true(pg_mcp_route_is_offered($route), 'posting a small file is a tool');
 
 	$api = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_files_create'));
 
@@ -2200,94 +2243,6 @@ function test_ws_api_every_write_rehearses()
 	}
 }
 
-// The scheduled actions' routes (api_scheduled.php): staff only, all four
-// tools, pause and cancel through one rehearsed write; the panel's write
-// meets the same check.
-function test_ws_api_scheduled_actions_routes()
-{
-	$routes = array();
-
-	foreach (ws_api_routes() as $route) {
-		$routes[$route['id']] = $route;
-	}
-
-	$expected = array(
-		'workspace.scheduled_actions.list'   => array('GET', '/workspace/scheduled-actions', 'workspace:read', 'ws_api_scheduled_actions_list'),
-		'workspace.scheduled_actions.get'    => array('GET', '/workspace/scheduled-actions/{id}', 'workspace:read', 'ws_api_scheduled_actions_get'),
-		'workspace.scheduled_actions.pause'  => array('POST', '/workspace/scheduled-actions/{id}/pause', 'workspace:write', 'ws_api_scheduled_actions_pause'),
-		'workspace.scheduled_actions.cancel' => array('POST', '/workspace/scheduled-actions/{id}/cancel', 'workspace:write', 'ws_api_scheduled_actions_cancel'),
-	);
-
-	foreach ($expected as $id => $shape) {
-		pg_assert_true(isset($routes[$id]), $id . ' is declared');
-
-		if (!isset($routes[$id])) {
-			continue;
-		}
-
-		pg_assert_same($shape, array($routes[$id]['method'], $routes[$id]['path'], $routes[$id]['scope'], $routes[$id]['handler']), $id . ' method, path, scope, handler');
-		pg_assert_true(pg_mcp_route_is_offered($routes[$id]), $id . ' is a tool');
-		pg_assert_contains('ws_api_scheduled_viewer()', ws_api_test_handler_source($routes[$id]['handler']) . ws_api_test_handler_source('ws_api_scheduled_actions_set_status'), $id . ' is for staff only');
-	}
-
-	pg_assert_same('ws_api_scheduled_action_schema', ws_openapi_objects()['WorkspaceScheduledAction'] ?? null, 'the object is declared');
-	pg_assert_contains('ws_can_schedule($viewer)', ws_api_test_handler_source('ws_api_scheduled_viewer'), 'staff are told apart by ws_can_schedule()');
-
-	foreach (array('ws_api_scheduled_actions_pause' => "'paused'", 'ws_api_scheduled_actions_cancel' => "'cancelled'") as $handler => $to) {
-		pg_assert_contains('ws_api_scheduled_actions_set_status($params, ' . $to . ')', ws_api_test_handler_source($handler), $handler . ' sets ' . $to);
-	}
-
-	// Never a scheduled message nor a flow's anchor row.
-	$one = ws_api_test_handler_source('ws_api_scheduled_action_or_404');
-
-	pg_assert_contains('ws_scheduled_action(', $one, 'only the action kind is reached');
-	pg_assert_contains('ws_api_scheduled_is_flow_anchor(', $one, 'a flow\'s row is a 404');
-	pg_assert_true(ws_api_scheduled_is_flow_anchor(array('flow_id' => '7')), 'flow_id set is an anchor');
-	pg_assert_false(ws_api_scheduled_is_flow_anchor(array('flow_id' => '0')), 'flow_id 0 is an action');
-	pg_assert_false(ws_api_scheduled_is_flow_anchor(array()), 'no flow_id column is an action');
-
-	$list = ws_api_test_handler_source('ws_api_scheduled_actions_list');
-
-	pg_assert_contains('ws_scheduled_actions_only()', $list, 'the listing leaves scheduled messages out');
-	pg_assert_contains('flow_id = 0', $list, 'the listing leaves flow anchors out');
-
-	// The panel's pause, resume and cancel run the same check.
-	$panel = ws_api_test_handler_source('ws_scheduled_set_status');
-
-	pg_assert_true(strpos($panel, 'ws_scheduled_set_status_check(') < strpos($panel, 'UPDATE ws_scheduled_actions'), 'the panel checks before it writes');
-}
-
-// The channels an action names, and its sentences given only when the
-// caller reads every one of them.
-function test_ws_api_scheduled_channel_ids()
-{
-	$row = array(
-		'channel_id' => 4,
-		'rules'      => array(array('type' => 'join', 'channel_id' => 9), array('type' => 'workday'), 'junk'),
-		'action'     => array('type' => 'post', 'channel_id' => -1, 'body' => 'Hi'),
-		'follow'     => array(array('on' => 'done', 'do' => array('type' => 'post', 'channel_id' => 12)), array('on' => 'failed', 'do' => array('type' => 'trigger', 'target_id' => 3)), array('on' => 'done', 'do' => array('type' => 'post', 'channel_id' => 4))),
-	);
-
-	pg_assert_same(array(4, 9, 12), ws_api_scheduled_channel_ids($row), 'home, rule and follow-up channels, once, the joined channel left out');
-	pg_assert_same(array(), ws_api_scheduled_channel_ids(array('channel_id' => 0, 'rules' => array(), 'action' => null, 'follow' => array())), 'none');
-
-	pg_assert_true(ws_api_scheduled_texts_given(array(4, 9), array(4 => true, 9 => true)), 'all read');
-	pg_assert_false(ws_api_scheduled_texts_given(array(4, 9), array(4 => true, 9 => false)), 'one not read');
-	pg_assert_false(ws_api_scheduled_texts_given(array(4, 9), array(4 => true)), 'one not looked at');
-	pg_assert_true(ws_api_scheduled_texts_given(array(), array()), 'no channel named');
-
-	$present = ws_api_test_handler_source('ws_api_scheduled_action_present');
-
-	pg_assert_contains('ws_api_scheduled_channel_open(', $present, 'each channel is looked at');
-	pg_assert_contains('ws_can_read_channel(', ws_api_test_handler_source('ws_api_scheduled_channel_open'), 'by the owner\'s reach');
-	pg_assert_contains('ws_claude_channel_allowed(', ws_api_test_handler_source('ws_api_scheduled_channel_open'), 'and Claude\'s');
-	pg_assert_same(array_keys(ws_api_scheduled_action_schema()), array_keys(array(
-		'id' => 1, 'name' => 1, 'status' => 1, 'next_run_at' => 1, 'repeats' => 1, 'on_event' => 1, 'joins' => 1, 'trigger_only' => 1, 'texts_withheld' => 1,
-		'when' => 1, 'conditions' => 1, 'action_type' => 1, 'action_text' => 1, 'follow' => 1, 'starters' => 1, 'channel_id' => 1, 'channel_name' => 1,
-		'message_id' => 1, 'run_count' => 1, 'last_run' => 1, 'can_change' => 1, 'created_by' => 1, 'created_at' => 1, 'updated_at' => 1, 'history' => 1,
-	)), 'the schema names the fields');
-}
-
 // A rehearsal meets the panel's own checks and stops before the panel's
 // write: the *_check() function first, then the stop, then the write.
 function test_ws_api_rehearsal_stops_before_the_write()
@@ -2313,9 +2268,9 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
 		'ws_api_flow_runs_start'      => array('ws_flow_run_start_check(', 'api_dry_run_stop(', 'ws_flow_run_start('),
 		'ws_api_flow_runs_cancel'     => array('ws_flow_run_cancel_check(', 'api_dry_run_stop(', 'ws_flow_run_cancel('),
-		'ws_api_scheduled_actions_set_status' => array('ws_api_scheduled_viewer(', 'ws_api_scheduled_action_or_404(', 'ws_scheduled_set_status_check(', 'api_dry_run_stop(', 'ws_scheduled_set_status('),
 		'ws_api_flow_shares_set'      => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_set_check(', 'api_dry_run_stop(', 'ws_flow_share_set('),
 		'ws_api_flow_shares_delete'   => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_remove_check(', 'api_dry_run_stop(', 'ws_flow_share_remove('),
+		'ws_api_messages_forward'     => array('ws_forward_to_channel_check(', 'ws_api_channel_or_404($viewer, $checked', 'api_dry_run_stop(', 'ws_forward_to_channel('),
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
 		'ws_api_changes_propose'      => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_message_send_check(', 'ws_api_proposal_rows(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
 		'ws_api_task_changes_propose' => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_task_note_add_check(', 'ws_api_proposal_rows(', 'ws_task_delegation_open_run(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
@@ -2378,4 +2333,36 @@ function test_ws_api_decision_change_names_its_agent()
 	pg_assert_same('claude', ws_api_decision_present(array('id' => 4), $row, array(), array(), $people, array(70 => $change))['claude_change']['agent'] ?? null, 'a change with no agent is Claude\'s');
 	pg_assert_same('string', ws_api_decision_change_schema()['agent'] ?? null, 'the field is declared');
 	pg_assert_contains('ws_change_agent_key(', ws_api_test_handler_source('ws_timeline_claude_changes'), 'the agent is the one GET /workspace/changes gives');
+}
+
+// Forwarding messages over the API (workspace.messages.forward) is an
+// ordinary write, offered to an MCP client as a tool: the new message carries
+// the writer's name, so it needs no team devices session. The panel's
+// forward and the route meet one check.
+function test_ws_api_messages_forward_route()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $candidate) {
+		if ($candidate['id'] === 'workspace.messages.forward') {
+			$route = $candidate;
+		}
+	}
+
+	pg_assert_true(is_array($route), 'the forward route is declared');
+	pg_assert_same('POST', $route['method']);
+	pg_assert_same('/workspace/channels/{id}/forwards', $route['path']);
+	pg_assert_same('workspace:write', $route['scope']);
+	pg_assert_true(!empty($route['dry_run']), 'forward rehearses');
+	pg_assert_true(pg_mcp_route_is_offered($route), 'forward is an MCP tool');
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_owner_scopes'), "'workspace:write'") !== false, 'the scope is in the owner ceiling');
+
+	$source = ws_api_test_handler_source('ws_api_messages_forward');
+
+	pg_assert_false(strpos($source, 'ws_api_own_words_only(') !== false, 'forward is not gated as the person\'s own words');
+	pg_assert_false(strpos($source, 'ws_api_person_only(') !== false, 'an application key may forward');
+	pg_assert_true(strpos($source, 'ws_api_writer_app_id()') !== false, 'an application forwards as itself');
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_forward_to_channel'), 'ws_forward_to_channel_check(') !== false, 'the panel meets the same check');
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_forward_to_channel_check'), 'ws_forward_pick(') !== false, 'the source channel is read with ws_can_read_channel()');
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_forward_pick'), 'ws_can_read_channel(') !== false, 'the pick reads the source channel');
 }

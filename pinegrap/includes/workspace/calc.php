@@ -137,7 +137,11 @@ function ws_calc_number($text)
         return null;
     }
 
-    // Emphasis around a figure (**1.590**) is not part of it.
+    // Emphasis around a figure (**1.590**, ==1.590==) is not part of it.
+    if (preg_match('/^==([^=]+)==$/', $text, $pair)) {
+        $text = $pair[1];
+    }
+
     $text = trim($text, '*_~`');
 
     $percent = false;
@@ -1169,7 +1173,7 @@ function ws_calc_grid($rows, $scope = array())
 
         $source = trim((string) $grid[$r][$c]);
 
-        if (substr($source, 0, 1) !== '=') {
+        if (!ws_calc_is_formula($source)) {
             return $result[$key] = array(ws_calc_number($source), '');
         }
 
@@ -1258,7 +1262,7 @@ function ws_calc_grid($rows, $scope = array())
     foreach ($grid as $r => $row) {
         foreach ($row as $c => $source) {
             $source = (string) $source;
-            $formula = (substr(trim($source), 0, 1) === '=');
+            $formula = ws_calc_is_formula($source);
 
             if (!$formula) {
                 $out[$r][$c] = array('formula' => false, 'value' => ws_calc_number($source), 'display' => $source, 'error' => '', 'source' => $source, 'named' => false);
@@ -1282,6 +1286,22 @@ function ws_calc_grid($rows, $scope = array())
 }
 
 /**
+ * Is this table cell a formula? It starts with =, unless it starts with a
+ * highlight pair (==x==, the rule of ws_format_text()), which is words:
+ * "==A1" stays a formula, "==A1==" is a highlighted A1. Twin of isFormula()
+ * in assets/js/workspace_editor.js.
+ *
+ * @param string $source
+ * @return bool
+ */
+function ws_calc_is_formula($source)
+{
+    $source = trim((string) $source);
+
+    return (substr($source, 0, 1) === '=') && !preg_match('/^==(?=\S)[^=\n]{1,300}?(?<=\S)==(?!=)/u', $source);
+}
+
+/**
  * Does any cell of these rows hold a formula?
  *
  * @param array[] $rows
@@ -1291,7 +1311,7 @@ function ws_calc_has_formula($rows)
 {
     foreach ((array) $rows as $row) {
         foreach ((array) $row as $source) {
-            if (substr(trim((string) $source), 0, 1) === '=') {
+            if (ws_calc_is_formula($source)) {
                 return true;
             }
         }
@@ -1914,9 +1934,12 @@ function ws_calc_inline($line)
 
     $text = substr($line, 0, -1);
 
-    // Tags, links and emphasis marks are not figures.
+    // Tags, links and emphasis marks are not figures. A highlight's signs go
+    // before the last "=" is looked for, so "Rent ==15.000== + 750 =" adds
+    // up; a lone "==" stays.
     $text = preg_replace('/<[@#][a-z_]+:[0-9]+>/', ' ', $text);
     $text = preg_replace('#\[([^\]\n]*)\]\([^)\n]*\)#', ' ', $text);
+    $text = preg_replace('/(?<!=)==(?=\S)([^=\n]{1,300}?)(?<=\S)==(?!=)/u', ' $1 ', $text);
     $text = str_replace(array('**', '~~', '`'), ' ', $text);
 
     $at = strrpos($text, '=');

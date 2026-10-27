@@ -28,7 +28,7 @@ description: A channel's customer summary (GET /workspace/channels/{id}/customer
 - A seam: `ws_customer_cart_quote_rows()` reads nothing until plans/workspace-quotes.md slice 5 adds the tables; then their own section under the ecommerce right, never among sales quotes. Not in the API yet.
 
 ## How does the API answer?
-- GET /workspace/channels/{id}/customer (`workspace.channels.customer`, row in includes/workspace/api.php, code api_customer.php): `workspace:read`, an MCP tool like the context (resource: plans/workspace-mcp-capabilities.md).
+- GET /workspace/channels/{id}/customer (`workspace.channels.customer`, row in includes/workspace/api.php, code api_customer.php): `workspace:read`, an MCP tool and resource like the context (#1970, api/mcp-resources-prompts.md).
 - The channel: `ws_api_assistant_channel_reader()` (api_claude.php), shared with GET …/context: 404 as every channel route; Claude's key, where Claude may be asked, reads as the asker when its owner is not in.
 - `ws_api_customer_viewer()` narrows the reader to the key's scopes first (`ws_api_customer_scopes()`: `orders:read`, `customers:read`, `erp:read`, `forms:read`, as search); no scope reads users (as search), so a user goes by kind and number. A scope never opens what the person may not see.
 - Objects `WorkspaceChannelCustomer`, `WorkspaceCustomer*`; presenter pairs in tools/check_api_schema.php.

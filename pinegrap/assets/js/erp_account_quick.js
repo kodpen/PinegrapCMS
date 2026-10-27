@@ -53,7 +53,7 @@
     function clearAnswer() {
         if (answerLine) {
             answerLine.textContent = '';
-            answerLine.classList.remove('text-danger');
+            answerLine.classList.remove('fg-danger');
         }
     }
 
@@ -93,7 +93,7 @@
                     lookup.disabled = false;
                     if (!data || !data.ok) {
                         answerLine.textContent = (data && data.message) ? data.message : modal.getAttribute('data-text-lookup-failed');
-                        answerLine.classList.add('text-danger');
+                        answerLine.classList.add('fg-danger');
                         return;
                     }
                     answerLine.textContent = data.message;
@@ -108,7 +108,7 @@
                     }
                     var use = document.createElement('button');
                     use.type = 'button';
-                    use.className = 'btn btn-sm btn-outline-primary ms-2 my-1 no-submit';
+                    use.className = 'btn btn-sm btn-outline theme-primary ms-3 my-1 no-submit';
                     use.textContent = modal.getAttribute('data-text-use');
                     use.addEventListener('click', function () {
                         use.remove();
@@ -185,14 +185,13 @@
             target.appendChild(option);
         }
         target.value = id;
-        // Native listeners (the invoice editor refreshes the zone rates) hear
-        // only a native event. select2 hears it too, through jQuery; the
-        // namespaced trigger refreshes its view without running the other
-        // jQuery change handlers a second time.
-        target.dispatchEvent(new Event('change', { bubbles: true }));
-        if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
-            window.jQuery(target).trigger('change.select2');
+        // The combobox draws its items from the options once: drawn again,
+        // it shows the new account as chosen. The native change reaches the
+        // invoice editor, which refreshes the zone rates.
+        if (window.pgCombobox) {
+            window.pgCombobox.refresh(target);
         }
+        target.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     form.addEventListener('submit', function (event) {

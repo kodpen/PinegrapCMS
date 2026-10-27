@@ -570,6 +570,7 @@ function pg_audit_tables()
         'orders'   => array('type' => 'order', 'id' => 'id', 'label' => array('order_number', 'reference_code'), 'skip' => array('mailchimp_sync_error'), 'skip_prefix' => array()),
         'files'    => array('type' => 'file', 'id' => 'id', 'label' => array('name'), 'skip' => array('user'), 'skip_prefix' => array()),
         'offers'   => array('type' => 'offer', 'id' => 'id', 'label' => array('code'), 'skip' => array('user'), 'skip_prefix' => array()),
+        'contacts' => array('type' => 'contact', 'id' => 'id', 'label' => array('email_address', 'last_name', 'first_name', 'company'), 'skip' => array('user'), 'skip_prefix' => array()),
         'api_apps' => array('type' => 'api_app', 'id' => 'id', 'label' => array('name'), 'skip' => array('last_used_ip'), 'skip_prefix' => array()),
     );
 }
@@ -679,6 +680,80 @@ function pg_audit_fetch_many($table, array $ids)
         $sql = "SELECT * FROM `" . $table . "` WHERE `" . $key . "` IN (" . implode(',', $ids) . ")";
     }
 
+    return _pg_audit_fetch_sql($table, $key, $sql);
+}
+
+/**
+ * Whether pg_audit_fetch_by() may read: a traced table keyed by id, a plain
+ * column name and a non-blank value (a blank one would match every row with
+ * the column empty, such as every contact without an address).
+ *
+ * @param string $table
+ * @param string $column
+ * @param string $value
+ * @return bool
+ */
+function pg_audit_by_column_ok($table, $column, $value)
+{
+    $tables = pg_audit_tables();
+
+    return isset($tables[$table]) && ($tables[$table]['id'] !== '')
+        && (preg_match('/^[a-z0-9_]+$/', (string) $column) === 1)
+        && (trim((string) $value) !== '');
+}
+
+/**
+ * Rows of a pg_audit_tables() table with a column equal to a value, keyed by
+ * id, for a statement that changes rows by that column rather than by id
+ * (every contact with one e-mail address). Record them afterwards with
+ * pg_audit_record_many(); rows the statement left as they were write nothing.
+ *
+ * @param string $table
+ * @param string $column
+ * @param string $value
+ * @return array  id => row
+ */
+function pg_audit_fetch_by($table, $column, $value)
+{
+    if (!pg_audit_by_column_ok($table, $column, $value) || !pg_audit_ready()) {
+        return array();
+    }
+
+    $key = pg_audit_tables()[$table]['id'];
+
+    return _pg_audit_fetch_sql($table, $key, "SELECT * FROM `" . $table . "` WHERE `" . $column . "` = '" . e((string) $value) . "'");
+}
+
+/**
+ * The before rows of records a request has just created, for
+ * pg_audit_record_many('create', …): an empty row per id.
+ *
+ * @param array $ids
+ * @return array  id => array()
+ */
+function pg_audit_created_rows(array $ids)
+{
+    $rows = array();
+
+    foreach ($ids as $id) {
+        if (is_numeric($id) && ((int) $id > 0)) {
+            $rows[(int) $id] = array();
+        }
+    }
+
+    return $rows;
+}
+
+/**
+ * Runs a read of a traced table and keys its rows as the trail compares them.
+ *
+ * @param string $table
+ * @param string $key    id column, '' for config
+ * @param string $sql
+ * @return array  id => row
+ */
+function _pg_audit_fetch_sql($table, $key, $sql)
+{
     $result = @mysqli_query(db::$con, $sql);
 
     if (!$result) {

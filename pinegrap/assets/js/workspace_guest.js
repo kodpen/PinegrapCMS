@@ -53,6 +53,31 @@
         return text;
     }
 
+    // The eight tones of the panel's Avatar, in pg_avatar_theme_class()'s
+    // order (includes/fn/contacts.php).
+    var AVATAR_THEMES = ['theme-primary', 'theme-info', 'theme-warning', 'theme-accent', 'theme-danger', 'theme-secondary', 'theme-success', 'theme-inverse'];
+
+    // A person as a Bootstrap 6 Avatar: the photo, or their letters on their
+    // tone; a picture of letters is drawn as the letters themselves.
+    function avatar(person) {
+        var face = el('span', 'avatar pg-guest-face');
+        var src = String(person.avatar || '');
+
+        if (src && (src.indexOf('data:image/svg+xml') !== 0) && (person.avatar_kind !== 'contact') && (person.avatar_kind !== 'user')) {
+            var img = el('img', 'avatar-img');
+            img.src = src;
+            img.alt = '';
+            face.appendChild(img);
+        } else {
+            face.classList.add((person.avatar_kind === 'user') ? 'theme-secondary' : AVATAR_THEMES[((parseInt(person.tone, 10) || 0) % 8 + 8) % 8]);
+            face.textContent = String(person.initials || String(person.name || '?').charAt(0).toUpperCase());
+        }
+
+        face.setAttribute('aria-hidden', 'true');
+
+        return face;
+    }
+
     function el(tag, className, content) {
         var node = document.createElement(tag);
 
@@ -164,9 +189,7 @@
         staff.textContent = '';
 
         (data.staff || []).slice(0, 4).forEach(function (person) {
-            var face = el('img', 'pg-guest-face');
-            face.src = person.avatar;
-            face.alt = person.name;
+            var face = avatar(person);
             face.title = person.name;
             staff.appendChild(face);
         });
@@ -205,10 +228,7 @@
         row.setAttribute('data-id', message.id);
 
         if (!message.mine) {
-            var face = el('img', 'pg-guest-face');
-            face.src = message.avatar;
-            face.alt = '';
-            row.appendChild(face);
+            row.appendChild(avatar(message));
         }
 
         var bubble = el('div', 'pg-guest-bubble');
@@ -411,7 +431,7 @@
             var share = total ? Math.round(option.count * 100 / total) : 0;
 
             if (open) {
-                var pick = el('input', 'form-check-input');
+                var pick = el('input', poll.multiple ? 'check' : 'radio');
                 pick.type = poll.multiple ? 'checkbox' : 'radio';
                 pick.name = 'poll-' + poll.id;
                 pick.checked = option.mine;

@@ -47,13 +47,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_cron_ran($job_name)
 {
-    static $table_exists = null;
-
-    if ($table_exists === null) {
-        $table_exists = (bool) db_item("SHOW TABLES LIKE 'cron_runs'");
-    }
-
-    if (!$table_exists) {
+    if (!pg_schema_has('cron_runs')) {
         return false;
     }
 
@@ -77,7 +71,7 @@ function pg_cron_ran($job_name)
  */
 function pg_cron_last_runs()
 {
-    if (!db_item("SHOW TABLES LIKE 'cron_runs'")) {
+    if (!pg_schema_has('cron_runs')) {
         return null;
     }
 
@@ -438,6 +432,19 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'light',
         ),
+        // İYS consent sync (includes/iys/client.php): the e-mail marketing
+        // answers of the consent log go to İYS, the refusals recipients gave
+        // through İYS come back. Daily, well inside the three business days
+        // İYS allows; without an İYS account a run records itself and reads
+        // nothing.
+        'iys_job' => array(
+            'label'       => lang('İYS consent sync'),
+            'script'      => 'iys_job.php',
+            'interval'    => 86400,
+            'stale_after' => 259200,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
     );
 }
 
@@ -484,11 +491,11 @@ function pg_waf_refresh_ai_ranges($force = false)
 {
     // Schema gate: both objects arrive with 2026.4.4. On an install that took
     // the code without the upgrade this quietly does nothing.
-    if (!db_item("SHOW TABLES LIKE 'waf_bot_ranges'")) {
+    if (!pg_schema_has('waf_bot_ranges')) {
         return false;
     }
 
-    $has_throttle_column = (bool) db_item("SHOW COLUMNS FROM config LIKE 'waf_ai_ranges_checked'");
+    $has_throttle_column = pg_schema_has('config', 'waf_ai_ranges_checked');
 
     // Attempt throttle, 6 hours. The callers piggybacking on panel traffic
     // must not turn every dashboard load into four outbound HTTP requests
@@ -528,32 +535,18 @@ function pg_waf_refresh_ai_ranges($force = false)
             continue;
         }
 
-        $ch = curl_init($url);
-
-        curl_setopt_array($ch, array(
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => 3,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT        => 12,
+        // This channel decides who gets to impersonate a search-visible bot,
+        // so it verifies TLS like the update channel does (pg_curl_run()).
+        $answer = pg_curl_run('GET', $url, array(
+            'timeout'         => 12,
+            'connect_timeout' => 5,
+            'follow'          => 3,
         ));
 
-        // Sent with no User-Agent a request looks like an anonymous client to
-        // the receiving server's firewall - how Pinegrap once blocked its own
-        // licence checks.
-        curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-
-        // This channel decides who gets to impersonate a search-visible bot,
-        // so it verifies TLS like the update channel does.
-        if (function_exists('pg_curl_tls')) {
-            pg_curl_tls($ch);
-        }
-
-        $body  = curl_exec($ch);
-        $errno = curl_errno($ch);
-        $error = curl_error($ch);
-        $http  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        unset($ch);
+        $body  = ($answer['errno'] === 0 && $answer['error'] === '') ? $answer['body'] : false;
+        $errno = $answer['errno'];
+        $error = $answer['error'];
+        $http  = $answer['status'];
 
         if ($body === false || $http !== 200 || strlen($body) > 1048576) {
 
@@ -759,14 +752,7 @@ function pg_cron_job_is_enabled($name)
  */
 function pg_cron_lock_ready()
 {
-    static $ready = null;
-
-    if ($ready === null) {
-        $ready = db_item("SHOW TABLES LIKE 'cron_runs'")
-            && db_item("SHOW COLUMNS FROM cron_runs WHERE Field = 'locked_until'");
-    }
-
-    return $ready;
+    return pg_schema_has('cron_runs', 'locked_until');
 }
 
 /**
@@ -781,7 +767,7 @@ function pg_cron_lock_ready()
  */
 function pg_cron_run_rows()
 {
-    if (!db_item("SHOW TABLES LIKE 'cron_runs'")) {
+    if (!pg_schema_has('cron_runs')) {
         return null;
     }
 

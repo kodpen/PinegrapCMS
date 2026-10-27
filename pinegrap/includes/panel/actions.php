@@ -151,6 +151,7 @@ function pg_panel_actions()
         'delete_product_barcode' => array('file' => 'commerce.php', 'handler' => 'pg_panel_delete_product_barcode', 'exempt' => true, 'token' => true, 'write' => true),
         'bulk_assign_barcodes' => array('file' => 'commerce.php', 'handler' => 'pg_panel_bulk_assign_barcodes', 'exempt' => true, 'token' => true, 'write' => true),
         'save_barcode_template' => array('file' => 'commerce.php', 'handler' => 'pg_panel_save_barcode_template', 'exempt' => true, 'token' => true, 'write' => true),
+        'product_name_check' => array('file' => 'commerce.php', 'handler' => 'pg_panel_product_name_check', 'exempt' => true, 'token' => true, 'write' => false),
         // The offer editor belongs to whoever manages the store (roles 0-2,
         // or a basic user with manage_ecommerce); pg_offer_editor_handle()
         // checks the token, the session and that rule itself.
@@ -208,6 +209,9 @@ function pg_panel_actions()
         // The general gate (role 1 or better) runs first; the handler then
         // admits administrators only, the right of edit_dynamic_region.php.
         'dynamic_region_code' => array('file' => 'designer.php', 'handler' => 'pg_panel_dynamic_region_code', 'exempt' => false, 'token' => true, 'write' => true),
+        // A page's custom layout from the visual designer's code tab; the
+        // general gate (role 1 or better) is the classic layout editor's right.
+        'layout_code' => array('file' => 'designer.php', 'handler' => 'pg_panel_layout_code', 'exempt' => false, 'token' => true, 'write' => true),
         'shared_component' => array('file' => 'shared_component.php', 'handler' => 'pg_panel_shared_component', 'exempt' => true, 'token' => true, 'write' => true),
 
         'file_explorer' => array('file' => 'explorer.php', 'handler' => 'pg_panel_file_explorer', 'exempt' => true, 'token' => true, 'write' => true),
@@ -272,7 +276,7 @@ function pg_panel_actions()
         'ws_scheduled_run_now', 'ws_scheduled_preview', 'ws_scheduled_draft',
         'ws_scheduled_message_save', 'ws_scheduled_messages',
         'ws_scheduled_message_delete', 'ws_scheduled_message_send',
-        'ws_sync', 'ws_messages_before', 'ws_send', 'ws_edit', 'ws_delete',
+        'ws_sync', 'ws_messages_before', 'ws_send', 'ws_command_suggest', 'ws_edit', 'ws_delete',
         'ws_mark', 'ws_attach', 'ws_library_browse', 'ws_library_channels',
         'ws_library_attach', 'ws_channel_create', 'ws_templates',
         'ws_template_apply', 'ws_template_from_channel',
@@ -295,12 +299,12 @@ function pg_panel_actions()
         'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks',
         'ws_search', 'ws_palette', 'ws_channel_board', 'ws_ref_search',
         'ws_record_refs', 'ws_record_fields', 'ws_record_fields_save',
-        'ws_record_create',
+        'ws_record_create', 'ws_bulk_create_propose',
         'ws_task_get', 'ws_task_check', 'ws_task_save',
         'ws_task_status', 'ws_task_move', 'ws_tasks', 'ws_board',
         'ws_conflicts', 'ws_calendar', 'ws_event_save', 'ws_event_get',
         'ws_event_delete', 'ws_meeting_note', 'ws_meeting_transfer', 'ws_inbox', 'ws_inbox_read', 'ws_react',
-        'ws_check', 'ws_poll_create', 'ws_poll_vote', 'ws_poll_close',
+        'ws_check', 'ws_check_task', 'ws_poll_create', 'ws_poll_vote', 'ws_poll_close',
         'ws_poll_edit', 'ws_approval_create', 'ws_approval_decide',
         'ws_approval_close', 'ws_ack_request', 'ws_ack', 'ws_ack_people',
         'ws_status_facts', 'ws_status_ai', 'ws_status_post', 'ws_checkin_start',
@@ -325,7 +329,9 @@ function pg_panel_actions()
         'ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save',
         'ws_flow_publish', 'ws_flow_pause', 'ws_flow_bin',
         'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
+        'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_template_setup',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
+        'ws_flow_from_draft',
         'ws_channel_customer', 'ws_channel_customer_history',
         'ws_channel_customer_followup',
     ) as $ws_action) {

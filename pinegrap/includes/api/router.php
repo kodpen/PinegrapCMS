@@ -324,7 +324,7 @@ function api_current_route($route = null) {
 // All routes: the ones that need credentials and the ones that do not.
 function api_all_routes() {
 
-	return array_merge(api_open_routes(), api_schema());
+	return array_merge(api_open_routes(), api_discovery_routes(), api_schema());
 
 }
 
@@ -700,6 +700,18 @@ function api_validate_value($param, $raw) {
 			}
 
 			return $parsed;
+
+		case 'object':
+
+			// A JSON object, decoded as an array with keys. A list in its place
+			// is refused here, so the handler never reads 0, 1, 2 as field names.
+			if (!is_array($raw) || (!empty($raw) && array_values($raw) === $raw)) {
+
+				api_fail_validation(lang(array('string' => '{var:1} must be an object.', 'vars' => $name)), $name);
+
+			}
+
+			return $raw;
 
 		case 'list':
 

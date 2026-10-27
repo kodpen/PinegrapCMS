@@ -554,8 +554,8 @@ function ws_note_import_name_title($path)
 /**
  * One line of Markdown as the workspace writes it: an image as a link to the
  * file, a link's title dropped, __bold__ as **bold**, *italic* as _italic_,
- * ==highlight== as **bold**, escapes of characters that mean nothing here
- * undone. What is inside `code` is left as it is.
+ * escapes of characters that mean nothing here undone. ==highlight== is kept:
+ * the workspace draws it. What is inside `code` is left as it is.
  *
  * @param string $line
  * @return string
@@ -596,7 +596,6 @@ function ws_note_import_inline($line)
 
     $line = preg_replace('/(?<![\p{L}\p{N}_])__(?=\S)([^_\n]{1,300}?)(?<=\S)__(?![\p{L}\p{N}_])/u', '**$1**', $line);
     $line = preg_replace('/(?<![*\\\\\p{L}\p{N}])\*(?=[^\s*])([^*\n]{1,300}?)(?<=[^\s*\\\\])\*(?![*\p{L}\p{N}])/u', '_$1_', $line);
-    $line = preg_replace('/(?<!=)==(?=\S)([^=\n]{1,300}?)(?<=\S)==(?!=)/u', '**$1**', $line);
     $line = preg_replace('/\\\\([#\[\]()>+.!{}-])/', '$1', $line);
 
     return preg_replace_callback("/\x01([0-9]+)\x01/", function ($match) use ($kept) {

@@ -160,7 +160,7 @@ function test_workspace_notes_io_import_markdown_written_the_workspace_way()
 	$out = explode("\n", ws_note_import_convert($in));
 
 	pg_assert_same('**Agenda**', $out[0], 'a heading is a bold line');
-	pg_assert_same('- one _two_ **three** **four** `*five*`', $out[1], 'list marker, italic, bold, highlight; code untouched');
+	pg_assert_same('- one _two_ **three** ==four== `*five*`', $out[1], 'list marker, italic, bold; a highlight kept; code untouched');
 	pg_assert_same('- [ ] todo', $out[2], 'a checklist item marked +');
 	pg_assert_same('**Setext**', $out[3], 'an underlined heading');
 	pg_assert_same('---', $out[5], 'a rule stays a rule');

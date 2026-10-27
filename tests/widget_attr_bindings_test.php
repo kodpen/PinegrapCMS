@@ -79,7 +79,7 @@ function test_widget_attr_bindings_rules()
 	pg_assert_true(pg_sw_attr_token_ok('title'), 'a field');
 	pg_assert_true(pg_sw_attr_token_ok('submitted_form_id'), 'the key');
 	pg_assert_true(pg_sw_attr_token_ok('__value_param'), 'a list row value');
-	foreach (array('', '__description', '__price_formatted', '__comment_message_html', '__breadcrumb_html', '__any_html',
+	foreach (array('', '__description', '__price_formatted', '__comment_message_html', '__group_tree_html', '__any_html',
 		'__page_link', '__page_link_2', '__link_label_0', '__variant_picker', '__edit_url', '__empty_message') as $token) {
 		pg_assert_false(pg_sw_attr_token_ok($token), var_export($token, true) . ' is refused');
 	}

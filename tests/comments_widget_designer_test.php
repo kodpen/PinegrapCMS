@@ -753,7 +753,7 @@ function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").
 var _cmt = { pg_comments: '1', pg_comments_rating: '1', pg_comments_select_name: '0', pg_comments_label: '' };
 function _getCmtVal(k) { return _cmt[k] || ''; }
 var _sdCommentsCanvasState = 'comments';
-var _sdCommentSample = null;
+var _sdCommentSample = null, _sdListSample = null;
 var _sysWidgetRenderTreeRoot = null;
 function n(type, props, kids, name) { props = props || {}; props.customName = name; return { type: type, props: props, children: kids || [] }; }
 function flag(f, kids, name) { return n('semantic', { tag: 'div', _bindings: { eo_visible_if: f } }, kids, name); }
@@ -1134,7 +1134,7 @@ function esc(s) { return s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt
 function _sdDecodeEntities(s) { return String(s); }
 var _cmt = { pg_comments_message: '<img src=x onerror="alert(1)">', pg_comments_label: '' };
 function _getCmtVal(k) { return _cmt[k] || ''; }
-var _sdCommentSample = null;
+var _sdCommentSample = null, _sdListSample = null;
 var _SD_AVATAR_TOKENS = {};
 var _SD_RICH_TEXT_CONTENT = { heading: 1, link: 1, paragraph: 1, span: 1, text: 1 };
 var _SD_HTML_PREVIEW_TOKENS = { __comment_message_html: function () { return '<p>Comment text</p>'; } };
@@ -2206,11 +2206,11 @@ function test_comments_widget_designer_filter_editor_key()
 	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
 	$html = comments_widget_designer_test_js_function($js, '_swFormListFiltersHtml');
 	pg_assert_contains('function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl, key)', $html, 'the key is a parameter');
-	pg_assert_same(3, substr_count($html, 'keyAttr'), 'set once, on the rows and on the Add button');
+	pg_assert_same(4, substr_count($html, 'keyAttr'), 'set once, on the rows and on the Add button, whose id only the default list keeps');
 	pg_assert_contains("var keyAttr = (key && key !== 'filters') ? ' data-sw-filter-key=\"' + esc(key) + '\"' : '';", $html, 'only for another key');
 	pg_assert_contains("var _swFilterKey = function (el) { return (el && el.getAttribute('data-sw-filter-key')) || 'filters'; };", $js, 'the handlers read it');
 	pg_assert_same(0, substr_count($js, 'cfg.filters = list;'), 'and never write filters by name');
-	pg_assert_same(2, substr_count($js, 'cfg[key] = list;'), 'a changed or deleted row and an added one write the key');
+	pg_assert_same(1, substr_count($js, 'cfg[key] = list;'), 'a changed, deleted or added row writes the key (_swSaveFilters)');
 }
 
 // The editor loads only the open tab's components: a tab not opened yet

@@ -1,0 +1,853 @@
+Hand fixes of the Bootstrap 6 switch found by their exact text, read by
+bs6_switch_texts() in tools/bs6_switch.php and applied by
+`php tools/bs6_migrate.php --switch` after every scripted fix, so each
+"from" is the text as the earlier fixes leave it. Every occurrence of a
+"from" is replaced; a "from" that is gone while its "to" is not there either
+is reported as missing (the text changed on development).
+
+The panel's own rules on the dropped modal boxes (.modal-dialog and
+.modal-content are the <dialog> itself in Bootstrap 6).
+
+@@ assets/css/backend.src.css
+<<<
+.pg-keys-modal .modal-dialog {
+  max-width: 30rem;
+}
+===
+.pg-keys-modal.dialog {
+  --bs-dialog-width: 30rem;
+}
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+.software_warning,
+.modal-content,
+===
+.software_warning,
+.dialog,
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+.pg-settings-modal .modal-dialog {
+  max-width: min(1180px, calc(100vw - 3rem));
+}
+===
+.pg-settings-modal.dialog {
+  --bs-dialog-width: min(1180px, calc(100vw - 3rem));
+}
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+  .pg-settings-modal .modal-dialog {
+    max-width: none;
+  }
+
+===
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+.pg-settings-modal .modal-content.pg-sm
+===
+.pg-settings-modal.pg-sm
+>>>
+
+The box was positioned relative for its phone drawer; the dialog itself
+stays fixed (a fixed box is the drawer's containing block too), or a closed
+one takes a row of the page grid.
+
+@@ assets/css/backend.src.css
+<<<
+.pg-settings-modal.pg-sm {
+  position: relative;
+  flex-direction: row;
+===
+.pg-settings-modal.pg-sm {
+  flex-direction: row;
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+#pg_settings_modal_extras .modal-content
+===
+#pg_settings_modal_extras .dialog
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+.advanced-visuals.pg-settings-open .modal-backdrop {
+  --bs-backdrop-opacity: 0.25;
+}
+===
+.advanced-visuals.pg-settings-open .dialog {
+  --bs-dialog-backdrop-bg: rgba(0, 0, 0, 0.25);
+}
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+.ws-palette .modal-dialog {
+===
+.ws-palette.dialog {
+>>>
+
+The image editor's full-screen switch: the class goes on the <dialog>.
+
+@@ assets/js/image_editor_modal.js
+<<<
+            '#pgImageEditorModal .modal-dialog.modal-fullscreen .modal-content { height:100% !important; }' +
+===
+            '#pgImageEditorModal.dialog-fullscreen { height:100% !important; }' +
+>>>
+
+@@ assets/js/image_editor_modal.js
+<<<
+    // Bootstrap's own modal-fullscreen class does the layout; the work here is
+===
+    // Bootstrap's own dialog-fullscreen class does the layout; the work here is
+>>>
+
+@@ assets/js/image_editor_modal.js
+<<<
+        var dialog = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
+        return !!(dialog && dialog.classList.contains('modal-fullscreen'));
+===
+        return !!(_modalEl && _modalEl.classList.contains('dialog-fullscreen'));
+>>>
+
+@@ assets/js/image_editor_modal.js
+<<<
+        var dialog = _modalEl.querySelector('.modal-dialog');
+===
+        var dialog = _modalEl;
+>>>
+
+@@ assets/js/image_editor_modal.js
+<<<
+        dialog.classList.toggle('modal-fullscreen', !!on);
+        dialog.classList.toggle('modal-xl', !on);
+        dialog.classList.toggle('modal-dialog-centered', !on);
+===
+        dialog.classList.toggle('dialog-fullscreen', !!on);
+        dialog.classList.toggle('dialog-xl', !on);
+>>>
+
+The code editor's full-screen switch.
+
+@@ assets/js/codemirror_modal.js
+<<<
+            var dlg = _modalEl.querySelector('.modal-dialog');
+            if (dlg) dlg.classList.remove('modal-fullscreen');
+===
+            _modalEl.classList.remove('dialog-fullscreen');
+>>>
+
+@@ assets/js/codemirror_modal.js
+<<<
+        var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
+        if (dlg) dlg.classList.toggle('modal-fullscreen');
+===
+        if (_modalEl) _modalEl.classList.toggle('dialog-fullscreen');
+>>>
+
+@@ assets/js/codemirror_modal.js
+<<<
+        var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
+        if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;
+        dlg.classList.remove('modal-fullscreen');
+===
+        if (!_modalEl || !_modalEl.classList.contains('dialog-fullscreen')) return false;
+        _modalEl.classList.remove('dialog-fullscreen');
+>>>
+
+The workspace designer's windows: the size comes from the caller.
+
+@@ assets/js/workspace_editor.js
+<<<
+        var node = el('div', 'modal fade ws-designer');
+        node.tabIndex = -1;
+        node.setAttribute('aria-hidden', 'true');
+        node.innerHTML = '<div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down ' + (size || 'modal-lg') + '"><div class="modal-content">'
+            + '<div class="dialog-header"><h5 class="dialog-title"></h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
+            + '<div class="dialog-body"></div><div class="dialog-footer"></div></div></div>';
+===
+        var node = el('dialog', 'dialog ws-designer dialog-scrollable sm-down:dialog-fullscreen ' + (size || 'dialog-lg'));
+        node.innerHTML = '<div class="dialog-header"><h5 class="dialog-title"></h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
+            + '<div class="dialog-body"></div><div class="dialog-footer"></div>';
+>>>
+
+@@ assets/js/workspace_editor.js
+<<<
+, 'modal-xl')
+===
+, 'dialog-xl')
+>>>
+
+@@ assets/js/workspace_editor.js
+<<<
+, 'modal-lg')
+===
+, 'dialog-lg')
+>>>
+
+@@ assets/js/workspace_editor.js
+<<<
+        return modal ? (modal.querySelector('.modal-content') || modal) : document.body;
+===
+        return modal || document.body;
+>>>
+
+@@ assets/js/workspace_editor.js
+<<<
+win.node.querySelector('.modal-content')
+===
+win.node
+>>>
+
+The workspace search box and the flow's share window build their boxes
+apart: the <dialog> is the box.
+
+@@ assets/js/workspace_palette.js
+<<<
+        ui.node = el('div', 'modal fade ws-palette');
+        ui.node.id = 'ws-palette';
+        ui.node.tabIndex = -1;
+===
+        ui.node = el('dialog', 'dialog dialog-lg ws-palette ws-palette-dialog');
+        ui.node.id = 'ws-palette';
+>>>
+
+@@ assets/js/workspace_palette.js
+<<<
+        var dialog = el('div', 'modal-dialog modal-lg ws-palette-dialog');
+        var content = el('div', 'modal-content');
+===
+        var content = ui.node;
+>>>
+
+@@ assets/js/workspace_palette.js
+<<<
+        dialog.appendChild(content);
+        ui.node.appendChild(dialog);
+
+===
+>>>
+
+@@ assets/js/workspace_flow.js
+<<<
+        var modal = el('div', 'modal fade wsf-share-modal');
+        var dialog = el('div', 'modal-dialog modal-dialog-centered modal-dialog-scrollable');
+        var content = el('div', 'modal-content');
+===
+        var modal = el('dialog', 'dialog dialog-scrollable wsf-share-modal');
+        var content = modal;
+>>>
+
+@@ assets/js/workspace_flow.js
+<<<
+        dialog.appendChild(content);
+        modal.appendChild(dialog);
+
+===
+>>>
+
+The visual editor's settings dialog: its panes open <div>s in code, so the
+box's closing tag cannot be counted.
+
+@@ includes/designer_screen.php
+<<<
+        <div class="modal fade" id="styleSettingsModal" tabindex="-1" aria-labelledby="styleSettingsModalLabel" aria-hidden="true"
+             data-bs-backdrop="static" data-bs-keyboard="false" data-bs-theme="dark">
+            <!-- The largest dialog from 992px up, the whole screen below it.
+                 Its height and the scroll chain inside are in
+                 style_designer.css (.sd-settings-*): an inline size beats
+                 every media query. -->
+            <div class="modal-dialog modal-xl modal-fullscreen-lg-down modal-dialog-centered sd-settings-dialog">
+                <div class="modal-content sd-settings-content">
+===
+        <dialog class="dialog dialog-xl lg-down:dialog-fullscreen sd-settings-dialog sd-settings-content" id="styleSettingsModal" aria-labelledby="styleSettingsModalLabel"
+             data-bs-backdrop="static" data-bs-keyboard="false" data-bs-theme="dark">
+            <!-- The largest dialog from 1024px up, the whole screen below it.
+                 Its height and the scroll chain inside are in
+                 style_designer.css (.sd-settings-*): an inline size beats
+                 every media query. -->
+>>>
+
+@@ includes/designer_screen.php
+<<<
+                    </div>
+
+                </div>
+            </div>
+        </div>';
+===
+                    </div>
+
+        </dialog>';
+>>>
+
+@@ assets/css/style_designer.css
+<<<
+.sd-settings-dialog .sd-settings-content
+===
+.sd-settings-dialog.sd-settings-content
+>>>
+
+@@ assets/css/style_designer.css
+<<<
+/* The largest dialog from 992px up (modal-xl), the whole screen below it
+   (modal-fullscreen-lg-down).
+===
+/* The largest dialog from 1024px up (dialog-xl), the whole screen below it
+   (lg-down:dialog-fullscreen).
+>>>
+
+@@ assets/css/style_designer.css
+<<<
+.sd-settings-modal-dark .modal-dialog { max-width: 560px; }
+===
+.sd-settings-modal-dark.dialog { --bs-dialog-width: 560px; }
+>>>
+
+Menus a script builds and aligns to the toggle's end: the placement goes on
+the toggle.
+
+@@ assets/js/workspace.js
+<<<
+            toggle.setAttribute('data-bs-toggle', 'menu');
+            wrap.appendChild(toggle);
+
+            var menu = el('ul', 'menu pg-menu-end');
+===
+            toggle.setAttribute('data-bs-toggle', 'menu');
+            toggle.setAttribute('data-bs-placement', 'bottom-end');
+            wrap.appendChild(toggle);
+
+            var menu = el('ul', 'menu pg-menu-end');
+>>>
+
+@@ assets/js/workspace_flow.js
+<<<
+        moreButton.setAttribute('data-bs-toggle', 'menu');
+        moreButton.setAttribute('aria-expanded', 'false');
+===
+        moreButton.setAttribute('data-bs-toggle', 'menu');
+        moreButton.setAttribute('data-bs-placement', 'bottom-end');
+        moreButton.setAttribute('aria-expanded', 'false');
+>>>
+
+Poll options whose input is a checkbox or a radio by the poll's setting.
+
+@@ assets/js/workspace.js
+<<<
+                var input = el('input', 'form-check-input');
+
+                bar.style.width = share + '%';
+===
+                var input = el('input', poll.multiple ? 'check' : 'radio');
+
+                bar.style.width = share + '%';
+>>>
+
+@@ assets/js/workspace.js
+<<<
+ai.closest('.form-check')
+===
+ai.closest('.form-field')
+>>>
+
+@@ assets/js/workspace_guest.js
+<<<
+                var pick = el('input', 'form-check-input');
+===
+                var pick = el('input', poll.multiple ? 'check' : 'radio');
+>>>
+
+A select that opens the section it names when it holds a value: the last
+jQuery Collapse call (v6 has no jQuery plugins).
+
+@@ assets/js/backend.src.js
+<<<
+        var target = $(this).attr('data-bs-target');
+
+        $(target).collapse(($(this).val() === '') ? 'hide' : 'show');
+===
+        var target = $(this).attr('data-bs-target');
+        var hide = ($(this).val() === '');
+
+        $(target).each(function () {
+            var section = this;
+
+            pgUI.ready(function () {
+                pgUI[hide ? 'hide' : 'show']('collapse', section);
+            });
+        });
+>>>
+
+DataTables' Bootstrap 5 integration writes v5 classes into the controls it
+builds (the length select, the layout grid): the panel's lists get the v6
+names before the first table is built.
+
+@@ assets/js/backend.src.js
+<<<
+    var options = {};
+    options["language"] = {
+===
+    // DataTables' Bootstrap 5 integration names v5 classes for the controls
+    // it builds; the panel runs Bootstrap 6.
+    if ($.fn.dataTable) {
+        $.extend(true, $.fn.dataTable.ext.classes, {
+            length: { select: 'form-control form-control-sm' },
+            layout: {
+                row: 'row mt-3 justify-content-between',
+                cell: 'md:d-flex justify-content-between align-items-center',
+                start: 'dt-layout-start md:col-auto me-auto',
+                end: 'dt-layout-end md:col-auto ms-auto',
+                full: 'dt-layout-full md:col'
+            }
+        });
+    }
+
+    var options = {};
+    options["language"] = {
+>>>
+
+The product builder's switch helper builds its input class in code.
+
+@@ product_builder.php
+<<<
+    $classes = 'form-check-input';
+===
+    $classes = '';
+>>>
+
+@@ product_builder.php
+<<<
+            <input class="' . $classes . '" type="checkbox" role="switch" id="' . h($id) . '"' . $output_name . ' value="1"' . $checked . $target . ' />
+===
+            <div class="switch"><input class="' . $classes . '" type="checkbox" role="switch" id="' . h($id) . '"' . $output_name . ' value="1"' . $checked . $target . ' /></div>
+>>>
+
+A class glued to a PHP block is left by the codemod (it could be a stem).
+
+@@ includes/templates/view_offers.php
+<<<
+d-inline-flex align-items-center gap-2<?php if ($f['key'] == 'all'): ?> active<?php endif ?>
+===
+d-inline-flex align-items-center gap-3<?php if ($f['key'] == 'all'): ?> active<?php endif ?>
+>>>
+
+pgUI builds a v6 dialog: a centred one takes the panel's centring class,
+the others sit under the top of the screen like v5's.
+
+@@ assets/js/pg_ui.js
+<<<
+            parts.root = make('dialog', ['dialog', size, o.scrollable ? 'dialog-scrollable' : '', o.className || ''].join(' ').replace(/\s+/g, ' ').trim());
+===
+            parts.root = make('dialog', ['dialog', size, o.centered ? 'pg-dialog-centered' : '', o.scrollable ? 'dialog-scrollable' : '', o.className || ''].join(' ').replace(/\s+/g, ' ').trim());
+>>>
+
+Class API calls that switch one v5 button variant for another: in v6 the
+theme class stays on the button and only the variant (or the theme) changes.
+
+@@ assets/js/backend.src.js
+<<<
+    $('#push_toggle').toggleClass('btn-outline-secondary', !$subscribed).toggleClass('btn-secondary', $subscribed);
+===
+    $('#push_toggle').toggleClass('btn-outline', !$subscribed).toggleClass('btn-solid', $subscribed);
+>>>
+
+@@ assets/js/offer_editor.js
+<<<
+        btn.classList.toggle('btn-warning', n > 0);
+        btn.classList.toggle('btn-success', n === 0);
+===
+        btn.classList.toggle('theme-warning', n > 0);
+        btn.classList.toggle('theme-success', n === 0);
+>>>
+
+Classes built in code from a v5 stem whose values the code takes from a
+variable: a button variant (`primary`, `outline-secondary`), a badge or
+text tone. Every value is a theme colour.
+
+@@ assets/js/backend.src.js
+<<<
+                            '<button type="button" class="btn btn-' + variant + '" data-pg-action="confirm">' + escapeHtml(confirmText) + '</button>' +
+===
+                            '<button type="button" class="btn btn-solid theme-' + variant + '" data-pg-action="confirm">' + escapeHtml(confirmText) + '</button>' +
+>>>
+
+@@ includes/fn/output.php
+<<<
+        return '<a class="btn btn-' . $variant . ' me-3" href="' . $url . '">' . $icon_html . $label . '</a>';
+===
+        return '<a class="btn ' . ((strpos($variant, 'outline-') === 0) ? 'btn-outline theme-' . substr($variant, 8) : 'btn-solid theme-' . $variant) . ' me-3" href="' . $url . '">' . $icon_html . $label . '</a>';
+>>>
+
+@@ includes/fn/output.php
+<<<
+        $badge = '<span class="pg-lic-badge no-popover text-bg-' . h($badge_color) . '" title="' . h(lang('Premium features access status')) . '"><i class="bi bi-gem" aria-hidden="true"></i></span>';
+===
+        $badge = '<span class="pg-lic-badge no-popover bg-' . h($badge_color) . ' fg-contrast-' . h($badge_color) . '" title="' . h(lang('Premium features access status')) . '"><i class="bi bi-gem" aria-hidden="true"></i></span>';
+>>>
+
+@@ erp_dashboard.php
+<<<
+                            <td><i class="bi ' . $edoc_filter['icon'] . ' me-3 text-' . $edoc_tone . '" aria-hidden="true"></i>' . h($edoc_filter['label']) . '</td>
+===
+                            <td><i class="bi ' . $edoc_filter['icon'] . ' me-3 fg-' . $edoc_tone . '" aria-hidden="true"></i>' . h($edoc_filter['label']) . '</td>
+>>>
+
+@@ includes/dashboard/widgets/widget_21.php
+<<<
+                        <span class="badge bg-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
+===
+                        <span class="badge theme-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
+>>>
+
+@@ includes/fn/parasut.php
+<<<
+    return '<span class="badge bg-' . h($tone) . (($tone === 'warning') ? ' fg-black' : '') . '">' . h(lang('Invoiced through the ERP')) . '</span>'
+===
+    return '<span class="badge theme-' . h($tone) . '">' . h(lang('Invoiced through the ERP')) . '</span>'
+>>>
+
+Check markup whose class attribute is built in code: the structured
+data switch of the settings and the custom layout radio's label.
+
+@@ includes/settings/prep.php
+<<<
+                                            <div class="form-field">
+                                                <input value="1"' . $strutured_data_switch_checked . ' class="form-check-input' . (($output_structured_data_dependent != '') ? ' collapse-switcher' : '') . '" type="checkbox" id="strutured_data" name="strutured_data"' . (($output_structured_data_dependent != '') ? ' data-bs-target="#strutured_data_dependent_row"' : '') . '/>
+
+===
+                                            <div class="form-field">
+                                                <div class="switch">
+                                                    <input value="1"' . $strutured_data_switch_checked . ' class="' . (($output_structured_data_dependent != '') ? 'collapse-switcher' : '') . '" switch type="checkbox" id="strutured_data" name="strutured_data"' . (($output_structured_data_dependent != '') ? ' data-bs-target="#strutured_data_dependent_row"' : '') . '/>
+                                                </div>
+
+>>>
+
+@@ includes/forms/page_form.php
+<<<
+                                <label title="' . $layout_type_custom_label_title . '" class="form-check-label' . $layout_type_custom_label_class . '" for="layout_type_custom">'. lang('Custom') . '</label>
+===
+                                <label title="' . $layout_type_custom_label_title . '" class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
+>>>
+
+Selectors on v5 classes in code and style blocks the selector fix does
+not read.
+
+@@ assets/js/backend.src.js
+<<<
+            + 'td[data-pg-editing] .form-control,td[data-pg-editing] .form-select{min-width:7rem}'
+===
+            + 'td[data-pg-editing] .form-control,td[data-pg-editing] select.form-control{min-width:7rem}'
+>>>
+
+@@ assets/js/offer_editor.js
+<<<
+        $$('.list-group select.form-select').forEach(function (el) {
+===
+        $$('.list-group select.form-control').forEach(function (el) {
+>>>
+
+@@ add_theme_file.php
+<<<
+                    $("input.form-check-input").on("click", function() {
+===
+                    $("input:is(.check, .radio)").on("click", function() {
+>>>
+
+@@ editor_select_image.php
+<<<
+.esi-filters .form-select
+===
+.esi-filters select.form-control
+>>>
+
+@@ includes/fn/prototype.php
+<<<
+.pg-proto-nav .form-select
+===
+.pg-proto-nav select.form-control
+>>>
+
+Bootstrap 5 helpers v6 dropped: a light link on a badge, a
+border opacity v5 never applied to a plain border, the comment naming the
+dropped modal box.
+
+@@ assets/js/offer_editor.js
+<<<
+            '<a href="#" class="link-light text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
+===
+            '<a href="#" class="fg-white text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
+>>>
+
+@@ assets/js/backend.src.js
+<<<
+ gap-3 text-start border-bottom border-opacity-10"
+===
+ gap-3 text-start border-bottom"
+>>>
+
+@@ assets/js/backend.src.js
+<<<
+    // .modal-content.pg-sm -- the box the sidebar, the pane and the drawer
+===
+    // .dialog.pg-sm -- the box the sidebar, the pane and the drawer
+>>>
+
+The panel's switch knob: dark when on, blue while focused (v5 drew it
+with --bs-form-switch-bg). The .danger switch variant is not used.
+
+@@ assets/css/backend.src.css
+<<<
+.form-switch :is(.check, .radio):focus {
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%2364b5f6'/%3e%3c/svg%3e");
+}
+.form-switch :is(.check, .radio):checked {
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231a1c1e'/%3e%3c/svg%3e");
+}
+
+===
+.switch:focus-within {
+  --bs-switch-indicator-bg: #64b5f6;
+}
+.switch {
+  --bs-switch-checked-indicator-bg: #1a1c1e;
+}
+
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+
+.form-switch :is(.check, .radio).danger {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23dc3545'/%3e%3c/svg%3e");
+}
+
+.form-switch :is(.check, .radio).danger:checked {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231a1c1e'/%3e%3c/svg%3e");
+}
+
+===
+
+
+>>>
+
+The explorer's toolbar menus are pulled inside the screen by the wrapper
+the switch renamed.
+
+@@ view_folders.php
+<<<
+        var wrap = menu.closest('.dropdown');
+===
+        var wrap = menu.closest('.pg-menu-wrap');
+>>>
+
+@@ view_folders.php
+<<<
+        var wrap = event.target.closest('.dropdown');
+===
+        var wrap = event.target.closest('.pg-menu-wrap');
+>>>
+
+The quick note menu sits under the header's right edge: v5's position
+utilities carried !important and beat Popper's inline position, v6's do
+not beat Floating UI's.
+
+@@ assets/css/backend.src.css
+<<<
+#pg_quick_note {
+  width: 350px;
+  right: 2px !important;
+  left: auto;
+===
+#pg_quick_note {
+  position: fixed !important;
+  width: 350px;
+  right: 2px !important;
+  left: auto !important;
+>>>
+
+The template gallery's width class was on the dropped .modal-dialog box;
+it is now on the dialog itself.
+
+@@ assets/css/designer_home.css
+<<<
+#sdTemplateModal .sd-tpl-dialog {
+===
+#sdTemplateModal.sd-tpl-dialog {
+>>>
+
+The settings cards put a check's or a switch's control in the right-hand
+column; a v6 switch's input sits in a .switch box, so the box is the
+control.
+
+@@ assets/css/backend.src.css
+<<<
+[class]:has(> .form-field > input[type="checkbox"]) > .form-field > :is(.check, .radio) {
+===
+[class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > :is(.check, .radio, .switch) {
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+[class]:has(> .form-field > input[type="checkbox"])
+===
+[class]:has(> .form-field > :is(input[type="checkbox"], .switch))
+>>>
+
+The design picker dialog (pg_designer_target_modal()) is panel chrome in a
+file the codemod leaves to the editor's site vocabulary.
+
+@@ includes/fn/designer.php
+<<<
+    <div class="modal fade" id="pgDesignTargetModal" tabindex="-1" aria-labelledby="pgDesignTargetTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="pgDesignTargetTitle"></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-body-secondary" id="pgDesignTargetIntro"></p>
+                    <div class="list-group" id="pgDesignTargetList" role="radiogroup" aria-labelledby="pgDesignTargetTitle"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="pgDesignTargetGo" disabled>' . lang('Continue') . '</button>
+                </div>
+            </div>
+        </div>
+    </div>
+===
+    <dialog class="dialog pg-dialog-centered dialog-scrollable" id="pgDesignTargetModal" aria-labelledby="pgDesignTargetTitle">
+        <div class="dialog-header">
+            <h2 class="dialog-title fs-lg" id="pgDesignTargetTitle"></h2>
+            <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
+        </div>
+        <div class="dialog-body">
+            <p class="small fg-secondary" id="pgDesignTargetIntro"></p>
+            <div class="list-group" id="pgDesignTargetList" role="radiogroup" aria-labelledby="pgDesignTargetTitle"></div>
+        </div>
+        <div class="dialog-footer">
+            <button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+            <button type="button" class="btn btn-sm btn-solid theme-primary" id="pgDesignTargetGo" disabled>' . lang('Continue') . '</button>
+        </div>
+    </dialog>
+>>>
+
+@@ includes/fn/designer.php
+<<<
+"<input class=\"form-check-input flex-shrink-0 m-0\" type=\"radio\"
+===
+"<input class=\"radio flex-shrink-0 m-0\" type=\"radio\"
+>>>
+
+@@ includes/fn/designer.php
+<<<
+" <span class=\"badge text-bg-primary fw-normal ms-1\">"
+===
+" <span class=\"badge theme-primary fw-normal ms-1\">"
+>>>
+
+@@ includes/fn/designer.php
+<<<
+small text-body-secondary\"
+===
+small fg-secondary\"
+>>>
+
+The file manager's upload dialog: the design-file switch's wrapper class
+holds a PHP block, which the check fix does not read.
+
+@@ view_folders.php
+<<<
+                    <div class="form-field form-switch<?php echo (($user['role'] <= 1) ? '' : ' d-none'); ?>">
+                        <input class="check" type="checkbox" id="upload_design" />
+===
+                    <div class="form-field<?php echo (($user['role'] <= 1) ? '' : ' d-none'); ?>">
+                        <div class="switch"><input class="" type="checkbox" id="upload_design" /></div>
+>>>
+
+The SEO score's colour class built from pg_seo_score_color() (success,
+warning or danger) in the panel's list bar and checklist.
+
+@@ seo.php
+<<<
+? ' text-' . $color['class'] : '';
+===
+? ' fg-' . $color['class'] : '';
+>>>
+
+The auto dialog list's status cell: its class attribute holds PHP blocks.
+
+@@ includes/templates/view_auto_dialogs.php
+<<<
+<?php if ($auto_dialog['enabled']): ?>text-success status_enabled<?php else: ?>text-danger status_disabled<?php endif ?>
+===
+<?php if ($auto_dialog['enabled']): ?>fg-success status_enabled<?php else: ?>fg-danger status_disabled<?php endif ?>
+>>>
+
+liveform adds Bootstrap 5's default class to a field that names none; the
+panel's fields name Bootstrap 6's check and radio (bs6_switch_fields.php),
+which count as named. No site form passes those two classes.
+
+@@ liveform.class.php
+<<<
+            foreach (array('form-control', 'form-select', 'form-check-input',
+                           'btn', 'no-bs') as $marker) {
+===
+            foreach (array('form-control', 'form-select', 'form-check-input',
+                           'check', 'radio', 'btn', 'no-bs') as $marker) {
+>>>
+
+The main menu's script switches to the drawer at the width its stylesheet
+does; the panel's own media queries moved to Bootstrap 6's 1024 px.
+
+@@ assets/js/backend.src.js
+<<<
+var MENU_DRAWER_BREAKPOINT = 992;
+===
+var MENU_DRAWER_BREAKPOINT = 1024;
+>>>
+
+The visual editor's settings dialog: the Reset Layout button goes into the
+dialog's footer; paste and the note shortcut leave the editor's own dialogs
+alone (a code editor in one is contenteditable, not an input).
+
+@@ assets/js/style_designer.js
+<<<
+var footer = phpModal.querySelector('.modal-footer');
+===
+var footer = phpModal.querySelector('.dialog-footer');
+>>>
+
+@@ assets/js/style_designer.js
+<<<
+'#sd-properties, #sd-bp-attrs, .modal, input, textarea, select'
+===
+'#sd-properties, #sd-bp-attrs, dialog, input, textarea, select'
+>>>
+
+@@ assets/js/style_designer.js
+<<<
+e.target.closest('.modal, .sd-note-overlay')
+===
+e.target.closest('dialog, .sd-note-overlay')
+>>>
+
+The visual editor's dark top bar menus: Bootstrap 6 has no dark menu
+class; the menu takes the dark colour mode.
+
+@@ includes/designer_screen.php
+<<<
+class="menu dropdown-menu-dark
+===
+data-bs-theme="dark" class="menu
+>>>

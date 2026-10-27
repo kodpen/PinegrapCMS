@@ -179,13 +179,13 @@
 
     function toggle(self, id, label, on, set) {
         var k = kit();
-        var wrap = k.el('div', 'form-check form-switch mb-0');
-        var input = k.el('input', 'form-check-input');
+        var wrap = k.el('div', 'form-field mb-0');
+        var input = k.el('input', '');
         input.type = 'checkbox';
         input.id = id;
         input.checked = !!on;
 
-        var text = k.el('label', 'form-check-label small', label);
+        var text = k.el('label', 'small', label);
         text.htmlFor = id;
 
         input.addEventListener('change', function () {
@@ -193,7 +193,7 @@
             load(self);
         });
 
-        wrap.appendChild(input);
+        wrap.appendChild(k.el('div', 'switch')).appendChild(input);
         wrap.appendChild(text);
 
         return wrap;
@@ -208,7 +208,7 @@
         pane.appendChild(toolbar(self));
 
         if (!self.data) {
-            pane.appendChild(k.el('div', 'small text-body-secondary', t('loading')));
+            pane.appendChild(k.el('div', 'small fg-secondary', t('loading')));
             return;
         }
 
@@ -222,7 +222,7 @@
         var picker = k.select(columns.map(function (column, index) {
             return [index, column.title + ' (' + column.items.length + ')'];
         }), self.current);
-        picker.classList.add('w-auto', 'ws-cb-picker', 'mb-2');
+        picker.classList.add('w-auto', 'ws-cb-picker', 'mb-3');
         picker.setAttribute('aria-label', t('cb_column'));
         picker.addEventListener('change', function () {
             self.current = parseInt(picker.value, 10) || 0;
@@ -415,7 +415,7 @@
         var meta = k.el('div', 'ws-cb-meta');
 
         if (item.due_date) {
-            var due = k.el('span', 'ws-cb-due' + (item.overdue ? ' text-danger' : ''));
+            var due = k.el('span', 'ws-cb-due' + (item.overdue ? ' fg-danger' : ''));
             due.appendChild(k.icon('bi-calendar-event', 'me-1'));
             due.appendChild(document.createTextNode(item.due_label));
             meta.appendChild(due);
@@ -423,9 +423,13 @@
 
         if (item.progress) {
             var share = k.el('span', 'ws-cb-progress');
-            var bar = k.el('span', 'ws-cb-progress-bar');
-            var fill = k.el('span');
+            var bar = k.el('span', 'progress ws-cb-progress-bar');
+            var fill = k.el('span', 'progress-bar');
 
+            bar.setAttribute('role', 'progressbar');
+            bar.setAttribute('aria-valuemin', '0');
+            bar.setAttribute('aria-valuemax', '100');
+            bar.setAttribute('aria-valuenow', String(item.progress.percent));
             fill.style.width = item.progress.percent + '%';
             bar.appendChild(fill);
             share.appendChild(bar);
@@ -443,16 +447,11 @@
         }
 
         if (item.assignees.length) {
-            var faces = k.el('span', 'ws-avatars ws-cb-faces');
+            var faces = k.avatarStack('ws-cb-faces', item.assignees, 4);
 
-            item.assignees.slice(0, 4).forEach(function (person) {
-                var face = k.avatar(person);
-                face.title = person.name;
-                faces.appendChild(face);
-            });
-
+            // The stack is row-reverse: the count goes in first to sit last.
             if (item.assignees.length > 4) {
-                faces.appendChild(k.el('span', 'ws-cb-more-faces', '+' + (item.assignees.length - 4)));
+                faces.insertBefore(k.el('span', 'ws-cb-more-faces', '+' + (item.assignees.length - 4)), faces.firstChild);
             }
 
             meta.appendChild(faces);

@@ -59,7 +59,7 @@ function duplicate_page($request) {
     }
 
     // get original page's info
-    $result = mysqli_query(db::$con, "SELECT * FROM page WHERE page_id = '" . e($request['page']['id']) . "'") or output_error('Query failed');
+    $result = db_q("SELECT * FROM page WHERE page_id = ?", array((string) $request['page']['id'])) or output_error('Query failed');
     $row = mysqli_fetch_array($result);
 
     if (!$row) {
@@ -224,6 +224,15 @@ function duplicate_page($request) {
         $folder['id'] = $page_folder;
     }
 
+    // page.ai_fields (2026.11.0) is copied where the table has it, which the
+    // SELECT * above shows: the copy keeps the marks of the texts it writes
+    // unchanged, so a title or description changed by find and replace
+    // loses its mark.
+    $ai_fields = pg_ai_fields_copy('page', $row, array(
+        'page_title'            => $page_title,
+        'page_meta_description' => $page_meta_description,
+    ));
+
     // insert row into page table
     $query = "INSERT INTO page (
                 page_name,
@@ -240,6 +249,7 @@ function duplicate_page($request) {
                 nofollow," : "") . "
                 " . ($multi_page_design ? "page_tree_json,
                 page_tree_code," : "") . "
+                " . (($ai_fields !== false) ? "ai_fields," : "") . "
                 page_type,
                 layout_type,
                 layout_modified,
@@ -267,47 +277,98 @@ function duplicate_page($request) {
                 page_user,
                 page_timestamp)
             VALUES (
-                '" . e($page_name) . "',
-                '" . e($folder['id']) . "',
-                '" . escape($page_style) . "',
-                '" . escape($mobile_style_id) . "',
-                '" . escape($page_title) . "',
-                '" . escape($page_search) . "',
-                '" . escape($page_meta_description) . "',
-                '" . escape($page_meta_keywords) . "',
-                '" . escape($page_search_keywords) . "',
-                '" . escape($sitemap) . "',
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
                 " . (pg_page_noindex_ready() ? "'" . (int) $noindex . "',
                 '" . (int) $nofollow . "'," : "") . "
-                " . ($multi_page_design ? "'" . e($page_tree_json) . "',
-                '" . e($page_tree_code) . "'," : "") . "
-                '" . escape($page_type) . "',
-                '" . e($layout_type) . "',
-                '" . e($layout_modified) . "',
-                '" . escape($comments) . "',
-                '" . e($comments_label) . "',
-                '" . e($comments_message) . "',
-                '" . escape($comments_rating) . "',
-                '" . escape($comments_allow_new_comments) . "',
-                '" . escape($comments_disallow_new_comment_message) . "',
-                '" . escape($comments_automatic_publish) . "',
-                '" . escape($comments_allow_user_to_select_name) . "',
-                '" . escape($comments_require_login_to_comment) . "',
-                '" . escape($comments_allow_file_attachments) . "',
-                '" . escape($comments_show_submitted_date_and_time) . "',
-                '" . escape($comments_administrator_email_to_email_address) . "',
-                '" . escape($comments_administrator_email_subject) . "',
-                '" . escape($comments_administrator_email_conditional_administrators) . "',
-                '" . escape($comments_submitter_email_page_id) . "',
-                '" . escape($comments_submitter_email_subject) . "',
-                '" . escape($comments_watcher_email_page_id) . "',
-                '" . escape($comments_watcher_email_subject) . "',
-                '" . escape($comments_watchers_managed_by_submitter) . "',
-                '" . escape($system_region_header) . "',
-                '" . escape($system_region_footer) . "',
-                '" . $user['id'] . "',
+                " . ($multi_page_design ? "?,
+                ?," : "") . "
+                " . (($ai_fields !== false) ? (($ai_fields === null) ? "NULL," : "?,") : "") . "
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
                 UNIX_TIMESTAMP())";
-    $result=mysqli_query(db::$con, $query) or output_error('Query failed');
+    // The values in column order; the optional columns add theirs only
+    // when their placeholders are in the text.
+    $page_values = array(
+        (string) $page_name,
+        (string) $folder['id'],
+        (string) $page_style,
+        (string) $mobile_style_id,
+        (string) $page_title,
+        (string) $page_search,
+        (string) $page_meta_description,
+        (string) $page_meta_keywords,
+        (string) $page_search_keywords,
+        (string) $sitemap);
+
+    if ($multi_page_design) {
+        $page_values[] = (string) $page_tree_json;
+        $page_values[] = (string) $page_tree_code;
+    }
+
+    if (($ai_fields !== false) && ($ai_fields !== null)) {
+        $page_values[] = (string) $ai_fields;
+    }
+
+    $page_values = array_merge($page_values, array(
+        (string) $page_type,
+        (string) $layout_type,
+        (string) $layout_modified,
+        (string) $comments,
+        (string) $comments_label,
+        (string) $comments_message,
+        (string) $comments_rating,
+        (string) $comments_allow_new_comments,
+        (string) $comments_disallow_new_comment_message,
+        (string) $comments_automatic_publish,
+        (string) $comments_allow_user_to_select_name,
+        (string) $comments_require_login_to_comment,
+        (string) $comments_allow_file_attachments,
+        (string) $comments_show_submitted_date_and_time,
+        (string) $comments_administrator_email_to_email_address,
+        (string) $comments_administrator_email_subject,
+        (string) $comments_administrator_email_conditional_administrators,
+        (string) $comments_submitter_email_page_id,
+        (string) $comments_submitter_email_subject,
+        (string) $comments_watcher_email_page_id,
+        (string) $comments_watcher_email_subject,
+        (string) $comments_watchers_managed_by_submitter,
+        (string) $system_region_header,
+        (string) $system_region_footer,
+        (string) $user['id']));
+
+    $result=db_q($query, $page_values) or output_error('Query failed');
 
     $new_page['id'] = mysqli_insert_id(db::$con);
     $new_page['name'] = $page_name;
@@ -360,7 +421,7 @@ function duplicate_page($request) {
     update_tag_cloud_keywords_for_page($new_page['id'], $page_search, $page_search_keywords, 0, '');
 
     // get region info
-    $result=mysqli_query(db::$con, "SELECT pregion_content, pregion_order, collection FROM pregion WHERE pregion_page = '" . e($page_id) . "' ORDER BY pregion_order") or output_error('Query failed');
+    $result=db_q("SELECT pregion_content, pregion_order, collection FROM pregion WHERE pregion_page = ? ORDER BY pregion_order", array((string) $page_id)) or output_error('Query failed');
     // create duplicate regions
     while($row=mysqli_fetch_array($result)) {
 
@@ -372,7 +433,7 @@ function duplicate_page($request) {
                 'keywords' => $request['find_replace_keywords']));
         }
 
-        $result_insert=mysqli_query(db::$con, "INSERT INTO pregion (pregion_name, pregion_content, pregion_page, pregion_order, collection, pregion_user, pregion_timestamp) VALUES ('" . escape($region_name) . "', '" . e($row['pregion_content']) . "', '" . e($new_page['id']) . "', '" . escape($row['pregion_order']) . "', '" . escape($row['collection']) . "', '" . escape($user['id']) . "', UNIX_TIMESTAMP())") or output_error('Query failed');
+        $result_insert=db_q("INSERT INTO pregion (pregion_name, pregion_content, pregion_page, pregion_order, collection, pregion_user, pregion_timestamp) VALUES (?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP())", array((string) $region_name, (string) $row['pregion_content'], (string) $new_page['id'], (string) $row['pregion_order'], (string) $row['collection'], (string) $user['id'])) or output_error('Query failed');
     }
 
     // if page might have a form, then duplicate form fields and form field options
@@ -382,8 +443,8 @@ function duplicate_page($request) {
         || ($page_type == 'billing information')
         || ($page_type == 'express order')
     ) {
-        $query = "SELECT * FROM form_fields WHERE page_id = '" . e($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT * FROM form_fields WHERE page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         
         $form_fields = array();
         
@@ -430,36 +491,58 @@ function duplicate_page($request) {
                         timestamp)
                      VALUES (
                         " . $translate_value . "
-                        '" . e($form_field['form_type']) . "',
-                        '" . e($new_page['id']) . "',
-                        '" . escape($form_field['name']) . "',
-                        '" . escape($form_field['label']) . "',
-                        '" . escape($form_field['type']) . "',
-                        '" . $form_field['sort_order'] . "',
-                        '" . $form_field['required'] . "',
-                        '" . escape($form_field['information']) . "',
-                        '" . escape($form_field['default_value']) . "',
-                        '" . escape($form_field['use_folder_name_for_default_value']) . "',
-                        '" . $form_field['size'] . "',
-                        '" . $form_field['maxlength'] . "',
-                        '" . $form_field['wysiwyg'] . "',
-                        '" . $form_field['rows'] . "',
-                        '" . $form_field['cols'] . "',
-                        '" . $form_field['multiple'] . "',
-                        '" . $form_field['spacing_above'] . "',
-                        '" . $form_field['spacing_below'] . "',
-                        '" . escape($form_field['contact_field']) . "',
-                        '" . $form_field['office_use_only'] . "',
-                        '" . $form_field['upload_folder_id'] . "',
-                        '" . $user['id'] . "',
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
                         UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array(
+                (string) $form_field['form_type'],
+                (string) $new_page['id'],
+                (string) $form_field['name'],
+                (string) $form_field['label'],
+                (string) $form_field['type'],
+                (string) $form_field['sort_order'],
+                (string) $form_field['required'],
+                (string) $form_field['information'],
+                (string) $form_field['default_value'],
+                (string) $form_field['use_folder_name_for_default_value'],
+                (string) $form_field['size'],
+                (string) $form_field['maxlength'],
+                (string) $form_field['wysiwyg'],
+                (string) $form_field['rows'],
+                (string) $form_field['cols'],
+                (string) $form_field['multiple'],
+                (string) $form_field['spacing_above'],
+                (string) $form_field['spacing_below'],
+                (string) $form_field['contact_field'],
+                (string) $form_field['office_use_only'],
+                (string) $form_field['upload_folder_id'],
+                (string) $user['id'])) or output_error('Query failed.');
             
             $new_form_field_id = mysqli_insert_id(db::$con);
             
             // get form field options
-            $query = "SELECT * FROM form_field_options WHERE form_field_id = '" . $form_field['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT * FROM form_field_options WHERE form_field_id = ?";
+            $result = db_q($query, array((string) $form_field['id'])) or output_error('Query failed.');
             
             $form_field_options = array();
             
@@ -478,22 +561,29 @@ function duplicate_page($request) {
                             sort_order,
                             upload_folder_id)
                          VALUES (
-                            '" . e($new_page['id']) . "',
-                            '" . $new_form_field_id . "',
-                            '" . escape($form_field_option['label']) . "',
-                            '" . escape($form_field_option['value']) . "',
-                            '" . $form_field_option['default_selected'] . "',
-                            '" . $form_field_option['sort_order'] . "',
-                            '" . $form_field_option['upload_folder_id'] . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?)";
+                $result = db_q($query, array(
+                    (string) $new_page['id'],
+                    (string) $new_form_field_id,
+                    (string) $form_field_option['label'],
+                    (string) $form_field_option['value'],
+                    (string) $form_field_option['default_selected'],
+                    (string) $form_field_option['sort_order'],
+                    (string) $form_field_option['upload_folder_id'])) or output_error('Query failed.');
             }
         }
     }
 
     // if page type is form list view, duplicate filters and browse fields
     if ($page_type == 'form list view') {
-        $query = "SELECT * FROM form_list_view_filters WHERE page_id = '" . e($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT * FROM form_list_view_filters WHERE page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         
         $filters = array();
         
@@ -512,19 +602,26 @@ function duplicate_page($request) {
                         dynamic_value,
                         dynamic_value_attribute)
                      VALUES (
-                        '" . e($new_page['id']) . "',
-                        '" . escape($filter['standard_field']) . "',
-                        '" . escape($filter['form_field_id']) . "',
-                        '" . escape($filter['operator']) . "',
-                        '" . escape($filter['value']) . "',
-                        '" . escape($filter['dynamic_value']) . "',
-                        '" . escape($filter['dynamic_value_attribute']) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?)";
+            $result = db_q($query, array(
+                (string) $new_page['id'],
+                (string) $filter['standard_field'],
+                (string) $filter['form_field_id'],
+                (string) $filter['operator'],
+                (string) $filter['value'],
+                (string) $filter['dynamic_value'],
+                (string) $filter['dynamic_value_attribute'])) or output_error('Query failed.');
         }
 
         // Get browse fields.
-        $query = "SELECT * FROM form_list_view_browse_fields WHERE page_id = '" . e($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT * FROM form_list_view_browse_fields WHERE page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         $browse_fields = mysqli_fetch_items($result);
         
         // Loop through browse fields in order to add them to database.
@@ -538,13 +635,19 @@ function duplicate_page($request) {
                     shortcut,
                     date_format)
                 VALUES (
-                    '" . e($new_page['id']) . "',
-                    '" . $browse_field['form_field_id'] . "',
-                    '" . $browse_field['number_of_columns'] . "',
-                    '" . $browse_field['sort_order'] . "',
-                    '" . $browse_field['shortcut'] . "',
-                    '" . $browse_field['date_format'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?)";
+            $result = db_q($query, array(
+                (string) $new_page['id'],
+                (string) $browse_field['form_field_id'],
+                (string) $browse_field['number_of_columns'],
+                (string) $browse_field['sort_order'],
+                (string) $browse_field['shortcut'],
+                (string) $browse_field['date_format'])) or output_error('Query failed.');
         }
     }
 
@@ -556,8 +659,8 @@ function duplicate_page($request) {
                 form_list_view_name as name,
                 subject_form_field_id
             FROM form_view_directories_form_list_views_xref
-            WHERE form_view_directory_page_id = '" . e($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE form_view_directory_page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         
         $form_list_views = array();
         
@@ -576,18 +679,22 @@ function duplicate_page($request) {
                     form_list_view_name,
                     subject_form_field_id)
                 VALUES (
-                   '" . e($new_page['id']) . "',
-                   '" . $form_list_view['page_id'] . "',
-                   '" . escape($form_list_view['name']) . "',
-                   '" . $form_list_view['subject_form_field_id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                   ?,
+                   ?,
+                   ?,
+                   ?)";
+            $result = db_q($query, array(
+                (string) $new_page['id'],
+                (string) $form_list_view['page_id'],
+                (string) $form_list_view['name'],
+                (string) $form_list_view['subject_form_field_id'])) or output_error('Query failed.');
         }
     }
 
     // if page type is calendar view, duplicate calendars for view
     if ($page_type == 'calendar view') {
-        $query = "SELECT calendar_id FROM calendar_views_calendars_xref WHERE page_id = '" . e($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT calendar_id FROM calendar_views_calendars_xref WHERE page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         
         $calendars = array();
         
@@ -602,16 +709,16 @@ function duplicate_page($request) {
                    page_id,
                    calendar_id)
                 VALUES (
-                   '" . e($new_page['id']) . "',
-                   '$calendar_id')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                   ?,
+                   ?)";
+            $result = db_q($query, array((string) $new_page['id'], (string) $calendar_id)) or output_error('Query failed.');
         }
     }
 
     // if page type is calendar event view, duplicate calendars for view
     if ($page_type == 'calendar event view') {
-        $query = "SELECT calendar_id FROM calendar_event_views_calendars_xref WHERE page_id = '" . e($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT calendar_id FROM calendar_event_views_calendars_xref WHERE page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         
         $calendars = array();
         
@@ -626,17 +733,17 @@ function duplicate_page($request) {
                    page_id,
                    calendar_id)
                 VALUES (
-                   '" . e($new_page['id']) . "',
-                   '$calendar_id')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                   ?,
+                   ?)";
+            $result = db_q($query, array((string) $new_page['id'], (string) $calendar_id)) or output_error('Query failed.');
         }
     }
 
     // if this is a search results page, then update the keywords for this page for the tag cloud
     if ($page_type == 'search results') {
         // get search catalog items and product group id for this page
-        $query = "SELECT search_catalog_items, product_group_id FROM search_results_pages WHERE page_id = '" . e($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT search_catalog_items, product_group_id FROM search_results_pages WHERE page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $new_search_catalog_items = $row['search_catalog_items'];
         $new_product_group_id = $row['product_group_id'];
@@ -687,8 +794,8 @@ function duplicate_page($request) {
     // comment is copied first and a copied reply names its copy
     // (pg_comment_copy_parent_id()). The column is written only once it
     // exists (2026.11.0, 11.0.31).
-    $query = "SELECT * FROM comments WHERE page_id = '" . e($page_id) . "' ORDER BY id";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT * FROM comments WHERE page_id = ? ORDER BY id";
+    $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
     $comments = array();
 
@@ -730,21 +837,35 @@ function duplicate_page($request) {
                last_modified_user_id,
                last_modified_timestamp$sql_parent_column)
             VALUES (
-               '" . e($new_page['id']) . "',
-               '" . escape($comment['item_id']) . "',
-               '" . escape($comment['item_type']) . "',
-               '" . escape($comment['name']) . "',
-               '" . escape($comment['message']) . "',
-               '" . escape($comment['file_id']) . "',
-               '" . escape($comment['published']) . "',
-               '" . e($comment['publish_date_and_time']) . "',
-               '" . e($comment['publish_cancel']) . "',
-               '" . escape($comment['featured']) . "',
-               '" . escape($comment['created_user_id']) . "',
-               '" . escape($comment['created_timestamp']) . "',
-               '" . escape($comment['last_modified_user_id']) . "',
-               '" . escape($comment['last_modified_timestamp']) . "'$sql_parent_value)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?$sql_parent_value)";
+        $result = db_q($query, array(
+            (string) $new_page['id'],
+            (string) $comment['item_id'],
+            (string) $comment['item_type'],
+            (string) $comment['name'],
+            (string) $comment['message'],
+            (string) $comment['file_id'],
+            (string) $comment['published'],
+            (string) $comment['publish_date_and_time'],
+            (string) $comment['publish_cancel'],
+            (string) $comment['featured'],
+            (string) $comment['created_user_id'],
+            (string) $comment['created_timestamp'],
+            (string) $comment['last_modified_user_id'],
+            (string) $comment['last_modified_timestamp'])) or output_error('Query failed.');
 
         $comment_copies[(int) $comment['id']] = (int) mysqli_insert_id(db::$con);
     }
@@ -794,8 +915,9 @@ function duplicate_page($request) {
 function get_duplicate_form_name_number($form_name, $number = 1) {
 
     // check to see if there is already a form name for the one that we want to use
-    $query = "SELECT form_name FROM custom_form_pages where form_name = '" . e($form_name) . "[" . $number . "]'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT form_name FROM custom_form_pages where form_name = ?";
+    $result = db_q($query, array((string) $form_name . '[' . $number . ']')) or output_error('Query failed.');
+
     // if there is a result, then there is already a page with that form name
     if (mysqli_num_rows($result) > 0) {
         return get_duplicate_form_name_number($form_name, $number + 1);

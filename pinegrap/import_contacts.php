@@ -50,10 +50,10 @@ if (!$_POST) {
     foreach ($contact_groups as $key => $contact_group) {
         
         $output_contact_groups .= '
-        <div class="col-12 col-md-4 my-2">
-            <div class="form-check form-switch">
-                <input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="form-check-input"/>
-                <label class="form-check-label" for="contact_group_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . '</label>
+        <div class="col-12 md:col-4 my-3">
+            <div class="form-field">
+                <div class="switch"><input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class=""/></div>
+                <label class="" for="contact_group_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . '</label>
             </div>
         </div>';
        
@@ -81,25 +81,25 @@ if (!$_POST) {
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Import CSV') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             <input name="file" id="file" type="file" size="60" class="form-control w-auto" />
                                         </div>
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 my-5">
                                             <label class="form-label" for="">'. lang('Import Mode') . '</label>
-                                            <div class="form-check">
-                                                <input value="import_all_contacts" class="form-check-input" type="radio" id="import_all_contacts" name="import_mode" checked>
-                                                <label class="form-check-label" for="import_all_contacts">'. lang('Import all contacts') . '</label>
+                                            <div class="form-field">
+                                                <input value="import_all_contacts" class="radio" type="radio" id="import_all_contacts" name="import_mode" checked>
+                                                <label class="" for="import_all_contacts">'. lang('Import all contacts') . '</label>
                                             </div>
-                                            <div class="form-check">
-                                                <input value="only_import_unique_contacts" class="form-check-input" type="radio" id="only_import_unique_contacts" name="import_mode">
-                                                <label class="form-check-label" for="only_import_unique_contacts">'. lang('Only import contacts with unique email addresses') . '</label>
+                                            <div class="form-field">
+                                                <input value="only_import_unique_contacts" class="radio" type="radio" id="only_import_unique_contacts" name="import_mode">
+                                                <label class="" for="only_import_unique_contacts">'. lang('Only import contacts with unique email addresses') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -107,8 +107,8 @@ if (!$_POST) {
                             </div> 
                         </div> 
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Select Contact Groups to Import into') . '
                                 </div>
                                 <div class="card-body">
@@ -119,10 +119,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" name="submit_import" value="Import" class="btn my-1  btn-success " ><span class="material-icons me-2">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Contacts') ) . '</span></button>
+                                <button type="submit" name="submit_import" value="Import" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Contacts') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -197,6 +197,10 @@ if (!$_POST) {
 
     $imported_contacts = 0;
 
+    // Contacts created and not yet in the audit trail: written in batches, so
+    // a large file neither reads every new row at once nor one at a time.
+    $audit_created = array();
+
     // loops through all rows of data in CSV file
     while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
         // Assume that this line does not have a value,
@@ -245,15 +249,17 @@ if (!$_POST) {
                     // if e-mail address exists
                     if (trim($row[$email_address_key]) != '') {
                         // check to see if contact should be opted out
-                        $query = "SELECT id FROM contacts WHERE (opt_in = 0) AND (email_address = '" . escape(trim($row[$email_address_key])) . "') AND (id != '$contact_id')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT id FROM contacts WHERE (opt_in = 0) AND (email_address = ?) AND (id != ?)";
+                        $result = db_q($query, array((string) trim($row[$email_address_key]), (string) $contact_id)) or output_error('Query failed.');
                         
                         // if a contact was found
                         if (mysqli_num_rows($result) > 0) {
-                            $query = "UPDATE contacts SET opt_in = 0 WHERE id = '$contact_id'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "UPDATE contacts SET opt_in = 0 WHERE id = ?";
+                            $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
                         }
                     }
+
+                    $audit_created[] = $contact_id;
                     
                     $imported_contacts++;
                     
@@ -273,8 +279,8 @@ if (!$_POST) {
                         // if e-mail address is not empty
                         if (trim($row[$email_address_key]) != '') {
                             // query database to determine if e-mail address is already in use
-                            $query = "SELECT id FROM contacts WHERE email_address = '" . escape(trim($row[$email_address_key])) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "SELECT id FROM contacts WHERE email_address = ?";
+                            $result = db_q($query, array((string) trim($row[$email_address_key]))) or output_error('Query failed.');
                             
                             // if a contact was not found
                             if (mysqli_num_rows($result) == 0) {
@@ -308,6 +314,8 @@ if (!$_POST) {
                         
                         $contact_id = mysqli_insert_id(db::$con);
 
+                        $audit_created[] = $contact_id;
+
                         $imported_contacts++;
                     }
                     
@@ -324,14 +332,21 @@ if (!$_POST) {
                             contact_id,
                             contact_group_id)
                         VALUES (
-                            '" . $contact_id . "',
-                            '" . $contact_group['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $contact_id, (string) $contact_group['id'])) or output_error('Query failed.');
                 }
+            }
+
+            if (count($audit_created) >= 200) {
+                pg_audit_record_many('create', 'contacts', pg_audit_created_rows($audit_created));
+                $audit_created = array();
             }
         }
     }
     fclose($handle);
+
+    pg_audit_record_many('create', 'contacts', pg_audit_created_rows($audit_created));
     
     log_activity(lang(array('string'=>'{var:1} contacts were imported','vars'=>pg_format_number($imported_contacts, 0))), $_SESSION['sessionusername']);
     

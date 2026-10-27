@@ -8,19 +8,26 @@
  * whose Chips, Combobox and Datepicker replace tagin, select2 and the jQuery
  * UI pickers. Screens mark a field with a data-pg-* hook and read or write it
  * through these objects, so the swap changes the engine here, not the
- * screens. The engine today ('v5') is the one the panel always used.
+ * screens. Every kind runs on Bootstrap 6 ('v6') but a combobox that searches
+ * the server, which stays a select2 ('v5'). A page without Bootstrap 6 keeps
+ * plain fields that still post.
  *
- *   <input data-pg-chips>                 tagin; the input keeps the joined list,
- *                                         comma or data-pg-separator (" " for classes)
- *   <select data-pg-combobox>             select2; the native <select> keeps the value
- *     data-pg-source="url"                options searched on the server as you type:
+ *   <input data-pg-chips>                 Bootstrap 6 Chips drawn after the hidden
+ *                                         input, which keeps the joined list: comma
+ *                                         or data-pg-separator (" " for classes)
+ *   <select data-pg-combobox>             Bootstrap 6 Combobox drawn after the hidden
+ *                                         <select>, which keeps the value; data-placeholder
+ *     data-pg-source="url"                select2: options searched on the server as you type:
  *                                         GET url?q=<text> answers {results: [{id, text}]};
  *                                         data-pg-min-length, data-pg-free-text (a typed
  *                                         value is kept), data-placeholder
- *   <input data-pg-date>                  jQuery UI datepicker, site date format
- *   <input data-pg-date="plain">          the same in the picker's own English wording
- *   <input data-pg-datetime>              date and time in one field
- *   <input data-pg-time>                  time only
+ *   <input data-pg-date>                  Bootstrap 6 Datepicker on the field, site date
+ *                                         format, names in the panel language
+ *   <input data-pg-date="plain">          the same with English names
+ *   <input data-pg-datetime>              date and time: the field hidden, a date box with
+ *                                         a Datepicker and an <input type="time"> after it
+ *   <input data-pg-time>                  time only: an <input type="time"> after the
+ *                                         hidden field
  *
  * The named input or the native <select> is always what the form posts, in
  * the text the server reads today. Values cross this interface as ISO text
@@ -38,6 +45,9 @@
  *
  * set() fires a native change event that bubbles; listen with onChange() or
  * jQuery .on('change'): select2 announces a pick only through jQuery.
+ * Bootstrap 6 Datepicker reads an input's date with Date(), which takes
+ * 5/3/2026 as May; it is given our own parse instead and writes our own
+ * format.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -184,21 +194,59 @@
     // One engine per Bootstrap generation; each kind has init(el), which
     // draws the widget over the posted field, redraw(el), which shows a
     // value written into that field, and destroy(el), which removes the
-    // widget and leaves the field. The Bootstrap 6 engine (Chips, Combobox,
-    // Datepicker) comes with the component swaps.
+    // widget and leaves the field. A kind the v6 engine has runs on it. A v6 kind
+    // has later(): true while Bootstrap's module has not run yet, so the
+    // field is drawn once pgUI.ready() fires.
     var ENGINES = {
-        v5: {
+        v6: {
             chips: {
-                ready: function () { return typeof window.tagin === 'function'; },
-                init: function (el) { window.tagin(el, { separator: separator(el) }); },
-                // tagin reads the input only when it is drawn and never hears
-                // a change, so its chips are dropped and drawn again.
+                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
+                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                init: drawChips,
+                // Chips reads its markup only when it is created, so a value
+                // written into the input is drawn again from scratch.
                 redraw: function (el) {
-                    removeTaginWrapper(el);
-                    window.tagin(el, { separator: separator(el) });
+                    removeChips(el);
+                    drawChips(el);
                 },
-                destroy: function (el) { removeTaginWrapper(el); }
+                destroy: removeChips
             },
+            combobox: {
+                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
+                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                init: drawCombobox,
+                // Combobox reads its items only when it is created.
+                redraw: function (el) {
+                    removeCombobox(el);
+                    drawCombobox(el);
+                },
+                destroy: removeCombobox
+            },
+            date: {
+                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
+                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                init: drawDate,
+                // The field's own change listener already moved the calendar
+                // to the written date.
+                redraw: function () {},
+                destroy: removeDate
+            },
+            datetime: {
+                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
+                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                init: drawDateTime,
+                redraw: showDateTime,
+                destroy: removeParts
+            },
+            time: {
+                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
+                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                init: drawTime,
+                redraw: showTime,
+                destroy: removeParts
+            }
+        },
+        v5: {
             combobox: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.select2); },
                 init: function (el) {
@@ -217,31 +265,6 @@
                 // Only select2's own listener: the native change already ran.
                 redraw: function (el) { jq()(el).trigger('change.select2'); },
                 destroy: function (el) { jq()(el).select2('destroy'); }
-            },
-            date: {
-                ready: function () { var $ = jq(); return !!($ && $.fn.datepicker); },
-                init: function (el) {
-                    // "plain" keeps the screens that never passed the translated
-                    // names: only the site date format.
-                    var opts = el.getAttribute(HOOKS.date) === 'plain'
-                        ? { dateFormat: (window.datetimepicker_options && window.datetimepicker_options.dateFormat) || window.date_picker_format }
-                        : (window.datetimepicker_options || {});
-                    jq()(el).datepicker(opts);
-                },
-                redraw: function () {},
-                destroy: destroyPicker
-            },
-            datetime: {
-                ready: function () { var $ = jq(); return !!($ && $.fn.datetimepicker); },
-                init: function (el) { jq()(el).datetimepicker(window.datetimepicker_options || {}); },
-                redraw: function () {},
-                destroy: destroyPicker
-            },
-            time: {
-                ready: function () { var $ = jq(); return !!($ && $.fn.timepicker); },
-                init: function (el) { jq()(el).timepicker(window.timepicker_options || window.datetimepicker_options || {}); },
-                redraw: function () {},
-                destroy: destroyPicker
             }
         }
     };
@@ -266,23 +289,567 @@
         }
     }
 
-    function removeTaginWrapper(el) {
-        var next = el.nextElementSibling;
-        if (next && next.classList && next.classList.contains('tagin-wrapper')) {
-            next.parentNode.removeChild(next);
+    // A combobox offers a search box from this many options on.
+    var COMBOBOX_SEARCH_FROM = 8;
+
+    var CARET = '<svg class="combobox-caret" width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M.47 5.47a.75.75 0 0 1 1.06 0L5 8.94l3.47-3.47a.75.75 0 1 1 1.06 1.06l-4 4a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06Z" fill="currentcolor"/></svg>';
+
+    var CHECK = '<svg class="menu-item-check" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    // The select's own classes the toggle takes over: sizes, validation,
+    // margins; not the control class, which the toggle has anyway.
+    var COMBOBOX_SKIP = { 'form-control': 1, 'select2': 1, 'pg-combobox-native': 1 };
+
+    function comboboxItem(option, multiple, placeholder) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'menu-item';
+        item.setAttribute('data-bs-value', option.value);
+        // An empty value is the "nothing chosen" item, which takes the
+        // place of select2's clear button: it reads as the placeholder and is
+        // never shown as the choice.
+        if (option.selected && (multiple || option.value !== '')) {
+            item.className += ' selected';
+            item.setAttribute('aria-selected', 'true');
+        }
+        if (option.disabled) {
+            item.disabled = true;
+        }
+        item.textContent = option.textContent.trim() || (option.value === '' ? (placeholder || '\u2014') : option.value);
+        // Several can be chosen: a check mark shows which (Bootstrap shows it
+        // on .selected).
+        if (multiple) {
+            item.insertAdjacentHTML('beforeend', CHECK);
+        }
+        return item;
+    }
+
+    // The chosen options' texts, as the toggle shows them: every one for a
+    // multiple select (Bootstrap's own count is English), the placeholder
+    // when nothing is chosen.
+    function comboboxText(el) {
+        var out = [];
+        for (var i = 0; i < el.options.length; i++) {
+            var o = el.options[i];
+            if (o.selected && o.value !== '') {
+                out.push(o.textContent.trim());
+            }
+        }
+        return out.join(', ');
+    }
+
+    function showComboboxText(el) {
+        var value = el.pgComboboxToggle.querySelectorAll('.combobox-value')[0], text = comboboxText(el);
+        value.textContent = text || el.getAttribute('data-placeholder') || '';
+        value.className = 'combobox-value' + (text ? '' : ' combobox-placeholder');
+    }
+
+    // A toggle and a .menu after the hidden <select>, an item per option and
+    // a header per option group; the chosen items are marked in the markup,
+    // so drawing announces nothing. A choice writes the <select> and fires its
+    // native change, which the ERP account fields re-rate taxes on.
+    function drawCombobox(el) {
+        var multiple = !!el.multiple, toggle = document.createElement('button'), menu = document.createElement('div');
+        var classes = ['form-control', 'combobox-toggle', 'pg-combobox'], own = String(el.className || '').split(/\s+/);
+        for (var i = 0; i < own.length; i++) {
+            if (own[i] && !COMBOBOX_SKIP[own[i]]) {
+                classes.push(own[i]);
+            }
+        }
+        toggle.type = 'button';
+        toggle.className = classes.join(' ');
+        toggle.disabled = !!el.disabled;
+        var shown = document.createElement('span');
+        shown.className = 'combobox-value';
+        toggle.appendChild(shown);
+        toggle.insertAdjacentHTML('beforeend', CARET);
+        menu.className = 'menu pg-combobox-menu';
+        var count = el.options.length, search = count >= COMBOBOX_SEARCH_FROM;
+        if (search) {
+            var box = document.createElement('div'), input = document.createElement('input'), none = document.createElement('div');
+            box.className = 'combobox-search';
+            input.type = 'text';
+            input.className = 'form-control combobox-search-input';
+            input.setAttribute('autocomplete', 'off');
+            input.setAttribute('placeholder', label('search', 'Search'));
+            input.setAttribute('aria-label', label('search', 'Search'));
+            box.appendChild(input);
+            menu.appendChild(box);
+            none.className = 'combobox-no-results d-none';
+            none.textContent = label('no-results', 'No results');
+            menu.appendChild(none);
+        }
+        var children = el.children;
+        for (var j = 0; j < children.length; j++) {
+            var child = children[j];
+            if (child.tagName === 'OPTGROUP') {
+                var header = document.createElement('div');
+                header.className = 'menu-header';
+                header.textContent = child.getAttribute('label') || '';
+                menu.appendChild(header);
+                for (var k = 0; k < child.children.length; k++) {
+                    menu.appendChild(comboboxItem(child.children[k], multiple, el.getAttribute('data-placeholder')));
+                }
+            } else if (child.tagName === 'OPTION') {
+                menu.appendChild(comboboxItem(child, multiple, el.getAttribute('data-placeholder')));
+            }
+        }
+        el.classList.add('pg-combobox-native');
+        el.parentNode.insertBefore(menu, el.nextSibling);
+        el.parentNode.insertBefore(toggle, menu);
+        el.pgComboboxToggle = toggle;
+        el.pgComboboxMenu = menu;
+        // The field's label names the toggle, which is what people reach.
+        var named = el.id ? document.querySelector('label[for="' + el.id + '"]') : null;
+        if (named) {
+            named.id = named.id || (el.id + '_label');
+            toggle.setAttribute('aria-labelledby', named.id);
+        }
+        var combobox = window.pgUI.combobox.get(toggle, {
+            multiple: multiple,
+            search: search,
+            placeholder: el.getAttribute('data-placeholder') || ''
+        });
+        showComboboxText(el);
+        var offs = [
+            window.pgUI.combobox.on(toggle, 'change', function () {
+                var items = menu.querySelectorAll('.menu-item'), chosen = {};
+                for (var n = 0; n < items.length; n++) {
+                    if ((' ' + items[n].className + ' ').indexOf(' selected ') >= 0) {
+                        chosen[items[n].getAttribute('data-bs-value')] = true;
+                    }
+                }
+                for (var m = 0; m < el.options.length; m++) {
+                    el.options[m].selected = !!chosen[el.options[m].value];
+                }
+                if (!multiple && !Object.keys(chosen).length) {
+                    el.value = '';
+                }
+                showComboboxText(el);
+                fireChange(el);
+            }),
+            // The menu is at least as wide as its field.
+            window.pgUI.combobox.on(toggle, 'show', function () {
+                menu.style.minWidth = toggle.offsetWidth + 'px';
+            })
+        ];
+        // Bootstrap opens a combobox from its click data API, which needs
+        // data-bs-toggle="combobox"; that attribute would also let its
+        // DOMContentLoaded pass create an instance with the default options,
+        // so the toggle opens its own instance here.
+        var open = function (event) {
+            event.preventDefault();
+            combobox.toggle();
+        };
+        toggle.addEventListener('click', open);
+        offs.push(function () { toggle.removeEventListener('click', open); });
+        el.pgComboboxOff = function () {
+            offs.forEach(function (off) { off(); });
+        };
+        return combobox;
+    }
+
+    function removeCombobox(el) {
+        if (el.pgComboboxOff) {
+            el.pgComboboxOff();
+        }
+        if (el.pgComboboxToggle) {
+            window.pgUI.combobox.dispose(el.pgComboboxToggle);
+            [el.pgComboboxToggle, el.pgComboboxMenu].forEach(function (node) {
+                if (node && node.parentNode) {
+                    node.parentNode.removeChild(node);
+                }
+            });
+        }
+        el.classList.remove('pg-combobox-native');
+        el.pgComboboxToggle = null;
+        el.pgComboboxMenu = null;
+        el.pgComboboxOff = null;
+    }
+
+    // The posted input's own classes the chip box takes over: its borders,
+    // sizes and margins, not the control and hook classes.
+    var CHIPS_SKIP = { 'tagin': 1, 'form-control': 1, 'form-control-sm': 1, 'form-control-lg': 1 };
+
+    // Translated words the widgets show, printed by pg_fields_script() on its
+    // tag as data-pg-<name>-label: 'remove' (a chip's button, which Bootstrap
+    // hard-codes as "Remove"), 'search' and 'no-results' (a combobox),
+    // 'locale' (the panel language a calendar names months and days in).
+    function label(name, fallback) {
+        var attr = 'data-pg-' + name + '-label', tag = document.querySelector('script[' + attr + ']');
+        return (tag && tag.getAttribute(attr)) || fallback;
+    }
+
+    function labelDismissButtons(box) {
+        var buttons = box.querySelectorAll('.chip-dismiss'), text = label('remove', 'Remove');
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].setAttribute('aria-label', text);
         }
     }
 
-    // The datetimepicker and timepicker addon build on the datepicker, whose
-    // destroy removes any of the three.
-    function destroyPicker(el) {
-        jq()(el).datepicker('destroy');
+    // A .chip-input box after the hidden input, holding a chip per stored
+    // value and a ghost input to type in. The chips are in the markup before
+    // Chips is created, so drawing a stored value announces nothing and
+    // leaves the form clean. Every add or remove writes the joined list back
+    // into the input and fires its native change.
+    function drawChips(el) {
+        var sep = separator(el), box = document.createElement('div'), ghost = document.createElement('input');
+        var classes = ['chip-input', 'pg-chips'], own = String(el.className || '').split(/\s+/), list = pgChips.get(el);
+        for (var i = 0; i < own.length; i++) {
+            if (own[i] && !CHIPS_SKIP[own[i]]) {
+                classes.push(own[i]);
+            }
+        }
+        if (/(^|\s)form-control-sm(\s|$)/.test(el.className || '')) {
+            classes.push('pg-chips-sm');
+        }
+        box.className = classes.join(' ');
+        for (var j = 0; j < list.length; j++) {
+            var chip = document.createElement('span');
+            chip.className = 'chip';
+            chip.setAttribute('data-bs-chip-value', list[j].trim());
+            chip.appendChild(document.createTextNode(list[j].trim()));
+            box.appendChild(chip);
+        }
+        ghost.type = 'text';
+        ghost.className = 'form-ghost';
+        ghost.setAttribute('autocomplete', 'off');
+        if (el.getAttribute('data-placeholder')) {
+            ghost.setAttribute('placeholder', el.getAttribute('data-placeholder'));
+        }
+        // Not readOnly: the settings dialog shuts every text field read-only
+        // until it is reached, the hidden input too.
+        if (el.disabled) {
+            ghost.disabled = true;
+        }
+        box.appendChild(ghost);
+        el.parentNode.insertBefore(box, el.nextSibling);
+        el.pgChipsBox = box;
+        var chips = window.pgUI.chips.get(box, { separator: sep });
+        labelDismissButtons(box);
+        el.pgChipsOff = window.pgUI.chips.on(box, 'change', function () {
+            labelDismissButtons(box);
+            el.value = chips.getValues().join(sep);
+            fireChange(el);
+        });
     }
 
-    var engineName = 'v5';
+    function removeChips(el) {
+        var box = el.pgChipsBox;
+        if (el.pgChipsOff) {
+            el.pgChipsOff();
+        }
+        if (box) {
+            window.pgUI.chips.dispose(box);
+            if (box.parentNode) {
+                box.parentNode.removeChild(box);
+            }
+        }
+        el.pgChipsBox = null;
+        el.pgChipsOff = null;
+    }
 
-    function engine(kind) {
-        return ENGINES[engineName][kind];
+    // ------------------------------------------------------------ dates (v6)
+
+    // The panel language ('tr', 'en'), printed on the pg_fields_script() tag:
+    // month and day names come from it.
+    function locale() {
+        return label('locale', 'en');
+    }
+
+    // Monday first where the screen's picker options say so (Turkish), else
+    // Sunday as the jQuery UI picker had it.
+    function firstWeekday(lang) {
+        var o = window.datetimepicker_options;
+        if (o && o.firstDay !== undefined) {
+            return +o.firstDay || 0;
+        }
+        return lang === 'tr' ? 1 : 0;
+    }
+
+    // Datepicker options for a field; the date it shows is our own parse of
+    // the site text and what it writes is our own format, so the order of
+    // day and month never goes through Date() parsing.
+    function datepickerOptions(el, iso, inline) {
+        // "plain" keeps the screens that never passed the translated names:
+        // English, Sunday first.
+        var plain = el.getAttribute(HOOKS.date) === 'plain', lang = plain ? 'en' : locale();
+        return {
+            locale: lang,
+            firstWeekday: plain ? 0 : firstWeekday(lang),
+            inline: inline,
+            placement: 'left',
+            selectedDates: iso ? [iso] : [],
+            dateFormat: function (date) {
+                return formatDate(date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()));
+            },
+            // A second click on the chosen day keeps it, as before.
+            vcpOptions: { enableDateToggle: false }
+        };
+    }
+
+    // In a drawer the calendar is drawn open under the field: a popup there
+    // would hang off the drawer's scrolling body.
+    function inlineIn(el) {
+        return !!(el.closest && el.closest('.drawer'));
+    }
+
+    // A Datepicker over the typed input `box` (the posted field itself for a
+    // date, the date part of a date and time). Bootstrap reads an input's
+    // value with Date() when it is created, so the box is empty for that
+    // moment and gets its text back after. In a drawer the calendar is a
+    // block after the box instead.
+    function makeDatepicker(el, box, onPick) {
+        var text = box.value, iso = parseDate(text), inline = inlineIn(el), target = box, wrap = null, offs = [];
+        // The calendar takes over the element it is drawn in, classes
+        // included, so it gets a box of its own inside ours.
+        if (inline) {
+            wrap = document.createElement('div');
+            wrap.className = 'pg-date-inline';
+            target = document.createElement('div');
+            wrap.appendChild(target);
+            box.parentNode.insertBefore(wrap, box.nextSibling);
+        }
+        box.value = '';
+        var picker = window.pgUI.datepicker.get(target, datepickerOptions(el, iso, inline));
+        box.value = text;
+        offs.push(window.pgUI.datepicker.on(target, 'change', function (event) {
+            var dates = (event && event.dates) || picker.getSelectedDates();
+            box.value = dates.length ? formatDate(dates[0]) : '';
+            onPick();
+        }));
+        if (!inline) {
+            offs.push(placeInOverlayHost(box, picker));
+        }
+        // A typed date moves the calendar to it when the box is left.
+        var typed = function () {
+            if (!box.pgDatePicking) {
+                showDate(el, box);
+            }
+        };
+        box.addEventListener('change', typed);
+        offs.push(function () { box.removeEventListener('change', typed); });
+        box.pgDatepicker = { picker: picker, target: target, wrap: wrap, offs: offs };
+        return picker;
+    }
+
+    function disposeDatepicker(box) {
+        var d = box && box.pgDatepicker;
+        if (!d) {
+            return;
+        }
+        d.offs.forEach(function (off) { off(); });
+        // Disposing puts a copy of the input as it was at creation in its
+        // place; the field itself, with its value and listeners, goes back.
+        var parent = box.parentNode, index = parent ? Array.prototype.indexOf.call(parent.childNodes, box) : -1;
+        window.pgUI.datepicker.dispose(d.target);
+        if (parent && box.parentNode !== parent && parent.childNodes[index]) {
+            parent.replaceChild(box, parent.childNodes[index]);
+        }
+        if (d.wrap && d.wrap.parentNode) {
+            d.wrap.parentNode.removeChild(d.wrap);
+        }
+        box.pgDatepicker = null;
+    }
+
+    // The calendar shows the date in `box`: Datepicker moves its month only
+    // when it is created, so it is created again. A box whose text is not a
+    // date keeps that text for the server to refuse.
+    function showDate(el, box) {
+        if (!box.pgDatepicker) {
+            return;
+        }
+        var onPick = box.pgDatePick;
+        disposeDatepicker(box);
+        makeDatepicker(el, box, onPick);
+    }
+
+    // Bootstrap hangs the popup calendar off <body>, under an open dialog in
+    // the top layer; it goes into the dialog holding the field and is placed
+    // under the field there (the dialog is its containing block).
+    function placeInOverlayHost(box, picker) {
+        var place = function () {
+            window.setTimeout(function () {
+                // Datepicker gives no way to its calendar box but its own field.
+        var cal = picker._calendar && picker._calendar.context && picker._calendar.context.mainElement;
+                var host = window.pgUI.overlayHost(box);
+                if (!cal || cal === box || host === document.body || cal.hasAttribute('data-vc-calendar-hidden')) {
+                    return;
+                }
+                if (cal.parentNode !== host) {
+                    host.appendChild(cal);
+                }
+                var f = box.getBoundingClientRect(), h = host.getBoundingClientRect();
+                cal.style.top = (f.bottom - h.top - host.clientTop + host.scrollTop) + 'px';
+                cal.style.left = Math.max(0, f.left - h.left - host.clientLeft + host.scrollLeft) + 'px';
+            }, 0);
+        };
+        box.addEventListener('click', place);
+        box.addEventListener('focus', place);
+        window.addEventListener('resize', place);
+        return function () {
+            box.removeEventListener('click', place);
+            box.removeEventListener('focus', place);
+            window.removeEventListener('resize', place);
+        };
+    }
+
+    // A pick writes the box and fires its native change once; the box's own
+    // listener skips it, the calendar already shows that date.
+    function announce(box) {
+        box.pgDatePicking = true;
+        try {
+            fireChange(box);
+        } finally {
+            box.pgDatePicking = false;
+        }
+    }
+
+    function drawDate(el) {
+        el.pgDatePick = function () { announce(el); };
+        makeDatepicker(el, el, el.pgDatePick);
+    }
+
+    function removeDate(el) {
+        disposeDatepicker(el);
+        el.pgDatePick = null;
+    }
+
+    // The posted field's classes a part takes over: sizes, validation,
+    // margins.
+    function partClasses(el, extra) {
+        var own = String(el.className || '').split(/\s+/), out = ['form-control'].concat(extra);
+        for (var i = 0; i < own.length; i++) {
+            if (own[i] && own[i] !== 'form-control' && own[i] !== 'pg-field-native' && out.indexOf(own[i]) < 0) {
+                out.push(own[i]);
+            }
+        }
+        return out.join(' ');
+    }
+
+    function timeInput(el) {
+        var t = document.createElement('input');
+        t.type = 'time';
+        t.className = partClasses(el, ['pg-time']);
+        t.disabled = !!el.disabled;
+        return t;
+    }
+
+    // The posted field stays the store and is hidden; the parts people use
+    // come after it, named by the field's label.
+    function hideNative(el, parts) {
+        el.classList.add('pg-field-native');
+        el.pgTabindex = el.getAttribute('tabindex');
+        el.setAttribute('tabindex', '-1');
+        var named = el.id ? document.querySelector('label[for="' + el.id + '"]') : null;
+        if (named) {
+            named.id = named.id || (el.id + '_label');
+            parts.forEach(function (p) { p.setAttribute('aria-labelledby', named.id); });
+        }
+    }
+
+    // Date and time: a date box with a Datepicker and an <input type="time">
+    // in a group after the hidden field, which gets the two composed in the
+    // site text ('26/10/2026 5:00 PM') on every change.
+    function drawDateTime(el) {
+        var group = document.createElement('div'), date = document.createElement('input'), time = timeInput(el);
+        group.className = 'pg-datetime';
+        date.type = 'text';
+        date.className = partClasses(el, ['pg-datetime-date']);
+        date.setAttribute('autocomplete', 'off');
+        date.disabled = !!el.disabled;
+        group.appendChild(date);
+        group.appendChild(time);
+        el.parentNode.insertBefore(group, el.nextSibling);
+        hideNative(el, [date, time]);
+        el.pgParts = { group: group, date: date, time: time };
+        fillDateTime(el);
+        var compose = function () {
+            var day = String(date.value).trim(), iso = parseDate(day);
+            if (day === '') {
+                el.value = '';
+            } else {
+                // A box that is not a date posts as typed, for the server to
+                // refuse as it always did.
+                el.value = (iso ? formatDate(iso) : day) + ' ' + formatTime(time.value || '00:00');
+            }
+            fireChange(el);
+        };
+        date.pgDatePick = compose;
+        makeDatepicker(el, date, compose);
+        date.addEventListener('change', function () {
+            if (!date.pgDatePicking) {
+                compose();
+            }
+        });
+        time.addEventListener('change', compose);
+    }
+
+    function fillDateTime(el) {
+        var p = el.pgParts, m = /^(\S+)(?:\s+(.+))?$/.exec(String(el.value || '').trim());
+        p.date.value = m ? m[1] : '';
+        p.time.value = m && m[2] ? parseTime(m[2]) : '';
+    }
+
+    function showDateTime(el) {
+        if (el.pgParts) {
+            fillDateTime(el);
+            showDate(el, el.pgParts.date);
+        }
+    }
+
+    // Time only: an <input type="time"> after the hidden field, which keeps
+    // the text the server reads ('5:00 PM').
+    function drawTime(el) {
+        var time = timeInput(el);
+        el.parentNode.insertBefore(time, el.nextSibling);
+        hideNative(el, [time]);
+        el.pgParts = { group: time, time: time };
+        showTime(el);
+        time.addEventListener('change', function () {
+            el.value = time.value ? formatTime(time.value) : '';
+            fireChange(el);
+        });
+    }
+
+    function showTime(el) {
+        if (el.pgParts) {
+            el.pgParts.time.value = parseTime(el.value);
+        }
+    }
+
+    function removeParts(el) {
+        var p = el.pgParts;
+        if (!p) {
+            return;
+        }
+        if (p.date) {
+            disposeDatepicker(p.date);
+        }
+        if (p.group.parentNode) {
+            p.group.parentNode.removeChild(p.group);
+        }
+        el.classList.remove('pg-field-native');
+        if (el.pgTabindex === null || el.pgTabindex === undefined) {
+            el.removeAttribute('tabindex');
+        } else {
+            el.setAttribute('tabindex', el.pgTabindex);
+        }
+        el.pgParts = null;
+    }
+
+    // The engine of a kind; a combobox that searches the server
+    // (data-pg-source) stays on select2, Combobox searches only its items.
+    function engineName(kind, el) {
+        if (kind === 'combobox' && el && el.hasAttribute && el.hasAttribute('data-pg-source')) {
+            return 'v5';
+        }
+        return ENGINES.v6[kind] ? 'v6' : 'v5';
+    }
+
+    // The engine that drew the field, else the one that would draw it.
+    function engine(kind, el) {
+        return ENGINES[(el && el.pgFieldEngine) || engineName(kind, el)][kind];
     }
 
     // ------------------------------------------------------------ fields
@@ -304,11 +871,19 @@
         if (!el || !kind || el.pgFieldKind) {
             return el;
         }
-        var e = engine(kind);
+        var e = engine(kind, el);
         if (!e.ready()) {
+            if (e.later && e.later() && !el.pgFieldWaiting) {
+                el.pgFieldWaiting = true;
+                window.pgUI.ready(function () {
+                    el.pgFieldWaiting = false;
+                    initField(el, kind);
+                });
+            }
             return el;
         }
         el.pgFieldKind = kind;
+        el.pgFieldEngine = engineName(kind, el);
         e.init(el);
         return el;
     }
@@ -330,8 +905,9 @@
     function destroy(el) {
         el = element(el);
         if (el && el.pgFieldKind) {
-            engine(el.pgFieldKind).destroy(el);
+            engine(el.pgFieldKind, el).destroy(el);
             el.pgFieldKind = '';
+            el.pgFieldEngine = '';
         }
         return el;
     }
@@ -373,7 +949,7 @@
         el.value = text;
         fireChange(el);
         if (el.pgFieldKind) {
-            engine(kind).redraw(el);
+            engine(kind, el).redraw(el);
         }
     }
 
@@ -392,8 +968,8 @@
         return function () { el.removeEventListener('change', fn); };
     }
 
-    // data-pg-separator, as liveform prints it; data-separator is what
-    // tagin itself reads from hand-written markup.
+    // data-pg-separator, as liveform prints it; data-separator as older
+    // hand-written markup has it.
     function separator(el) {
         return el.getAttribute('data-pg-separator') || el.getAttribute('data-separator') || ',';
     }
@@ -448,14 +1024,14 @@
             }
             fireChange(el);
             if (el.pgFieldKind) {
-                engine('combobox').redraw(el);
+                engine('combobox', el).redraw(el);
             }
         },
         // After options were added or removed by a script.
         refresh: function (el) {
             el = element(el);
             if (el && el.pgFieldKind) {
-                engine('combobox').redraw(el);
+                engine('combobox', el).redraw(el);
             }
         }
     };
@@ -502,7 +1078,8 @@
         onChange: onChange,
         destroy: destroy,
         switchKind: switchKind,
-        engine: function () { return engineName; },
+        // 'v6' or 'v5': the engine that draws a kind (a field's, if given).
+        engine: engineName,
         hooks: HOOKS
     };
     window.pgChips = pgChips;

@@ -402,7 +402,7 @@ function ws_templates_builtin()
         'builtin:new_customer' => array(
             'name'        => lang('New customer'),
             'description' => lang('Kick-off, list of needs, offer, contract and the start of work for a new customer.'),
-            'icon'        => 'bi-person-plus',
+            'icon'        => 'bi-person-workspace',
             'color'       => 9,
             'summary'     => lang('Who the customer is, who we talk to there, what they want and by when. Fill this in after the kick-off meeting.'),
             'pinned'      => lang('The list of needs and the offer are followed on the Tasks tab; what is agreed is kept on the Decisions tab.'),
@@ -454,7 +454,7 @@ function ws_templates_builtin()
         'builtin:month_end' => array(
             'name'        => lang('Month-end closing'),
             'description' => lang('Checking the invoices, following up the payments due and the report of the month.'),
-            'icon'        => 'bi-calendar-check',
+            'icon'        => 'bi-calendar-event',
             'color'       => 3,
             'summary'     => lang('Every month-end: check the invoices, follow up what is due and report the month.'),
             'pinned'      => lang('The report of the month is shared here once the invoices and the collections are checked.'),
@@ -598,6 +598,34 @@ function ws_templates_list($viewer, $with_archived = false)
     }
 
     return $out;
+}
+
+/**
+ * The colour and icon a template gives a channel made from it: each only
+ * where the channel has none of its own, the icon only when it is one of the
+ * channel icons (ws_channel_icon_check()); one outside that list stays on
+ * the template.
+ *
+ * @param array $channel a row of ws_channels
+ * @param array $template ws_template() shape
+ * @return array column => value, only the columns to write
+ */
+function ws_template_channel_look($channel, $template)
+{
+    $look = array();
+    $color = ws_palette_place($template['color'] ?? 0);
+
+    if (($color > 0) && (ws_palette_place($channel['color'] ?? 0) === 0)) {
+        $look['color'] = $color;
+    }
+
+    $icon = ws_channel_icon_check((string) ($template['icon'] ?? ''));
+
+    if ($icon['ok'] && ($icon['icon'] !== '') && (ws_channel_icon_chosen($channel) === '')) {
+        $look['icon'] = $icon['icon'];
+    }
+
+    return $look;
 }
 
 /**
@@ -902,7 +930,24 @@ function ws_template_apply($viewer, $channel, $template, $options = array())
         return $fail(lang('You are sending messages too quickly. Please wait a moment.'));
     }
 
-    // Writing starts here.
+    // Writing starts here. A channel made from the template a moment ago
+    // takes its colour and icon where its creator chose none.
+    if ($new_channel) {
+        $set = array();
+
+        foreach (ws_template_channel_look($channel, $template) as $column => $value) {
+            if (($column === 'color') && ws_channel_colors_ready()) {
+                $set[] = "color = '" . (int) $value . "'";
+            } elseif (($column === 'icon') && ws_channel_icons_ready()) {
+                $set[] = "icon = '" . e($value) . "'";
+            }
+        }
+
+        if (!empty($set)) {
+            db("UPDATE ws_channels SET " . implode(', ', $set) . " WHERE id = '" . (int) $channel['id'] . "'");
+        }
+    }
+
     $made = array();
     $broke = '';
     $finished = false;
@@ -1160,7 +1205,7 @@ function ws_template_from_channel($viewer, $channel)
         'builtin'       => false,
         'name'          => (string) $channel['name'],
         'description'   => (string) $channel['topic'],
-        'icon'          => '',
+        'icon'          => ws_channel_icon_chosen($channel),
         'color'         => ws_palette_place($channel['color'] ?? 0),
         'kind'          => ((string) $channel['kind'] === 'private') ? 'private' : 'public',
         'department_id' => (int) $channel['department_id'],
@@ -1281,9 +1326,9 @@ function ws_templates_settings_card($self_url, $viewer)
                 <span class="ws-tpl-icon"' . ($present['hex'] !== '' ? ' style="background:' . h($present['hex']) . '"' : '') . '><i class="bi ' . h($icon) . '" aria-hidden="true"></i></span>
                 <div class="ws-grow">
                     <div class="fw-semibold">' . h($present['name'])
-                        . ($present['builtin'] ? ' <span class="badge text-bg-light ms-1">' . h(lang('Built-in')) . '</span>' : '')
-                        . ($present['archived'] ? ' <span class="badge text-bg-secondary ms-1">' . h(lang('In the archive')) . '</span>' : '') . '</div>
-                    <div class="small text-body-secondary">'
+                        . ($present['builtin'] ? ' <span class="badge badge-subtle theme-secondary ms-1">' . h(lang('Built-in')) . '</span>' : '')
+                        . ($present['archived'] ? ' <span class="badge theme-secondary ms-1">' . h(lang('In the archive')) . '</span>' : '') . '</div>
+                    <div class="small fg-secondary">'
                         . h(lang(array('string' => '{var:1} tasks · {var:2} notes', 'vars' => array($present['tasks'], $present['notes']))))
                         . ($present['builtin'] ? '' : ' · ' . h(lang(array('string' => 'used {var:1} times', 'vars' => $present['uses']))))
                         . ($present['description'] !== '' ? ' · ' . h($present['description']) : '') . '
@@ -1294,13 +1339,13 @@ function ws_templates_settings_card($self_url, $viewer)
     }
 
     return '
-            <div class="card mt-4" id="ws-templates">
-                <div class="card-header d-flex align-items-center gap-2">
+            <div class="card mt-7" id="ws-templates">
+                <div class="card-header d-flex align-items-center gap-3">
                     <h2 class="h6 mb-0 ws-grow"><i class="bi bi-layout-text-window me-1" aria-hidden="true"></i>' . h(lang('Channel templates')) . '</h2>
-                    <a class="btn btn-sm btn-primary rounded-pill px-3" href="' . h($edit_url) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New template')) . '</a>
+                    <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h($edit_url) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New template')) . '</a>
                 </div>
                 <div class="card-body">
-                    <p class="small text-body-secondary">' . h(lang('A template sets a channel up with its tasks, notes, summary and pinned message: when a channel is made from it, or later from the channel\'s menu.')) . '</p>
+                    <p class="small fg-secondary">' . h(lang('A template sets a channel up with its tasks, notes, summary and pinned message: when a channel is made from it, or later from the channel\'s menu.')) . '</p>
                     ' . $rows . '
                 </div>
             </div>';

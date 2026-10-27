@@ -66,6 +66,14 @@ function pg_parasut_credentials_for_save()
 
 
 
+    // Reference price rule (11.0.49). The card is drawn only once the column
+    // exists; an unknown value is stored as the default rule.
+    $sql_reference_price_rule = '';
+
+    if (pg_price_reference_rule_ready() && (post_value('ecommerce_reference_price_rule') !== NULL)) {
+        $sql_reference_price_rule = "ecommerce_reference_price_rule = '" . e(pg_price_reference_rule_from_input(post_value('ecommerce_reference_price_rule'))) . "',";
+    }
+
     // Checkout legal documents (11.0.1). A template naming a field that does
     // not exist would print nothing where a customer expects a fact, and a
     // template past the column's size would be cut; either refuses the whole
@@ -180,14 +188,14 @@ function pg_parasut_credentials_for_save()
                 
                 // if the decryption was successful, then encrypt it with new key and store it
                 if (is_numeric($order['card_number']) == TRUE) {
-                    $query = "UPDATE orders SET card_number = '" . e(encrypt_credit_card_number($order['card_number'], $new_encryption_key)) . "' WHERE id = '" . (int) $order['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "UPDATE orders SET card_number = ? WHERE id = ?";
+                    $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
                 }
                 
             // else the credit card number is not already encrypted, so encrypt it for the first time
             } else {
-                $query = "UPDATE orders SET card_number = '" . e(encrypt_credit_card_number($order['card_number'], $new_encryption_key)) . "' WHERE id = '" . (int) $order['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE orders SET card_number = ? WHERE id = ?";
+                $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
             }
         }
     }
@@ -515,6 +523,7 @@ function pg_parasut_credentials_for_save()
             " . $sql_erp_due . "
             " . $sql_erp_overdue . "
             " . $sql_legal_documents . "
+            " . $sql_reference_price_rule . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',
             ecommerce_diners_club = '" . escape(post_value('ecommerce_diners_club')) . "',
@@ -630,8 +639,8 @@ function pg_parasut_credentials_for_save()
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // create new record for next order number
-        $query = "INSERT INTO next_order_number VALUES ('" . escape($ecommerce_next_order_number) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "INSERT INTO next_order_number VALUES (?)";
+        $result = db_q($query, array((string) $ecommerce_next_order_number)) or output_error('Query failed.');
         
         // release lock on table
         $query = "UNLOCK TABLES";

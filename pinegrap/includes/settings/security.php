@@ -46,13 +46,13 @@ if ($form_limits_ready) {
                                         <div class="col-12">
                                             <div class="form-label fw-bold mb-1">' . lang('Form Submission Limits') . '</div>
                                             <div class="form-text mt-0">' . lang('How many custom form submissions are accepted from one visitor address, and for one e-mail address or e-mail domain the form mails, subscribes or registers. A form refused by a limit is shown again with what was typed. Staff are not counted. 0 turns a limit off. The e-mail domain limit is off by default: every visitor with an address at that domain shares it, so a few submissions could refuse a whole provider such as gmail.com for an hour.') . '</div>
-                                            <div class="row gy-3 mt-0">' . $form_limit_inputs . '
+                                            <div class="row gy-5 mt-0">' . $form_limit_inputs . '
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . ($form_spam_blacklist ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="form_spam_blacklist" name="form_spam_blacklist"/>
-                                                <label class="form-check-label" for="form_spam_blacklist">' . lang('Check visitors against StopForumSpam') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($form_spam_blacklist ? ' checked="checked"' : '') . ' class="" type="checkbox" id="form_spam_blacklist" name="form_spam_blacklist"/></div>
+                                                <label class="" for="form_spam_blacklist">' . lang('Check visitors against StopForumSpam') . '</label>
                                                 <div class="form-text">' . lang('Before a form, comment or registration is accepted, the IP address of the visitor is sent to stopforumspam.com, and a listed address is refused. When the service cannot be reached, the submission is accepted.') . '</div>
                                             </div>
                                         </div>';
@@ -63,39 +63,39 @@ $pg_settings_cards[] = '
     <div id="pgset-session" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Session & Password') . '</span>
-                <a href="view_sessions.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-shield-lock me-1"></i>' . lang('Sessions') . '</a>
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Session & Password') . '</span>
+                <a href="view_sessions.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-shield-lock me-1"></i>' . lang('Sessions') . '</a>
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $mass_deletion_checked . ' class="form-check-input" type="checkbox" id="mass_deletion" name="mass_deletion"/>
-                                                <label class="form-check-label" for="mass_deletion">' . lang('Allow Mass Deletion') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $mass_deletion_checked . ' class="" type="checkbox" id="mass_deletion" name="mass_deletion"/></div>
+                                                <label class="" for="mass_deletion">' . lang('Allow Mass Deletion') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $strong_password_checked . ' class="form-check-input" type="checkbox" id="strong_password" name="strong_password"/>
-                                                <label class="form-check-label" for="strong_password">' . lang('Require Strong Password') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $strong_password_checked . ' class="" type="checkbox" id="strong_password" name="strong_password"/></div>
+                                                <label class="" for="strong_password">' . lang('Require Strong Password') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $password_hint_checked . ' class="form-check-input" type="checkbox" id="password_hint" name="password_hint"/>
-                                                <label class="form-check-label" for="password_hint">' . lang('Allow Password Hint') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $password_hint_checked . ' class="" type="checkbox" id="password_hint" name="password_hint"/></div>
+                                                <label class="" for="password_hint">' . lang('Allow Password Hint') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $remember_me_checked . ' class="form-check-input" type="checkbox" id="remember_me" name="remember_me"/>
-                                                <label class="form-check-label" for="remember_me">' . lang('Allow Remember Me') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $remember_me_checked . ' class="" type="checkbox" id="remember_me" name="remember_me"/></div>
+                                                <label class="" for="remember_me">' . lang('Allow Remember Me') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $forgot_password_link_checked . ' class="form-check-input" type="checkbox" id="forgot_password_link" name="forgot_password_link"/>
-                                                <label class="form-check-label" for="forgot_password_link">' . lang('Forgot Password Link') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $forgot_password_link_checked . ' class="" type="checkbox" id="forgot_password_link" name="forgot_password_link"/></div>
+                                                <label class="" for="forgot_password_link">' . lang('Forgot Password Link') . '</label>
                                             </div>
                                         </div>
 ' . $output_login_throttle . '
@@ -112,14 +112,14 @@ $pg_settings_cards[] = '
     <div id="pgset-captcha" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Spam Protection') . '</span>
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Spam Protection') . '</span>
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $captcha_checked . ' class="form-check-input" type="checkbox" id="captcha" name="captcha"/>
-                                                <label class="form-check-label" for="captcha">' . lang('Enable CAPTCHA') . ' (' . lang('spam protection') . ')</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $captcha_checked . ' class="" type="checkbox" id="captcha" name="captcha"/></div>
+                                                <label class="" for="captcha">' . lang('Enable CAPTCHA') . ' (' . lang('spam protection') . ')</label>
                                             </div>
                                         </div>
 ' . (function_exists('pg_captcha_settings_fields') ? pg_captcha_settings_fields() : '') . '
@@ -134,28 +134,28 @@ $pg_settings_cards[] = '
     <div id="pgset-device" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Device') . '</span>
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Device') . '</span>
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch ">
-                                                <input value="1"' . $remember_me_device_limit_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="remember_me_device_limit_enabled" name="remember_me_device_limit_enabled" data-bs-target="#remember_me_device_limit_row"/>
-                                                <label class="form-check-label" for="remember_me_device_limit_enabled">' . lang('Limit devices per account') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $remember_me_device_limit_enabled_checked . ' class="collapse-switcher" type="checkbox" id="remember_me_device_limit_enabled" name="remember_me_device_limit_enabled" data-bs-target="#remember_me_device_limit_row"/></div>
+                                                <label class="" for="remember_me_device_limit_enabled">' . lang('Limit devices per account') . '</label>
                                                 <div class="form-text">' . lang('Applies only while "Limit devices per account" is on. When a new device would exceed the limit, the visitor is asked to sign out the oldest.') . '</div>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="remember_me_device_limit_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                                                 <div class="popover-body">
-                                                    <div class="row gy-3">
+                                                    <div class="row gy-5">
                                                         <div class="pg-f-xs">
                                                             <label for="remember_me_device_limit" class="form-label">' . lang('Max devices per account') . '</label>
                                                             <input type="number" min="1" step="1" name="remember_me_device_limit" id="remember_me_device_limit" class="form-control" value="' . h(max(1, (int) $remember_me_device_limit)) . '"/>
                                                         </div>
                                                         <div class="col-12">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $remember_me_device_limit_strict_checked . ' class="form-check-input" type="checkbox" id="remember_me_device_limit_strict" name="remember_me_device_limit_strict"/>
-                                                                <label class="form-check-label" for="remember_me_device_limit_strict">' . lang('Refuse new sign-ins when the limit is full') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $remember_me_device_limit_strict_checked . ' class="" type="checkbox" id="remember_me_device_limit_strict" name="remember_me_device_limit_strict"/></div>
+                                                                <label class="" for="remember_me_device_limit_strict">' . lang('Refuse new sign-ins when the limit is full') . '</label>
                                                                 <div class="form-text">' . lang('The visitor is not offered "sign out my other devices" - reaching the limit refuses the sign-in instead. That offer is what makes a shared account workable, so locking closes it. A device releases its place when it signs out, or after 12 hours of inactivity; you can also free one from the sessions screen.') . '</div>
                                                             </div>
                                                         </div>
@@ -189,20 +189,58 @@ $pg_settings_cards[] = '
     <div id="pgset-mfa" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Two-Step Verification') . '</span>
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Two-Step Verification') . '</span>
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                                         <div class="col-12">
                                             <label for="mfa_required_role" class="form-label">' . lang('Required for') . '</label>
-                                            <select name="mfa_required_role" id="mfa_required_role" class="form-select pg-f-md"' . ($mfa_available ? '' : ' disabled="disabled"') . '>' . $mfa_role_options . '</select>
+                                            <select name="mfa_required_role" id="mfa_required_role" class="form-control pg-f-md"' . ($mfa_available ? '' : ' disabled="disabled"') . '>' . $mfa_role_options . '</select>
                                             <div class="form-text">' . lang('Two-step verification asks for a code from an authenticator app after the password. People in a required role who have not set it up are asked to when they next sign in. Anybody can turn it on from their account page.') . '</div>
-                                            ' . ($mfa_available ? '' : '<div class="alert alert-warning mt-2 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . lang('Two-step verification needs an encryption key in config.php; set one from Settings › Commerce (Reset Encryption Key) first.') . '</div>') . '
+                                            ' . ($mfa_available ? '' : '<div class="alert theme-warning mt-3 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . lang('Two-step verification needs an encryption key in config.php; set one from Settings › Commerce (Reset Encryption Key) first.') . '</div>') . '
+                                        </div>
+                                        ' . ($passkey_signin_ready ? '<div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($passkey_signin ? ' checked="checked"' : '') . ' class="" type="checkbox" id="passkey_signin" name="passkey_signin"/></div>
+                                                <label class="" for="passkey_signin">' . h(lang('Sign in with a passkey alone')) . '</label>
+                                            </div>
+                                            <div class="form-text">' . h(lang('The sign-in screens show a "Sign in with a passkey" button. A passkey verified on the device (PIN, fingerprint or face) signs the person in without a password or code. People add passkeys from their account page.')) . '</div>
+                                            ' . ($passkeys_available ? '' : '<div class="alert theme-warning mt-3 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h(pg_passkey_refusal('unavailable', 'signin')) . '</div>') . '
+                                        </div>' : '') . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
+// ── Audit Trail ──
+// How long the trail keeps its lines; the general job removes older ones
+// (includes/fn/privacy_retention.php). Not drawn before the 2026.11.0 step
+// adds the column, rather than offering a field that saves nowhere.
+if ($audit_retention_ready) {
+    $audit_retention_limits = pg_privacy_retention_limits();
+
+    $pg_settings_cards[] = '
+    <div id="pgset-audit" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Audit Trail') . '</span>
+                <a class="btn btn-sm btn-outline theme-secondary" href="view_audit_log.php">' . lang('Open') . '</a>
+            </div>
+            <div class="card-body">
+                <div class="row gy-12">
+                                        <div class="col-12">
+                                            <label for="audit_log_retention_years" class="form-label">' . lang('Keep audit trail lines for') . '</label>
+                                            <div class="input-group pg-f-sm">
+                                                <input type="text" name="audit_log_retention_years" id="audit_log_retention_years" class="form-control" value="' . (int) $audit_retention_years . '" size="3" maxlength="2" inputmode="numeric" style="text-align: right;"/>
+                                                <span class="input-group-text">' . lang('years') . '</span>
+                                            </div>
+                                            <div class="form-text">' . h(lang(array('string' => 'Who changed what, with the values before and after. Older lines are removed by the general job once a day. 0 keeps every line; otherwise {var:1} to {var:2} years. The consent log keeps its history for {var:3} years, and always the answer in force.', 'vars' => array($audit_retention_limits['audit_min'], $audit_retention_limits['audit_max'], $audit_retention_limits['consent_years'])))) . '</div>
                                         </div>
                 </div>
             </div>
         </div>
     </div>';
+}
 
 // ── Sign in with Google, Microsoft and Apple ──
 // One card, a switch per provider. Google's application and switch are the
@@ -214,14 +252,14 @@ $pg_settings_cards[] = '
 // the card says so and only Google's fields are there.
 $signin_google_body = '
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch ">
-                                                <input value="1"' . $oauth_google_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="oauth_google_enabled" name="oauth_google_enabled" data-bs-target="#oauth_google_row"/>
-                                                <label class="form-check-label" for="oauth_google_enabled">' . lang('Enable Google Sign-In') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $oauth_google_enabled_checked . ' class="collapse-switcher" type="checkbox" id="oauth_google_enabled" name="oauth_google_enabled" data-bs-target="#oauth_google_row"/></div>
+                                                <label class="" for="oauth_google_enabled">' . lang('Enable Google Sign-In') . '</label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="oauth_google_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                                                 <div class="popover-body">
-                                                    <div class="row gy-3">
+                                                    <div class="row gy-5">
                                                         <div class="col-12">
                                                             <label class="form-label" for="oauth_google_client_id">' . lang('Google Client ID') . '</label>
                                                             <input class="form-control" type="text" id="oauth_google_client_id" name="oauth_google_client_id" value="' . h($oauth_google_client_id) . '" autocomplete="off"/>
@@ -247,7 +285,7 @@ $signin_redirect_field = function ($id, $label) {
                                                             <input class="form-control font-monospace" type="text" id="' . $id . '" readonly onclick="this.select()" value="' . h(pg_signin_redirect_uri()) . '"/>
                                                         </div>';
 };
-$signin_not_ready = '<div class="alert alert-info mb-0" role="alert">' . h(lang('The database has not been upgraded yet. Run the software update first.')) . '</div>';
+$signin_not_ready = '<div class="alert theme-info mb-0" role="alert">' . h(lang('The database has not been upgraded yet. Run the software update first.')) . '</div>';
 
 // Which buttons visitors see now. pg_signin_buttons() prints them together,
 // in this order, on every sign-in, registration and membership screen; a
@@ -260,7 +298,7 @@ $signin_state_html = '<div class="col-12"><div class="small mb-0">'
         : '<i class="bi bi-eye-slash me-1" aria-hidden="true"></i>' . h(lang('No sign-in button is shown to visitors now.')))
     . '</div>'
     . ($signin_state['hidden']
-        ? '<div class="alert alert-warning py-2 small mt-2 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>'
+        ? '<div class="alert theme-warning py-3 small mt-3 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>'
             . h(lang(array('string' => 'Switched on but hidden until their settings are complete: {var:1}', 'vars' => implode(', ', $signin_state['hidden'])))) . '</div>'
         : '')
     . '</div>';
@@ -271,19 +309,19 @@ if ($signin_ready) {
 
     $signin_microsoft_body = '
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $signin_microsoft_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="signin_microsoft" name="signin_microsoft" data-bs-target="#signin_microsoft_row"/>
-                                                <label class="form-check-label" for="signin_microsoft">' . lang('Enable Microsoft Sign-In') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $signin_microsoft_checked . ' class="collapse-switcher" type="checkbox" id="signin_microsoft" name="signin_microsoft" data-bs-target="#signin_microsoft_row"/></div>
+                                                <label class="" for="signin_microsoft">' . lang('Enable Microsoft Sign-In') . '</label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="signin_microsoft_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                                                 <div class="popover-body">
-                                                    <div class="row gy-3">
+                                                    <div class="row gy-5">
                                                         <div class="col-12">
                                                             ' . ($signin_microsoft_app_ready
-                                                                ? '<div class="alert alert-success py-2 small mb-2">' . h(lang('Work, school and personal Microsoft accounts sign in through the Microsoft application of Connected accounts.')) . '</div>'
-                                                                : '<div class="alert alert-warning py-2 small mb-2">' . h(lang('Set up the Microsoft application on Connected accounts first. Until then the button stays hidden.')) . '</div>') . '
-                                                            <a href="connections.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Connected accounts')) . '</a>
+                                                                ? '<div class="alert theme-success py-3 small mb-3">' . h(lang('Work, school and personal Microsoft accounts sign in through the Microsoft application of Connected accounts.')) . '</div>'
+                                                                : '<div class="alert theme-warning py-3 small mb-3">' . h(lang('Set up the Microsoft application on Connected accounts first. Until then the button stays hidden.')) . '</div>') . '
+                                                            <a href="connections.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Connected accounts')) . '</a>
                                                         </div>'
                                                         . $signin_redirect_field('signin_microsoft_redirect', lang('Redirect URI (add this as a further Web redirect URI to the Microsoft application)')) . '
                                                         <div class="col-12">
@@ -308,30 +346,30 @@ if ($signin_ready) {
 
     $signin_apple_body = '
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $signin_apple_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="signin_apple" name="signin_apple" data-bs-target="#signin_apple_row"/>
-                                                <label class="form-check-label" for="signin_apple">' . lang('Enable Apple Sign-In') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $signin_apple_checked . ' class="collapse-switcher" type="checkbox" id="signin_apple" name="signin_apple" data-bs-target="#signin_apple_row"/></div>
+                                                <label class="" for="signin_apple">' . lang('Enable Apple Sign-In') . '</label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="signin_apple_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                                                 <div class="popover-body">
-                                                    <div class="row gy-3">
+                                                    <div class="row gy-5">
                                                         ' . (($signin_apple_provider && !pg_signin_app_ready($signin_apple_provider, $signin_apple_app))
-                                                            ? '<div class="col-12"><div class="alert alert-warning py-2 small mb-0">' . h(lang('Fill in the Services ID, the Team ID, the Key ID and the private key. Until then the button stays hidden.')) . '</div></div>'
+                                                            ? '<div class="col-12"><div class="alert theme-warning py-3 small mb-0">' . h(lang('Fill in the Services ID, the Team ID, the Key ID and the private key. Until then the button stays hidden.')) . '</div></div>'
                                                             : '') . '
                                                         <div class="col-12">
-                                                            <ol class="small ps-3 mb-0">' . $signin_apple_steps . '</ol>
+                                                            <ol class="small ps-5 mb-0">' . $signin_apple_steps . '</ol>
                                                         </div>'
                                                         . $signin_redirect_field('signin_apple_redirect', lang('Return URL (add this to the Services ID)')) . '
                                                         <div class="col-12">
                                                             <label class="form-label" for="apple_client_id">' . lang('Services ID') . '</label>
                                                             <input class="form-control" type="text" id="apple_client_id" name="apple_client_id" value="' . h(is_array($signin_apple_app) ? $signin_apple_app['client_id'] : '') . '" maxlength="255" autocomplete="off" spellcheck="false" placeholder="com.example.signin"/>
                                                         </div>
-                                                        <div class="col-12 col-md-6">
+                                                        <div class="col-12 md:col-6">
                                                             <label class="form-label" for="apple_team_id">' . lang('Team ID') . '</label>
                                                             <input class="form-control font-monospace" type="text" id="apple_team_id" name="apple_team_id" value="' . h($signin_apple_option('team_id')) . '" maxlength="10" autocomplete="off" spellcheck="false"/>
                                                         </div>
-                                                        <div class="col-12 col-md-6">
+                                                        <div class="col-12 md:col-6">
                                                             <label class="form-label" for="apple_key_id">' . lang('Key ID') . '</label>
                                                             <input class="form-control font-monospace" type="text" id="apple_key_id" name="apple_key_id" value="' . h($signin_apple_option('key_id')) . '" maxlength="10" autocomplete="off" spellcheck="false"/>
                                                         </div>
@@ -341,7 +379,7 @@ if ($signin_ready) {
                                                             <div class="form-text">' . h(lang('Kept encrypted with the site\'s key and never shown again.')) . '</div>
                                                         </div>
                                                         <div class="col-12">
-                                                            <a class="btn btn-sm btn-outline-secondary" href="' . h(is_array($signin_apple_provider) ? $signin_apple_provider['console_url'] : '') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => 'Apple'))) . '</a>
+                                                            <a class="btn btn-sm btn-outline theme-secondary" href="' . h(is_array($signin_apple_provider) ? $signin_apple_provider['console_url'] : '') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => 'Apple'))) . '</a>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -356,10 +394,10 @@ $pg_settings_cards[] = '
     <div id="pgset-signin" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Sign in with Google, Microsoft and Apple') . '</span>
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Sign in with Google, Microsoft and Apple') . '</span>
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                                         <div class="col-12">
                                             <div class="form-text mt-0">' . h(lang('Every provider follows the same rules: an account is found by the provider account connected to it, else by the same verified e-mail address. The staff login never opens an account, the registration and membership pages do. Two-step verification still applies.')) . '</div>
                                         </div>'
@@ -374,14 +412,14 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-membership" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Registration & Membership') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="pg-f-lg">
                                             <label for="registration_contact_group_id" class="form-label">' . lang('Registration Contact Group') . '</label>
-                                            <select class="form-select" id="registration_contact_group_id" name="registration_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group') ) )) . '-</option>' . select_contact_group($registration_contact_group_id, $user) . '</select>
+                                            <select class="form-control" id="registration_contact_group_id" name="registration_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group') ) )) . '-</option>' . select_contact_group($registration_contact_group_id, $user) . '</select>
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="registration_email_address" class="form-label">' . lang('Registration E-mail Address') . '</label>
@@ -393,23 +431,23 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="membership_contact_group_id" class="form-label">' . lang('Membership Contact Group') . '</label>
-                                            <select class="form-select" id="membership_contact_group_id" name="membership_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group') ) )) . '-</option>' . select_contact_group($membership_contact_group_id, $user) . '</select>
+                                            <select class="form-control" id="membership_contact_group_id" name="membership_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group') ) )) . '-</option>' . select_contact_group($membership_contact_group_id, $user) . '</select>
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="membership_email_address" class="form-label">' . lang('Membership E-mail Address') . '</label>
                                             <input type="text" name="membership_email_address" id="membership_email_address" class="form-control" value="' . h($membership_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
                                         </div>
                                         <div class="col-12  ">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox" name="membership_expiration_warning_email" id="membership_expiration_warning_email" value="1"' . $membership_expiration_warning_email_checked . ' class="form-check-input collapse-switcher" data-bs-target="#membership_expiration_warning_email_row"/>
-                                                <label class="form-check-label" for="membership_expiration_warning_email">' . lang('Send Expiration Warning E-mail to Members') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input type="checkbox" name="membership_expiration_warning_email" id="membership_expiration_warning_email" value="1"' . $membership_expiration_warning_email_checked . ' class="collapse-switcher" data-bs-target="#membership_expiration_warning_email_row"/></div>
+                                                <label class="" for="membership_expiration_warning_email">' . lang('Send Expiration Warning E-mail to Members') . '</label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="membership_expiration_warning_email_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(90px, 0px);"></div>
                                                 <div class="popover-body">
-                                                   <div class="row gy-3">
+                                                   <div class="row gy-5">
                                                         <div class="col-12">
-                                                            <div class="alert alert-warning">' . lang('Requires scheduled task for membership job') . '</div>
+                                                            <div class="alert theme-warning">' . lang('Requires scheduled task for membership job') . '</div>
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="membership_expiration_warning_email_subject" class="form-label">' . lang('Subject') . '</label>
@@ -418,7 +456,7 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="membership_expiration_warning_email_page_id" class="form-label">' . lang('Page') . '</label>
-                                                            <select class="form-select" id="membership_expiration_warning_email_page_id" name="membership_expiration_warning_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page') ) )) . '-</option>' . select_page($membership_expiration_warning_email_page_id) . '</select>
+                                                            <select class="form-control" id="membership_expiration_warning_email_page_id" name="membership_expiration_warning_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page') ) )) . '-</option>' . select_page($membership_expiration_warning_email_page_id) . '</select>
                                                         </div>
                                                         <div class="pg-f-xs">
                                                             <label for="membership_expiration_warning_email_days_before_expiration" class="form-label">' . lang('Send') . '</label>

@@ -32,9 +32,9 @@
  * record_type 'scheduled', action 'draft', the draft in its snapshot - on the
  * same card as the record changes (changes.php). Like 'mcp_call' it is not
  * one of ws_change_types(): it is not applied, the person who asked opens
- * it in the form and saves it there, and the card says so
- * (ws_scheduled_draft_saved()). Only they see its steps on the card: a
- * draft may name a channel the others there do not read.
+ * it as a new flow on the Flows canvas (ws_scheduled_draft_flow_open()) and
+ * publishes it there, and the card says so. Only they see its steps on the
+ * card: a draft may name a channel the others there do not read.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -626,7 +626,7 @@ function ws_scheduled_draft_condition($rule, $lists)
                 $param = max(0, ws_scheduled_draft_int($rule['param'] ?? 5));
             }
 
-            // Money is kept in minor units, the way the form sends it back.
+            // Money is kept in minor units, the way the form reads it.
             $value = ($metric['kind'] === 'money') ? (int) round(((float) $raw) * 100) : (int) round((float) $raw);
 
             return array('type' => 'metric', 'metric' => $key, 'param' => $param, 'op' => $operator, 'value' => $value);
@@ -914,7 +914,8 @@ function ws_scheduled_draft_ai_step($row, $state, $steps)
  * form still needs before it can be saved.
  *
  * @param array $viewer
- * @param array $data       ws_scheduled_draft_tidy() data
+ * @param array $data       a draft as the form reads it: ws_scheduled_draft_tidy()
+ *                          data, or an application's (ws_scheduled_form_data())
  * @param int   $channel_id the channel the form is opened in
  * @return array lines (name, label, text), problem
  */
@@ -924,7 +925,9 @@ function ws_scheduled_draft_outline($viewer, $data, $channel_id)
     $preview = ws_scheduled_preview($viewer, array(
         'id'         => 0,
         'name'       => (string) ($data['name'] ?? ''),
-        'rules'      => (array) ($data['rules'] ?? array()),
+        // The preview reads the rules as the form sends them, money in major
+        // units; the draft keeps them as the form reads them, in minor units.
+        'rules'      => ws_scheduled_rules_as_sent((array) ($data['rules'] ?? array()), ws_scheduled_money_metrics()),
         'action'     => is_array($data['action'] ?? null) ? $data['action'] : null,
         'follow'     => (array) ($data['follow'] ?? array()),
         'channel_id' => (int) $channel_id,
@@ -986,6 +989,138 @@ function ws_scheduled_draft_ai_store($row, $message_id, $drafts)
     }
 }
 
+// ─── Proposed by an application ─────────────────────────────────────────
+
+/**
+ * A scheduled action an application proposes (api_proposals.php), read from
+ * the change as sent: data is the scheduled action as an object (name,
+ * rules, action, follow, channel_id). Only the form's four
+ * parts are kept; the channel left out is the one it is proposed in; the
+ * reason is the note shown above the form. Nothing is checked against the
+ * site here (ws_scheduled_draft_proposal_row()).
+ *
+ * @param mixed $change     the change, as sent
+ * @param int   $channel_id the channel it is proposed in
+ * @return array ok, error, data (name, rules, action, follow), channel_id, notes
+ */
+function ws_scheduled_draft_proposal_input($change, $channel_id)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'data' => null, 'channel_id' => 0, 'notes' => array());
+    };
+    $is_list = function ($value) {
+        return is_array($value) && (array_keys($value) === range(0, count($value) - 1));
+    };
+
+    $change = is_array($change) ? $change : array();
+
+    if ((string) ($change['action'] ?? 'draft') !== 'draft') {
+        return $fail(lang('A scheduled action is proposed with the action draft: the person opens it in its form and saves it.'));
+    }
+
+    $sent = $change['data'] ?? null;
+
+    if (!is_array($sent) || (!empty($sent) && $is_list($sent))) {
+        return $fail(lang('data is the scheduled action: an object of name, rules, action, follow and channel_id.'));
+    }
+
+    $action = $sent['action'] ?? null;
+
+    if (($action !== null) && (!is_array($action) || (!empty($action) && $is_list($action)))) {
+        return $fail(lang('action is the step, as an object with a type.'));
+    }
+
+    foreach (array('rules', 'follow') as $name) {
+        if (isset($sent[$name]) && !(is_array($sent[$name]) && (empty($sent[$name]) || $is_list($sent[$name])))) {
+            return $fail(lang(array('string' => '{var:1} is a list.', 'vars' => $name)));
+        }
+    }
+
+    $reason = ws_scheduled_draft_line($change['reason'] ?? '', 500);
+
+    return array(
+        'ok'         => true,
+        'error'      => '',
+        'data'       => array(
+            'name'   => is_scalar($sent['name'] ?? null) ? (string) $sent['name'] : '',
+            'rules'  => array_values((array) ($sent['rules'] ?? array())),
+            'action' => $action,
+            'follow' => array_values((array) ($sent['follow'] ?? array())),
+        ),
+        'channel_id' => ((int) ($sent['channel_id'] ?? 0) > 0) ? (int) $sent['channel_id'] : (int) $channel_id,
+        'notes'      => ($reason !== '') ? array($reason) : array(),
+    );
+}
+
+/**
+ * A scheduled action an application proposes, as the row of its card: the
+ * save rehearsed with the person it is proposed to (ws_scheduled_save_check(),
+ * the panel's and the API's own check), so a step they could not save is
+ * refused now; then kept as Pinegrap AI's drafts are, a ws_ai_changes row of
+ * record_type 'scheduled', action 'draft', holding what the check read in the
+ * shape the form opens it in. Nothing is scheduled: the person opens it in
+ * the form and saves it in their own name.
+ *
+ * @param int   $asker_id   the person it is proposed to
+ * @param mixed $change     the change, as sent
+ * @param int   $channel_id the channel it is proposed in
+ * @return array ok, error, row (as ws_changes_input() gives them)
+ */
+function ws_scheduled_draft_proposal_row($asker_id, $change, $channel_id)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'row' => null);
+    };
+
+    $input = ws_scheduled_draft_proposal_input($change, $channel_id);
+
+    if (!$input['ok']) {
+        return $fail($input['error']);
+    }
+
+    if (!ws_scheduled_ready()) {
+        return $fail(lang('This site cannot take proposed changes yet: its database has to be upgraded.'));
+    }
+
+    $viewer = function_exists('ws_ai_viewer') ? ws_ai_viewer((int) $asker_id) : null;
+
+    if (!$viewer || !ws_can_schedule($viewer)) {
+        return $fail(lang('The person this is proposed to cannot schedule actions, so it cannot be proposed.'));
+    }
+
+    $checked = ws_scheduled_save_check($viewer, $input['data'] + array('id' => 0, 'channel_id' => $input['channel_id'], 'note_id' => 0));
+
+    if (!$checked['ok']) {
+        return $fail(($checked['field'] !== '') ? $checked['field'] . ': ' . $checked['error'] : $checked['error']);
+    }
+
+    // The form reads a draft as it reads a saved action, so the draft is kept
+    // as the check read it, in that shape (ws_scheduled_form_data()): a record
+    // named by its own name, money in minor units, the addresses as a list.
+    // Nothing else the application sent reaches the form.
+    return array('ok' => true, 'error' => '', 'row' => array(
+        'type'      => 'scheduled',
+        'action'    => 'draft',
+        'record_id' => 0,
+        'fields'    => array(),
+        'reason'    => '',
+        'snapshot'  => array('sentence' => '', 'data' => ws_scheduled_form_data($viewer, $checked['row']), 'notes' => $input['notes'], 'channel_id' => $input['channel_id']),
+    ));
+}
+
+/**
+ * The channel a draft opens its form in: the one an application's proposal
+ * named (its snapshot), else the channel of its card.
+ *
+ * @param array $row   ws_ai_changes
+ * @param array $draft its snapshot, decoded
+ * @return int
+ */
+function ws_scheduled_draft_home($row, $draft)
+{
+    return ((int) ($draft['channel_id'] ?? 0) > 0) ? (int) $draft['channel_id'] : (int) $row['channel_id'];
+}
+
 /**
  * A drafted scheduled action on the card under the answer, as
  * ws_changes_map() draws a change. Only the person who asked sees its name,
@@ -995,9 +1130,10 @@ function ws_scheduled_draft_ai_store($row, $message_id, $drafts)
  * @param array $row      ws_ai_changes
  * @param array $people   ws_people()
  * @param bool  $can_post may the viewer post where the card is
+ * @param string $proposer the application that proposed it, '' for Pinegrap AI
  * @return array
  */
-function ws_scheduled_draft_change_entry($viewer, $row, $people, $can_post)
+function ws_scheduled_draft_change_entry($viewer, $row, $people, $can_post, $proposer = '')
 {
     $draft = json_decode((string) $row['snapshot'], true);
     $draft = is_array($draft) ? $draft : array();
@@ -1006,10 +1142,11 @@ function ws_scheduled_draft_change_entry($viewer, $row, $people, $can_post)
     $pending = ($row['status'] === 'pending');
     $asker = ((int) $row['requested_by'] === (int) $viewer['id']);
     $may = $pending && $asker && $can_post && ws_can_schedule($viewer);
+    $home = ws_scheduled_draft_home($row, $draft);
     $items = array();
 
     if ($may) {
-        $outline = ws_scheduled_draft_outline($viewer, $data, (int) $row['channel_id']);
+        $outline = ws_scheduled_draft_outline($viewer, $data, $home);
 
         foreach ($outline['lines'] as $line) {
             $items[] = array('name' => $line['name'], 'label' => $line['label'], 'from' => '', 'to' => $line['text'], 'html' => '');
@@ -1040,18 +1177,105 @@ function ws_scheduled_draft_change_entry($viewer, $row, $people, $can_post)
         'decided'      => ((int) $row['decided_at'] > 0) ? ws_time_label($row['decided_at']) : '',
         // The card of the action saved from it, in the channel.
         'decision_id'  => (int) ($draft['message_id'] ?? 0),
-        // Not applied: opened in the form and saved there.
+        // The flow it was opened as (ws_scheduled_draft_flow_open()), for
+        // the one who asked.
+        'flow_id'      => $asker ? (int) ($draft['flow_id'] ?? 0) : 0,
+        // Not applied: opened as a new flow and built on there.
         'can_apply'    => false,
         'no_right'     => $pending && $asker && !ws_can_schedule($viewer),
         'can_dismiss'  => $pending && $can_post && ($asker || ((int) $viewer['role'] < 3)),
         'blocked'      => '',
+        'proposer'     => (string) $proposer,
         'draft'        => $may ? array(
-            'channel_id' => (int) $row['channel_id'],
+            'channel_id' => $home,
             'sentence'   => (string) ($draft['sentence'] ?? ''),
             'data'       => $data,
             'notes'      => $notes,
         ) : null,
     );
+}
+
+/**
+ * A draft as the new flow it opens as (pure): its name (a draft without one
+ * is named for what it was), the graph whose boxes run it the same way
+ * (ws_flow_graph_from_scheduled()) and what the flow keeps otherwise, in
+ * sentences.
+ *
+ * @param array    $draft the snapshot, decoded: data as the form reads it
+ * @param string[] $money the counts in money (ws_scheduled_money_metrics())
+ * @return array name, graph, left
+ */
+function ws_scheduled_draft_flow_input($draft, $money = array())
+{
+    $data = is_array($draft['data'] ?? null) ? $draft['data'] : array();
+    $made = ws_flow_graph_from_scheduled($data, $money, 0);
+    $name = trim((string) $made['name']);
+
+    return array(
+        'name'  => ($name !== '') ? $name : lang('Scheduled action'),
+        'graph' => $made['graph'],
+        'left'  => $made['left'],
+    );
+}
+
+/**
+ * Opens a draft as a new flow of the person who asked for it, a draft flow
+ * they build on and publish themselves: only while the draft waits, where
+ * they may still post, with the right to build flows. Its home is the
+ * draft's channel when a flow may live there (public or private), else none.
+ * The card then says it was opened as a flow and links to it.
+ *
+ * @param array $viewer
+ * @param int   $change_id the ws_ai_changes row of the draft
+ * @return array ok, error, flow_id, left
+ */
+function ws_scheduled_draft_flow_open($viewer, $change_id)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'flow_id' => 0, 'left' => array());
+    };
+
+    if (!function_exists('ws_changes_ready') || !ws_changes_ready() || !function_exists('ws_flows_ready') || !ws_flows_ready()) {
+        return $fail(lang('The database has to be updated first.'));
+    }
+
+    $row = db_item("SELECT * FROM ws_ai_changes WHERE id = '" . (int) $change_id . "' AND record_type = 'scheduled' AND action = 'draft'");
+
+    if (!is_array($row) || ((int) $row['requested_by'] !== (int) $viewer['id'])) {
+        return $fail(lang('That draft could not be found.'));
+    }
+
+    if ($row['status'] !== 'pending') {
+        return $fail(lang('This draft was already opened or dismissed.'));
+    }
+
+    if (!ws_can_schedule($viewer) || !ws_can_post_channel($viewer, ws_channel($row['channel_id']))) {
+        return $fail(lang('Only staff in the team can build flows.'));
+    }
+
+    $draft = json_decode((string) $row['snapshot'], true);
+    $draft = is_array($draft) ? $draft : array();
+    $input = ws_scheduled_draft_flow_input($draft, ws_scheduled_money_metrics());
+    $home = ws_channel(ws_scheduled_draft_home($row, $draft));
+    $public = $home && in_array((string) $home['kind'], array('public', 'private'), true) && ws_can_read_channel($viewer, $home);
+    $saved = ws_flow_save($viewer, array('name' => $input['name'], 'channel_id' => $public ? (int) $home['id'] : 0, 'graph' => $input['graph']));
+
+    if (!$saved['ok']) {
+        return $fail($saved['error']);
+    }
+
+    $draft['flow_id'] = (int) $saved['flow_id'];
+
+    db("UPDATE ws_ai_changes SET status = 'applied', error = '',
+            snapshot = '" . e(json_encode($draft, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR)) . "',
+            decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
+        WHERE id = '" . (int) $row['id'] . "' AND status = 'pending'");
+
+    if (mysqli_affected_rows(db::$con) === 1) {
+        ws_message_touch($row['message_id']);
+    }
+
+    return array('ok' => true, 'error' => '', 'flow_id' => (int) $saved['flow_id'], 'left' => $input['left']);
 }
 
 /**
@@ -1268,8 +1492,11 @@ function ws_scheduled_draft_js_strings()
         'sa_sentence_done'        => lang('Filled in from your sentence. Check each step and the summary before you save.'),
         // The card of a draft @ai made in a channel.
         'ai_scheduled'            => lang('Scheduled actions Pinegrap AI drafts'),
-        'sa_draft_open'           => lang('Open in the form'),
-        'sa_draft_waiting'        => ws_js_template('Scheduled once {var:1}, who asked for it, opens it in the form and saves it', 1),
+        'sa_draft_open'           => lang('Open as a flow'),
+        'sa_draft_waiting'        => ws_js_template('Scheduled once {var:1}, who asked for it, opens it as a flow and publishes it', 1),
+        'sa_draft_flowed'         => ws_js_template('Opened as a flow by {var:1} · {var:2}', 2),
+        'sa_draft_flow_see'       => lang('Open the flow'),
+        'sa_draft_flow_left'      => lang('The flow keeps the draft with these differences:'),
         'sa_draft_saved'          => ws_js_template('Saved by {var:1} · {var:2}', 2),
         'sa_draft_see'            => lang('See the scheduled action'),
     );

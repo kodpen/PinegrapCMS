@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - the Communication cards: e-mail campaigns, live chat,
- * MailChimp and SMS.
+ * MailChimp, SMS and İYS.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -20,15 +20,17 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
+
 // ── Campaigns ──
 $pg_settings_cards[] = '
                         <div id="pgset-campaigns" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Campaigns') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="pg-f-md">
                                             <label for="organization_name" class="form-label">' . lang('Organization Name') . '</label>
                                             <input type="text" name="organization_name" id="organization_name" class="form-control" value="' . h($organization_name) . '"/>
@@ -74,38 +76,38 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-chat" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Chat') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $chat_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="chat_enabled" name="chat_enabled" data-bs-target="#live_chat_row"/>
-                                                <label class="form-check-label" for="chat_enabled">' . lang('Enable Live Chat') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $chat_enabled_checked . ' class="collapse-switcher" type="checkbox" id="chat_enabled" name="chat_enabled" data-bs-target="#live_chat_row"/></div>
+                                                <label class="" for="chat_enabled">' . lang('Enable Live Chat') . '</label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="live_chat_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                                                 <div class="popover-body">
-                                                   <div class="row gy-3">
+                                                   <div class="row gy-5">
                                                         <div class="pg-f-md">
                                                             <label for="chat_operator_user_id" class="form-label">' . lang('Site Chat Operator') . '</label>
-                                                            <select name="chat_operator_user_id" id="chat_operator_user_id" class="form-select">' . $output_chat_operator_options . '</select>
+                                                            <select name="chat_operator_user_id" id="chat_operator_user_id" class="form-control">' . $output_chat_operator_options . '</select>
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label for="chat_retention_days" class="form-label">' . lang('Chat Retention Period') . '</label>
-                                                            <select name="chat_retention_days" id="chat_retention_days" class="form-select">' . $output_chat_retention_options . '</select>
+                                                            <select name="chat_retention_days" id="chat_retention_days" class="form-control">' . $output_chat_retention_options . '</select>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $chat_site_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="chat_site_enabled" name="chat_site_enabled" data-bs-target="#live_chat_site_row"/>
-                                                                <label class="form-check-label" for="chat_site_enabled">' . lang('Enable Site Chat Bubble') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $chat_site_enabled_checked . ' class="collapse-switcher" type="checkbox" id="chat_site_enabled" name="chat_site_enabled" data-bs-target="#live_chat_site_row"/></div>
+                                                                <label class="" for="chat_site_enabled">' . lang('Enable Site Chat Bubble') . '</label>
                                                             </div>
                                                         </div>
                                                         <div class="collapse popover fade bs-popover-bottom p-0 " id="live_chat_site_row">
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                                                             <div class="popover-body">
-                                                               <div class="row gy-3">
+                                                               <div class="row gy-5">
                                                                     <div class="col-12 ">
                                                                         <label for="chat_widget_title" class="form-label">' . lang('Chat Widget Label') . '</label>
                                                                         <input type="text" name="chat_widget_title" id="chat_widget_title" class="form-control" value="' . h($chat_widget_title) . '" maxlength="100" placeholder="' . h(lang('Live Support')) . '" />
@@ -116,7 +118,7 @@ $pg_settings_cards[] = '
                                                                     </div>
                                                                     <div class="pg-f-sm">
                                                                         <label for="chat_widget_theme" class="form-label">' . lang('Widget Theme') . '</label>
-                                                                        <select name="chat_widget_theme" id="chat_widget_theme" class="form-select">' . $output_chat_theme_options . '</select>
+                                                                        <select name="chat_widget_theme" id="chat_widget_theme" class="form-control">' . $output_chat_theme_options . '</select>
                                                                     </div>
                                                                     <div class="pg-f-sm">
                                                                         <label for="chat_widget_color" class="form-label">' . lang('Widget Color') . '</label>
@@ -124,24 +126,24 @@ $pg_settings_cards[] = '
                                                                     </div>
                                                                     <div class="pg-f-sm">
                                                                         <label for="chat_widget_icon" class="form-label">' . lang('Widget Icon') . '</label>
-                                                                        <select name="chat_widget_icon" id="chat_widget_icon" class="form-select">' . $output_chat_icon_options . '</select>
+                                                                        <select name="chat_widget_icon" id="chat_widget_icon" class="form-control">' . $output_chat_icon_options . '</select>
                                                                     </div>
                                                                     <div class="pg-f-md">
-                                                                        <div class="form-check form-switch">
-                                                                            <input value="1"' . $chat_allow_images_checked . ' class="form-check-input" type="checkbox" id="chat_allow_images" name="chat_allow_images"/>
-                                                                            <label class="form-check-label" for="chat_allow_images">' . lang('Allow image attachments') . '</label>
+                                                                        <div class="form-field">
+                                                                            <div class="switch"><input value="1"' . $chat_allow_images_checked . ' class="" type="checkbox" id="chat_allow_images" name="chat_allow_images"/></div>
+                                                                            <label class="" for="chat_allow_images">' . lang('Allow image attachments') . '</label>
                                                                         </div>
                                                                     </div>
                                                                     <div class="pg-f-md">
-                                                                        <div class="form-check form-switch">
-                                                                            <input value="1"' . $chat_allow_files_checked . ' class="form-check-input" type="checkbox" id="chat_allow_files" name="chat_allow_files"/>
-                                                                            <label class="form-check-label" for="chat_allow_files">' . lang('Allow file attachments') . '</label>
+                                                                        <div class="form-field">
+                                                                            <div class="switch"><input value="1"' . $chat_allow_files_checked . ' class="" type="checkbox" id="chat_allow_files" name="chat_allow_files"/></div>
+                                                                            <label class="" for="chat_allow_files">' . lang('Allow file attachments') . '</label>
                                                                         </div>
                                                                     </div>
                                                                     <div class="pg-f-md">
-                                                                        <div class="form-check form-switch">
-                                                                            <input value="1"' . $chat_allow_audio_checked . ' class="form-check-input" type="checkbox" id="chat_allow_audio" name="chat_allow_audio"/>
-                                                                            <label class="form-check-label" for="chat_allow_audio">' . lang('Allow voice messages and audio files') . '</label>
+                                                                        <div class="form-field">
+                                                                            <div class="switch"><input value="1"' . $chat_allow_audio_checked . ' class="" type="checkbox" id="chat_allow_audio" name="chat_allow_audio"/></div>
+                                                                            <label class="" for="chat_allow_audio">' . lang('Allow voice messages and audio files') . '</label>
                                                                         </div>
                                                                     </div>
                                                                     <div class="pg-f-md">
@@ -150,19 +152,19 @@ $pg_settings_cards[] = '
                                                                     </div>
                                                                     <div class="col-12 ">
                                                                         <label for="chat_upload_folder_id" class="form-label">' . lang('Folder for chat attachments') . '</label>
-                                                                        <select name="chat_upload_folder_id" id="chat_upload_folder_id" class="form-select">' . select_folder($chat_upload_folder_id, 0) . '</select>
+                                                                        <select name="chat_upload_folder_id" id="chat_upload_folder_id" class="form-control">' . select_folder($chat_upload_folder_id, 0) . '</select>
                                                                         <div class="form-text">' . lang('Everything people send in the chat is filed here, so it can be found in the File Manager afterwards.') . '</div>
                                                                     </div>
                                                                     <div class="col-12 ">
-                                                                        <div class="form-check form-switch">
-                                                                            <input value="1"' . $chat_captcha_checked . ' class="form-check-input" type="checkbox" id="chat_captcha" name="chat_captcha"/>
-                                                                            <label class="form-check-label" for="chat_captcha">' . lang('Require puzzle captcha for visitors') . '</label>
+                                                                        <div class="form-field">
+                                                                            <div class="switch"><input value="1"' . $chat_captcha_checked . ' class="" type="checkbox" id="chat_captcha" name="chat_captcha"/></div>
+                                                                            <label class="" for="chat_captcha">' . lang('Require puzzle captcha for visitors') . '</label>
                                                                         </div>
                                                                     </div>
                                                                     <div class="col-12 ">
-                                                                        <div class="form-check form-switch">
-                                                                            <input value="1"' . $chat_offline_email_checked . ' class="form-check-input" type="checkbox" id="chat_offline_email" name="chat_offline_email"/>
-                                                                            <label class="form-check-label" for="chat_offline_email">' . lang('Email the operator when a message arrives while offline') . '</label>
+                                                                        <div class="form-field">
+                                                                            <div class="switch"><input value="1"' . $chat_offline_email_checked . ' class="" type="checkbox" id="chat_offline_email" name="chat_offline_email"/></div>
+                                                                            <label class="" for="chat_offline_email">' . lang('Email the operator when a message arrives while offline') . '</label>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -181,20 +183,20 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-mailchimp" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('MailChimp') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox" name="mailchimp" id="mailchimp" value="1"' . $mailchimp_checked . ' class="form-check-input collapse-switcher" data-bs-target="#mailchimp_row"/>
-                                                <label class="form-check-label" for="mailchimp">' . lang('MailChimp Sync') . '<br/><span class="form-text">' . lang('Auto-export customers, orders, & products to MailChimp regularly. Requires cron job (job.php).') . '</span></label>
+                                            <div class="form-field">
+                                                <div class="switch"><input type="checkbox" name="mailchimp" id="mailchimp" value="1"' . $mailchimp_checked . ' class="collapse-switcher" data-bs-target="#mailchimp_row"/></div>
+                                                <label class="" for="mailchimp">' . lang('MailChimp Sync') . '<br/><span class="form-text">' . lang('Auto-export customers, orders, & products to MailChimp regularly. Requires cron job (job.php).') . '</span></label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0" id="mailchimp_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
-                                                   <div class="row gy-3">
+                                                   <div class="row gy-5">
                                                         <div class="pg-f-lg">
                                                             <label for="mailchimp_key" class="form-label">' . lang('API Key') . '</label>
                                                             <input type="text" name="mailchimp_key" id="mailchimp_key" class="form-control" value="' . h($mailchimp_key) . '" maxlength="100"/>
@@ -221,9 +223,9 @@ $pg_settings_cards[] = '
                                                             <div class="form-text">' . lang('max number of orders to sync each time cron job runs') . '</div>
                                                         </div>
                                                         <div class="col-12">
-                                                            <div class="form-check form-switch">
-                                                                <input type="checkbox" name="mailchimp_automation" id="mailchimp_automation" value="1"' . $mailchimp_automation_checked . ' class="form-check-input"/>
-                                                                <label class="form-check-label" for="mailchimp_automation">' . lang('Automation') . '<br/><span class="form-text text-danger">' . lang('only enable after all historical orders have been synced, to start sending MailChimp automation campaigns') . '</span></label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input type="checkbox" name="mailchimp_automation" id="mailchimp_automation" value="1"' . $mailchimp_automation_checked . ' class=""/></div>
+                                                                <label class="" for="mailchimp_automation">' . lang('Automation') . '<br/><span class="form-text fg-danger">' . lang('only enable after all historical orders have been synced, to start sending MailChimp automation campaigns') . '</span></label>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -241,11 +243,42 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-sms" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('SMS') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">' . pg_sms_settings_fields() . '
+                                   <div class="row gy-5">' . pg_sms_settings_fields() . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+
+// ── SMS messages ──
+// The order's own text messages: a switch and a template per event
+// (includes/fn/sms_messages.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-sms-messages" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('SMS Messages') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-5">' . pg_sms_message_settings_fields() . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+
+// ── İYS ──
+// The İYS account and the consent sync's switches (includes/iys/settings.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-iys" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('İYS') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-5">' . pg_iys_settings_fields() . '
                                     </div>
                                 </div>
                             </div>

@@ -406,6 +406,36 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'product_groups.variant_sets_create',
+			'method'  => 'POST',
+			'path'    => '/product-groups/variant-sets',
+			'scope'   => 'products:write',
+			'handler' => 'api_product_groups_variant_sets_create',
+			'dry_run' => true,
+			'returns' => array('product_group' => 'ProductGroup', 'product_ids' => 'integer[]'),
+			'status'  => 201,
+			'summary' => 'Add a variant set',
+			'description' => 'One article in several forms, written in one go as the product screen writes it: a group shown as one item with a variant picker, and one product per variant filed only in it, each carrying its {attribute_id, option_id} pairs. The group is named by short_description, else by name, and filed under parent_id (the top of the catalogue when omitted). Group and variants start switched off unless enabled=true is sent. A variant\'s price is in minor units; a variant sent without one is priced from price (the base) by price_rules, exactly as the screen prices it. The group name or a variant SKU another record already has is refused with 409 name_taken. Images belong to the set; every variant shows them. Nothing is announced, as for a set made on the screen; the products appear in GET /products.',
+			'params'  => array(
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The group\'s name when no short_description is sent.'),
+				array('name' => 'short_description', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The group\'s name and short description.'),
+				array('name' => 'parent_id',         'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The group to file the set under. Omitted: the top of the catalogue.'),
+				array('name' => 'enabled',           'in' => 'body', 'type' => 'bool', 'description' => 'Published, the group and every variant. Off when not sent.'),
+				array('name' => 'title',             'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'description',       'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long description of the group and of every variant.'),
+				array('name' => 'meta_description',  'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'keywords',          'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Words that promote the set in the site search.'),
+				array('name' => 'brand',             'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'taxable',           'in' => 'body', 'type' => 'bool', 'description' => 'On when not sent.'),
+				array('name' => 'shippable',         'in' => 'body', 'type' => 'bool', 'description' => 'On when not sent.'),
+				array('name' => 'images',            'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Images from the Files library, by file name or by the url the API gives for it. The first is the main photo.'),
+				array('name' => 'price',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'The base the price rules start from, in minor units.'),
+				array('name' => 'price_rules',       'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'mode' => 'string', 'options' => array(array('option_id' => 'integer', 'amount' => 'integer', 'factor' => 'number', 'percent' => 'number'))), 'max_items' => 20, 'description' => 'One object per attribute that moves the price: mode set (the option\'s amount is the price), multiply (by factor) or adjust (add amount, or percent). Amounts are whole numbers of minor units; a decimal is refused. At most one attribute sets the price; every option has to belong to its attribute.'),
+				array('name' => 'variants',          'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'short_description' => 'string', 'price' => 'integer', 'inventory' => 'boolean', 'inventory_quantity' => 'integer', 'gtin' => 'string', 'attributes' => array(array('attribute_id' => 'integer', 'option_id' => 'integer'))), 'max_items' => 250, 'required' => true, 'description' => 'At least two. name is the SKU (100 characters at most, each one unused), short_description at most 100, gtin at most 50, inventory_quantity 0 to 1000000, price in minor units (left out: priced by price_rules), attributes the option pairs that make it this variant.')
+			)
+		),
+
+		array(
 			'id'      => 'product_groups.products',
 			'method'  => 'POST',
 			'path'    => '/product-groups/{id}/products',
@@ -566,11 +596,13 @@ function api_schema() {
 			'handler' => 'api_orders_list',
 			'returns' => array('list' => 'Order'),
 			'summary' => 'List orders',
-			'description' => 'Cursor paged and ordered by the order date, so updated_since walks new orders in one direction without repeating any.',
+			'description' => 'Cursor paged and ordered by the order date, oldest first, so updated_since walks new orders in one direction without repeating any; sort=placed_desc lists the newest first and resumes the same way. modified_since lists the orders changed at or after a moment, oldest change first, so a client asks what changed since its last read and walks forward: a status change, a cancellation, a restore, a refund, notes, shipping or an export moves an order\'s modified_at. A cursor works only under the sort (or the modified_since listing) it was made for; under another one it is 400 invalid_cursor. Each order carries type (online, local for a counter sale, or marketplace), cancelled_at (null unless cancelled), cancellation_reason (\'\' when none) and refund_status (\'\', pending, refunded, failed or manual_required); each is null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or after this moment.'),
 				array('name' => 'date_to',       'in' => 'query', 'type' => 'datetime'),
-				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('incomplete', 'complete', 'exported', 'cancelled')),
+				array('name' => 'modified_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders changed at or after this moment (modified_at), oldest change first. Cannot be combined with sort.'),
+				array('name' => 'status',        'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'One status or several, comma separated: incomplete, complete, exported, cancelled (complete,exported are the placed orders that count as sales). An unknown value is refused with 422.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('placed', 'placed_desc'), 'description' => 'placed (the default) lists the oldest placed first, placed_desc the newest first.'),
 				array('name' => 'order_number',  'in' => 'query', 'type' => 'string', 'max_length' => 100),
 				array('name' => 'email',         'in' => 'query', 'type' => 'string', 'max_length' => 190),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
@@ -587,6 +619,7 @@ function api_schema() {
 			'handler' => 'api_orders_get',
 			'returns' => 'Order',
 			'summary' => 'One order, with its lines',
+			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason and refund_status (\'\', pending, refunded, failed or manual_required), each null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -625,7 +658,7 @@ function api_schema() {
 				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'tracking_numbers', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'The complete list for this address, as a JSON array. An empty list removes the numbers it has; left out, the numbers stay as they are, so a call that only reports a date keeps them.'),
 				array('name' => 'ship_to_id',       'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Which shipping address, from the shipments block of GET /orders/{id}. Optional while the order ships to one address; required when it ships to several.'),
-				array('name' => 'carrier',          'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Written only when the address has no shipping method code yet: that code is the method the customer chose and paid for, and a fulfilment system naming the carrier it used must not overwrite it. Any text is accepted, but one of yurtici, surat, aras, mng, ptt, ups, fedex or usps is what turns the tracking number into a link the customer can follow.'),
+				array('name' => 'carrier',          'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Written only when the address has no shipping method code yet: that code is the method the customer chose and paid for, and a fulfilment system naming the carrier it used must not overwrite it. Any text is accepted, but one of yurtici, surat, aras, mng, ptt, ups, fedex or usps (or its name, such as Aras Kargo) is what turns the tracking number into a link the customer can follow; such a carrier is also kept on each tracking number sent in the same call, whatever the shipping method code says, and shows as that parcel\'s carrier.'),
 				array('name' => 'ship_date',        'in' => 'body', 'type' => 'datetime', 'description' => 'Kept as a date. Nothing in the store reads it as proof of dispatch.'),
 				array('name' => 'delivery_date',    'in' => 'body', 'type' => 'datetime'),
 				array('name' => 'notify',           'in' => 'body', 'type' => 'bool', 'description' => 'true sends the store\'s "your order has shipped" mail to the customer and, for an order placed with an account, also starts the store\'s review request e-mail. Left out it does not: a backfill of last month\'s shipments must not mail a month of customers.')
@@ -1091,6 +1124,32 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Audit trail -------------------------------------------------- */
+
+		array(
+			'id'      => 'audit_log.list',
+			'method'  => 'GET',
+			'path'    => '/audit-log',
+			'scope'   => 'system:read',
+			'handler' => 'api_audit_log_list',
+			'returns' => array('list' => 'AuditLogEntry'),
+			'summary' => 'Audit trail',
+			'description' => 'Who changed what, newest first, cursor paged, as the Audit trail screen lists it: settings, users, products, pages, orders, files, offers, API keys and personal data exports and erasures, each line with the record (entity_type, entity_id and label, its name at that moment) and only the fields that changed. source is panel (an operator), api (an application: username is its name, user_id its owner) or job (a scheduled job; no user). before and after are the changed fields as stored: null for a side that holds nothing (before a create, after a delete); a secret is "***", an empty one stays empty; a long text is {truncated, length, sha1, start}; a JSON text is the decoded object or list; a side too large as a whole is {truncated: true, fields: [names]}. Lines written by one request share request_id. Read only.',
+			'params'  => array(
+				array('name' => 'from',        'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'to',          'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'source',      'in' => 'query', 'type' => 'enum', 'values' => array('panel', 'api', 'job')),
+				array('name' => 'user',        'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'A number is a user id (the operator, or the owner of an application); any other text matches part of the name the line was written under.'),
+				array('name' => 'action',      'in' => 'query', 'type' => 'string', 'max_length' => 64, 'description' => 'create, update, delete, recycle, restore, rotate, revoke, cancel, refund, export or erase.'),
+				array('name' => 'entity_type', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'settings, user, product, page, order, order_return, file, offer, api_app, api_key, api_device, oauth_client, person or audit.'),
+				array('name' => 'entity_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'One record\'s history, with entity_type.'),
+				array('name' => 'q',           'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'Matches the record\'s name (label).'),
+				array('name' => 'request_id',  'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'Every line one request wrote.'),
+				array('name' => 'limit',       'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',      'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
 		/* ----- Gift cards -------------------------------------------------- */
 
 		array(
@@ -1534,6 +1593,22 @@ function api_schema() {
 			'returns' => array('list' => 'WishlistItem'),
 			'summary' => 'A customer\'s favourites',
 			'description' => 'The products the customer saved with the heart of the shop\'s catalog, newest first, from the site accounts linked to this customer record. A visitor who is not signed in keeps a list under a browser cookie that names nobody; it joins the account, and this list, at the next sign-in. A product deleted since is gone from the list; one switched off or in the Recycle Bin stays with available false. Cursor paged. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. A site without the favourites table answers an empty list.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'customers.consents',
+			'method'  => 'GET',
+			'path'    => '/customers/{id}/consents',
+			'scope'   => 'customers:read',
+			'handler' => 'api_customers_consents',
+			'returns' => array('list' => 'Consent'),
+			'summary' => 'A customer\'s consent record',
+			'description' => 'Every consent answer recorded for this customer record or the site accounts linked to it, newest first: the channel (email, sms, call, contract), the purpose (marketing, group:<id> for a contact group\'s e-mail, or the contract text accepted), granted, refused or pending, and where it was given (signup, checkout, account, unsubscribe, form, iys and the rest). The latest row of a channel and purpose is the answer that stands. Cookie notice answers are not listed. The IP address and browser of a row are kept on the site and not given here. Cursor paged. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. A site without the consent log answers an empty list. Changes are announced as customer.consent_changed.',
 			'params'  => array(
 				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
@@ -3032,7 +3107,7 @@ function api_schema() {
 			'handler' => 'api_notifications_list',
 			'returns' => array('list' => 'Notification'),
 			'summary' => 'This person\'s notifications',
-			'description' => 'The panel\'s bell for the same person, newest first: the same rows, the same wording, and only the kinds this account may see. Reading the list does not mark anything read. A page can come back shorter than limit with a next_cursor when many rows in between are not for this person; follow the cursor as usual. After a push arrives, ask for unread=true.',
+			'description' => 'The panel\'s bell for the same person, newest first: the same rows, the same wording, and only the kinds this account may see; the kinds also follow the caller\'s scopes: new_order and order_return rows need orders:read. Reading the list does not mark anything read. A page can come back shorter than limit with a next_cursor when many rows in between are not for this person; follow the cursor as usual. After a push arrives, ask for unread=true.',
 			'params'  => array(
 				array('name' => 'unread', 'in' => 'query', 'type' => 'bool',     'description' => 'Only what this person has not read yet.'),
 				array('name' => 'since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only notifications created at or after this moment.'),
@@ -3049,7 +3124,7 @@ function api_schema() {
 			'handler' => 'api_notifications_count',
 			'returns' => array('unread' => 'integer'),
 			'summary' => 'How many notifications are unread',
-			'description' => 'The number on the bell. Cheap enough to poll; send If-None-Match with the last ETag and an unchanged count answers 304.',
+			'description' => 'The number on the bell, counting only the kinds GET /notifications lists for this caller (new_order and order_return need orders:read). Cheap enough to poll; send If-None-Match with the last ETag and an unchanged count answers 304.',
 			'params'  => array()
 		),
 

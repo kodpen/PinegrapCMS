@@ -1881,6 +1881,64 @@ function pg_return_action_fields($form, $action, $return_id)
 }
 
 /**
+ * How an approved return's goods go back: the sentence the customer reads
+ * and the return code given after it ('' for none).
+ *
+ * @param array $return pg_return_present() row
+ * @return array text, code
+ */
+function pg_return_how($return)
+{
+    $carrier = (string) $return['carrier'];
+    $code = (string) $return['carrier_code'];
+
+    if (($carrier !== '') && ($code !== '')) {
+        $text = lang(array('string' => 'Send the parcel with {var:1} and give them this return code:', 'vars' => array($carrier)));
+    } elseif ($carrier !== '') {
+        $text = lang(array('string' => 'Send the parcel with {var:1}.', 'vars' => array($carrier)));
+    } elseif ($code !== '') {
+        $text = lang('Give the carrier this return code:');
+    } else {
+        $text = lang('Your return was approved. You can send the goods back now.');
+    }
+
+    return array('text' => $text, 'code' => $code);
+}
+
+/**
+ * The customer's own moves on one return: say the parcel is on its way,
+ * withdraw the request. '' when neither is open.
+ *
+ * @param array $return pg_return_present() row
+ * @param array $form   action, send_to, token, order_id
+ * @return string HTML
+ */
+function pg_return_actions_html($return, $form)
+{
+    $id = (int) $return['id'];
+    $html = '';
+
+    if (!empty($return['can_mark_sent'])) {
+        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
+            . pg_return_action_fields($form, 'shipped', $id)
+            . '<label for="pg-ov-return-tracking-' . $id . '" class="form-label small fw-semibold">' . h(lang('Tracking number of the parcel (optional)')) . '</label>'
+            . '<div class="input-group input-group-sm">'
+            . '<input type="text" class="form-control" id="pg-ov-return-tracking-' . $id . '" name="tracking_number" maxlength="100" autocomplete="off">'
+            . '<button type="submit" class="btn btn-primary">' . h(lang('I have sent it')) . '</button>'
+            . '</div></form>';
+    }
+
+    if (!empty($return['can_withdraw'])) {
+        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
+            . pg_return_action_fields($form, 'withdraw', $id)
+            . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Withdraw the request')) . '</button>'
+            . '</form>';
+    }
+
+    return $html;
+}
+
+/**
  * The returns of an order as the customer follows them: where each stands,
  * its lines, what the shop wrote, how to send the goods once it is approved,
  * when the refund is due, and the customer's own moves (withdraw a request,
@@ -1933,20 +1991,9 @@ function pg_returns_list_html($returns, $form)
 
         // How the goods go back, once the shop has said yes.
         if ((string) $return['status'] === 'approved') {
-            $carrier = (string) $return['carrier'];
-            $code = (string) $return['carrier_code'];
-
-            if (($carrier !== '') && ($code !== '')) {
-                $how = h(lang(array('string' => 'Send the parcel with {var:1} and give them this return code:', 'vars' => array($carrier)))) . ' <strong>' . h($code) . '</strong>';
-            } elseif ($carrier !== '') {
-                $how = h(lang(array('string' => 'Send the parcel with {var:1}.', 'vars' => array($carrier))));
-            } elseif ($code !== '') {
-                $how = h(lang('Give the carrier this return code:')) . ' <strong>' . h($code) . '</strong>';
-            } else {
-                $how = h(lang('Your return was approved. You can send the goods back now.'));
-            }
-
-            $html .= '<div class="alert alert-info small py-2 my-2" role="status">' . $how . '</div>';
+            $how = pg_return_how($return);
+            $html .= '<div class="alert alert-info small py-2 my-2" role="status">' . h($how['text'])
+                . (($how['code'] !== '') ? ' <strong>' . h($how['code']) . '</strong>' : '') . '</div>';
         }
 
         if ((string) $return['tracking_number'] !== '') {
@@ -1957,48 +2004,12 @@ function pg_returns_list_html($returns, $form)
             $html .= $detail(lang('Refund due by'), h((string) $return['refund_deadline']));
         }
 
-        if (!empty($return['can_mark_sent'])) {
-            $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
-                . pg_return_action_fields($form, 'shipped', $id)
-                . '<label for="pg-ov-return-tracking-' . $id . '" class="form-label small fw-semibold">' . h(lang('Tracking number of the parcel (optional)')) . '</label>'
-                . '<div class="input-group input-group-sm">'
-                . '<input type="text" class="form-control" id="pg-ov-return-tracking-' . $id . '" name="tracking_number" maxlength="100" autocomplete="off">'
-                . '<button type="submit" class="btn btn-primary">' . h(lang('I have sent it')) . '</button>'
-                . '</div></form>';
-        }
-
-        if (!empty($return['can_withdraw'])) {
-            $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
-                . pg_return_action_fields($form, 'withdraw', $id)
-                . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Withdraw the request')) . '</button>'
-                . '</form>';
-        }
+        $html .= pg_return_actions_html($return, $form);
 
         $html .= '</div>';
     }
 
     return $html . '</div>';
-}
-
-/**
- * The returns block of an order view whose layout places neither the list
- * nor the form: a design made before returns existed still shows them once
- * the setting is on.
- *
- * @param string $list_html pg_returns_list_html()
- * @param string $form_html pg_return_form_html()
- * @return string
- */
-function pg_return_block_html($list_html, $form_html)
-{
-    if (((string) $list_html === '') && ((string) $form_html === '')) {
-        return '';
-    }
-
-    return '<div class="container pb-4 pg-ov-returns-block"><div class="card">'
-        . '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Returns')) . '</h6></div>'
-        . '<div class="card-body">' . $list_html . $form_html . '</div>'
-        . '</div></div>';
 }
 
 /**
@@ -2904,7 +2915,7 @@ function pg_returns_panel_card_html($rows, $add_url = '')
         return '';
     }
 
-    $lines = empty($rows) ? '<p class="small text-muted mb-0">' . h(lang('No returns yet.')) . '</p>' : '';
+    $lines = empty($rows) ? '<p class="small fg-secondary mb-0">' . h(lang('No returns yet.')) . '</p>' : '';
 
     foreach ($rows as $row) {
         $quantity = 0;
@@ -2916,20 +2927,20 @@ function pg_returns_panel_card_html($rows, $add_url = '')
         $status = (string) $row['status'];
 
         $lines .= '<div class="row align-items-center mb-1">
-                        <span class="col"><a class="link-secondary" href="view_return.php?id=' . (int) $row['id'] . '">' . h(lang(array('string' => 'Return request #{var:1}', 'vars' => array((int) $row['id'])))) . '</a>'
-                        . '<span class="d-block small text-muted">' . h(pg_return_time_text($row['requested_at'])) . ' · ' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . '</span></span>
+                        <span class="col"><a class="pg-link-secondary" href="view_return.php?id=' . (int) $row['id'] . '">' . h(lang(array('string' => 'Return request #{var:1}', 'vars' => array((int) $row['id'])))) . '</a>'
+                        . '<span class="d-block small fg-secondary">' . h(pg_return_time_text($row['requested_at'])) . ' · ' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . '</span></span>
                         <span class="col-auto text-end"><span class="' . h(pg_return_badge_class($status)) . '">' . h(pg_return_status_label($status)) . '</span></span>
                     </div>';
     }
 
-    return '<div class="card mt-3">
+    return '<div class="card mt-5">
                 <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Returns')) . '</span>
-                    <a class="btn btn-sm btn-outline-secondary" href="view_returns.php?status=all">' . h(lang('All Returns')) . '</a>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Returns')) . '</span>
+                    <a class="btn btn-sm btn-outline theme-secondary" href="view_returns.php?status=all">' . h(lang('All Returns')) . '</a>
                 </div>
                 <div class="card-body">
                     ' . $lines . '
-                    ' . (($add_url !== '') ? '<a class="btn btn-sm btn-outline-secondary mt-2" href="' . h($add_url) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
+                    ' . (($add_url !== '') ? '<a class="btn btn-sm btn-outline theme-secondary mt-3" href="' . h($add_url) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
                 </div>
             </div>';
 }

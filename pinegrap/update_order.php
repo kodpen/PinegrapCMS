@@ -34,12 +34,21 @@ function update_order($request) {
     $deliveries = array();
 
     $order = db_item(
-        "SELECT id, billing_email_address, order_number, contact_id FROM orders
+        "SELECT id, billing_email_address, order_number, contact_id,
+            " . (pg_schema_has('orders', 'type') ? 'type' : "'' AS type") . "
+        FROM orders
         WHERE id = '" . e($request['order']['id']) . "'");
 
     if (!$order) {
         return error_response('The order could not be found.');
     }
+
+    // A marketplace sold order's address is the marketplace's relay for its
+    // buyer, who hears about the shipment from the marketplace: the shop's
+    // shipped and delivered e-mails, text message and review request stay
+    // back, whatever the caller asked. The shipment itself still counts (the
+    // events, the invoice on shipment).
+    $mails_customer = pg_order_cancellation_mails_customer($order);
 
     if (!is_array($request['order']['recipients'])) {
         return error_response('There are no recipients in the request.');
@@ -87,7 +96,7 @@ function update_order($request) {
                 // switch that keeps the shipping e-mail back.
                 $deliveries[$recipient['id']] = array(
                     'day'    => pg_shipment_date((string) $recipient_request['delivery_date']),
-                    'notify' => !(isset($recipient_request['shipped']) && !$recipient_request['shipped']),
+                    'notify' => $mails_customer && !(isset($recipient_request['shipped']) && !$recipient_request['shipped']),
                 );
             }
 
@@ -253,11 +262,18 @@ function update_order($request) {
                 && ($shipped_recipient['ship_date'] !== '0000-00-00'))
                 ? $shipped_recipient['ship_date']
                 : null,
+            'parcels'          => pg_shipment_api_parcels((int) $shipped_recipient['id']),
         ));
+
+        // The customer's text message, held back like the e-mail when the
+        // caller says the customer is not to be told.
+        if ($mails_customer && !empty($shipped_recipient['shipped']) && !empty($shipped_recipient['tracking_numbers'])) {
+            pg_sms_order_shipped((int) $order['id'], (int) $shipped_recipient['id'], $shipped_recipient['tracking_numbers']);
+        }
     }
 
     // If at least one recipient was just shipped, then check if email needs to be sent to customer.
-    if (!empty($order['shipped'])) {
+    if (!empty($order['shipped']) && $mails_customer) {
 
         // Allow mail-merge fields, like ^^order_number^^ to be put in the subject or body of email.
 
@@ -266,6 +282,18 @@ function update_order($request) {
         $fields[] = array(
             'name' => 'order_number',
             'data' => $order['order_number']);
+
+        // ^^tracking_numbers^^, ^^carrier_name^^ and ^^tracking_url^^ of the
+        // addresses this save shipped, not of every address of the order.
+        $shipped_ids = array();
+
+        foreach ($order['recipients'] as $shipped_recipient) {
+            if (!empty($shipped_recipient['shipped'])) {
+                $shipped_ids[] = (int) $shipped_recipient['id'];
+            }
+        }
+
+        $fields = array_merge($fields, pg_shipment_mail_fields($shipped_ids));
 
         create_auto_email_campaigns(array(
             'action' => 'order_shipped',

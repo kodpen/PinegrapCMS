@@ -34,8 +34,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // get data for the page
     $query = "SELECT * " .
              "FROM page " .
-             "WHERE page_id = '" . e($page_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+             "WHERE page_id = ?";
+    $result = db_q($query, array((string) $page_id)) or output_error('Query failed');
 
     // The page can be missing (for example when a screen points at a page that was never set up
     // or was deleted), in which case there is no row here at all.
@@ -142,8 +142,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             files.name AS style_theme_name
         FROM style
         LEFT JOIN files ON style.theme_id = files.id
-        WHERE style.style_id = '$style_id'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE style.style_id = ?";
+    $result = db_q($query, array((string) $style_id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $style_name = $row['style_name'] ?? '';
@@ -518,6 +518,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // (widgets_comments.php); the classic comments block below leaves them
     // alone.
     $pg_cw_pages = array();
+    // The record the page opens, published by its widget (page_facts.php).
+    $pg_pr_prev = pg_page_record_begin();
     if (strpos($content, '<!--pg-system-widget:') !== false) {
         // The drawn page's id wins over a dynamic property of that name: a
         // widget whose data is the page's own (its comment thread) reads it
@@ -536,6 +538,16 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         if (is_array($pg_cw_prev)) $pg_cw_pages = pg_comments_widget_pages($pg_cw_prev);
         if (is_array($pg_sw_prev_ctx)) pg_sw_render_context($pg_sw_prev_ctx);
     }
+
+    // ── Page conditions ─────────────────────────────────────────────────────────
+    // Elements shown by a fact of the visit (signed in, cart) or by the
+    // page's record stand between
+    // markers in the stored body and in shared components; decided here, once
+    // every shared component and widget is drawn (page_facts.php).
+    if (strpos($content, '<!--pg-pf:') !== false) {
+        $content = pg_page_facts_apply($content, $email);
+    }
+    pg_page_record_end($pg_pr_prev);
 
     // ── Custom PHP marker expansion ─────────────────────────────────────────────
     // Visual-designer `custom_php` content nodes are emitted as `<!--pg-custom-php:BASE64-->`
@@ -561,6 +573,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // everything is drawn in. Not in an e-mail.
     if (!$email && stripos($content, 'data-pg-scroller') !== false && function_exists('pg_scroller_inject')) {
         $content = pg_scroller_inject($content);
+    }
+
+    // ── Interactions ────────────────────────────────────────────────────────────
+    // A node with an interaction carries data-pg-fx attributes, no script;
+    // the page brings the head style and the script (pg_fx_inject()),
+    // checked once everything is drawn in. Not in an e-mail.
+    if (!$email && stripos($content, 'data-pg-fx') !== false && function_exists('pg_fx_inject')) {
+        $content = pg_fx_inject($content);
     }
 
     // ── Tooltips and popovers ───────────────────────────────────────────────────
@@ -814,8 +834,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
                 $query = "SELECT dregion_code "
                         ."FROM dregion "
-                        ."WHERE dregion_name = '" . escape($dregion_name) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                        ."WHERE dregion_name = ?";
+                $result = db_q($query, array((string) $dregion_name)) or output_error('Query failed');
                 $row = mysqli_fetch_array($result);
                 ob_start();
                 eval(prepare_for_eval($row['dregion_code']));
@@ -1429,8 +1449,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     slideshow_interval,
                     slideshow_continuous
                 FROM ad_regions
-                WHERE name = '" . escape($ad_region_name) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE name = ?";
+            $result = db_q($query, array((string) $ad_region_name)) or output_error('Query failed.');
             
             $ad_region_content = '';
             
@@ -1455,10 +1475,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             name,
                             content
                         FROM ads
-                        WHERE ad_region_id = '" . $ad_region_id . "'
+                        WHERE ad_region_id = ?
                         ORDER BY RAND()
                         LIMIT 1";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $ad_region_id)) or output_error('Query failed.');
                     
                     $ad_content = '';
                     
@@ -1500,9 +1520,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             label,
                             sort_order
                         FROM ads
-                        WHERE ad_region_id = '" . $ad_region_id . "'
+                        WHERE ad_region_id = ?
                         ORDER BY sort_order ASC";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $ad_region_id)) or output_error('Query failed.');
                     
                     // if an ad was found, then continue to get content for ad region
                     if (mysqli_num_rows($result) > 0) {
@@ -1652,8 +1672,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $number_of_items = 0;
         if(isset($_SESSION['ecommerce']['order_id'])){
             // get the number of items in the order
-            $query = "SELECT SUM(quantity) FROM order_items WHERE order_id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT SUM(quantity) FROM order_items WHERE order_id = ?";
+            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             $number_of_items = $row[0];
             
@@ -1727,8 +1747,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $login_region_content = '';
         
         // get login region id
-        $query = "SELECT id FROM login_regions WHERE name = '" . escape($login_region_name) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "SELECT id FROM login_regions WHERE name = ?";
+        $result = db_q($query, array((string) $login_region_name)) or output_error('Query failed');
         
         // if a login region was found, then get login region content
         if (mysqli_num_rows($result) > 0) {
@@ -1753,8 +1773,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 first_level_popup_position,
                 second_level_popup_position
             FROM menus
-            WHERE name = '" . escape($menu_name) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE name = ?";
+        $result = db_q($query, array((string) $menu_name)) or output_error('Query failed.');
         
         $menu_content = '';
         
@@ -1773,8 +1793,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // assumes there is only one current menu item.  If multiple are set,
             // then menu items do not collapse properly.  We should eventually spend some time and resolve this
             // in order to add support for multiple current menu items.
-            $query =  "SELECT id FROM menu_items WHERE (link_page_id = '" . escape($page_id) . "') AND (menu_id = '" . $menu_id . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query =  "SELECT id FROM menu_items WHERE (link_page_id = ?) AND (menu_id = ?)";
+            $result = db_q($query, array((string) $page_id, (string) $menu_id)) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             if(isset($row)){
                 $current_menu_item_id = $row[0];
@@ -1818,8 +1838,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     preg_match_all('/<menu_sequence>.*?<\/menu_sequence>/i', $content, $regions);
     foreach ($regions[0] as $region) {
         $menu_name = strip_tags($region);
-        $query = "SELECT id FROM menus WHERE name = '" . escape($menu_name) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT id FROM menus WHERE name = ?";
+        $result = db_q($query, array((string) $menu_name)) or output_error('Query failed.');
         
         $menu_sequence_content = '';
         
@@ -1932,8 +1952,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 search_results_pages.catalog_detail_page_id
             FROM search_results_pages 
             LEFT JOIN page ON page.page_id = search_results_pages.page_id
-            WHERE page_name = '" . escape($search_results_page_name) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_name = ?";
+        $result = db_q($query, array((string) $search_results_page_name)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $search_results_page_id = $row['page_id'];
         $search_results_page_name = $row['page_name'];
@@ -1952,8 +1972,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $tag_cloud_keywords_xref = array();
                 
                 // get data from tag cloud xref table
-                $query = "SELECT item_id, item_type FROM tag_cloud_keywords_xref WHERE search_results_page_id = '" . escape($search_results_page_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT item_id, item_type FROM tag_cloud_keywords_xref WHERE search_results_page_id = ?";
+                $result = db_q($query, array((string) $search_results_page_id)) or output_error('Query failed.');
                 while ($row = mysqli_fetch_assoc($result)) {
                     $tag_cloud_keywords_xref[] = $row;
                 }
@@ -2281,8 +2301,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     system_region_header,
                     system_region_footer
                 FROM page
-                WHERE page_name = '" . escape($system_page_name) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE page_name = ?";
+            $result = db_q($query, array((string) $system_page_name)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
 
             // No page by that name: it was deleted, or it is in the Recycle
@@ -2445,15 +2465,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             "SELECT custom_form_page_id
                             FROM form_list_view_pages
                             WHERE
-                                (page_id = '" . escape($system_region_properties['page_id']) . "')
+                                (page_id = ?)
                                 AND (collection = 'a')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $system_region_properties['page_id'])) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
                         $custom_form_page_id = $row['custom_form_page_id'];
 
                         // determine if there are any RSS fields for the custom form
-                        $query = "SELECT COUNT(*) FROM form_fields WHERE (page_id = '" . $custom_form_page_id . "') AND (rss_field != '')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT COUNT(*) FROM form_fields WHERE (page_id = ?) AND (rss_field != '')";
+                        $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
                         
                         // if there is at least one RSS field, then continue
@@ -3347,8 +3367,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 name,
                                 published
                             FROM calendar_events
-                            WHERE id = '" . escape($_GET['id']) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            WHERE id = ?";
+                        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
                         $calendar_event = mysqli_fetch_assoc($result);
                         
                         // if the user has access to edit calendar event, then output edit container
@@ -3520,9 +3540,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                short_description,
                                 meta_description
                             FROM product_groups 
-                            WHERE id = '" . escape($properties['product_group_id']) . "'";
+                            WHERE id = ?";
                           
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $properties['product_group_id'])) or output_error('Query failed.');
                         
                         $row = mysqli_fetch_assoc($result);
                         
@@ -3911,8 +3931,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                         forms.user_id
                                     FROM forms
                                     LEFT JOIN user ON forms.form_editor_user_id = user.user_id
-                                    WHERE forms.reference_code = '" . escape($_GET['r']) . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    WHERE forms.reference_code = ?";
+                                $result = db_q($query, array((string) $_GET['r'])) or output_error('Query failed.');
                                 $row = mysqli_fetch_assoc($result);
                                 
                                 $item_id = $row['id'];
@@ -4190,8 +4210,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                         contacts.last_name
                                     FROM user
                                     LEFT JOIN contacts ON user.user_contact = contacts.id
-                                    WHERE user.user_id = '" . escape($comment['user_id']) . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                                    WHERE user.user_id = ?";
+                                $result = db_q($query, array((string) $comment['user_id'])) or output_error('Query failed');
                                 $row = mysqli_fetch_assoc($result);
                                 $first_name = $row['first_name'];
                                 $last_name = $row['last_name'];
@@ -4724,11 +4744,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                         FROM form_field_options
                                         LEFT JOIN form_data ON form_field_options.form_field_id = form_data.form_field_id
                                         WHERE
-                                            (form_field_options.page_id = '" . $custom_form_page_id . "')
-                                            AND (form_data.form_id = '" . escape($item_id) . "')
-                                            AND (form_field_options.email_address LIKE '%" . e(escape_like(USER_EMAIL_ADDRESS)) . "%')
+                                            (form_field_options.page_id = ?)
+                                            AND (form_data.form_id = ?)
+                                            AND (form_field_options.email_address LIKE ?)
                                             AND (form_data.data = form_field_options.value)";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    $result = db_q($query, array((string) $custom_form_page_id, (string) $item_id, '%' . escape_like(USER_EMAIL_ADDRESS) . '%')) or output_error('Query failed.');
                                     $row = mysqli_fetch_row($result);
 
                                     // If this user's e-mail address matches the conditional administrator for this submitted form,
@@ -4995,11 +5015,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             FROM watchers
                             LEFT JOIN user ON watchers.user_id = user.user_id
                             WHERE
-                                (watchers.page_id = '" . escape($system_region_properties['page_id']) . "')
-                                AND (watchers.item_id = '" . escape($item_id) . "')
-                                AND (watchers.item_type = '" . escape($item_type) . "')
+                                (watchers.page_id = ?)
+                                AND (watchers.item_id = ?)
+                                AND (watchers.item_type = ?)
                             ORDER BY watchers.id ASC";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $system_region_properties['page_id'], (string) $item_id, (string) $item_type)) or output_error('Query failed.');
                         $watchers = mysqli_fetch_items($result);
 
                         // Loop through the watchers in order to output a list of them.
@@ -5246,6 +5266,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
         }
         
+        // The visual designer's canvas cuts the page's own system region out
+        // of a whole page render (pg_layout_region_preview()).
+        if ($primary_system_region && function_exists('pg_layout_region_marking') && pg_layout_region_marking()) {
+            $system_output = '<!--pg-layout-region-start-->' . $system_output . '<!--pg-layout-region-end-->';
+        }
+
         $content = preg_replace('/<system>' . $system_page_name . '<\/system>/i', pg_regex_replacement($system_output), $content);
     }
 
@@ -5291,6 +5317,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // first common region of an edit-mode view.
     $common_regions_user_can_edit = null;
 
+    // A common region made a shared component is drawn by that component
+    // (pg_common_region_component()): its row's content is no longer read
+    // and it has no inline editor, content people edit it in the designer.
+    $common_region_ids = array();
+    foreach ($cregion_rows as $row) {
+        if (($row !== null) && ($row['cregion_designer_type'] == 'no')) {
+            $common_region_ids[] = (int) $row['cregion_id'];
+        }
+    }
+    $common_region_components = $common_region_ids ? pg_common_region_components($common_region_ids) : array();
+
     foreach ($regions[0] as $region) {
         $row = $cregion_rows[strip_tags($region)];
 
@@ -5306,6 +5343,28 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // If this is a common region (not a designer region), then continue to replace it.
         if ($cregion_designer_type == 'no') {
+            if (!empty($common_region_components[(int) $cregion_id])) {
+                $component_id = $common_region_components[(int) $cregion_id];
+                $component_html = pg_common_region_component_html($component_id, $mode, $email);
+
+                // In edit mode the people who may edit the component get a
+                // link that opens it on its own in the designer.
+                if ($mode == 'edit') {
+                    require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+                }
+
+                if (($mode == 'edit') && pg_designer_component_editable($user, $component_id)) {
+                    $component_html =
+                        '<div class="edit_mode" style="position: relative; outline: 1px dashed #c2185b;">
+                            <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '&send_to=' . h(urlencode(get_request_uri())) . '" class="software_pinegrap_inline_edit_button design" title="' . lang('Common Region') . ': ' . h($cregion_name) . '">' . $edit_label . '</a>
+                            ' . $component_html . '
+                        </div>';
+                }
+
+                $content = str_replace($region, $component_html, $content);
+                continue;
+            }
+
             if (($mode == 'edit') && ($user['role'] >= 3) && ($common_regions_user_can_edit === null)) {
                 $common_regions_user_can_edit = get_items_user_can_edit('common_regions', $user['id']);
             }
@@ -5471,8 +5530,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     meta_keywords,
                     image_name
                 FROM $sql_table
-                WHERE id = '" . escape($item['id']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+            $result = db_q($query, array((string) $item['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             // if title was found then override pages title
@@ -6071,8 +6130,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // if user has selected a theme to preview, then prepare to include that theme
         if ($_SESSION['software']['preview_theme_id'] != '') {
             // get theme name in order to output path to theme
-            $query = "SELECT id, name FROM files WHERE id = '" . escape($_SESSION['software']['preview_theme_id']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id, name FROM files WHERE id = ?";
+            $result = db_q($query, array((string) $_SESSION['software']['preview_theme_id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $theme_id = $row['id'];
             $theme_name = $row['name'];

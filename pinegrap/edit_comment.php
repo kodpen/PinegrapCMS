@@ -66,8 +66,8 @@ $query =
     LEFT JOIN files ON comments.file_id = files.id
     LEFT JOIN page ON page.page_id = comments.page_id
     LEFT JOIN user ON comments.created_user_id = user.user_id
-    WHERE comments.id = '" . escape($_REQUEST['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE comments.id = ?";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // A stale or deleted comment id gives null here, and every read below -- plus
@@ -115,7 +115,7 @@ if($item_type === 'submitted_form'){
     //if this is custom page check referance code from forms
     $form_reference_code = $row['reference_code'];
     if($form_reference_code != ''){
-        $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('?r=' . $form_reference_code, $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+        $output_reference_button = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('?r=' . $form_reference_code, $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
         $output_reference_line = '<p class="p-0 m-0">' . lang('Form Reference Code') . ': ' . $form_reference_code . '</p>';
     }
     
@@ -123,17 +123,17 @@ if($item_type === 'submitted_form'){
     //if this is product group check address name from product groups
     $product_group_address_name = $row['product_group_address_name'];
     if($product_group_address_name != ''){
-        $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_group_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+        $output_reference_button = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_group_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
     }
 
 }else if($item_type === 'product'){
     //if this is product group check address name from product groups
     $product_address_name = $row['product_address_name'];
     if($product_address_name != ''){
-        $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+        $output_reference_button = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
     }
 }else if($item_type === ''){
-    $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+    $output_reference_button = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
 }
 
 //if there is a command button to output
@@ -223,18 +223,18 @@ if (!$_POST) {
     if ($file_name != '') {
         // we are using a separate link for the image and the file name because we don't want an underline on the image and we don't want to have to update all themes with new CSS
         $output_file_attachment =
-            '<div class="col-12 my-2">
+            '<div class="col-12 my-3">
                 <label class="form-label">' . lang('Attachment') . '</label>
                 <div class="input-group">
-                    <a class=" btn btn-light border" href="' . OUTPUT_PATH . h(encode_url_path($file_name)) . '" target="_blank">
+                    <a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file_name)) . '" target="_blank">
                         <span class="material-icons">attach_file</span>
                         ' . h($file_name) . ' (' . convert_bytes_to_string($file_size) . ') 
                     </a>
                     <div class="input-group-text">
                         <div class="col-12">
-                            <div class="form-check form-switch">
-                            ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'delete_file_attachment', 'id'=>'delete_file_attachment', 'value'=>'1', 'class'=>'form-check-input danger')) . '
-                                <label class="form-check-label text-danger" for="delete_file_attachment">' . lang('Delete Attachment') . '</label>
+                            <div class="form-field">
+                            <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'delete_file_attachment', 'id'=>'delete_file_attachment', 'value'=>'1', 'class'=>'danger no-bs')) . '</div>
+                                <label class="fg-danger" for="delete_file_attachment">' . lang('Delete Attachment') . '</label>
                             </div>
                         </div>
                     </div> 
@@ -264,7 +264,7 @@ if (!$_POST) {
 
     if ($reply_allowed) {
         $output_seller_reply_field = '
-            <div class="col-12 my-2">
+            <div class="col-12 my-3">
                 <label for="seller_reply" class="form-label">' . lang('Reply from the store') . '</label>
                 ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'seller_reply', 'id'=>'seller_reply', 'rows'=>'3', 'maxlength'=>'5000', 'class'=>'form-control')) . '
                 <div class="form-text">' . (($seller_reply_at > 0) ? lang(array('string' => 'Replied {var:1}.', 'vars' => array(get_relative_time(array('timestamp' => $seller_reply_at))))) . ' ' : '') . lang('Shown under the review, with the date it was written.') . '</div>
@@ -280,24 +280,24 @@ if (!$_POST) {
                        
     if($comments_rating != false){
         $output_rating_field = '
-        <style>
+        <style>@layer custom {
             .rating .btn-check:checked+label~label{
                 background-image: url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star\' viewBox=\'0 0 16 16\'><path d=\'M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z\'/></svg>") !important;
             }
             html[data-bs-theme="dark"] .rating label{filter: invert(100%);}
-        </style>
+        }</style>
 
         <label class="form-label">' . lang('Rating') . ':</label>
         <div class="rating btn-group" role="group" aria-label="Rating">
-            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_1', 'value'=>'1', 'class'=>'btn-check' , 'style'=>'display:none')) . '
+            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_1', 'value'=>'1', 'class'=>'btn-check radio' , 'style'=>'display:none')) . '
             <label for="comment_rating_1" style="cursor:pointer;min-width: 16px;min-height: 16px;background-image: url(&quot;data: image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star-fill\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>&quot;);background-repeat: no-repeat;background-position: center;"></label>
-            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_2', 'value'=>'2', 'class'=>'btn-check' , 'style'=>'display:none')) . '
+            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_2', 'value'=>'2', 'class'=>'btn-check radio' , 'style'=>'display:none')) . '
             <label for="comment_rating_2" style="cursor:pointer;min-width: 16px;min-height: 16px;background-image: url(&quot;data: image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star-fill\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>&quot;);background-repeat: no-repeat;background-position: center;"></label>
-            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_3', 'value'=>'3', 'class'=>'btn-check' , 'style'=>'display:none')) . '
+            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_3', 'value'=>'3', 'class'=>'btn-check radio' , 'style'=>'display:none')) . '
             <label for="comment_rating_3" style="cursor:pointer;min-width: 16px;min-height: 16px;background-image: url(&quot;data: image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star-fill\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>&quot;);background-repeat: no-repeat;background-position: center;"></label>
-            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_4', 'value'=>'4', 'class'=>'btn-check' , 'style'=>'display:none')) . '
+            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_4', 'value'=>'4', 'class'=>'btn-check radio' , 'style'=>'display:none')) . '
             <label for="comment_rating_4" style="cursor:pointer;min-width: 16px;min-height: 16px;background-image: url(&quot;data: image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star-fill\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>&quot;);background-repeat: no-repeat;background-position: center;"></label>
-            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_5', 'value'=>'5', 'checked'=>'checked', 'class'=>'btn-check' , 'style'=>'display:none')) . '
+            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_5', 'value'=>'5', 'checked'=>'checked', 'class'=>'btn-check radio' , 'style'=>'display:none')) . '
             <label for="comment_rating_5" style="cursor:pointer;min-width: 16px;min-height: 16px;background-image: url(&quot;data: image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star-fill\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>&quot;);background-repeat: no-repeat;background-position: center;"></label>
         </div>';
     }
@@ -323,10 +323,10 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<div class="row mb-2">
-                            <div class="col-12 col-md">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
+<div class="row mb-3">
+                            <div class="col-12 md:col">
                                 
                                 <p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
                                 <p class="p-0 m-0">' . lang('Page') . ': ' . h(get_page_name($page_id)) . '</p>
@@ -343,29 +343,29 @@ if (!$_POST) {
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id')) . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Details') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Display Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                         </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="publish" class="form-label">' . lang('Publish') . '</label>
-                                                ' . $liveform->output_field(array( 'type' => 'select', 'class' => 'form-select', 'id' => 'publish', 'name' => 'publish', 'options' => $publish_options)) . '
+                                                ' . $liveform->output_field(array( 'type' => 'select', 'class' => 'form-control', 'id' => 'publish', 'name' => 'publish', 'options' => $publish_options)) . '
                                         </div>
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="message" class="form-label">' . lang('Comment') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'id'=>'message', 'class'=>'form-control')) . '
                                         </div>
                                         ' . $output_seller_reply_field . '
                                         ' . $output_rating_field . '
                                         ' . $output_file_attachment . '
-                                        <div class="col-12 col-md-6 col-lg-4 my-2" id="publish_schedule" style="display: none">
-                                            <div class="border-1 border p-2 my-2 rounded">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3" id="publish_schedule" style="display: none">
+                                            <div class="border-1 border p-3 my-3 rounded-4">
                                                 <label for="publish_date_and_time" class="form-label">' . lang('Publish Date') . '</label>
                                                 ' . $liveform->output_field(array(
                                                     'type' => 'text',
@@ -375,29 +375,29 @@ if (!$_POST) {
                                                     'class' => 'form-control',
                                                     'data-pg-datetime' => '')) . '
 
-                                                <div class="form-check form-switch ms-1 mt-2">
-                                                    ' . $liveform->output_field(array(
+                                                <div class="form-field ms-1 mt-3">
+                                                    <div class="switch">' . $liveform->output_field(array(
                                                         'type' => 'checkbox',
                                                         'name' => 'publish_cancel',
                                                         'id' => 'publish_cancel',
                                                         'value' => '1',
-                                                        'class' => 'form-check-input')) . '
-                                                    <label class="form-check-label" for="publish_cancel">' . lang('Cancel if a new comment is added first.') . '</label>
+                                                        'class' => 'no-bs')) . '</div>
+                                                    <label class="" for="publish_cancel">' . lang('Cancel if a new comment is added first.') . '</label>
                                                 </div>
                                             </div>
                                         </div>
                                         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
                                         ' . get_date_time_picker_format() . pg_fields_script() . '
                                         <script>init_edit_comment_publish()</script>
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array(
+                                        <div class="col-12 my-5">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array(
                                                     'type' => 'checkbox',
                                                     'name' => 'featured',
                                                     'id' => 'featured',
                                                     'value' => '1',
-                                                    'class' => 'form-check-input')) . '
-                                                <label class="form-check-label" for="featured">' . lang('Featured') . '</label>
+                                                    'class' => 'no-bs')) . '</div>
+                                                <label class="" for="featured">' . lang('Featured') . '</label>
                                                 <div class="form-text">' . lang('Highlight Featured Comment') . '</div>
                                             </div>
                                         </div>
@@ -406,11 +406,11 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('comment')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('comment')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -436,14 +436,14 @@ if (!$_POST) {
         // if there is a file attachment, then check if we should delete it
         if ($file_name != '') {
             // check if the file attachment is used by another comment (multiple comments can share the same file attachment when pages are duplicated)
-            $query = "SELECT id FROM comments WHERE (file_id = '$file_id') AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM comments WHERE (file_id = ?) AND (id != ?)";
+            $result = db_q($query, array((string) $file_id, (string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
             
             // if the file attachment is not used by another comment, then delete the file
             if (mysqli_num_rows($result) == 0) {
                 // delete file from database
-                $query = "DELETE FROM files WHERE id = '$file_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "DELETE FROM files WHERE id = ?";
+                $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
                 
                 // delete file on file system
                 @unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
@@ -454,12 +454,12 @@ if (!$_POST) {
         }
         
         // delete comment
-        $query = "DELETE FROM comments WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM comments WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
         
         // also delete notification created for this comment.
-        $query = "DELETE FROM notifications WHERE comment_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM notifications WHERE comment_id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
 
         // A form record's comment count and newest comment, read by the form
         // lists (includes/fn/comments.php).
@@ -509,14 +509,14 @@ if (!$_POST) {
             $sql_file_id = "file_id = '0',";
             
             // check if the file attachment is used by another comment (multiple comments can share the same file attachment when pages are duplicated)
-            $query = "SELECT id FROM comments WHERE (file_id = '$file_id') AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM comments WHERE (file_id = ?) AND (id != ?)";
+            $result = db_q($query, array((string) $file_id, (string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
             
             // if the file attachment is not used by another comment, then delete the file
             if (mysqli_num_rows($result) == 0) {
                 // delete file from database
-                $query = "DELETE FROM files WHERE id = '$file_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "DELETE FROM files WHERE id = ?";
+                $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
                 
                 // delete file on file system
                 @unlink(FILE_DIRECTORY_PATH . '/' . $file_name);

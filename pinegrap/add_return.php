@@ -156,20 +156,20 @@ if ($order_id <= 0) {
     <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
         <a class="btn btn-sm btn-ghost" href="view_returns.php"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('All Returns')) . '</a>
     </nav>
-    <div class="row g-4">
-        <div class="col-12 col-lg-8 col-xxl-9 order-1">
-            <div class="card mb-4">
+    <div class="row g-7">
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+            <div class="card mb-7">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Order')) . '</span>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Order')) . '</span>
                 </div>
                 <div class="card-body">
-                    <form method="get" action="add_return.php" class="row g-3 align-items-end">
-                        <div class="col-12 col-md-6">
+                    <form method="get" action="add_return.php" class="row g-5 align-items-end">
+                        <div class="col-12 md:col-6">
                             <label for="order_number" class="form-label">' . h(lang('Order Number')) . '</label>
                             ' . $liveform->output_field(array('type' => 'text', 'name' => 'order_number', 'id' => 'order_number', 'maxlength' => '30', 'inputmode' => 'numeric', 'class' => 'form-control', 'autocomplete' => 'off', 'autofocus' => true, 'required' => 'required')) . '
                         </div>
-                        <div class="col-12 col-md-auto">
-                            <button type="submit" class="btn btn-primary"><i class="bi bi-arrow-right-circle me-1" aria-hidden="true"></i>' . h(lang('Continue')) . '</button>
+                        <div class="col-12 md:col-auto">
+                            <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-arrow-right-circle me-1" aria-hidden="true"></i>' . h(lang('Continue')) . '</button>
                         </div>
                     </form>
                 </div>
@@ -241,13 +241,13 @@ if ($order_id <= 0) {
         $output_box = ($left > 0)
             ? '<label for="qty_' . $id . '" class="visually-hidden">' . h(lang(array('string' => 'How many to return: {var:1}', 'vars' => array((string) $line['name'])))) . '</label>'
                 . $liveform->output_field(array('type' => 'number', 'name' => 'qty_' . $id, 'id' => 'qty_' . $id, 'value' => '0', 'min' => '0', 'max' => (string) $left, 'step' => '1', 'inputmode' => 'numeric', 'class' => 'form-control form-control-sm text-end', 'autocomplete' => 'off'))
-            : '<span class="text-body-secondary">&mdash;</span>';
+            : '<span class="fg-secondary">&mdash;</span>';
 
         $output_lines .= '
                                 <tr>
-                                    <td>' . h((string) $line['name']) . ((($line['code'] !== '') && ($line['code'] !== $line['name'])) ? '<div class="small text-muted">' . h((string) $line['code']) . '</div>' : '') . '</td>
+                                    <td>' . h((string) $line['name']) . ((($line['code'] !== '') && ($line['code'] !== $line['name'])) ? '<div class="small fg-secondary">' . h((string) $line['code']) . '</div>' : '') . '</td>
                                     <td class="text-end">' . (int) $line['quantity'] . '</td>
-                                    <td class="text-end">' . (((int) $line['held'] > 0) ? (int) $line['held'] : '<span class="text-body-secondary">0</span>') . '</td>
+                                    <td class="text-end">' . (((int) $line['held'] > 0) ? (int) $line['held'] : '<span class="fg-secondary">0</span>') . '</td>
                                     <td style="width:8rem">' . $output_box . '</td>
                                 </tr>';
     }
@@ -263,7 +263,7 @@ if ($order_id <= 0) {
     $unknown = ($delivery['breach'] === 'delivery_date_unknown');
 
     $output_breach = isset($breaches[$delivery['breach']]) ? '
-    <div class="alert ' . ($unknown ? 'alert-info' : 'alert-warning') . '" role="status"><i class="bi ' . ($unknown ? 'bi-info-circle' : 'bi-exclamation-triangle') . ' me-2" aria-hidden="true"></i>'
+    <div class="alert ' . ($unknown ? 'theme-info' : 'theme-warning') . '" role="status"><i class="bi ' . ($unknown ? 'bi-info-circle' : 'bi-exclamation-triangle') . ' me-3" aria-hidden="true"></i>'
         . h($breaches[$delivery['breach']]) . ' ' . h(lang('You can still record the request: staff are not held to the customer\'s timing rules.')) . '</div>' : '';
 
     $output_confirm = ($delivery['breach'] !== '')
@@ -276,11 +276,11 @@ if ($order_id <= 0) {
     $can_mail = ($mail_to !== '') && (strpos($mail_to, '@') !== false) && defined('EMAIL_ADDRESS') && (EMAIL_ADDRESS !== '');
 
     $output_notify = $can_mail ? '
-                        <div class="form-check">
-                            ' . $liveform->output_field(array('type' => 'checkbox', 'name' => 'notify', 'id' => 'notify', 'value' => '1', 'class' => 'form-check-input')) . '
-                            <label class="form-check-label" for="notify">' . h(lang(array('string' => 'Send the customer the request-received e-mail ({var:1})', 'vars' => array($mail_to)))) . '</label>
+                        <div class="form-field">
+                            ' . $liveform->output_field(array('type' => 'checkbox', 'name' => 'notify', 'id' => 'notify', 'value' => '1', 'class' => 'check')) . '
+                            <label class="" for="notify">' . h(lang(array('string' => 'Send the customer the request-received e-mail ({var:1})', 'vars' => array($mail_to)))) . '</label>
                         </div>' : '
-                        <p class="small text-muted mb-0">' . h(lang('The customer cannot be told by e-mail: the order has no e-mail address, or the site has no sender address.')) . '</p>';
+                        <p class="small fg-secondary mb-0">' . h(lang('The customer cannot be told by e-mail: the order has no e-mail address, or the site has no sender address.')) . '</p>';
 
     // Several deliveries: one form at a time, switched in the toolbar.
     $output_switch = '';
@@ -310,22 +310,22 @@ if ($order_id <= 0) {
     if ($timing) {
         $output_window = '
                         <div class="row">
-                            <span class="col text-muted">' . h($timing['estimated'] ? lang('Delivered (estimated)') : lang('Delivered')) . ':</span>
+                            <span class="col fg-secondary">' . h($timing['estimated'] ? lang('Delivered (estimated)') : lang('Delivered')) . ':</span>
                             <span class="col text-end">' . h(pg_return_day_text($timing['delivered'])) . '</span>
                         </div>
                         <div class="row">
-                            <span class="col text-muted">' . h(lang('Return period ends')) . ':</span>
+                            <span class="col fg-secondary">' . h(lang('Return period ends')) . ':</span>
                             <span class="col text-end">' . h(pg_return_day_text($timing['deadline'])) . '</span>
                         </div>
                         <div class="row">
-                            <span class="col text-muted">' . h(lang('Today')) . ':</span>
+                            <span class="col fg-secondary">' . h(lang('Today')) . ':</span>
                             <span class="col text-end">' . ($timing['in_time']
-                                ? '<span class="text-success">' . h(lang('within the return period')) . '</span>'
-                                : '<span class="text-danger">' . h(lang('after the return period')) . '</span>') . '</span>
+                                ? '<span class="fg-success">' . h(lang('within the return period')) . '</span>'
+                                : '<span class="fg-danger">' . h(lang('after the return period')) . '</span>') . '</span>
                         </div>';
     } else {
         $output_window = '
-                        <p class="small text-muted mb-0">' . h(lang('No delivery date is known for this delivery, so the return period cannot be worked out.')) . '</p>';
+                        <p class="small fg-secondary mb-0">' . h(lang('No delivery date is known for this delivery, so the return period cannot be worked out.')) . '</p>';
     }
 
     echo
@@ -356,11 +356,11 @@ if ($order_id <= 0) {
         ' . get_token_field() . '
         <input type="hidden" name="order_id" value="' . $order_id . '">
         <input type="hidden" name="ship_to_id" value="' . $ship_to_id . '">
-        <div class="row g-4">
-            <div class="col-12 col-lg-8 col-xxl-9 order-1">
-                <div class="card mb-4">
+        <div class="row g-7">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                <div class="card mb-7">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Items to Return')) . '</span>
+                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Items to Return')) . '</span>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -379,16 +379,16 @@ if ($order_id <= 0) {
                         </div>
                     </div>
                 </div>
-                <div class="card mb-4">
+                <div class="card mb-7">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Reason for the return')) . '</span>
+                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Reason for the return')) . '</span>
                     </div>
                     <div class="card-body">
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label for="reason" class="form-label">' . h(lang('Reason')) . '</label>
-                            ' . $liveform->output_field(array('type' => 'select', 'name' => 'reason', 'id' => 'reason', 'options' => pg_return_reason_options(lang('Choose a reason')), 'class' => 'form-select', 'required' => 'required')) . '
+                            ' . $liveform->output_field(array('type' => 'select', 'name' => 'reason', 'id' => 'reason', 'options' => pg_return_reason_options(lang('Choose a reason')), 'class' => 'form-control', 'required' => 'required')) . '
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label for="note" class="form-label">' . h(lang('The customer\'s note')) . '</label>
                             ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'note', 'id' => 'note', 'rows' => '3', 'maxlength' => PG_RETURN_NOTE_MAX, 'class' => 'form-control')) . '
                             <div id="note_help" class="form-text">' . h(lang('The customer\'s reason in their words. Needed with "Another reason". The customer can see it on their order page and in the e-mail.')) . '</div>
@@ -397,21 +397,21 @@ if ($order_id <= 0) {
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-lg-4 col-xxl-3 order-2">
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
                 <div class="position-sticky" style="top:1rem;">
-                    <div class="card mb-4">
-                        <div class="card-header text-uppercase h6 text-primary fw-bold mb-0">' . h(lang('Order')) . '</div>
+                    <div class="card mb-7">
+                        <div class="card-header text-uppercase h6 fg-primary fw-bold mb-0">' . h(lang('Order')) . '</div>
                         <div class="card-body small">
                             <div class="row">
-                                <span class="col text-muted">' . h(lang('Order Number')) . ':</span>
+                                <span class="col fg-secondary">' . h(lang('Order Number')) . ':</span>
                                 <span class="col text-end"><a href="view_order.php?id=' . $order_id . '">' . h($order_number) . '</a></span>
                             </div>
                             <div class="row">
-                                <span class="col text-muted">' . h(lang('Order Date')) . ':</span>
+                                <span class="col fg-secondary">' . h(lang('Order Date')) . ':</span>
                                 <span class="col text-end">' . h(pg_return_time_text($order['order_date'])) . '</span>
                             </div>
                             <div class="row">
-                                <span class="col text-muted">' . h(lang('Payment Method')) . ':</span>
+                                <span class="col fg-secondary">' . h(lang('Payment Method')) . ':</span>
                                 <span class="col text-end">' . h((string) $order['payment_method']) . '</span>
                             </div>
                             <hr>
@@ -420,21 +420,21 @@ if ($order_id <= 0) {
                             ' . (((string) $order['billing_phone_number'] !== '') ? '<div>' . h((string) $order['billing_phone_number']) . '</div>' : '') . '
                         </div>
                     </div>
-                    <div class="card mb-4">
-                        <div class="card-header text-uppercase h6 text-primary fw-bold mb-0">' . h(lang('Delivery')) . '</div>
+                    <div class="card mb-7">
+                        <div class="card-header text-uppercase h6 fg-primary fw-bold mb-0">' . h(lang('Delivery')) . '</div>
                         <div class="card-body small">
-                            <div class="fw-semibold mb-2">' . h($delivery['label']) . '</div>
-                            ' . (($output_parcels !== '') ? '<ul class="ps-3 mb-2">' . $output_parcels . '</ul>' : '') . '
+                            <div class="fw-semibold mb-3">' . h($delivery['label']) . '</div>
+                            ' . (($output_parcels !== '') ? '<ul class="ps-5 mb-3">' . $output_parcels . '</ul>' : '') . '
                             ' . $output_window . '
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
-                <nav class="buttons navigation text-center mb-4" aria-label="' . h(lang('data edit buttons')) . '">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_create" value="1" class="btn my-1 btn-primary"' . $output_confirm . '><i class="bi bi-arrow-return-left me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Record the Return Request')) . '</span></button>
+                            <button type="submit" name="submit_create" value="1" class="btn my-1 btn-solid theme-primary"' . $output_confirm . '><i class="bi bi-arrow-return-left me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Record the Return Request')) . '</span></button>
                         </div>
                     </div>
                 </nav>
