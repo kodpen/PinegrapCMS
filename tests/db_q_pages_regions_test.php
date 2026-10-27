@@ -5,7 +5,7 @@
  * Static checks on the page, region, theme, menu, file editor and panel
  * content screens (add_page.php, the add/edit region screens, the theme and
  * JavaScript editors, includes/fn/page_revisions.php, includes/panel/
- * designer.php and content.php, ...): their raw queries with values run
+ * content.php, ...): their raw queries with values run
  * through db_q() placeholders, not escape()/e() concatenated into the SQL
  * text, and every db_q() call passes one value per '?'. The raw queries
  * left have no values or are completed by a clause built elsewhere
@@ -154,7 +154,6 @@ function db_q_pages_regions_test_files()
 		'includes/fn/image.php' => 0,
 		'includes/fn/editor.php' => 0,
 		'includes/fn/design_themes.php' => 0,
-		'includes/panel/designer.php' => 2,
 		'includes/panel/content.php' => 2,
 	);
 }

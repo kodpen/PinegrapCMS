@@ -480,9 +480,9 @@ function pg_panel_create_design_region($request, $action)
     if ($user['role'] < 1) {
         $name = trim($request['designer_region']['name']);
         $query = "INSERT INTO cregion (cregion_name, cregion_content, cregion_designer_type, cregion_user, cregion_timestamp) "
-            . "VALUES (?, ?, 'yes', ?, UNIX_TIMESTAMP())";
+            . "VALUES ('" . escape($name) . "', '" . escape($request['designer_region']['content']) . "', 'yes', " . USER_ID . ", UNIX_TIMESTAMP())";
         // insert row into region table
-        $result = db_q($query, array((string) $name, (string) $request['designer_region']['content'], (int) USER_ID)) or output_error('Query failed');
+        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         log_activity(lang(array('string' => '{var:1} ({var:2}) was created', 'vars' => array(lang('designer region'), $name))), $_SESSION['sessionusername']);
 
         $response = array(
@@ -1777,8 +1777,8 @@ function pg_panel_designer_file($request, $action)
             if ($df_name_safe === '' || $df_name_safe !== $df_name) {
                 respond(array('status' => 'error', 'message' => 'Invalid file name.'));
             }
-            $df_row_q = db_q(
-                "SELECT id, folder FROM files WHERE name = ? LIMIT 1", array((string) $df_name_safe));
+            $df_row_q = mysqli_query(db::$con,
+                "SELECT id, folder FROM files WHERE name = '" . e($df_name_safe) . "' LIMIT 1");
             if (!$df_row_q || mysqli_num_rows($df_row_q) === 0) {
                 respond(array('status' => 'error', 'message' => 'File is not registered in files table.'));
             }
