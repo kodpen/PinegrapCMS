@@ -214,7 +214,30 @@ function bs6_switch_token_bridge_block()
 
 	return BS6_SWITCH_BRIDGE_NOTE . "\n   read the panel's palette and Bootstrap 5's neutrals, so the panel keeps\n"
 		. "   its look until the tokens are tuned. */\n:root,\n[data-bs-theme] {\n" . implode("\n", $lines) . "\n}\n"
-		. "/* v6 keeps a scrollbar's gutter on the page even when nothing scrolls. */\n:root {\n  scrollbar-gutter: auto;\n}\n";
+		. "/* v6 keeps a scrollbar's gutter on the page even when nothing scrolls. */\n:root {\n  scrollbar-gutter: auto;\n}\n"
+		. "/* v6 declares the drawer's variables unlayered too: a drawer reads the\n   panel's --pg-drawer-* (bs6_switch_drawer_variables()), else v5's look,\n   flush with the screen edge and square. */\n"
+		. ".drawer,\n.sm\\:drawer,\n.md\\:drawer,\n.lg\\:drawer,\n.xl\\:drawer,\n.\\32 xl\\:drawer {\n"
+		. "  --bs-drawer-inset: var(--pg-drawer-inset, 0);\n  --bs-drawer-border-radius: var(--pg-drawer-border-radius, 0);\n"
+		. "  --bs-drawer-width: var(--pg-drawer-width, 400px);\n  --bs-drawer-height: var(--pg-drawer-height, 30vh);\n}\n";
+}
+
+/**
+ * Bootstrap 6 declares --bs-drawer-* on .drawer outside any layer, so a
+ * panel rule in @layer custom that sets one (`.pg-perm-panel {
+ * --bs-drawer-width: 32rem }`) loses. The panel's rules set --pg-drawer-*
+ * instead; the bridge's unlayered .drawer rule reads them.
+ */
+function bs6_switch_drawer_variables($source)
+{
+	$source = preg_replace('/--bs-drawer-(inset|border-radius|width|height)(\s*:)/', '--pg-drawer-$1$2', $source, -1, $count);
+
+	return bs6_switch_result($source, $count > 0 ? 'applied' : 'done');
+}
+
+// Panel stylesheets and files with style blocks that may size a drawer.
+function bs6_switch_drawer_files($root)
+{
+	return array_values(array_unique(array_merge(bs6_switch_stylesheets($root), bs6_switch_style_files())));
 }
 
 // backend.src.css: the bridge goes after the custom layer, unlayered.
