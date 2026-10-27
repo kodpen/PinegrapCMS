@@ -1294,6 +1294,56 @@ function pg_price_history_reference_rules()
 }
 
 /**
+ * The rule a shop uses when none is stored: the 30-day lowest, which the
+ * Turkish price label regulation and the EU Omnibus rule both ask for.
+ */
+define('PG_PRICE_REFERENCE_RULE_DEFAULT', 'lowest_30d');
+
+/**
+ * A stored or posted rule as one of the known rules: anything else (NULL,
+ * empty, a rule a later version dropped) reads as the default.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_price_reference_rule_from_input($value)
+{
+    $value = is_string($value) ? trim($value) : '';
+
+    return array_key_exists($value, pg_price_history_reference_rules()) ? $value : PG_PRICE_REFERENCE_RULE_DEFAULT;
+}
+
+/**
+ * True when config.ecommerce_reference_price_rule is in the database
+ * (2026.11.0, 11.0.49).
+ *
+ * @return bool
+ */
+function pg_price_reference_rule_ready()
+{
+    return pg_schema_has('config', 'ecommerce_reference_price_rule');
+}
+
+/**
+ * The shop's reference price rule (Settings › Ecommerce › Reference Price),
+ * read once per request; the default before the upgrade has run.
+ *
+ * @return string a key of pg_price_history_reference_rules()
+ */
+function pg_price_reference_rule()
+{
+    static $rule = null;
+
+    if ($rule === null) {
+        $rule = pg_price_reference_rule_from_input(
+            pg_price_reference_rule_ready() ? db_value("SELECT ecommerce_reference_price_rule FROM config") : null
+        );
+    }
+
+    return $rule;
+}
+
+/**
  * The moment a rule's window begins, or null for a rule that reads no
  * history (manual) or is not one.
  *

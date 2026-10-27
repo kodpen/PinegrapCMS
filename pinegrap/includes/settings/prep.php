@@ -631,6 +631,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ? $legal_template
             : pg_legal_document_default_template($legal_type, lang(array('info' => true)));
     }
+    // Reference price rule (11.0.49): NULL or an unknown value reads as the
+    // default, so the card always has one option checked.
+    $reference_price_rule_ready = array_key_exists('ecommerce_reference_price_rule', $row);
+    $ecommerce_reference_price_rule = pg_price_reference_rule_from_input($row['ecommerce_reference_price_rule'] ?? null);
     $erp_open_account_payment_checked = ((int) ($row['erp_open_account_payment'] ?? 0) === 1) ? ' checked' : '';
 
     // ERP notices on the bell and the devices (4.91); the amount is kept in

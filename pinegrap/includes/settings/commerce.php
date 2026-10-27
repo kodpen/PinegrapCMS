@@ -1105,6 +1105,46 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Reference Price ──
+// Which price stands beside a reduced price as the price before the discount
+// (pg_price_reference_rule()). Drawn once the schema has its column; the save
+// writes it only then.
+if ($reference_price_rule_ready) {
+    $reference_price_rule_options = array(
+        'lowest_30d' => array(lang('Lowest price of the last 30 days'), lang('The Turkish price label regulation and the EU Omnibus rule ask for this one.')),
+        'lowest_10d' => array(lang('Lowest price of the last 10 days'), lang('The Turkish rule for discount advertising from 1 August 2026.')),
+        'manual'     => array(lang('Compare-at Price'), lang('The compare-at price entered on each product, shown only when it is higher than the current price.')),
+    );
+    $reference_price_rule_fields = '';
+
+    foreach ($reference_price_rule_options as $reference_rule => $reference_rule_text) {
+        $reference_rule_id = 'ecommerce_reference_price_rule_' . $reference_rule;
+        $reference_price_rule_fields .= '
+                            <div class="form-field">
+                                <input value="' . $reference_rule . '" class="radio" type="radio" id="' . $reference_rule_id . '" name="ecommerce_reference_price_rule"' . (($ecommerce_reference_price_rule === $reference_rule) ? ' checked' : '') . '>
+                                <label class="" for="' . $reference_rule_id . '">' . $reference_rule_text[0] . '</label>
+                            </div>
+                            <div class="form-text mb-3">' . $reference_rule_text[1] . '</div>';
+    }
+
+    $pg_settings_cards[] = '
+    <div id="pgset-reference-price" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Reference Price') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                    <div class="col-12">
+                        <label class="form-label">' . lang('Price before the discount') . '</label>' . $reference_price_rule_fields . '
+                        <div class="form-text">' . lang('Under a lowest-price rule, a product whose price history is shorter than the period shows its current price as the reference, never a lowest read from part of the period.') . '</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>';
+}
+
 // ── Legal Documents ──
 // The pre-information form and the distance sales contract, filled from the
 // order. Drawn once the schema has its fields; the save writes them only then.
