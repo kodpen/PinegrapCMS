@@ -25,10 +25,10 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 
 - A7 done (PR #2388): `workspace.flow.run.finished`, `.failed`, `.waiting` (workspace-flows-run-events.md). The run-level result waits for C1, as A5's flag does.
 
-- A8 proposals: a `{type: flow}` draft card replaces `{type: scheduled}` (api_proposals.php, scheduled_draft.php).
+- A8 done (PR #2467): a `{type: flow}` draft card replaces `{type: scheduled}` (workspace-flow-draft-proposals.md).
 
 ## Where to start?
-- Next: A8 (proposals), not claimed. Check open PRs on api_proposals.php and scheduled_draft.php before claiming.
+- All steps done; open question 1 remains.
 
 ## Which rules hold?
 - Reads are MCP tools; a key or OAuth connection may write drafts; publishing, changing a live flow and resuming stay the person's own session (#1708 rule).

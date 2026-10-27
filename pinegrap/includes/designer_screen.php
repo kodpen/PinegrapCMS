@@ -128,6 +128,7 @@ function pg_designer_screen_render($ctx)
             'page_draft'            => (int)(isset($p['page_draft']) ? $p['page_draft'] : 0),
             'page_title'            => (string)$p['page_title'],
             'page_meta_description' => (string)$p['page_meta_description'],
+            'ai_fields'             => isset($p['ai_fields']) && is_array($p['ai_fields']) ? $p['ai_fields'] : array(),
             'page_search'           => (int)$p['page_search'],
             'page_search_keywords'  => (string)$p['page_search_keywords'],
             'page_sitemap'          => (int)$p['page_sitemap'],
@@ -2109,6 +2110,11 @@ function pg_designer_settings_modal($ctx)
     );
     $ai_title_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_title', 'field' => 'pg_page_title'));
     $ai_description_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_description', 'field' => 'pg_page_meta_description'));
+    // The mark of a text written with AI (page.ai_fields), drawn hidden and
+    // shown by the editor for the open page; it saves with the page.
+    $ai_marks_ready = pg_ai_fields_ready('page');
+    $ai_title_marker = $ai_marks_ready ? pg_ai_fields_marker('page_title', 'pg_page_title', false) : '';
+    $ai_description_marker = $ai_marks_ready ? pg_ai_fields_marker('page_meta_description', 'pg_page_meta_description', false) : '';
 
     $rail = function ($pane, $icon, $label, $scope, $active, $hidden = false) use ($design_hidden) {
         return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . ($hidden ? ' d-none' : '') . '" id="tab-' . $pane . '-btn"
@@ -2313,12 +2319,12 @@ function pg_designer_settings_modal($ctx)
                 lang('The title in the browser tab and in search results; 30 to 60 characters read best. Left empty, the title of the site is used.'),
                 '<input type="text" name="page_title" id="pg_page_title" class="form-control form-control-sm sd-page-field" data-page-key="page_title" maxlength="255">
                 <div id="seo_c_pg_page_title"></div>',
-                array('for' => 'pg_page_title', 'wide' => true, 'action' => $ai_title_button)) . '
+                array('for' => 'pg_page_title', 'wide' => true, 'action' => $ai_title_button, 'marker' => $ai_title_marker)) . '
             ' . pg_designer_setting(lang('Meta Description'),
                 lang('The summary under the title in search results and in shared links; 150 to 160 characters read best. Left empty, the description of the site is used.'),
                 '<textarea name="page_meta_description" id="pg_page_meta_description" class="form-control form-control-sm sd-page-field" data-page-key="page_meta_description" rows="3" maxlength="255"></textarea>
                 <div id="seo_c_pg_page_meta_description"></div>',
-                array('for' => 'pg_page_meta_description', 'wide' => true, 'action' => $ai_description_button)) . '
+                array('for' => 'pg_page_meta_description', 'wide' => true, 'action' => $ai_description_button, 'marker' => $ai_description_marker)) . '
             ' . pg_designer_setting(lang('Preview'),
                 lang('Roughly how a search engine lists the page. It may shorten the text or show a passage of the page instead; a page that shows one record (a product, a post) takes the title and description of the record.'),
                 '<div class="sd-serp" id="sd-serp" aria-hidden="true">
@@ -2442,7 +2448,7 @@ function pg_designer_settings_modal($ctx)
  * $name and $help are lang() text. $opts: 'for' (the control's id, makes
  * the name its label), 'wide', 'switch', 'id' (the row's), 'action' (a
  * button beside the name, such as pg_ai_write_button(); its panel opens
- * under the name).
+ * under the name), 'marker' (a mark after the name, pg_ai_fields_marker()).
  */
 function pg_designer_setting($name, $help, $control, $opts = array())
 {
@@ -2453,8 +2459,8 @@ function pg_designer_setting($name, $help, $control, $opts = array())
     $name = ($for !== '')
         ? '<label class="sd-set-name" for="' . h($for) . '">' . $name . '</label>'
         : '<div class="sd-set-name">' . $name . '</div>';
-    if (!empty($opts['action'])) {
-        $name = pg_ai_write_label_row($name, (string)$opts['action']);
+    if (!empty($opts['action']) || !empty($opts['marker'])) {
+        $name = pg_ai_write_label_row($name, (string)($opts['action'] ?? ''), (string)($opts['marker'] ?? ''));
     }
     return '<div class="' . $class . '"' . (isset($opts['id']) ? ' id="' . h($opts['id']) . '"' : '') . '>
                 <div class="sd-set-text">' . $name . ($help !== '' ? '<div class="sd-set-help">' . $help . '</div>' : '') . '</div>

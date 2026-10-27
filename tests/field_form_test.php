@@ -5,7 +5,7 @@
  * Tests for the form field form shared by the field screens
  * (includes/forms/field_form.php): the form type of a page, the form name
  * fallback, the name check, the choices parser, the new sort
- * order and the save notice.
+ * order, the stored choices as text and the save notice.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -134,4 +134,43 @@ function test_field_form_add_screen_uses_shared_form()
 	pg_assert_contains('get_token_field()', $source, 'prints the token');
 	pg_assert_contains('validate_token_field()', $source, 'checks the token');
 	pg_assert_contains('pg_field_form_layout_warning(', $source, 'keeps the custom layout warning');
+}
+
+function test_field_form_option_line()
+{
+	$option = array('label' => 'Apple', 'value' => 'Apple', 'default_selected' => 0, 'upload_folder_id' => 0, 'email_address' => '');
+	pg_assert_same('Apple', pg_field_form_option_line($option, array()), 'label only');
+
+	$option['value'] = 'apple';
+	pg_assert_same('Apple|apple', pg_field_form_option_line($option, array()), 'own value');
+
+	$option['default_selected'] = 1;
+	pg_assert_same('Apple|apple|on', pg_field_form_option_line($option, array()), 'selected');
+
+	$option = array('label' => 'North', 'value' => 'North', 'default_selected' => 0, 'upload_folder_id' => 0, 'email_address' => 'a@example.com, b@example.com', 'target_form_field_name' => 'City');
+	pg_assert_same('North|North||City=Oslo,Bergen ^^a@example.com, b@example.com^^', pg_field_form_option_line($option, array('Oslo', 'Bergen')), 'trigger and e-mail');
+
+	$option = array('label' => 'CV', 'value' => 'CV', 'default_selected' => 0, 'upload_folder_id' => '42', 'email_address' => '', 'target_form_field_name' => null);
+	pg_assert_same('CV|CV|||42', pg_field_form_option_line($option, array()), 'upload folder only');
+}
+
+// What the edit screen prints is read back by the save the same way.
+function test_field_form_option_line_round_trip()
+{
+	$option = array('label' => 'Sales', 'value' => 'sales', 'default_selected' => 1, 'upload_folder_id' => '7', 'email_address' => 'a@example.com', 'target_form_field_name' => 'Region');
+	$parsed = pg_field_form_parse_option_line(pg_field_form_option_line($option, array('North', 'South')));
+
+	pg_assert_same(array('Sales', 'sales', 1, 'a@example.com', 'Region=North,South', '7'), array($parsed['label'], $parsed['value'], $parsed['default_selected'], $parsed['email_address'], $parsed['trigger'], $parsed['upload_folder_id']), 'round trip');
+}
+
+function test_field_form_edit_screen_uses_shared_form()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_field.php');
+
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/forms/field_form.php')", $source, 'loads the shared form');
+	pg_assert_contains('pg_field_form_cards(', $source, 'draws the shared cards');
+	pg_assert_contains('get_token_field()', $source, 'prints the token');
+	pg_assert_contains('validate_token_field()', $source, 'checks the token');
+	pg_assert_contains('pg_field_form_layout_warning(', $source, 'keeps the custom layout warning');
+	pg_assert_contains('$designer_form', $source, 'keeps the read-only designer form view');
 }

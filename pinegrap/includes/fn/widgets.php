@@ -82,6 +82,7 @@ function pg_sw_type_labels()
         'billing_information' => lang('Billing Information'),
         'order_preview'       => lang('Order Preview'),
         'order_form'          => lang('Order Form'),
+        'folder_view'         => lang('Folder View'),
         'menu_region'         => lang('Menu'),
         'menu_sequence_region' => lang('Menu Sequence'),
         'ad_region'           => lang('Ad Region'),
@@ -6516,8 +6517,9 @@ function pg_sw_item_summary($html, $max = 140)
 //     binds neither link gets a card listing them after the widget.
 //     __withdrawal_deadline    last day of the right of withdrawal (14 days
 //                              from the last delivery; date text)
-//     visibility flags: has_withdrawal_deadline, withdrawal_deadline_estimated,
-//     withdrawal_ended. None in the receipt e-mail; the card after the widget
+//     visibility flags: has_withdrawal_deadline, withdrawal_deadline_firm,
+//     withdrawal_deadline_estimated, withdrawal_ended (the last three never
+//     two at once). None in the receipt e-mail; the card after the widget
 //     carries the line when the layout does not bind the token.
 //
 //   Invoice print:
@@ -7322,9 +7324,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'has_legal_documents'      => implode('', $legal_urls) !== '',
         'has_legal_preinfo'        => $legal_urls['preinfo'] !== '',
         'has_legal_contract'       => $legal_urls['contract'] !== '',
-        // Right of withdrawal: the line while a deadline is known, its note
-        // while the deadline is estimated, and once the deadline has passed.
+        // Right of withdrawal: the line while a deadline is known; then one
+        // of three: the deadline is firm and ahead, estimated, or passed.
         'has_withdrawal_deadline'       => $withdrawal_date !== '',
+        'withdrawal_deadline_firm'      => $withdrawal_date !== '' && !$withdrawal['estimated'] && $withdrawal['open'],
         'withdrawal_deadline_estimated' => $withdrawal_date !== '' && $withdrawal['estimated'] && $withdrawal['open'],
         'withdrawal_ended'              => $withdrawal_date !== '' && !$withdrawal['open'],
     );
