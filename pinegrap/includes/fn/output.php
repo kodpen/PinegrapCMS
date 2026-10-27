@@ -264,8 +264,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/bootstrap-6/css/bootstrap.min.css') . '"/>
     <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '") layer(vendor);</style>
     <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.css") layer(vendor);</style>
-    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2.min.css") layer(vendor);</style>
-    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2-bootstrap-5-theme.min.css") layer(vendor);</style>
     <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/material-icons/material-icons.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/material-icons/material-icons.css') . '") layer(vendor);</style>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.min.js"></script>
@@ -274,7 +272,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery_datatables_checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/lazy.min.js"></script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/multiselect-checkbox/jquery-multiselect-checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/json2/json.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
