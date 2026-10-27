@@ -20,6 +20,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - Send a visitor to a sign-in screen only for a page opening: `get_file.php` goes through `get_file_sign_in_redirect()`, which answers a sub-resource fetch (`waf_fetch_is_subresource()`) with 403, and such a fetch of a sign-in screen is not counted on the sensitive allowance (`waf-subresource-sign-in-fetches.md`).
 - Register a rate refusal with the burst flag (`waf_register_offence($ip, $score, $blocking, true)`: one offence per subject and minute) and a signature hit, an attack tool or a wrong key without it; never auto-ban an address staff signed in from (`waf-offence-fold-and-staff-address.md`).
 - Gate a new per-address counter or ban on `waf_ip_is_counted()` (not infrastructure, not a private or reserved address; the lists still apply), and go by `waf_script_name()`, never `basename(SCRIPT_NAME)`: the web root's `index.php` is the router (`waf-counter-subjects-and-endpoints.md`).
+- Never send mail or touch `functions.php` from `waf.php`: queue the operator's ban notice with `waf_ban_notice_queue()`; `pg_waf_ban_notice_send()` mails it after `waf_run('init')` (`waf-ban-notice.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -30,6 +31,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-ai-bots-ranges.md: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() verification by published IP ranges (waf_bot_ranges), verdict ladder, refresh path (2026.4.4).
 - waf-architecture-and-phases.md: waf.php structure: standalone module (no functions.php, no HTTP), what runs in the router vs init phase, signature scanning only in init, fail-open, waf_client_ip(), upgrade compatibility.
 - waf-ban-ladder.md: waf_auto_ban() escalation ladder: hit_count is the number of bans, 60-240-960-3840-10080 min, cap waf_auto_ban_max_minutes, expired rows kept for ladder memory.
+- waf-ban-notice.md: The operator's e-mail per automatic ban (queued by waf.php in data/temp/, sent after waf_run init), one notice per rule burst, ban rows linked to the filtered firewall log (#2167)
 - waf-ban-shield-mirror.md: The ban shield mirror data/temp/ban_shield.txt: line types B/P/A/L, the ban's end on B lines, who writes it, staleness asymmetry, allow-list lines, the shield's page, shield_pending.log and drain.
 - waf-bot-policy-credential-endpoints.md: Which endpoints skip the WAF bot policy because they admit a caller by its credential (integration, mcp, oauth, workspace_ical, feed, marketplace_webhook), why, where the return sits, why not api.php.
 - waf-cidr-prefix-validation.md: waf_ip_in_cidr() / waf_ip_matches_simple() must reject empty or non-numeric CIDR prefixes (ctype_digit); the (int) cast bug that banned everyone.

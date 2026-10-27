@@ -1231,10 +1231,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             foreach ($auto_rows as $auto_row) {
                 $remaining = max(0, (int) $auto_row['expires_at'] - time());
 
-                $output_auto_bans .= '<span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle me-1 ">'
+                // Each ban opens the firewall log filtered by its address, so
+                // the operator sees what brought it without retyping it.
+                $output_auto_bans .= '<a href="' . h(pg_waf_ban_log_url($auto_row['ip_address'])) . '" title="' . h(lang('Open the firewall log for this address')) . '" class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle me-1 text-decoration-none">'
                     . '<i class="bi bi-shield-slash me-1"></i>' . h($auto_row['ip_address'])
                     . ' <span class="opacity-75">(' . ceil($remaining / 60) . ' ' . lang('minute(s)') . ')</span>'
-                    . '</span>';
+                    . '</a>';
             }
         }
     }

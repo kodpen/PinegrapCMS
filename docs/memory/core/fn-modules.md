@@ -26,6 +26,7 @@ description: Generated from the module field of the memory files: each includes/
 - `reviews`: [[product-reviews-verified]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `stock_notify`: [[back-in-stock-notices]]
+- `waf_notice`: [[waf-ban-notice]]
 - `widgets_attrs`: [[widget-attr-bindings]]
 - `widgets_billing_information`: [[billing-information-widget]]
 - `widgets_comments`: [[comments-widget]], [[comments-widget-form]], [[comments-widget-pages]], [[comments-widget-replies]], [[comments-widget-watch-staff]]

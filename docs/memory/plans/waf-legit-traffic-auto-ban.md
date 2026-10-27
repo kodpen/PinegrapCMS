@@ -20,7 +20,7 @@ description: Plan (2026-10-26, issue #1989): legitimate traffic must not end in 
 
 3. What a ban writes (findings-writes): the shield's HTML page with the ban's end and a reference, `B <ip> <expires>` lines refreshed by the general job, the rule in the ban note and row, `path=` and `status=` on `data/firewall.log` lines. Done (#2157); left over: `status=429` on the DENY line of `includes/fn/custom_form.php` (~4166), held by #1997 then.
 
-4. The operator learns of a ban (findings-lockout): an e-mail on each auto-ban (rule, address, sample requests, log link) queued by `waf_register_offence()` in a `data/temp/` pending file and sent by the next request that has `functions.php` or by the general job; a link from a ban row to the log filtered by its address; a notice when several addresses were banned by one rule within an hour.
+4. The operator learns of a ban (findings-lockout): an e-mail on each auto-ban (rule, address, sample requests, log link) queued by `waf_register_offence()` in a `data/temp/` pending file and sent by the next request that has `functions.php` or by the general job; a link from a ban row to the log filtered by its address; a notice when several addresses were banned by one rule within an hour. Done (#2167, `waf/waf-ban-notice.md`).
 
 5. Self-rescue and self-lockout guards (findings-lockout): a CLI root script `waf_unban.php` (cron-gated); Settings › Firewall refuses a block entry that covers the operator's own address; the sign-in throttle's address lock honours the allow list (owner); nothing is served to a banned address (Q3).
 

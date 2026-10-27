@@ -12,9 +12,8 @@ description: Review findings of 2026-10-26 for plans/waf-legit-traffic-auto-ban.
 - The sign-in throttle's address lock ignores the allow list (`pg_login_throttle_subjects()`, includes/fn/auth.php ~4003-4030) and no screen releases it: 50 failures from a shared address lock everyone behind it, the allow-listed operator included, for an hour or more, with the firewall off too. Skip the address subject for an allowed address; a release action beside the account unlock (owner). Not yet checked by a second reader.
 - The global limit's staff exemption never applies to routed requests: `waf_handle_rate_global()` runs in the router phase before the session and latches, so a signed-in designer previewing media-heavy pages can hit the 300/min wall (no offence, no ban). Say so in the comment or spare routed sub-resource fetches (low; owner). Not yet checked by a second reader.
 
-## What is the operator not told (step 4)?
-- Nothing notifies anyone of an automatic ban: no e-mail, no activity log entry, no status warning; the dashboard card shows a count. A run of false-positive bans (several addresses by one rule in an hour) raises no alarm (step 4 as planned; `pg_mail_enqueue()` from a `data/temp/` pending file drained after `waf_run('init')` or by the job).
-- No link from a banned address to its events (`view_waf_log.php` ~627, 754; the settings badge): the operator retypes the address into the search box.
+## What was the operator not told (step 4)?
+- Nothing notified anyone of an automatic ban, a run of false-positive bans by one rule raised no alarm, and no ban row linked to its events. Done in #2167: an e-mail per ban, one notice per rule's burst, ban rows linked to the filtered log (`waf/waf-ban-notice.md`). Still no activity log entry or status warning for a ban.
 
 ## Which recovery paths are missing (step 5)?
 - None works from the banned address: Release, Allow and the settings save are panel screens behind the shield and the IP list; no script under `tools/` or `*_job.php` touches `banned_ip_addresses` or the mirror. Add a CLI root script `waf_unban.php` on the pattern of `waf_ranges_job.php` (init.php, refused unless `pg_cron_is_background_run()`, an address or `--all`, deletes `auto` rows, refreshes the mirror, logs) beside the signed one-time link (Q3).

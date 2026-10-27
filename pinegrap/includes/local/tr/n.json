@@ -672,6 +672,7 @@
     "No forms were deleted because none were selected.": "Seçilmediği için hiçbir form silinmedi.",
     "No framework is loaded: bootstrap.css and bootstrap.js stay out. The palette offers plain HTML elements, text, forms and system widgets; the styles are yours.": "Hiçbir çatı yüklenmez: bootstrap.css ve bootstrap.js dışarıda kalır. Palette sade HTML öğeleri, metin, formlar ve sistem widget'ları bulunur; stiller sizindir.",
     "No full check has finished yet.": "Henüz tamamlanmış bir tam denetim yok.",
+    "No further e-mail is sent for this rule within the next hour.": "Bu kural için önümüzdeki bir saat içinde başka e-posta gönderilmez.",
     "No guide for it yet?": "Bunun için henüz bir rehber yok mu?",
     "No guide is back with its author.": "Yazarına geri gönderilmiş rehber yok.",
     "No guide is in review.": "İncelenen rehber yok.",

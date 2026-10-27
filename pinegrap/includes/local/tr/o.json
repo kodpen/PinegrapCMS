@@ -664,6 +664,8 @@
     "Open the draft": "Taslağı aç",
     "Open the expense": "Gideri aç",
     "Open the file": "Dosyayı aç",
+    "Open the firewall log for this address": "Bu adresin güvenlik duvarı kaydını aç",
+    "Open the firewall log for this rule": "Bu kuralın güvenlik duvarı kaydını aç",
     "Open the folders listed above first.": "Önce yukarıda listelenen klasörleri açın.",
     "Open the group": "Grubu aç",
     "Open the guest book page, pick a mood and write a line. It shows up on the wall right away.": "Ziyaretçi defteri sayfasını aç, bir ruh hâli seç ve bir satır yaz. Hemen duvarda görünür.",
