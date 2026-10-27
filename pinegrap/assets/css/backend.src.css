@@ -1461,7 +1461,7 @@ html[data-bs-theme="dark"] .accordion {
 .form-control:focus,
 :is(select.form-control):focus,
 :is(.check, .radio):focus,
-.tagin-wrapper.focus {
+.pg-chips:focus-within {
   border-color: var(--pg-primary);
   box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
 }
@@ -4141,101 +4141,50 @@ table.chart thead th {
   visibility: visible;
 }
 
-/*tagin*/
+/* Chips fields (pg_fields.js): the posted input stays hidden; the Bootstrap 6
+   .chip-input box drawn after it is what people see and type in. */
 .tagin {
   display: none;
 }
 
-.tagin-wrapper {
-  display: block;
-  height: auto;
-  padding: calc(0.375rem - 2px) calc(0.75rem - 2px);
-  position: relative;
-  overflow: hidden;
+.pg-chips {
+  --bs-chip-input-padding-y: calc(0.375rem - 1px);
+  --bs-chip-input-padding-x: 0.75rem;
   cursor: text;
-  /* One unbreakable tag (a pasted URL, a blob of code) must not leak its
-     intrinsic width into the surrounding grid: the percentage max-width on
-     .tagin-tag_text clips it visually but is ignored during min-content
-     sizing, so without this a single long tag pushes the whole column onto
-     its own flex line. inline-size containment makes the wrapper's
-     intrinsic width independent of its contents; its real width still
-     comes from the column, so nothing else changes. */
+  /* One unbreakable chip (a pasted URL, a blob of code) must not leak its
+     intrinsic width into the surrounding grid and push the whole column onto
+     its own flex line. inline-size containment makes the box's intrinsic
+     width independent of its chips; its real width still comes from the
+     column. */
   contain: inline-size;
 }
 
-.tagin-wrapper.focus {
+/* The panel's focus look, as on .form-control, not Bootstrap's outline. */
+.pg-chips:focus-within {
   outline: 0;
 }
 
-.tagin.is-valid + .tagin-wrapper,
-.was-validated .tagin:valid + .tagin-wrapper {
-  border-color: var(--bs-form-valid-border-color);
+.pg-chips-sm {
+  --bs-chip-input-padding-y: 0.125rem;
+  --bs-chip-input-padding-x: 0.5rem;
 }
 
-.tagin.is-invalid + .tagin-wrapper,
-.was-validated .tagin:invalid + .tagin-wrapper {
-  border-color: var(--bs-form-invalid-border-color);
-}
-
-.tagin-tag {
-  display: inline-flex;
-  border-radius: var(--pg-radius-sm);
-  border: var(--pg-border-width) solid var(--pg-border-color);
-  padding: 4px 2px 4px 12px;
-  min-width: 60px;
+.pg-chips > .chip {
   max-width: 100%;
-  align-items: center;
-  min-height: 24px;
-  margin: 2px;
-  font-weight: 300;
-  transition: transform 0.1s;
-  justify-content: space-between;
-}
-
-.tagin-tag_text {
-  max-width: calc(100% - 30px);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tagin-tag-remove {
-  margin-left: 10px;
-  min-width: 20px;
-  min-height: 20px;
-  cursor: pointer;
-  background-repeat: no-repeat;
-  background-position: right;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23a0aec0' width='18px' height='18px'%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3Cpath d='M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'/%3E%3C/svg%3E");
+.tagin.is-valid + .pg-chips,
+.was-validated .tagin:valid + .pg-chips {
+  border-color: var(--pg-success);
 }
 
-.tagin-tag-remove:hover {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d80505' width='18px' height='18px'%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3Cpath d='M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'/%3E%3C/svg%3E");
-}
-
-.tagin-input {
-  margin-left: 2px;
-  border-color: transparent;
-  outline: 0;
-  border-width: 1px 0;
-  padding: 0 2px 0 0;
-  height: 28px;
-  color: var(--pg-fg-body);
-  background-color: inherit;
-}
-
-.tagin-input:not(.tagin-input-hidden) {
-  width: 4px;
-  min-width: 4px;
-}
-
-.tagin-input-hidden {
-  position: absolute;
-  top: 0;
-  left: -9999px;
-  overflow: hidden;
-  visibility: hidden;
-  white-space: nowrap;
+.tagin.is-invalid + .pg-chips,
+.was-validated .tagin:invalid + .pg-chips {
+  border-color: var(--pg-danger);
 }
 
 .min-height-tagin {
@@ -4246,7 +4195,7 @@ table.chart thead th {
   min-width: 150px !important;
 }
 textarea.select2-search__field:focus-visible,
-input.tagin-input:focus-visible {
+.pg-chips > .form-ghost:focus-visible {
     outline: none !important;
     box-shadow: none !important;
 }
@@ -4673,7 +4622,7 @@ a.dt-button {
 .popover,
 :is(select.form-control),
 .form-control,
-.tagin-tag,
+.pg-chips,
 .input-group-text,
 .select2-container--bootstrap-5 .select2-selection,
 .select2-container--bootstrap-5
@@ -4859,14 +4808,6 @@ table.dataTable th.dataTables_empty {
 
 .advanced_filters .header {
   height: 47px;
-}
-
-.tagin-input:not(.tagin-input-hidden),
-.tagin-wrapper.focus .tagin-input:not(.tagin-input-hidden),
-.tagin-wrapper.focus,
-.tagin-tag {
-  background: var(--pg-bg-body);
-  color: var(--pg-fg-body);
 }
 
 
