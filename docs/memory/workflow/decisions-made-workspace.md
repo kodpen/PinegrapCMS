@@ -8,7 +8,7 @@ description: Decisions list, workspace part: how the channel commands read what 
 - Owner decision (2026-10-26, #1731): a name typed by hand assigns like a picked one, so a task can be given without opening the list; only an exact, single match assigns, so a guess never gives the task to the wrong person. Only team members are matched, never site members.
 
 ## Whose rights does a flow's change box write with?
-- The owner's, and only when the person who started the run (`ws_flow_runs.started_by`) may make the same change too. A run an anchor starts (time, event, join) has the owner as its starter, so it is unchanged; the other boxes keep the owner's rights alone. Not built yet (2026-10-27): `ws_step_run()` checks the owner alone (`workspace/workspace-flows-change-box.md`).
+- The owner's, and only when the person who started the run (`ws_flow_runs.started_by`) may make the same change too. A run an anchor starts (time, event, join) has the owner as its starter, so it is unchanged; the other boxes keep the owner's rights alone.
 - Owner decision (2026-10-27, "akışı başlatan kişi yetkisi olmalı", on the change box of #1957): a run share lets a colleague start someone else's flow, and the box then wrote with the owner's rights alone, so the colleague could have a change made, a person's role included, that they may not make themselves.
 
 Related: docs/memory/workflow/decisions-made.md
