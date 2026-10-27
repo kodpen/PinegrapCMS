@@ -123,9 +123,15 @@ function bs6_switch_tokens($source)
 
 	// One pass, so a value written for a declaration is not read again as a
 	// rule's variable.
-	$source = preg_replace_callback('/(--pg-[a-z0-9-]+\s*:\s*)?var\(--bs-(' . $alternation . ')(?![a-z0-9-])(\)\s*[;}])?/', function ($m) use ($names, $values, &$count) {
+	// A --bs-theme-* declaration names v6's theme variables (the shell's
+	// v5 alert colours), which share v5's names: it is left as it is.
+	$source = preg_replace_callback('/(--bs-theme-[a-z-]+\s*:\s*|--pg-[a-z0-9-]+\s*:\s*)?var\(--bs-(' . $alternation . ')(?![a-z0-9-])(\)\s*[;}])?/', function ($m) use ($names, $values, &$count) {
 		$declaration = isset($m[1]) ? $m[1] : '';
 		$end = isset($m[3]) ? $m[3] : '';
+
+		if (strpos($declaration, '--bs-theme-') === 0) {
+			return $m[0];
+		}
 
 		if ($declaration !== '' && $end !== '' && isset($values[$m[2]])) {
 			$count++;
