@@ -17246,14 +17246,17 @@
 
     // Every scheduled action, for staff, by state: the scheduled screen's
     // list and the Scheduled actions section of Flows (workspace_flow.js,
-    // through PGWsKit). New goes into bar; the list is read again while it
-    // is still on the page.
-    function scheduledList(body, bar) {
-        var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_new_long'), 'bi-plus-lg');
-        add.addEventListener('click', function () {
-            scheduledForm({}, null, function () { load(); });
-        });
-        bar.appendChild(add);
+    // through PGWsKit). New goes into bar, unless options.add is false: in
+    // Flows a new rule is a flow, started from New flow. The list is read
+    // again while it is still on the page.
+    function scheduledList(body, bar, options) {
+        if (!options || (options.add !== false)) {
+            var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_new_long'), 'bi-plus-lg');
+            add.addEventListener('click', function () {
+                scheduledForm({}, null, function () { load(); });
+            });
+            bar.appendChild(add);
+        }
 
         var filters = el('div', 'ws-sa-filters');
         var list = el('div', 'ws-sa-list');

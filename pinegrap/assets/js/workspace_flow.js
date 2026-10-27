@@ -884,7 +884,9 @@
     }
 
     // The Scheduled actions section: the scheduled screen's list, cards and
-    // form (scheduledList() in workspace.js), New in the toolbar's first slot.
+    // form (scheduledList() in workspace.js). A new rule is made on the
+    // canvas: New flow takes the toolbar's first slot, and the list offers
+    // no New of its own; its cards still edit, duplicate and run.
     function showScheduled() {
         leaveFlow().then(function (go) {
             if (!go) {
@@ -908,7 +910,8 @@
             ui.stage.classList.add('d-none');
             ui.scheduled.classList.remove('d-none');
             ui.scheduled.appendChild(el('h2', 'h5 mb-5', t('sa_title')));
-            K.scheduledList(ui.scheduled, ui.bar);
+            newFlowButton();
+            K.scheduledList(ui.scheduled, ui.bar, { add: false });
             listToggle();
             drawList();
             refocus();

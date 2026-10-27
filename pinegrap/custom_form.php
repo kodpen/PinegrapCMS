@@ -72,8 +72,8 @@ $query =
         " . (pg_fs_ready() ? ", custom_form_pages.double_opt_in" : '') . "
     FROM page
     LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-    WHERE page.page_id = '" . escape((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE page.page_id = ?";
+$result = db_q($query, array((string) ((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : ''))) or output_error('Query failed.');
 
 if (mysqli_num_rows($result) == 0) {
     output_error(lang('The page, for the form you submitted, can no longer be found.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
@@ -152,8 +152,8 @@ if (USER_LOGGED_IN == true) {
                 contacts.member_id
              FROM user
              LEFT JOIN contacts ON user.user_contact = contacts.id
-             WHERE user.user_username = '" . escape($_SESSION['sessionusername']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             WHERE user.user_username = ?";
+    $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $user_id = $row['user_id'];
     $contact_id = $row['contact_id'];
@@ -231,9 +231,9 @@ $query =
                 : ",\n        '' AS validation_regex,\n        '' AS validation_message"
         ) . "
     FROM form_fields
-    WHERE (page_id = '" . escape($_POST['page_id'] ?? '') . "') AND (type != 'information')
+    WHERE (page_id = ?) AND (type != 'information')
     ORDER BY sort_order";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
 
 $fields = array();
 
@@ -524,19 +524,17 @@ if ($liveform->check_form_errors() == false) {
                 submitted_timestamp,
                 last_modified_user_id,
                 last_modified_timestamp)
-             VALUES (
-                '" . escape($_POST['page_id'] ?? '') . "',
-                '$complete',
-                '" . $user_id . "',
-                '$reference_code',
-                '" . escape(get_tracking_code()) . "',
-                '" . escape(get_affiliate_code()) . "',
-                '" . escape(isset($_SESSION['software']['http_referer']) ? $_SESSION['software']['http_referer'] : '') . "',
-                IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0),
-                UNIX_TIMESTAMP(),
-                '" . $user_id . "',
-                UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             VALUES (?, ?, ?, ?, ?, ?, ?, IFNULL(INET_ATON(?), 0), UNIX_TIMESTAMP(), ?, UNIX_TIMESTAMP())";
+    $result = db_q($query, array(
+        (string) ($_POST['page_id'] ?? ''),
+        (string) $complete,
+        (string) $user_id,
+        (string) $reference_code,
+        (string) get_tracking_code(),
+        (string) get_affiliate_code(),
+        (string) (isset($_SESSION['software']['http_referer']) ? $_SESSION['software']['http_referer'] : ''),
+        (string) $_SERVER['REMOTE_ADDR'],
+        (string) $user_id)) or output_error('Query failed.');
     $form_id = mysqli_insert_id(db::$con);
     
     // if this is a quiz custom form, then initialize variables for tracking quiz score
@@ -633,13 +631,13 @@ if ($liveform->check_form_errors() == false) {
                             data,
                             name,
                             type)
-                         VALUES (
-                            '" . $form_id . "',
-                            '" . $field['id'] . "',
-                            '" . escape(prepare_form_data_for_input($value, $field['type'])) . "',
-                            '" . escape($field['name']) . "',
-                            '$form_data_type')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                         VALUES (?, ?, ?, ?, ?)";
+                $result = db_q($query, array(
+                    (string) $form_id,
+                    (string) $field['id'],
+                    (string) prepare_form_data_for_input($value, $field['type']),
+                    (string) $field['name'],
+                    (string) $form_data_type)) or output_error('Query failed.');
                 
                 // if this is a quiz custom form and this is a quiz field and a correct answer has not already been found for this field and the answer is correct, then remember that
                 if (($quiz == 1) && ($field['quiz_question'] == 1) && ($correct_answer == false) && (mb_strtolower(prepare_form_data_for_input($value, $field['type'])) == mb_strtolower($field['quiz_answer']))) {
@@ -684,16 +682,13 @@ if ($liveform->check_form_errors() == false) {
                             design,
                             attachment,
                             timestamp)
-                         VALUES (
-                            '" . escape($file_name) . "',
-                            '" . escape($field['upload_folder_id']) . "',
-                            '" . escape($file_extension) . "',
-                            '" . escape($file_size) . "',
-                            '$user_id',
-                            '0',
-                            '1',
-                            UNIX_TIMESTAMP())";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                         VALUES (?, ?, ?, ?, ?, '0', '1', UNIX_TIMESTAMP())";
+                $result = db_q($query, array(
+                    (string) $file_name,
+                    (string) $field['upload_folder_id'],
+                    (string) $file_extension,
+                    (string) $file_size,
+                    (string) $user_id)) or output_error('Query failed.');
                 
                 $file_id = mysqli_insert_id(db::$con);
                 $data = '';
@@ -764,14 +759,14 @@ if ($liveform->check_form_errors() == false) {
                         data,
                         name,
                         type)
-                     VALUES (
-                        '" . $form_id . "',
-                        '" . $field['id'] . "',
-                        '" . $file_id . "',
-                        '" . escape(prepare_form_data_for_input($data, $field['type'])) . "',
-                        '" . escape($field['name']) . "',
-                        '$form_data_type')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     VALUES (?, ?, ?, ?, ?, ?)";
+            $result = db_q($query, array(
+                (string) $form_id,
+                (string) $field['id'],
+                (string) $file_id,
+                (string) prepare_form_data_for_input($data, $field['type']),
+                (string) $field['name'],
+                (string) $form_data_type)) or output_error('Query failed.');
             
             // if this field is connected to a contact field, and if connect to contact is on, prepare SQL for updating contact
             if (($field['contact_field']) && ($connect_to_contact != 'false')) {
@@ -1150,13 +1145,13 @@ if ($liveform->check_form_errors() == false) {
         // if there is a membership start page selected for this custom form, then check if page still exists and set user's start page if necessary
         if ($membership_start_page_id != 0) {
             // check if membership start page still exists
-            $query = "SELECT page_id FROM page WHERE page_id = '$membership_start_page_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT page_id FROM page WHERE page_id = ?";
+            $result = db_q($query, array((string) $membership_start_page_id)) or output_error('Query failed.');
             
             // if the membership start page still exists, then continue to set user's start page
             if (mysqli_num_rows($result) > 0) {
-                $query = "UPDATE user SET user_home = '$membership_start_page_id' WHERE user_id = '$user_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE user SET user_home = ? WHERE user_id = ?";
+                $result = db_q($query, array((string) $membership_start_page_id, (string) $user_id)) or output_error('Query failed.');
             }
         }
     }
@@ -1168,10 +1163,8 @@ if ($liveform->check_form_errors() == false) {
             $query = "INSERT INTO contacts (
                         user,
                         timestamp)
-                     VALUES (
-                        '$user_id',
-                        UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     VALUES (?, UNIX_TIMESTAMP())";
+            $result = db_q($query, array((string) $user_id)) or output_error('Query failed.');
             $contact_id = mysqli_insert_id(db::$con);
             $new_contact_id = $contact_id;
 
@@ -1186,8 +1179,8 @@ if ($liveform->check_form_errors() == false) {
             // in for somebody else is not connected to the signed-in user
             // either: the contact is that other person's.
             if (($user_id) && ($auto_registration_existing_user_found == false) && !$contact_for_someone_else) {
-                $query = "UPDATE user SET user_contact = '$contact_id' WHERE user_id = '$user_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE user SET user_contact = ? WHERE user_id = ?";
+                $result = db_q($query, array((string) $contact_id, (string) $user_id)) or output_error('Query failed.');
             }
         }
         
@@ -1257,8 +1250,8 @@ if ($liveform->check_form_errors() == false) {
         // loop through contact groups that contact should be added to
         foreach ($contact_groups as $contact_group_id) {
             // check if contact group exists
-            $query = "SELECT id FROM contact_groups WHERE id = '$contact_group_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM contact_groups WHERE id = ?";
+            $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
             
             // if contact group exists
             if (mysqli_num_rows($result) > 0) {
@@ -1267,9 +1260,9 @@ if ($liveform->check_form_errors() == false) {
                     "SELECT contact_id
                     FROM contacts_contact_groups_xref
                     WHERE
-                        (contact_id = '$contact_id')
-                        AND (contact_group_id = '$contact_group_id')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (contact_id = ?)
+                        AND (contact_group_id = ?)";
+                $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
                 
                 // if contact is not already in contact group, then add contact to contact group
                 if (mysqli_num_rows($result) == 0) {
@@ -1277,10 +1270,8 @@ if ($liveform->check_form_errors() == false) {
                         "INSERT INTO contacts_contact_groups_xref (
                             contact_id,
                             contact_group_id)
-                        VALUES (
-                            '$contact_id',
-                            '$contact_group_id')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        VALUES (?, ?)";
+                    $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
                 }
             }
         }
@@ -1288,9 +1279,9 @@ if ($liveform->check_form_errors() == false) {
         // connect contact to submitted form
         $query =
             "UPDATE forms
-            SET contact_id = '$contact_id'
-            WHERE id = '$form_id'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            SET contact_id = ?
+            WHERE id = ?";
+        $result = db_q($query, array((string) $contact_id, (string) $form_id)) or output_error('Query failed.');
 
         // Mail the confirmation link to the contact's own address.
         if ($form_contact_group_held) {
@@ -1389,9 +1380,9 @@ if ($liveform->check_form_errors() == false) {
         // update submitted form with quiz score
         $query =
             "UPDATE forms
-            SET quiz_score = '$quiz_score'
-            WHERE id = '$form_id'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            SET quiz_score = ?
+            WHERE id = ?";
+        $result = db_q($query, array((string) $quiz_score, (string) $form_id)) or output_error('Query failed.');
     }
     
     // Remember in session that visitor submitted this form, so we know that
@@ -1789,10 +1780,10 @@ if ($liveform->check_form_errors() == false) {
         $query = "UPDATE visitors
                  SET
                     custom_form_submitted = '1',
-                    custom_form_name = '" . escape($form_name) . "',
+                    custom_form_name = ?,
                     stop_timestamp = UNIX_TIMESTAMP()
-                 WHERE (id = '" . $_SESSION['software']['visitor_id'] . "') AND (custom_form_submitted = '0')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE (id = ?) AND (custom_form_submitted = '0')";
+        $result = db_q($query, array((string) $form_name, (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
     }
 
     // Check if there are auto e-mail campaigns that should be created based on this custom form being submitted.
@@ -1861,8 +1852,8 @@ if ($liveform->check_form_errors() == false) {
     // Otherwise the confirmation type is page, so forward visitor to page.
     } else {
         // get the confirmation page's page type to see if we need to pass a reference code to it
-        $query = "SELECT page_type FROM page WHERE page_id = '" . escape($confirmation_page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT page_type FROM page WHERE page_id = ?";
+        $result = db_q($query, array((string) $confirmation_page_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $page_type = $row['page_type'];
         
