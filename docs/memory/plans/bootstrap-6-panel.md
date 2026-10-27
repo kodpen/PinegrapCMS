@@ -20,7 +20,7 @@ description: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps
 - No long-lived branch: measured conflict rates rule it out (`bootstrap-6-findings.md`).
 1. Pre-land on `development` in small PRs that work on 5.3.8 and change nothing visible: the `pgUI` adapter, widget wrappers with a switchable engine, server changes, a `--pg-*` token layer, site-output markers in the editor, colliding class renames, the tools. Each step adds its key rule when it lands, or the daily PRs undo it.
 2. Generated diff: class renames and regular markup rewrites come only from `tools/bs6_migrate.php`, run on the latest `development`, never edited by hand.
-3. Switch: `feature/bootstrap-6` lives 1-2 days after days of rehearsal (`bootstrap-6-switch.md`). The merging session (`workflow/merge-train.md`) merges it and orders the queue around it.
+3. Switch: one generated PR rebuilt on the latest `development` for each rehearsal, merged alone as #1866 (tag `bs6-switch`, `ui/bootstrap-6.md`).
 
 ## In which order?
 - Cold areas first: panel templates, dashboard, users and contacts, products and offers, ERP (not Paraşüt files under open claims). Then forms and content, orders, workspace, the rest. Last: `output.php`, `backend.src.css`/`.js`, settings, `install/index.php`, the visual editor.

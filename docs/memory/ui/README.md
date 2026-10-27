@@ -9,7 +9,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 <!-- key-rules:start -->
 - Put everything a screen does in the one toolbar under its heading, with the shared `.pg-toolbar` classes; `#button_bar` is that component (`admin-screen-toolbar.md`).
 - After `add_notice()`, print `output_notices()` and call `remove_form()` once the screen is drawn, or the notice comes back on every visit (`liveform-notices-trap.md`).
-- Hide with `d-none`, never `hidden`: Bootstrap's `d-flex`/`d-block` carry `!important` and keep a `[hidden]` element on screen (`panel-layout-pitfalls.md`).
+- Hide with `d-none` or `hidden`; Bootstrap 6 utilities carry no `!important`, so an inline display (`style=`, jQuery `.show()`) beats `d-none` (`panel-layout-pitfalls.md`).
 - Never put a `<form>` inside a table row; keep lists whose order is their meaning (ledgers, invoice lines) plain tables, not DataTables (`list-and-table-screens.md`).
 - Destroy charts (`destroy_widget_charts()`) and code editors (`pgReleaseEditors()`) before replacing the markup that holds them (`chart-destroy-before-markup-change.md`).
 - Fill AJAX markup with jQuery `.html()`, bind scope-taking initializers to `pgInitInjected(scope)`, delegate listeners to `document` (`settings-modal-injected-markup.md`).
@@ -17,10 +17,10 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Gate `settings_pane.php` with `validate_user()` + `'manager'`, answer in JSON past the gate, compare its CSRF token with `hash_equals()` (`settings-modal-endpoint.md`).
 - Keep a button's label while it works; disable an Ajax button only while its request runs and enable it again on every path (`button-busy-state.md`).
 - Lay out edit screens as a form column, a sticky status column and a sticky save bar (`product_builder.php`), not stacked full-width cards (`edit-screen-wide-layout.md`).
-- The panel moves to Bootstrap 6 by plan (`plans/bootstrap-6-panel.md`); until the switch keep Bootstrap 5 markup, check v6 classes against the dist in `assets/lib/bootstrap-6`, not only the docs (`bootstrap-6.md`), and convert classes only with `tools/bs6_migrate.php`, once per line (`bootstrap-6-codemod.md`).
+- Write panel markup in Bootstrap 6, checked against the dist in `assets/lib/bootstrap-6`, never in site output (5.3.8); a branch older than the switch converts its added lines once with `php tools/bs6_migrate.php --write --diff=origin/development`, and `php tools/check_bs6.php --strict` passes (`bootstrap-6.md`, `bootstrap-6-codemod.md`).
 - Call Bootstrap's JavaScript and listen to its events only through `pgUI` (`assets/js/pg_ui.js`): kinds dialog/drawer/menu, `pgUI.on()` instead of jQuery `.on('….bs.modal')`, floating layers on `pgUI.overlayHost()` (`pg-ui-adapter.md`).
 - Show a screen change with `tools/screenshots/shoot.js` on a sandbox, images on a private page the PR links, never committed (`panel-screenshots.md`).
-- Panel CSS reads `--pg-*` tokens, never `--bs-*` variables; colour with alpha is `color-mix(in srgb, var(--pg-…) N%, transparent)`, not `rgba(var(--bs-…-rgb))`; a missing name goes into the token block of backend.src.css (`panel-css-tokens.md`).
+- Panel CSS sits in `@layer custom` and reads `--pg-*` tokens, never `--bs-*` variables; colour with alpha is `color-mix(in srgb, var(--pg-…) N%, transparent)`, not `rgba(var(--bs-…-rgb))`; a missing name goes into the token block of backend.src.css (`panel-css-tokens.md`).
 - A button's label span is `<span class="pg-btn-label">`, never `btn-text`; a flyout menu inside a menu is `.pg-submenu`, never `.submenu`: Bootstrap 6 owns `.btn-text`, `.submenu` and `.menu` (`bootstrap-6.md`).
 - Mark a chips, select2, date or time field with its `data-pg-*` hook and print `pg_fields_script()`; read and write it through `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField`, never call tagin, select2 or the jQuery UI pickers from a panel screen (`pg-field-wrappers.md`).
 <!-- key-rules:end -->
@@ -38,7 +38,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
 - bootstrap-6-codemod.md: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: contexts read, what is rewritten or reported, sizes converted once, scope, how the switch keeps the v5 look
 - bootstrap-6-editor-markers.md: The visual editor's /* @pg-site-output */ markers (step B7, #1822, #1841): what they cover, how the codemod and check_bs6.php read them, the test that keeps them, what stays unmarked
-- bootstrap-6.md: Bootstrap 6 references for panel UI work: llms.txt and llms-full.txt, the four upstream skills in .claude/skills, the dist copy, what moves and what changes at the switch
+- bootstrap-6.md: The panel on Bootstrap 6 (switch #1866, tag bs6-switch): docs and skills, the dist copy, what is v6 and what stays 5.3.8, layers and breakpoints, own class names, a branch older than the switch
 - button-busy-state.md: Buttons never change their label or lock for a fixed time while a request runs; the window-level guard against double submits and double clicks (3 s); how an Ajax button disables itself.
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.

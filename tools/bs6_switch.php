@@ -4,7 +4,7 @@
  *
  * The hand fixes of the Bootstrap 6 switch that a script can make, run by
  * `php tools/bs6_migrate.php --switch` after the class conversion
- * (docs/memory/plans/bootstrap-6-switch.md). Each fix finds its place by
+ * (docs/memory/ui/bootstrap-6-codemod.md). Each fix finds its place by
  * the text around it, not by line number, and leaves a file it already
  * fixed as it is, so the switch branch can be built again from the latest
  * development at any time.
