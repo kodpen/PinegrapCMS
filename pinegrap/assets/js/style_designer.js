@@ -68325,8 +68325,10 @@ const StyleDesigner = (function () {
             treeLoadWarning: false,
             // The page keeps its own form settings — it is the same page,
             // only opened from another design.
-            formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
+            formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
+            ai_fields: sp.ai_fields || []
         };
+        _pgAiMarksInit(p, p.ai_fields);
         if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
         // Where it still lives. Until this design is saved the page's
         // page_style is unchanged, so on the server it is somebody else's
@@ -69928,9 +69930,12 @@ const StyleDesigner = (function () {
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
                 // The page's form-level settings, as stored; written back
                 // with the page. The fields are the widget's controls.
-                formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
+                formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
+                // The columns marked as written with AI; _pgAiMarksInit()
+                // remembers the text of each.
+                ai_fields: sp.ai_fields || []
             };
-            _pgAiMarksInit(p, sp.ai_fields);
+            _pgAiMarksInit(p, p.ai_fields);
             if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
             else p.tree = createDefaultTree();
             // The address the page is reachable at NOW — a rename in the
