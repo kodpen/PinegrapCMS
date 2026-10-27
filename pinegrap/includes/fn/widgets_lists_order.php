@@ -352,6 +352,31 @@ function pg_sw_list_order_item_row($item)
     ) + $entity;
 }
 
+// The order view's parcels from its shipping_tracking_numbers rows (number,
+// ship_to_id, shipping_method_code, and since 11.0.20 carrier and
+// tracking_url): array('number', 'url', 'carrier', 'ship_to') each, the
+// carrier as its name. Every row goes through pg_shipment_view(), so the
+// carrier and the link the row names win, and a row without them is
+// recognised from the method code, $default and the number's shape, as the
+// order screen, the e-mails and the SMS show it. A row without a number is
+// no parcel.
+function pg_sw_order_parcels($rows, $default)
+{
+    $parcels = array();
+    foreach ((array)$rows as $row) {
+        if (!is_array($row)) continue;
+        $view = pg_shipment_view($row, isset($row['shipping_method_code']) ? trim((string)$row['shipping_method_code']) : '', (string)$default);
+        if ($view['number'] === '') continue;
+        $parcels[] = array(
+            'number'  => $view['number'],
+            'url'     => $view['url'],
+            'carrier' => $view['carrier_name'],
+            'ship_to' => isset($row['ship_to_id']) ? (int)$row['ship_to_id'] : 0,
+        );
+    }
+    return $parcels;
+}
+
 // The rows of the order lists, as pg_sw_list_publish('order') files them:
 // source => key => rows. $shipments: shipment rows
 // (pg_sw_list_order_shipment_row()); $items: the order view's items, each
