@@ -123,6 +123,7 @@
         checkin: { icon: 'bi-person-check', name: 'fl_kind_checkin', into: true, out: ['done', 'failed'] },
         start_action: { icon: 'bi-alarm', name: 'fl_kind_start_action', into: true, out: ['done', 'failed'] },
         change: { icon: 'bi-pencil-square', name: 'fl_kind_change', into: true, out: ['done', 'failed'] },
+        lead: { icon: 'bi-person-vcard', name: 'fl_kind_lead', into: true, out: ['done', 'failed'] },
         condition: { icon: 'bi-signpost-split', name: 'fl_kind_condition', into: true, out: ['yes', 'no'] },
         end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] }
     };
@@ -162,6 +163,7 @@
         ['checkin', 'bi-person-check', 'fl_kind_checkin'],
         ['start_action', 'bi-alarm', 'fl_kind_start_action'],
         ['change', 'bi-pencil-square', 'fl_kind_change'],
+        ['lead', 'bi-person-vcard', 'fl_kind_lead'],
         ['end', 'bi-flag', 'fl_add_end']
     ];
 
@@ -490,6 +492,10 @@
             var happening = (events && events.list[config.event]) ? events.list[config.event].label : config.event;
 
             return happening || t('fl_when_none');
+        }
+
+        if (node.kind === 'lead') {
+            return config.private ? t('fl_lead_meta_private') : t('fl_lead_meta');
         }
 
         if (node.kind === 'join') {
@@ -1916,6 +1922,10 @@
             changeFields(box, node);
         }
 
+        if (node.kind === 'lead') {
+            leadFields(box, node);
+        }
+
         if (node.kind === 'condition') {
             conditionFields(box, node);
         }
@@ -2420,6 +2430,23 @@
             node.config.question = value;
             refreshNode(node);
         }), t('fl_checkin_help')));
+    }
+
+    // A submitted form's customer brought into a channel: whether a channel
+    // it opens is private, and who is put in it.
+    function leadFields(box, node) {
+        var config = node.config;
+        var closed = el('input', 'form-check-input');
+
+        closed.type = 'checkbox';
+        closed.checked = !!config.private;
+        closed.disabled = !state.edit;
+        closed.addEventListener('change', function () {
+            config.private = closed.checked;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_lead_private'), closed, t('fl_lead_help')));
+        box.appendChild(field(t('fl_lead_people'), peopleList(node, el('div', 'wsf-people'), 'user_ids', 50)));
     }
 
     // Another scheduled action, started now or some minutes later.
@@ -3454,6 +3481,8 @@
             config = { target_id: 0, delay: 0 };
         } else if (kind === 'change') {
             config = { record: '', action: 'update', id: 0, fields: {} };
+        } else if (kind === 'lead') {
+            config = { private: false, user_ids: [] };
         } else if (kind === 'condition') {
             config = { rule: { type: 'workday' } };
         } else if (kind === 'schedule') {

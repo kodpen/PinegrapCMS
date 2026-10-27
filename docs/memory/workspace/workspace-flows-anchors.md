@@ -12,7 +12,7 @@ description: Flow start boxes at a time, on an event, on a join (F4d, PR #2006, 
 - The engine keeps it: `ws_scheduled_run()` by time, watch.php events and `ws_scheduled_greets()` joins read every active `kind = 'action'` row, anchors included (`ws_scheduled_actions_only()` is unchanged).
 
 ## How does it start a run?
-- `ws_scheduled_execute()` holds the rules as usual, then for a row with `flow_id` calls `ws_flow_anchor_start($viewer, $row, $fill)` instead of `ws_scheduled_do()`: 'flow' is not a step, so the parity test's twelve steps stay twelve.
+- `ws_scheduled_execute()` holds the rules as usual, then for a row with `flow_id` calls `ws_flow_anchor_start($viewer, $row, $fill)` instead of `ws_scheduled_do()`: 'flow' is not a step, so the parity test's step count (thirteen with the lead step) does not change.
 - `ws_flow_anchor_start()`: flow live and still the owner's, started by an anchor kind, open-run and hourly limits (`ws_flow_start_refusal()`), start_key `sched:<ws_scheduled_runs id>` (a second try finds the run), started_by and actor the owner, depth from the chain, start box done "Started on its own: …". Context (`ws_flow_anchor_context()`): trigger kind, node, home channel, flow name, `sched_run`, event + payload (left out over 8 KB) or newcomer + join channel. Boxes advance on the next tick.
 
 ## Why is it in no list?

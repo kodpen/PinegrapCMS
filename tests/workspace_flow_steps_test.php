@@ -199,7 +199,7 @@ function test_workspace_flow_steps_types()
 	$steps = array_keys(ws_scheduled_outcomes()) ? ws_step_kinds() : array();
 
 	foreach ($steps as $kind => $info) {
-		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change'), true), $kind);
+		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead'), true), $kind);
 		pg_assert_same(array(), array_diff($info['lines'], $info['texts']), $kind . ': one-line texts are texts');
 	}
 
@@ -270,7 +270,7 @@ function test_workspace_flow_steps_effects()
 	$run = ws_flow_steps_test_source('ws_step_run');
 
 	pg_assert_contains("'idempotency_key' => ws_step_idempotency_key(", $run);
-	pg_assert_contains("array('message_id', 'task_id')", $run);
+	pg_assert_contains("array('message_id', 'task_id', 'channel_id')", $run);
 }
 
 // A hook's address carries its secret: only whoever may change the flow

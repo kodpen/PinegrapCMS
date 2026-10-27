@@ -2098,6 +2098,7 @@
     "Starting stock for every variant; each row can differ.": "Her varyantın başlangıç stoğu; her satır farklı olabilir.",
     "Starts": "Başlangıç",
     "Starts after (days)": "Başlangıç (gün sonra)",
+    "Starts after a form is submitted. A channel the customer already has is used; otherwise one is opened with the New customer template, at most 20 an hour.": "Bir form gönderildiğinde çalışır. Müşterinin zaten bir kanalı varsa o kullanılır; yoksa Yeni müşteri şablonuyla bir kanal açılır, saatte en çok 20.",
     "Starts at": "Başlangıç saati",
     "Starts at: {var}": "Başlangıç: {var}",
     "Starts itself again": "Kendini yeniden başlatır",

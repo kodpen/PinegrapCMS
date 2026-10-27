@@ -58,6 +58,7 @@ function ws_step_kinds()
         'checkin'   => array('label' => lang('Ask for a check-in'), 'type' => 'checkin', 'texts' => array('question'), 'lines' => array('question')),
         'start_action' => array('label' => lang('Start a scheduled action'), 'type' => 'trigger', 'texts' => array(), 'lines' => array()),
         'change'    => array('label' => lang('Change a record'), 'type' => 'change', 'texts' => array(), 'lines' => array()),
+        'lead'      => array('label' => lang('Bring a customer into a channel'), 'type' => 'lead', 'texts' => array(), 'lines' => array()),
     );
 }
 
@@ -93,6 +94,8 @@ function ws_step_outcomes()
  *            delete), id, fields (up to 30 of name => value; a value is a
  *            number, yes/no, a text, or a set of texts, a submission's
  *            answers; none for a delete)
+ * lead:      private (a channel it opens is private), user_ids (up to 50,
+ *            put in a channel it opens)
  *
  * @param string $kind
  * @param mixed  $config
@@ -250,6 +253,12 @@ function ws_step_config_normalize($kind, $config)
                 'action' => $verb,
                 'id'     => $number($config['id'] ?? 0),
                 'fields' => $fields,
+            );
+
+        case 'lead':
+            return array(
+                'private'  => !empty($config['private']),
+                'user_ids' => $people($config['user_ids'] ?? array(), 50),
             );
     }
 
@@ -702,18 +711,27 @@ function ws_step_run($run, $step, $node, $graph, $owner)
 
     // A webhook carries a key of the box's one try, so the system it calls
     // knows a call it has taken already (Idempotency-Key).
-    $done = ws_scheduled_do($owner, $row, $action, array(
+    $step_context = array(
         'depth'           => (int) ($run['depth'] ?? 0),
         'idempotency_key' => ws_step_idempotency_key($run['id'], $step['node_id'], $step['pass'] ?? 0),
         'flow'            => array('id' => (int) $run['flow_id'], 'run' => (int) $run['id'], 'box' => (string) $step['node_id']),
         // A scheduled action a box starts carries no source action; the
         // depth of the run still counts in its chain.
         'run_id'          => 0,
-    ));
+    );
+
+    // A lead box reads the form submission that started the run; the other
+    // boxes' texts are not filled from the event.
+    if ($kind === 'lead') {
+        $step_context['event'] = (string) ($context['event'] ?? '');
+        $step_context['event_payload'] = (array) ($context['event_payload'] ?? array());
+    }
+
+    $done = ws_scheduled_do($owner, $row, $action, $step_context);
     $end = ws_step_settlement(!empty($done['ok']), $routed);
     $data = array();
 
-    foreach (array('message_id', 'task_id') as $key) {
+    foreach (array('message_id', 'task_id', 'channel_id') as $key) {
         if ((int) ($done[$key] ?? 0) > 0) {
             $data[$key] = (int) $done[$key];
         }

@@ -105,6 +105,13 @@ define('WS_SCHEDULED_MAX_FOLLOW', 5);
 define('WS_SCHEDULED_MIN_MINUTES', 5);
 
 /**
+ * How many channels for customers one person's lead steps open in an hour:
+ * a form sent again and again with new addresses must not fill the
+ * Workspace. A channel the customer already has is reused, not counted.
+ */
+define('WS_SCHEDULED_LEAD_HOURLY', 20);
+
+/**
  * Are the tables there (2026.4.5, 5.81)?
  *
  * @return bool
@@ -1771,6 +1778,24 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 'id'     => $id,
                 'fields' => $fields,
             ));
+
+        // A submitted form's customer brought into a channel
+        // (ws_scheduled_lead()): the creator chooses contacts and may open
+        // channels with a template.
+        case 'lead':
+            if (!function_exists('ws_template') || !ws_templates_ready()) {
+                return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
+            }
+
+            if (!isset(ws_ref_types($viewer)['contact'])) {
+                return $fail(lang('Only somebody who may choose contacts can bring customers into channels.'));
+            }
+
+            return array('ok' => true, 'error' => '', 'action' => array(
+                'type'     => 'lead',
+                'private'  => !empty($action['private']),
+                'user_ids' => ws_scheduled_people($action['user_ids'] ?? array()),
+            ));
     }
 
     return $fail(lang('Choose what should be done.'));
@@ -2410,6 +2435,11 @@ function ws_scheduled_action_text($viewer, $action)
             }
 
             return lang(array('string' => 'Change {var:1}: {var:2}', 'vars' => array($name, implode(', ', $parts))));
+
+        case 'lead':
+            return !empty($action['private'])
+                ? lang('Bring the customer of the submitted form into their channel, or open a private one for them')
+                : lang('Bring the customer of the submitted form into their channel, or open one for them');
     }
 
     return '';
@@ -3988,6 +4018,9 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
         case 'change':
             return ws_scheduled_change($viewer, $row, $action);
 
+        case 'lead':
+            return ws_scheduled_lead($viewer, $action, $context);
+
         // An approval request, with the creator's rights; somebody who left
         // the channel since is no longer asked.
         case 'approval':
@@ -4800,6 +4833,104 @@ function ws_scheduled_change($viewer, $row, $action)
     log_activity(lang(array('string' => 'scheduled action “{var:1}”: {var:2}', 'vars' => array($row['name'], $text))), ws_person_name($viewer['id']));
 
     return array('ok' => true, 'text' => $text, 'message_id' => $decision_id);
+}
+
+/**
+ * Brings the customer of a submitted form into a channel, with the
+ * creator's rights: the contact the form tied the submission to, else the
+ * one with its e-mail address (ws_lead_contact_find()). A channel about that
+ * customer the creator reads is reused and told the form came; else one is
+ * opened for the customer with the "New customer" template, within
+ * WS_SCHEDULED_LEAD_HOURLY an hour. Two contacts of one person stay for the
+ * contacts screen's duplicates and merge to settle.
+ *
+ * @param array $viewer  the creator
+ * @param array $action  private, user_ids
+ * @param array $context event, event_payload (form.submitted)
+ * @return array ok, text, message_id, channel_id
+ */
+function ws_scheduled_lead($viewer, $action, $context)
+{
+    $fail = function ($text) {
+        return array('ok' => false, 'text' => $text, 'message_id' => 0);
+    };
+
+    $payload = (array) ($context['event_payload'] ?? array());
+    $submission = ws_lead_submission_of((string) ($context['event'] ?? ''), $payload);
+
+    if ($submission === null) {
+        return $fail(lang('Only a submitted form brings a customer in.'));
+    }
+
+    $contact_id = ws_lead_contact_find($submission);
+
+    if ($contact_id <= 0) {
+        return $fail(lang('The submitted form names no contact, and no contact has its e-mail address.'));
+    }
+
+    $form_name = trim((string) preg_replace('/\s+/u', ' ', (string) ($payload['form_name'] ?? '')));
+    $form_name = ($form_name !== '') ? mb_substr($form_name, 0, 100) : lang('a form');
+
+    // The customer's own channel, the newest one the creator reads.
+    $channels = array_filter(ws_customer_channels('contact', $contact_id), function ($channel) use ($viewer) {
+        return ws_can_read_channel($viewer, $channel);
+    });
+    $channel_id = ws_lead_channel_pick($channels);
+
+    if ($channel_id > 0) {
+        $channel = ws_channel($channel_id);
+        ws_message_system($channel_id, lang(array('string' => 'The customer sent the form “{var:1}”.', 'vars' => $form_name)));
+
+        return array('ok' => true, 'text' => lang(array('string' => 'the customer was brought into #{var:1}', 'vars' => $channel['name'])), 'message_id' => 0, 'channel_id' => $channel_id);
+    }
+
+    $recent = (int) db_value("SELECT COUNT(*) FROM ws_channels
+        WHERE created_by = '" . (int) $viewer['id'] . "' AND created_at > '" . (time() - 3600) . "' AND contact_id > 0");
+
+    if ($recent >= WS_SCHEDULED_LEAD_HOURLY) {
+        return $fail(lang(array('string' => 'At most {var:1} channels for customers are opened an hour, so none was opened for this one.', 'vars' => WS_SCHEDULED_LEAD_HOURLY)));
+    }
+
+    $template = ws_template('builtin:new_customer');
+
+    if (!$template) {
+        return $fail(lang('That template could not be found.'));
+    }
+
+    $contact = db_item("SELECT first_name, last_name, company, email_address FROM contacts WHERE id = '" . $contact_id . "'");
+    $made = null;
+
+    foreach (ws_lead_channel_names(ws_lead_channel_name(is_array($contact) ? $contact : array(), $contact_id)) as $name) {
+        if (!ws_channel_name_taken($name)) {
+            $made = ws_channel_create($viewer, array(
+                'name'          => $name,
+                'kind'          => !empty($action['private']) ? 'private' : 'public',
+                'customer_type' => 'contact',
+                'customer_id'   => $contact_id,
+                'members'       => ws_scheduled_people($action['user_ids'] ?? array()),
+            ));
+            break;
+        }
+    }
+
+    if ($made === null) {
+        return $fail(lang('There are already channels with every name tried for this customer.'));
+    }
+
+    if (!$made['ok']) {
+        return $fail(lang(array('string' => 'The channel could not be opened: {var:1}', 'vars' => $made['error'])));
+    }
+
+    $channel = ws_channel($made['channel_id']);
+    ws_message_system($made['channel_id'], lang(array('string' => 'Opened for the customer who sent the form “{var:1}”.', 'vars' => $form_name)));
+    $applied = ws_template_apply($viewer, $channel, $template, array('new_channel' => true));
+    $text = lang(array('string' => '#{var:1} opened for the customer', 'vars' => $channel['name']));
+
+    if (!$applied['ok']) {
+        $text .= '; ' . lang(array('string' => 'the template could not be applied: {var:1}', 'vars' => $applied['error']));
+    }
+
+    return array('ok' => true, 'text' => $text, 'message_id' => 0, 'channel_id' => (int) $made['channel_id']);
 }
 
 /**

@@ -1,13 +1,13 @@
 ---
 name: workspace-flows-steps
-description: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): eleven step kinds run by ws_scheduled_do(), outcomes, owner rights, {{node.ID.FIELD}}, never twice, Idempotency-Key
+description: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): twelve step kinds run by ws_scheduled_do(), outcomes, owner rights, {{node.ID.FIELD}}, never twice, Idempotency-Key
 ---
 
 ## Where is it?
 - `includes/workspace/steps.php` (loaded after flow_runs.php); tests `tests/workspace_flow_steps_test.php`. Canvas forms `postFields()`, `emailFields()`, `notifyFields()`, `taskOpenFields()`, `urlFields()`, `digestFields()`, `reportFields()`, `checkinFields()`, `startFields()`, `changeFields()` in `assets/js/workspace_flow.js`.
 
 ## What is a step box?
-- A scheduled action's step as a box kind of its own: `ws_step_kinds()` gives each its step `type`: post, email, notify, `task_open` (type task: opened without waiting; the kind `task` is the box that waits), webhook, web_check, task_digest, report, checkin, `start_action` (type trigger; source action 0, the run's depth counts), change (`workspace-flows-change-box.md`). `ws_flow_kinds()` merges them with `step => true`, outcomes `ws_step_outcomes()` (done, failed).
+- A scheduled action's step as a box kind of its own: `ws_step_kinds()` gives each its step `type`: post, email, notify, `task_open` (type task: opened without waiting; the kind `task` is the box that waits), webhook, web_check, task_digest, report, checkin, `start_action` (type trigger; source action 0, the run's depth counts), change (`workspace-flows-change-box.md`), lead (`workspace-crm-lead-intake.md`). `ws_flow_kinds()` merges them with `step => true`, outcomes `ws_step_outcomes()` (done, failed).
 - Config as the step keeps it (`ws_step_config_normalize()`, keys listed in its docblock); email `to` is one text, commas. `ws_step_config_problems()` gives `bad_config` lines in `ws_flow_graph_check()`.
 - `ws_step_action()` turns config into the step array, so `ws_scheduled_action_input()` and `ws_scheduled_do()` run unchanged.
 
@@ -19,7 +19,7 @@ description: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, 
 
 ## How does it end?
 - `ws_step_settlement()`: ok → done/done; failed → done/failed when an arrow leaves on failed, else failed (the run fails).
-- Result data: post keeps `message_id`, task_open `task_id` (`ws_scheduled_task()` now answers it).
+- Result data: post keeps `message_id`, task_open `task_id` (`ws_scheduled_task()` now answers it), lead `channel_id`.
 
 ## What do notify and webhook add?
 - notify: the text gets `Flow “name”: ` in front; `ws_scheduled_notify()` writes a `separate` inbox line when there is no action row (id 0), and `ws_inbox_describe()` titles a notice with no action `Flow`.

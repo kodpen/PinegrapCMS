@@ -4,7 +4,7 @@
  *
  * Scheduled actions move into Flows with nothing lost: every key a scheduled
  * action has (what it is made of and what the form sends for it, its
- * "when", the events, the conditions, the twelve steps, each option they
+ * "when", the events, the conditions, the thirteen steps, each option they
  * read and the values one takes from a list, the fields a change writes,
  * the webhook's body, the outcomes, the chain limits and the caps written
  * as numbers, what starts and runs it, the placeholders, the states, the
@@ -2439,6 +2439,7 @@ function workspace_flows_parity_table()
 			array(array('change'), 3, 'change box (steps.php)'),
 			array(array('approval'), 3, 'approval box, the flows\' own'),
 			array(array('checkin'), 3, 'check-in box (steps.php)'),
+			array(array('lead'), 3, 'lead box (steps.php): a submitted form\'s customer into a channel, reused or opened with the New customer template'),
 		),
 		'step_options' => array(
 			array(array('post.channel_id'), 3, 'post box: a channel, or the channel joined (-1)'),
@@ -2459,6 +2460,7 @@ function workspace_flows_parity_table()
 			array(workspace_flows_parity_prefixed('change', 'record action id fields'), 3, 'change box: kind, update or delete, record, fields'),
 			array(workspace_flows_parity_prefixed('approval', 'channel_id title text approvers rule'), 3, 'approval box: channel, title, text, people asked, rule'),
 			array(workspace_flows_parity_prefixed('checkin', 'channel_id question'), 3, 'check-in box: channel, question'),
+			array(workspace_flows_parity_prefixed('lead', 'private user_ids'), 3, 'lead box: a private channel, the people put in a channel it opens'),
 		),
 		'step_option_values' => array(
 			array(array('web_check.mode=status'), 3, 'web check box: the answer (redirect, contains, slowest answer)'),
@@ -2503,6 +2505,7 @@ function workspace_flows_parity_table()
 			array(array('WS_SCHEDULED_MIN_MINUTES=5'), 3, 'schedule trigger box: every 5 minutes at the most'),
 			array(array('WS_SCHEDULED_MAX_RECIPIENTS=20'), 3, 'email box and report box: 20 addresses'),
 			array(array('WS_SCHEDULED_LOCK=600'), 3, 'anchor: a run holds it 10 minutes (running_at)'),
+			array(array('WS_SCHEDULED_LEAD_HOURLY=20'), 3, 'lead box: at most 20 customer channels opened an hour by the owner'),
 			array(array('WS_SCHEDULED_BATCH=5'), 3, 'driver: ws_scheduled_run() takes 5 anchors a request by default (ws_tick, job.php); the Workspace job asks for 20 (see starts)'),
 		),
 		'caps' => array(
@@ -2732,12 +2735,12 @@ function test_workspace_flows_parity_every_key_is_mapped()
 }
 
 // Twelve steps, the same in the form's check and in the run.
-function test_workspace_flows_parity_twelve_steps()
+function test_workspace_flows_parity_thirteen_steps()
 {
 	$run = workspace_flows_parity_read_steps();
 	$input = array_keys(workspace_flows_parity_cases(workspace_flows_parity_source('ws_scheduled_action_input')));
 
-	pg_assert_same(12, count($run), 'ws_scheduled_do() has 12 steps');
+	pg_assert_same(13, count($run), 'ws_scheduled_do() has 13 steps');
 	sort($run);
 	sort($input);
 	pg_assert_same($run, $input, 'ws_scheduled_action_input() checks the steps ws_scheduled_do() runs');

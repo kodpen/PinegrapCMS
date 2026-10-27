@@ -1303,3 +1303,151 @@ function ws_customer_form_rows($viewer, $identity, $limit)
 
     return $rows;
 }
+
+/**
+ * The submission a form.submitted event names, and the contact the form
+ * tied it to (0 for none). Null for any other event, or one without a
+ * submission. Pure.
+ *
+ * @param string $event
+ * @param array  $payload id (the forms row), contact_id
+ * @return array|null form_id, contact_id
+ */
+function ws_lead_submission_of($event, $payload)
+{
+    $payload = (array) $payload;
+    $form_id = (int) ($payload['id'] ?? 0);
+
+    if (((string) $event !== 'form.submitted') || ($form_id <= 0)) {
+        return null;
+    }
+
+    return array('form_id' => $form_id, 'contact_id' => max(0, (int) ($payload['contact_id'] ?? 0)));
+}
+
+/**
+ * The e-mail address a submission gives: the answer of the field tied to
+ * the contact's address first, else the first e-mail field holding a valid
+ * address. '' when there is none. Pure.
+ *
+ * @param array[] $rows form_data answers with their field: type, contact_field, data
+ * @return string lower case
+ */
+function ws_lead_email_pick($rows)
+{
+    $found = '';
+
+    foreach ((array) $rows as $row) {
+        $address = strtolower(trim((string) ($row['data'] ?? '')));
+
+        if (($address === '') || (filter_var($address, FILTER_VALIDATE_EMAIL) === false)) {
+            continue;
+        }
+
+        if ((string) ($row['contact_field'] ?? '') === 'email_address') {
+            return $address;
+        }
+
+        if (($found === '') && ((string) ($row['type'] ?? '') === 'email address')) {
+            $found = $address;
+        }
+    }
+
+    return $found;
+}
+
+/**
+ * The contact a submission comes from: the one the form tied it to, else
+ * the newest contact with the address the submission gives. 0 when there
+ * is none. A second contact with the same address is left to the contacts
+ * screen's duplicates and merge.
+ *
+ * @param array $submission ws_lead_submission_of()
+ * @return int
+ */
+function ws_lead_contact_find($submission)
+{
+    $contact_id = (int) ($submission['contact_id'] ?? 0);
+
+    if (($contact_id > 0) && ws_customer_exists('contact', $contact_id)) {
+        return $contact_id;
+    }
+
+    $address = ws_lead_email_pick(db_items("SELECT d.data, ff.type, ff.contact_field
+        FROM form_data d
+        INNER JOIN form_fields ff ON ff.id = d.form_field_id
+        WHERE d.form_id = '" . (int) ($submission['form_id'] ?? 0) . "' AND (ff.type = 'email address' OR ff.contact_field = 'email_address')
+        ORDER BY d.id"));
+
+    if ($address === '') {
+        return 0;
+    }
+
+    return (int) db_value("SELECT id FROM contacts WHERE email_address = '" . e($address) . "' ORDER BY id DESC LIMIT 1");
+}
+
+/**
+ * The name of a channel opened for a customer: their name, else their
+ * company, else their address, else the contact's number; at most 80
+ * characters, as a channel's name. Pure.
+ *
+ * @param array $contact contacts row: first_name, last_name, company, email_address
+ * @param int   $contact_id
+ * @return string
+ */
+function ws_lead_channel_name($contact, $contact_id)
+{
+    $contact = (array) $contact;
+    $clean = function ($value) {
+        return trim((string) preg_replace('/\s+/u', ' ', (string) $value));
+    };
+    $name = $clean($clean($contact['first_name'] ?? '') . ' ' . $clean($contact['last_name'] ?? ''));
+
+    foreach (array($name, $clean($contact['company'] ?? ''), $clean($contact['email_address'] ?? '')) as $candidate) {
+        if ($candidate !== '') {
+            return mb_substr(ltrim($candidate, '# '), 0, 80);
+        }
+    }
+
+    return lang(array('string' => 'Contact #{var:1}', 'vars' => (int) $contact_id));
+}
+
+/**
+ * The names tried in turn for a new channel, another open channel holding
+ * the first: the name, then the name with (2) to (9), each within 80
+ * characters. Pure.
+ *
+ * @param string $name
+ * @return string[]
+ */
+function ws_lead_channel_names($name)
+{
+    $names = array($name);
+
+    for ($number = 2; $number <= 9; $number++) {
+        $suffix = ' (' . $number . ')';
+        $names[] = mb_substr($name, 0, 80 - mb_strlen($suffix)) . $suffix;
+    }
+
+    return $names;
+}
+
+/**
+ * The channel a lead is brought into when the customer has one: the first
+ * public or private channel of the list ws_customer_channels() gives, newest
+ * first; a discussion or a guest channel is no place for it. 0 for none.
+ * Pure.
+ *
+ * @param array[] $channels ws_channels rows: id, kind
+ * @return int
+ */
+function ws_lead_channel_pick($channels)
+{
+    foreach ((array) $channels as $channel) {
+        if (in_array((string) ($channel['kind'] ?? ''), array('public', 'private'), true)) {
+            return (int) $channel['id'];
+        }
+    }
+
+    return 0;
+}

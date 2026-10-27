@@ -1398,6 +1398,7 @@
     "Consumer Secret": "Tüketici Gizli Anahtarı (Consumer Secret)",
     "Cont Req": "Kutu Gerek",
     "Contact": "Kişi",
+    "Contact #{var:1}": "Kişi #{var:1}",
     "Contact (Form)": "İletişim (Form)",
     "Contact (Info)": "İletişim (Bilgi)",
     "Contact (Map)": "İletişim (Harita)",
