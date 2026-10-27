@@ -3149,7 +3149,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
                 'type'         => $type,
                 'type_label'   => $types[$type]['label'],
                 'action'       => 'bulk',
-                'action_label' => lang('Bulk change'),
+                'action_label' => (is_array($spec) && (($spec['action'] ?? '') === 'create')) ? lang('New records in bulk') : lang('Bulk change'),
                 'record_html'  => '',
                 'record_label' => $sees ? $bulk['summary'] : '',
                 'fields'       => $items,
@@ -3160,6 +3160,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
                 'bulk'         => array(
                     'total'    => $bulk['total'],
                     'delete'   => is_array($spec) && (($spec['action'] ?? '') === 'delete'),
+                    'create'   => is_array($spec) && (($spec['action'] ?? '') === 'create'),
                     'progress' => $bulk['progress'],
                     'mine'     => $asker,
                 ),

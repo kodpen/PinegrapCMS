@@ -545,6 +545,7 @@
     "Bulk Rename": "Toplu Yeniden Adlandırma",
     "Bulk change": "Toplu değişiklik",
     "Bulk change on {var:1}'s proposal: {var:2}. {var:3} records changed, {var:4} left as they were, {var:5} could not be changed.": "{var:1} önerisiyle toplu değişiklik: {var:2}. {var:3} kayıt değişti, {var:4} kayıt olduğu gibi kaldı, {var:5} kayıt değiştirilemedi.",
+    "Bulk change on {var:1}'s proposal: {var:2}. {var:3} records made, {var:4} left out, {var:5} could not be made.": "{var:1} önerisiyle toplu değişiklik: {var:2}. {var:3} kayıt oluşturuldu, {var:4} atlandı, {var:5} oluşturulamadı.",
     "Bulk changes by the assistants": "Asistanların toplu değişiklikleri",
     "Bulk edit": "Toplu düzenle",
     "Bulk edit files ({var:1})": "Dosyaları toplu düzenle ({var:1})",

@@ -1210,7 +1210,9 @@
     "robots.txt exists because one crawler brought a server to its knees in 1994. The fix was a plain text file, and it is still the same file today.": "robots.txt, 1994'te bir tarayıcının sunucuyu dize getirmesi yüzünden var. Çözüm düz bir metin dosyasıydı ve bugün hâlâ aynı dosya.",
     "robots.txt says the same for them.": "robots.txt de onlar için aynısını söyler.",
     "role: ": "rol: ",
+    "row {var:1}": "{var:1}. satır",
     "row(s)": "satır",
+    "rows is a list of objects of field => value, one for each new record.": "rows, her yeni kayıt için bir tane olmak üzere alan => değer nesnelerinden oluşan bir listedir.",
     "running": "çalışıyor",
     "running, marathon": "koşu, maraton"
 }
