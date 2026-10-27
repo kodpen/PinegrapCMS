@@ -526,6 +526,20 @@ function pg_comment_member_name($username, $contact, $designed, $select = false,
 }
 
 /**
+ * A comment's name as the panel shows it: the literal 'Anonymous' the name
+ * choice stores, or no name at all, reads in the panel language.
+ *
+ * @param mixed $name comments.name
+ * @return string Plain text.
+ */
+function pg_comment_display_name($name)
+{
+    $name = (string) $name;
+
+    return (($name === '') || ($name === 'Anonymous')) ? lang('Anonymous') : $name;
+}
+
+/**
  * The names the comment form's name select offers a signed-in member, as
  * value => stored name, in the order of the select. Pure; free of HTML (the
  * caller escapes the labels).

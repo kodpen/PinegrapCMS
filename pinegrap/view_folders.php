@@ -1454,10 +1454,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         </div>
         <button type="button" id="up_button" class="btn btn-sm btn-text theme-secondary no-popover" title="<?php echo lang('Up'); ?>"><span class="bi bi-arrow-90deg-up"></span></button>
         <div id="explorer_breadcrumb" class="pg-toolbar-grow"></div>
-        <div class="input-group input-group-sm rounded-pill pg-toolbar-search" id="explorer_search_wrap">
-            <span class="input-group-text rounded-start-pill bi bi-search border-end-0"></span>
-            <input type="search" id="filter_input" class="form-control rounded-end-pill border-start-0" placeholder="<?php echo lang('Search'); ?>" />
-        </div>
+        <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search" id="explorer_search_wrap">
+            <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+            <input type="search" id="filter_input" class="form-ghost" placeholder="<?php echo lang('Search'); ?>" aria-label="<?php echo lang('Search'); ?>" />
+        </label>
         <!-- Narrowing by what things are, rather than by what they are called.
              The search box answers "where is the file I can name"; this answers
              "which of these still needs work" -- the pictures nobody optimised,
@@ -1982,10 +1982,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             </div>
             <div class="dialog-body pt-0">
                 <div id="transfer_summary" class="form-text mt-0 mb-3"></div>
-                <div class="input-group input-group-sm rounded-pill mb-3">
-                    <span class="input-group-text rounded-start-pill bi bi-search border-end-0"></span>
-                    <input type="search" id="transfer_filter" class="form-control rounded-end-pill border-start-0" placeholder="<?php echo lang('Filter'); ?>" autocomplete="off" />
-                </div>
+                <label class="form-control form-control-sm form-adorn rounded-pill mb-3">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" id="transfer_filter" class="form-ghost" placeholder="<?php echo lang('Filter'); ?>" aria-label="<?php echo lang('Filter'); ?>" autocomplete="off" />
+                </label>
                 <div id="transfer_targets" class="list-group list-group-flush" style="max-height: 46vh; overflow-y: auto;"></div>
                 <div id="transfer_note" class="form-text"></div>
             </div>
@@ -2007,10 +2007,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             </div>
             <div class="dialog-body pt-0">
                 <div class="form-text mt-0 mb-3"><?php echo lang('The channel gets a copy of this file; the original stays where it is.'); ?></div>
-                <div class="input-group input-group-sm rounded-pill mb-3">
-                    <span class="input-group-text rounded-start-pill bi bi-search border-end-0"></span>
-                    <input type="search" id="ws_send_filter" class="form-control rounded-end-pill border-start-0" placeholder="<?php echo lang('Filter'); ?>" aria-label="<?php echo lang('Filter'); ?>" autocomplete="off" />
-                </div>
+                <label class="form-control form-control-sm form-adorn rounded-pill mb-3">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" id="ws_send_filter" class="form-ghost" placeholder="<?php echo lang('Filter'); ?>" aria-label="<?php echo lang('Filter'); ?>" autocomplete="off" />
+                </label>
                 <div id="ws_send_channels" class="list-group list-group-flush mb-5" style="max-height: 36vh; overflow-y: auto;"></div>
                 <label for="ws_send_body" class="form-label small"><?php echo lang('Add a message (optional)'); ?></label>
                 <textarea id="ws_send_body" class="form-control" rows="2" maxlength="4000"></textarea>

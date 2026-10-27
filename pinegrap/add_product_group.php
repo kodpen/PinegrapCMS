@@ -87,7 +87,7 @@ if (!$_POST) {
     if ($any_product_groups) {
         $output_parent_group_select_block =
             '<div class="col-12 md:col-4 my-3">' .
-            '<label for="parent_id" class="form-label">*' . lang('Parent Product Group') . '</label>' .
+            '<label for="parent_id" class="form-label">' . lang('Parent Product Group') . '</label>' .
             '<select required style="width:100%" class="form-control" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '">' .
             get_product_group_options($default_parent_id, 0, 0, 0, array(), FALSE, 'text', false, true, false) .
             '</select></div>';
@@ -125,8 +125,8 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-4 my-3">
-                                            <label for="name" class="form-label">*' . lang('Product Group Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ')) . '
+                                            <label for="name" class="form-label">' . lang('Product Group Name') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-5">
@@ -206,7 +206,7 @@ if (!$_POST) {
                                             <dialog class="dialog dialog-lg" id="image_code" aria-labelledby="image_code">
                                                         <div class="dialog-header">
                                                             <h5 class="dialog-title">' . lang('Code') . '</h5>
-                                                            <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                                                            <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                                                         </div>
                                                         <div class="dialog-body "> 
                                                             <div class="row">

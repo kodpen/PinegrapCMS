@@ -77,8 +77,8 @@ if($directory){
 				'.h($backup_folder).'
 				<span class="badge rounded-pill ' . ($backup_is_archive ? 'theme-primary' : 'theme-secondary') . ' ms-1">' . ($backup_is_archive ? lang('Archive') : lang('Folder')) . '</span>
 			</td>
-			<td>
-				<time>'.date('d F Y', filemtime('data/backups/'.$backup_folder)).'</time>
+			<td data-order="' . (int) filemtime('data/backups/'.$backup_folder) . '">
+				<time datetime="' . date('c', filemtime('data/backups/'.$backup_folder)) . '">' . h(get_absolute_time(array('timestamp' => filemtime('data/backups/'.$backup_folder), 'format' => 'plain_text'))) . '</time>
 			</td>
 			<td>' . h(convert_bytes_to_string($backup_is_archive ? filesize('data/backups/'.$backup_folder) : folderSize('data/backups/'.$backup_folder), 2)) . '</td>
 		</tr>';

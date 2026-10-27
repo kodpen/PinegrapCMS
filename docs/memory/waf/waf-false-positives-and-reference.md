@@ -14,4 +14,7 @@ description: view_waf_log.php likely false positive evidence and Allow/Remove ac
 - `waf_reference()` is `static` per request, so the code on the block page equals the code in the log row. Before, it was generated at deny time and stored nowhere: the visitor got a code the operator could not look up.
 - Column `waf_log.reference`; searchable in the log screen.
 
+## Which period does the log screen show?
+- `?range=1|7|30` days, 7 by default. PHP turns the numeric keys of `$range_options` into integers, so the select compares `(string) $value` with `$range`; a strict compare marked no option and the select always read "Last 24 hours" over a 7-day list (#2061).
+
 Related: docs/memory/waf/waf-ban-shield-mirror.md

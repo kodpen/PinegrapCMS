@@ -1461,7 +1461,12 @@ $(document).ready(function () {
             }
         });
         $("table.dataTable #select_all").prop("checked", false);
-        datatable.columns.adjust().draw();
+        datatable.columns.adjust();
+
+        // A list paged on the server would ask for the same page again.
+        if (!options.serverSide) {
+            datatable.draw();
+        }
         $('table.dataTable tbody tr td.dataTables_empty').parent('tr').addClass('unselectable');
     };
 
@@ -1525,6 +1530,11 @@ $(document).ready(function () {
             options["info"] = false;
         } else {
             options["info"] = true;
+        }
+
+        // A list that names a panel action is paged on the server.
+        if ($('table.chart[data-pg-list-action]').length === 1) {
+            pgListServerOptions(options, $('table.chart[data-pg-list-action]'));
         }
 
         var datatable = $("table.chart").DataTable(options);
@@ -2353,6 +2363,74 @@ function edit_chart_content(action, name) {
     if (result == true) {
         document.form.submit();
     }
+}
+
+/**
+ * DataTables options for a list paged on the server (includes/fn/list_paging.php).
+ * The table names its panel action in data-pg-list-action and what the action
+ * needs besides the page (the filter) in data-pg-list-params. Each draw asks
+ * the action for one page with the page window and the search box; a row
+ * comes back as its cells' content, with the cells' classes in DT_RowData.
+ * Sorting stays the headings' links, so DataTables sends no order.
+ */
+function pgListServerOptions(options, $table) {
+    var params = {};
+
+    try {
+        params = JSON.parse($table.attr('data-pg-list-params') || '{}') || {};
+    } catch (e) {
+        params = {};
+    }
+
+    options.serverSide = true;
+    options.searchDelay = 400;
+
+    options.ajax = function (request, callback) {
+        var body = $.extend({}, params, {
+            action: $table.attr('data-pg-list-action'),
+            token: software_token,
+            draw: request.draw,
+            start: request.start,
+            length: request.length,
+            search: (request.search && request.search.value) || ''
+        });
+
+        $.ajax({
+            contentType: 'application/json',
+            url: 'api.php',
+            type: 'POST',
+            dataType: 'json',
+            data: JSON.stringify(body)
+        }).done(function (response) {
+            if (response && (response.status === 'success')) {
+                callback(response);
+            } else {
+                pgListServerFailed(callback, request.draw, $table, response && response.message);
+            }
+        }).fail(function (xhr) {
+            pgListServerFailed(callback, request.draw, $table, xhr.responseJSON && xhr.responseJSON.message);
+        });
+    };
+
+    // The cells' classes; cells holds hidden columns' cells too.
+    options.createdRow = function (row, data, index, cells) {
+        var classes = (data && data.DT_RowData && data.DT_RowData.pgCells) || [];
+
+        for (var i = 0; (i < classes.length) && cells && (i < cells.length); i++) {
+            cells[i].className = classes[i];
+        }
+    };
+
+    // Hints and menus of the rows that just arrived.
+    $table.on('draw.dt', function () {
+        pgInitInjected($table.find('tbody'));
+    });
+}
+
+// An empty page with the reason in the table's empty row.
+function pgListServerFailed(callback, draw, $table, message) {
+    callback({ draw: draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
+    $table.find('tbody td.dt-empty').text(message || lang('Query failed.'));
 }
 
 function chart_checkbox_state_change() {

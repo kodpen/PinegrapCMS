@@ -334,3 +334,45 @@ function test_payment_stripe_webhook_firewall_lists()
 	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
 	pg_assert_contains("'payment_callback.php'", substr($waf, strpos($waf, 'function waf_is_api_request()'), 600), 'outside the sign-in allowance');
 }
+
+function test_payment_stripe_webhook_started_payment_kept_on_order()
+{
+	$redirect = pg_payment_answer('authorize', array(
+		'success'        => true,
+		'status'         => 'redirect',
+		'transaction_id' => 'pi_3abc',
+		'redirect_url'   => 'https://hooks.stripe.com/3d_secure/x',
+		'state'          => array('payment_intent' => 'pi_3abc', 'order_id' => '42', 'amount' => 12345),
+	));
+
+	pg_assert_same(array('transaction_id' => 'pi_3abc', 'total' => 12345), pg_payment_started_order_values($redirect, 12345), 'the intent and the total it was started for');
+	pg_assert_same(12346, pg_payment_started_order_values($redirect, 12345.6)['total'], 'rounded, never cut');
+
+	$no_id = $redirect;
+	$no_id['transaction_id'] = '';
+	pg_assert_same(null, pg_payment_started_order_values($no_id, 12345), 'a redirect naming no payment (iyzico\'s 3-D Secure page) keeps nothing');
+
+	foreach (array('paid', 'authorized', 'pending') as $status) {
+		$taken = $redirect;
+		$taken['status'] = $status;
+		pg_assert_same(null, pg_payment_started_order_values($taken, 12345), $status . ': the order is completed in the same request');
+	}
+
+	$failed = $redirect;
+	$failed['success'] = false;
+	pg_assert_same(null, pg_payment_started_order_values($failed, 12345), 'a refusal keeps nothing');
+
+	// The order is written only while it is incomplete, before the visitor
+	// is sent away.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+	$at = strpos($source, 'pg_payment_started_order_values(');
+	pg_assert_true($at !== false, 'submit_order.php keeps the started payment');
+	pg_assert_true($at < strpos($source, "if (\$payment_answer['html'] !== '')"), 'before the redirect');
+	pg_assert_contains("AND (status = 'incomplete')", substr($source, $at, 900), 'only an incomplete order');
+
+	// The callback now finds the order's own payment id and tells another
+	// payment apart.
+	$event = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent()));
+	$order = array('id' => '438', 'status' => 'incomplete', 'transaction_id' => 'pi_other');
+	pg_assert_same('unknown_order', pg_payment_notify_outcome('stripe', $event, $order)['status']);
+}

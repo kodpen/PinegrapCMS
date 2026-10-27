@@ -301,7 +301,7 @@
                 row.appendChild(h.el('span', 'ws-task-time-amount' + (entry.running ? ' fg-danger' : ''), entry.label));
 
                 if (entry.can_delete) {
-                    var remove = h.button('btn btn-sm btn-ghost py-0 px-1 ws-tool-danger', '', 'bi-trash', h.t('delete'));
+                    var remove = h.button('btn btn-sm btn-text theme-secondary py-0 px-1 ws-tool-danger', '', 'bi-trash', h.t('delete'));
                     remove.addEventListener('click', function () {
                         h.ask(h.t('tt_delete_confirm'), h.t('delete'), true).then(function (yes) {
                             if (!yes) {
@@ -397,7 +397,7 @@
                     line.appendChild(h.el('span', 'ws-task-time-amount', invoice.time_label));
 
                     if (invoice.can_unlink) {
-                        var unlink = h.button('btn btn-sm btn-ghost py-0 px-1', '', 'bi-link-45deg', h.t('tt_unlink'));
+                        var unlink = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-link-45deg', h.t('tt_unlink'));
                         unlink.addEventListener('click', function () {
                             h.ask(h.t('tt_unlink_confirm'), h.t('tt_unlink'), true).then(function (yes) {
                                 if (!yes) {

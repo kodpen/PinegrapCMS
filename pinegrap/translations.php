@@ -738,13 +738,15 @@ echo pg_page_shell(array(
                 <i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="opacity-75">' . (int) $review_all_shown . '</span>
             </button>' : '') . '
             <div class="pg-toolbar-grow pg-chips">' . $output_chips . '</div>
-            <form class="input-group input-group-sm rounded-pill pg-toolbar-search" method="get" action="' . h($self) . '">
+            <form class="pg-toolbar-search" method="get" action="' . h($self) . '" role="search">
                 <input type="hidden" name="language" value="' . h($language) . '"/>
                 <input type="hidden" name="page_id" value="' . (int) $page_id . '"/>
                 <input type="hidden" name="group" value="' . h($group) . '"/>
                 <input type="hidden" name="filter" value="' . h($filter) . '"/>
-                <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                <input type="search" name="q" class="form-control border-start-0 rounded-end-pill" value="' . h($search) . '" placeholder="' . h(lang('Search in the texts')) . '" autocomplete="off"/>
+                <label class="form-control form-control-sm form-adorn rounded-pill">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" name="q" class="form-ghost" value="' . h($search) . '" placeholder="' . h(lang('Search in the texts')) . '" aria-label="' . h(lang('Search in the texts')) . '" autocomplete="off"/>
+                </label>
             </form>
             <div class="pg-menu-wrap">
                 <button class="btn btn-sm btn-text theme-secondary no-popover" type="button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>

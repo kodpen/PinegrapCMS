@@ -161,7 +161,7 @@ if (!$_POST) {
                 'name'=>'dkim_selector',
                 'id'=>'dkim_selector',
                 'class'=>'form-control text-end',
-                'placeholder'=>'Selector'
+                'placeholder'=>lang('Selector')
             ]) . '
             <span class="input-group-text">._domainkey.</span>
             ' . $liveform->output_field([

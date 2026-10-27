@@ -225,7 +225,7 @@ if (!$_POST) {
                 <dialog class="dialog dialog-xl" id="hints" aria-labelledby="hints">
                             <div class="dialog-header">
                                 <h5 class="dialog-title">' . lang('Hints') . '</h5>
-                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                             </div>
                             <div class="dialog-body ">
                                 <div class="row">

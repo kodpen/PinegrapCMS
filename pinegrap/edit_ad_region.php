@@ -208,10 +208,10 @@ if (!$_POST) {
                                                         </div>
                                                         <div class="col-12 md:col-6 lg:col-4 my-1">
                                                             <label class="form-label" for="transition_duration">' . lang('Transition Duration') . '</label>
-                                                            <div class="input-group">
-                                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'transition_duration', 'id'=>'transition_duration', 'class'=>'form-control text-end', 'inputmode'=>'numeric', 'maxlength'=>'4', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
-                                                                <div class="input-group-text">' . lang('milliseconds') . '</div>
-                                                            </div>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('milliseconds') . '</span>
+                                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'transition_duration', 'id'=>'transition_duration', 'class'=>'form-ghost text-end', 'inputmode'=>'numeric', 'maxlength'=>'4', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
+                                                            </label>
                                                             <div class="form-text text-end">' . lang('leave blank for default, 1 for instant, 1000 for 1 second') . '</div>
                                                         </div>
                                                         <div class="col-12 my-1">
@@ -225,10 +225,10 @@ if (!$_POST) {
                                                                     <div class="row">
                                                                         <div class="col-12 md:col-6 lg:col-4 my-1">
                                                                             <label class="form-label" for="slideshow_interval">' . lang('Interval') . '</label>
-                                                                            <div class="input-group">
-                                                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'slideshow_interval', 'id'=>'slideshow_interval', 'class'=>'form-control text-end', 'inputmode'=>'numeric', 'maxlength'=>'3', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
-                                                                                <div class="input-group-text">' . lang('seconds') . '</div>
-                                                                            </div>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('seconds') . '</span>
+                                                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'slideshow_interval', 'id'=>'slideshow_interval', 'class'=>'form-ghost text-end', 'inputmode'=>'numeric', 'maxlength'=>'3', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
+                                                                            </label>
                                                                         </div>
                                                                         <div class="col-12 my-1">
                                                                             <div class="form-field">

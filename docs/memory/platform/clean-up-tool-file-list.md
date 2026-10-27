@@ -13,3 +13,4 @@ description: clean_up.php $file_list and data/temp sweep: never list a live file
 
 ## What about `data/temp`?
 - The same file sweeps `data/temp` as a DIRECTORY, so any new file placed there lands in the delete-without-asking list. It is the right place for regenerable cache. Anything not regenerated, or not regenerated as the SAME file, must be written to `$temp_keep` (example: `hash_reference.json`).
+- Kept today (#2060: the tool listed the accountant packs and the CSP reports for deletion): `hash_reference.json`, `erp_packages/` (the accountant's link reads its ZIP), `csp_reports.json`, `php_errors.log`, `shield_pending.log` (bans waiting for the database), `waf_ban_notice.log` (queued ban notices), `ai_write_usage.json` (the daily AI counter). A cache whose loss only costs a rebuild (`system_status_cache.json`, `db_health_cache.json`, `ban_shield.txt`, which `waf_ban_shield_refresh()` rewrites) stays sweepable.

@@ -1283,25 +1283,44 @@ if ($pages) {
     }
 }
 
-// Site-wide SEO summary for the strip under the heading. One aggregate query,
-// no join: the folder conditions are already folded into the flag bits when
-// the scores are computed. The counts link to the matching list filters.
+// Site-wide SEO summary for the strip under the heading. Each count uses the
+// condition of the list it links to: archived pages are left out everywhere,
+// as every list but the archive leaves them out, and the site map counts
+// only public pages, as its lists do (only those can be in sitemap.xml).
+// The access type is read once per folder.
 //
 // Not shown to basic users. Their list below is filtered to the folders they
 // can reach, so a site-wide total would both disagree with what they see and
 // tell them about pages they have no access to - and the refresh button that
 // acts on it is hidden from them anyway.
-$seo_summary = ((USER_ROLE >= 3) || !pg_seo_schema_ready()) ? null : db_item(
-    "SELECT
-        COALESCE(SUM(sitemap = 1), 0) AS in_sitemap,
-        COALESCE(SUM((sitemap = 1) AND ((seo_flags & 1) != 0)), 0) AS sitemap_no_title,
-        COALESCE(SUM((sitemap = 1) AND ((seo_flags & 32) != 0)), 0) AS sitemap_no_description,
-        COALESCE(SUM(page_search = 1), 0) AS in_search,
-        COALESCE(SUM((page_search = 1) AND ((seo_flags & 1536) != 0)), 0) AS search_weak_keywords,
-        COALESCE(SUM(seo_checked_at = 0), 0) AS not_calculated,
-        COALESCE(SUM((seo_flags & 131072) != 0), 0) AS no_h1,
-        COALESCE(SUM((seo_flags & 524288) != 0), 0) AS img_no_alt
-    FROM page");
+$seo_summary = null;
+
+if ((USER_ROLE < 3) && pg_seo_schema_ready()) {
+    $seo_summary_rows = db_items(
+        "SELECT
+            page.page_folder,
+            page.sitemap,
+            page.page_search,
+            page.seo_flags,
+            page.seo_checked_at
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE (folder.folder_archived = '0') OR (folder.folder_archived IS NULL)");
+
+    $seo_summary_public_folders = array();
+
+    foreach ((array) $seo_summary_rows as $key => $row) {
+        $folder_id = (int) $row['page_folder'];
+
+        if (!isset($seo_summary_public_folders[$folder_id])) {
+            $seo_summary_public_folders[$folder_id] = (get_access_control_type($folder_id) == 'public');
+        }
+
+        $seo_summary_rows[$key]['public'] = $seo_summary_public_folders[$folder_id];
+    }
+
+    $seo_summary = pg_seo_pages_summary((array) $seo_summary_rows);
+}
 
 $output_seo_summary = '';
 

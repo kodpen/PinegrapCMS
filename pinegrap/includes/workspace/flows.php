@@ -436,7 +436,8 @@ function ws_flow_problem($code, $node, $edge, $text, $warning = false)
 
 /**
  * The texts of a box a run fills {{node.<id>.<field>}} into: a step box's
- * texts (ws_step_kinds()), a task box's title and description. Pure.
+ * texts (ws_step_kinds()), a task box's title and description, the value a
+ * condition box compares. Pure.
  *
  * @param array $node ws_flow_graph_normalize() box
  * @return string[]
@@ -444,6 +445,14 @@ function ws_flow_problem($code, $node, $edge, $text, $warning = false)
 function ws_flow_node_texts($node)
 {
     $kind = (string) $node['kind'];
+
+    // A condition on a value reads that one value.
+    if ($kind === 'condition') {
+        $rule = (array) ($node['config']['rule'] ?? array());
+
+        return ((($rule['type'] ?? '') === 'value') && is_string($rule['ref'] ?? null) && ($rule['ref'] !== '')) ? array($rule['ref']) : array();
+    }
+
     $keys = ($kind === 'task') ? array('title', 'description') : ((function_exists('ws_step_kinds') ? (ws_step_kinds()[$kind]['texts'] ?? array()) : array()));
     $out = array();
 
@@ -2197,6 +2206,9 @@ function ws_flow_js_strings()
         'fl_cond_any_channel' => lang('Every channel'),
         'fl_cond_threshold'   => lang('At most'),
         'fl_cond_record'      => lang('A field of a record'),
+        'fl_cond_value_rule'  => lang('A value of an earlier box'),
+        'fl_cond_value_ref'   => lang('Value'),
+        'fl_cond_value_ref_pick' => lang('Choose a value'),
         'fl_cond_field'       => lang('Field'),
         'fl_cond_field_pick'  => lang('Choose a field'),
         'fl_cond_op'          => lang('Comparison'),
@@ -2257,7 +2269,14 @@ function ws_flow_js_strings()
         'fl_email_to_help'    => lang('E-mail addresses, separated by commas.'),
         'fl_email_subject'    => lang('Subject'),
         'fl_email_body'       => lang('Text of the e-mail'),
-        'fl_values_help'      => lang('Written in your name when the box runs. {{node.ID.text}} puts in what an earlier box of the run did, {{node.ID.message_id}} the message it posted; {{date}} and the other words of scheduled actions work too.'),
+        'fl_values_hint'      => lang('Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.'),
+        'fl_values_add'       => lang('Add value'),
+        'fl_values_text'      => lang('What it did'),
+        'fl_values_outcome'   => lang('Outcome'),
+        'fl_values_status'    => lang('Status'),
+        'fl_values_skipped'   => lang('Empty if skipped'),
+        'fl_values_missing'   => lang('No box before this one gives this value.'),
+        'fl_values_none'      => lang('No box before this one gives a value yet: connect it after a box or a start.'),
         'fl_add_manual'       => lang('Start manually'),
         'fl_add_task'         => lang('Task'),
         'fl_add_end'          => lang('End'),
