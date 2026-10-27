@@ -168,6 +168,9 @@ function pg_designer_screen_render($ctx)
             'formSettings'          => function_exists('pg_cf_load_page_form_settings')
                                            ? pg_cf_load_page_form_settings((int)$p['page_id']) : array(),
             'access'                => $page_access,
+            // A page of a classic style just opened (?classic=1): its tree is
+            // not saved yet, so the tab starts unsaved and Save writes it.
+            'converted'             => !empty($p['converted']) ? 1 : 0,
         );
     }
     if (empty($js_pages)) {
@@ -446,6 +449,7 @@ function pg_designer_screen_render($ctx)
         <main id="content" style="padding:0; max-width:100%;">
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
+            ' . $liveform->get_warnings() . '
             <!-- disable_shortcut: the editor answers Ctrl+S itself, with what its
                  main button says on the page on screen (style_designer.js). -->
             <form id="style_designer_form" name="style_designer_form" class="disable_shortcut" action="' . $form_action . '" method="post" style="height:100%;">
@@ -2910,6 +2914,16 @@ function pg_designer_screen_post($ctx)
         $fail(array(lang('You do not have access to add a design.')));
     }
 
+    // A classic style opened in the editor (edit_system_style.php
+    // ?classic=1) becomes a visual design with this save
+    // (save_system_style()). Only a designer converts one; its page regions,
+    // system region and layout override stay as they were.
+    $converting = ($mode === 'edit' && $style_id > 0)
+        && ((string)db_value("SELECT style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") !== 'visual_designer');
+    if ($converting && !$can_write_design) {
+        $fail(array(lang('Only a designer can open a classic style in the visual designer.')));
+    }
+
     $style_data = array(
         'style_id'                          => $style_id,
         'name'                              => $style_name,
@@ -2954,6 +2968,15 @@ function pg_designer_screen_post($ctx)
             $fail(array(lang('The design could not be saved. Please try again.')));
         }
         log_activity(lang(array('string' => ($mode === 'edit' ? 'style ({var:1}) was modified' : 'style ({var:1}) was added'), 'vars' => array($style_name))), $_SESSION['sessionusername']);
+        // An update never changes a design's framework; a converted style
+        // takes the one the editor opened it with (custom: the theme keeps
+        // its own Bootstrap and scripts).
+        if ($converting) {
+            if (pg_style_framework_ready()) {
+                db("UPDATE style SET style_framework = '" . e(pg_design_framework_key($style_data['framework'])) . "' WHERE style_id = '$style_id'");
+            }
+            log_activity(lang(array('string' => 'style ({var:1}) was made a visual design', 'vars' => array($style_name))), $_SESSION['sessionusername']);
+        }
     }
 
     // ── Design-wide body classes: fold them onto the pages, once ──────────

@@ -3195,16 +3195,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
                     <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
                         ' . get_token_field() . '
-                        <button type="submit" name="submit_data" value="Export Orders (multiple files)" title="' . lang('Multiple files') . '" class="btn btn-sm btn-ghost"><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
-                        <button type="submit" name="submit_data" value="Export Orders (single file)" title="' . lang('Single file') . '" class="btn btn-sm btn-ghost"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
+                        <button type="submit" name="submit_data" value="Export Orders (multiple files)" title="' . lang('Multiple files') . '" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
+                        <button type="submit" name="submit_data" value="Export Orders (single file)" title="' . lang('Single file') . '" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
                         ' . $output_gateway_buttons . '
                     </form>
-                    <a class="btn btn-sm btn-ghost" href="import_shipments.php"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Import Tracking Numbers') . '</a>
+                    <a class="btn btn-sm btn-text theme-secondary" href="import_shipments.php"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Import Tracking Numbers') . '</a>
                     <div class="pg-toolbar-grow"></div>
                     ' . pg_list_sort_menu('view_orders.php', $sort_columns, $sort_levels, $sort_default) . '
                     ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
                     ' . pg_filter_select('type', $type_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? ''), array('label' => lang('Order Type'), 'action' => 'view_orders.php', 'id' => 'type')) . '
-                    <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                    <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     ' . $output_period_navigator . '
                 </nav>
                 ' . $output_order_stats . '

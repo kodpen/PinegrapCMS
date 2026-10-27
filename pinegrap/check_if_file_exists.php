@@ -33,8 +33,8 @@ $file_name = prepare_file_name($_GET['file_name'] ?? '');
 // check if there is already a file with the file name
 $query = "SELECT id, design, folder
          FROM files
-         WHERE name = '" . escape($file_name) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+         WHERE name = ?";
+$result = db_q($query, array((string) $file_name)) or output_error('Query failed.');
 
 // if file name is not in use
 if (mysqli_num_rows($result) == 0) {

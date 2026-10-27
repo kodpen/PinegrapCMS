@@ -11159,6 +11159,7 @@ const StyleDesigner = (function () {
                     shipping_method:      _sdT('Shipping Method'),
                     billing_information:  _sdT('Billing Information'),
                     order_preview:        _sdT('Order Preview'),
+                    order_form:           _sdT('Order Form'),
                     menu_region:          _sdT('Menu'),
                     menu_sequence_region: _sdT('Menu Sequence'),
                     ad_region:            _sdT('Ad Region'),
@@ -13954,6 +13955,8 @@ const StyleDesigner = (function () {
         '__order_number': 'PG-12345',
         '__order_status': _sdT('Completed'),
         '__shipping_method_name': _sdT('Standard Shipping'),
+        '__add_button_label': _sdT('Continue'),
+        '__skip_button_label': _sdT('No, thanks'),
         '__shipping_method': _sdT('Standard Shipping'),
         '__payment_method': _sdT('Credit Card'),
         '__transaction_id': 'TX-000123',
@@ -33223,6 +33226,7 @@ const StyleDesigner = (function () {
             var _isShippingMethod  = (_regionType === 'shipping_method');
             var _isBillingInfo     = (_regionType === 'billing_information');
             var _isOrderPreview    = (_regionType === 'order_preview');
+            var _isOrderForm       = (_regionType === 'order_form');
             var _isMenuRegion      = (_regionType === 'menu_region');
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
             var _isAdRegion        = (_regionType === 'ad_region');
@@ -33275,6 +33279,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isOrderForm) {
+                _sourceInfoHtml = _sdT('The classic order form: the products of one product group, each with its check box, quantity box or donation amount, or one pick list of them with a quantity; the visitor puts many products into the cart at once. The products, their prices and the cart work as on the classic order form page; a product that cannot be ordered shows without its control.');
             } else if (_isOrderPreview) {
                 _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
             } else if (_isTagCloud) {
@@ -34487,6 +34493,62 @@ const StyleDesigner = (function () {
                         _opHint(esc(_sdT('Elements bound to "{var}" show this text.', _swBindLabel('order_preview', '__offline_payment_label'))))) +
                     row(_sdT('Controls'),
                         _opHint(_sdT('The form reads its controls by name: {var}.', '<code>payment_method, card_number, expiration, card_verification_number, threedsecure, gift_card_code, submit_apply_gift_card, terms, submit_purchase_now</code>')))
+                );
+            }
+
+            // ── order_form settings ──────────────────────────────────────────
+            // Written into the page's order_form_pages row, which the handler
+            // reads; a setting never touched leaves the row as the classic
+            // page stored it.
+            if (_isOrderForm) {
+                if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+                var _ofHint = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + t + '</div>'; };
+                var _ofGroup = parseInt(_cfg.product_group_id || 0, 10) || 0;
+                var _ofGroupOpts = '<option value="0">' + esc(_sdT('— The page\'s own setting —')) + '</option>';
+                if (_productGroupsCache) {
+                    var _ofByParent = {};
+                    _productGroupsCache.forEach(function (g) {
+                        var pid = parseInt(g.parent_id || 0, 10);
+                        (_ofByParent[pid] = _ofByParent[pid] || []).push(g);
+                    });
+                    var _ofEmit = function (g, depth) {
+                        var gid = parseInt(g.id, 10);
+                        _ofGroupOpts += '<option value="' + gid + '"' + (gid === _ofGroup ? ' selected' : '') + '>' + esc(new Array(depth + 1).join('— ') + (g.name || ('#' + gid))) + '</option>';
+                        (_ofByParent[gid] || []).forEach(function (k) { _ofEmit(k, depth + 1); });
+                    };
+                    (_ofByParent[0] || []).forEach(function (g) { _ofEmit(g, 0); });
+                } else {
+                    _fetchProductGroups(function () { renderProperties(); });
+                }
+                var _ofLayout = (_cfg.product_layout === 'drop-down selection') ? 'drop-down selection' : 'list';
+                var _ofPage = function (key, hint) {
+                    return '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="page">' +
+                            _swPageOptions(_cfg[key], _allPagesCache, { none: _sdT('— The page\'s own setting —') }) +
+                        '</select>' + _ofHint(esc(hint));
+                };
+                var _ofText = function (key, placeholder, hint) {
+                    return '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" maxlength="50" value="' + esc(_cfg[key] || '') + '" placeholder="' + esc(placeholder) + '">' + _ofHint(esc(hint));
+                };
+                systemSection += sect('bi-cart-plus', _sdT('Order Form Settings'),
+                    row(_sdT('Product group'),
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="product_group_id" data-sw-cfg-kind="int" min="0">' + _ofGroupOpts + '</select>' +
+                        _ofHint(esc(_sdT('The enabled products of this group are offered, in the group\'s order.')))) +
+                    row(_sdT('Product layout'),
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="product_layout" data-sw-cfg-kind="choice" data-sw-cfg-choices="list,drop-down selection">' +
+                            '<option value="list"' + (_ofLayout === 'list' ? ' selected' : '') + '>' + esc(_sdT('List')) + '</option>' +
+                            '<option value="drop-down selection"' + (_ofLayout !== 'list' ? ' selected' : '') + '>' + esc(_sdT('Drop-Down Selection')) + '</option>' +
+                        '</select>' +
+                        _ofHint(esc(_sdT('List: a row per product with its own control. Drop-down selection: one pick list and a quantity.')))) +
+                    row(_sdT('Add button'), _ofText('add_button_label', _sdT('Continue'),
+                        _sdT('Elements bound to "{var}" show this text.', _swBindLabel('order_form', '__add_button_label')))) +
+                    row(_sdT('After adding'), _ofPage('add_button_next_page_id',
+                        _sdT('Where the visitor goes once the products are in the cart.'))) +
+                    row(_sdT('Skip button'), _ofText('skip_button_label', '',
+                        _sdT('Without a label the skip button is not drawn.'))) +
+                    row(_sdT('After skipping'), _ofPage('skip_button_next_page_id',
+                        _sdT('Where the skip button takes the visitor, nothing added.'))) +
+                    row(_sdT('Controls'),
+                        _ofHint(_sdT('The form reads its controls by name: {var}.', '<code>product, donation, product_id, quantity, ship_to, add_name, submit_add, submit_skip</code>')))
                 );
             }
 
@@ -37876,7 +37938,7 @@ const StyleDesigner = (function () {
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
         order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
-        tag_cloud_region: 1
+        tag_cloud_region: 1, order_form: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -39549,6 +39611,30 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // order_form token palette — has loop_area (one row per product of the
+    // group, list layout). Row tokens carry the catalog's names. Mirrors
+    // _render_system_widget_order_form() in widgets_order_form.php.
+    var SW_ORDER_FORM_TOKEN_GROUPS = [
+        { label: _sdT('Labels'), tokens: [
+            ['__add_button_label',  _sdT('Add button label (the page\'s setting)')],
+            ['__skip_button_label', _sdT('Skip button label (the page\'s setting)')],
+            ['__currency_symbol',   _sdT('Currency symbol')]
+        ]},
+        { label: _sdT('Product (loop_area)'), tokens: [
+            ['__id',                    _sdT('Product ID')],
+            ['__name',                  _sdT('Product name')],
+            ['__short_description',     _sdT('Short description')],
+            ['__description',           _sdT('Description (long)')],
+            ['__price_formatted',       _sdT('Price (with symbol)')],
+            ['__image_url',             _sdT('Image URL')],
+            ['__image_alt',             _sdT('Image alt text')],
+            ['__out_of_stock_message',  _sdT('Out of stock message')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__cart_url',              _sdT('Cart page address (the link drops when the site has none)')]
+        ]}
+    ];
+
     // billing_information token palette — no loop_area. Mirrors
     // _render_system_widget_billing_information() in
     // widgets_billing_information.php.
@@ -39698,6 +39784,7 @@ const StyleDesigner = (function () {
         shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS,
         billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS,
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
+        order_form:        SW_ORDER_FORM_TOKEN_GROUPS,
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
         menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
         ad_region:         SW_AD_REGION_TOKEN_GROUPS,
@@ -41616,6 +41703,20 @@ const StyleDesigner = (function () {
             ['can_update_contact',   _sdT('A signed-in member may update their contact')],
             ['has_referral_sources', _sdT('The site has referral sources')],
             ['has_tax_exempt',       _sdT('Tax exemption can be asked for')]
+        ],
+        order_form: [
+            ['has_products',           _sdT('At least one product of the group can be ordered')],
+            ['no_products',            _sdT('No product of the group can be ordered')],
+            ['is_list_layout',         _sdT('The products are listed, each with its own control')],
+            ['is_dropdown_layout',     _sdT('The products are offered in one pick list')],
+            ['has_quantity',           _sdT('The pick list asks for a quantity (not only donations)')],
+            ['has_recipient_choice',   _sdT('The visitor picks who the products are shipped to')],
+            ['has_skip_button',        _sdT('The page has a skip button')],
+            ['order_form_checkbox',    _sdT('Row: the product is chosen with a check box')],
+            ['order_form_quantity',    _sdT('Row: the product is ordered by quantity')],
+            ['order_form_donation',    _sdT('Row: the product is a donation of the visitor\'s amount')],
+            ['order_form_unavailable', _sdT('Row: the product is out of stock')],
+            ['has_recurring_schedule', _sdT('Row: the visitor sets the payment schedule')]
         ],
         shipping_method: [
             ['has_recipient',              _sdT('A recipient of the visitor\'s order is being shown')],
@@ -44263,6 +44364,8 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['installment_table',  _sdT('Installment table by card family')]);
             } else if (_semSwRegion === 'billing_information') {
                 _sectionOpts.push(['custom_billing_form',  _sdT('Custom billing form fields (hidden when the page has none)')]);
+            } else if (_semSwRegion === 'order_form') {
+                _sectionOpts.push(['recurring_schedule',   _sdT('Row: payment schedule of a recurring product')]);
             } else if (_semSwRegion === 'shipping_method') {
                 _sectionOpts.push(['recipient_items',      _sdT('The recipient\'s items (a product that cannot go to the address carries its remove link)')]);
             } else if (_semSwRegion === 'shipping_address_and_arrival') {
@@ -54526,6 +54629,7 @@ const StyleDesigner = (function () {
         { type: 'shipping_method',   label: _sdT('Shipping Method'),   slug: _sdT('shipping-method'),   icon: 'bi-box-seam' },
         { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' },
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
+        { type: 'order_form',        label: _sdT('Order Form'),        slug: _sdT('order-form'),        icon: 'bi-cart-plus' },
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
         { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
         { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
@@ -61306,6 +61410,92 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
+            }
+
+            case 'order_form': {
+                // The classic order form, posting to order_form.php. The list
+                // layout: one loop row per product of the group, with the
+                // control its selection type asks for (a check box or a
+                // quantity box named product, a donation amount named
+                // donation; the server names them per product). The
+                // drop-down layout: one pick list named product_id and a
+                // quantity. Mirrors _render_system_widget_order_form().
+                var ofId = 'f_' + Math.random().toString(36).slice(2, 7);
+                var ofLoop = createNode('loop_area', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: 'list-group-item d-flex flex-wrap justify-content-between align-items-start gap-3', customName: _sdT('Product') }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Details') }, [
+                            createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Product name'), cssClass: 'mb-1',
+                                _bindings: { text: '__name' } }),
+                            createNode('semantic', { tag: 'div', cssClass: 'small text-muted', text: _sdT('Description (long)'), customName: _sdT('Description'),
+                                _bindings: { text: '__description' } }),
+                            createNode('semantic', { tag: 'div', cssClass: 'small text-danger', text: _sdT('Out of stock message'), customName: _sdT('Out of Stock'),
+                                _bindings: { text: '__out_of_stock_message', eo_visible_if: 'order_form_unavailable' } }),
+                            createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Payment Schedule'),
+                                _bindings: { section: 'recurring_schedule' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-3', customName: _sdT('Order') }, [
+                            createNode('semantic', { tag: 'span', cssClass: 'fw-semibold text-nowrap', text: _sdMoney(0), customName: _sdT('Price'),
+                                _bindings: { text: '__price_formatted' } }),
+                            createNode('semantic', { tag: 'div', cssClass: 'form-check mb-0', customName: _sdT('Check Box'),
+                                _bindings: { eo_visible_if: 'order_form_checkbox' } }, [
+                                createNode('semantic', { tag: 'input', cssClass: 'form-check-input', id: ofId + '_check',
+                                    _attrs: [{ name: 'type', value: 'checkbox' }, { name: 'name', value: 'product' }, { name: 'value', value: '1' }] }),
+                                createNode('semantic', { tag: 'label', cssClass: 'form-check-label', text: _sdT('Select'), customName: _sdT('Label'),
+                                    _attrs: [{ name: 'for', value: ofId + '_check' }] })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Quantity'),
+                                _bindings: { eo_visible_if: 'order_form_quantity' } }, [
+                                createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', text: _sdT('Qty'), customName: _sdT('Label'),
+                                    _attrs: [{ name: 'for', value: ofId + '_qty' }] }),
+                                createNode('semantic', { tag: 'input', cssClass: 'form-control form-control-sm text-center', id: ofId + '_qty',
+                                    _attrs: [{ name: 'type', value: 'number' }, { name: 'name', value: 'product' }, { name: 'min', value: '0' },
+                                             { name: 'max', value: '999999999' }, { name: 'style', value: 'width: 5rem' }] })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'input-group input-group-sm', customName: _sdT('Donation'),
+                                _bindings: { eo_visible_if: 'order_form_donation' } }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'input-group-text', text: _sdCurrencySymbol(), customName: _sdT('Currency'),
+                                    _bindings: { text: '__currency_symbol' } }),
+                                createNode('semantic', { tag: 'input', cssClass: 'form-control text-end', id: ofId + '_donation',
+                                    _attrs: [{ name: 'type', value: 'text' }, { name: 'name', value: 'donation' }, { name: 'inputmode', value: 'decimal' },
+                                             { name: 'aria-label', value: _sdT('Amount') }, { name: 'style', value: 'width: 7rem' }] })
+                            ])
+                        ])
+                    ])
+                ]);
+                var ofQty = _swAcctField(_sdT('Qty'), ofId + '_quantity', 'number', 'quantity',
+                    { attrs: [{ name: 'min', value: '1' }, { name: 'max', value: '999999999' }, { name: 'value', value: '1' }], colCss: 'col-sm-3' });
+                ofQty.props._bindings = { eo_visible_if: 'has_quantity' };
+                return _swAcctPage(_sdT('Order Form Card'), '10', '8', [
+                    createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Order Form'), cssClass: 'card-title mb-3' }),
+                    createNode('semantic', { tag: 'div', cssClass: 'alert alert-info', customName: _sdT('No Products'),
+                        _bindings: { eo_visible_if: 'no_products' } }, [
+                        createNode('content', { contentType: 'paragraph', text: _sdT('There are no products to order at the moment.'), cssClass: 'mb-0' })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Products'),
+                        _bindings: { eo_visible_if: 'has_products' } }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'list-group mb-4', customName: _sdT('Product List'),
+                            _bindings: { eo_visible_if: 'is_list_layout' } }, [ofLoop]),
+                        createNode('semantic', { tag: 'div', cssClass: 'row mb-2', customName: _sdT('Product Pick List'),
+                            _bindings: { eo_visible_if: 'is_dropdown_layout' } }, [
+                            _swAcctSelect(_sdT('Item'), ofId + '_product', 'product_id', 'col-sm-9'),
+                            ofQty
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'row mb-2', customName: _sdT('Recipient'),
+                            _bindings: { eo_visible_if: 'has_recipient_choice' } }, [
+                            _swAcctSelect(_sdT('Ship to'), ofId + '_ship_to', 'ship_to', 'col-sm-6'),
+                            _swAcctField(_sdT('or add name'), ofId + '_add_name', 'text', 'add_name',
+                                { attrs: [{ name: 'maxlength', value: '50' }, { name: 'placeholder', value: _sdT('e.g. "Tom"') }], colCss: 'col-sm-6' })
+                        ])
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2 justify-content-end', customName: _sdT('Buttons') }, [
+                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Continue'), customName: _sdT('Add Button'),
+                            _bindings: { text: '__add_button_label', eo_visible_if: 'has_products' },
+                            _attrs: [{ name: 'type', value: 'submit' }, { name: 'name', value: 'submit_add' }] }),
+                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary', text: _sdT('No, thanks'), customName: _sdT('Skip Button'),
+                            _bindings: { text: '__skip_button_label', eo_visible_if: 'has_skip_button' },
+                            _attrs: [{ name: 'type', value: 'submit' }, { name: 'name', value: 'submit_skip' }, { name: 'formnovalidate', value: '' }] })
+                    ])
+                ], true);
             }
 
             case 'shipping_method': {
@@ -69656,6 +69846,9 @@ const StyleDesigner = (function () {
                 pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
                 pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
                 pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
+                // A page of a classic style just opened in the editor: its
+                // tree is not saved yet, so it starts unsaved.
+                converted: sp.converted ? 1 : 0,
                 tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
                 // The page's form-level settings, as stored; written back
@@ -69689,7 +69882,7 @@ const StyleDesigner = (function () {
         _pgTabGroupRevealActive();
         var a = _pgActivePage();
         tree = a.tree; undoStack = []; redoStack = []; nodeIdCounter = a.nodeIdCounter || reindex(tree);
-        _pages.forEach(function (p) { p.baseline = (p.page_id === 0) ? null : _pgBaselineOf(p); });
+        _pages.forEach(function (p) { p.baseline = (p.page_id === 0 || p.converted) ? null : _pgBaselineOf(p); });
 
         _pgLoadPageIntoFields(a);
         _pgTabsRender();

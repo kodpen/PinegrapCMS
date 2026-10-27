@@ -390,16 +390,16 @@ echo
             </script>
 
             <div class="pg-toolbar" id="button_bar">
-                <button type="button" class="btn btn-sm btn-ghost no-submit" id="pg_sale_recent_btn"><i class="bi bi-clock-history" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Recent sales') . '</span></button>
-                <button type="button" class="btn btn-sm btn-ghost no-submit" id="pg_sale_clear_btn"' . (($totals['count'] > 0) ? '' : ' disabled') . '><i class="bi bi-cart-x" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Empty the cart') . '</span></button>
+                <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" id="pg_sale_recent_btn"><i class="bi bi-clock-history" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Recent sales') . '</span></button>
+                <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" id="pg_sale_clear_btn"' . (($totals['count'] > 0) ? '' : ' disabled') . '><i class="bi bi-cart-x" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Empty the cart') . '</span></button>
                 <div class="pg-toolbar-grow small fg-secondary text-truncate" id="pg_sale_info"></div>'
                 . ($can_erp ? '
                 <div class="pg-sale-switch" role="group" aria-label="' . h(lang('View')) . '">
-                    <button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-mode="kasa" title="' . h(lang('Till view: prices with VAT, change, large controls')) . '"><i class="bi bi-shop" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Till') . '</span></button>
-                    <button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-mode="belge" title="' . h(lang('Document view: VAT breakdown, account and due date')) . '"><i class="bi bi-journal-text" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Document') . '</span></button>
+                    <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-mode="kasa" title="' . h(lang('Till view: prices with VAT, change, large controls')) . '"><i class="bi bi-shop" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Till') . '</span></button>
+                    <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-mode="belge" title="' . h(lang('Document view: VAT breakdown, account and due date')) . '"><i class="bi bi-journal-text" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Document') . '</span></button>
                 </div>' : '') . '
                 <div class="pg-menu-wrap">
-                    <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                    <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                     <ul class="menu pg-menu-end">
                         <li><button type="button" class="menu-item pg-link-body-emphasis no-submit" data-sale-keys><i class="bi bi-keyboard me-3" aria-hidden="true"></i>' . lang('Keyboard shortcuts') . '</button></li>
                         <li><button type="button" class="menu-item pg-link-body-emphasis d-flex align-items-center no-submit" data-sale-sound><i class="bi bi-volume-up me-3" aria-hidden="true"></i>' . lang('Error sound') . '<i class="bi bi-check2 ms-auto ps-5" id="pg_sale_sound_tick" aria-hidden="true"></i></button></li>'
@@ -527,7 +527,7 @@ echo
                     <div class="dialog-header"><h5 class="dialog-title" id="pg_sale_clear_title">' . lang('Empty the cart?') . '</h5></div>
                     <div class="dialog-body small">' . lang('Every line leaves the cart. Nothing has left the stock yet, so nothing is put back.') . '</div>
                     <div class="dialog-footer">
-                        <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
                         <button type="button" class="btn btn-sm btn-outline theme-warning no-submit" id="pg_sale_clear_go"><i class="bi bi-cart-x me-1" aria-hidden="true"></i>' . lang('Empty the cart') . '</button>
                     </div>
         </dialog>'
@@ -570,7 +570,7 @@ echo
                         </div>
                     </div>
                     <div class="dialog-footer">
-                        <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
                         <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 no-submit" id="pg_sale_account_go">' . lang('Open and pick') . '</button>
                     </div>
                 </form>

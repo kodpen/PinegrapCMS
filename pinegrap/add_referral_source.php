@@ -111,12 +111,12 @@ if (!$_POST) {
                 user,
                 timestamp)
             VALUES (
-                '" . escape($_POST['name'] ?? '') . "',
-                '" . escape($_POST['code'] ?? '') . "',
-                '" . escape($_POST['sort_order'] ?? '') . "',
-                " . $user['id'] . ",
+                ?,
+                ?,
+                ?,
+                ?,
                 UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['code'] ?? ''), (string) ($_POST['sort_order'] ?? ''), (int) $user['id'])) or output_error('Query failed.');
 
     $referral_source_id = mysqli_insert_id(db::$con);
 

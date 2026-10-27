@@ -263,7 +263,7 @@ register_shutdown_function(function () use (&$idt_state, $idt_path) {
     // on its own): the old names go back and the note too.
     if ($idt_state['parked'] && isset(db::$con) && db::$con) {
         foreach ($idt_state['parked'] as $pid => $name) {
-            @mysqli_query(db::$con, "UPDATE page SET page_name = '" . mysqli_real_escape_string(db::$con, $name) . "' WHERE page_id = '" . (int)$pid . "'");
+            db_q("UPDATE page SET page_name = ? WHERE page_id = ?", array((string) $name, (string) (int) $pid));
         }
     }
     if (is_file($idt_path . '.running')) @rename($idt_path . '.running', $idt_path);

@@ -37,8 +37,8 @@ if (!$_POST) {
     $query = "SELECT user_id, user_username, contacts.first_name
               FROM user
               LEFT JOIN contacts ON user.user_contact = contacts.id
-              WHERE user_username = '" . mysqli_real_escape_string(db::$con, $SUser) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+              WHERE user_username = ?";
+    $result = db_q($query, array((string) $SUser)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $firstname_or_username = trim((string) $row['first_name']) ?: $row['user_username'];
 
@@ -127,9 +127,9 @@ if (!$_POST) {
     if (hash_equals((string) DEVELOPER_PIN, (string) $pin)) {
         $hash = md5($pin);
         $query = "UPDATE user
-                  SET user_devpasspin = '" . mysqli_real_escape_string(db::$con, $hash) . "'
-                  WHERE user_username = '" . mysqli_real_escape_string(db::$con, $SUser) . "'";
-        mysqli_query(db::$con, $query) or output_error('Query failed.');
+                  SET user_devpasspin = ?
+                  WHERE user_username = ?";
+        db_q($query, array($hash, (string) $SUser)) or output_error('Query failed.');
 
         log_activity(lang(array(
             'string'=>'Unlock Pin correct for access to {var:1}. Page and other developer locked pages accessible for user',

@@ -69,8 +69,8 @@ function get_calendar_event_view_screen_content($properties)
             "SELECT
                 calendar_id
             FROM calendar_events_calendars_xref
-            WHERE calendar_event_id = '" . escape($calendar_event_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $calendar_event_id)) or output_error('Query failed.');
         
         $event_calendars = array();
         
