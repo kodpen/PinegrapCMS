@@ -542,7 +542,7 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
     '<dialog id="xlsl_setup_modal" class="dialog">
                 <div class="dialog-header">
                     <h5 class="dialog-title">' . lang('Options & Confirmation') . '</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                 </div>
                 <div class="dialog-body">
                     <div class="row">

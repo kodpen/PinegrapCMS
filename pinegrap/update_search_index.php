@@ -102,7 +102,7 @@ output_header_secure(array(
             
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="Close">
+                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>

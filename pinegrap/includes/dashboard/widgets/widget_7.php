@@ -827,7 +827,7 @@ function pg_dashboard_activity_comments($limit)
             'sort'  => 'comment:' . (int) $row['id'],
             'href'  => 'edit_comment.php?id=' . (int) $row['id'] . '&amp;send_to=' . h(urlencode(PATH . SOFTWARE_DIRECTORY . '/welcome.php')),
             'badge' => '<i class="bi ' . ($waiting ? 'bi-hourglass-split' : 'bi-chat-square-quote') . '"></i>',
-            'name'  => h(((string) $row['name'] !== '') ? $row['name'] : lang('Anonymous')),
+            'name'  => h(pg_comment_display_name($row['name'])),
             'meta'  => ($waiting ? '<span class="fg-emphasis-warning">' . lang('Awaiting approval') . '</span> &middot; ' : '')
                 . h($preview !== '' ? $preview : (string) $row['page_name']),
         );

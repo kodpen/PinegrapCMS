@@ -137,7 +137,7 @@ if (!$_POST)
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="javascript: history.go(-1)" aria-label="Close">
+                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="javascript: history.go(-1)" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>
@@ -355,7 +355,7 @@ if (!$_POST)
         <dialog class="dialog" id="confirm_modal" data-bs-backdrop="static" data-bs-keyboard="false">
                     <div class="dialog-header">
                         <h5 class="dialog-title" id="exampleModalLabel">' . lang('Save Option') . '</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body" style="font-size:smaller;">
                         <h5>' . lang('Keep Original And Save') . '</h5>

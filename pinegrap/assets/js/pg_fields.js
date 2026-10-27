@@ -253,6 +253,13 @@
                 ready: function () { var $ = jq(); return !!($ && $.fn.select2); },
                 init: function (el) {
                     var $ = jq(), opts = { theme: 'bootstrap-5' };
+                    // select2's own texts are English; the tag's labels are
+                    // in the page language.
+                    opts.language = {
+                        noResults: function () { return label('no-results', 'No results'); },
+                        searching: function () { return label('searching', 'Searching\u2026'); },
+                        search: function () { return label('search', 'Search'); }
+                    };
                     if ($(el).data('allowClear')) {
                         opts.allowClear = true;
                     }
@@ -704,6 +711,11 @@
         ghost.setAttribute('autocomplete', 'off');
         if (el.getAttribute('data-placeholder')) {
             ghost.setAttribute('placeholder', el.getAttribute('data-placeholder'));
+        }
+        // The field's <label> names the hidden input; the box typed in gets
+        // its text, or a screen reader announces only the placeholder.
+        if (el.labels && el.labels.length && el.labels[0].textContent.trim()) {
+            ghost.setAttribute('aria-label', el.labels[0].textContent.replace(/\s+/g, ' ').trim());
         }
         // Not readOnly: the settings dialog shuts every text field read-only
         // until it is reached, the hidden input too.

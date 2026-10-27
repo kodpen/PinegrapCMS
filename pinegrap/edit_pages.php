@@ -81,7 +81,7 @@ if (!$_POST) {
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="Close">
+                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>

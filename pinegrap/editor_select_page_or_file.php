@@ -650,7 +650,7 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
                 </ul>
             </li>
             <li class="nav-item">
-                <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="Close">
+                <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="' . h(lang('Close')) . '">
                     <span class="bi bi-x-lg"></span>
                 </button>
             </li>
@@ -678,7 +678,7 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
                 <form id="search" action="editor_select_page_or_file.php" method="get" class="search_form col-auto">
                     <input type="hidden" name="CKEditorFuncNum" value="' . h(($_GET['CKEditorFuncNum'] ?? '')) . '" />
                     <div class="input-group input-group-sm">
-                        <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Folder') . '" for="filter_select">folder</label>
+                        <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Folder') . '" for="folder_id">folder</label>
                         <select id="folder_id" name="folder_id" class="form-control mt-1 mb-1" title="' . lang('Folder') . '" onchange="submit_form(\'search\')"><option value="all">[' . lang('All') . ']</option>' . select_folder(($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '')) . '</select>
                     </div>
                     <div class="input-group input-group-sm">

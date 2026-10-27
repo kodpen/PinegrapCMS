@@ -52,7 +52,7 @@ if (!$_POST) {
         $outputs = '
         <div class="row justify-content-center mt-12 pt-12">
             <div class="col position-relative mb-12">
-                <label for="page_options" class="form-label">' . lang(array('string'=>'Select one or more {var:1}','vars'=>'Page Area' )) . '</label>
+                <label for="page_options" class="form-label">' . lang(array('string'=>'Select one or more {var:1}','vars'=>lang('Page Area') )) . '</label>
                 <select class="form-control" data-pg-combobox id="page_options" name="page_options[]" multiple="multiple">
                     <optgroup value="" label="' . lang('Main Informations') . '">
                         <option value="page_name">' . lang('Page Name') . '</option>

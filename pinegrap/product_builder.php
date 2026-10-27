@@ -5133,7 +5133,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         </select>
                                                     </div>
                                                     <div class="col-12 md:col-6 lg:col-4">
-                                                        <label for="private_days" class="form-label">' . lang('Length') . '</label>
+                                                        <label for="private_days" class="form-label">' . lang('Access duration') . '</label>
                                                         <label class="form-control form-adorn form-adorn-end">
                                                             <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
                                                             <input type="text" name="private_days" id="private_days" class="form-ghost" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('private_days')) . '" />

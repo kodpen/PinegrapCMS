@@ -319,6 +319,7 @@ function ws_js_strings()
         'tab_messages'           => lang('Messages'),
         'tab_summary'            => lang('Summary'),
         'tab_tasks'              => lang('Tasks'),
+        'task_status_filter'     => lang('Task status'),
         'tab_decisions_count'    => ws_js_template('{var:1} decisions and notes', 1),
         'tab_tasks_count'        => ws_js_template('{var:1} open tasks', 1),
         'tab_summary_written'    => lang('The summary is written'),
