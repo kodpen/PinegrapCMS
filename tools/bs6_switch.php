@@ -703,7 +703,10 @@ function bs6_switch_field_call($source, $offset)
 function bs6_switch_selector_for($class)
 {
 	$checks = array(
-		'form-check' => '.form-field:has(> .check, > .radio, > .switch)',
+		// Plain: panel markup gets .form-field only from a converted check, and
+		// a :has() here would sit inside the :has() of a rule that names the
+		// wrapper, which drops the whole rule.
+		'form-check' => '.form-field',
 		'form-check-input' => ':is(.check, .radio)',
 		'form-check-label' => ':is(.form-field > label)',
 		'form-check-inline' => '.form-field.d-inline-grid',
