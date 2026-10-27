@@ -450,7 +450,8 @@ function ws_flow_effect_began($effect)
  * WS_FLOW_LOCK). One whose effect is written did its work: it waits for it
  * again. A step box that began (ws_flow_effect_began()) fails, since it may
  * have posted or sent already. One without an effect is tried once more,
- * then fails; nobody can retry or skip a box by hand yet.
+ * then fails; its owner may then try it again or skip it by hand
+ * (ws_flow_step_mend()).
  *
  * @param array $step ws_flow_run_steps row
  * @return string resume | retry | fail
@@ -746,6 +747,64 @@ function ws_flow_run_access_from($flow_access, $is_starter, $channel_readable, $
 function ws_flow_run_cancel_allowed($access, $is_starter)
 {
     return ($access === 'edit') || (($access === 'read') && $is_starter);
+}
+
+/**
+ * Why a box of a run may not be tried again or skipped by hand, '' when it
+ * may: only a failed box (one that stopped half way included), of a run that
+ * is still going or ended failed. Pure.
+ *
+ * @param string $run_status  the run's status
+ * @param string $step_status the box's status
+ * @return string '' | not_failed | ended
+ */
+function ws_flow_step_mend_refusal($run_status, $step_status)
+{
+    if ((string) $step_status !== 'failed') {
+        return 'not_failed';
+    }
+
+    return in_array((string) $run_status, array('running', 'waiting', 'failed'), true) ? '' : 'ended';
+}
+
+/**
+ * The boxes skipped behind a box: those an arrow from it leads into that are
+ * skipped, and on through the skipped boxes after them, in the order they
+ * are reached. When the box is tried again or skipped by hand these are
+ * taken back and walked again (ws_flow_walk() works out each one anew from
+ * the boxes before it, so one also skipped for another reason is skipped
+ * again). Pure.
+ *
+ * @param array  $graph   ws_flow_graph_normalize()
+ * @param array  $steps   node id => status, outcome
+ * @param string $node_id
+ * @return string[]
+ */
+function ws_flow_skipped_behind($graph, $steps, $node_id)
+{
+    $out = array();
+    $seen = array((string) $node_id => true);
+    $queue = array((string) $node_id);
+
+    while (!empty($queue)) {
+        $from = array_shift($queue);
+
+        foreach ((array) ($graph['edges'] ?? array()) as $edge) {
+            $to = (string) $edge['to'];
+
+            if (((string) $edge['from'] !== $from) || isset($seen[$to])) {
+                continue;
+            }
+
+            if ((string) ($steps[$to]['status'] ?? '') === 'skipped') {
+                $seen[$to] = true;
+                $out[] = $to;
+                $queue[] = $to;
+            }
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -2085,6 +2144,143 @@ function ws_flow_run_cancel($viewer, $run)
     $flow = ws_flow($run['flow_id']);
 
     log_activity(lang(array('string' => 'workspace flow ({var:1}) run {var:2} was cancelled', 'vars' => array($flow ? $flow['name'] : '', (int) $run['id']))), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    return $check;
+}
+
+/**
+ * Whether the person may try a failed box of the run again or skip it: the
+ * checks of ws_flow_step_mend(), made on their own so that the API's dry run
+ * meets the same refusals. Only the flow's owner may: a box tried again runs
+ * in their name and with their rights, as publishing does
+ * (ws_flow_share_manager()).
+ *
+ * @param array  $viewer
+ * @param array  $run
+ * @param string $node_id the box
+ * @return array ok, error, status, field, step (the box's row), behind (the boxes skipped behind it)
+ */
+function ws_flow_step_mend_check($viewer, $run, $node_id)
+{
+    if (!ws_flows_ready()) {
+        return ws_flow_refusal(lang('The database has to be updated first.'), 503);
+    }
+
+    $flow = ws_flow($run['flow_id']);
+
+    if (ws_flow_run_access($viewer, $flow, $run) === '') {
+        return ws_flow_refusal(lang('That run could not be found.'), 404);
+    }
+
+    if (!ws_flow_share_manager($viewer, $flow)) {
+        return ws_flow_refusal(lang('Only the owner of the flow can try a box again or skip it.'), 403);
+    }
+
+    $rows = ws_flow_run_steps($run['id']);
+    $step = null;
+
+    foreach ($rows as $row) {
+        if ((string) $row['node_id'] === (string) $node_id) {
+            $step = $row;
+        }
+    }
+
+    if (!$step) {
+        return ws_flow_refusal(lang('That box has not been reached in this run.'), 404, 'node_id');
+    }
+
+    switch (ws_flow_step_mend_refusal($run['status'], $step['status'])) {
+        case 'not_failed':
+            return ws_flow_refusal(lang('Only a box that failed can be tried again or skipped.'), 422, 'node_id');
+
+        case 'ended':
+            return ws_flow_refusal(lang('This run has ended already.'));
+    }
+
+    return array(
+        'ok'     => true,
+        'error'  => '',
+        'status' => 200,
+        'field'  => '',
+        'step'   => $step,
+        'behind' => ws_flow_skipped_behind(ws_flow_run_graph($run), ws_flow_step_states($rows), $step['node_id']),
+    );
+}
+
+/**
+ * Tries a failed box of the run again ($how retry: it is ready again as a
+ * new attempt, forgets what it began and the task it waited for, and the
+ * boxes after it follow how it goes) or skips it ($how skip: the run goes on
+ * as for a branch not taken). The box changes only from failed, so of two
+ * clicks only one does it. The boxes the walk skipped behind it are taken
+ * back and the run, reopened when it had failed, is walked again. A task
+ * box tried again opens a new task: one its earlier tries opened stays as it
+ * is. The box keeps the sentence it failed with in its result until it
+ * settles again, and the activity log gets a line.
+ *
+ * @param array  $viewer
+ * @param array  $run
+ * @param string $node_id
+ * @param string $how     retry | skip
+ * @return array ok, error, status, field, step, behind
+ */
+function ws_flow_step_mend($viewer, $run, $node_id, $how)
+{
+    $check = ws_flow_step_mend_check($viewer, $run, $node_id);
+
+    if (!$check['ok']) {
+        return $check;
+    }
+
+    $now = time();
+    $step = $check['step'];
+    $name = ws_person_name($viewer['id']);
+    $was = ws_flow_result_text($step['result']);
+
+    if ($how === 'retry') {
+        $text = lang(array('string' => 'Tried again by {var:1} after: {var:2}', 'vars' => array($name, $was)));
+
+        db("UPDATE ws_flow_run_steps SET status = 'ready', outcome = '', effect = '', wait_event = '', wait_key = '', wake_at = 0,
+                ready_at = '" . $now . "', claimed_at = 0, finished_at = 0, result = '" . e(ws_flow_result_pack($text)) . "'
+            WHERE id = '" . (int) $step['id'] . "' AND status = 'failed'");
+    } else {
+        $text = lang(array('string' => 'Skipped by {var:1} after: {var:2}', 'vars' => array($name, $was)));
+
+        db("UPDATE ws_flow_run_steps SET status = 'skipped', outcome = '', finished_at = '" . $now . "',
+                result = '" . e(ws_flow_result_pack($text)) . "'
+            WHERE id = '" . (int) $step['id'] . "' AND status = 'failed'");
+    }
+
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        return ws_flow_refusal(lang('The box was tried again or skipped at this moment already.'), 409);
+    }
+
+    // Only rows the walk wrote (never run): ws_flow_run_refresh() writes
+    // them again as the box now stands.
+    if (!empty($check['behind'])) {
+        db("DELETE FROM ws_flow_run_steps WHERE run_id = '" . (int) $run['id'] . "'
+            AND node_id IN ('" . implode("', '", array_map('e', $check['behind'])) . "')
+            AND status = 'skipped' AND attempt = 0");
+    }
+
+    db("UPDATE ws_flow_runs SET status = 'running', finished_at = 0, updated_at = '" . $now . "'
+        WHERE id = '" . (int) $run['id'] . "' AND status IN ('running', 'waiting', 'failed')");
+
+    ws_flow_run_refresh((int) $run['id']);
+
+    $flow = ws_flow($run['flow_id']);
+    $node = ws_flow_graph_node(ws_flow_run_graph($run), $step['node_id']);
+    $box = $node ? ws_flow_box_name($node) : (string) $step['node_id'];
+
+    $vars = array($flow ? $flow['name'] : '', (int) $run['id'], $box);
+
+    log_activity(($how === 'retry')
+        ? lang(array('string' => 'workspace flow ({var:1}) run {var:2}: the box {var:3} was tried again', 'vars' => $vars))
+        : lang(array('string' => 'workspace flow ({var:1}) run {var:2}: the box {var:3} was skipped', 'vars' => $vars)), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    if ($how === 'retry') {
+        ws_flow_advance(WS_FLOW_BUDGET_TICK, (int) $run['id']);
+    }
 
     return $check;
 }

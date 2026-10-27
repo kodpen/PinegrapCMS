@@ -779,6 +779,23 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $run['id'])));
 
+        // A failed box of a run tried again or skipped by the flow's owner
+        // (flow_runs.php); the check the API's retry and skip routes make.
+        case 'ws_flow_step_mend':
+            $run = ws_flow_run_for($viewer, (int) ($request['run_id'] ?? 0));
+
+            if (!$run) {
+                return ws_action_error(lang('That run could not be found.'));
+            }
+
+            $result = ws_flow_step_mend($viewer, $run, (string) ($request['node_id'] ?? ''), ((string) ($request['how'] ?? '') === 'skip') ? 'skip' : 'retry');
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $run['id'])));
+
         // One box of the draft tried on the canvas (steps.php): what it would
         // do, nothing sent or written; the check the API's try route makes.
         case 'ws_flow_box_try':

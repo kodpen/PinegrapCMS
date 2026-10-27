@@ -101,7 +101,7 @@ function test_workspace_flow_mend_skipped_behind()
 	));
 
 	pg_assert_same(array('b', 'c', 'join', 'finish'), ws_flow_skipped_behind($graph, $steps, 'a'));
-	pg_assert_same(array(), ws_flow_skipped_behind($graph, $steps, 'side'), 'nothing skipped behind a box done');
+	pg_assert_same(array(), ws_flow_skipped_behind($graph, $steps, 'start'), 'only skipped boxes are followed');
 
 	// Walked again with the box tried and done, the join goes on.
 	unset($steps['b'], $steps['c'], $steps['join'], $steps['finish']);

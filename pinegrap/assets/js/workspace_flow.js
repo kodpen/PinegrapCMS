@@ -4787,7 +4787,58 @@
             wrap.appendChild(taskLink(step, node, 'btn btn-sm btn-outline-secondary', 'step-task'));
         }
 
+        // A failed box (one that stopped half way too) is tried again or
+        // skipped by the flow's owner, in whose name it runs; a run done or
+        // cancelled takes neither.
+        if (state.flow && state.flow.manage && step && (step.status === 'failed') && (['done', 'cancelled'].indexOf(state.run.status) < 0)) {
+            var mend = el('div', 'd-flex flex-wrap gap-2 mt-2');
+            var retry = K.button('btn btn-sm btn-outline-primary', t('fl_step_retry'), 'bi-arrow-repeat');
+            var skip = K.button('btn btn-sm btn-outline-secondary', t('fl_step_skip'), 'bi-skip-forward');
+
+            retry.setAttribute('data-refocus', 'step-retry');
+            skip.setAttribute('data-refocus', 'step-skip');
+            retry.addEventListener('click', function () { mendStep(node, 'retry', [retry, skip]); });
+            skip.addEventListener('click', function () { mendStep(node, 'skip', [retry, skip]); });
+            mend.appendChild(retry);
+            mend.appendChild(skip);
+            wrap.appendChild(mend);
+        }
+
         return wrap;
+    }
+
+    // Tries a failed box again or skips it, after asking: a box tried again
+    // may post or send once more. Both buttons wait for the answer, and the
+    // server changes the box only from failed, so a second click does
+    // nothing twice.
+    function mendStep(node, how, controls) {
+        var run = state.run;
+
+        K.ask(t(how === 'retry' ? 'fl_step_retry_ask' : 'fl_step_skip_ask', nameOf(node)), t(how === 'retry' ? 'fl_step_retry' : 'fl_step_skip'), how === 'skip').then(function (yes) {
+            if (!yes || !state.run || (state.run.id !== run.id)) {
+                state.refocus = 'step-' + how + ' step';
+                refocus();
+                return null;
+            }
+
+            controls.forEach(function (control) { control.disabled = true; });
+
+            return K.api('ws_flow_step_mend', { run_id: run.id, node_id: node.id, how: how }).then(function (data) {
+                K.toast(t(how === 'retry' ? 'fl_step_retried' : 'fl_step_skipped_by_hand'), 'success');
+                state.refocus = 'step';
+                applyRun(data.run);
+                refocus();
+                state.poll.delay = POLL_FIRST;
+                schedulePoll();
+            }).catch(function (error) {
+                controls.forEach(function (control) { control.disabled = false; });
+                K.fail(error);
+
+                // Changed meanwhile, most likely: the run as it is now.
+                state.poll.delay = POLL_FIRST;
+                schedulePoll(0);
+            });
+        });
     }
 
     // The boxes of the run in the order of their arrows, each with its state;

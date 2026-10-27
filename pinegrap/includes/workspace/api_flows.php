@@ -1044,6 +1044,58 @@ function ws_api_flow_runs_cancel($params)
     api_ok(ws_api_flow_run_answer($viewer, $run['id']));
 }
 
+// A failed box tried again runs in the owner's name, as a start does; one
+// skipped changes what the run does next. The person decides either, so
+// neither is an MCP tool nor a call an assistant's application may make.
+function ws_api_flow_runs_mend($params, $how)
+{
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not try again or skip the boxes of a flow\'s run; the person does.'));
+    }
+
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $run = ws_api_flow_run_or_404($viewer, $params['id']);
+    $node_id = (string) $params['node'];
+    $checked = ws_flow_step_mend_check($viewer, $run, $node_id);
+
+    if (!$checked['ok'] && ((int) $checked['status'] === 404) && ($checked['field'] === 'node_id')) {
+        api_fail_not_found(lang('Flow box'));
+    }
+
+    if (!$checked['ok']) {
+        ws_api_flow_run_refused($checked);
+    }
+
+    api_dry_run_stop(($how === 'retry') ? 'retried' : 'skipped', 'workspace_flow_run', array(
+        'id'           => (int) $run['id'],
+        'node_id'      => $node_id,
+        'boxes_walked' => $checked['behind'],
+    ));
+
+    $result = ws_api_as_owner(function () use ($viewer, $run, $node_id, $how) {
+        return ws_flow_step_mend($viewer, $run, $node_id, $how);
+    });
+
+    if (!$result['ok']) {
+        ws_api_flow_run_refused($result);
+    }
+
+    api_ok(ws_api_flow_run_answer($viewer, $run['id']));
+}
+
+function ws_api_flow_runs_step_retry($params)
+{
+    ws_api_flow_runs_mend($params, 'retry');
+}
+
+function ws_api_flow_runs_step_skip($params)
+{
+    ws_api_flow_runs_mend($params, 'skip');
+}
+
 /* ---------------------------------------------------------------------------
    Shares (includes/workspace/flow_shares.php)
    --------------------------------------------------------------------------- */

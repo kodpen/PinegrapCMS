@@ -2135,6 +2135,40 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.flow_runs.step_retry',
+            'method'      => 'POST',
+            'path'        => '/workspace/flow-runs/{id}/steps/{node}/retry',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flow_runs_step_retry',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlowRun',
+            'summary'     => 'Try a failed box of a run again',
+            'description' => 'Tries a box of a run that failed (status failed, a box that stopped half way included) again as a new attempt: it is ready again, forgets what it began and the task it waited for, and the boxes after it follow how it goes; the boxes skipped behind it are walked again, and a run that had failed goes on (running). A step box that may have posted or sent before it stopped does so again, and a task box opens a new task (one an earlier try opened stays as it is). The box\'s result says who tried it again and how it had failed until it settles again. Only the flow\'s owner may: the box runs in their name and with their rights; anybody else who reads the run is refused with 403. A box the run has not reached is a 404, one that has not failed or a run done or cancelled 422, and a box tried again or skipped at that very moment 409, so two calls never run it twice. A dry run answers which boxes would be walked again. The activity log gets a line. An MCP client is offered no tool for it, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'node', 'in' => 'path', 'type' => 'string', 'max_length' => 32, 'required' => true, 'description' => 'The id of the box in the version the run follows.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flow_runs.step_skip',
+            'method'      => 'POST',
+            'path'        => '/workspace/flow-runs/{id}/steps/{node}/skip',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flow_runs_step_skip',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlowRun',
+            'summary'     => 'Skip a failed box of a run',
+            'description' => 'Skips a box of a run that failed (status failed, a box that stopped half way included): its status becomes skipped and the run goes on as for a branch not taken, so a box after it that another taken arrow leads into still runs; the boxes skipped behind it are walked again, and a run that had failed goes on or ends done. The box\'s result says who skipped it and how it had failed. Only the flow\'s owner may; anybody else who reads the run is refused with 403. A box the run has not reached is a 404, one that has not failed or a run done or cancelled 422, and a box tried again or skipped at that very moment 409. A dry run answers which boxes would be walked again. The activity log gets a line. An MCP client is offered no tool for it, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'node', 'in' => 'path', 'type' => 'string', 'max_length' => 32, 'required' => true, 'description' => 'The id of the box in the version the run follows.'),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.mcp_servers.catalogue',
             'method'      => 'GET',
             'path'        => '/workspace/mcp-servers/catalogue',
