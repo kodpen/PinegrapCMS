@@ -358,3 +358,28 @@ function test_ai_fields_designer_agrees()
 	pg_assert_contains("'.pg-ai-mark-remove'", $designer, 'remove button');
 	pg_assert_contains("'page_canonical_url', 'page_noarchive', 'page_max_snippet', 'ai_fields'", $designer, 'saved with the page settings');
 }
+
+// The note the widget token __ai_generated prints: only while a mark still
+// holds on the text the record has now.
+function test_ai_fields_note()
+{
+	$values = array('short_description' => 'Soft shirt', 'full_description' => '<p>Cotton.</p>', 'title' => '', 'meta_description' => '');
+	$stored = pg_ai_fields_encode('product', array('full_description'), $values);
+
+	pg_assert_same(lang('Some of this content was written with AI.'), pg_ai_fields_note('product', $stored, $values), 'marked');
+	pg_assert_same('', pg_ai_fields_note('product', $stored, array('full_description' => '<p>Linen.</p>') + $values), 'edited since');
+	pg_assert_same('', pg_ai_fields_note('product', null, $values), 'none');
+	pg_assert_same('', pg_ai_fields_note('product', $stored, null), 'no texts');
+}
+
+// The product detail widget fills the token, its variants carry it, and the
+// designer offers it.
+function test_ai_fields_token_wired()
+{
+	$catalog = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
+	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+
+	pg_assert_true(substr_count($catalog, "'__ai_generated'") >= 2, 'found and not found');
+	pg_assert_contains("'ai_generated'", $catalog, 'variants');
+	pg_assert_contains("['__ai_generated',", $designer, 'binding list');
+}
