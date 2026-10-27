@@ -899,6 +899,27 @@ function bs6_switch_pins($source, array $pairs)
 	return bs6_switch_result($source, $applied ? 'applied' : 'done');
 }
 
+// Rules giving v5's alert-<colour> classes the variables of v6's
+// theme-<colour> (light and dark take secondary and inverse). The class is
+// matched as an attribute word so that check_bs6.php, which lists selectors
+// on classes v6 renames, does not count these on purpose kept v5 names.
+function bs6_switch_v5_alert_themes()
+{
+	$rules = '';
+	$themes = array('primary' => 'primary', 'secondary' => 'secondary', 'success' => 'success', 'danger' => 'danger',
+		'warning' => 'warning', 'info' => 'info', 'light' => 'secondary', 'dark' => 'inverse');
+
+	foreach ($themes as $v5 => $v6) {
+		$rules .= ".alert[class~=\"alert-" . $v5 . "\"] {\n";
+		foreach (array('base', 'fg', 'fg-emphasis', 'bg', 'bg-subtle', 'bg-muted', 'border', 'focus-ring', 'contrast') as $part) {
+			$rules .= "  --bs-theme-" . $part . ": var(--bs-" . $v6 . "-" . $part . ");\n";
+		}
+		$rules .= "}\n";
+	}
+
+	return $rules;
+}
+
 // The comment the shell rules start with; its presence marks them done.
 const BS6_SWITCH_SHELL_NOTE = '/* Bootstrap 6 shell: what the panel keeps of Bootstrap 5\'s look. */';
 
@@ -977,6 +998,8 @@ function bs6_switch_shell_rules($source)
 		. "/* v5's alert: a block with its radius and bottom margin (v6 lays it out\n   as a flex row with a gap); pg-alert-dismissible is v5's alert-dismissible. */\n"
 		. ".alert {\n  --bs-alert-border-radius: var(--pg-radius);\n  position: relative;\n  display: block;\n  margin-bottom: 1rem;\n}\n"
 		. ".pg-alert-dismissible {\n  padding-right: 3rem;\n}\n"
+		. "/* Alerts that renderers shared with the site print with v5's colour\n   classes (liveform's notices and errors) take v6's theme. */\n"
+		. bs6_switch_v5_alert_themes()
 		. ".pg-alert-dismissible > .btn-close {\n  position: absolute;\n  top: 0;\n  right: 0;\n  z-index: 2;\n  padding: 1.25rem 1rem;\n}\n"
 		. "/* An icon font class on an input group's add-on keeps the add-on's size,\n   as the more specific v5 rule did. */\n"
 		. ".input-group > .input-group-text.material-icons {\n  font-size: var(--bs-input-group-addon-font-size);\n  line-height: var(--bs-input-group-addon-line-height);\n}\n"
