@@ -74,8 +74,9 @@ define('PG_AI_WRITE_HINT_MAX', 300);
  *
  * - records  the kinds of record the field belongs to, each with the context
  *            key that holds the field's current text
- * - format   html (paragraphs and a list, for a rich text field) or line (one
- *            line of plain text)
+ * - format   html (paragraphs and a list, for a rich text field), line (one
+ *            line of plain text), text (paragraphs) or message (a Workspace
+ *            message: its marks, tags and line breaks kept)
  * - max      characters the draft is cut to
  * - tokens   what the model may spend on the answer, its thinking included
  *
@@ -117,6 +118,14 @@ function pg_ai_write_targets()
             'max'     => 2000,
             'tokens'  => 1600,
         ),
+        // The text in a Workspace writing box (the channel composer, a
+        // discussion's reply), rewritten in another tone before it is sent.
+        'ws_message' => array(
+            'records' => array('message' => 'text'),
+            'format'  => 'message',
+            'max'     => defined('WS_MESSAGE_MAX') ? (int) WS_MESSAGE_MAX : 4000,
+            'tokens'  => 1600,
+        ),
     );
 }
 
@@ -135,11 +144,12 @@ function pg_ai_write_target($target)
 
 /**
  * The context a screen may send for each kind of record: key => the name the
- * model reads it under, and the characters kept of it. Anything else the
- * request carries is dropped. The lengths together stay under 9,000
+ * model reads it under, the characters kept of it, and for a text kept as
+ * written (a Workspace message) true. Anything else the request carries is
+ * dropped. The lengths together stay under 9,000
  * characters, about 3,000 tokens of the model's room.
  *
- * @return array record => key => array(label, max)
+ * @return array record => key => array(label, max [, as written])
  */
 function pg_ai_write_record_fields()
 {
@@ -164,6 +174,12 @@ function pg_ai_write_record_fields()
             'meta_description' => array('Browser description', 255),
             'headings'         => array('Headings on the page', 1000),
             'page_text'        => array('Text on the page', 6000),
+        ),
+        // The person's own text and the channel's name; never another
+        // message of the conversation.
+        'message' => array(
+            'text'    => array('Message', 4000, true),
+            'channel' => array('Channel', 100),
         ),
     );
 }
@@ -313,7 +329,7 @@ function pg_ai_write_context($record, $context)
             continue;
         }
 
-        $text = pg_ai_write_plain($context[$key], $field[1]);
+        $text = empty($field[2]) ? pg_ai_write_plain($context[$key], $field[1]) : pg_ai_write_message_text($context[$key], $field[1]);
 
         if ($text !== '') {
             $out[$key] = $text;
@@ -321,6 +337,35 @@ function pg_ai_write_context($record, $context)
     }
 
     return $out;
+}
+
+/**
+ * A Workspace message as the person wrote it: its marks (**bold**, _italic_,
+ * ==highlight==), tags (<@user:12>), indentation and line breaks are the
+ * text, so only line ends, a run of blank lines and the blanks around it are
+ * tidied, and it is cut to $max characters.
+ *
+ * @param mixed $value
+ * @param int   $max
+ * @return string
+ */
+function pg_ai_write_message_text($value, $max)
+{
+    if (!is_string($value)) {
+        return '';
+    }
+
+    $text = substr($value, 0, max(20000, 8 * (int) $max));
+    $text = str_replace(array("\r\n", "\r", "\0"), array("\n", "\n", ''), $text);
+
+    if (function_exists('mb_convert_encoding')) {
+        $text = (string) mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+    }
+
+    $text = preg_replace("/\n{3,}/u", "\n\n", $text);
+    $text = trim((string) preg_replace('/[ \t]+$/mu', '', (string) $text), " \t\n");
+
+    return ((int) $max > 0) ? mb_substr($text, 0, (int) $max) : $text;
 }
 
 /* ---------------------------------------------------------------------------
@@ -757,6 +802,15 @@ function pg_ai_write_target_rules($target, $record)
                 'shape'  => 'One or two sentences of plain text that make a searcher want to open the page, without quotation marks.',
                 'length' => 'Between 150 and 160 characters, never more than 160.',
             );
+
+        case 'ws_message':
+            $row = pg_ai_write_target('ws_message');
+
+            return array(
+                'field'  => 'a message the person is about to post in a team conversation (current_text), rewritten in the tone asked for',
+                'shape'  => 'Rewrite the person\'s text, do not answer it. Keep its meaning, every tag such as <@user:12> or <#order:5> exactly as written, every link, number, date and name, and its marks (**bold**, _italic_, ~~strike~~, ==highlight==, `code`, code blocks, lines starting with "- ", "1. " or "> ") and line breaks where they still fit. Do not add facts, promises, greetings or a signature the text does not have.',
+                'length' => 'About as long as the text; never more than ' . (int) $row['max'] . ' characters.',
+            );
     }
 
     return array('field' => '', 'shape' => '', 'length' => '');
@@ -850,9 +904,12 @@ function pg_ai_write_messages($args)
         $data['Site'] = mb_substr($site, 0, 100);
     }
 
+    // A message is rewritten in its own language, unless the browser's
+    // model writes English that is translated afterwards.
+    $message = ($record === 'message');
     $lines = array(
         'You write one text for a field of a website: ' . $rules['field'] . '.',
-        'Write in ' . (($language !== '') ? $language : 'English') . ', whatever language the data is in.',
+        ($message && ($translated === '')) ? 'Write in the language of current_text.' : 'Write in ' . (($language !== '') ? $language : 'English') . ', whatever language the data is in.',
     );
 
     // A translation runs longer than its English, and a machine translates
@@ -869,7 +926,7 @@ function pg_ai_write_messages($args)
         'Use only facts the data gives. Do not invent specifications, materials, sizes, measurements, certifications, awards, prices, discounts, delivery times or guarantees.'
     );
 
-    if ($current !== '') {
+    if (($current !== '') && !$message) {
         $lines[] = 'The field already holds a text (current_text). Write a better version that keeps its facts; do not copy it word for word.';
     }
 
@@ -889,6 +946,8 @@ function pg_ai_write_messages($args)
 
     if ($form) {
         $payload = array('record' => 'form record', 'form' => mb_substr(trim((string) ($args['form'] ?? '')), 0, 100), 'data' => (object) $data);
+    } elseif ($message) {
+        $payload = array('record' => 'Workspace message', 'data' => (object) $data);
     } else {
         $payload = array('record' => ($record === 'product') ? 'product' : 'page', 'data' => (object) $data);
     }
@@ -977,13 +1036,21 @@ function pg_ai_write_answer($content)
  * own taken out, a label or quotation marks around a one-line answer
  * removed, whitespace tidied, and the text cut to the field's length.
  *
- * @param string $format html | line
+ * A message keeps what the model wrote (pg_ai_write_message_text()): its
+ * marks and tags are the box's own syntax, and the box escapes what it
+ * shows.
+ *
+ * @param string $format html | line | text | message
  * @param string $text
  * @param int    $max
  * @return string plain text (paragraphs and "- " lines for html)
  */
 function pg_ai_write_tidy($format, $text, $max)
 {
+    if ($format === 'message') {
+        return pg_ai_write_message_text((string) $text, $max);
+    }
+
     $text = str_replace(array("\r\n", "\r", "\0"), array("\n", "\n", ''), (string) $text);
 
     // Markup the model wrote although asked for plain text: its paragraphs
@@ -1270,10 +1337,11 @@ function pg_ai_write_usage_take($cap)
  * may edit the record: roles 0-2 always; a basic user (role 3) for products
  * with the store right, for a saved page whose folder they may edit, for a
  * custom form's records with the forms right and edit rights to the form's
- * folder (as edit_submitted_form.php decides who manages them).
+ * folder (as edit_submitted_form.php decides who manages them); a Workspace
+ * message for a member of the team.
  *
  * @param array  $user      validate_user()
- * @param string $record    product | page | form
+ * @param string $record    product | page | form | message
  * @param int    $record_id the product or page, 0 for one not saved yet; for
  *                          a form record the custom form's page
  * @return bool
@@ -1284,8 +1352,14 @@ function pg_ai_write_user_may($user, $record, $record_id = 0)
         return false;
     }
 
-    if (!in_array($record, array('product', 'page', 'form'), true)) {
+    if (!in_array($record, array('product', 'page', 'form', 'message'), true)) {
         return false;
+    }
+
+    // Whoever may open the Workspace, whatever their role: the text is
+    // their own and nothing of the site is read for it.
+    if ($record === 'message') {
+        return pg_ai_write_ws_member($user);
     }
 
     if ((int) $user['role'] < 3) {
@@ -1317,6 +1391,36 @@ function pg_ai_write_user_may($user, $record, $record_id = 0)
     }
 
     return pg_designer_page_access((int) $record_id, $user) === 'edit';
+}
+
+/**
+ * Whether the person is a member of the Workspace team (ws_screen_gate()'s
+ * rule), with the module loaded for it.
+ *
+ * @param array $user validate_user()
+ * @return bool
+ */
+function pg_ai_write_ws_member($user)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return false;
+    }
+
+    if (!function_exists('ws_viewer')) {
+        if (!function_exists('pg_ai_boot')) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/translate/engine_ai.php');
+        }
+
+        pg_ai_boot();
+    }
+
+    if (!function_exists('ws_viewer') || !function_exists('ws_ready') || !ws_ready() || !ws_enabled()) {
+        return false;
+    }
+
+    $viewer = ws_viewer($user);
+
+    return !empty($viewer['member']);
 }
 
 /**
@@ -2160,6 +2264,8 @@ function pg_ai_write_target_label($target)
             return lang('Web Browser Title');
         case 'seo_description':
             return lang('Web Browser Description');
+        case 'ws_message':
+            return lang('Message');
     }
 
     return (string) $target;
@@ -2270,6 +2376,12 @@ function pg_ai_write_prepare($field, $args, $language, $translated = '')
 
     $hint = pg_ai_write_plain($args['hint'] ?? '', PG_AI_WRITE_HINT_MAX);
 
+    // A message is rewritten: without the person's text there is nothing to
+    // rewrite, whatever the request says.
+    if (($record === 'message') && !isset($context['text'])) {
+        return array('ok' => false, 'error' => lang('Write your message first: AI rewrites what you wrote.'));
+    }
+
     // Something to write about: the field's own text alone is enough to
     // rewrite, as is a request of the person's own.
     if (empty($context) && ($hint === '')) {
@@ -2306,6 +2418,8 @@ function pg_ai_write_log_name($field, $form_name = null)
 {
     if ($field['record'] === 'form') {
         $name = ($form_name !== null) ? (string) $form_name : pg_ai_write_form_name($field['record_id']);
+    } elseif ($field['record'] === 'message') {
+        return lang('Workspace');
     } else {
         $name = pg_ai_write_record_name($field['record'], $field['record_id']);
     }

@@ -23,6 +23,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
+- workspace-ai-rewrite.md: "Rewrite with AI" in the Workspace composer (ai_write target ws_message): what the model reads, the button, Use as one undo step, tags kept, no AI mark
 - workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools
 - workspace-api-channel-customer.md: A channel's customer over the Workspace API and MCP (PR #1766): customer_type and customer_id on channels.create and channels.update, one half alone refused, null clears, the user role's contact rule
 - workspace-api-dry-run.md: Every Workspace write in the external API takes X-Dry-Run; the panel's *_check() functions it runs, what each rehearsal answers, and the test that keeps new writes rehearsable
