@@ -77,6 +77,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_marketplace_map_code_bin(); // 11.0.44
 	upgrade_2026_11_0_shipment_lookup();        // 11.0.45
 	upgrade_2026_11_0_session_passkey();        // 11.0.46
+	upgrade_2026_11_0_kvkk_notice();            // 11.0.48
 
 }
 
@@ -2530,3 +2531,19 @@ function upgrade_2026_11_0_shipment_lookup() {
 	install_note('Shipping: customers without an account can now look up their parcels at track_shipment.php in the software folder (for example /pinegrap/track_shipment.php) with their order number and billing e-mail. It shows carrier, tracking number and status only, allows 10 lookups an hour per address, and appears where you link to it, for example from a menu item, the footer or the shipping e-mail.');
 
 }
+
+// The KVKK notice at checkout (2026.11.0, 11.0.48; includes/fn/legal_documents.php).
+// Its own switch, so a store that already asks for the two checkout documents
+// shows no new text until it turns this on; the notice template (NULL reads
+// the built-in one) and the explicit consent sentence (NULL: no consent box).
+// The answer is kept in order_documents as type kvkk, which 11.0.1 created.
+function upgrade_2026_11_0_kvkk_notice() {
+
+	install_add_column('config', 'ecommerce_kvkk_notice', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('config', 'ecommerce_kvkk_template', "TEXT NULL");
+	install_add_column('config', 'ecommerce_kvkk_consent_text', "TEXT NULL");
+
+	install_note('Checkout legal documents: a KVKK notice link and an optional explicit consent box can be shown at checkout under Site Settings, Ecommerce, Legal Documents. They stay off until switched on.');
+
+}
+
