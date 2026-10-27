@@ -294,6 +294,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-list-paging.md: Form list widget paging (W12a, #1924): own page parameter (page_param), offset, paging tokens and flags, canonical of a later page; what W12 still leaves for its next slices
 - widget-lists-calendar.md: The calendar view's month and week grid as lists (W13): the four sources, their keys, nesting, day and event tokens, what the classic month_grid section keeps, the editor's grid starter.
 - widget-lists-cart.md: The cart as a list (W11): cart.items in the cart link (mini cart) and the cart widget, its key, tokens, where rows are read, the editor's mini cart starter, what is left
+- widget-lists-checkout.md: The express order's lists (W24a): applied offers, offer suggestions, applied gift cards, recipients with their cart lines; family checkout, key, tokens, where rows are read, the editor starters
 - widget-lists-editor.md: Lists inside a record in the designer (#1688): palette items, where one may land, the list panel, Bind Data row values, canvas band and fade, the JS twins and their test.
 - widget-lists-order.md: Order view (receipt e-mail too) and my account lists (W10): recipients, items, parcels, steps, the member's orders; keys, tokens, where rows are read, the editor's starters, what is left
 - widget-lists-paging.md: Page links as a designable list (W12b #1947, W12d #1984 catalog and search): source paging.pages, key __page_number, rows, tokens, built-in pagination left out, starter, placement

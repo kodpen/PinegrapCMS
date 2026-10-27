@@ -2899,6 +2899,36 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             $designed_body = str_replace('<!--pg-recipient-loop-slot-->', '', $designed_body);
         }
 
+        // ── 4c. The express order's lists (widgets_lists_checkout.php): the
+        // cart's lines and the offers, gift cards and recipients, read and
+        // filed only when the tree drew a list of them.
+        if (pg_sw_list_wanted('cart')) {
+            $_eo_token = isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '';
+            $_eo_back  = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '';
+            pg_sw_list_publish('cart', pg_sw_list_cart_rows(pg_sw_list_checkout_cart_items($items, $_eo_fmt,
+                function ($iid) use ($base_path, $sw_dir, $_eo_token, $_eo_back) {
+                    return $base_path . $sw_dir . '/remove_item_from_cart.php?order_item_id=' . (int)$iid . '&screen=express_order'
+                        . ($_eo_back !== '' ? '&send_to=' . rawurlencode($_eo_back) : '')
+                        . ($_eo_token !== '' ? '&token=' . rawurlencode($_eo_token) : '');
+                })));
+        }
+        $_eo_checkout = pg_sw_list_wanted('checkout');
+        if ($_eo_checkout) {
+            $_eo_gc_on = defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == true;
+            pg_sw_list_publish('checkout', pg_sw_list_checkout_rows(array(
+                'offers'      => isset($_eo_checkout['checkout.offers']) ? pg_sw_list_checkout_applied_offers($order_id) : array(),
+                'suggestions' => isset($_eo_offers['upsell_offers']) ? $_eo_offers['upsell_offers'] : array(),
+                'gift_cards'  => ($_eo_gc_on && isset($_eo_checkout['checkout.gift_cards'])) ? pg_sw_list_checkout_gift_cards($order_id, $gc_disc_cents) : array(),
+                'recipients'  => $recipients,
+                'items'       => $items,
+                'fmt'         => $_eo_fmt,
+                'remove_base' => $base_path . $sw_dir . '/remove_gift_card_from_order.php?applied_gift_card_id=',
+                'remove_tail' => '&send_to=' . urlencode(isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '/')
+                                 . '&token=' . rawurlencode(isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : ''),
+                'page_url'    => function ($page_id) use ($base_path) { return $base_path . get_page_name((int)$page_id); },
+            )));
+        }
+
         // ── 5. Static token replacement: __cart_subtotal, __cart_total,
         // __cart_count, __currency_symbol, __form_id, … See
         // _eo_compute_static_tokens for the full list. These resolve OUTSIDE
@@ -2921,6 +2951,9 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             // because the entire row is hidden via has_shipping_cost=false.
             'needs_shipping'             => (bool)$needs_shipping,
         ));
+        // A list of the cart, the offers, the gift cards or the recipients
+        // outside a recipient row lists the whole order.
+        $static_vars['^^__ship_to_key^^'] = '0';
         $designed_body = _eo_replace_tokens($designed_body, $static_vars);
 
         // Every substitution is done by here — the per-item loop and the
