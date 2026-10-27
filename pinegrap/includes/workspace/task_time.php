@@ -493,7 +493,7 @@ function ws_task_time_add($viewer, $task, $data)
         return $fail(lang('Time cannot be written for a day that has not come yet.'), 'worked_on');
     }
 
-    $note = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) ($data['note'] ?? ''))), 0, 255);
+    $note = ws_task_time_note($data['note'] ?? '');
     $billable = array_key_exists('billable', $data) ? (!empty($data['billable']) ? 1 : 0) : 1;
 
     db("INSERT INTO ws_task_time (task_id, user_id, started_at, minutes, worked_on, note, billable, invoice_id, created_at)
@@ -531,6 +531,121 @@ function ws_task_time_delete($viewer, $entry)
     db("DELETE FROM ws_task_time WHERE id = '" . (int) $entry['id'] . "' AND invoice_id = 0");
 
     return array('ok' => true, 'error' => '');
+}
+
+/**
+ * A time row's note as it is kept: one line, 255 characters at most.
+ *
+ * @param string $text
+ * @return string
+ */
+function ws_task_time_note($text)
+{
+    return mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $text)), 0, 255);
+}
+
+/**
+ * May this person change a time row, and to what? Whoever may delete it may
+ * change it: their own row, or anybody's for staff. A row on an invoice
+ * draft and a running timer stay as they are. Only the fields in $changes
+ * change; the others are the row's own.
+ *
+ * @param array       $viewer
+ * @param array       $entry   ws_task_time row
+ * @param array       $changes any of minutes, worked_on, note, billable
+ * @param string|null $today   Y-m-d, the site's today when null
+ * @return array ok, error, field, status (403 or 422), data (minutes, worked_on, note, billable)
+ */
+function ws_task_time_update_check($viewer, $entry, $changes, $today = null)
+{
+    $fail = function ($error, $field = '', $status = 422) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'status' => $status, 'data' => array());
+    };
+
+    $today = ($today === null) ? date('Y-m-d') : (string) $today;
+
+    if (((int) $entry['user_id'] !== (int) $viewer['id']) && !ws_task_time_is_manager($viewer)) {
+        return $fail(lang('Only the one who wrote the time, or staff, can change it.'), '', 403);
+    }
+
+    if ((int) $entry['invoice_id'] > 0) {
+        return $fail(lang('This time is on an invoice draft. Undo the tie on the channel\'s Summary tab first.'), 'entry_id');
+    }
+
+    if (((int) $entry['minutes'] === 0) && ((int) $entry['started_at'] > 0)) {
+        return $fail(lang('A running timer cannot be changed. Stop it first.'), 'entry_id');
+    }
+
+    $data = array(
+        'minutes'   => (int) $entry['minutes'],
+        'worked_on' => (string) $entry['worked_on'],
+        'note'      => (string) $entry['note'],
+        'billable'  => ((int) $entry['billable'] === 1) ? 1 : 0,
+    );
+
+    if (array_key_exists('minutes', $changes)) {
+        $minutes = (int) $changes['minutes'];
+
+        if ($minutes < 1) {
+            return $fail(lang('Write the time as minutes or as 1s 30d.'), 'minutes');
+        }
+
+        if ($minutes > WS_TASK_TIME_MAX) {
+            return $fail(lang('That is more time than one entry can hold.'), 'minutes');
+        }
+
+        $data['minutes'] = $minutes;
+    }
+
+    if (array_key_exists('worked_on', $changes)) {
+        $day = ws_date_or_null($changes['worked_on']);
+
+        if (!$day) {
+            return $fail(lang('Write the date as day.month.year.'), 'worked_on');
+        }
+
+        if ($day > $today) {
+            return $fail(lang('Time cannot be written for a day that has not come yet.'), 'worked_on');
+        }
+
+        $data['worked_on'] = $day;
+    }
+
+    if (array_key_exists('note', $changes)) {
+        $data['note'] = ws_task_time_note($changes['note']);
+    }
+
+    if (array_key_exists('billable', $changes)) {
+        $data['billable'] = !empty($changes['billable']) ? 1 : 0;
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'status' => 200, 'data' => $data);
+}
+
+/**
+ * Changes a time row after ws_task_time_update_check(). The row is written
+ * only while it is still off any invoice and not a running timer.
+ *
+ * @param array $viewer
+ * @param array $entry
+ * @param array $changes
+ * @return array ok, error, field, status
+ */
+function ws_task_time_update($viewer, $entry, $changes)
+{
+    $checked = ws_task_time_update_check($viewer, $entry, $changes);
+
+    if (!$checked['ok']) {
+        return $checked;
+    }
+
+    $data = $checked['data'];
+
+    db("UPDATE ws_task_time SET minutes = '" . (int) $data['minutes'] . "', worked_on = '" . e($data['worked_on']) . "',
+        note = '" . e($data['note']) . "', billable = '" . (int) $data['billable'] . "'
+        WHERE id = '" . (int) $entry['id'] . "' AND invoice_id = 0 AND minutes > 0");
+
+    return $checked;
 }
 
 /**
@@ -898,8 +1013,7 @@ function ws_task_time_mine($viewer, $weeks = 8)
         $task_id = (int) $row['task_id'];
 
         if (!array_key_exists($task_id, $tasks)) {
-            $task = ws_task($task_id);
-            $tasks[$task_id] = ($task && ws_can_see_task($viewer, $task)) ? $task : null;
+            $tasks[$task_id] = ws_task_time_seen_task($viewer, $task_id);
         }
 
         if (!isset($weeks_out[$start])) {
@@ -942,6 +1056,181 @@ function ws_task_time_mine($viewer, $weeks = 8)
     $running = ws_task_time_running($viewer['id']);
     $out['running'] = $running ? array('task_id' => (int) $running['task_id'], 'number' => ws_task_number($running['task_id']), 'started_at' => (int) $running['started_at']) : null;
     $out['now'] = time();
+
+    return $out;
+}
+
+/**
+ * The task of a time row as the reader may see it, or null for one they can
+ * no longer see (My time and GET /workspace/time show it without a title).
+ *
+ * @param array $viewer
+ * @param int   $task_id
+ * @return array|null
+ */
+function ws_task_time_seen_task($viewer, $task_id)
+{
+    $task = ws_task($task_id);
+
+    return ($task && ws_can_see_task($viewer, $task)) ? $task : null;
+}
+
+/**
+ * The task a time row names: its title only while the reader sees it.
+ *
+ * @param int        $task_id
+ * @param array|null $task ws_task_time_seen_task()
+ * @return array id, title, visible
+ */
+function ws_task_time_task_ref($task_id, $task)
+{
+    return array(
+        'id'      => (int) $task_id,
+        'title'   => is_array($task) ? (string) $task['title'] : '',
+        'visible' => is_array($task),
+    );
+}
+
+/**
+ * The days of a time range: site days as Y-m-d, both included, at most 92
+ * days as the plan items. Left out, to is today and from the Monday of the
+ * week of to.
+ *
+ * @param string      $from
+ * @param string      $to
+ * @param string|null $today Y-m-d, the site's today when null
+ * @return array ok, error, field, from, to
+ */
+function ws_task_time_range_check($from, $to, $today = null)
+{
+    $fail = function ($error, $field) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'from' => '', 'to' => '');
+    };
+
+    $today = ($today === null) ? date('Y-m-d') : (string) $today;
+    $to_day = ws_date_or_null($to);
+
+    if ($to_day === false) {
+        return $fail(lang('Write the date as day.month.year.'), 'to');
+    }
+
+    $from_day = ws_date_or_null($from);
+
+    if ($from_day === false) {
+        return $fail(lang('Write the date as day.month.year.'), 'from');
+    }
+
+    $to_day = $to_day ?: $today;
+    $from_day = $from_day ?: date('Y-m-d', strtotime('monday this week', strtotime($to_day . ' 12:00:00')));
+
+    if ($from_day > $to_day) {
+        return $fail(lang('The last day cannot be before the first.'), 'to');
+    }
+
+    $days = (int) round((strtotime($to_day . ' 12:00:00') - strtotime($from_day . ' 12:00:00')) / 86400) + 1;
+
+    if ($days > 92) {
+        return $fail(lang('Choose 92 days at most.'), 'to');
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'from' => $from_day, 'to' => $to_day);
+}
+
+/**
+ * A page position of a time range as one number: the day as Ymd.
+ *
+ * @param string $day Y-m-d
+ * @return int
+ */
+function ws_task_time_position_pack($day)
+{
+    return (int) str_replace('-', '', (string) $day);
+}
+
+/**
+ * The day back from ws_task_time_position_pack(), or null for no day.
+ *
+ * @param int $value
+ * @return string|null
+ */
+function ws_task_time_position_unpack($value)
+{
+    $value = (int) $value;
+    $day = sprintf('%04d-%02d-%02d', intdiv($value, 10000), intdiv($value, 100) % 100, $value % 100);
+
+    return (($value > 0) && (ws_date_or_null($day) === $day)) ? $day : null;
+}
+
+/**
+ * The WHERE of a person's time rows between two days, after a page
+ * position: stopped entries and the running timer alike.
+ *
+ * @param int        $user_id
+ * @param string     $from
+ * @param string     $to
+ * @param array|null $after day, id
+ * @return string
+ */
+function ws_task_time_range_where($user_id, $from, $to, $after)
+{
+    // Only a real day reaches the query, so nothing needs escaping.
+    $day = function ($value) {
+        return ws_date_or_null($value) ?: '0000-00-00';
+    };
+
+    $where = "user_id = '" . (int) $user_id . "' AND worked_on >= '" . $day($from) . "' AND worked_on <= '" . $day($to) . "'";
+
+    if (is_array($after)) {
+        $where .= " AND (worked_on < '" . $day($after['day']) . "' OR (worked_on = '" . $day($after['day']) . "' AND id < '" . (int) $after['id'] . "'))";
+    }
+
+    return $where;
+}
+
+/**
+ * The reader's own time rows between two days, newest day first, each with
+ * its task (ws_task_time_task_ref()).
+ *
+ * @param array      $viewer
+ * @param string     $from  Y-m-d (ws_task_time_range_check())
+ * @param string     $to    Y-m-d
+ * @param array|null $after day, id: the last row of the page before
+ * @param int        $limit
+ * @return array rows (each with task), next (day, id, or null), total_minutes
+ */
+function ws_task_time_range($viewer, $from, $to, $after, $limit)
+{
+    $limit = max(1, min(250, (int) $limit));
+    $out = array('rows' => array(), 'next' => null, 'total_minutes' => 0);
+
+    if (!ws_task_time_ready()) {
+        return $out;
+    }
+
+    $rows = (array) db_items("SELECT * FROM ws_task_time WHERE " . ws_task_time_range_where($viewer['id'], $from, $to, $after)
+        . " ORDER BY worked_on DESC, id DESC LIMIT " . ($limit + 1));
+
+    if (count($rows) > $limit) {
+        $rows = array_slice($rows, 0, $limit);
+        $last = end($rows);
+        $out['next'] = array('day' => (string) $last['worked_on'], 'id' => (int) $last['id']);
+    }
+
+    $tasks = array();
+
+    foreach ($rows as $row) {
+        $task_id = (int) $row['task_id'];
+
+        if (!array_key_exists($task_id, $tasks)) {
+            $tasks[$task_id] = ws_task_time_task_ref($task_id, ws_task_time_seen_task($viewer, $task_id));
+        }
+
+        $row['task'] = $tasks[$task_id];
+        $out['rows'][] = $row;
+    }
+
+    $out['total_minutes'] = (int) db_value("SELECT COALESCE(SUM(minutes), 0) FROM ws_task_time WHERE "
+        . ws_task_time_range_where($viewer['id'], $from, $to, null));
 
     return $out;
 }

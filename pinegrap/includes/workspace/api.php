@@ -167,6 +167,8 @@ function ws_openapi_objects()
         'WorkspaceCommand'         => 'ws_api_command_schema',
         'WorkspaceCommandArgument' => 'ws_api_command_argument_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
+        'WorkspaceTimeEntry'      => 'ws_api_task_time_range_schema',
+        'WorkspaceTimeTask'       => 'ws_api_task_time_task_schema',
         'WorkspaceApproval'       => 'ws_api_approval_schema',
         'WorkspaceThread'           => 'ws_api_thread_schema',
         'WorkspaceScheduledMessage' => 'ws_api_scheduled_message_schema',
@@ -200,6 +202,8 @@ function ws_openapi_objects()
         'WorkspaceFlow'             => 'ws_api_flow_schema',
         'WorkspaceFlowVersion'      => 'ws_api_flow_version_schema',
         'WorkspaceFlowVersionDetail' => 'ws_api_flow_version_detail_schema',
+        'WorkspaceFlowKind'         => 'ws_api_flow_kind_schema',
+        'WorkspaceFlowValidation'   => 'ws_api_flow_validation_schema',
         'WorkspaceFlowGraph'        => 'ws_api_flow_graph_schema',
         'WorkspaceFlowProblem'      => 'ws_api_flow_problem_schema',
         'WorkspaceFlowRun'          => 'ws_api_flow_run_schema',
@@ -1608,6 +1612,43 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.tasks.time.update',
+            'method'      => 'POST',
+            'path'        => '/workspace/tasks/{id}/time/{entry_id}/update',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_task_time_update',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTaskTime',
+            'summary'     => 'Change an entry of time',
+            'description' => 'Changes only the fields sent, for whoever may delete the entry: the owner\'s own, or anybody\'s for an owner who is staff (403 otherwise). An entry on an ERP invoice draft is refused with 422 until the tie is undone, and so is a timer still running (stop it first). It has an address of its own because POST /workspace/tasks/{id}/time/{entry_id} deletes the entry. Not announced as an event.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'minutes', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100000),
+                array('name' => 'worked_on', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD, today or earlier.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'null or an empty text clears it.'),
+                array('name' => 'billable', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the time may go on an invoice of the channel\'s customer.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.time.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/time',
+            'scope'       => 'tasks:read',
+            'handler'     => 'ws_api_time_list',
+            'returns'     => array('list' => 'WorkspaceTimeEntry', 'total_minutes' => 'integer'),
+            'summary'     => 'The owner\'s own time across tasks',
+            'description' => 'Every entry of time the owner of the application wrote between two site days, on any task, newest day first, as My time on the tasks screen reads it: a stopped timer or minutes written by hand, and a timer still running with running true and minutes 0 (on the day it was started). task names the task; a task the owner can no longer see keeps its id with an empty title and visible false. total_minutes is the sum of the whole range, not of the page. Page with next_cursor.',
+            'params'      => array(
+                array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD: the first day, in the site\'s time zone. The Monday of the week of to when left out.'),
+                array('name' => 'to', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD: the last day, included; 92 days at most from from. Today when left out.'),
+                array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 250),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.tasks.recurrence.get',
             'method'      => 'GET',
             'path'        => '/workspace/tasks/{id}/recurrence',
@@ -2033,6 +2074,35 @@ function ws_api_routes()
             ),
         ),
 
+        // What a flow is built from and a draft looked at before it is
+        // published (flow_catalogue.php). Both write nothing, so both are
+        // tools: an assistant drafts a flow from the catalogue and checks
+        // it before the person publishes it.
+        array(
+            'id'          => 'workspace.flow_kinds.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/flow-kinds',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flow_kinds_list',
+            'returns'     => array('list' => 'WorkspaceFlowKind'),
+            'summary'     => 'The kinds of box a flow is built from',
+            'description' => 'Every kind of box the nodes of a flow (POST /workspace/flows) may have, in one page. starts says the box starts the flow (a flow has exactly one); step that it is a step a scheduled action could take too. outcomes are the values the on of an arrow leaving it may take (next for a start box; an end has none). outputs are the values it gives the boxes after it, read in their texts as {{node.ID.KEY}}: key, type (number or text) and label; a web check\'s carry mode, the one of its modes they belong to, and a report gives one more number per count it is set to send. texts are the settings that take those values. settings are the keys of its config as a save keeps them, in order: type is text, integer, boolean, list (of says of what: integer ids, or objects) or object; blank says an integer may be left empty for none; values, when set, are the words the setting takes, any other being kept as the first. A setting not sent is kept at its empty value, and a key not listed is dropped. What each setting means is said under nodes of POST /workspace/flows.',
+        ),
+
+        array(
+            'id'          => 'workspace.flows.validate',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/validate',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flows_validate',
+            'returns'     => 'WorkspaceFlowValidation',
+            'summary'     => 'Look at a flow\'s draft before publishing it',
+            'description' => 'Looks at the saved draft of a flow the owner of the application may change as publishing would, and writes nothing. problems are what GET /workspace/flows/{id} lists (an empty list when none). To the flow\'s owner, once there is no problem, the draft is also checked with their rights now, as POST /workspace/flows/{id}/publish checks it: a channel they may not post in, an address that is not good, a time already gone, a person they may not give work to; refusal is the first such reason, null when none. checked_rights says whether that was done: a colleague the flow is shared with at edit does not publish it, so they get the problems alone and publishable is false for them. publishable is true when the owner\'s publish would pass these checks now; it still meets draft_rev and a draft saved meanwhile. Somebody who may only run the flow or look at it is refused with 403.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
         array(
             'id'          => 'workspace.flows.delete',
             'method'      => 'DELETE',
@@ -2203,7 +2273,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_flow_runs_get',
             'returns'     => 'WorkspaceFlowRun',
             'summary'     => 'One run of a flow, with its boxes',
-            'description' => 'A run the owner of the application reaches: any run of a flow of their own, or one started in a channel they read (channel_id: the flow\'s home as the run started) of a flow they may run, or one they started (of a flow shared with them to run, or with no channel; in a channel they read, of a flow paused since). The application Claude works through reads only the runs of channels where Claude may be asked, besides those of its owner\'s own flows. steps are the boxes the run has reached so far, in the order they were reached: node_id and kind and name of the box (its label, or its id), status (ready, running, waiting, done, failed or skipped - a box only reachable through arrows that were not taken, or after a box that failed, is skipped, so a join waits for every arrow into it and goes on once), outcome (the arrow it left on: next for the start box, done or cancelled for a task; a cancelled task with no arrow on cancelled fails its box), task_id (the task a task box opened; it stays as it is whatever becomes of the run), attempt, its times, and result, how it went in a sentence. graph is the version the run follows, which may differ from the flow\'s live one.',
+            'description' => 'A run the owner of the application reaches: any run of a flow of their own, or one started in a channel they read (channel_id: the flow\'s home as the run started) of a flow they may run, or one they started (of a flow shared with them to run, or with no channel; in a channel they read, of a flow paused since). The application Claude works through reads only the runs of channels where Claude may be asked, besides those of its owner\'s own flows. steps are the boxes the run has reached so far, in the order they were reached: node_id and kind and name of the box (its label, or its id), status (ready, running, waiting, done, failed or skipped - a box only reachable through arrows that were not taken, or after a box that failed, is skipped, so a join waits for every arrow into it and goes on once), outcome (the arrow it left on: next for the start box, done or cancelled for a task; a cancelled task with no arrow on cancelled fails its box), task_id (the task a task box opened; it stays as it is whatever becomes of the run), attempt, its times, threads_in (the arrows into the box: from, the box it comes from; on, its outcome; taken, whether the run took it, as its box ended done on that outcome, or on any for always), outputs (the values the box kept for the boxes after it, which their texts read as {{node.ID.FIELD}}: a number, a text, or null for one it did not give; the record of a change box and the run a start-a-flow box started only to whoever may change the flow, others get an empty object), and result, how it went in a sentence. graph is the version the run follows, which may differ from the flow\'s live one.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),

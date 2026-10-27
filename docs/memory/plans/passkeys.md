@@ -24,7 +24,9 @@ description: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor an
 
 - 4e done (#2250, core/passkey-sessions.md): `auth_tokens.passkey_id` (11.0.46), the session row names its passkey, removing a passkey ends its sessions.
 
-- 4c2 The designed `account_security` widget: the same add form without TOTP (new flag for the e-mailed code; saved trees keep `passkey_needs_mfa` until they carry an `email_code` field), a device row token for the session's passkey, and new recovery codes for a passkey-only account (classic page and widget). (S)
+- 4c2 done (#2279, designer/passkey-widget-list.md): the widget adds a passkey without TOTP (e-mailed code), its device rows name the session's passkey.
+
+- 4c3 New recovery codes for an account with passkeys and no TOTP (classic page and widget): `mfa_recovery_regenerate` asks for a TOTP code today. Waits on the owner: password + e-mailed code, or a fresh passkey ceremony (asked in #2279). (S)
 
 - 5 Memory: update `core/passkey-ceremonies.md` and `two-step-sign-in.md` with each step.
 
@@ -32,4 +34,4 @@ description: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor an
 - `rpId` on sites served from a sub-folder or several hosts: use the host only; the language prefix does not matter.
 
 ## Where to start?
-- Step 4c2: `designer/passkey-widget-list.md`, `core/passkey-account-section.md`.
+- Step 4c3 (after the owner's answer): `account_security.php` `mfa_recovery_regenerate`, `core/passkey-without-totp.md`.

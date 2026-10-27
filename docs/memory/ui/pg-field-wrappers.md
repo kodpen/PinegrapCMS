@@ -4,11 +4,11 @@ description: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): 
 ---
 
 ## Why do panel fields go through these wrappers?
-- Bootstrap 6 Chips, Combobox and Datepicker replace tagin, select2 and the jQuery UI pickers (B9a #2208, B9b #2243, B9c next). A screen that marks its field with a hook and reads it through the wrapper keeps working when the engine in `pg_fields.js` changes.
+- Bootstrap 6 Chips, Combobox and Datepicker replace tagin, select2 and the jQuery UI pickers (B9a #2208, B9b #2243, B9c #2262). A screen that marks its field with a hook and reads it through the wrapper keeps working when the engine in `pg_fields.js` changes.
 
 ## How does a screen use them?
-- Hook on the field: `data-pg-chips` (input; keep class `tagin`, the CSS hides it; `data-pg-separator=" "` for a class list, comma without it), `data-pg-combobox` (native `<select>`, `data-placeholder`; `data-pg-source="url"` searches the server: GET `q`, answer `{results:[{id,text}]}`, `data-pg-min-length`, `data-pg-free-text`; a stored value is an `<option selected>`), `data-pg-date` (`="plain"`: only the date format, the picker's English names, for `view_order.php` ship and delivery dates), `data-pg-datetime`, `data-pg-time`. liveform's `output_field()` prints any lower-case `data-pg-*` key (`'data-pg-date' => ''` gives a bare hook).
-- Print `pg_fields_script()` (`includes/fn/core.php`) on the screen, next to `get_date_picker_format()` (pickers read `datetimepicker_options`, time fields `timepicker_options` first); once per request.
+- Hook on the field: `data-pg-chips` (input; keep class `tagin`, the CSS hides it; `data-pg-separator=" "` for a class list, comma without it), `data-pg-combobox` (native `<select>`, `data-placeholder`; `data-pg-source="url"` searches the server: GET `q`, answer `{results:[{id,text}]}`, `data-pg-min-length`, `data-pg-free-text`; a stored value is an `<option selected>`), `data-pg-date` (`="plain"`: English names, Sunday first, for `view_order.php` ship and delivery dates), `data-pg-datetime`, `data-pg-time`. liveform's `output_field()` prints any lower-case `data-pg-*` key (`'data-pg-date' => ''` gives a bare hook).
+- Print `pg_fields_script()` (`includes/fn/core.php`) on the screen, next to `get_date_picker_format()` (dates read the site order and `firstDay` from `datetimepicker_options`); once per request.
 - Fields in the sent page are drawn on DOMContentLoaded; markup added later needs `pgFields.init(scope)`, which `pgInitInjected()` calls when the screen loaded the file. A settings card injected with `.html()` prints `pg_fields_script()` itself: a second load of the file keeps the first copy and draws the new fields (firewall card).
 
 ## What do get() and set() exchange?
@@ -18,8 +18,8 @@ description: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): 
 - Listen with `pgFields.onChange(el, fn)` or jQuery `.on('change')`: on the one select2 left (a `data-pg-source` field) a pick is announced only through jQuery, so a bare `addEventListener('change')` misses it there.
 
 ## What is the engine today?
-- Chips: `v6`, Bootstrap 6 Chips (`pg-chips.md`). Combobox: `v6`, Bootstrap 6 Combobox (`pg-combobox.md`), except a `data-pg-source` field.
-- `v5`: select2 for a `data-pg-source` combobox (theme bootstrap-5, `dropdownParent` from `pgUI.overlayHost()`), jQuery UI datepicker, datetimepicker and timepicker addon. A field whose library is not on the screen stays a plain field.
+- Chips: `v6`, Bootstrap 6 Chips (`pg-chips.md`). Combobox: `v6`, Bootstrap 6 Combobox (`pg-combobox.md`), except a `data-pg-source` field. Date, date and time, time: `v6`, Bootstrap 6 Datepicker and `<input type="time">` (`pg-datepicker.md`).
+- `v5`: only select2 for a `data-pg-source` combobox (theme bootstrap-5, `dropdownParent` from `pgUI.overlayHost()`). A field whose library is not on the screen stays a plain field.
 - `pg_fields.js` is served as written (no twin, no bundle). Tested under Node by `tests/pg_fields_test.php`.
 
 ## Which screens use them?

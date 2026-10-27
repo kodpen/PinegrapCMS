@@ -113,10 +113,10 @@ if (!$_POST) {
                                             <div class="col-12 lg:col-4">
                                                 <div class=" border-1 border rounded-4 p-3 m-1">
                                                     <label class="form-label" for="base_rate">' . lang('Base Rate') . '</label>
-                                                    <div class="input-group">
-                                                        <input type="text" name="base_rate" id="base_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                        <label class="input-group-text" for="base_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                    </div>
+                                                    <label class="form-control form-adorn form-adorn-end">
+                                                        <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                        <input type="text" name="base_rate" id="base_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                    </label>
                                                     <div class="form-field my-3 ms-5">
                                                         <div class="switch"><input class="collapse-switcher" type="checkbox" id="variable_base_rate" name="variable_base_rate" value="1"  data-bs-target="#base_rate_rows"/></div>
                                                         <label class="text-wrap" for="variable_base_rate">' . lang('Enable variable base rate') . '</label>
@@ -165,10 +165,10 @@ if (!$_POST) {
                                         <div class="col-12 lg:col-4 my-3">
                                             <div class=" border-1 border rounded-4 p-3 m-1">
                                                 <label class="form-label" for="primary_weight_rate">' . lang('Primary Weight Rate') . '</label>
-                                                <div class="input-group">
-                                                    <input type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                    <label class="input-group-text" for="primary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                </div>
+                                                <label class="form-control form-adorn form-adorn-end">
+                                                    <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                    <input type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                </label>
                                                 <div class="form-field my-3 ms-5">
                                                     <div class="switch"><input class="" type="checkbox" id="primary_weight_rate_first_item_excluded" name="primary_weight_rate_first_item_excluded" value="1" /></div>
                                                     <label class="text-wrap" for="primary_weight_rate_first_item_excluded">' . lang('Don\'t apply to first item') . '</label>
@@ -178,10 +178,10 @@ if (!$_POST) {
                                         <div class="col-12 lg:col-4 my-3">
                                             <div class=" border-1 border rounded-4 p-3 m-1">
                                                 <label class="form-label" for="secondary_weight_rate">' . lang('Secondary Weight Rate') . '</label>
-                                                <div class="input-group">
-                                                    <input type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                    <label class="input-group-text" for="primary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                </div>
+                                                <label class="form-control form-adorn form-adorn-end">
+                                                    <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                    <input type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                </label>
                                                 <div class="form-field my-3 ms-5">
                                                     <div class="switch"><input class="" type="checkbox" id="secondary_weight_rate_first_item_excluded" name="secondary_weight_rate_first_item_excluded" value="1" /></div>
                                                     <label class="text-wrap" for="secondary_weight_rate_first_item_excluded">' . lang('Don\'t apply to first item') . '</label>
@@ -191,10 +191,10 @@ if (!$_POST) {
                                         <div class="col-12 lg:col-4 my-3">
                                             <div class=" border-1 border rounded-4 p-3 m-1">
                                                 <label class="form-label" for="item_rate">' . lang('Item Rate') . '</label>
-                                                <div class="input-group">
-                                                    <input type="text" name="item_rate" id="item_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                    <label class="input-group-text" for="item_rate">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                </div>
+                                                <label class="form-control form-adorn form-adorn-end">
+                                                    <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                    <input type="text" name="item_rate" id="item_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                </label>
                                                 <div class="form-field my-3 ms-5">
                                                     <div class="switch"><input class="" type="checkbox" id="item_rate_first_item_excluded" name="item_rate_first_item_excluded" value="1" /></div>
                                                     <label class="text-wrap" for="item_rate_first_item_excluded">' . lang('Don\'t apply to first item') . '</label>

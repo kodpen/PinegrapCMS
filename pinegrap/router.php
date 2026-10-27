@@ -248,14 +248,16 @@ define('PATH', $url_path);
 define('REQUEST_URL', router_get_request_url());
 
 // ── Web Application Firewall (first pass) ────────────────────────────────
-// The router dispatches get_file.php, robots.txt and sitemap.xml without ever
-// reaching init.php, so those requests would otherwise be unprotected.
+// The router dispatches get_file.php without ever reaching init.php, and
+// answers a page-cache hit and a short link's redirect itself, so those
+// requests would otherwise be unprotected.
 //
 // Only the identity-independent checks run here — IP lists, attack tooling,
-// rate limits. Content inspection is deliberately left to the init.php pass,
-// because the session has not started yet and page regions are edited from
-// the page's own front-end URL: without knowing whether a designer is logged
-// in, saving a region containing <script> would look exactly like an attack.
+// the global rate limit. Content inspection is deliberately left to the
+// init.php pass: its exemption is the session (waf_user_is_authenticated()),
+// which has not started yet here, so a routed request would be scanned
+// blind, whoever sent it. The global limit, counted here, spares a signed-in
+// user only on directly requested scripts (see waf_run()).
 require_once(dirname(__FILE__) . '/waf.php');
 waf_prime_config($router_config_row);
 waf_send_security_headers();
@@ -368,6 +370,20 @@ if (preg_match('#^\.well-known/(oauth-authorization-server|openid-configuration|
     define('PG_OAUTH_WELL_KNOWN', $router_well_known[1]);
     require(dirname(__FILE__) . '/oauth.php');
     exit();
+}
+
+// The discovery document a team device client reads from the typed address
+// (includes/api/resources/discovery.php). Built with the API's helpers but
+// never through api_run(): it answers also with the API off and over http.
+// Like integration.php it runs with no session.
+if ($item_name_lowercase == '.well-known/pinegrap.json') {
+    define('PG_API_ENTRY', true);
+    define('PG_NO_SESSION', true);
+    $_SESSION = array();
+    ob_start();
+    include(dirname(__FILE__) . '/init.php');
+    require_once(dirname(__FILE__) . '/includes/api/bootstrap.php');
+    api_discovery_well_known();
 }
 
 // The MCP server at the site's own address (mcp.php in the software

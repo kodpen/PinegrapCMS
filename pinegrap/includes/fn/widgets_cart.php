@@ -394,11 +394,23 @@ function _apply_shopping_cart_bindings(&$node, $context)
         }
     }
 
+    // ── Gift card controls (the cart.item_gift_cards list) ──────────────
+    // What a control sends and whether it is required are the system's
+    // (pg_sw_cart_gift_card_control()); a card without its required
+    // recipient control gets it back.
+    if (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'cart.item_gift_cards') {
+        pg_sw_cart_gift_card_restore($node);
+    }
+    if (isset($bindings['value']) && pg_sw_cart_gift_card_control_spec($bindings['value']) !== null) {
+        pg_sw_cart_gift_card_control($node, isset($context['cart_form_id']) ? (string)$context['cart_form_id'] : '');
+    }
+
     if (!empty($node['children']) && is_array($node['children'])) {
         foreach ($node['children'] as &$child) {
             if (is_array($child)) _apply_shopping_cart_bindings($child, $context);
         }
         unset($child);
+        pg_sw_cart_gift_card_label_for($node);
     }
 }
 
@@ -1200,6 +1212,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 // `recipient_email_address` is required further down the flow,
                 // checkout silently refused to advance.
                 $gift_card_html = '';
+                $gift_cards     = array();
                 if (!empty($r['product_is_gift_card']) && $qty > 0) {
                     $_gc_iid   = (int)$r['item_id'];
                     $_gc_count = min($qty, 100);   // same cap as legacy
@@ -1247,6 +1260,15 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                                  . ($help !== '' ? '<div class="form-text">' . h($help) . '</div>' : '')
                                  . '</div>';
                         };
+                        // The same values for the gift card part's list
+                        // (cart.item_gift_cards, widgets_lists_cart.php).
+                        $gift_cards[] = array(
+                            'number' => $_qn, 'count' => $_gc_count, 'prefix' => $_fp,
+                            'recipient_email_address' => $_gcv('recipient_email_address'),
+                            'from_name'     => $_gcv('from_name'),
+                            'message'       => $_gcv('message'),
+                            'delivery_date' => $_gcv('delivery_date'),
+                        );
                         $_gc_rows_html .=
                             '<fieldset class="pg-cart-gc-set border rounded p-3 mb-3" data-pg-gc-set="' . $_qn . '">' . $_gc_legend
                           . $_gc_field('recipient_email_address', lang('Recipient Email'),
@@ -1313,6 +1335,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     // Per-row product-form data block (read-only review).
                     'form_data_html'           => $form_data_html,
                     'gift_card_html'           => $gift_card_html,
+                    'gift_cards'               => $gift_cards,
                     'recurring_editable'       => $recurring_editable ? 1 : 0,
                     'recurring_schedule_html'  => $recurring_schedule_html,
                     // Row kind — drives which control the qty column shows.
@@ -1501,7 +1524,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // The row blocks the item template places (pg_sw_placed()).
         $_cart_row_tree    = array('type' => 'root', 'children' => $split['loop_children']);
         $_cart_form_placed = pg_sw_placed($_cart_row_tree, array('__item_form_data_html'));
-        $_cart_gift_placed = pg_sw_placed($_cart_row_tree, array('__item_gift_card_html'));
+        $_cart_gift_placed = pg_sw_placed($_cart_row_tree, array('__item_gift_card_html', 'cart.item_gift_cards'));
         foreach ($items as $idx => $item) {
             // Qty input emitted as an input-group with attached -/+ steppers.
             // JS (see _pg_qty_stepper_inline_js below) handles the click → input
@@ -2899,6 +2922,36 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             $designed_body = str_replace('<!--pg-recipient-loop-slot-->', '', $designed_body);
         }
 
+        // ── 4c. The express order's lists (widgets_lists_checkout.php): the
+        // cart's lines and the offers, gift cards and recipients, read and
+        // filed only when the tree drew a list of them.
+        if (pg_sw_list_wanted('cart')) {
+            $_eo_token = isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '';
+            $_eo_back  = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '';
+            pg_sw_list_publish('cart', pg_sw_list_cart_rows(pg_sw_list_checkout_cart_items($items, $_eo_fmt,
+                function ($iid) use ($base_path, $sw_dir, $_eo_token, $_eo_back) {
+                    return $base_path . $sw_dir . '/remove_item_from_cart.php?order_item_id=' . (int)$iid . '&screen=express_order'
+                        . ($_eo_back !== '' ? '&send_to=' . rawurlencode($_eo_back) : '')
+                        . ($_eo_token !== '' ? '&token=' . rawurlencode($_eo_token) : '');
+                })));
+        }
+        $_eo_checkout = pg_sw_list_wanted('checkout');
+        if ($_eo_checkout) {
+            $_eo_gc_on = defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == true;
+            pg_sw_list_publish('checkout', pg_sw_list_checkout_rows(array(
+                'offers'      => isset($_eo_checkout['checkout.offers']) ? pg_sw_list_checkout_applied_offers($order_id) : array(),
+                'suggestions' => isset($_eo_offers['upsell_offers']) ? $_eo_offers['upsell_offers'] : array(),
+                'gift_cards'  => ($_eo_gc_on && isset($_eo_checkout['checkout.gift_cards'])) ? pg_sw_list_checkout_gift_cards($order_id, $gc_disc_cents) : array(),
+                'recipients'  => $recipients,
+                'items'       => $items,
+                'fmt'         => $_eo_fmt,
+                'remove_base' => $base_path . $sw_dir . '/remove_gift_card_from_order.php?applied_gift_card_id=',
+                'remove_tail' => '&send_to=' . urlencode(isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '/')
+                                 . '&token=' . rawurlencode(isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : ''),
+                'page_url'    => function ($page_id) use ($base_path) { return $base_path . get_page_name((int)$page_id); },
+            )));
+        }
+
         // ── 5. Static token replacement: __cart_subtotal, __cart_total,
         // __cart_count, __currency_symbol, __form_id, … See
         // _eo_compute_static_tokens for the full list. These resolve OUTSIDE
@@ -2921,6 +2974,9 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             // because the entire row is hidden via has_shipping_cost=false.
             'needs_shipping'             => (bool)$needs_shipping,
         ));
+        // A list of the cart, the offers, the gift cards or the recipients
+        // outside a recipient row lists the whole order.
+        $static_vars['^^__ship_to_key^^'] = '0';
         $designed_body = _eo_replace_tokens($designed_body, $static_vars);
 
         // Every substitution is done by here — the per-item loop and the

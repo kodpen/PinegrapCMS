@@ -13085,13 +13085,21 @@ const StyleDesigner = (function () {
                     _k = _kNext;
                 }
             }
+            // A sentence with values (pg_sentence_html()): the words, and
+            // the N-th child where {var:N} stands; a link or button too.
+            var _sentence = node.type === 'semantic' && _sdIsSentence(node);
             var _vtxt = null;
-            if (_isBtnLike && node.props.text) {
+            if (_isBtnLike && node.props.text && !_sentence) {
                 _vtxt = _createVirtualText(doc, node);
             }
             var _textPos = node.props.textPosition || 'end';
             if (_isBtnLike && _vtxt && _textPos === 'start') innerEl.appendChild(_vtxt);
-            if (node.children && node.children.length > 0) {
+            if (_sentence) {
+                _sdSentenceLayout(node.props.text, (node.children || []).length).forEach(function (piece) {
+                    innerEl.appendChild(typeof piece === 'number' ? buildNodeEl(node.children[piece - 1])
+                        : doc.createTextNode(piece));
+                });
+            } else if (node.children && node.children.length > 0) {
                 node.children.forEach(function (child) {
                     innerEl.appendChild(buildNodeEl(child));
                 });
@@ -13106,7 +13114,7 @@ const StyleDesigner = (function () {
             // a <div> bound to __currency_selector carries only the binding, and the
             // server writes the value into it whatever `text` holds.
             var _semBoundText = !!(node.props._bindings && node.props._bindings.text);
-            if (!_isBtnLike && node.type === 'semantic' && ((node.props.text !== undefined && node.props.text !== '') || _semBoundText)) {
+            if (!_isBtnLike && !_sentence && node.type === 'semantic' && ((node.props.text !== undefined && node.props.text !== '') || _semBoundText)) {
                 var _semText = node.props.text || '';
                 var _semIsHtml = false;
                 if (node.props._bindings && node.props._bindings.text) {
@@ -14662,6 +14670,39 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // Whether a node is a sentence with values: a semantic element whose
+    // words are one translatable text, {var:N} placing its N-th child
+    // (pg_sentence_layout()).
+    function _sdIsSentence(node) {
+        return !!(node && node.type === 'semantic' && node.props && node.props._sentence);
+    }
+
+    // The layout of a sentence with values (pg_sentence_layout()): words
+    // (strings) and the places of the children (numbers from 1). A child is
+    // drawn once, at its first placeholder; a placeholder without a child
+    // draws nothing; a child no placeholder names follows after a space.
+    function _sdSentenceLayout(text, count) {
+        var parts = String(text == null ? '' : text).split(/\{var:([1-9][0-9]?)\}/);
+        var out = [], drawn = {};
+        parts.forEach(function (part, i) {
+            if (!(i % 2)) {
+                if (part !== '') out.push(part);
+                return;
+            }
+            var n = parseInt(part, 10);
+            if (n <= count && !drawn[n]) {
+                drawn[n] = true;
+                out.push(n);
+            }
+        });
+        for (var n = 1; n <= count; n++) {
+            if (drawn[n]) continue;
+            if (out.length) out.push(' ');
+            out.push(n);
+        }
+        return out;
+    }
+
     // Server-render tokens (^^__name^^ and ^^bare_name^^) embedded inside
     // _attrs values — e.g. <input name="quantity[^^__item_id^^]" value="^^__item_qty^^">.
     // PHP substitutes these at request time; canvas needs an in-place preview
@@ -14958,7 +14999,9 @@ const StyleDesigner = (function () {
                 // <a> is innerEl itself — edit directly, no span wrapper
                 editableTargets.push({ el: innerEl, prop: 'text' });
             }
-        } else if (node.type === 'semantic' && (node.props.text !== undefined || !(node.children && node.children.length))) {
+        } else if (node.type === 'semantic' && !_sdIsSentence(node) && (node.props.text !== undefined || !(node.children && node.children.length))) {
+            // A sentence with values is written in the panel: typing across
+            // it would take its values' words for its own.
             // Semantic elements with direct text (e.g. <button>, <a> with text
             // prop) — and any semantic element that has no children yet (an
             // empty <li>, <td>, <span>): typing into it is how it gets text.
@@ -22606,6 +22649,10 @@ const StyleDesigner = (function () {
                 { label: _sdT('Steps of the order'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'order.steps' } },
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
+                { label: _sdT('Offers applied to the order'), type: 'loop_area', icon: 'bi-tag', extra: { listSource: 'checkout.offers' } },
+                { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
+                { label: _sdT('Gift cards applied to the order'), type: 'loop_area', icon: 'bi-gift', extra: { listSource: 'checkout.gift_cards' } },
+                { label: _sdT('Recipients in the cart'), type: 'loop_area', icon: 'bi-people', extra: { listSource: 'checkout.recipients' } },
                 { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } },
                 { label: _sdT('Passkeys of the member'), type: 'loop_area', icon: 'bi-fingerprint', extra: { listSource: 'security.passkeys' } },
                 { label: _sdT('Page links'), type: 'loop_area', icon: 'bi-three-dots', extra: { listSource: 'paging.pages' } }
@@ -27780,6 +27827,9 @@ const StyleDesigner = (function () {
             // A content role outside its area: the text, nothing else.
             return textOk ? { level: 'half', attrs: false, text: true } : { level: 'full', attrs: false, text: false };
         }
+        // A sentence with values: its attribute values; its words and the
+        // places of its values are the panel's (_sdSentenceLayout()).
+        if (_sdIsSentence(node)) return { level: 'half', attrs: true, text: false };
         // A locked layer, a shared component or a widget (owner's rule:
         // half-locked): values and text, never the structure.
         if ((node.props && node.props._locked) || hasLockedAncestor(node) || _resolveSharedSid(node) > 0) {
@@ -28126,6 +28176,9 @@ const StyleDesigner = (function () {
     // markup itself), 'none' (nothing of its own to read).
     function _sdCodeTextKind(node) {
         if (!node) return 'none';
+        // A sentence's words are written in the panel: its values sit
+        // between them as elements of their own.
+        if (_sdIsSentence(node)) return 'none';
         if (node.type === 'semantic') return 'plain';
         if (node.type === 'content') {
             var ct = node.props.contentType;
@@ -32859,6 +32912,11 @@ const StyleDesigner = (function () {
             'order.return_lines': _sdT('One row for every product of the return request the row stands in, with the quantity asked back.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
+            'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
+            'checkout.offers':    _sdT('One row for every offer applied to the order: a discount on the cart, an item\'s or a recipient\'s bonus. An offer without a message shows its code.'),
+            'checkout.suggestions': _sdT('One row for every offer the cart could still earn, with its message; a condition on "Offer page URL" shows its button only when the offer points to a page.'),
+            'checkout.gift_cards': _sdT('One row for every gift card applied to the order: the masked code, the amount taken, the balance left and a link that removes it.'),
+            'checkout.recipients': _sdT('One row for every recipient of the order. Put a list of the products in the cart inside the row: it lists that recipient\'s. The address fields and shipping choices stay where the widget draws them.'),
             'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
             'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.'),
             'paging.pages':       _sdT('One row for every page link the list shows: the first and the last page, two pages either side of the page shown, a gap between them. With this list in the widget its built-in pagination is not added. Conditions on "Page address" and "The page shown" tell a link, the current page and a gap apart.')
@@ -38937,7 +38995,8 @@ const StyleDesigner = (function () {
             ['__device_ip',                   _sdT('IP address')],
             ['__device_last_used',            _sdT('Last used (relative time)')],
             ['__device_first_seen',           _sdT('First seen (date and time)')],
-            ['__device_selector',             _sdT('Device identifier (the Sign out button carries it)')]
+            ['__device_selector',             _sdT('Device identifier (the Sign out button carries it)')],
+            ['__device_passkey',              _sdT('Passkey the session was signed in with (a Remove button in the row removes it)')]
         ]},
         { label: _sdT('Two-step verification'), tokens: [
             ['__mfa_status_text',             _sdT('Status sentence ("on since …, n recovery codes left")')],
@@ -40026,6 +40085,9 @@ const StyleDesigner = (function () {
         comments: {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
         },
+        shopping_cart: {
+            '__item_gift_card_html': function (cfg) { return _sdPartCartItemGiftCard(); }
+        },
         // A list of recent comments is a comments widget on the server.
         comments_recent: {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
@@ -40214,13 +40276,14 @@ const StyleDesigner = (function () {
     // of their tokens, now parts added to the end of the tree once
     // (pg_sw_default_tail_parts()): kind => [tokens that place it, part].
     // A comment's stars (pg_sw_part_comment_stars()): five drawings said
-    // once as "Rated N out of 5", the first N filled by the rating.
+    // once as "Rated N out of 5", one sentence with the rating in it, the
+    // first N filled by the rating.
     /* @pg-site-output */
     function _sdPartCommentStars() {
         var stars = [];
         for (var i = 1; i <= 5; i++) stars.push(_sdPartCommentStar(true, i), _sdPartCommentStar(false, i));
         var p = _sdPartWhen('__comment_rating', 'not_empty');
-        p._attrs = [{ name: 'role', value: 'img' }, { name: 'aria-label', value: '{{__comment_rating_label}}' }];
+        p._attrs = [{ name: 'role', value: 'img' }, { name: 'aria-label', value: _sdT('Rated {var:1} out of 5').replace('{var:1}', '{{__comment_rating}}') }];
         return [_sdPartEl('span', 'pg-comment-stars', _sdT('Stars'), p, stars)];
     }
 
@@ -40400,6 +40463,9 @@ const StyleDesigner = (function () {
             [['__item_form_data_html', 'order.item_forms'], function () { return _sdPartOrderItemForm(); }],
             [['__item_gift_card_html', 'order.item_gift_cards'], function () { return _sdPartOrderItemGiftCard(); }]
         ],
+        shopping_cart: [
+            [['__item_gift_card_html', 'cart.item_gift_cards'], function () { return _sdPartCartItemGiftCard(); }]
+        ],
         catalog_item_view: [
             [['__cross_sell_html', 'product.related'], function () { return _sdPartCatalogCrossSell(); }, 'tree']
         ]
@@ -40561,6 +40627,50 @@ const StyleDesigner = (function () {
                     _sdPartItemLine(_sdT('Message'), _sdPartValue('__gift_card_message_html', _sdT('Message'))),
                     _sdPartItemLine(_sdT('Delivery Date'), _sdPartValue('__gift_card_delivery', _sdDateSample(false)))
                 ])
+            ])
+        ])];
+    }
+
+    // The cart's gift card controls (pg_sw_cart_gift_card_control_specs()):
+    // binding value => [column, list token, type, required]. The server
+    // gives each its name, value, type and required.
+    var SW_CART_GIFT_CARD_CONTROLS = {
+        gift_card_email:         ['recipient_email_address', '__gift_card_email', 'email', true],
+        gift_card_from_name:     ['from_name', '__gift_card_from_name', 'text', false],
+        gift_card_message:       ['message', '__gift_card_message', 'textarea', false],
+        gift_card_delivery_date: ['delivery_date', '__gift_card_delivery_date', 'date', false]
+    };
+
+    // One gift card field of the cart (pg_sw_part_cart_gift_card_field()).
+    /* @pg-site-output */
+    function _sdPartCartGiftCardField(value) {
+        var spec = SW_CART_GIFT_CARD_CONTROLS[value];
+        var labels = { gift_card_email: _sdT('Recipient Email'), gift_card_from_name: _sdT('From Name'),
+            gift_card_message: _sdT('Message'), gift_card_delivery_date: _sdT('Delivery Date') };
+        var label = labels[value] || '';
+        var words = [_sdPartEl('span', '', _sdT('Text'), { text: label })];
+        if (spec[3]) words.push(_sdPartEl('span', 'text-danger', _sdT('Required mark'), { text: '*' }));
+        var control = (spec[2] === 'textarea')
+            ? _sdPartEl('textarea', 'form-control', label, { _bindings: { value: value }, _attrs: [{ name: 'rows', value: '3' }] })
+            : _sdPartEl('input', 'form-control', label, { _bindings: { value: value } });
+        var children = [_sdPartEl('label', 'form-label', _sdT('Label'), {}, words), control];
+        if (value === 'gift_card_delivery_date') {
+            children.push(_sdPartEl('div', 'form-text', _sdT('Help'), { text: _sdT('Leave blank to send immediately.') }));
+        }
+        return _sdPartEl('div', 'mb-3 pg-cart-gc-field', label, { _attrs: [{ name: 'data-pg-gc-field', value: spec[0] }] }, children);
+    }
+
+    // The gift cards of a cart line (pg_sw_part_cart_item_gift_card()): a
+    // box of controls per card of the cart.item_gift_cards list.
+    /* @pg-site-output */
+    function _sdPartCartItemGiftCard() {
+        var fields = Object.keys(SW_CART_GIFT_CARD_CONTROLS).map(function (v) { return _sdPartCartGiftCardField(v); });
+        return [_sdPartEl('div', 'pg-cart-gift-cards pg-hide-if-empty', _sdT('Gift Card Details'),
+            { _attrs: [{ name: 'data-pg-cart-gc-item', value: '{{__item_id}}' }] }, [
+            createNode('loop_area', { source: 'cart.item_gift_cards' }, [
+                _sdPartEl('fieldset', 'pg-cart-gc-set border rounded p-3 mb-3', _sdT('Gift card'),
+                    { _attrs: [{ name: 'data-pg-gc-set', value: '{{__gift_card_number}}' }] },
+                    [_sdPartItemLegend({}, { text: _sdT('Gift card') }, '__gift_card_number', '__gift_card_count')].concat(fields))
             ])
         ])];
     }
@@ -40977,6 +41087,7 @@ const StyleDesigner = (function () {
             ['device_offline',      _sdT('Row: not used in the last five minutes')],
             ['device_is_locked',    _sdT('Row: locked by the site owner')],
             ['device_can_sign_out', _sdT('Row: can be signed out here')],
+            ['device_by_passkey',   _sdT('Row: signed in with a passkey the account still has')],
             ['mfa_ready',           _sdT('Two-step verification is installed on the site')],
             ['mfa_off',             _sdT('Two-step verification is off')],
             ['mfa_no_key',          _sdT('It is off and cannot be turned on (no encryption key)')],
@@ -40995,7 +41106,8 @@ const StyleDesigner = (function () {
             ['passkey_limit',         _sdT('The account keeps as many passkeys as it may')],
             ['passkey_unavailable',   _sdT('Passkeys cannot be used on this site or at this address')],
             ['passkey_asks_password', _sdT('Adding or removing a passkey asks for the password')],
-            ['passkey_asks_code',     _sdT('Removing a passkey asks for a code')]
+            ['passkey_asks_code',     _sdT('Adding or removing a passkey asks for a code from the authenticator app')],
+            ['passkey_asks_email_code', _sdT('Adding a passkey asks for a code sent by e-mail (two-step verification is off)')]
         ],
         account_invoices: [
             ['has_documents',      _sdT('There are documents to list')],
@@ -41294,6 +41406,7 @@ const StyleDesigner = (function () {
                 aOpts.push(['mfa_disable',             _sdT('Turn off two-step verification')]);
                 aOpts.push(['passkey_rename',          _sdT('Rename the passkey (passkey list)')]);
                 aOpts.push(['passkey_remove',          _sdT('Remove the passkey (passkey list)')]);
+                aOpts.push(['passkey_send_code',       _sdT('Send the code by e-mail (add a passkey form)')]);
             }
             // Only a button can post a list action's form; a link bound to
             // one is dropped on the page (_pg_wishlist_wire_actions()), so a
@@ -41336,6 +41449,10 @@ const StyleDesigner = (function () {
             if (region === 'shopping_cart') {
                 vOpts.push(['cart_qty',    _sdT('Row quantity (cart_qty) — shopping_cart loop_area')]);
                 vOpts.push(['coupon_code', _sdT('Offer code (special_offer_code) — shopping_cart')]);
+                vOpts.push(['gift_card_email',         _sdT('Gift card: recipient e-mail (required)')]);
+                vOpts.push(['gift_card_from_name',     _sdT('Gift card: from name')]);
+                vOpts.push(['gift_card_message',       _sdT('Gift card: message')]);
+                vOpts.push(['gift_card_delivery_date', _sdT('Gift card: delivery date')]);
             }
             if (region === 'catalog_listing' || region === 'search_results') {
                 vOpts.push(['search_query', _sdT('Search text (query)')]);
@@ -43567,6 +43684,11 @@ const StyleDesigner = (function () {
             ? row(_sdT('Text'), '<input type="text" class="form-control form-control-sm" data-prop="text" value="' + esc(n.props.text || '') + '">')
             : '';
 
+        // A value placed inside the words (a sentence with values,
+        // pg_sentence_layout()): offered inside a system widget on an
+        // element without children of its own, or one that is a sentence.
+        var sentenceRow = _sdSentenceRow(n);
+
         // Dropdown container → show Dropdown Options section
         var DIRS = ['dropdown','dropup','dropend','dropstart'];
         var clsList = (n.props.cssClass || '').split(/\s+/);
@@ -43713,7 +43835,7 @@ const StyleDesigner = (function () {
 
         var labelSection = (tag === 'label') ? propsLabelOptions(n) : '';
         var semSection = (isInteractiveTag || isFormInputTag) ? '' : sect('bi-code-square', _sdT('Semantic Element'),
-            row(_sdT('Tag'), sel('tag', tags, tag)) + fontRow + inlineTextRow +
+            row(_sdT('Tag'), sel('tag', tags, tag)) + fontRow + inlineTextRow + sentenceRow +
             sectionBindRow +
             (sysAttrsHtml ? '<div class="sd-prop-row" style="padding:0">' + sysAttrsHtml + '</div>' : '')
         );
@@ -48456,6 +48578,17 @@ const StyleDesigner = (function () {
                     }
                 }
                 render();
+            });
+        });
+
+        // A value put inside the words (_sdSentenceRow()).
+        document.querySelectorAll('#sd-properties select[data-sentence-add]').forEach(function (el) {
+            el.addEventListener('change', function () {
+                if (!selectedNode || !this.value) return;
+                saveState();
+                _sdSentenceAdd(selectedNode, this.value);
+                render();
+                renderProperties();
             });
         });
 
@@ -55225,7 +55358,7 @@ const StyleDesigner = (function () {
         'cart.items': {
             label: _sdT('Products in the cart'),
             arg: '', argRequired: false,
-            kinds: ['cart_link', 'shopping_cart'],
+            kinds: ['cart_link', 'shopping_cart', 'express_order'],
             rows: [
                 ['__item_id',                _sdT('Row ID (order_items.id)')],
                 ['__item_name',              _sdT('Product name (products.name)')],
@@ -55237,6 +55370,74 @@ const StyleDesigner = (function () {
                 ['__item_image_alt',         _sdT('Image alt text')],
                 ['__item_url',               _sdT('Product detail page URL')],
                 ['__item_remove_url',        _sdT('Remove from cart URL')]
+            ]
+        },
+        'cart.item_gift_cards': {
+            label: _sdT('Gift cards of the item'),
+            arg: '', argRequired: false,
+            kinds: ['shopping_cart'],
+            rows: [
+                ['__gift_card_number',        _sdT('Number of the gift card')],
+                ['__gift_card_count',         _sdT('Number of gift cards')],
+                ['__gift_card_field',         _sdT('Name of the card\'s fields')],
+                ['__gift_card_email',         _sdT('Recipient Email')],
+                ['__gift_card_from_name',     _sdT('From Name')],
+                ['__gift_card_message',       _sdT('Message')],
+                ['__gift_card_delivery_date', _sdT('Delivery Date')]
+            ]
+        },
+        // The express order's sources (pg_sw_list_checkout_sources()): rows
+        // under the whole order only; a cart list inside a recipients row
+        // lists that recipient's products.
+        'checkout.offers': {
+            label: _sdT('Offers applied to the order'),
+            arg: '', argRequired: false,
+            kinds: ['express_order'],
+            rows: [
+                ['__offer_code', _sdT('Offer code')],
+                ['__offer_text', _sdT('Offer text')]
+            ]
+        },
+        'checkout.suggestions': {
+            label: _sdT('Offers to suggest'),
+            arg: '', argRequired: false,
+            kinds: ['express_order'],
+            rows: [
+                ['__offer_text',         _sdT('Offer text')],
+                ['__offer_action_url',   _sdT('Offer page URL')],
+                ['__offer_action_label', _sdT('Offer button label')]
+            ]
+        },
+        'checkout.gift_cards': {
+            label: _sdT('Gift cards applied to the order'),
+            arg: '', argRequired: false,
+            kinds: ['express_order'],
+            rows: [
+                ['__gift_card_code',       _sdT('Gift card code (masked)')],
+                ['__gift_card_amount',     _sdT('Amount taken from the card')],
+                ['__gift_card_balance',    _sdT('Remaining Balance')],
+                ['__gift_card_remove_url', _sdT('Remove gift card URL')]
+            ]
+        },
+        'checkout.recipients': {
+            label: _sdT('Recipients in the cart'),
+            arg: '', argRequired: false,
+            kinds: ['express_order'],
+            rows: [
+                ['__ship_to_key',                    _sdT('Recipient in the order')],
+                ['__recipient_index',                _sdT('Recipient number')],
+                ['__recipient_name',                 _sdT('Recipient name')],
+                ['__recipient_address_first_name',   _sdT('Recipient First Name')],
+                ['__recipient_address_last_name',    _sdT('Recipient Last Name')],
+                ['__recipient_address_company',      _sdT('Company')],
+                ['__recipient_address_address_1',    _sdT('Address line 1')],
+                ['__recipient_address_address_2',    _sdT('Address line 2')],
+                ['__recipient_address_city',         _sdT('City')],
+                ['__recipient_address_state',        _sdT('State / Province')],
+                ['__recipient_address_zip_code',     _sdT('Zip Code')],
+                ['__recipient_address_country',      _sdT('Country')],
+                ['__recipient_address_phone_number', _sdT('Phone')],
+                ['__ship_to_item_count',             _sdT('Number of items')]
             ]
         },
         // The menu source (pg_sw_list_menu_sources()): the items under the
@@ -55284,6 +55485,15 @@ const StyleDesigner = (function () {
 
     // What the canvas shows for a list row's value: one sample row.
     var _SD_LIST_ROW_PREVIEWS = {
+        __offer_code:          'WELCOME10',
+        __offer_text:          _sdT('10% off your first order'),
+        __offer_action_url:    '#',
+        __offer_action_label:  _sdT('More Info'),
+        __gift_card_code:      '************1234',
+        __gift_card_amount:    '₺25,00',
+        __gift_card_balance:   '₺50,00',
+        __gift_card_remove_url: '#',
+        __recipient_index:     '1',
         __value_text:  _sdT('Example'),
         __value_param: 'example',
         __file_name:   'document.pdf',
@@ -55462,6 +55672,7 @@ const StyleDesigner = (function () {
         if (source === 'catalog.active_filters') return _sdPartCatalogActiveFilters()[0];
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
+        if (source.indexOf('checkout.') === 0) return _sdCheckoutListStarter(source, bs);
         if (source === 'menu.children') {
             return createNode('semantic', { tag: 'ul', cssClass: bs ? 'list-unstyled ps-3' : '', customName: _sdT('Sub-items of a menu item') }, [
                 createNode('loop_area', { source: source }, [
@@ -55615,16 +55826,86 @@ const StyleDesigner = (function () {
         ])]);
     }
 
+    // A new express order list (pg_sw_list_checkout_sources()): the applied
+    // offers as a success alert's list, the suggestions as info alerts with
+    // a link shown only when the offer points to a page, the gift cards as a
+    // list group with a remove link, the recipients as cards holding a list
+    // of their products. Every word is the designer's to restyle or
+    // translate.
+    /* @pg-site-output */
+    function _sdCheckoutListStarter(source, bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var text = function (tag, cls, name, sample, token) {
+            return sem(tag, cls, name, { text: sample, _bindings: { text: token } });
+        };
+        var list = function (kids) { return createNode('loop_area', { source: source }, kids); };
+        if (source === 'checkout.offers') {
+            return sem('div', 'alert alert-success small', _sdT('Offers applied to the order'), {}, [
+                sem('div', 'fw-semibold mb-1', _sdT('Heading'), { text: _sdT('Applied Offers') }),
+                sem('ul', 'mb-0 ps-3', _sdT('Offers applied to the order'), {}, [list([
+                    text('li', '', _sdT('Offer text'), _sdT('10% off your first order'), '__offer_text')
+                ])])
+            ]);
+        }
+        if (source === 'checkout.suggestions') {
+            return sem('div', '', _sdT('Offers to suggest'), {}, [list([
+                sem('div', 'alert alert-info small mb-2', _sdT('Offer'), {}, [
+                    text('span', '', _sdT('Offer text'), _sdT('Add one more product for free shipping'), '__offer_text'),
+                    sem('a', 'alert-link ms-2', _sdT('Offer button label'), { text: _sdT('More Info'), href: '#',
+                        _bindings: { href: '__offer_action_url', text: '__offer_action_label', show_if: '__offer_action_url' },
+                        _bindParams: { show_if: { op: 'not_empty' } } })
+                ])
+            ])]);
+        }
+        if (source === 'checkout.gift_cards') {
+            return sem('ul', 'list-group mb-3', _sdT('Gift cards applied to the order'), {}, [list([
+                sem('li', 'list-group-item d-flex flex-wrap justify-content-between gap-2 small', _sdT('Gift Card'), {}, [
+                    sem('span', '', _sdT('Gift Card'), {}, [
+                        text('span', 'fw-semibold', _sdT('Gift card code (masked)'), '************1234', '__gift_card_code'),
+                        sem('span', 'text-body-secondary ms-2', _sdT('Remaining Balance'), {}, [
+                            sem('span', '', _sdT('Remaining Balance'), { text: _sdT('Remaining Balance') + ': ' }),
+                            text('span', '', _sdT('Remaining Balance'), '₺50,00', '__gift_card_balance')
+                        ])
+                    ]),
+                    sem('span', '', _sdT('Amount taken from the card'), {}, [
+                        sem('span', '', '-', { text: '-' }),
+                        text('span', '', _sdT('Amount taken from the card'), '₺25,00', '__gift_card_amount'),
+                        sem('a', 'ms-2', _sdT('Remove'), { text: _sdT('Remove'), href: '#', _bindings: { href: '__gift_card_remove_url' } })
+                    ])
+                ])
+            ])]);
+        }
+        var products = _sdOrderListStarter('cart.items', bs);
+        return sem('div', 'd-grid gap-3', _sdT('Recipients in the cart'), {}, [list([
+            sem('div', 'card', _sdT('Recipient'), {}, [
+                sem('div', 'card-header d-flex justify-content-between', _sdT('Recipient'), {}, [
+                    text('span', 'fw-semibold', _sdT('Recipient name'), _sdT('Recipient name'), '__recipient_name'),
+                    text('span', 'small text-body-secondary', _sdT('City'), _sdT('City'), '__recipient_address_city')
+                ]),
+                products
+            ])
+        ])]);
+    }
+
     // Whether a list of `source` draws nothing where it stands for want of
     // its key: a list of the recipients, the steps or the returns inside a
-    // list of the recipients (they list the whole order alone).
+    // list of the recipients (they list the whole order alone); an express
+    // order list but the cart's inside a list of its recipients.
     function _sdOrderListKeyless(source, node) {
+        if (source.indexOf('checkout.') === 0) {
+            return _sdListsAbove(node).some(function (l) { return l.props.source === 'checkout.recipients'; });
+        }
         var key = _sdOrderItemListKey(source);
         if (key) {
             // An item's lists read the item they stand in: the items loop's
-            // row or a list of the items (the fields, a form's row).
+            // row (the order's, the cart's) or a list of the items (the
+            // fields, a form's row).
             return !_sdListsAbove(node).some(function (l) { return l.props.source === key; })
-                && (key !== 'order.items' || !_sdInMainLoopAt(node));
+                && ((key !== 'order.items' && key !== 'cart.items') || !_sdInMainLoopAt(node));
         }
         if (source !== 'order.shipments' && source !== 'order.steps' && source !== 'order.returns') return false;
         return _sdListsAbove(node).some(function (l) { return l.props.source === 'order.shipments'; });
@@ -55635,6 +55916,7 @@ const StyleDesigner = (function () {
     // other source.
     function _sdOrderItemListKey(source) {
         var keys = { 'order.item_forms': 'order.items', 'order.item_gift_cards': 'order.items', 'order.item_form_fields': 'order.item_forms',
+            'cart.item_gift_cards': 'cart.items',
             'order.return_lines': 'order.returns' };
         return keys.hasOwnProperty(source) ? keys[source] : '';
     }
@@ -55955,7 +56237,7 @@ const StyleDesigner = (function () {
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
         if (_sdListNeedsMainLoop(kind, spec.source) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
-        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(node) && !_sdOrderItemListKey(spec.source)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
+        if ((kind === 'order_view' || kind === 'shopping_cart' || kind === 'express_order') && _sdInMainLoopAt(node) && !_sdOrderItemListKey(spec.source)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
         if (_sdOrderListKeyless(spec.source, node)) {
             return { off: true, text: _sdOrderItemListKey(spec.source)
                 ? _sdT('{var}: outside an item of the order, nothing is drawn', src.label)
@@ -56018,6 +56300,52 @@ const StyleDesigner = (function () {
     // Inside a list inside the record its row's values follow
     // (_sdListRowOptions()); inside a loop the row position tokens, in
     // every kind.
+    // The Properties row that puts a widget value inside an element's
+    // words: a list of the values; picking one adds it as an element of its
+    // own (a span bound to it) and writes its {var:N} at the end of the
+    // words, where the operator moves it. '' when it does not apply.
+    function _sdSentenceRow(n) {
+        if (!n || n.type !== 'semantic' || !_isInsideSystemWidget(n)) return '';
+        var tag = String(n.props.tag || '').toLowerCase();
+        if (['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr',
+             'pre','textarea','code','select','option','script','style'].indexOf(tag) !== -1) return '';
+        if (n.props._bindings && n.props._bindings.text) return '';
+        var isSentence = _sdIsSentence(n);
+        if (!isSentence && n.children && n.children.length) return '';
+        var seen = {};
+        var opts = '<option value="">' + esc(_sdT('Choose a value')) + '</option>';
+        _swBindTokenOptions(n).forEach(function (o) {
+            if (!o.token || seen[o.token]) return;
+            seen[o.token] = true;
+            opts += '<option value="' + esc(o.token) + '">' + esc(String(o.label || o.token).replace(/<[^>]*>/g, '')) + '</option>';
+        });
+        return '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Value in the text')) + '</label>' +
+            '<div class="sd-prop-control"><select class="form-control form-control-sm" data-sentence-add>' + opts + '</select>' +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(isSentence
+                ? _sdT('{var:1} in the text is where the first value stands, {var:2} the second. Move it where the words need it; a translation keeps it.')
+                : _sdT('The value becomes an element inside the words, styled on its own; the words stay one translatable sentence.')) +
+            '</div></div></div>';
+    }
+
+    // Adds `token` to the words of `n` (_sdSentenceRow()).
+    /* @pg-site-output */
+    function _sdSentenceAdd(n, token) {
+        if (!n || !token) return;
+        if (!n.children) n.children = [];
+        n.props._sentence = true;
+        var label = token;
+        _swBindTokenOptions(n).some(function (o) {
+            if (o.token !== token) return false;
+            label = String(o.label || token).replace(/<[^>]*>/g, '');
+            return true;
+        });
+        n.children.push(createNode('semantic', { tag: 'span', cssClass: '', text: '', customName: label, _bindings: { text: token } }, []));
+        var text = String(n.props.text || '');
+        var mark = '{var:' + n.children.length + '}';
+        n.props.text = (text.trim() === '') ? mark : text.replace(/\s+$/, '') + ' ' + mark;
+        _sdSharedMarkEdited(n);
+    }
+
     function _swBindTokenOptions(node) {
         var type = _getSystemWidgetRegionType(node);
         if (!type) return [];
@@ -59500,6 +59828,18 @@ const StyleDesigner = (function () {
                     return _swAcctField(label, asId + suffix, 'text', 'code', { required: true, autocomplete: 'one-time-code',
                         attrs: [{ name: 'inputmode', value: 'numeric' }, { name: 'maxlength', value: '20' }, { name: 'spellcheck', value: 'false' }] });
                 };
+                var asPassword = function (suffix) {
+                    return createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password'),
+                        _bindings: { eo_visible_if: 'passkey_asks_password' } }, [
+                        _swAcctField(_sdT('Current password'), asId + suffix, 'password', 'current_password',
+                            { required: true, autocomplete: 'current-password' })
+                    ]);
+                };
+                var asDetails = function (summary, kids) {
+                    return createNode('semantic', { tag: 'details', cssClass: '', customName: summary }, [
+                        createNode('semantic', { tag: 'summary', cssClass: 'small', text: summary, customName: _sdT('Summary') })
+                    ].concat(kids));
+                };
                 var asDevice = createNode('loop_area', {}, [
                     createNode('semantic', { tag: 'div', cssClass: 'list-group-item d-flex justify-content-between align-items-center gap-3', customName: _sdT('Device') }, [
                         createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Device Info') }, [
@@ -59516,6 +59856,29 @@ const StyleDesigner = (function () {
                                     _bindings: { eo_visible_if: 'device_online' } }),
                                 createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('2 days ago'), customName: _sdT('Last Used'),
                                     _bindings: { text: '__device_last_used', eo_visible_if: 'device_offline' } })
+                            ]),
+                            // A session opened with a passkey names it and
+                            // can end with it (pg_account_security_section()).
+                            createNode('semantic', { tag: 'div', cssClass: 'small', customName: _sdT('Signed In With Passkey'),
+                                _bindings: { eo_visible_if: 'device_by_passkey' } }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Signed in with the passkey'), customName: _sdT('Label') }),
+                                createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('My phone'), customName: _sdT('Value'),
+                                    _bindings: { text: '__device_passkey' } }),
+                                createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Remove Passkey'),
+                                    _bindings: { eo_visible_if: 'passkey_can_change' } }, [
+                                    asDetails(_sdT('Sign out and remove the passkey'), [
+                                        asForm(_sdT('Remove Form'), '', 'mt-2', [
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'small mb-2',
+                                                text: _sdT('Removing it also signs out the sessions it opened. Delete it from your device or password manager as well.') }),
+                                            asPassword('_dev_pk_password'),
+                                            createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Code'),
+                                                _bindings: { eo_visible_if: 'passkey_asks_code' } }, [
+                                                asCode(_sdT('Code from your authenticator app or a recovery code'), '_dev_pk_code')
+                                            ]),
+                                            asButton(_sdT('Sign out and remove the passkey'), 'passkey_remove', 'btn btn-sm btn-outline-danger', _sdT('Remove Button'))
+                                        ])
+                                    ])
+                                ])
                             ])
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'flex-shrink-0', customName: _sdT('Device Action') }, [
@@ -59531,18 +59894,6 @@ const StyleDesigner = (function () {
                 // pg_passkey_add_form_script() keeps hidden until the
                 // browser can make passkeys. Mirrors
                 // pg_passkey_account_section().
-                var asPassword = function (suffix) {
-                    return createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password'),
-                        _bindings: { eo_visible_if: 'passkey_asks_password' } }, [
-                        _swAcctField(_sdT('Current password'), asId + suffix, 'password', 'current_password',
-                            { required: true, autocomplete: 'current-password' })
-                    ]);
-                };
-                var asDetails = function (summary, kids) {
-                    return createNode('semantic', { tag: 'details', cssClass: '', customName: summary }, [
-                        createNode('semantic', { tag: 'summary', cssClass: 'small', text: summary, customName: _sdT('Summary') })
-                    ].concat(kids));
-                };
                 var asPasskey = createNode('loop_area', { source: 'security.passkeys' }, [
                     createNode('semantic', { tag: 'div', cssClass: 'list-group-item', customName: _sdT('Passkey') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-2', customName: _sdT('Passkey name') }, [
@@ -59592,7 +59943,11 @@ const StyleDesigner = (function () {
                     _bindings: { eo_visible_if: 'passkeys_shown' } }, [
                     createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Passkeys'), cssClass: 'mb-2' }),
                     createNode('content', { contentType: 'paragraph', cssClass: 'mb-3',
-                        text: _sdT('A passkey lets your fingerprint, face or screen lock, or a security key, stand in for the code from your authenticator app when you sign in.') }),
+                        text: _sdT('A passkey lets your fingerprint, face or screen lock, or a security key, stand in for the code from your authenticator app when you sign in.'),
+                        _bindings: { eo_visible_if: 'passkey_asks_code' } }),
+                    createNode('content', { contentType: 'paragraph', cssClass: 'mb-3',
+                        text: _sdT('A passkey lets your fingerprint, face or screen lock, or a security key, sign you in. Once the account has one, signing in with the password asks for it too.'),
+                        _bindings: { eo_visible_if: 'passkey_asks_email_code' } }),
                     createNode('semantic', { tag: 'p', cssClass: 'mb-0', customName: _sdT('Passkey Count'),
                         _bindings: { eo_visible_if: 'is_impersonated' } }, [
                         createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Passkeys of this account:'), customName: _sdT('Label') }),
@@ -59615,7 +59970,30 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Name'), asId + '_pk_add_name', 'text', 'name', {
                             attrs: [{ name: 'maxlength', value: '100' }, { name: 'placeholder', value: _sdT('My phone') }] }),
                         asPassword('_pk_add_password'),
-                        asCode(_sdT('Code from your authenticator app or a recovery code'), '_pk_add_code'),
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Code'),
+                            _bindings: { eo_visible_if: 'passkey_asks_code' } }, [
+                            asCode(_sdT('Code from your authenticator app or a recovery code'), '_pk_add_code')
+                        ]),
+                        // Without two-step verification: a code e-mailed to
+                        // the account. The field's name (email_code) is what
+                        // lets such an account add a passkey here.
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('E-mailed Code'),
+                            _bindings: { eo_visible_if: 'passkey_asks_email_code' } }, [
+                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('Code we e-mail you'), customName: _sdT('Label'),
+                                _attrs: [{ name: 'for', value: asId + '_pk_add_email_code' }] }),
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2', customName: _sdT('Code and Button') }, [
+                                createNode('semantic', { tag: 'input', cssClass: 'form-control w-auto', customName: _sdT('Code Field'),
+                                    _attrs: [{ name: 'type', value: 'text' }, { name: 'id', value: asId + '_pk_add_email_code' }, { name: 'name', value: 'email_code' },
+                                        { name: 'required', value: '' }, { name: 'inputmode', value: 'numeric' }, { name: 'autocomplete', value: 'one-time-code' },
+                                        { name: 'maxlength', value: '12' }, { name: 'spellcheck', value: 'false' }] }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary', text: _sdT('Send the code'), customName: _sdT('Send Button'),
+                                    _attrs: [{ name: 'type', value: 'button' }], _bindings: { action: 'passkey_send_code' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'form-text', customName: _sdT('Sent'),
+                                _attrs: [{ name: 'role', value: 'status' }, { name: 'data-pg-passkey-sent', value: '' }] }),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'small text-muted mt-2 mb-0',
+                                text: _sdT('Once you add a passkey, signing in with your password also asks for it. You get recovery codes for when the passkey is lost.') })
+                        ]),
                         createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Add a passkey'), customName: _sdT('Add Button'),
                             _attrs: [{ name: 'type', value: 'submit' }] }),
                         createNode('semantic', { tag: 'div', cssClass: 'text-danger small mt-2', customName: _sdT('Message'),
@@ -61734,6 +62112,20 @@ const StyleDesigner = (function () {
                     });
                     if (P.text) _wsInner += esc(P.text);
                     h += _wsInner + '</' + stg + '>\n';
+                } else if (_sdIsSentence(n)) {
+                    // A sentence with values on one line, its children in
+                    // their places (pg_sentence_html()).
+                    var _snInner = '';
+                    _sdSentenceLayout(n.props.text, (n.children || []).length).forEach(function (piece) {
+                        if (typeof piece !== 'number') { _snInner += esc(piece); return; }
+                        var c = n.children[piece - 1];
+                        var _snMark = sink ? sink.ranges.length : 0;
+                        var _snPart = _sdEmitNode(c, 0, base + h.length + _snInner.length, sink);
+                        var _snKept = _snPart.replace(/\n+$/, '');
+                        if (sink && sink.ranges[_snMark] && sink.ranges[_snMark].node === c) sink.ranges[_snMark].to -= (_snPart.length - _snKept.length);
+                        _snInner += _snKept;
+                    });
+                    h += _snInner + '</' + stg + '>\n';
                 } else {
                     h += '\n';
                     // Button/a honor textPosition — matches canvas virtual-text placement.
@@ -66430,12 +66822,14 @@ const StyleDesigner = (function () {
     function _collabAvatarEl(person, editing) {
         var el = document.createElement('span');
         el.className = 'sd-presence-avatar' + (editing ? ' is-editing' : '');
-        if (person.avatar) {
+        // A picture of letters (data:image/svg+xml) is drawn as the letters
+        // themselves, the way the panel's Avatar draws them.
+        if (person.avatar && String(person.avatar).indexOf('data:image/svg+xml') !== 0) {
             var img = document.createElement('img');
             img.src = person.avatar; img.alt = '';
             el.appendChild(img);
         } else {
-            el.appendChild(document.createTextNode(_collabInitial(person.name || person.username)));
+            el.appendChild(document.createTextNode(person.initials ? String(person.initials) : _collabInitial(person.name || person.username)));
         }
         var dot = document.createElement('span');
         dot.className = 'sd-presence-dot';

@@ -97,6 +97,9 @@ define('WS_FLOW_DELAY_MAX', 10080);
 /** The longest a task box waits before it leaves on timeout, in hours: as long as an approval waits for its decision (30 days). */
 define('WS_FLOW_TIMEOUT_MAX', 720);
 
+/** How many times a failed step box tries again on its own: eight tries in all, the depth a scheduled action that starts itself again stops at. */
+define('WS_FLOW_RETRY_MAX', 7);
+
 /* ---------------------------------------------------------------------------
    States and the walk (pure)
    --------------------------------------------------------------------------- */
@@ -741,6 +744,91 @@ function ws_flow_delay_settlement($key, $now)
     }
 
     return array('status' => 'done', 'outcome' => 'done', 'data' => array('waited_until' => ws_flow_time($until)));
+}
+
+/* ---------------------------------------------------------------------------
+   A step box tried again on its own (pure)
+   --------------------------------------------------------------------------- */
+
+/**
+ * A step box's settings for trying again after a failure: retry, how many
+ * times (0 for never, at most WS_FLOW_RETRY_MAX), and retry_after, the
+ * minutes before each try ('' when unset, else 1 to WS_FLOW_DELAY_MAX, a
+ * scheduled action's start delay). The flows' answer to a scheduled action
+ * whose follow-up on failed starts itself again.
+ *
+ * @param array $config
+ * @return array retry, retry_after
+ */
+function ws_flow_retry_normalize($config)
+{
+    $times = $config['retry'] ?? 0;
+    $after = $config['retry_after'] ?? '';
+
+    return array(
+        'retry'       => (is_bool($times) || !is_numeric($times)) ? 0 : max(0, min(WS_FLOW_RETRY_MAX, (int) $times)),
+        'retry_after' => (is_bool($after) || !is_numeric($after)) ? '' : max(1, min(WS_FLOW_DELAY_MAX, (int) $after)),
+    );
+}
+
+/**
+ * What a step box that tries again still lacks: the minutes to wait.
+ *
+ * @param array  $config ws_flow_retry_normalize()
+ * @param string $name   the box's name in the sentence
+ * @return string[]
+ */
+function ws_flow_retry_problems($config, $name)
+{
+    if (((int) ($config['retry'] ?? 0) > 0) && (($config['retry_after'] ?? '') === '')) {
+        return array(lang(array('string' => 'The box {var:1} tries again after a failure, but has no minutes to wait before it does.', 'vars' => $name)));
+    }
+
+    return array();
+}
+
+/**
+ * When a step box that failed on this attempt tries again: the moment, or 0
+ * when it does not (no tries set, or all of them used). The attempt is the
+ * claim's count (ws_flow_step_claim()), so the first failure is attempt 1.
+ *
+ * @param array $config  ws_flow_retry_normalize()
+ * @param int   $attempt
+ * @param int   $now
+ * @return int
+ */
+function ws_flow_retry_until($config, $attempt, $now)
+{
+    $times = (int) ($config['retry'] ?? 0);
+    $after = $config['retry_after'] ?? '';
+
+    if (($times < 1) || ($after === '') || ((int) $attempt < 1) || ((int) $attempt > $times)) {
+        return 0;
+    }
+
+    return (int) $now + (int) $after * 60;
+}
+
+/**
+ * The key a step box waiting to try again keeps (wait_key): retry:<until>.
+ *
+ * @param int $until
+ * @return string
+ */
+function ws_flow_retry_key($until)
+{
+    return 'retry:' . (int) $until;
+}
+
+/**
+ * The moment a waiting try's key names, 0 for a key of another kind.
+ *
+ * @param string $key
+ * @return int
+ */
+function ws_flow_retry_key_until($key)
+{
+    return preg_match('/^retry:([1-9][0-9]{0,11})$/', (string) $key, $match) ? (int) $match[1] : 0;
 }
 
 /* ---------------------------------------------------------------------------
@@ -2291,6 +2379,10 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
  */
 function ws_flow_step_recheck($step)
 {
+    if (ws_flow_retry_key_until($step['wait_key']) > 0) {
+        return ws_flow_retry_recheck($step);
+    }
+
     if (ws_flow_delay_key_until($step['wait_key']) > 0) {
         return ws_flow_delay_recheck($step);
     }
@@ -2430,6 +2522,92 @@ function ws_flow_delay_recheck($step)
     }
 
     return ws_flow_step_settle($step, 'waiting', 'done', 'done', lang(array('string' => 'Waited until {var:1}.', 'vars' => ws_scheduled_moment($until))), $settled['data']);
+}
+
+/**
+ * A step box that failed on this attempt and has tries left
+ * (ws_flow_retry_until()) waits to try again instead of settling: in one
+ * conditional write it forgets what it began (its next try may post or send
+ * again, as the scheduled action that started itself again did), waits on no
+ * event and has its next look at the moment, keyed retry:<until>. Its result
+ * says why it failed and when it tries again. Each try counts against the
+ * run's limit of boxes, as every claim does.
+ *
+ * @param array  $step ws_flow_run_steps row, running
+ * @param array  $node its box
+ * @param string $text why it failed
+ * @param array  $data the values it gave
+ * @return bool whether it waits (false: settle it as failed)
+ */
+function ws_flow_retry_wait($step, $node, $text, $data = array())
+{
+    $config = ws_flow_retry_normalize($node['config'] ?? array());
+    $attempt = (int) ($step['attempt'] ?? 0);
+    $until = ws_flow_retry_until($config, $attempt, time());
+
+    if ($until <= 0) {
+        return false;
+    }
+
+    $said = lang(array('string' => '{var:1} Tries again at {var:2} (try {var:3} of {var:4}).', 'vars' => array(rtrim($text), ws_scheduled_moment($until), $attempt + 1, $config['retry'] + 1)));
+    $key = ws_flow_retry_key($until);
+
+    db("UPDATE ws_flow_run_steps SET status = 'waiting', effect = '', wait_event = '',
+            wait_key = '" . e($key) . "', wake_at = '" . $until . "',
+            result = '" . e(ws_flow_result_pack($said, $data)) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'running'");
+
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        return true;
+    }
+
+    ws_flow_run_refresh((int) $step['run_id']);
+
+    return true;
+}
+
+/**
+ * A step box waiting to try again looks at its moment: come, it is ready
+ * again (its next claim counts the next attempt), from waiting only, so two
+ * looks do not both make it ready; not yet, its next look goes back to the
+ * moment. A run that ended meanwhile lets it go.
+ *
+ * @param array $step ws_flow_run_steps row, waiting
+ * @return bool whether the box changed
+ */
+function ws_flow_retry_recheck($step)
+{
+    $run = ws_flow_run($step['run_id']);
+
+    if (!$run) {
+        return false;
+    }
+
+    if (!ws_flow_run_open($run['status'])) {
+        return ws_flow_step_settle($step, 'waiting', 'skipped', '', lang('Not reached in this run.'));
+    }
+
+    $now = time();
+    $until = ws_flow_retry_key_until($step['wait_key']);
+
+    if ($now < $until) {
+        db("UPDATE ws_flow_run_steps SET wake_at = '" . $until . "'
+            WHERE id = '" . (int) $step['id'] . "' AND status = 'waiting'");
+
+        return false;
+    }
+
+    ws_flow_run_touch((int) $step['run_id']);
+
+    db("UPDATE ws_flow_run_steps SET status = 'ready', outcome = '', effect = '', wait_event = '', wait_key = '', wake_at = 0,
+            ready_at = '" . $now . "', claimed_at = 0, finished_at = 0
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'waiting' AND wait_key = '" . e($step['wait_key']) . "'");
+
+    $ready = ((int) mysqli_affected_rows(db::$con) === 1);
+
+    ws_flow_run_refresh((int) $step['run_id']);
+
+    return $ready;
 }
 
 /**

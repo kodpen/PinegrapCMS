@@ -676,16 +676,15 @@ function ws_step_node_values($rows)
 /**
  * Fills the {{node.<id>.<field>}} of a text; one the run has no value for
  * becomes empty. The other double braces are left for ws_scheduled_fill().
- * Every "{" of a value is followed by a word joiner (U+2060), so nothing a
- * box gave (a visitor's words, a webhook's answer) is read again as a
- * placeholder by ws_scheduled_fill(), not even with a brace of the text
- * around it. Values without braces are inserted as they are. Pure.
+ * Each value is made safe for where the text lands (ws_step_fill_value()).
+ * Pure.
  *
  * @param string $text
  * @param array  $values ws_step_node_values()
+ * @param string $target ws_step_fill_target()
  * @return string
  */
-function ws_step_fill_nodes($text, $values)
+function ws_step_fill_nodes($text, $values, $target = 'text')
 {
     $text = (string) $text;
 
@@ -693,13 +692,77 @@ function ws_step_fill_nodes($text, $values)
         return $text;
     }
 
-    return (string) preg_replace_callback('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', function ($match) use ($values) {
-        return str_replace('{', "{\u{2060}", (string) ($values[$match[1]][$match[2]] ?? ''));
+    return (string) preg_replace_callback('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', function ($match) use ($values, $target) {
+        return ws_step_fill_value((string) ($values[$match[1]][$match[2]] ?? ''), $target);
     }, $text);
 }
 
 /**
- * A step's texts with the {{node.*}} values of its run filled in. Pure.
+ * Where a step's texts land, which decides how a value is filled into them:
+ * message (a Workspace message, task or approval request, whose
+ * <@user:N> and <#order:N> tags would mention people and tag records), chat
+ * (a webhook's text read by Slack, Teams or Google Chat), discord, or text
+ * (a plain e-mail, an inbox notice, a webhook's JSON body, the task e-mail,
+ * which escapes its HTML where it writes it). Pure.
+ *
+ * @param string $kind   a step kind, or task (the box that waits)
+ * @param array  $action ws_scheduled_action_input()
+ * @return string message | chat | discord | text
+ */
+function ws_step_fill_target($kind, $action)
+{
+    switch ($kind) {
+        case 'post':
+        case 'task':
+        case 'task_open':
+        case 'report':
+        case 'checkin':
+        case 'approval':
+            return 'message';
+
+        case 'webhook':
+            $format = (string) ($action['format'] ?? '');
+
+            return ($format === 'text') ? 'chat' : (($format === 'discord') ? 'discord' : 'text');
+    }
+
+    return 'text';
+}
+
+/**
+ * One {{node.*}} value as it goes into a text landing at $target. Every "{"
+ * is followed by a word joiner (U+2060), so nothing a box gave (a visitor's
+ * words, a webhook's answer) is read again as a placeholder by
+ * ws_scheduled_fill(), not even with a brace of the text around it. In a
+ * message or a chat service so is every "<", so the value's tags, mentions
+ * and links (<@user:5>, <!channel>, <url|label>) stay text; Discord's
+ * @everyone and @here as well. The HTML is escaped where it is written (the
+ * message renderer, the task e-mail) and a webhook's body by json_encode(),
+ * so the value is not escaped here: it would show twice escaped. Pure.
+ *
+ * @param string $value
+ * @param string $target ws_step_fill_target()
+ * @return string
+ */
+function ws_step_fill_value($value, $target)
+{
+    $value = str_replace('{', "{\u{2060}", (string) $value);
+
+    if (in_array($target, array('message', 'chat', 'discord'), true)) {
+        $value = str_replace('<', "<\u{2060}", $value);
+    }
+
+    if ($target === 'discord') {
+        $value = (string) preg_replace('/@(everyone|here)/i', "@\u{2060}\$1", $value);
+    }
+
+    return $value;
+}
+
+/**
+ * A step's texts with the {{node.*}} values of its run filled in, each made
+ * safe for where the texts land (ws_step_fill_target()); a line field loses
+ * its control characters and line breaks after the fill. Pure.
  *
  * @param string $kind
  * @param array  $action ws_scheduled_action_input()
@@ -709,10 +772,11 @@ function ws_step_fill_nodes($text, $values)
 function ws_step_fill_action($kind, $action, $values)
 {
     $info = ws_step_kinds()[$kind] ?? array('texts' => array(), 'lines' => array());
+    $target = ws_step_fill_target($kind, $action);
 
     foreach ($info['texts'] as $key) {
         if (isset($action[$key]) && is_string($action[$key])) {
-            $action[$key] = ws_step_fill_nodes($action[$key], $values);
+            $action[$key] = ws_step_fill_nodes($action[$key], $values, $target);
 
             if (in_array($key, $info['lines'], true)) {
                 $action[$key] = trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $action[$key]));
@@ -878,16 +942,22 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
 
     if (!$check['ok']) {
-        $end = ws_step_settlement(false, $routed);
-        ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $check['error']);
+        if (!ws_flow_retry_wait($step, $node, $check['error'])) {
+            $end = ws_step_settlement(false, $routed);
+            ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $check['error']);
+        }
+
         return;
     }
 
     $refusal = ws_step_starter_refusal($run, $kind, $node['config']);
 
     if ($refusal !== '') {
-        $end = ws_step_settlement(false, $routed);
-        ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $refusal);
+        if (!ws_flow_retry_wait($step, $node, $refusal)) {
+            $end = ws_step_settlement(false, $routed);
+            ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $refusal);
+        }
+
         return;
     }
 
@@ -945,9 +1015,18 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         return;
     }
 
+    $data = ws_step_result_data($kind, $node['config'], $done);
+
+    // A failure tries again first where the box is set to (its owner's
+    // answer to a passing outage); the arrow on failed is taken once the
+    // tries are used.
+    if (empty($done['ok']) && ws_flow_retry_wait($step, $node, (string) ($done['text'] ?? ''), $data)) {
+        return;
+    }
+
     $end = ws_step_settlement(!empty($done['ok']), $routed);
 
-    ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), ws_step_result_data($kind, $node['config'], $done));
+    ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), $data);
 }
 
 /**
@@ -1090,7 +1169,7 @@ function ws_flow_box_try($viewer, $flow, $data)
             return array('outcome' => 'next', 'said' => lang('The flow starts when somebody runs it.')) + $answer;
 
         case 'task':
-            $title = ws_step_fill_nodes((string) ($node['config']['title'] ?? ''), $values);
+            $title = ws_step_fill_nodes((string) ($node['config']['title'] ?? ''), $values, ws_step_fill_target('task', array()));
 
             $hours = function_exists('ws_flow_timeout_hours') ? ws_flow_timeout_hours($node['config']) : 0;
 

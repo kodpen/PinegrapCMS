@@ -10,7 +10,7 @@ description: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (
 
 ## What does the account page show?
 - `pg_account_security_section()`: a session row opened with a passkey says "Signed in with the passkey …" and offers "Sign out and remove the passkey": `pg_passkey_remove_form()` (also under each passkey), the proofs of removing (`core/passkey-without-totp.md`). Not offered while signed in as another user.
-- The designed widget's device rows do not show it yet (step 4c2).
+- The designed widget's device rows: `__device_passkey`, `device_by_passkey`, `__passkey_id` (docs/memory/designer/passkey-widget-list.md).
 
 ## What ends with a passkey?
 - `pg_passkey_remove()` → `pg_passkey_sessions_end()`: its tokens go, so the sessions bound to them end (this browser too when it signed in with it). A synced passkey is one credential on all devices of its cloud account: they all go. Locked (pinned) sessions stay, as with "sign out of all devices".

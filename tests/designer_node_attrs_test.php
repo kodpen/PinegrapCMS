@@ -112,6 +112,7 @@ function _test_designer_attrs_js($nodes, $first = false)
 		array('function _sdSizingValue(', '// Set of all sizing-managed'),
 		array('function getNodeExtraClasses(', '// ========================= TREE VIEW & HTML GEN'),
 		array('function _sdEmitNode(', '// Children written into a component'),
+		array('function _sdIsSentence(', '// Server-render tokens (^^__name^^'),
 		array('function buildColClasses(', '// ========================= ROW / COL CLASS PARSERS'),
 	);
 	// esc() of the designer without its DOM, the text helper and no SVG

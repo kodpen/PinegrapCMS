@@ -345,7 +345,7 @@
             document.body.appendChild(toastRoot);
         }
 
-        var box = el('div', 'toast align-items-center border-0 show text-bg-' + (kind || 'dark'));
+        var box = el('div', 'toast align-items-center border-0 text-bg-' + (kind || 'dark'));
         box.setAttribute('role', 'status');
 
         var row = el('div', 'd-flex');
@@ -361,12 +361,23 @@
         row.appendChild(text);
 
         var close = button('btn-close fg-white me-3 m-auto', '', '', t('close'));
-        close.addEventListener('click', function () { box.remove(); });
+        close.setAttribute('data-bs-dismiss', 'toast');
         row.appendChild(close);
         box.appendChild(row);
         toastRoot.appendChild(box);
 
-        setTimeout(function () { box.remove(); }, 5000);
+        // Bootstrap's Toast: hides after five seconds, pauses while hovered
+        // or focused, and the close button dismisses it.
+        var instance = window.pgUI ? pgUI.toast.get(box, { delay: 5000 }) : null;
+
+        if (instance) {
+            pgUI.toast.on(box, 'hidden', function () { box.remove(); });
+            instance.show();
+        } else {
+            box.classList.add('show');
+            close.addEventListener('click', function () { box.remove(); });
+            setTimeout(function () { box.remove(); }, 5000);
+        }
     }
 
     function fail(error) {
@@ -8235,6 +8246,11 @@
                 divider();
             }
 
+            if (channel.bulk_products && !channel.archived) {
+                item(t('bulk_make_products'), 'bi-box-seam', function () { self.bulkMakeProducts({}); });
+                divider();
+            }
+
             if (channel.joined) {
                 [['all', t('notify_all')], ['mentions', t('notify_mentions')], ['none', t('notify_none')]].forEach(function (option) {
                     item(option[1] + (channel.notify === option[0] ? ' ✓' : ''), option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
@@ -8768,6 +8784,17 @@
                         self.fileVersions(message, versions);
                     });
                     fileBox.appendChild(versions);
+                }
+
+                // A CSV or spreadsheet of the channel made into product
+                // drafts, for whoever may make products here.
+                if (self.channel && self.channel.bulk_products && /\.(csv|xlsx|xlsm|xls|ods)$/i.test(message.file.name || '')) {
+                    var makeProducts = button('ws-file-versions', t('bulk_make_products'), 'bi-box-seam');
+                    makeProducts.addEventListener('click', function (event) {
+                        event.stopPropagation();
+                        self.bulkMakeProducts({ message_id: message.id });
+                    });
+                    fileBox.appendChild(makeProducts);
                 }
 
                 main.appendChild(fileBox);
@@ -10020,6 +10047,40 @@
             });
         },
 
+        // Product drafts as one bulk card (bulk_sources.php): from a file of
+        // the channel, or from a list pasted into the question window. The
+        // card waits under a message of the person's own until they apply it.
+        bulkMakeProducts: function (source) {
+            var self = this;
+            var channel = self.channel;
+            var text = null;
+            var asked = Promise.resolve(true);
+
+            if (!source.message_id) {
+                text = el('textarea', 'form-control form-control-sm');
+                text.rows = 8;
+                text.placeholder = t('bulk_make_placeholder');
+                text.setAttribute('aria-label', t('bulk_make_products'));
+                asked = ask(t('bulk_make_intro'), t('bulk_make_go'), false, text);
+                window.setTimeout(function () { text.focus(); }, 200);
+            }
+
+            asked.then(function (yes) {
+                if (!yes || (text && !text.value.trim())) {
+                    return;
+                }
+
+                api('ws_bulk_create_propose', {
+                    channel_id: channel.id,
+                    message_id: source.message_id || 0,
+                    text: text ? text.value : ''
+                }).then(function (data) {
+                    toast(t('bulk_make_done', data.count) + ((data.ignored && data.ignored.length) ? ' ' + t('bulk_make_ignored', data.ignored.join(', ')) : ''), 'success');
+                    self.sync(true);
+                }).catch(fail);
+            });
+        },
+
         // Record changes an answer proposes: what each field holds and would
         // hold. Only the person who asked applies them, with their own rights.
         // A bulk change being applied: the next slice, one at a time, until
@@ -10194,7 +10255,7 @@
                     meter.appendChild(fill);
                     card.appendChild(meter);
                     card.appendChild(el('div', 'ws-draft-meta', (change.status === 'applying' ? t('bulk_running') + ' ' + t('bulk_progress', progress.done + progress.skipped + progress.failed, progress.total) + ' · ' : '')
-                        + t('bulk_result', progress.done, progress.skipped, progress.failed)));
+                        + t(change.bulk.create ? 'bulk_create_result' : 'bulk_result', progress.done, progress.skipped, progress.failed)));
 
                     (progress.errors || []).forEach(function (error) {
                         card.appendChild(el('div', 'small fg-emphasis-danger', error));
@@ -10219,7 +10280,7 @@
                     var apply = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('change_apply'), 'bi-check2');
 
                     apply.addEventListener('click', function () {
-                        var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : 'bulk_warning', change.bulk.total) : change.warning;
+                        var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : (change.bulk.create ? 'bulk_create_warning' : 'bulk_warning'), change.bulk.total) : change.warning;
                         var go = question ? ask(question, t('change_apply'), true) : Promise.resolve(true);
 
                         go.then(function (yes) {
@@ -17185,14 +17246,17 @@
 
     // Every scheduled action, for staff, by state: the scheduled screen's
     // list and the Scheduled actions section of Flows (workspace_flow.js,
-    // through PGWsKit). New goes into bar; the list is read again while it
-    // is still on the page.
-    function scheduledList(body, bar) {
-        var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_new_long'), 'bi-plus-lg');
-        add.addEventListener('click', function () {
-            scheduledForm({}, null, function () { load(); });
-        });
-        bar.appendChild(add);
+    // through PGWsKit). New goes into bar, unless options.add is false: in
+    // Flows a new rule is a flow, started from New flow. The list is read
+    // again while it is still on the page.
+    function scheduledList(body, bar, options) {
+        if (!options || (options.add !== false)) {
+            var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_new_long'), 'bi-plus-lg');
+            add.addEventListener('click', function () {
+                scheduledForm({}, null, function () { load(); });
+            });
+            bar.appendChild(add);
+        }
 
         var filters = el('div', 'ws-sa-filters');
         var list = el('div', 'ws-sa-list');

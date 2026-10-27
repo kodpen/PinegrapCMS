@@ -716,6 +716,25 @@ function pg_avatar_for($first_name, $last_name, $username = '', $seed = '')
 }
 
 /**
+ * pg_avatar_for() as the panel's Avatar: a person without a picture, drawn
+ * from their name as their letters on their tone, a grey rounded square
+ * from the username when they have no name.
+ *
+ * @param string     $first_name
+ * @param string     $last_name
+ * @param string     $username
+ * @param string|int $seed what keeps a person's colour
+ * @param string     $class more classes (a size of its own)
+ * @return string
+ */
+function pg_avatar_markup_for($first_name, $last_name, $username = '', $seed = '', $class = '')
+{
+    $named = (trim((string) $first_name) !== '') || (trim((string) $last_name) !== '');
+
+    return pg_avatar_markup(array('avatar_kind' => $named ? 'contact' : 'user') + pg_avatar_letters(pg_initials($first_name, $last_name, $username), (string) $seed), '', $class);
+}
+
+/**
  * The account menu's quick form: what is missing of the signed-in person's
  * address-book contact - their first and last name (and, if given, mobile
  * phone), their picture - written into it. The contact is made, and tied to

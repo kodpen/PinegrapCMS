@@ -281,9 +281,7 @@ if (!$_POST) {
             </div>';
         }else{
             $output_contact_image = '
-            <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-                <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(function_exists('pg_avatar_for') ? pg_avatar_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '') : 'assets/images/person1.png') . '" />
-            </div>';
+            <div class="col-auto pg-print-none">' . pg_avatar_markup_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '', 'pg-avatar-50') . '</div>';
         }
        
     }else{
@@ -3085,7 +3083,7 @@ if (!$_POST) {
 
         // Record the refund.
         $new_refunded_total = (int)($order_row['refunded_amount'] ?? 0) + $refund_cents;
-        db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "' WHERE id = '" . e($order_id) . "'");
+        db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "', " . pg_order_touch_sql() . " WHERE id = '" . e($order_id) . "'");
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id, created_at)
             VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result['refund_reference']) . "', NOW())");
 
@@ -3190,7 +3188,8 @@ if (!$_POST) {
             "UPDATE orders SET
                 refund_status    = 'refunded',
                 refunded_at      = '" . time() . "',
-                refund_reference = '" . escape($refund_reference) . "'
+                refund_reference = '" . escape($refund_reference) . "',
+                " . pg_order_touch_sql() . "
              WHERE id = '" . e($order_id) . "'");
 
         // Says "marked", not "refunded": the log is an audit trail and must

@@ -9778,7 +9778,7 @@ function initSettingsHubRecent() {
         // Built with the DOM rather than innerHTML: the label came out of
         // storage, and storage is not a place this page can vouch for.
         var chip = document.createElement('a');
-        chip.className = 'pg-chip';
+        chip.className = 'chip';
         chip.href = item.url;
         chip.textContent = item.label;
         box.appendChild(chip);

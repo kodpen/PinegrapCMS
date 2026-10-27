@@ -1188,6 +1188,9 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             'staff'     => $staff,
             'name'      => (string) ($sender['name'] ?? ''),
             'avatar'    => (string) ($sender['avatar'] ?? ''),
+            'avatar_kind' => (string) ($sender['avatar_kind'] ?? ''),
+            'initials'  => (string) ($sender['initials'] ?? ''),
+            'tone'      => (int) ($sender['tone'] ?? 0),
             'html'      => $staff ? ws_render_body((string) $row['body'], $refs, $checks[$id] ?? array(), $can_tick) : ws_guest_render($row['body']),
             'time'      => date('d.m.Y H:i', (int) $row['created_at']),
             'edited'    => ((int) $row['edited_at'] > 0),
@@ -1631,7 +1634,8 @@ function ws_guest_state($context, $signature = '')
 
     foreach (ws_people(array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members
         WHERE channel_id = '" . (int) $channel['id'] . "' ORDER BY joined_at"))) as $person) {
-        $staff[] = array('name' => (string) $person['name'], 'avatar' => (string) $person['avatar']);
+        $staff[] = array('name' => (string) $person['name'], 'avatar' => (string) $person['avatar'], 'avatar_kind' => (string) $person['avatar_kind'],
+            'initials' => (string) $person['initials'], 'tone' => (int) $person['tone']);
     }
 
     $shared = !ws_channel_is_guest($channel);

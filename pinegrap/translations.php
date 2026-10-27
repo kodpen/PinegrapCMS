@@ -330,7 +330,7 @@ foreach (array(
         continue;
     }
 
-    $output_chips .= '<a class="pg-chip' . (($key === $filter) ? ' active' : '') . '" href="' . h($url(array('filter' => $key, 'p' => 0))) . '">' . h($chip[0])
+    $output_chips .= '<a class="chip' . (($key === $filter) ? ' active' : '') . '" href="' . h($url(array('filter' => $key, 'p' => 0))) . '">' . h($chip[0])
         . (($chip[1] !== null) ? ' <span class="opacity-75">' . (int) $chip[1] . '</span>' : '') . '</a>';
 }
 
