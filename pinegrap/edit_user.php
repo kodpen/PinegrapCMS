@@ -779,7 +779,7 @@ if (!$_POST) {
                     . '<input type="hidden" name="pg_session_action" value="' . ($edit_user_session_pinned ? 'unpin' : 'pin') . '"/>'
                     . '<input type="hidden" name="pg_selector" value="' . h((string) $edit_user_session['selector']) . '"/>'
                     . '<input type="hidden" name="send_back" value="' . h($edit_user_sessions_back) . '"/>'
-                    . '<button type="submit" class="btn btn-sm btn-ghost" title="' . h($edit_user_session_pinned ? lang('Unlock') : lang('Lock')) . '"><i class="bi ' . ($edit_user_session_pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle') . '"></i></button>'
+                    . '<button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h($edit_user_session_pinned ? lang('Unlock') : lang('Lock')) . '"><i class="bi ' . ($edit_user_session_pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle') . '"></i></button>'
                     . '</form>';
             }
 
@@ -864,7 +864,7 @@ if (!$_POST) {
             . '</a>';
 
         $output_contact_header =
-            '<a class="btn btn-sm btn-ghost" href="edit_contact.php?id=' . (int) $contact_id . '&send_to=' . h(urlencode(get_request_uri())) . '">' . h(lang('Open contact')) . '</a>';
+            '<a class="btn btn-sm btn-text theme-secondary" href="edit_contact.php?id=' . (int) $contact_id . '&send_to=' . h(urlencode(get_request_uri())) . '">' . h(lang('Open contact')) . '</a>';
 
         // The ledger account behind the contact, for an operator the ERP lets
         // in: user -> contact -> account is one chain, and the last link is
@@ -880,10 +880,10 @@ if (!$_POST) {
                 $erp_side = ($erp_balance > 0) ? lang('owes you') : (($erp_balance < 0) ? lang('you owe') : '');
 
                 $output_contact_header .=
-                    '<a class="btn btn-sm btn-ghost" href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . h(lang('Ledger account')) . ': <b class="' . (($erp_balance > 0) ? 'fg-success' : (($erp_balance < 0) ? 'fg-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="fg-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
+                    '<a class="btn btn-sm btn-text theme-secondary" href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . h(lang('Ledger account')) . ': <b class="' . (($erp_balance > 0) ? 'fg-success' : (($erp_balance < 0) ? 'fg-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="fg-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
             } else {
                 $output_contact_header .=
-                    '<a class="btn btn-sm btn-ghost" href="add_erp_account.php?contact_id=' . (int) $contact_id . '"><i class="bi bi-journal-plus me-1"></i>' . h(lang('Open an Account')) . '</a>';
+                    '<a class="btn btn-sm btn-text theme-secondary" href="add_erp_account.php?contact_id=' . (int) $contact_id . '"><i class="bi bi-journal-plus me-1"></i>' . h(lang('Open an Account')) . '</a>';
             }
         }
 
@@ -954,12 +954,12 @@ if (!$_POST) {
         ? '<div class="pg-fact">
                 <span class="pg-fact-icon"><i class="bi bi-laptop"></i></span>
                 <div class="pg-fact-text"><b>' . h(lang(array('string' => '{var:1} active session{suffix:1}', 'vars' => $edit_user_sessions_count, 'suffix' => (($edit_user_sessions_count == 1) ? '' : 's')))) . '</b><span>' . h(lang('Last used')) . ' ' . get_relative_time(array('timestamp' => $edit_user_session_latest)) . '</span></div>
-                <button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="drawer" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>
+                <button type="button" class="btn btn-sm btn-text theme-secondary pg-fact-action" data-bs-toggle="drawer" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>
             </div>'
         : '<div class="pg-fact">
                 <span class="pg-fact-icon"><i class="bi bi-laptop"></i></span>
                 <div class="pg-fact-text"><b>' . h(lang('No active sessions')) . '</b></div>
-                ' . ($user_identities ? '<button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="drawer" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
+                ' . ($user_identities ? '<button type="button" class="btn btn-sm btn-text theme-secondary pg-fact-action" data-bs-toggle="drawer" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
             </div>';
 
     // Two-step verification: a fact row, and turning it off in the side
@@ -983,7 +983,7 @@ if (!$_POST) {
         ? '<div class="pg-fact">
                 <span class="pg-fact-icon"><i class="bi bi-shield-lock"></i></span>
                 <div class="pg-fact-text"><b>' . h(lang('Two-step verification')) . '</b><span>' . $output_mfa_state . '</span></div>
-                ' . ($edit_user_mfa_on ? '<button type="button" class="btn btn-sm btn-ghost pg-fact-action" data-bs-toggle="drawer" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
+                ' . ($edit_user_mfa_on ? '<button type="button" class="btn btn-sm btn-text theme-secondary pg-fact-action" data-bs-toggle="drawer" data-bs-target="#pg_sessions_panel">' . h(lang('Manage')) . '<i class="bi bi-chevron-right ms-1"></i></button>' : '') . '
             </div>'
         : '';
 
@@ -1034,7 +1034,7 @@ if (!$_POST) {
         '<div class="card mb-5">
             <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
                 <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Recent Activity')) . '</span>
-                ' . (($log_count > 5) ? '<button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="drawer" data-bs-target="#pg_activity_panel">' . h(lang(array('string' => 'All ({var:1})', 'vars' => $log_count))) . '</button>' : '') . '
+                ' . (($log_count > 5) ? '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="drawer" data-bs-target="#pg_activity_panel">' . h(lang(array('string' => 'All ({var:1})', 'vars' => $log_count))) . '</button>' : '') . '
             </div>
             <div class="card-body">
                 ' . (($log_count > 0) ? $log_recent_rows : '<p class="small fg-secondary mb-0">' . h(lang('No activity recorded yet.')) . '</p>') . '
