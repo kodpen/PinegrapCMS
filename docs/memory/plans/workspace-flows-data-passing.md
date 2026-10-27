@@ -9,14 +9,14 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - Ids are `<kind>_<n>` (`freeId()` in workspace_flow.js) and are not shown on the canvas; `fl_values_help` is the only hint.
 - A reference to a missing box or field becomes '' without a word: `ws_flow_graph_check()` does not read references.
 - Not readable: trigger values (event payload, newcomer; workspace-flows-anchors.md). A condition cannot compare a box's value. No loops (`pass` is always 0).
-- A filled value is never read again as a placeholder (D2, workspace/workspace-flows-outputs.md).
+- A filled value is never read again as a placeholder (D2) and is escaped for where it lands (D3), workspace/workspace-flows-outputs.md.
 
 ## Which steps? (one PR each, in this order)
 - D1 outputs: done (#2111), see workspace/workspace-flows-outputs.md.
 
 - D2 one-pass fill: done (#2121), see workspace/workspace-flows-outputs.md.
 
-- D3 escaping: a value is escaped for where it lands (message, e-mail HTML, webhook JSON; a line field strips control characters as today). First record what each destination does now. Addresses stay unfillable.
+- D3 escaping: done (#2293), see workspace/workspace-flows-outputs.md.
 
 - D4 reference check: `ws_flow_graph_check()` gives `bad_reference` for an unknown box, a box not upstream of the reader, or a field not in its outputs; a box on a branch that may be skipped gives a warning. Shown under Problems.
 
@@ -45,4 +45,4 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 5. Lists (D9): first source: table rows, a day's orders, or webhook arrays?
 
 ## Where to start?
-- D3. Read workspace/workspace-flows-steps.md, workspace-flows-anchors.md, workspace-flows-condition-box.md.
+- D4. Read workspace/workspace-flows-store.md (`ws_flow_graph_check()`), workspace-flows-outputs.md.
