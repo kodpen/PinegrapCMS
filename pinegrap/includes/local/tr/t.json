@@ -711,6 +711,7 @@
     "The ^^__empty_message^^ token.": "^^__empty_message^^ token'ı.",
     "The ^^__shopping_cart_label^^ token (in the heading and the retrieve_order calls).": "^^__shopping_cart_label^^ token'ı (başlık + retrieve_order çağrılarında).",
     "The ^^__staff_url^^ link and the \"may open the staff page\" condition appear only for visitors the page's folder lets in.": "^^__staff_url^^ bağlantısı ve \"personel sayfasını açabilir\" koşulu yalnızca sayfanın klasörünün içeri aldığı ziyaretçilerde görünür.",
+    "The accepted number of payments": "Kabul edilen ödeme sayısı",
     "The access token has expired. Renew it with the refresh token.": "Erişim jetonunun süresi doldu. Yenileme jetonuyla yenileyin.",
     "The access token is not valid. Renew it, or sign in again.": "Erişim jetonu geçerli değil. Yenileyin ya da yeniden oturum açın.",
     "The access token was not issued for this address.": "Erişim jetonu bu adres için verilmemiş.",
