@@ -230,6 +230,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $form_limit_domain_hour   = isset($row['form_limit_domain_hour']) ? (int)$row['form_limit_domain_hour'] : 0;
     $form_spam_blacklist      = isset($row['form_spam_blacklist']) ? (int)$row['form_spam_blacklist'] : 0;
 
+    // How long the audit trail keeps its lines (2026.11.0, 11.0.47).
+    $audit_retention_ready    = isset($row['audit_log_retention_years']);
+    $audit_retention_years    = $audit_retention_ready ? (int)$row['audit_log_retention_years'] : 2;
+
     // Security headers, the plain-text block log, the concurrency and ban
     // ceilings and the sign-in question arrive together in one upgrade step;
     // one column stands for the set, like waf_enabled above.

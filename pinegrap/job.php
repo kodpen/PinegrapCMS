@@ -538,6 +538,22 @@ if (function_exists('pg_not_found_log_sweep_due') && pg_not_found_log_sweep_due(
     }
 }
 
+// The audit trail past the years of the Security screen and the consent
+// log's history past three years (includes/fn/privacy_retention.php): once a
+// day, five seconds a tick until the pass is through. A tick with nothing
+// due reads one small file.
+if (pg_privacy_retention_due()) {
+
+    $privacy_retention = pg_privacy_retention_run(5);
+
+    if (($privacy_retention['audit'] + $privacy_retention['consent']) > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} audit trail line(s) and {var:2} consent log line(s) past their retention period',
+            'vars'   => array(pg_format_number($privacy_retention['audit'], 0), pg_format_number($privacy_retention['consent'], 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // The price visitors are shown under the offers, into the product price
 // history (pg_price_history_offer_pass_run()): once an hour, ten seconds a
 // tick until the pass is through. A tick with nothing due reads one small

@@ -212,6 +212,36 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Audit Trail ──
+// How long the trail keeps its lines; the general job removes older ones
+// (includes/fn/privacy_retention.php). Not drawn before the 2026.11.0 step
+// adds the column, rather than offering a field that saves nowhere.
+if ($audit_retention_ready) {
+    $audit_retention_limits = pg_privacy_retention_limits();
+
+    $pg_settings_cards[] = '
+    <div id="pgset-audit" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Audit Trail') . '</span>
+                <a class="btn btn-sm btn-outline-secondary" href="view_audit_log.php">' . lang('Open') . '</a>
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                                        <div class="col-12">
+                                            <label for="audit_log_retention_years" class="form-label">' . lang('Keep audit trail lines for') . '</label>
+                                            <div class="input-group pg-f-sm">
+                                                <input type="text" name="audit_log_retention_years" id="audit_log_retention_years" class="form-control" value="' . (int) $audit_retention_years . '" size="3" maxlength="2" inputmode="numeric" style="text-align: right;"/>
+                                                <span class="input-group-text">' . lang('years') . '</span>
+                                            </div>
+                                            <div class="form-text">' . h(lang(array('string' => 'Who changed what, with the values before and after. Older lines are removed by the general job once a day. 0 keeps every line; otherwise {var:1} to {var:2} years. The consent log keeps its history for {var:3} years, and always the answer in force.', 'vars' => array($audit_retention_limits['audit_min'], $audit_retention_limits['audit_max'], $audit_retention_limits['consent_years'])))) . '</div>
+                                        </div>
+                </div>
+            </div>
+        </div>
+    </div>';
+}
+
 // ── Sign in with Google, Microsoft and Apple ──
 // One card, a switch per provider. Google's application and switch are the
 // config columns it always had, and its return address is still

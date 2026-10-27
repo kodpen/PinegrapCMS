@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; steps 1-5b, 5d and 5e done, last #1919 and #2000; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+description: Plan (approved 2026-10-19; all steps done, open questions remain): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -23,11 +23,11 @@ description: Plan (approved 2026-10-19; steps 1-5b, 5d and 5e done, last #1919 a
 5b. Done (#1844): `GET /audit-log`, scope `system:read`; `core/audit-trail-screen.md`.
 5d. Done (#1919): the cookie notice's answers into `consent_log`, `consent_answer.php`; `core/consent-log-cookie-notice.md`.
 5e. Done (#2000): `contract` consent rows from `pg_legal_documents_store()`; `core/consent-log-writers.md`.
-5c. Retention: a setting (default 2 years) and the general job trimming `audit_log` past it; the consent log's 3 years from the same job. A new config column is a schema step: ask the owner first.
+5c. Done (#PRNUM): `config.audit_log_retention_years` (11.0.47, owner approved 2026-10-27), the general job's daily pass; `core/privacy-log-retention.md`.
 
 ## Open questions?
 - The export leaves out the site log, `audit_log` rows about the person and `visitors` (`core/personal-data-export.md`): add them later?
 - Tie an anonymous visitor's cookie rows by an id in `pg_consent` (cookie format change)? Asked in 5d's PR.
 
 ## Where to start?
-- Step 5c. Read `core/audit-trail-screen.md` and `release/README.md` first; ask the owner before the schema step. The plan's `[NEW]` line is in (export); steps 4 and 5 widen it, no second line.
+- Every step is done; only the open questions above remain. Once the owner answers them, their decisions go to the topic files and this plan is deleted.
