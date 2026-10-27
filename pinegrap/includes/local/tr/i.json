@@ -4,6 +4,7 @@
     "I agree that the café keeps these details to manage my booking, as its privacy notice explains.": "Kafenin bu bilgileri, gizlilik bildiriminde açıklandığı şekilde rezervasyonumu yönetmek için saklamasını kabul ediyorum.",
     "I agree that the café keeps these details to prepare the quote and the order, as its privacy notice explains.": "Kafenin bu bilgileri, gizlilik bildiriminde açıklandığı şekilde teklifi ve siparişi hazırlamak için saklamasını kabul ediyorum.",
     "I agree that the practice keeps these details to arrange my care, as its privacy notice explains.": "Polikliniğin bu bilgileri, aydınlatma metninde açıklandığı şekilde, bakımımı düzenlemek için saklamasını kabul ediyorum.",
+    "I agree to the": "Kabul ediyorum:",
     "I agree to the <a href=\"{var:1}\" target=\"_blank\">terms and conditions</a>.": "<a href=\"{var:1}\" target=\"_blank\">Şartlar ve koşulları</a> kabul ediyorum.",
     "I agree to the terms and conditions.": "Şartlar ve koşulları kabul ediyorum.",
     "I agree to the {var:1}.": "{var:1} kabul ediyorum.",

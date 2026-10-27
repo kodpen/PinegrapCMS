@@ -1148,6 +1148,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_photo_gallery($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'affiliate_sign_up_form' — the classic affiliate sign up form,
+            // posting to affiliate_sign_up_form.php (widgets_affiliate_sign_up.php).
+            if ($region_type === 'affiliate_sign_up_form') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_affiliate_sign_up_form($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'menu_region' — one of the site's menus, its items kept in
             // the menu screen (widgets_menu.php).
             if ($region_type === 'menu_region') {
