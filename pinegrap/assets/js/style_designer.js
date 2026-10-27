@@ -32908,6 +32908,7 @@ const StyleDesigner = (function () {
             'order.return_lines': _sdT('One row for every product of the return request the row stands in, with the quantity asked back.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
+            'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
             'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
             'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.'),
             'paging.pages':       _sdT('One row for every page link the list shows: the first and the last page, two pages either side of the page shown, a gap between them. With this list in the widget its built-in pagination is not added. Conditions on "Page address" and "The page shown" tell a link, the current page and a gap apart.')
@@ -40075,6 +40076,9 @@ const StyleDesigner = (function () {
         comments: {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
         },
+        shopping_cart: {
+            '__item_gift_card_html': function (cfg) { return _sdPartCartItemGiftCard(); }
+        },
         // A list of recent comments is a comments widget on the server.
         comments_recent: {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
@@ -40450,6 +40454,9 @@ const StyleDesigner = (function () {
             [['__item_form_data_html', 'order.item_forms'], function () { return _sdPartOrderItemForm(); }],
             [['__item_gift_card_html', 'order.item_gift_cards'], function () { return _sdPartOrderItemGiftCard(); }]
         ],
+        shopping_cart: [
+            [['__item_gift_card_html', 'cart.item_gift_cards'], function () { return _sdPartCartItemGiftCard(); }]
+        ],
         catalog_item_view: [
             [['__cross_sell_html', 'product.related'], function () { return _sdPartCatalogCrossSell(); }, 'tree']
         ]
@@ -40611,6 +40618,50 @@ const StyleDesigner = (function () {
                     _sdPartItemLine(_sdT('Message'), _sdPartValue('__gift_card_message_html', _sdT('Message'))),
                     _sdPartItemLine(_sdT('Delivery Date'), _sdPartValue('__gift_card_delivery', _sdDateSample(false)))
                 ])
+            ])
+        ])];
+    }
+
+    // The cart's gift card controls (pg_sw_cart_gift_card_control_specs()):
+    // binding value => [column, list token, type, required]. The server
+    // gives each its name, value, type and required.
+    var SW_CART_GIFT_CARD_CONTROLS = {
+        gift_card_email:         ['recipient_email_address', '__gift_card_email', 'email', true],
+        gift_card_from_name:     ['from_name', '__gift_card_from_name', 'text', false],
+        gift_card_message:       ['message', '__gift_card_message', 'textarea', false],
+        gift_card_delivery_date: ['delivery_date', '__gift_card_delivery_date', 'date', false]
+    };
+
+    // One gift card field of the cart (pg_sw_part_cart_gift_card_field()).
+    /* @pg-site-output */
+    function _sdPartCartGiftCardField(value) {
+        var spec = SW_CART_GIFT_CARD_CONTROLS[value];
+        var labels = { gift_card_email: _sdT('Recipient Email'), gift_card_from_name: _sdT('From Name'),
+            gift_card_message: _sdT('Message'), gift_card_delivery_date: _sdT('Delivery Date') };
+        var label = labels[value] || '';
+        var words = [_sdPartEl('span', '', _sdT('Text'), { text: label })];
+        if (spec[3]) words.push(_sdPartEl('span', 'text-danger', _sdT('Required mark'), { text: '*' }));
+        var control = (spec[2] === 'textarea')
+            ? _sdPartEl('textarea', 'form-control', label, { _bindings: { value: value }, _attrs: [{ name: 'rows', value: '3' }] })
+            : _sdPartEl('input', 'form-control', label, { _bindings: { value: value } });
+        var children = [_sdPartEl('label', 'form-label', _sdT('Label'), {}, words), control];
+        if (value === 'gift_card_delivery_date') {
+            children.push(_sdPartEl('div', 'form-text', _sdT('Help'), { text: _sdT('Leave blank to send immediately.') }));
+        }
+        return _sdPartEl('div', 'mb-3 pg-cart-gc-field', label, { _attrs: [{ name: 'data-pg-gc-field', value: spec[0] }] }, children);
+    }
+
+    // The gift cards of a cart line (pg_sw_part_cart_item_gift_card()): a
+    // box of controls per card of the cart.item_gift_cards list.
+    /* @pg-site-output */
+    function _sdPartCartItemGiftCard() {
+        var fields = Object.keys(SW_CART_GIFT_CARD_CONTROLS).map(function (v) { return _sdPartCartGiftCardField(v); });
+        return [_sdPartEl('div', 'pg-cart-gift-cards pg-hide-if-empty', _sdT('Gift Card Details'),
+            { _attrs: [{ name: 'data-pg-cart-gc-item', value: '{{__item_id}}' }] }, [
+            createNode('loop_area', { source: 'cart.item_gift_cards' }, [
+                _sdPartEl('fieldset', 'pg-cart-gc-set border rounded p-3 mb-3', _sdT('Gift card'),
+                    { _attrs: [{ name: 'data-pg-gc-set', value: '{{__gift_card_number}}' }] },
+                    [_sdPartItemLegend({}, { text: _sdT('Gift card') }, '__gift_card_number', '__gift_card_count')].concat(fields))
             ])
         ])];
     }
@@ -41386,6 +41437,10 @@ const StyleDesigner = (function () {
             if (region === 'shopping_cart') {
                 vOpts.push(['cart_qty',    _sdT('Row quantity (cart_qty) — shopping_cart loop_area')]);
                 vOpts.push(['coupon_code', _sdT('Offer code (special_offer_code) — shopping_cart')]);
+                vOpts.push(['gift_card_email',         _sdT('Gift card: recipient e-mail (required)')]);
+                vOpts.push(['gift_card_from_name',     _sdT('Gift card: from name')]);
+                vOpts.push(['gift_card_message',       _sdT('Gift card: message')]);
+                vOpts.push(['gift_card_delivery_date', _sdT('Gift card: delivery date')]);
             }
             if (region === 'catalog_listing' || region === 'search_results') {
                 vOpts.push(['search_query', _sdT('Search text (query)')]);
@@ -55305,6 +55360,20 @@ const StyleDesigner = (function () {
                 ['__item_remove_url',        _sdT('Remove from cart URL')]
             ]
         },
+        'cart.item_gift_cards': {
+            label: _sdT('Gift cards of the item'),
+            arg: '', argRequired: false,
+            kinds: ['shopping_cart'],
+            rows: [
+                ['__gift_card_number',        _sdT('Number of the gift card')],
+                ['__gift_card_count',         _sdT('Number of gift cards')],
+                ['__gift_card_field',         _sdT('Name of the card\'s fields')],
+                ['__gift_card_email',         _sdT('Recipient Email')],
+                ['__gift_card_from_name',     _sdT('From Name')],
+                ['__gift_card_message',       _sdT('Message')],
+                ['__gift_card_delivery_date', _sdT('Delivery Date')]
+            ]
+        },
         // The menu source (pg_sw_list_menu_sources()): the items under the
         // row's menu item, the top level outside the main loop.
         'menu.children': {
@@ -55688,9 +55757,10 @@ const StyleDesigner = (function () {
         var key = _sdOrderItemListKey(source);
         if (key) {
             // An item's lists read the item they stand in: the items loop's
-            // row or a list of the items (the fields, a form's row).
+            // row (the order's, the cart's) or a list of the items (the
+            // fields, a form's row).
             return !_sdListsAbove(node).some(function (l) { return l.props.source === key; })
-                && (key !== 'order.items' || !_sdInMainLoopAt(node));
+                && ((key !== 'order.items' && key !== 'cart.items') || !_sdInMainLoopAt(node));
         }
         if (source !== 'order.shipments' && source !== 'order.steps' && source !== 'order.returns') return false;
         return _sdListsAbove(node).some(function (l) { return l.props.source === 'order.shipments'; });
@@ -55701,6 +55771,7 @@ const StyleDesigner = (function () {
     // other source.
     function _sdOrderItemListKey(source) {
         var keys = { 'order.item_forms': 'order.items', 'order.item_gift_cards': 'order.items', 'order.item_form_fields': 'order.item_forms',
+            'cart.item_gift_cards': 'cart.items',
             'order.return_lines': 'order.returns' };
         return keys.hasOwnProperty(source) ? keys[source] : '';
     }

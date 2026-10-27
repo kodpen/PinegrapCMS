@@ -15,6 +15,8 @@
 //
 //   cart.items  the products in the visitor's cart, lines saved for later
 //               left out (pg_order_item_active_sql()).
+//   cart.item_gift_cards  a gift card line's cards, one per unit, for the
+//               cart widget's gift card part (key ^^__item_id^^).
 //
 // The list reads ^^__ship_to_key^^, as the order view's lists do: 0 (the
 // static value) is the whole cart, a recipient's id that recipient's lines.
@@ -52,6 +54,26 @@ function pg_sw_list_cart_sources()
                 array('__item_remove_url', lang('Remove from cart URL')),
             ),
         ),
+        // The gift cards of a cart line, one row per unit (at most 100):
+        // the cart widget's gift card part (pg_sw_part_cart_item_gift_card())
+        // draws a box of controls per card. The controls' names and values
+        // are the system's (pg_sw_cart_gift_card_control()).
+        'cart.item_gift_cards' => array(
+            'family'       => 'cart',
+            'key'          => '__item_id',
+            'label'        => lang('Gift cards of the item'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__gift_card_number', lang('Number of the gift card')),
+                array('__gift_card_count', lang('Number of gift cards')),
+                array('__gift_card_field', lang('Name of the card\'s fields')),
+                array('__gift_card_email', lang('Recipient Email')),
+                array('__gift_card_from_name', lang('From Name')),
+                array('__gift_card_message', lang('Message')),
+                array('__gift_card_delivery_date', lang('Delivery Date')),
+            ),
+        ),
     );
 }
 
@@ -82,7 +104,35 @@ function pg_sw_list_cart_rows($items)
         $st = (int)$g('ship_to_id');
         if ($st > 0) $out['cart.items'][$st][] = $row;
     }
-    return $out;
+    return $out + pg_sw_list_cart_gift_card_rows($items);
+}
+
+// The rows of the cart's gift card lists: array('cart.item_gift_cards' =>
+// array(item id => rows)). $items: the cart widget's items, a gift card
+// line with 'gift_cards' (number, count, prefix, and the values its
+// controls show: recipient_email_address, from_name, message,
+// delivery_date). Raw values: the pass escapes them once.
+function pg_sw_list_cart_gift_card_rows($items)
+{
+    $out = array();
+    foreach ((array)$items as $item) {
+        if (!is_array($item) || empty($item['gift_cards']) || !is_array($item['gift_cards'])) continue;
+        $id = isset($item['item_id']) ? (int)$item['item_id'] : 0;
+        if ($id <= 0) continue;
+        foreach ($item['gift_cards'] as $c) {
+            $g = function ($k) use ($c) { return isset($c[$k]) ? (string)$c[$k] : ''; };
+            $out[$id][] = array(
+                '__gift_card_number'        => (string)(int)$g('number'),
+                '__gift_card_count'         => (string)(int)$g('count'),
+                '__gift_card_field'         => $g('prefix'),
+                '__gift_card_email'         => $g('recipient_email_address'),
+                '__gift_card_from_name'     => $g('from_name'),
+                '__gift_card_message'       => $g('message'),
+                '__gift_card_delivery_date' => $g('delivery_date'),
+            );
+        }
+    }
+    return array('cart.item_gift_cards' => $out);
 }
 
 // The cart link's lines in the cart widget's item shape

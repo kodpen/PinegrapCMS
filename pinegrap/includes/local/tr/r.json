@@ -745,6 +745,7 @@
     "Required Subtotal": "Gerekli Ara Toplam",
     "Required field": "Zorunlu alan",
     "Required for": "Zorunlu olanlar",
+    "Required mark": "Zorunlu işareti",
     "Required when SSL is terminated by a proxy or CDN before reaching this server (for example Cloudflare Flexible SSL). Only enable it if this server is not reachable directly, because these headers can be forged.": "SSL bu sunucuya ulaşmadan önce bir proxy veya CDN tarafından sonlandırılıyorsa gereklidir (örneğin Cloudflare Flexible SSL). Bu başlıklar taklit edilebildiği için yalnızca bu sunucuya doğrudan erişilemiyorsa etkinleştirin.",
     "Requires Givex service": "Givex hizmeti gerektirir",
     "Requires Product": "Ürün Gerektirir",

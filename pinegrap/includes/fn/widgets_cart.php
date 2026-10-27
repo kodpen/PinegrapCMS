@@ -394,11 +394,23 @@ function _apply_shopping_cart_bindings(&$node, $context)
         }
     }
 
+    // ── Gift card controls (the cart.item_gift_cards list) ──────────────
+    // What a control sends and whether it is required are the system's
+    // (pg_sw_cart_gift_card_control()); a card without its required
+    // recipient control gets it back.
+    if (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'cart.item_gift_cards') {
+        pg_sw_cart_gift_card_restore($node);
+    }
+    if (isset($bindings['value']) && pg_sw_cart_gift_card_control_spec($bindings['value']) !== null) {
+        pg_sw_cart_gift_card_control($node, isset($context['cart_form_id']) ? (string)$context['cart_form_id'] : '');
+    }
+
     if (!empty($node['children']) && is_array($node['children'])) {
         foreach ($node['children'] as &$child) {
             if (is_array($child)) _apply_shopping_cart_bindings($child, $context);
         }
         unset($child);
+        pg_sw_cart_gift_card_label_for($node);
     }
 }
 
@@ -1200,6 +1212,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 // `recipient_email_address` is required further down the flow,
                 // checkout silently refused to advance.
                 $gift_card_html = '';
+                $gift_cards     = array();
                 if (!empty($r['product_is_gift_card']) && $qty > 0) {
                     $_gc_iid   = (int)$r['item_id'];
                     $_gc_count = min($qty, 100);   // same cap as legacy
@@ -1247,6 +1260,15 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                                  . ($help !== '' ? '<div class="form-text">' . h($help) . '</div>' : '')
                                  . '</div>';
                         };
+                        // The same values for the gift card part's list
+                        // (cart.item_gift_cards, widgets_lists_cart.php).
+                        $gift_cards[] = array(
+                            'number' => $_qn, 'count' => $_gc_count, 'prefix' => $_fp,
+                            'recipient_email_address' => $_gcv('recipient_email_address'),
+                            'from_name'     => $_gcv('from_name'),
+                            'message'       => $_gcv('message'),
+                            'delivery_date' => $_gcv('delivery_date'),
+                        );
                         $_gc_rows_html .=
                             '<fieldset class="pg-cart-gc-set border rounded p-3 mb-3" data-pg-gc-set="' . $_qn . '">' . $_gc_legend
                           . $_gc_field('recipient_email_address', lang('Recipient Email'),
@@ -1313,6 +1335,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     // Per-row product-form data block (read-only review).
                     'form_data_html'           => $form_data_html,
                     'gift_card_html'           => $gift_card_html,
+                    'gift_cards'               => $gift_cards,
                     'recurring_editable'       => $recurring_editable ? 1 : 0,
                     'recurring_schedule_html'  => $recurring_schedule_html,
                     // Row kind — drives which control the qty column shows.
@@ -1501,7 +1524,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // The row blocks the item template places (pg_sw_placed()).
         $_cart_row_tree    = array('type' => 'root', 'children' => $split['loop_children']);
         $_cart_form_placed = pg_sw_placed($_cart_row_tree, array('__item_form_data_html'));
-        $_cart_gift_placed = pg_sw_placed($_cart_row_tree, array('__item_gift_card_html'));
+        $_cart_gift_placed = pg_sw_placed($_cart_row_tree, array('__item_gift_card_html', 'cart.item_gift_cards'));
         foreach ($items as $idx => $item) {
             // Qty input emitted as an input-group with attached -/+ steppers.
             // JS (see _pg_qty_stepper_inline_js below) handles the click → input
