@@ -1256,26 +1256,8 @@ function ws_scheduled_draft_flow_open($viewer, $change_id)
     $draft = json_decode((string) $row['snapshot'], true);
     $draft = is_array($draft) ? $draft : array();
     $input = ws_scheduled_draft_flow_input($draft, ws_scheduled_money_metrics());
-    $home = ws_channel(ws_scheduled_draft_home($row, $draft));
-    $public = $home && in_array((string) $home['kind'], array('public', 'private'), true) && ws_can_read_channel($viewer, $home);
-    $saved = ws_flow_save($viewer, array('name' => $input['name'], 'channel_id' => $public ? (int) $home['id'] : 0, 'graph' => $input['graph']));
 
-    if (!$saved['ok']) {
-        return $fail($saved['error']);
-    }
-
-    $draft['flow_id'] = (int) $saved['flow_id'];
-
-    db("UPDATE ws_ai_changes SET status = 'applied', error = '',
-            snapshot = '" . e(json_encode($draft, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR)) . "',
-            decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
-        WHERE id = '" . (int) $row['id'] . "' AND status = 'pending'");
-
-    if (mysqli_affected_rows(db::$con) === 1) {
-        ws_message_touch($row['message_id']);
-    }
-
-    return array('ok' => true, 'error' => '', 'flow_id' => (int) $saved['flow_id'], 'left' => $input['left']);
+    return ws_flow_draft_opened($viewer, $row, $draft, $input + array('channel_id' => ws_scheduled_draft_home($row, $draft)));
 }
 
 /**
