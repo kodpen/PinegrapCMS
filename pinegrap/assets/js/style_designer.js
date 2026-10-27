@@ -13997,18 +13997,6 @@ const StyleDesigner = (function () {
                    '<button type="button" class="btn btn-outline-primary" disabled>' + esc(_sdT('Request a return')) + '</button>' +
                    '</div>';
         },
-        // Mirrors pg_returns_list_html(): one bordered box per request with
-        // its status badge, lines and what to do next.
-        '__returns': function () {
-            return '<div class="pg-ov-returns"><div class="pg-ov-return border rounded p-3 mb-3">' +
-                   '<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">' +
-                   '<div><div class="fw-semibold">' + esc(_sdT('Return request')) + ' #12</div>' +
-                   '<div class="small text-muted">' + esc(_sdDateSample(false)) + '</div></div>' +
-                   '<span class="badge text-bg-info">' + esc(_sdT('Return approved')) + '</span></div>' +
-                   '<ul class="small mb-2 ps-3"><li>' + esc(_sdT('Sample Product Name')) + ' × 1</li></ul>' +
-                   '<div class="alert alert-info small py-2 my-2">' + esc(_sdT('Your return was approved. You can send the goods back now.')) + '</div>' +
-                   '</div></div>';
-        },
         // A product form's answers: fieldset, legend and stacked
         // label/value pairs (the order view draws them with the item form
         // part, pg_sw_part_order_item_form()).
@@ -32776,6 +32764,8 @@ const StyleDesigner = (function () {
             'order.item_forms':   _sdT('One row for every product form of the item the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
             'order.item_form_fields': _sdT('One row for every field of the product form the row stands in, with the buyer\'s answer; an information field gives its text. A condition on "Information field" tells them apart.'),
             'order.item_gift_cards': _sdT('One row for every gift card of the item the row stands in that was filled in: its amount, recipient, sender, message and delivery date.'),
+            'order.returns':      _sdT('One row for every return request of the order, for its owner signed in: its status, products, notes and the customer\'s moves. Put a list of the products of the return inside the row.'),
+            'order.return_lines': _sdT('One row for every product of the return request the row stands in, with the quantity asked back.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
@@ -37880,6 +37870,7 @@ const StyleDesigner = (function () {
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
         '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
+        '__return_customer_note_html', '__return_decision_note_html', '__return_actions_html',
         '__ad_content_html', '__ad_caption_html'
     ];
     // Twin of pg_sw_attr_name_ok().
@@ -39356,7 +39347,6 @@ const StyleDesigner = (function () {
             ['__cancel_status',          _sdT('Post-cancellation notice alert (when ?cancelled=… is present)')]
         ]},
         { label: _sdT('Returns'), tokens: [
-            ['__returns',                _sdT('Return requests of the order with their status and the customer\'s moves (ready-made HTML)')],
             ['__return_form',            _sdT('Return request form: products, quantities, reason (ready-made HTML)')]
         ]},
         { label: _sdT('Billing information'), tokens: [
@@ -39768,7 +39758,8 @@ const StyleDesigner = (function () {
             '__timeline':           function (cfg) { return _sdPartOrderTimeline(cfg); },
             '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); },
             '__item_form_data_html': function (cfg) { return _sdPartOrderItemForm(); },
-            '__item_gift_card_html': function (cfg) { return _sdPartOrderItemGiftCard(); }
+            '__item_gift_card_html': function (cfg) { return _sdPartOrderItemGiftCard(); },
+            '__returns':             function (cfg) { return _sdPartOrderReturnsList(); }
         },
         comments: {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
@@ -40053,7 +40044,7 @@ const StyleDesigner = (function () {
 
     var SW_DEFAULT_TAILS = {
         order_view: [
-            [['__return_form', '__returns'], function (cfg, tree) { return _sdPartOrderReturns(); }],
+            [['__return_form', '__returns', 'order.returns'], function (cfg, tree) { return _sdPartOrderReturns(); }],
             [['__legal_preinfo_url', '__legal_contract_url'], function (cfg, tree) { return _sdPartOrderLegal(tree); }]
         ]
     };
@@ -40275,11 +40266,70 @@ const StyleDesigner = (function () {
     }
 
     // The returns card (pg_sw_part_order_returns()).
+    /* @pg-site-output */
     function _sdPartOrderReturns() {
-        var block = function (token, name) { return _sdPartEl('div', '', name, { _bindings: { text: token } }); };
         return [_sdPartOrderCard('pg-ov-returns-block', _sdT('Returns'), 'show_returns_card', _sdT('Returns'), [
-            block('__returns', _sdT('Return requests')),
-            block('__return_form', _sdT('Return request form'))
+            _sdPartEl('div', '', _sdT('Return requests'), {}, _sdPartOrderReturnsList()),
+            _sdPartEl('div', '', _sdT('Return request form'), { _bindings: { text: '__return_form' } })
+        ])];
+    }
+
+    // A return's status badge classes by status (pg_sw_return_badge_classes()).
+    /* @pg-site-output */
+    var SD_RETURN_BADGE_CLASSES = {
+        requested: 'badge text-bg-warning',
+        approved:  'badge text-bg-info',
+        rejected:  'badge text-bg-danger',
+        shipped:   'badge text-bg-primary',
+        received:  'badge text-bg-primary',
+        refunded:  'badge text-bg-success',
+        closed:    'badge text-bg-secondary'
+    };
+
+    // The order's return requests (pg_sw_part_order_returns_list()).
+    /* @pg-site-output */
+    function _sdPartOrderReturnsList() {
+        var detail = function (label, token, sample, test) {
+            return _sdPartEl('div', 'small mb-1', label, _sdPartWhen(test || token, 'not_empty'), [
+                _sdPartEl('span', 'text-muted', _sdT('Label'), { text: label + ':' }),
+                _sdPartEl('span', '', label, _sdPartValue(token, sample))
+            ]);
+        };
+        var badges = Object.keys(SD_RETURN_BADGE_CLASSES).map(function (status) {
+            return _sdPartEl('span', SD_RETURN_BADGE_CLASSES[status], _sdT('Status') + ': ' + status, {
+                text: _sdT('Return approved'),
+                _bindings: { text: '__return_status_label', show_if: '__return_status' },
+                _bindParams: { show_if: { op: 'eq', value: status } }
+            });
+        });
+        var how = _sdPartWhen('__return_status', 'eq', 'approved');
+        how._attrs = [{ name: 'role', value: 'status' }];
+        return [_sdPartEl('div', 'pg-ov-returns', _sdT('Return requests'), { _bindings: { eo_visible_if: 'has_returns' } }, [
+            createNode('loop_area', { source: 'order.returns' }, [
+                _sdPartEl('div', 'pg-ov-return border rounded p-3 mb-3', _sdT('Return request'), {}, [
+                    _sdPartEl('div', 'd-flex flex-wrap justify-content-between align-items-start gap-2 mb-2', _sdT('Heading'), {}, [
+                        _sdPartEl('div', '', _sdT('Heading'), {}, [
+                            _sdPartEl('div', 'fw-semibold', _sdT('Heading'), _sdPartValue('__return_title', _sdT('Return request') + ' #12')),
+                            _sdPartEl('div', 'small text-muted', _sdT('Date asked'), _sdPartValue('__return_asked', _sdDateSample(false), 'not_empty'))
+                        ])
+                    ].concat(badges)),
+                    _sdPartEl('ul', 'small mb-2 ps-3', _sdT('Products'), _sdPartWhen('__return_has_lines', 'not_empty'), [
+                        createNode('loop_area', { source: 'order.return_lines' }, [
+                            _sdPartEl('li', '', _sdT('Product'), { text: '^^__return_line_name^^ × ^^__return_line_qty^^' })
+                        ])
+                    ]),
+                    detail(_sdT('Reason'), '__return_reason', _sdT('It arrived damaged')),
+                    detail(_sdT('Your note'), '__return_customer_note_html', '', '__return_customer_note'),
+                    detail(_sdT('Note from the shop'), '__return_decision_note_html', '', '__return_decision_note'),
+                    _sdPartEl('div', 'alert alert-info small py-2 my-2', _sdT('How to send it back'), how, [
+                        _sdPartEl('span', '', _sdT('How to send it back'), _sdPartValue('__return_how', _sdT('Your return was approved. You can send the goods back now.'))),
+                        _sdPartEl('strong', '', _sdT('Return code'), _sdPartValue('__return_code', '', 'not_empty'))
+                    ]),
+                    detail(_sdT('Tracking number'), '__return_tracking_number', ''),
+                    detail(_sdT('Refund due by'), '__return_refund_deadline', ''),
+                    _sdPartEl('div', '', _sdT('The customer\'s moves'), _sdPartValue('__return_actions_html', ''))
+                ])
+            ])
         ])];
     }
 
@@ -54777,7 +54827,9 @@ const StyleDesigner = (function () {
                 ['__return_status_label',       _sdT('Status')],
                 ['__return_has_lines',          _sdT('Has products (1 or empty)')],
                 ['__return_reason',             _sdT('Reason')],
+                ['__return_customer_note',      _sdT('Your note')],
                 ['__return_customer_note_html', _sdT('Your note (HTML)')],
+                ['__return_decision_note',      _sdT('Note from the shop')],
                 ['__return_decision_note_html', _sdT('Note from the shop (HTML)')],
                 ['__return_how',                _sdT('How to send the goods back')],
                 ['__return_code',               _sdT('Return code')],
@@ -55202,8 +55254,8 @@ const StyleDesigner = (function () {
     }
 
     // Whether a list of `source` draws nothing where it stands for want of
-    // its key: a list of the recipients or the steps inside a list of the
-    // recipients (they list the whole order alone).
+    // its key: a list of the recipients, the steps or the returns inside a
+    // list of the recipients (they list the whole order alone).
     function _sdOrderListKeyless(source, node) {
         var key = _sdOrderItemListKey(source);
         if (key) {
@@ -55212,7 +55264,7 @@ const StyleDesigner = (function () {
             return !_sdListsAbove(node).some(function (l) { return l.props.source === key; })
                 && (key !== 'order.items' || !_sdInMainLoopAt(node));
         }
-        if (source !== 'order.shipments' && source !== 'order.steps') return false;
+        if (source !== 'order.shipments' && source !== 'order.steps' && source !== 'order.returns') return false;
         return _sdListsAbove(node).some(function (l) { return l.props.source === 'order.shipments'; });
     }
 
@@ -55220,7 +55272,8 @@ const StyleDesigner = (function () {
     // (order.items: the item, as the items loop's row does); '' for any
     // other source.
     function _sdOrderItemListKey(source) {
-        var keys = { 'order.item_forms': 'order.items', 'order.item_gift_cards': 'order.items', 'order.item_form_fields': 'order.item_forms' };
+        var keys = { 'order.item_forms': 'order.items', 'order.item_gift_cards': 'order.items', 'order.item_form_fields': 'order.item_forms',
+            'order.return_lines': 'order.returns' };
         return keys.hasOwnProperty(source) ? keys[source] : '';
     }
 
@@ -58261,8 +58314,7 @@ const StyleDesigner = (function () {
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
                                         createNode('semantic', { tag: 'div',
-                                            customName: _sdT('Return Requests (HTML)'),
-                                            _bindings: { text: '__returns' } }),
+                                            customName: _sdT('Return requests') }, _sdPartOrderReturnsList()),
                                         createNode('semantic', { tag: 'div', customName: _sdT('Return Request Form'),
                                             _bindings: { eo_visible_if: 'can_request_return' } }, [
                                             createNode('semantic', { tag: 'div',

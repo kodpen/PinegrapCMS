@@ -56,6 +56,7 @@ function pg_sw_default_part_tokens()
             array('__order_status_badge', 'pg_sw_part_order_status_badge'),
             array('__item_form_data_html', 'pg_sw_part_order_item_form'),
             array('__item_gift_card_html', 'pg_sw_part_order_item_gift_card'),
+            array('__returns', 'pg_sw_part_order_returns_list'),
         ),
         'comments' => array(
             array('__comment_stars_html', 'pg_sw_part_comment_stars'),
@@ -115,7 +116,7 @@ function pg_sw_default_tail_parts()
 {
     return array(
         'order_view' => array(
-            array(array('__return_form', '__returns'), 'pg_sw_part_order_returns'),
+            array(array('__return_form', '__returns', 'order.returns'), 'pg_sw_part_order_returns'),
             array(array('__legal_preinfo_url', '__legal_contract_url'), 'pg_sw_part_order_legal_documents'),
         ),
     );
@@ -560,17 +561,77 @@ function pg_sw_part_order_card($class, $name, $flag, $heading, $body)
     ));
 }
 
-// The returns card: the order's return requests and the request form,
-// both still built by returns.php (__returns, __return_form), shown while
-// either has something and the setting is on (show_returns_card).
+// The returns card: the order's return requests (the returns list part)
+// and the request form, still built by returns.php (__return_form), shown
+// while either has something and the setting is on (show_returns_card).
 function pg_sw_part_order_returns($cfg = array(), $tree = array())
 {
-    $block = function ($token, $name) {
-        return pg_sw_part_el('div', '', $name, array('_bindings' => array('text' => $token)));
-    };
     return array(pg_sw_part_order_card('pg-ov-returns-block', 'Returns', 'show_returns_card', lang('Returns'), array(
-        $block('__returns', 'Return requests'),
-        $block('__return_form', 'Return request form'),
+        pg_sw_part_el('div', '', 'Return requests', array(), pg_sw_part_order_returns_list($cfg)),
+        pg_sw_part_el('div', '', 'Return request form', array('_bindings' => array('text' => '__return_form'))),
+    )));
+}
+
+// The classes of a return's status badge (pg_return_badge_class()), by
+// status in the order the part lists them.
+function pg_sw_return_badge_classes()
+{
+    $out = array();
+    foreach (pg_return_statuses() as $status) $out[$status] = pg_return_badge_class($status);
+    return $out;
+}
+
+// The order's return requests, as pg_returns_list_html() printed them: a
+// box per request (order.returns) with its heading, the day it was asked
+// and a status badge per status; its products (order.return_lines); the
+// reason, the notes; how to send the goods back once approved, the code
+// after it; the tracking number, the refund date; then the customer's
+// moves, forms built by returns.php (__return_actions_html). Shown when
+// the order has returns (has_returns).
+function pg_sw_part_order_returns_list($cfg = array())
+{
+    $detail = function ($label, $token, $sample, $test = '') {
+        return pg_sw_part_el('div', 'small mb-1', $label, pg_sw_part_when($test !== '' ? $test : $token, 'not_empty'), array(
+            pg_sw_part_el('span', 'text-muted', 'Label', array('text' => $label . ':')),
+            pg_sw_part_el('span', '', $label, pg_sw_part_value($token, $sample)),
+        ));
+    };
+    $badges = array();
+    foreach (pg_sw_return_badge_classes() as $status => $class) {
+        $badges[] = pg_sw_part_el('span', $class, 'Status: ' . $status, array_merge(
+            array('text' => 'Return approved', '_bindings' => array('text' => '__return_status_label', 'show_if' => '__return_status')),
+            array('_bindParams' => array('show_if' => array('op' => 'eq', 'value' => $status)))
+        ));
+    }
+    return array(pg_sw_part_el('div', 'pg-ov-returns', 'Return requests', array('_bindings' => array('eo_visible_if' => 'has_returns')), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'order.returns'), 'children' => array(
+            pg_sw_part_el('div', 'pg-ov-return border rounded p-3 mb-3', 'Return request', array(), array(
+                pg_sw_part_el('div', 'd-flex flex-wrap justify-content-between align-items-start gap-2 mb-2', 'Heading', array(), array_merge(array(
+                    pg_sw_part_el('div', '', 'Heading', array(), array(
+                        pg_sw_part_el('div', 'fw-semibold', 'Heading', pg_sw_part_value('__return_title', 'Return request #12')),
+                        pg_sw_part_el('div', 'small text-muted', 'Date asked', pg_sw_part_value('__return_asked', 'Asked on 20.10.2026', 'not_empty')),
+                    )),
+                ), $badges)),
+                pg_sw_part_el('ul', 'small mb-2 ps-3', 'Products', pg_sw_part_when('__return_has_lines', 'not_empty'), array(
+                    array('type' => 'loop_area', 'props' => array('source' => 'order.return_lines'), 'children' => array(
+                        pg_sw_part_el('li', '', 'Product', array('text' => '^^__return_line_name^^ × ^^__return_line_qty^^')),
+                    )),
+                )),
+                $detail(lang('Reason'), '__return_reason', 'It arrived damaged'),
+                $detail(lang('Your note'), '__return_customer_note_html', '', '__return_customer_note'),
+                $detail(lang('Note from the shop'), '__return_decision_note_html', '', '__return_decision_note'),
+                pg_sw_part_el('div', 'alert alert-info small py-2 my-2', 'How to send it back', array_merge(
+                    array('_attrs' => array(array('name' => 'role', 'value' => 'status'))),
+                    pg_sw_part_when('__return_status', 'eq', 'approved')
+                ), array(
+                    pg_sw_part_el('span', '', 'How to send it back', pg_sw_part_value('__return_how', 'Your return was approved. You can send the goods back now.')),
+                    pg_sw_part_el('strong', '', 'Return code', pg_sw_part_value('__return_code', '', 'not_empty')),
+                )),
+                $detail(lang('Tracking number'), '__return_tracking_number', ''),
+                $detail(lang('Refund due by'), '__return_refund_deadline', ''),
+                pg_sw_part_el('div', '', 'The customer\'s moves', pg_sw_part_value('__return_actions_html', '')),
+            )),
+        )),
     )));
 }
 
