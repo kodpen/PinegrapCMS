@@ -99,6 +99,8 @@ function pg_curl_tls($ch)
  *   forbid_reuse     true to close the connection afterwards
  *   user_agent       replaces $env['user_agent']
  *   userpwd          "user:password" for HTTP basic authentication
+ *   http_version     '1.0' or '1.1' to hold the request to that HTTP
+ *                    version (default: libcurl's choice)
  *   allow_http       true to accept http as well as https for this request
  *                    (never for a redirect): only for an address the
  *                    operator types and the site reaches itself, such as a
@@ -110,7 +112,8 @@ function pg_curl_tls($ch)
  *
  * @return array option name => value; a value naming cURL constants
  *               ('CURLPROTO_HTTPS', 'CURLPROTO_HTTP|CURLPROTO_HTTPS',
- *               'CURLPROXY_HTTP') is those constants or-ed together
+ *               'CURLPROXY_HTTP', 'CURL_HTTP_VERSION_1_0') is those
+ *               constants or-ed together
  */
 function pg_curl_run_options($method, $url, $options, $env)
 {
@@ -169,6 +172,12 @@ function pg_curl_run_options($method, $url, $options, $env)
         $out['CURLOPT_USERPWD'] = (string) $options['userpwd'];
     }
 
+    $versions = array('1.0' => 'CURL_HTTP_VERSION_1_0', '1.1' => 'CURL_HTTP_VERSION_1_1');
+
+    if (isset($options['http_version']) && isset($versions[(string) $options['http_version']])) {
+        $out['CURLOPT_HTTP_VERSION'] = $versions[(string) $options['http_version']];
+    }
+
     if (isset($env['proxy']) && (string) $env['proxy'] !== '') {
         $out['CURLOPT_HTTPPROXYTUNNEL'] = true;
         $out['CURLOPT_PROXYTYPE'] = 'CURLPROXY_HTTP';
@@ -210,18 +219,19 @@ function pg_curl_run_pin($url, $ip)
  *
  * Answers like api_http_request(): array('ok' => bool (2xx), 'status' => int,
  * 'body' => string, 'errno' => int, 'error' => string, 'connect' => int,
- * 'request_size' => int). errno is cURL's error number when the request
+ * 'request_size' => int, 'content_length' => int). errno is cURL's error number when the request
  * failed in cURL, 0 otherwise - also for an address refused before cURL ran,
  * whose reason is in error alone. error is cURL's own text;
  * pg_curl_tls_hint($errno) is for the caller to append. connect is the status
  * a proxy answered the tunnel request with (0 without a proxy) and
  * request_size the bytes of request headers written (0 when nothing went
  * out); together they tell whether a failed request can have reached the
- * other side.
+ * other side. content_length is the Content-Length the server announced (-1
+ * when it sent none), against which a caller can tell a body cut short.
  */
 function pg_curl_run($method, $url, $options = array())
 {
-    $result = array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0, 'error' => '', 'connect' => 0, 'request_size' => 0);
+    $result = array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0, 'error' => '', 'connect' => 0, 'request_size' => 0, 'content_length' => -1);
 
     if (!function_exists('curl_init')) {
         $result['error'] = 'cURL is not available on this server.';
@@ -253,7 +263,7 @@ function pg_curl_run($method, $url, $options = array())
     $ch = curl_init();
 
     foreach (pg_curl_run_options($method, $url, $options, $env) as $name => $value) {
-        if (in_array($name, array('CURLOPT_PROTOCOLS', 'CURLOPT_REDIR_PROTOCOLS', 'CURLOPT_PROXYTYPE'), true)) {
+        if (in_array($name, array('CURLOPT_PROTOCOLS', 'CURLOPT_REDIR_PROTOCOLS', 'CURLOPT_PROXYTYPE', 'CURLOPT_HTTP_VERSION'), true)) {
             $bits = 0;
 
             foreach (explode('|', $value) as $constant) {
@@ -278,6 +288,7 @@ function pg_curl_run($method, $url, $options = array())
     } else {
         $result['status'] = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $result['body'] = (string) $body;
+        $result['content_length'] = (int) curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
         $result['ok'] = ($result['status'] >= 200 && $result['status'] < 300);
     }
 
