@@ -297,7 +297,7 @@ foreach ($commissions as $commission) {
     }
 
     //default
-    $output_status_classes = 'bg-secondary fg-black fw-light';
+    $output_status_classes = 'bg-secondary fg-white fw-light';
 
     if($commission['status'] == 'pending'){
         $output_status_classes = 'bg-warning fg-black fw-light';
@@ -503,7 +503,7 @@ pg_page_shell([
                             <div class="row">
                                 <div class="col-12 text-center">
                                     <h5>' . lang('Pending Total') . '</h5>
-                                    <p class="fw-bolder fg-black">' . pg_format_money($pending_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
+                                    <p class="fw-bolder fg-body">' . pg_format_money($pending_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                     <hr/>
                                 </div>
                                 <div class="col-12 text-center">

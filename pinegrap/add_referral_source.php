@@ -56,8 +56,8 @@ if (!$_POST) {
                                             <h5>' . lang('Order Preview Page Display Options') . '</h5>
                                             
                                             <div class="col-12 md:col-6 my-3">
-                                                <label for="name" class="form-label">*' . lang('Referral Source Name') . '</label>
-                                                <input type="text" name="name" class="form-control" maxlength="50" />
+                                                <label for="name" class="form-label">' . lang('Referral Source Name') . '</label>
+                                                <input type="text" id="name" name="name" class="form-control" maxlength="50" required />
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
                                             <div class="col-12 sm:col-2 my-3">
@@ -74,8 +74,8 @@ if (!$_POST) {
                                         <div class="row mt-7">
                                             <h5>' . lang('New Referral Source Code for Order Reporting') . '</h5>
                                             <div class="col-12 md:col-4 my-3">
-                                                <label for="code" class="form-label">*' . lang('Referral Source Code') . '</label>
-                                                <input type="text" name="code" class="form-control" maxlength="50" />
+                                                <label for="code" class="form-label">' . lang('Referral Source Code') . '</label>
+                                                <input type="text" id="code" name="code" class="form-control" maxlength="50" required />
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
                                         </div>

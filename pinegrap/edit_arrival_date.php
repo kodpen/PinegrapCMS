@@ -233,7 +233,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 md:col">
                                                     <label for="start_date" class="form-label">' . lang('Start Date') . '</label>
-                                                    <input value="' . $start_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
+                                                    <input value="' . $start_date . '" placeholder="' . date(get_date_format_code() . '/Y') . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                                 </div>
                                                 <div class="col-12 md:col">
                                                     <label for="end_date" class="form-label">' . lang('End Date') . '</label>
@@ -254,7 +254,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 md:col-4">
                                             <label for="arrival_date" class="form-label">' . lang('Arrival Date') . '</label>
-                                            <input value="' . $arrival_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
+                                            <input value="' . $arrival_date . '" placeholder="' . date(get_date_format_code() . '/Y') . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                         </div>
                                         <div class="col-12 mt-7">
                                             <h5>' . lang('Or allow Customer to enter this Arrival Date during checkout') . '</h5>
@@ -270,7 +270,7 @@ if (!$_POST) {
                                                         <div class="row">
                                                             <div class="col-12 my-1" id="custom_maximum_arrival_date_row"  style="' . $custom_maximum_arrival_date_row_style . '">
                                                                 <label for="custom_maximum_arrival_date" class="form-label">' . lang('Latest Allowed Arrival Date') . '</label>
-                                                                <input value="' . $custom_maximum_arrival_date . '" placeholder="'. date('n/j/Y') . '" type="text" name="custom_maximum_arrival_date" id="custom_maximum_arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
+                                                                <input value="' . $custom_maximum_arrival_date . '" placeholder="' . date(get_date_format_code() . '/Y') . '" type="text" name="custom_maximum_arrival_date" id="custom_maximum_arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                                                 <div class="form-text text-end">' . lang('leave blank for no restriction') . '</div>
                                                             </div>
                                                         </div>

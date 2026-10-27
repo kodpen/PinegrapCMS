@@ -76,7 +76,7 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-8 my-3">
-                                            <label for="name" class="form-label">*' . lang('Folder Name') . '</label>
+                                            <label for="name" class="form-label">' . lang('Folder Name') . '</label>
                                             ' . $liveform_add_folder->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
