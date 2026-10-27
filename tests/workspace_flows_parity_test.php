@@ -2612,7 +2612,7 @@ function workspace_flows_parity_table()
 			array(array('order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event'), 1, 'scheduledForm() event templates, kept in the form (canvas starters come in slice 4)'),
 		),
 		'entry_points' => array(
-			array(array('{} in scheduledList()'), 1, 'New on the list, in the Scheduled actions section of Flows'),
+			array(array('{} in scheduledList()'), 1, 'New on the list of the scheduled screen; the Scheduled actions section of Flows hides it ({ add: false }) and offers New flow instead (slice 4a)'),
 			array(array('{ channel_id: self.channel.id } in action() in composer()'), 1, 'composer insert menu (not in discussions) still opens the form'),
 			array(array('{ note_id: current.id } in toolbar() in startNotes()'), 1, 'note toolbar (note edit right) still opens the form'),
 			array(array('{ channel_id: change.draft.channel_id } (sentence) in changesNode()'), 1, '@ai draft Open still opens the form, its draft_change_id sent on Save (see request)'),
@@ -2890,4 +2890,25 @@ function test_workspace_flows_parity_whole_action_uses()
 
 		pg_assert_contains('$action is used whole', $thrown, 'refused: ' . $code);
 	}
+}
+
+// In Flows a new rule is made on the canvas: the Scheduled actions section
+// puts New flow in the toolbar and asks the list for no New of its own;
+// the list still offers New where it is called without options.
+function test_workspace_flows_parity_scheduled_section_new_is_a_flow()
+{
+	$flow = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$start = strpos($flow, 'function showScheduled(');
+
+	pg_assert_true($start !== false, 'showScheduled() in workspace_flow.js');
+
+	$body = substr($flow, $start, strpos($flow, "\n    }\n", $start) - $start);
+
+	pg_assert_true(strpos($body, 'newFlowButton();') !== false, 'New flow in the section\'s toolbar');
+	pg_assert_true(strpos($body, 'K.scheduledList(ui.scheduled, ui.bar, { add: false });') !== false, 'the list without its New');
+
+	$channels = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_true(strpos($channels, 'function scheduledList(body, bar, options) {') !== false);
+	pg_assert_true(strpos($channels, "if (!options || (options.add !== false)) {") !== false, 'New stays where no options are given');
 }
