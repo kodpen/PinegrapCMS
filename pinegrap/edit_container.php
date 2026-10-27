@@ -148,21 +148,21 @@ if (!$_POST) {
                                                         <label class="" for="weight_type_kg">' . lang('Kg') . '</label>
                                                     </div>
                                                 </div>
-                                                <div id="weight_pound" class="input-group" style="max-width:200px;">
-                                                    <input type="number" step="any" id="weight" name="weight" value="' . h($liveform->get_field_value('weight')) . '" class="form-control' . ($liveform->check_field_error('weight') ? ' is-invalid' : '') . '" />
-                                                    <span class="input-group-text">' . lang('lbs') . '</span>
-                                                </div>
-                                                <div id="weight_kg" class="input-group d-none" style="max-width:200px;">
-                                                    <input type="number" step="any" id="weightkg" name="weightkg" class="form-control" />
-                                                    <span class="input-group-text">' . lang('kg') . '</span>
-                                                </div>
+                                                <label id="weight_pound" class="form-control form-adorn form-adorn-end" style="max-width:200px;">
+                                                    <span class="form-adorn-text" aria-hidden="true">' . lang('lbs') . '</span>
+                                                    <input type="number" step="any" id="weight" name="weight" value="' . h($liveform->get_field_value('weight')) . '" class="form-ghost' . ($liveform->check_field_error('weight') ? ' is-invalid' : '') . '" />
+                                                </label>
+                                                <label id="weight_kg" class="form-control form-adorn form-adorn-end d-none" style="max-width:200px;">
+                                                    <span class="form-adorn-text" aria-hidden="true">' . lang('kg') . '</span>
+                                                    <input type="number" step="any" id="weightkg" name="weightkg" class="form-ghost" />
+                                                </label>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="cost" class="form-label">' . lang('Cost') . '</label>
-                                                <div class="input-group" style="max-width:200px;">
-                                                    <span class="input-group-text">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                    <input type="number" step="any" id="cost" name="cost" value="' . h($liveform->get_field_value('cost')) . '" class="form-control' . ($liveform->check_field_error('cost') ? ' is-invalid' : '') . '" />
-                                                </div>
+                                                <label class="form-control form-adorn" style="max-width:200px;">
+                                                    <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                    <input type="number" step="any" id="cost" name="cost" value="' . h($liveform->get_field_value('cost')) . '" class="form-ghost' . ($liveform->check_field_error('cost') ? ' is-invalid' : '') . '" />
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
