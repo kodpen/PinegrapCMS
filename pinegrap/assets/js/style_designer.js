@@ -37956,7 +37956,9 @@ const StyleDesigner = (function () {
     // element (as before W19). A code token's values are states of their own:
     // the order view's status stages, so one status badge shows. The canvas
     // tests each condition with _sdCondEval(), as the page does. Editor only.
-    var _sdCondCanvasState = 'sample';
+    // Empty draws each widget's first state ("Completed" in the order view);
+    // a page opened in a tab starts there again.
+    var _sdCondCanvasState = '';
 
     // Tokens whose value is a code the canvas offers one state per value of
     // (pg_sw_cond_code_tokens() that are a widget's, not a list row's).
@@ -64649,6 +64651,7 @@ const StyleDesigner = (function () {
         nodeIdCounter = next.nodeIdCounter || reindex(tree);
         selectedNode  = null;
         selectedNodes = [];
+        _sdCondCanvasState = '';
 
         _pgLoadPageIntoFields(next);
         _pgTabsRender();
