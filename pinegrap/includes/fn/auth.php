@@ -3996,6 +3996,37 @@ function pg_login_throttle_limits()
 }
 
 /**
+ * What a sign-in failure from this address is counted against: the address,
+ * or the /64 for IPv6 (waf_ip_subject()); nothing for an address that is not
+ * counted or that the firewall's allow list covers.
+ *
+ * The allow list is the operator's own office or server: a shared address
+ * whose other users fail fifty times would otherwise lock the operator out
+ * for an hour, with the firewall off too, and no screen releases the address
+ * lock. The account subject still counts there, so guessing at one account
+ * from an allowed address is still stopped.
+ *
+ * @param string $ip      the visitor's address (waf_client_ip())
+ * @param bool   $counted waf_ip_is_counted() for it
+ * @param array  $allowed the allow list's entries (waf_ip_lists())
+ * @return string the subject, or '' when the address is not counted
+ */
+function pg_login_throttle_address_subject($ip, $counted, array $allowed)
+{
+    $ip = (string) $ip;
+
+    if (($ip === '') || !$counted) {
+        return '';
+    }
+
+    if (function_exists('waf_ip_in_any') && waf_ip_in_any($ip, $allowed)) {
+        return '';
+    }
+
+    return function_exists('waf_ip_subject') ? waf_ip_subject($ip) : $ip;
+}
+
+/**
  * The two things a sign-in attempt is counted against.
  *
  * The address catches one machine working through a password list. The
@@ -4023,8 +4054,11 @@ function pg_login_throttle_subjects($identifier)
         ? waf_ip_is_counted($ip)
         : (!function_exists('waf_ip_is_infrastructure') || !waf_ip_is_infrastructure($ip));
 
-    if ($ip !== '' && $address_counted) {
-        $subjects['a'] = function_exists('waf_ip_subject') ? waf_ip_subject($ip) : $ip;
+    $allowed = function_exists('waf_ip_lists') ? waf_ip_lists() : array('allow' => array());
+    $address_subject = pg_login_throttle_address_subject($ip, $address_counted, $allowed['allow']);
+
+    if ($address_subject !== '') {
+        $subjects['a'] = $address_subject;
     }
 
     $identifier = trim((string) $identifier);
