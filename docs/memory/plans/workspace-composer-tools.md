@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23; 1, 2, 6, 7 done, 4 but autoformat, 8a-b done; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+description: Plan (2026-10-23; 1, 2, 6, 7 done, 4, 5 partly, 8a-b done; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -8,7 +8,7 @@ description: Plan (2026-10-23; 1, 2, 6, 7 done, 4 but autoformat, 8a-b done; ans
 
 ## What is there today?
 - One engine, `assets/js/workspace_editor.js` (`PGWsEditor`): selection bar, shortcuts, own undo, `paste()` (smart paste), table, checklist, code (also on ```), calc windows.
-- Slice 1 (#1554): `PGWsEditor.toolbar()` draws the rows of `composer()` (now with B/I/S, undo, redo), the notes `toolbar()` and `richField().tools()`; `format()` makes every mark on the nodes, no `execCommand` (docs/memory/workspace/workspace-editor-toolbar.md).
+- Slice 1 (#1554): `PGWsEditor.toolbar()` draws the rows of `composer()`, the notes `toolbar()` and `richField().tools()`; `format()` makes every mark on the nodes, no `execCommand` (docs/memory/workspace/workspace-editor-toolbar.md).
 - `ws_render_body()` (`includes/workspace/render.php`, escape first) draws marks, links, tables, checklists, fences, `::: Title`, lists and quotes; headings, `---`, images stay raw. `ws_plain_text()` folds lines into one; guest pages also use `ws_guest_render()`. The import (`ws_note_import_convert()`) makes headings bold.
 
 ## What is proposed? (not approved yet)
@@ -22,7 +22,7 @@ description: Plan (2026-10-23; 1, 2, 6, 7 done, 4 but autoformat, 8a-b done; ans
 2. Lists and quotes, no schema, done: #1725, #1897 (workspace/workspace-text-lists.md, -editor-lists.md); autoformat in 4.
 3. Headings `#`-`###` and `---` after question 1, no schema; the import keeps headings.
 4. Highlight `==x==`, autoformat (one Ctrl+Z undo, IME guard, off switch), no schema. Highlight done: server #1972, editor #1999 (workspace-text-highlight.md); autoformat left.
-5. Link Text field, Ctrl+/ shortcut sheet, "Aa" expanded composer after question 2, no schema.
+5. Link Text field, Ctrl+/ sheet, done: #2101 (workspace/workspace-editor-link-keys.md); "Aa" expanded composer after question 2; no schema.
 6. Slash inserts in notes, done: #2009 (workspace/workspace-notes-slash-inserts.md).
 7. Smart paste, no schema, done: #2018 (workspace/workspace-editor-smart-paste.md).
 8. Small aids, no schema, a PR each: unsent draft per person and channel (localStorage), done: #2034 (workspace/workspace-unsent-draft.md); meter near `WS_MESSAGE_MAX`, done: #2073 (workspace/workspace-message-meter.md); `:` emoji.

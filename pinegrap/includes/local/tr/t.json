@@ -354,6 +354,7 @@
     "Text that keeps its spaces and line breaks, with a code element inside: for code samples.": "Boşluklarını ve satır sonlarını koruyan, içinde code öğesi olan metin: kod örnekleri için.",
     "Text that must be on the page": "Sayfada bulunması gereken metin",
     "Text to find...": "Aranacak metin...",
+    "Text to show (the address when left empty)": "Görünecek metin (boş bırakılırsa adres)",
     "Text tools": "Metin araçları",
     "Text with too little contrast": "Kontrastı yetersiz metin",
     "Text, image, button and so on — bind them to a data field in the right-hand panel": "Metin, görsel, buton vb. — sağ panelden veri alanına bağlayabilirsiniz",
