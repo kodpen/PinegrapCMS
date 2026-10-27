@@ -687,7 +687,7 @@ function ws_handle_action($action, $request)
                 return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $result['flow_id'], 'edit'))));
             }
 
-            return ws_action_ok(array('draft_rev' => $result['draft_rev'], 'problems' => $result['problems']));
+            return ws_action_ok(array('draft_rev' => $result['draft_rev'], 'problems' => $result['problems'], 'warnings' => $result['warnings']));
 
         case 'ws_flow_publish':
         case 'ws_flow_pause':

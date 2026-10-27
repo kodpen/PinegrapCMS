@@ -195,6 +195,7 @@
         graph: null,        // what is drawn: the draft, or the live graph read-only
         edit: false,
         problems: [],
+        warnings: [],       // what may be published but a reader should know
         selected: null,     // { type: node | edge, id }
         view: { x: 40, y: 40, k: 1 },
         outline: false,
@@ -1568,6 +1569,7 @@
         // draft, read-only, of a flow never published.
         state.graph = graphOf(state.edit ? flow.draft : (flow.graph || flow.draft));
         state.problems = flow.problems || [];
+        state.warnings = flow.warnings || [];
         state.selected = null;
         state.dirty = false;
         state.saveError = '';
@@ -1882,11 +1884,14 @@
             ui.save.appendChild(retry);
         }
 
+        // Warnings alone open the list too, but leave Publish as it is.
+        var warned = state.warnings.length;
+
         K.clear(ui.problemButton);
-        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : 'btn-ghost');
-        ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : 'bi-check2-circle', 'me-1'));
-        ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : t('fl_no_problems')));
-        ui.problemButton.disabled = !count;
+        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : (warned ? 'btn-outline theme-warning' : 'btn-ghost'));
+        ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : (warned ? 'bi-exclamation-circle' : 'bi-check2-circle'), 'me-1'));
+        ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : (warned ? t('fl_warnings', warned) : t('fl_no_problems'))));
+        ui.problemButton.disabled = !count && !warned;
 
         if (!ui.publish) {
             return;
@@ -2184,6 +2189,8 @@
         var byNode = {};
         var byEdge = {};
 
+        var warnings = {};
+
         (state.run ? [] : state.problems).forEach(function (problem) {
             if (problem.node) {
                 (byNode[problem.node] = byNode[problem.node] || []).push(problem.text);
@@ -2194,13 +2201,21 @@
             }
         });
 
+        // A warning is told on its box, which is not outlined for it.
+        (state.run ? [] : state.warnings).forEach(function (warning) {
+            if (warning.node) {
+                (warnings[warning.node] = warnings[warning.node] || []).push(warning.text);
+            }
+        });
+
         Array.prototype.forEach.call(ui.root.querySelectorAll('[data-node]'), function (box) {
             var texts = byNode[box.getAttribute('data-node')];
+            var told = (texts || []).concat(warnings[box.getAttribute('data-node')] || []);
 
             box.classList.toggle('wsf-bad', !!texts);
 
             if (!state.run) {
-                box.title = texts ? texts.join('\n') : '';
+                box.title = told.join('\n');
             }
         });
 
@@ -2212,17 +2227,30 @@
     function drawProblems() {
         K.clear(ui.problemBox);
 
-        if (!state.edit || !state.problems.length) {
+        if (!state.edit || (!state.problems.length && !state.warnings.length)) {
             ui.problemBox.classList.add('d-none');
             return;
         }
 
-        ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_problems', state.problems.length)));
+        ui.problemBox.classList.toggle('wsf-warned', !state.problems.length);
 
+        if (state.problems.length) {
+            ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_problems', state.problems.length)));
+            ui.problemBox.appendChild(problemList(state.problems, 'wsf-problem', 'bi-exclamation-triangle'));
+        }
+
+        if (state.warnings.length) {
+            ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_warnings', state.warnings.length)));
+            ui.problemBox.appendChild(problemList(state.warnings, 'wsf-problem wsf-warning', 'bi-exclamation-circle'));
+        }
+    }
+
+    // A list of problems or warnings, each leading to its box or arrow.
+    function problemList(problems, className, icon) {
         var list = el('ul', 'list-unstyled mb-0');
 
-        state.problems.forEach(function (problem) {
-            var row = K.button('wsf-problem', problem.text, 'bi-exclamation-triangle');
+        problems.forEach(function (problem) {
+            var row = K.button(className, problem.text, icon);
 
             if (problem.node && nodeById(problem.node)) {
                 row.addEventListener('click', function () { select({ type: 'node', id: problem.node }, { reveal: true, focus: true }); });
@@ -2235,7 +2263,7 @@
             list.appendChild(el('li')).appendChild(row);
         });
 
-        ui.problemBox.appendChild(list);
+        return list;
     }
 
     // ── Settings ───────────────────────────────────────────────────────
@@ -4398,6 +4426,7 @@
 
             if (state.flow === flow) {
                 state.problems = data.problems || [];
+                state.warnings = data.warnings || [];
 
                 // A run shown keeps the canvas; the draft's problems are
                 // drawn once it is closed.
