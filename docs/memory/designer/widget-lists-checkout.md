@@ -21,5 +21,8 @@ module: widgets_lists_checkout
 ## What does the editor give?
 - Palette "Lists in a record": four entries; `_sdCheckoutListStarter()`: a success alert list, info alerts, a gift card list group with Remove, recipient cards holding the cart starter. A list in the item loop is marked as drawing nothing, as in the cart.
 
+## Are the offer texts translated?
+- Yes (W24b): owner type `offer` in the catalog group ("Products, product groups and offers"), fields `pg_tr_offer_fields()` of every enabled offer; the pass over the finished page swaps them where they print ([[content-translation-uses]]). The code is never translated.
+
 ## What is left?
-- W24b: offer texts (message, button label) in Translations. A browser round is owed.
+- A browser round is owed.

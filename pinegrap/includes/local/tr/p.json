@@ -1354,6 +1354,7 @@
     "Products to list": "Listelenecek ürün sayısı",
     "Products whose description markup has a serious fault, such as invalid nesting or images with no alt text.": "Açıklama işaretlemesinde ciddi kusur bulunan ürünler: geçersiz iç içe geçme veya alt metni olmayan görsel gibi.",
     "Products, cart, checkout and orders come with the platform; switch the shop on in the settings.": "Ürünler, sepet, ödeme ve siparişler platformla birlikte gelir; mağazayı ayarlardan açın.",
+    "Products, product groups and offers": "Ürünler, ürün grupları ve teklifler",
     "Products, product lists, blog posts, breadcrumbs and your organization are described in machine-readable form. The fields below only apply while this is on.": "Ürünler, ürün listeleri, blog yazıları, gezinti yolları ve kuruluşunuz makine tarafından okunabilir biçimde tanıtılır. Aşağıdaki alanlar yalnızca bu açıkken geçerlidir.",
     "Products, shipping, tax and orders": "Ürünler, kargo, vergi ve siparişler",
     "Profile": "Profil",

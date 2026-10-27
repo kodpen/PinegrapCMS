@@ -4,7 +4,7 @@ description: translation_uses (where a text of the front-end translation is draw
 ---
 
 ## What is a use?
-One row of `translation_uses`: a string (`translation_strings`) drawn by an owner. Owner types: `page` (body), `page_seo` (title, description), `page_ref` (string 0; `node_id` = referenced owner type `shared` / `menu` / `form_records`, `field` = its id), `shared` (shared component or system widget), `menu`, `product`, `product_group`, `attribute`, `form`, `form_records`, `ui` (cookie window). The site counts (`pg_tr_language_stats()`), the pending texts sent to an engine (`pg_tr_pending_string_ids()`), "Approve all" and "Clear translations" all read uses. `pg_tr_map()` only loads translations of strings that still have a use.
+One row of `translation_uses`: a string (`translation_strings`) drawn by an owner. Owner types: `page` (body), `page_seo` (title, description), `page_ref` (string 0; `node_id` = referenced owner type `shared` / `menu` / `form_records`, `field` = its id), `shared` (shared component or system widget), `menu`, `product`, `product_group`, `attribute`, `offer` (an offer's message, suggestion and button label), `form`, `form_records`, `ui` (cookie window). The site counts (`pg_tr_language_stats()`), the pending texts sent to an engine (`pg_tr_pending_string_ids()`), "Approve all" and "Clear translations" all read uses. `pg_tr_map()` only loads translations of strings that still have a use.
 
 ## Who writes them?
 `pg_tr_extract_page()` rewrites a page's `page`, `page_seo` and `page_ref` rows and, through the references, its components and menus; shared components and menus are extracted only through a page. The catalog and forms groups replace all uses of their types. `pg_tr_ui_sync()` keeps `ui` to the cookie window.
