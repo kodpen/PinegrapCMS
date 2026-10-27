@@ -1423,6 +1423,8 @@
     "Add to the note": "Nota ekle",
     "Add to the plan": "Plana ekle",
     "Add tracking numbers to orders from a CSV file.": "Siparişlere bir CSV dosyasından takip numarası ekleyin.",
+    "Add value": "Değer ekle",
+    "Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.": "Değer ekle, çalışmayı neyin başlattığını ya da önceki bir kutunun verdiğini ekler; {{date}} ve zamanlanmış işlemlerin diğer sözcükleri de çalışır.",
     "Add what each person missed": "Herkesin kaçırdıklarını ekle",
     "Add your name to the address book": "Adınızı rehbere ekleyin",
     "Add {var:1}": "{var:1|c} ekle",
