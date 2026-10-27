@@ -888,14 +888,18 @@ function bs6_switch_pins($source, array $pairs)
 	$applied = false;
 
 	foreach ($pairs as $pair) {
-		if (strpos($pair[1], $pair[0]) !== false && strpos($source, $pair[1]) !== false) {
+		// A pair with an empty "to" deletes its text: once gone it is done
+		// (strpos() refuses an empty needle on PHP 7).
+		$deletes = ($pair[1] === '');
+
+		if (!$deletes && strpos($pair[1], $pair[0]) !== false && strpos($source, $pair[1]) !== false) {
 			continue;
 		}
 
 		if (strpos($source, $pair[0]) !== false) {
 			$source = str_replace($pair[0], $pair[1], $source);
 			$applied = true;
-		} elseif (strpos($source, $pair[1]) === false) {
+		} elseif (!$deletes && strpos($source, $pair[1]) === false) {
 			return bs6_switch_result($source, 'missing');
 		}
 	}

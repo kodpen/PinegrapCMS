@@ -186,4 +186,9 @@ function test_bs6_switch_pins()
 	pg_assert_same(array('source' => "init();\nvar options = {};", 'status' => 'applied'), $once);
 	pg_assert_same($once['source'], bs6_switch_pins($once['source'], $insert)['source']);
 	pg_assert_same('done', bs6_switch_pins($once['source'], $insert)['status']);
+
+	$delete = array(array("x();\n", ''));
+	$gone = bs6_switch_pins("a();\nx();\nb();\n", $delete);
+	pg_assert_same(array('source' => "a();\nb();\n", 'status' => 'applied'), $gone);
+	pg_assert_same('done', bs6_switch_pins($gone['source'], $delete)['status'], 'a deleted text is done');
 }
