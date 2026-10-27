@@ -37,8 +37,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
  *                        (the page's button label, '' for the default), 'generated'
  *                        (the text the layout's generate_form_layout_content() call prints)
  * @return array  'ok' (false when the text cannot be read as PHP), 'tree' (root node),
- *                'dropped' (what was left out, in order: 'watcher', 'save', 'condition', 'php'),
- *                'missing' (ids of rows the converted layout does not draw)
+ *                'dropped' (what was left out, in order: 'watcher', 'save', 'condition', 'php',
+ *                'signature'), 'missing' (ids of rows the layout does not draw, added at the
+ *                end of the form)
  */
 function pg_layout_form_convert($code, $fields, $opts = array())
 {
@@ -70,6 +71,24 @@ function pg_layout_form_convert($code, $fields, $opts = array())
 
     $root = array('children' => $children);
     _pg_lfc_captcha($root['children']);
+
+    // Rows the layout does not draw come at the end of the form, before the
+    // CAPTCHA and the button, in their order: the first save writes the
+    // form from the widget, and a row left out would be deleted with its
+    // answers. A signature has no designed control; its row stays.
+    $present = $st->info;
+    _pg_lfc_present($root['children'], $present);
+    $extra = '';
+    foreach ($by_id as $fid => $f) {
+        if (isset($present[$fid])) continue;
+        if ((string)$f['type'] === 'signature') { _pg_lfc_drop($st, 'signature'); continue; }
+        $out['missing'][] = $fid;
+        $extra .= _pg_lfc_missing_html($f);
+        if ((string)$f['type'] === 'information') $st->info[$fid] = true;
+    }
+    $out['dropped'] = $st->dropped;
+    if ($extra !== '') _pg_lfc_insert_before_end($root, _pg_lfc_parse($extra));
+
     $drawn = $st->info;
     foreach ($by_id as $fid => $f) {
         $type = isset($f['type']) ? (string)$f['type'] : '';
@@ -88,10 +107,88 @@ function pg_layout_form_convert($code, $fields, $opts = array())
 
     $root['children'][] = pg_di_mk('loop_area', array());
     $out['tree'] = pg_di_root($root['children']);
-    foreach ($by_id as $fid => $f) {
-        if (!isset($drawn[$fid])) $out['missing'][] = $fid;
-    }
     return $out;
+}
+
+// Rows a control of the parsed layout stands for, by its classic name.
+function _pg_lfc_present($nodes, &$present)
+{
+    foreach ($nodes as $n) {
+        if (in_array(_pg_lfc_tag($n), array('input', 'select', 'textarea'), true)) {
+            $fid = _pg_lfc_field_of($n);
+            if ($fid > 0) $present[$fid] = true;
+        }
+        if (!empty($n['children'])) _pg_lfc_present($n['children'], $present);
+    }
+}
+
+// A row the layout left out, as the classic markup the passes below turn
+// into elements like the rest: named by its id, labelled, Bootstrap 5.
+function _pg_lfc_missing_html($f)
+{
+    $id = (int)$f['id'];
+    $label = (string)$f['label'];
+    switch ((string)$f['type']) {
+        case 'information':
+            return '<div class="mb-3">' . (string)$f['information'] . '</div>';
+        case 'radio button':
+        case 'check box':
+            $kind = ($f['type'] === 'radio button') ? 'radio' : 'checkbox';
+            $html = '<div class="mb-3"><div>' . $label . '</div>';
+            foreach ((array)$f['options'] as $o) {
+                $html .= '<div><input type="' . $kind . '" name="' . $id . '" value="' . h((string)$o['value']) . '"></div>';
+            }
+            return $html . '</div>';
+        case 'text area':
+            $control = '<textarea name="' . $id . '" id="' . $id . '" class="form-control"></textarea>';
+            break;
+        case 'pick list':
+            $control = '<select name="' . $id . '" id="' . $id . '" class="form-select"></select>';
+            break;
+        default:
+            $control = '<input type="text" name="' . $id . '" id="' . $id . '" class="form-control">';
+    }
+    return '<div class="mb-3"><label for="' . $id . '" class="form-label">' . $label . '</label>' . $control . '</div>';
+}
+
+// Inserts nodes before the form's end: the CAPTCHA element or the first
+// submit button, or the outermost wrapper holding only it; at the end when
+// there is neither.
+function _pg_lfc_insert_before_end(&$root, $nodes)
+{
+    if (empty($nodes)) return;
+    $path = _pg_lfc_end_path($root['children'], array());
+    if ($path === null) {
+        foreach ($nodes as $n) $root['children'][] = $n;
+        return;
+    }
+    while (count($path) > 1) {
+        $holder = _pg_lfc_at($root, array_slice($path, 0, -1));
+        if (count($holder['children']) !== 1) break;
+        array_pop($path);
+    }
+    $at = array_pop($path);
+    $holder = &_pg_lfc_at($root, $path);
+    array_splice($holder['children'], $at, 0, $nodes);
+    unset($holder);
+}
+
+function _pg_lfc_end_path($nodes, $path)
+{
+    foreach ($nodes as $i => $n) {
+        $p = array_merge($path, array($i));
+        $tag = _pg_lfc_tag($n);
+        if ((isset($n['props']['_bindings']['section']) && $n['props']['_bindings']['section'] === 'captcha')
+            || (($tag === 'button' || $tag === 'input') && strtolower((string)_pg_lfc_attr($n, 'type')) === 'submit')
+            || ($tag === 'button' && _pg_lfc_attr($n, 'type') === null)) {
+            return $p;
+        }
+        if (!empty($n['children'])) {
+            $hit = _pg_lfc_end_path($n['children'], $p);
+            if ($hit !== null) return $hit;
+        }
+    }
+    return null;
 }
 
 // One PHP part's code without white space and comments, a closing
@@ -190,6 +287,10 @@ function _pg_lfc_echo($src, $st, $depth)
     if ($src === 'h($submit_button_label)' || $src === '$submit_button_label') return h($st->submit);
     // The question is the CAPTCHA element's own.
     if ($src === 'h($captcha_question)' || $src === '$captcha_question') return '';
+    if (preg_match('/^pg_signature_field\(/', $src)) {
+        _pg_lfc_drop($st, 'signature');
+        return '';
+    }
     if (preg_match('/^eval\([\'"]\?>[\'"]\.generate_form_layout_content\(/', $src)) {
         if ($depth === 0 && $st->generated !== '') {
             $before = $st->html;

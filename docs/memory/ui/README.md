@@ -42,6 +42,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - bootstrap-6.md: The panel on Bootstrap 6 (switch #1866, tag bs6-switch): docs and skills, the dist copy, what is v6 and what stays 5.3.8, layers and breakpoints, own class names, a branch older than the switch
 - button-busy-state.md: Buttons never change their label or lock for a fixed time while a request runs; the window-level guard against double submits and double clicks (3 s); how an Ajax button disables itself.
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
+- calendar-event-shared-form.md: includes/forms/calendar_event_form.php checks a submitted calendar event for add_calendar_event.php (edit_calendar_event.php next); what the edit call changes
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.
 - code-editor-escape-in-dialogs.md: Escape inside a code editor that sits in a dialog: an Escape the editor used (completion list, search panel, full window) stops at the editor; only a free one closes the dialog
 - command-palette.md: Panel search box (Ctrl+K): where the chips come from, how text is matched, why every key must be a string (the "503" crash), chips that open a dialog
@@ -53,6 +54,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts.
 - design-file-missing-on-disk.md: What the theme, design file and CSS/JS/text editor screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
 - edit-screen-wide-layout.md: Owner decision for panel edit screens: a wide screen is not spent on one column of stacked cards; form column, sticky status column, sticky save bar, modeled on product_builder.php.
+- email-campaign-profile-shared-form.md: The campaign profile create and edit screens share includes/forms/email_campaign_profile_form.php
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
 - form-adorn.md: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups become a label wrapper with the add-on inside the border, the markup, the panel focus rules, the pilot places
@@ -86,7 +88,8 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-top-bar-phone.md: Panel top bar (#header) below 768px: the logo item (li.pg-brand-item) and the page heading (.pg-navhead) are hidden, why, what stays, the test that keeps it
 - password-strength-js.md: pg_password_strength.js, the panel copy of validate_password_strength() and the Bootstrap 6 Strength meter it drives (#1698, #2211, installer #2274): scoring on and off, where it shows, tests
 - pg-chips.md: Chips fields (data-pg-chips) on Bootstrap 6 Chips since B9a (#2208): the box drawn after the hidden input, silent fill, change back into the input, the translated Remove label, init timing
-- pg-combobox.md: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243): toggle and menu after the hidden select, silent fill, native change, empty item instead of clear, the select2 field left
+- pg-combobox-server-search.md: data-pg-source combobox (google_product_category) on Bootstrap 6 Combobox with our own server search (#2362): engine, search box, debounce, free text, keys
+- pg-combobox.md: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243, #2362): toggle and menu after the hidden select, silent fill, native change, empty item instead of clear, server search for data-pg-source
 - pg-datepicker.md: data-pg-date, data-pg-datetime and data-pg-time on Bootstrap 6 Datepicker and <input type="time"> (B9c, #2262): own parse, the hidden store, the clone dispose leaves, dialogs and drawers
 - pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge

@@ -97,7 +97,7 @@ function _widget_ord_finished($tree, $kind, $family, $rows, $static)
 function test_widget_lists_order_sources()
 {
 	$sources = pg_sw_list_order_sources();
-	$order = array('order.shipments', 'order.items', 'order.parcels', 'order.steps', 'order.item_forms', 'order.item_form_fields', 'order.item_gift_cards', 'order.returns', 'order.return_lines');
+	$order = array('order.shipments', 'order.items', 'order.parcels', 'order.steps', 'order.item_forms', 'order.item_form_fields', 'order.item_gift_cards', 'order.returns', 'order.return_lines', 'order.return_deliveries', 'order.return_delivery_lines');
 	pg_assert_same(array_merge($order, array('account.orders')), array_keys($sources));
 	foreach ($sources as $source => $d) {
 		pg_assert_same(array('family', 'key', 'label', 'arg', 'arg_required', 'tokens'), array_keys($d), $source . ' shape');

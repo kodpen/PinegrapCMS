@@ -9,7 +9,7 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 - The code editor (`designer-code-editor.md`) is the bridge: a converted page keeps a code view, so nothing the old text editor allowed is lost; the emitter and the converter are the two halves of the round trip.
 
 ## Steps (one PR each)
-- L1 converter: `pg_designer_import_html()` learns the classic placeholders `<pregion>`, `<system>name</system>`, `<cregion>`, `<dregion>`, `<menu>`, `<menu_sequence>`, `<login>`, `<ad>`, `<cart>`, `<tcloud>`, `<mobile_switch>`, `<pdf>`, `<!--pg-comments-block-->` and turns them into `region` nodes (the inverse of `regionTag()` in `generateHTML()` and `generate_style_code_from_tree()`); `<meta_tags>` and `<stylesheet>` are dropped (the frame prints them); the `<title>` and the `<body>` attributes land on the root node. Test: `tests/designer_import_legacy_test.php` with the starting site's classic styles.
+- L1 converter: done (#2337, `designer/classic-style-import.md`): classic placeholders to region nodes, `<meta_tags>`/`<stylesheet>` dropped, title and body on the root.
 - L2 entry point: "Open in the visual designer" on the style list for a classic style; opt-in per style, the original row is kept until the design is saved (`style_layout` becomes the designer's). Pages keep their rows, `page_type`, `layout_type`, `layout_modified`; the style keeps its `layout_type` override. Needs Y1 first, or custom-layout pages vanish from the design.
 - L3 regions: done (`designer/classic-regions-in-designer.md`); here only wiring them into the conversion of a style.
 - L4 parity list: written (`legacy-page-designer-parity.md`, P1-P10, one build-or-drop proposal each); waits for the owner's choices. Page-type fields, layouts: Y2-Y3.
@@ -23,9 +23,9 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 - `get_page_content.php` evals the assembled page when `PHP_REGIONS` is on; text and raw tokens are expanded before it and `pg_defuse_php_tags()` escapes them (`core/php-regions-eval-and-content.md`). Left: evaluating designer code only, before text and widgets are expanded.
 
 ## Open questions
-- A classic style is a master layout shared by many pages; the designer stores one tree per page. Frame copied into every page (nowhere to edit it once), or one shared component holding the `page` region node (renders today; canvas shows a placeholder)? Decides L1.
+- A classic style is a master layout shared by many pages; the designer stores one tree per page. Frame copied into every page (nowhere to edit it once), or one shared component holding the `page` region node (renders today; canvas shows a placeholder)? Decides L2 (the L1 converter gives one tree either way).
 - Theme designer (`theme_designer.php`) and `view_styles.php`: retire with the page designer or keep for classic sites?
 - A classic style on a PHP template file (`style_file`) is not convertible; it stays classic.
 
 ## Where to start?
-- Y1 (`legacy-layouts-in-designer.md`) now; L1 next; L2 after Y1.
+- Y1 (`legacy-layouts-in-designer.md`) now; L2 after Y1. Left from L1 for L2: the theme's own Bootstrap and jQuery links (`{path}bootstrap.css`) are dropped by the framework filter unless `keep_framework`; `{path}{software_directory}/livesite.src.css` comes in as an asset; no panel field edits the root `title`.

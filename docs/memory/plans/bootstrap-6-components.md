@@ -5,11 +5,11 @@ description: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped fo
 
 ## Which swaps did the owner ask for?
 - B9a tagin to Chips: done (#2208), how it works in `ui/pg-field-wrappers.md`.
-- B9b select2 to Combobox: done (#2243), how it works in `ui/pg-combobox.md`. Left on select2: google_product_category (`data-pg-source`), until an own fetch layer gives Combobox server search.
+- B9b select2 to Combobox: done (#2243), server search for `data-pg-source` (google_product_category) done (#2362); how it works in `ui/pg-combobox.md`. Follow-up: no panel field uses select2 any more, so its script and sheets in `output_control_panel_header_includes()` and the select2 rules in `backend.src.css` can go (site pages keep their own select2).
 - B9c Datepicker and time fields: done (#2262), how it works in `ui/pg-datepicker.md`.
 - B9d OTP: done (#2210, `ui/otp-fields.md`).
 - B9e Range with value bubble: done (#2207): editor inspector (3), label editor, image quality % and disk alert % (`ui/range-value-bubble.md`). Never the palette's site Range.
-- B9f form-adorn (150 sites): groups with buttons or selects (79), several inputs (12) or a hint on the add-on (9) stay input-groups. The add-on moves inside the border: pilot 3 places with screenshots first (pilot #2219, part 2 #2280, `ui/form-adorn.md`). Left: settings cards (with their CSS), toolbar search fields, and single groups on contact, order, barcode, region, ERP and workspace screens.
+- B9f form-adorn (150 sites): groups with buttons or selects (79), several inputs (12) or a hint on the add-on (9) stay input-groups. The add-on moves inside the border: pilot 3 places with screenshots first (pilot #2219, part 2 #2280, part 3 ERP, order refund and barcode #2355, `ui/form-adorn.md`). Left: settings cards (with their CSS), toolbar search fields, and single groups on contact, region and workspace screens and the rest of the order screens.
 - B9g Stepper: done (#2206); how it works is in `ui/step-rail.md`.
 - B9h `.hover-lift` with tokens at today's 1-2 px, done: `.mpp-pick`, explorer `.item-card`, `.esi-tile` (#2217), dashboard `.pg-brief-ws-item` and `.pg-next` (#2237).
 - B9i Strength on the installer meter (`.pg-strength`): with `STRONG_PASSWORD` on, the B5 port of `validate_password_strength()` scores; off (the column default, so always at install) the default scoring only advises. Messages from `lang()`.

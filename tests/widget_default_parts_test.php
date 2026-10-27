@@ -114,7 +114,7 @@ function test_widget_parts_apply_leaves_other_trees()
 {
 	$tree = json_encode(_parts_tree(array(
 		_parts_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__order_no'))),
-		_parts_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__return_form'))),
+		_parts_node('loop_area', array('source' => 'order.return_deliveries'), array()),
 		_parts_node('semantic', array('tag' => 'a', '_bindings' => array('href' => '__legal_contract_url'))),
 	)));
 	pg_assert_same($tree, pg_sw_default_parts_apply($tree, 'order_view'), 'no old token, the cards placed: as it is');
@@ -214,7 +214,7 @@ function test_widget_parts_editor_twin()
 		. $cut("\n    var SW_DEFAULT_TAILS = {", "\n    };\n")
 		. $cut("\n    var SD_RETURN_BADGE_CLASSES = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartOrderTimeline', '_sdPartOrderStatusBadge',
-		'_sdPartPlaced', '_sdPartValue', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
+		'_sdPartPlaced', '_sdPartValue', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnMoves', '_sdPartOrderReturnMoveSubmit', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$tree = _parts_tree(array(
@@ -324,7 +324,9 @@ function test_widget_parts_order_tail_cards_match_the_old_blocks()
 	// The requests are a list of their own, without rows here
 	// (widget_default_parts_returns_test.php).
 	$list = '';
-	$form = '<form class="pg-ov-return-form" method="post"><input type="hidden" name="token" value="t"><input type="number" name="return_qty[5]" value="0"><select name="reason"></select><button type="submit" name="request_return">Go</button></form>';
+	// The request form is a part of its own, without rows here
+	// (widget_default_parts_order_forms_test.php).
+	$form = '';
 	$static = array(
 		'__legal_preinfo_url' => h($urls['preinfo']), '__legal_contract_url' => h($urls['contract']),
 		'__withdrawal_text' => h($line), '__returns' => $list, '__return_form' => $form,
@@ -337,7 +339,7 @@ function test_widget_parts_order_tail_cards_match_the_old_blocks()
 	pg_assert_same(_parts_visible($old), _parts_visible($new), 'same words in the same order');
 	pg_assert_same(_parts_classes($old), _parts_classes($new), 'same classes in the same order');
 	pg_assert_same(_parts_links($old), _parts_links($new), 'same links, new window');
-	pg_assert_same(array('token', 'return_qty[5]', 'reason', 'request_return'), _parts_fields($new), 'the form keeps its fields');
+	pg_assert_same(array(), _parts_fields($new), 'no request form without a delivery to ask for');
 	pg_assert_contains('&lt;est&gt;', $new, 'the line escaped once');
 
 	// The contract alone, no deadline, returns off: what the old blocks drew.

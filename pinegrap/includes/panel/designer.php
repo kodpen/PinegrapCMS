@@ -1945,6 +1945,39 @@ function pg_panel_layout_code($request, $action)
         respond(array('status' => 'success', 'content' => (string) pg_layout_generated((int) $page_id)));
     }
 
+    // A custom form page's layout as the elements of a custom_form widget
+    // (includes/fn/layout_convert.php); nothing is written, the editor
+    // places the widget beside the region.
+    if ($sub === 'convert') {
+        if ($page['type'] !== 'custom form') {
+            respond(array('status' => 'error', 'message' => lang('Only a custom form layout can be converted.')));
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/layout_convert.php');
+
+        $layout = pg_layout_read($page_id);
+        $result = pg_layout_form_convert(
+            $layout ? (string) $layout['content'] : '',
+            pg_cf_load_page_fields((int) $page_id),
+            array(
+                'page_id' => (int) $page_id,
+                'submit_label' => (string) db_value("SELECT submit_button_label FROM custom_form_pages WHERE page_id = '" . (int) $page_id . "'"),
+                'generated' => (string) generate_form_layout_content(array('page_id' => (int) $page_id)),
+            )
+        );
+
+        if (!$result['ok']) {
+            respond(array('status' => 'error', 'message' => lang('The layout could not be read.')));
+        }
+
+        respond(array(
+            'status' => 'success',
+            'tree' => $result['tree'],
+            'dropped' => $result['dropped'],
+            'missing' => count($result['missing']),
+        ));
+    }
+
     if ($sub === 'save') {
         if (!isset($request['content']) || !is_string($request['content'])) {
             respond(array('status' => 'error', 'message' => lang('Invalid request.')));

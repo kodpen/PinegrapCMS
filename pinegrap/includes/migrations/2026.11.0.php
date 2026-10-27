@@ -78,6 +78,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shipment_lookup();        // 11.0.45
 	upgrade_2026_11_0_session_passkey();        // 11.0.46
 	upgrade_2026_11_0_audit_retention();        // 11.0.47
+	upgrade_2026_11_0_kvkk_notice();            // 11.0.48
 	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
 
 }
@@ -2543,6 +2544,28 @@ function upgrade_2026_11_0_audit_retention() {
 function upgrade_2026_11_0_shipment_lookup() {
 
 	install_note('Shipping: customers without an account can now look up their parcels at track_shipment.php in the software folder (for example /pinegrap/track_shipment.php) with their order number and billing e-mail. It shows carrier, tracking number and status only, allows 10 lookups an hour per address, and appears where you link to it, for example from a menu item, the footer or the shipping e-mail.');
+
+}
+
+// The KVKK notice at checkout (2026.11.0, 11.0.48; includes/fn/legal_documents.php).
+// The page holding the store's KVKK notice (0: no notice link) on the config
+// row, and the explicit consent sentence (no row: no consent box) in
+// config_text, a name/value table for long settings texts
+// (includes/fn/config_text.php). The config row has no room left for another
+// TEXT column on MySQL 8.0 (tests/innodb_test.php keeps room for ten), and
+// the notice itself is a page of the site for the same reason. The answer is
+// kept in order_documents as type kvkk, which 11.0.1 created.
+function upgrade_2026_11_0_kvkk_notice() {
+
+	install_add_column('config', 'ecommerce_kvkk_page_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_create_table('config_text', "CREATE TABLE config_text (
+		name                VARCHAR(64) NOT NULL,
+		value               TEXT NULL,
+		PRIMARY KEY (name)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Checkout legal documents: a link to your KVKK notice page and an optional explicit consent box can be shown at checkout under Site Settings, Ecommerce, Legal Documents. Nothing changes until a page or a consent sentence is chosen there.');
 
 }
 

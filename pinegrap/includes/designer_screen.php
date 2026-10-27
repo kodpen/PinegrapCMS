@@ -289,6 +289,9 @@ function pg_designer_screen_render($ctx)
         // the same. Read only on a hosted site, which ignores the file.
         'layoutCode'    => ((int)$user['role'] <= 1),
         'layoutPages'   => $layout_pages,
+        // Of those, the custom form pages, whose layout converts into a
+        // custom_form widget placed beside the region (layout_code convert).
+        'layoutFormPages' => pg_layout_form_page_ids($layout_pages),
         'layoutReadOnly' => pg_hosted(),
         // ?layout=1 (the toolbar's Ctrl+G button, pg_layout_tab_param()):
         // the page whose layout tab opens once the editor is up, or 0.

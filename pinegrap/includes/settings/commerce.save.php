@@ -79,6 +79,8 @@ function pg_parasut_credentials_for_save()
     // template past the column's size would be cut; either refuses the whole
     // save before anything below writes.
     $sql_legal_documents = '';
+    // The KVKK consent sentence: a config_text row, written after the config update.
+    $legal_kvkk_text = null;
 
     if (pg_schema_has('config', 'ecommerce_legal_documents')) {
         $legal_values = array();
@@ -105,11 +107,25 @@ function pg_parasut_credentials_for_save()
             $legal_values[$legal_field] = $legal_value;
         }
 
+        // The KVKK notice page and the explicit consent sentence (11.0.48).
+        $legal_kvkk_sql = '';
+
+        if (pg_schema_has('config', 'ecommerce_kvkk_page_id') && pg_schema_has('config_text')) {
+            $legal_kvkk_text = trim(str_replace("\r\n", "\n", (string) post_value('ecommerce_kvkk_consent_text')));
+
+            if (strlen($legal_kvkk_text) > 65535) {
+                $liveform->mark_error('ecommerce_kvkk_consent_text', lang(array('string' => '{var:1} is too long.', 'vars' => array(lang('Explicit Consent Sentence')))));
+            }
+
+            $legal_kvkk_sql = "
+            ecommerce_kvkk_page_id = '" . max(0, (int) post_value('ecommerce_kvkk_page_id')) . "',";
+        }
+
         if ($liveform->check_form_errors()) {
             return;
         }
 
-        $sql_legal_documents = "ecommerce_legal_documents = '" . ((post_value('ecommerce_legal_documents') == 1) ? 1 : 0) . "',";
+        $sql_legal_documents = $legal_kvkk_sql . "ecommerce_legal_documents = '" . ((post_value('ecommerce_legal_documents') == 1) ? 1 : 0) . "',";
 
         foreach ($legal_values as $legal_field => $legal_value) {
             $sql_legal_documents .= "
@@ -581,6 +597,10 @@ function pg_parasut_credentials_for_save()
             affiliate_group_offer_id = '" . escape(post_value('affiliate_group_offer_id')) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    if ($legal_kvkk_text !== null) {
+        pg_config_text_save('ecommerce_kvkk_consent_text', $legal_kvkk_text);
+    }
 
     // The carriers' API applications are kept with the connected accounts'
     // applications, the secrets sealed (includes/fn/carrier_api.php).

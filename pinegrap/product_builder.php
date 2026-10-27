@@ -4375,6 +4375,18 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // "the file for this language is missing".
     $taxonomy_status = pg_pb_google_taxonomy_status();
 
+    // The stored category as the search answers it (path and id), so the
+    // field reads the same before and after a pick.
+    $output_google_product_category_option = '';
+    $google_product_category = $v('google_product_category');
+
+    if ($google_product_category !== '') {
+        $google_product_category_path = pg_pb_google_taxonomy_lookup($google_product_category);
+        $output_google_product_category_option = '<option value="' . h($google_product_category) . '" selected>'
+            . h(($google_product_category_path === $google_product_category) ? $google_product_category : $google_product_category_path . '  (' . $google_product_category . ')')
+            . '</option>';
+    }
+
     if ($taxonomy_status['installed']) {
         $output_taxonomy_status = h(lang(array(
             'string' => '{var:1} categories loaded ({var:2}). Pick one, or type a category yourself.',
@@ -5050,7 +5062,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>
                                     <div class="col-12 lg:col-3 my-3">
                                         <label for="google_product_category" class="form-label">' . lang('Google Product Category') . '</label>
-                                        <select name="google_product_category" id="google_product_category" class="form-control" style="width:100%" data-pg-combobox data-pg-source="google_taxonomy_action.php?action=search" data-pg-min-length="2" data-pg-free-text data-allow-clear="true" data-placeholder="' . h(lang('Google Product Category')) . '"><option value=""></option>' . ($v('google_product_category') !== '' ? '<option value="' . h($v('google_product_category')) . '" selected>' . h($v('google_product_category')) . '</option>' : '') . '</select>' . pg_fields_script() . '
+                                        <select name="google_product_category" id="google_product_category" class="form-control" data-pg-combobox data-pg-source="google_taxonomy_action.php?action=search" data-pg-min-length="2" data-pg-free-text data-placeholder="' . h(lang('Google Product Category')) . '"><option value=""></option>' . $output_google_product_category_option . '</select>' . pg_fields_script() . '
                                         <div class="form-text" id="pg_pb_taxonomy_status">' . $output_taxonomy_status . '</div>
                                     </div>
                                     ' . $output_barcode_fields . '

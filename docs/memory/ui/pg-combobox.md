@@ -1,6 +1,6 @@
 ---
 name: pg-combobox
-description: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243): toggle and menu after the hidden select, silent fill, native change, empty item instead of clear, the select2 field left
+description: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243, #2362): toggle and menu after the hidden select, silent fill, native change, empty item instead of clear, server search for data-pg-source
 ---
 
 ## How is a combobox field drawn?
@@ -14,8 +14,10 @@ description: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243): toggle and m
 
 ## What replaced select2's clear button and new entries?
 - No clear: an `<option value="">` is an item reading as `data-placeholder` (or a dash); picking it empties the choice. The two `data-allow-clear` selects (parent group on edit product group, the product group rows in `backend.src.js`) already have one.
-- No new entries and no server search in Combobox: `data-pg-source` (google_product_category on product_builder) stays select2 (`pgFields.engine('combobox', el)` answers `v5`).
+- New entries only through server search with `data-pg-free-text`: a `data-pg-source` field is a Combobox that asks the server as you type (`pg-combobox-server-search.md`).
 
 ## When is it drawn?
 - As chips (`pg-chips.md`): DOMContentLoaded, after `pgUI.ready()` when Bootstrap's module has not run, `pgInitInjected()` for injected markup. Never put `data-bs-toggle="combobox"` on the toggle (Bootstrap's DOMContentLoaded pass would create an instance with default options): the toggle's own click listener calls `toggle()`; without it a click does nothing. Several choosable: each item has a `.menu-item-check`.
-- Tests: `tests/pg_fields_test.php` (`test_pg_fields_combobox_on_bootstrap_6`), `tests/pg_ui_test.php`.
+- Tests: `tests/pg_fields_test.php` (`test_pg_fields_combobox_on_bootstrap_6`, `test_pg_fields_combobox_server_search`), `tests/pg_ui_test.php`.
+
+Related: docs/memory/ui/pg-combobox-server-search.md

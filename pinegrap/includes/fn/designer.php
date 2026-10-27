@@ -385,6 +385,10 @@ function generate_style_code_from_tree($tree, $style_name, $additional_body_clas
         $_body_extra_attrs = ' id="' . h($_root_id) . '"' . $_body_extra_attrs;
     }
 
+    // A classic style's title, kept on the root when it was converted: the
+    // title a page without one of its own shows (get_page_content.php).
+    $_root_title = isset($_root_props['title']) && is_string($_root_props['title']) ? h(trim($_root_props['title'])) : '';
+
     $code = '<!DOCTYPE html>
 
         <html lang="en">
@@ -393,7 +397,7 @@ function generate_style_code_from_tree($tree, $style_name, $additional_body_clas
 
                 <meta charset="utf-8">
 
-                <title></title>
+                <title>' . $_root_title . '</title>
 
                 <meta name="viewport" content="width=device-width, initial-scale=1">
 

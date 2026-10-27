@@ -419,7 +419,7 @@ function submit_order($type) {
         // The billing and payment fields post one value each (express_order.php has done this
         // for an express order already), and the totals the visitor saw are compared below as
         // numbers, so an array there counts as a total not posted.
-        pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract'));
+        pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract', 'legal_kvkk'));
         pg_liveform_single_values($liveform, array('total', 'total_with_surcharge'), null);
 
         // Clear stale field errors from a PREVIOUS submit before re-validating.
@@ -4591,6 +4591,7 @@ function submit_order($type) {
     pg_legal_documents_store($_SESSION['ecommerce']['order_id'] ?? 0, array_keys(array_filter(array(
         'preinfo'  => ($liveform->get_field_value('legal_preinfo') == 1),
         'contract' => ($liveform->get_field_value('legal_contract') == 1),
+        'kvkk'     => ($liveform->get_field_value('legal_kvkk') == 1),
     ))));
 
     // Tell whoever is subscribed that an order was placed.

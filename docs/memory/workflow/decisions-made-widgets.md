@@ -14,3 +14,4 @@ description: Decisions list, system widget part: conditions and required control
 
 ## What do the answers of 2026-10-27 bind?
 - Owner decision (2026-10-27, all proposals accepted): OR conditions (up to three, All/Any), hide-if-empty in every kind, value inside one translatable sentence, a classic form converter and no PHP code area, page facts (record plus signed in, cart has items, cart count) that only choose what shows, placements that only narrow content, form parts with system-owned sending and required controls, express display lists, W12 grouping by the page's language, the canvas opening on the first state. Reasons per answer in `designer/widget-designability-decisions-2.md`.
+- Reference price window (2026-10-27, answered for the owner under "en makul ve işlevsel seçimle"): while a reduced price runs the window ends where it began, else now; not a missing "now" (`commerce/product-reference-price-decisions.md`).

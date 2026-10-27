@@ -11,7 +11,7 @@ description: A classic designer region made a designer-only shared component fro
 - `pg_di_designer_region_tree()` lifts three kinds of block before DOMDocument parses (it would mangle them), then runs the import converter (`pg_di_node()`, fragment mode: writes nothing):
   - PHP, cut by `token_get_all()`: each self-contained block becomes a `custom_php` node (`<?=` becomes `echo`, the statement the closing tag ended gets its `;`). When any block is not whole (braces or alternative syntax across blocks), two blocks share a variable, or a block sits in a tag, a script or another raw block, the whole region becomes one `custom_php` node `'?>' . content`: nothing is cut apart.
   - raw blocks (comments, script, style, noscript, pre, textarea, link, meta) as `custom_html`, verbatim; tags written inside them stay text.
-  - the classic placeholders (L1 reuses this for style code) as `region` nodes printing the same tag (`<menu>` takes its clearing div). A `<cregion>` naming a designer region becomes a nested `shared_ref` to that region's component, made recursively; one naming an ancestor stays a region node (no loop). Common regions stay region nodes (R2).
+  - the classic placeholders (L1 reuses this for style code: `classic-style-import.md`) as `region` nodes printing the same tag (`<menu>` takes its clearing div). A `<cregion>` naming a designer region becomes a nested `shared_ref` to that region's component, made recursively; one naming an ancestor stays a region node (no loop). Common regions stay region nodes (R2).
 - An element holding a lifted block is built from nodes, never as rich text (`pg_di_holds_lifted()`). Every lifted block must come back exactly once as a node, else the whole-region fallback.
 
 ## Why the PHP rules?

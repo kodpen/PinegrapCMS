@@ -24,7 +24,7 @@ Table structures and SQL pitfalls.
 - comments-author-index.md: comments.idx_author (created_user_id, created_timestamp), 2026.11.0 step 11.0.36: why it exists, what reads it, how the step pauses, how it was checked
 - comments-table.md: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes and their readers, copy cost on MyISAM, code that copies or exports rows.
 - common-region-queries.md: Classic pages read <cregion> rows through pg_common_regions(): one query per nesting level per request, how a name finds its row (collation, lowest id), what the output must keep
-- config-table-no-varchar.md: Rule that the config table gets no new VARCHAR columns (TEXT only), with the InnoDB row-size reasons and the test that enforces it.
+- config-table-no-varchar.md: Rule that the config table gets no new VARCHAR columns (TEXT only), the InnoDB row-size reasons, the test that enforces it, and config_text for new long texts.
 - content-tables.md: Columns, joins and edit-screen URLs for page, pregion, cregion, dregion, forms/form_data, style, ads and comments; the form_data.id vs forms.id trap.
 - date-column-empty-comparison.md: Why DATE columns (ship_date, expiration_date, arrival_date) must be compared to '0000-00-00' and never to '', and what happens under strict mode and PHP 8.1.
 - db-helpers-and-error-contract.md: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() and db_q() return false.

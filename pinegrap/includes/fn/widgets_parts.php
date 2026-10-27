@@ -57,6 +57,9 @@ function pg_sw_default_part_tokens()
             array('__item_form_data_html', 'pg_sw_part_order_item_form'),
             array('__item_gift_card_html', 'pg_sw_part_order_item_gift_card'),
             array('__returns', 'pg_sw_part_order_returns_list'),
+            array('__cancel_form', 'pg_sw_part_order_cancel_form'),
+            array('__return_form', 'pg_sw_part_order_return_form'),
+            array('__return_actions_html', 'pg_sw_part_order_return_moves'),
         ),
         'comments' => array(
             array('__comment_stars_html', 'pg_sw_part_comment_stars'),
@@ -126,7 +129,7 @@ function pg_sw_default_tail_parts()
 {
     return array(
         'order_view' => array(
-            array(array('__return_form', '__returns', 'order.returns'), 'pg_sw_part_order_returns'),
+            array(array('__return_form', '__returns', 'order.returns', 'order.return_deliveries'), 'pg_sw_part_order_returns'),
             array(array('__legal_preinfo_url', '__legal_contract_url'), 'pg_sw_part_order_legal_documents'),
         ),
     );
@@ -861,13 +864,13 @@ function pg_sw_part_order_card($class, $name, $flag, $heading, $body)
 }
 
 // The returns card: the order's return requests (the returns list part)
-// and the request form, still built by returns.php (__return_form), shown
-// while either has something and the setting is on (show_returns_card).
+// and the request forms (the return form part), shown while either has
+// something and the setting is on (show_returns_card).
 function pg_sw_part_order_returns($cfg = array(), $tree = array())
 {
     return array(pg_sw_part_order_card('pg-ov-returns-block', 'Returns', 'show_returns_card', lang('Returns'), array(
         pg_sw_part_el('div', '', 'Return requests', array(), pg_sw_part_order_returns_list($cfg)),
-        pg_sw_part_el('div', '', 'Return request form', array('_bindings' => array('text' => '__return_form'))),
+        pg_sw_part_el('div', '', 'Return request form', array(), pg_sw_part_order_return_form($cfg)),
     )));
 }
 
@@ -885,7 +888,7 @@ function pg_sw_return_badge_classes()
 // and a status badge per status; its products (order.return_lines); the
 // reason, the notes; how to send the goods back once approved, the code
 // after it; the tracking number, the refund date; then the customer's
-// moves, forms built by returns.php (__return_actions_html). Shown when
+// moves (pg_sw_part_order_return_moves()). Shown when
 // the order has returns (has_returns).
 function pg_sw_part_order_returns_list($cfg = array())
 {
@@ -928,7 +931,7 @@ function pg_sw_part_order_returns_list($cfg = array())
                 )),
                 $detail(lang('Tracking number'), '__return_tracking_number', ''),
                 $detail(lang('Refund due by'), '__return_refund_deadline', ''),
-                pg_sw_part_el('div', '', 'The customer\'s moves', pg_sw_part_value('__return_actions_html', '')),
+                pg_sw_part_el('div', '', 'The customer\'s moves', array(), pg_sw_part_order_return_moves($cfg)),
             )),
         )),
     )));

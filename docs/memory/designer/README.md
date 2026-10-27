@@ -39,6 +39,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - catalog-rss-structured-data.md: RSS feeds and JSON-LD for system widget pages: _pg_ bridge functions, integration points in get_page.php/get_page_content.php, channel/entity/review rules.
 - catalog-stock-notify-form.md: The back-in-stock form of the catalog item view: stock_notify_email and stock_notify bindings, the can_notify flag and its variant switch, the hidden form after the widget, the starter block
 - classic-regions-in-designer.md: Where each classic region type goes in the visual designer (common, designer, dynamic, page, data-driven regions), the owner's decisions behind it, and what is still open
+- classic-style-import.md: A classic style's code read by the HTML importer (L1): placeholders to region nodes, meta_tags/stylesheet dropped, title and body on the root, site paths kept, what stays text
 - code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
 - collection-references.md: A form list or detail element prints a field of the record a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
@@ -202,6 +203,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - inline-drop-links-buttons.md: Designer drops: links and buttons go back into headings and paragraphs, never into a link or button; a label holds one control; a palette block is judged by what it holds.
 - language-switcher-component.md: The Language Switcher Button component (COMPONENTS.language_switcher, 2026.4.7): a placeholder in the saved body, drawn per request after the language pass; the pattern for request-bound output.
 - layout-code-tab.md: A classic page's custom layout (data/layouts/<id>.php) as a code tab of the visual designer: who may edit it, the layout_code endpoint, regenerate, unmodified on save, Ctrl+G, hosted sites
+- layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
@@ -281,9 +283,10 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-default-parts-comments.md: The comment stars default part (W16, #1908): what replaced __comment_stars_html, its conditions and tokens, the flex rule, the e-mail characters, starters, canvas
 - widget-default-parts-cross-sell.md: The catalog detail view's cross-sell default part (W16, #1973): the product.related cards that replaced __cross_sell_html, __has_related, where it is added, the variant script's server redraw
 - widget-default-parts-filter-chips.md: The catalog listing's filter chip parts (W16, #2218): the catalog.active_filters list, the six placements replaced, the clear button, the pushed chip row by pg_sw_placed()
+- widget-default-parts-order-forms.md: The order view's cancel form, return request form and each return's moves as parts with controls (W16): bindings the system wires, lists, restored controls
 - widget-default-parts-order-items.md: The order view's item form and gift card parts (W16, #1863): the three item lists, their keys and tokens, the loop tail, the boxes' flags, raw tokens, what the cart keeps
 - widget-default-parts-order.md: The order view's default parts (W16): timeline, status badge, the returns and legal documents cards added after it, their flags and tokens, e-mail look
-- widget-default-parts-returns.md: The order view's returns list part (W16, #2067): order.returns and order.return_lines lists replacing __returns, tokens, badges, the customer's moves kept as server forms
+- widget-default-parts-returns.md: The order view's returns list part (W16, #2067): order.returns and order.return_lines lists replacing __returns, tokens, badges, where the customer's moves are
 - widget-default-parts.md: W16 placed beats pushed: the one placement rule (pg_sw_placed()), default parts drawing old HTML tokens with design elements, tail and lead parts, slices left
 - widget-designability-decisions-2.md: Owner's 2026-10-27 widget designability answers: OR conditions, hide-if-empty, words beside a value, converter (W22), page facts, placement settings, form parts, express lists, W12, W19.
 - widget-designability-decisions.md: The owner's 2026-10-26 answers for widget designability: W16 old blocks equal in look and behaviour (not bytes), W5 gallery sources, W8 entity fields (who sees what, secrets, yes/no, words).

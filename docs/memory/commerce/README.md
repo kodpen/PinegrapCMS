@@ -40,6 +40,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - catalog-search-term.md: Which search term a legacy catalog page uses (Clear button, page query, general ?query=, custom layouts) and why its RSS link asks the same helper
 - catalog-variant-set-writer.md: pg_catalog_variant_set_create(): input array, shared check, prices in minor units, callers (product screen, POST /product-groups/variant-sets), what it skips
 - checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
+- checkout-kvkk-notice.md: KVKK notice link and optional explicit consent box at checkout (11.0.48): settings, why a page and a config_text row, injection, the kvkk copy in order_documents, consent log row
 - checkout-legal-checkboxes.md: How the legal documents' checkboxes reach every checkout, what the cart document page shows (drawn snapshot or the values its link posts), its amounts, the server check in submit_order.php
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
@@ -126,6 +127,8 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-price-history-offers.md: Offer rows of product_price_history (2026.11.0, PR #681): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits
 - product-price-history-retention.md: product_price_history keeps 13 months (396 days, PR #1425): the general job's daily trim pg_price_history_trim_run(), which old rows stay and why, how the pass walks, verification
 - product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of the price sold at, pg_price_history_record() / queue after every writer, offer rows, initial rows, API read, limits
+- product-reference-price-decisions.md: Reference price decisions: rule setting, coverage, compare-at only under manual, offers, POS, window end while a reduction runs (2026-10-27)
+- product-reference-price-storefront.md: Reference price on the storefront: __reference_price / __reference_label tokens, variant payload, legacy catalog print, one page read by pg_price_reference_page()
 - product-reference-price.md: Reference price ("price before the discount"): pg_price_history_reference(), the window query (PR #1803), the rule setting pg_price_reference_rule() (11.0.49), coverage, labels
 - product-review-request-email.md: The e-mail asking a buyer for a review (order_review_request; 2026.11.0, PR #1316): what starts it, once per order, items, mail-merge fields, delete; the verified filter in moderation
 - product-review-store-reply.md: The store's reply under a product review (comments.seller_reply, seller_reply_at; 2026.11.0, PR #698): where it is written and shown, when its date is set, the verified marker in moderation
