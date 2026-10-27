@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Static checks on the users list, account profile, comment, search and
- * sitemap files (view_users.php, delete_users.php, my_account_profile.php,
+ * sitemap files (includes/fn/user_list.php, delete_users.php, my_account_profile.php,
  * add_comment.php, edit_comment.php, get_search_results.php,
  * get_sitemap_info.php): their raw queries with values run through db_q()
  * placeholders, not escape()/e() concatenated into the SQL text, and every
@@ -133,7 +133,7 @@ function db_q_users_comments_search_test_built($text)
 
 function test_db_q_users_comments_search_value_queries_use_db_q()
 {
-	$expected = array('view_users.php' => 5, 'delete_users.php' => 9, 'my_account_profile.php' => 4, 'add_comment.php' => 12, 'edit_comment.php' => 7, 'get_search_results.php' => 5, 'get_sitemap_info.php' => 4);
+	$expected = array('includes/fn/user_list.php' => 5, 'delete_users.php' => 9, 'my_account_profile.php' => 4, 'add_comment.php' => 12, 'edit_comment.php' => 7, 'get_search_results.php' => 5, 'get_sitemap_info.php' => 4);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;
@@ -165,7 +165,7 @@ function test_db_q_users_comments_search_value_queries_use_db_q()
 // elements as the SQL text has placeholders.
 function test_db_q_users_comments_search_values_fit_placeholders()
 {
-	foreach (array('view_users.php', 'delete_users.php', 'my_account_profile.php', 'add_comment.php', 'edit_comment.php', 'get_search_results.php', 'get_sitemap_info.php') as $path) {
+	foreach (array('includes/fn/user_list.php', 'delete_users.php', 'my_account_profile.php', 'add_comment.php', 'edit_comment.php', 'get_search_results.php', 'get_sitemap_info.php') as $path) {
 		foreach (db_q_users_comments_search_test_calls($path) as $call) {
 			if ($call['call'] !== 'db_q' || strpos($call['values'], 'array(') !== 0) {
 				continue;
