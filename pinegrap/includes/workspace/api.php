@@ -204,6 +204,7 @@ function ws_openapi_objects()
         'WorkspaceFlowValidation'   => 'ws_api_flow_validation_schema',
         'WorkspaceFlowGraph'        => 'ws_api_flow_graph_schema',
         'WorkspaceFlowProblem'      => 'ws_api_flow_problem_schema',
+        'WorkspaceFlowTemplate'     => 'ws_api_flow_template_schema',
         'WorkspaceFlowRun'          => 'ws_api_flow_run_schema',
         'WorkspaceFlowRunStep'      => 'ws_api_flow_run_step_schema',
         'WorkspaceFlowShare'        => 'ws_api_flow_share_schema',
@@ -1908,7 +1909,9 @@ function ws_api_routes()
             'summary'     => 'Draft a flow',
             'description' => 'Starts a new draft flow of the owner of the application, as the flow canvas does. Building flows is for staff in the team: anybody else is refused with 403. A draft never runs, so an application key or an OAuth connection may write one - an assistant can lay a process out for the person to look at and publish. It may hold problems, which the answer lists instead of refusing it; a dry run answers them too. A draft is at most ' . (int) (WS_FLOW_GRAPH_BYTES / 1024) . ' KB of JSON, a published flow at most ' . WS_FLOW_MAX_NODES . ' boxes, and one person keeps at most ' . WS_FLOW_MAX_PER_OWNER . ' flows. Send an Idempotency-Key so a retried call does not create two flows.',
             'params'      => array_merge(array(
-                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 160, 'required' => true, 'description' => 'What the flow is called. Runs of spaces are made one.'),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 160, 'description' => 'What the flow is called. Runs of spaces are made one. Required, but for a flow made from a template, which is called after the template\'s title when no name is sent.'),
+                array('name' => 'template', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'description' => 'The key of a ready-made flow (GET /workspace/flow-templates) whose boxes and arrows the draft gets; nodes, edges and notes are refused beside it. A key not offered to the owner of the application is refused with 422 (field template).'),
+                array('name' => 'answers', 'in' => 'body', 'type' => 'object', 'description' => 'With template: the answers to its settings, by setting type - channel (a channel id), person (a list of up to 20 user ids, every assignee, approver and person told), time (HH:MM), url (http or https), address (e-mail addresses separated by commas). Sent, every setting of the template must be answered, or the call is refused with 422 (field answers.TYPE); left out, the boxes keep the template\'s own values. Whether the owner may write in the channel or assign the people is checked when the person publishes.'),
             ), array_slice($flow_fields, 1)),
         ),
 
@@ -2039,6 +2042,17 @@ function ws_api_routes()
         // published (flow_catalogue.php). Both write nothing, so both are
         // tools: an assistant drafts a flow from the catalogue and checks
         // it before the person publishes it.
+        array(
+            'id'          => 'workspace.flow_templates.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/flow-templates',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flow_templates_list',
+            'returns'     => array('list' => 'WorkspaceFlowTemplate'),
+            'summary'     => 'Ready-made flows to start a draft from',
+            'description' => 'The ready-made flows the flow canvas\'s gallery offers the owner of the application, in one page, filled for them: a text a template sends goes to their own e-mail address or inbox, a schedule starts on the next fitting day of the site\'s calendar. Only staff in the team, who build flows, are offered any; a template that needs a count the owner may not read is left out. key is what POST /workspace/flows takes as template; category is team, site or sales; start the kind of the box that starts it; boxes and threads how many boxes it has and how many of their texts read a value of an earlier box ({{node.ID.FIELD}}); settings the types of the few values its setup asks for (channel, person, time, url, address), which answers sends; graph its boxes and arrows as the draft gets them.',
+        ),
+
         array(
             'id'          => 'workspace.flow_kinds.list',
             'method'      => 'GET',
