@@ -3,9 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Source test for the .btn-ghost to .btn-text.theme-secondary swap in the
- * Workspace and ERP screens: the converted files carry no .btn-ghost, apart
- * from the buttons of the rich text tool rows (.ws-rich-tools), whose
- * pressed and disabled looks are still written against .btn-ghost.
+ * Workspace and ERP screens, the designer list and the shared list helpers:
+ * the converted files carry no .btn-ghost, apart from the buttons of the rich
+ * text tool rows (.ws-rich-tools), whose pressed and disabled looks are still
+ * written against .btn-ghost.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -67,4 +68,13 @@ function test_bs6_btn_ghost_swap_workspace_and_erp()
 	// Only the buttons that end up in a PGWsEditor.toolbar() row keep it.
 	pg_assert_same(12, bs6_btn_ghost_test_count('assets/js/workspace.js'), 'workspace.js: the rich tool rows only');
 	pg_assert_same(1, bs6_btn_ghost_test_count('assets/js/workspace_editor.js'), 'workspace_editor.js: the toolbar\'s own buttons only');
+}
+
+function test_bs6_btn_ghost_swap_designer_and_list_helpers()
+{
+	// The designer list (cards, template gallery) and the period and sort
+	// controls output.php draws for the list screens.
+	foreach (array('includes/designer_screen.php', 'includes/fn/output.php') as $path) {
+		pg_assert_same(0, bs6_btn_ghost_test_count($path), $path . ' carries no .btn-ghost');
+	}
 }

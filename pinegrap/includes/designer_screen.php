@@ -1189,7 +1189,7 @@ function pg_designer_home_design_card($d, $pages, $ctx)
     $name = h($d['style_name']);
     $attrs = ' data-style-id="' . $id . '" data-name="' . $name . '" data-pages="' . $count . '" data-home="' . ($home ? '1' : '0') . '"'
            . ' data-folders="' . (int)$ctx['folders'] . '" data-edit-url="' . h($edit_url) . '" data-add-url="' . h($add_url) . '" data-view-url="' . h($view_url) . '"';
-    $more = '<button type="button" class="btn btn-sm btn-ghost sdh-more no-popover" data-bs-toggle="tooltip" title="' . h(lang('More actions')) . '" aria-label="' . h(lang('More actions')) . '" aria-haspopup="menu" aria-expanded="false"><i class="bi bi-three-dots" aria-hidden="true"></i></button>';
+    $more = '<button type="button" class="btn btn-sm btn-text theme-secondary sdh-more no-popover" data-bs-toggle="tooltip" title="' . h(lang('More actions')) . '" aria-label="' . h(lang('More actions')) . '" aria-haspopup="menu" aria-expanded="false"><i class="bi bi-three-dots" aria-hidden="true"></i></button>';
     // The picture opens the editor too; the name link is the one announced.
     $picture = '<a class="sdh-browser" href="' . h($edit_url) . '" tabindex="-1" aria-hidden="true">'
              .     '<span class="sdh-browser-bar"><i></i><i></i><i></i><span class="sdh-browser-url">' . h($address) . '</span></span>'
@@ -1228,13 +1228,13 @@ function pg_designer_home_design_card($d, $pages, $ctx)
     // menu, where it is not one stray click away.
     $buttons = '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h($edit_url) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
     if (!empty($ctx['can_change'])) {
-        $buttons .= '<a class="btn btn-sm btn-ghost" href="' . h($add_url) . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add Page')) . '</a>';
+        $buttons .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($add_url) . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add Page')) . '</a>';
     }
     if ($view_url !== '') {
-        $buttons .= '<a class="btn btn-sm btn-ghost" href="' . h($view_url) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View on site')) . '</a>';
+        $buttons .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($view_url) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View on site')) . '</a>';
     }
     if (!empty($ctx['can_draft'])) {
-        $buttons .= '<button type="button" class="btn btn-sm btn-ghost' . ((int)$d['draft_count'] > 0 ? '' : ' d-none') . '" data-act="on"><i class="bi bi-cloud-check me-1" aria-hidden="true"></i>' . h(lang('Put on the site')) . '</button>';
+        $buttons .= '<button type="button" class="btn btn-sm btn-text theme-secondary' . ((int)$d['draft_count'] > 0 ? '' : ' d-none') . '" data-act="on"><i class="bi bi-cloud-check me-1" aria-hidden="true"></i>' . h(lang('Put on the site')) . '</button>';
     }
 
     $pages_html = $pages
@@ -1862,7 +1862,7 @@ function pg_designer_template_modal($templates, $from_pages)
         $custom = isset($s['builtin']) && !$s['builtin'];
         $custom_badge = $custom ? '<span class="badge theme-secondary fw-normal text-nowrap">' . lang('Made from a design') . '</span>' : '';
         $delete_btn = $custom
-            ? '<button type="button" class="btn btn-sm btn-ghost sd-tpl-delete no-popover" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" data-bs-toggle="tooltip" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
+            ? '<button type="button" class="btn btn-sm btn-text theme-secondary sd-tpl-delete no-popover" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" data-bs-toggle="tooltip" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
             : '';
         $use_href = 'add_system_style.php?start=template&template=' . rawurlencode($s['id']) . $extra;
         $cards .=
