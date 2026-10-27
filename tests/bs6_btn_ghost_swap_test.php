@@ -72,8 +72,9 @@ function test_bs6_btn_ghost_swap_workspace_and_erp()
 
 function test_bs6_btn_ghost_swap_designer_and_list_helpers()
 {
-	// The designer list (cards, template gallery).
-	foreach (array('includes/designer_screen.php') as $path) {
+	// The designer list (cards, template gallery) and the period and sort
+	// controls output.php draws for the list screens.
+	foreach (array('includes/designer_screen.php', 'includes/fn/output.php') as $path) {
 		pg_assert_same(0, bs6_btn_ghost_test_count($path), $path . ' carries no .btn-ghost');
 	}
 }

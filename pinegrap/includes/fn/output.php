@@ -728,12 +728,12 @@ function pg_period_nav($url, $range, $periods, $range_html, $class = '')
 
     return '
                     <div class="d-inline-block' . h($class) . '" role="group" aria-label="' . h(lang('Period')) . '">
-                        <a class="btn btn-sm btn-ghost" href="' . h($link($periods[$unit][0])) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+                        <a class="btn btn-sm btn-text theme-secondary" href="' . h($link($periods[$unit][0])) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
                         <div class="pg-menu-wrap">
-                            <button type="button" class="btn btn-sm btn-ghost pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>' . h($labels[$unit][0]) . '</button>
+                            <button type="button" class="btn btn-sm btn-text theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>' . h($labels[$unit][0]) . '</button>
                             <ul class="menu pg-menu-end">' . $items . '</ul>
                         </div>
-                        <a class="btn btn-sm btn-ghost" href="' . h($link($periods[$unit][2])) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+                        <a class="btn btn-sm btn-text theme-secondary" href="' . h($link($periods[$unit][2])) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
                         <span class="small fg-secondary text-nowrap">' . $range_html . '</span>
                     </div>';
 }
@@ -1050,10 +1050,10 @@ function pg_list_sort_menu($url, $columns, $levels, $default, $query = array())
         $rows .= '<li class="d-flex align-items-center gap-1 px-5 py-1">'
             . '<span class="fg-secondary small">' . ($index + 1) . '.</span>'
             . '<span class="flex-grow-1 text-truncate">' . h((string) ($columns[$level['sort']] ?? $level['sort'])) . '</span>'
-            . '<a class="btn btn-sm btn-ghost text-nowrap" href="' . h($link($reversed)) . '" title="' . h(lang('Reverse the direction')) . '">'
+            . '<a class="btn btn-sm btn-text theme-secondary text-nowrap" href="' . h($link($reversed)) . '" title="' . h(lang('Reverse the direction')) . '">'
             . '<i class="bi bi-caret-' . ($ascending ? 'up' : 'down') . '-fill me-1" aria-hidden="true"></i>' . h($ascending ? lang('Ascending') : lang('Descending')) . '</a>'
             . (($count > 1)
-                ? '<a class="btn btn-sm btn-ghost" href="' . h($link($removed)) . '" title="' . h(lang('Remove this sort level')) . '" aria-label="' . h(lang('Remove this sort level')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>'
+                ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($link($removed)) . '" title="' . h(lang('Remove this sort level')) . '" aria-label="' . h(lang('Remove this sort level')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>'
                 : '')
             . '</li>';
     }
@@ -1092,7 +1092,7 @@ function pg_list_sort_menu($url, $columns, $levels, $default, $query = array())
             . '<li><a class="menu-item pg-link-body-emphasis" href="' . h($link(array($default))) . '"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . h(lang('Reset the sort order')) . '</a></li>';
 
     return '<div class="pg-menu-wrap">'
-        . '<button type="button" class="btn btn-sm btn-ghost pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-auto-close="outside" aria-expanded="false">'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-auto-close="outside" aria-expanded="false">'
         . '<i class="bi bi-sort-down me-1" aria-hidden="true"></i>' . h(lang('Sort by'))
         . (($count > 1) ? ' <span class="badge rounded-pill theme-secondary">' . $count . '</span>' : '')
         . '</button>'
@@ -5843,11 +5843,12 @@ function pg_page_action_bar($page_id, $style_id, $user, $send_to = null, $score 
 
     $html = '<div id="pg_page_bar"><div class="pg-pbar-box">' . $buttons . '</div></div>';
 
-    // Bootstrap's own tokens rather than the panel's --pg-sp-* set. The panel
-    // carries that set because it is also drawn over the visitor's page, where
-    // there is no Bootstrap; this strip is only ever drawn in the toolbar, and
-    // those are the variables the bar above it is painted with - so the two
-    // read as one surface without a second mapping in between.
+    // The panel's --pg-* tokens rather than the page panel's --pg-sp-* set.
+    // The page panel carries that set because it is also drawn over the
+    // visitor's page, where there is no panel stylesheet; this strip is only
+    // ever drawn in the toolbar, under backend.css, and those are the tokens
+    // the bar above it is painted with - so the two read as one surface
+    // without a second mapping in between.
     $css = '
             #pg_page_bar{
                 position: fixed;
@@ -5866,7 +5867,7 @@ function pg_page_action_bar($page_id, $style_id, $user, $send_to = null, $score 
                 gap: 2px;
                 padding: 3px 5px;
                 background: rgb(var(--pg-navbar-bg-rgb));
-                border: 1px solid var(--bs-border-color);
+                border: 1px solid var(--pg-border-color);
                 border-top: 0;
                 border-bottom-left-radius: 6px;
                 border-bottom-right-radius: 6px;
@@ -5882,7 +5883,7 @@ function pg_page_action_bar($page_id, $style_id, $user, $send_to = null, $score 
                 border: 0;
                 border-radius: 4px;
                 background: transparent;
-                color: var(--bs-body-color);
+                color: var(--pg-fg-body);
                 padding: 0;
                 font: inherit;
                 font-size: 15px;
@@ -5892,19 +5893,19 @@ function pg_page_action_bar($page_id, $style_id, $user, $send_to = null, $score 
             }
             #pg_page_bar .pg-pbar-btn:hover,
             #pg_page_bar .pg-pbar-btn:focus-visible{
-                background: var(--bs-tertiary-bg);
-                color: var(--bs-body-color);
+                background: var(--pg-bg-1);
+                color: var(--pg-fg-body);
                 text-decoration: none;
             }
             #pg_page_bar .pg-pbar-btn i{ line-height: 1; }
             #pg_page_bar .pg-pbar-score{ width: auto; min-width: 30px; gap: 2px; padding: 0 5px 0 6px; font-size: 12px; font-weight: 700; }
-            #pg_page_bar .pg-pbar-score i{ font-size: 10px; color: var(--bs-secondary-color); }
+            #pg_page_bar .pg-pbar-score i{ font-size: 10px; color: var(--pg-fg-2); }
             .pg-pbar-sep{
                 flex: 0 0 auto;
                 width: 1px;
                 align-self: stretch;
                 margin: 2px 3px;
-                background: var(--bs-border-color-translucent);
+                background: var(--pg-border-color-translucent);
             }
     ';
 
