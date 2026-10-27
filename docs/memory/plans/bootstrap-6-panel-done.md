@@ -17,6 +17,7 @@ description: Finished steps of the Bootstrap 6 panel plan with their PRs and top
 - B5 Server: `validate_time()` and `prepare_form_data_for_input()` accept 24-hour time, with tests; a JS port of `validate_password_strength()` tested against the PHP cases through node. Done (#1698): `ui/form-time-24-hour.md`, `ui/password-strength-js.md`.
 - B8 Switch: rehearsed seven times on `feature/bootstrap-6`, merged as #1866 (tag `bs6-switch`): `bs6_migrate.php --all` and `--switch`, the bridge, CI's `check_bs6.php --strict` (`ui/bootstrap-6.md`, `ui/bootstrap-6-codemod.md`, `ui/panel-screenshots.md`).
 - B9d OTP: `mfa.php` app code and recovery-code mode, no auto-submit; `developer_lock.php` masked PIN slots, submit on complete (#2210, `ui/otp-fields.md`).
+- B9j Avatar, `pg_avatar_markup()` (`ui/panel-avatar.md`, `ui/panel-avatar-sites.md`): header and account menu (#2216); Workspace (#2242); chat, widgets 4/28/30, designer letters, contacts list, order, guest page, delegate (#2256); `edit_contact.php` (#2339).
 
 ## When does a step move here?
 - When its last part is done: its line moves from `bootstrap-6-panel-steps.md` with its PR numbers. A step done in parts (B2b, B3) stays there until then. Keeps the steps file under 4 KB, which parallel step PRs all edit.
