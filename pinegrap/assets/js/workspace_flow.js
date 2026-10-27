@@ -64,6 +64,8 @@
     var GRID = 16;
     var BOX_W = 208;
     var BOX_H = 80;
+    // The label of each kind of template setting (ws_flow_template_setting_types()).
+    var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address' };
     var ZOOM_MIN = 0.25;
     var ZOOM_MAX = 2;
     var SAVE_DELAY = 1500;
@@ -197,6 +199,7 @@
         changes: 0,         // counts every change, to tell one made while a request ran
         saving: null,
         saveTimer: 0,
+        arriving: 0,        // the timer that opens a placed template's setup panel
         saveError: '',
         conflict: '',
         refocus: '',
@@ -672,6 +675,10 @@
         ui.scheduled = el('div', 'ws-pane ws-sa-view h-100 d-none');
         ui.scheduled.setAttribute('role', 'region');
         ui.scheduled.setAttribute('aria-label', t('sa_title'));
+        // The setup panel of a template just placed, over the canvas.
+        ui.setup = el('section', 'wsf-setup d-none');
+        ui.setup.setAttribute('aria-labelledby', 'wsf-setup-title');
+        ui.stage.appendChild(ui.setup);
         ui.main.appendChild(ui.stage);
         ui.main.appendChild(ui.outlineBox);
         ui.main.appendChild(ui.scheduled);
@@ -815,6 +822,7 @@
     }
 
     function showNone() {
+        closeSetup();
         endRun();
         state.panel = '';
         state.flow = null;
@@ -1011,6 +1019,7 @@
             fit();
             changed(true);
             refocus();
+            arrive(template);
         };
 
         var create = function () {
@@ -1018,6 +1027,7 @@
                 state.refocus = 'box-' + template.graph.nodes[0].id;
                 show(data.flow);
                 refocus();
+                arrive(template);
             }).catch(K.fail);
         };
 
@@ -1039,6 +1049,290 @@
         }
 
         return create();
+    }
+
+    // ── Placing a template, its setup panel ────────────────────────────
+
+    function stillMotion() {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    // A line drawn from its start to its end in ms, after at.
+    function grow(path, at, ms) {
+        var length = path.getTotalLength ? path.getTotalLength() : 0;
+
+        if (!length) {
+            return;
+        }
+
+        path.style.strokeDasharray = length + ' ' + length;
+        path.style.strokeDashoffset = String(length);
+        path.getBoundingClientRect();
+        path.style.transition = 'stroke-dashoffset ' + ms + 'ms ease-out ' + at + 'ms';
+        path.style.strokeDashoffset = '0';
+        window.setTimeout(function () {
+            path.style.transition = '';
+            path.style.strokeDasharray = '';
+            path.style.strokeDashoffset = '';
+        }, at + ms + 50);
+    }
+
+    // The data threads of a template: from the bottom of the box that gives
+    // the value to the bottom of the box that reads it, a curve hanging
+    // 10 px + 0.06 of its span below its middle. Threads that leave or reach
+    // one box are spread a few px apart, the farthest leaving on the left.
+    // They stay until the canvas is drawn again.
+    function drawThreads(threads) {
+        var leaving = {};
+        var reaching = {};
+        var span = function (thread) {
+            var from = nodeById(thread.from);
+            var to = nodeById(thread.to);
+
+            return (from && to) ? Math.abs(to.x - from.x) : 0;
+        };
+
+        threads.forEach(function (thread) {
+            (leaving[thread.from] = leaving[thread.from] || []).push(thread);
+            (reaching[thread.to] = reaching[thread.to] || []).push(thread);
+        });
+
+        Object.keys(leaving).forEach(function (id) {
+            leaving[id].sort(function (a, b) { return span(b) - span(a); });
+        });
+
+        return threads.map(function (thread) {
+            var from = nodeById(thread.from);
+            var to = nodeById(thread.to);
+
+            if (!from || !to) {
+                return null;
+            }
+
+            var out = leaving[thread.from];
+            var into = reaching[thread.to];
+            var x1 = from.x + BOX_W / 2 + (out.indexOf(thread) - (out.length - 1) / 2) * 6;
+            var x2 = to.x + BOX_W / 2 + (into.indexOf(thread) - (into.length - 1) / 2) * 12;
+            var y1 = from.y + BOX_H;
+            var y2 = to.y + BOX_H;
+            var sag = 10 + 0.06 * Math.abs(x2 - x1);
+            var path = svgEl('path', 'wsf-thread');
+
+            path.setAttribute('d', 'M' + x1 + ' ' + y1 + ' Q' + ((x1 + x2) / 2) + ' ' + (Math.max(y1, y2) + sag) + ' ' + x2 + ' ' + y2);
+            ui.svg.appendChild(path);
+
+            return path;
+        });
+    }
+
+    // The template's boxes, arrows and threads appear at the times of
+    // template.motion (ws_flow_template_motion()), all at once with reduced
+    // motion; then the setup panel slides in.
+    function arrive(template) {
+        var motion = template.motion || { boxes: [], arrows: [], threads: [], panel: 0 };
+        var still = stillMotion();
+        var flow = state.flow;
+        var paths = drawThreads(motion.threads || []);
+
+        if (!flow) {
+            return;
+        }
+
+        if (!still) {
+            motion.boxes.forEach(function (item) {
+                var box = ui.boxes.querySelector('.wsf-node[data-node="' + item.id + '"]');
+
+                if (box) {
+                    box.style.animationDelay = item.at + 'ms';
+                    box.style.animationDuration = item.ms + 'ms';
+                    box.classList.add('wsf-arrive');
+                    box.addEventListener('animationend', function () {
+                        box.classList.remove('wsf-arrive');
+                        box.style.animationDelay = '';
+                        box.style.animationDuration = '';
+                    }, { once: true });
+                }
+            });
+
+            motion.arrows.forEach(function (item) {
+                var line = ui.svg.querySelector('.wsf-edge[data-edge="' + item.edge + '"] .wsf-edge-line');
+
+                if (line) {
+                    line.classList.add('wsf-arrow-hold');
+                    window.setTimeout(function () { line.classList.remove('wsf-arrow-hold'); }, item.at + item.ms);
+                    grow(line, item.at, item.ms);
+                }
+            });
+
+            motion.threads.forEach(function (item, index) {
+                if (paths[index]) {
+                    grow(paths[index], item.at, item.ms);
+                }
+            });
+        }
+
+        if (!(template.settings || []).length) {
+            return;
+        }
+
+        state.arriving = window.setTimeout(function () {
+            if (state.flow === flow) {
+                setupPanel(template);
+            }
+        }, still ? 0 : motion.panel);
+    }
+
+    function closeSetup() {
+        window.clearTimeout(state.arriving);
+
+        if (ui.setup) {
+            K.clear(ui.setup);
+            ui.setup.classList.add('d-none');
+        }
+    }
+
+    // What a setting holds now: the value of its first box on the canvas.
+    function settingValue(setting) {
+        var target = setting.targets[0];
+        var node = nodeById(target[0]);
+
+        return node ? node.config[target[1]] : null;
+    }
+
+    function setupControl(setting, answers) {
+        var type = setting.type;
+        var value = settingValue(setting);
+        var control;
+
+        answers[type] = value;
+
+        if (type === 'channel') {
+            control = channelPick({ channel_id: value || 0 }, t('fl_post_pick'));
+            control.addEventListener('change', function () { answers.channel = parseInt(control.value, 10) || 0; });
+        } else if (type === 'person') {
+            control = el('div', 'wsf-people-list');
+            control.setAttribute('role', 'group');
+            answers.person = (value || []).slice();
+            (BOOT.people || []).forEach(function (member) {
+                var row = el('label', 'wsf-person');
+                var check = el('input', 'form-check-input m-0');
+
+                check.type = 'checkbox';
+                check.checked = answers.person.indexOf(member.id) !== -1;
+                check.addEventListener('change', function () {
+                    answers.person = answers.person.filter(function (id) { return id !== member.id; });
+
+                    if (check.checked) {
+                        answers.person.push(member.id);
+                    }
+                });
+                row.appendChild(check);
+                row.appendChild(document.createTextNode(member.name));
+                control.appendChild(row);
+            });
+        } else {
+            control = el('input', 'form-control form-control-sm');
+            control.type = { time: 'time', url: 'url' }[type] || 'text';
+            control.value = value || '';
+            control.addEventListener('input', function () { answers[type] = control.value; });
+        }
+
+        control.setAttribute('data-setting', type);
+
+        return field(t(SETTINGS[type] || type), control, (type === 'address') ? t('fl_email_to_help') : '');
+    }
+
+    // The template's few settings, then Open on canvas (the answers into the
+    // draft) or Publish now (into the draft, then published). The server
+    // checks the answers again (ws_flow_template_setup()).
+    function setupPanel(template) {
+        var answers = {};
+        var flow = state.flow;
+        var error = el('div', 'wsf-setup-error d-none');
+        var actions = el('div', 'wsf-setup-actions');
+        var openIt = K.button('btn btn-sm btn-outline-secondary rounded-pill px-3', t('fl_tpl_open'), 'bi-bounding-box');
+        var publishIt = K.button('btn btn-sm btn-primary rounded-pill px-3', t('fl_tpl_publish'), 'bi-send');
+        var close = K.button('btn btn-sm btn-ghost wsf-setup-close', '', 'bi-x-lg');
+        var title = el('h2', 'wsf-setup-title', t('fl_tpl_setup'));
+
+        closeSetup();
+        title.id = 'wsf-setup-title';
+        close.setAttribute('aria-label', t('fl_tpl_close'));
+        close.addEventListener('click', closeSetup);
+        ui.setup.appendChild(close);
+        ui.setup.appendChild(title);
+        ui.setup.appendChild(el('p', 'wsf-setup-help', t('fl_tpl_setup_help', template.title)));
+        template.settings.forEach(function (setting) {
+            ui.setup.appendChild(setupControl(setting, answers));
+        });
+        error.setAttribute('role', 'alert');
+        ui.setup.appendChild(error);
+
+        var send = function (publishing) {
+            var control = publishing ? publishIt : openIt;
+
+            openIt.disabled = publishIt.disabled = true;
+            error.classList.add('d-none');
+            Array.prototype.forEach.call(ui.setup.querySelectorAll('.is-invalid'), function (item) { item.classList.remove('is-invalid'); });
+
+            flush().then(function () {
+                if ((state.flow !== flow) || state.dirty || state.saveError || state.conflict) {
+                    throw new Error(state.saveError || state.conflict || t('fl_unsaved'));
+                }
+
+                return K.api('ws_flow_template_setup', { flow_id: flow.id, draft_rev: flow.draft_rev, key: template.key, answers: answers, publish: publishing });
+            }).then(function (data) {
+                var view = { x: state.view.x, y: state.view.y, k: state.view.k };
+
+                state.refocus = publishing ? 'status' : 'box-' + template.graph.nodes[0].id;
+                show(data.flow);
+                state.view = view;
+                applyView();
+
+                if (data.publish_error) {
+                    K.toast(data.publish_error, 'danger');
+                } else if (data.published) {
+                    K.toast(t('fl_tpl_published'), 'success');
+                }
+            }).catch(function (failure) {
+                openIt.disabled = publishIt.disabled = false;
+
+                if (failure.field === 'changed_meanwhile') {
+                    closeSetup();
+                    conflict(failure.message);
+                    return;
+                }
+
+                var bad = failure.field ? ui.setup.querySelector('[data-setting="' + failure.field + '"]') : null;
+
+                error.textContent = failure.message || t('fl_unsaved');
+                error.classList.remove('d-none');
+
+                if (bad) {
+                    bad.classList.add('is-invalid');
+                }
+
+                (bad || control).focus();
+            });
+        };
+
+        openIt.addEventListener('click', function () { send(false); });
+        publishIt.addEventListener('click', function () { send(true); });
+        actions.appendChild(openIt);
+        actions.appendChild(publishIt);
+        ui.setup.appendChild(actions);
+        ui.setup.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                closeSetup();
+                ui.viewport.focus();
+            }
+        });
+        ui.setup.classList.remove('d-none');
+
+        var first = ui.setup.querySelector('[data-setting]');
+
+        (first && first.matches('input, select') ? first : (ui.setup.querySelector('input') || openIt)).focus();
     }
 
     // ── A scheduled action on the canvas ───────────────────────────────
@@ -1240,6 +1534,7 @@
         var same = !!(state.flow && (state.flow.id === flow.id));
 
         window.clearTimeout(state.saveTimer);
+        closeSetup();
         endRun();
         state.openSeq++;
 
@@ -1729,7 +2024,7 @@
     }
 
     function drawEdges() {
-        Array.prototype.slice.call(ui.svg.querySelectorAll('.wsf-edge')).forEach(function (node) {
+        Array.prototype.slice.call(ui.svg.querySelectorAll('.wsf-edge, .wsf-thread')).forEach(function (node) {
             node.remove();
         });
 

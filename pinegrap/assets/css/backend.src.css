@@ -18743,6 +18743,82 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
   border-bottom: 1px solid var(--pg-border-color-translucent);
   cursor: pointer;
 }
+/* A template placed on the canvas (workspace_flow.js, arrive()): each box
+   rises and grows from 92 %, its data threads are drawn in the text type's
+   colour, then the setup panel slides in over the canvas. Without motion
+   (prefers-reduced-motion) all of it is there at once. */
+.wsf-node.wsf-arrive {
+  animation-name: wsf-arrive;
+  animation-timing-function: cubic-bezier(.2, .7, .3, 1);
+  animation-fill-mode: both;
+}
+@keyframes wsf-arrive {
+  from { opacity: 0; transform: translateY(10px) scale(.92); }
+  to { opacity: 1; transform: none; }
+}
+.wsf-edge-line.wsf-arrow-hold {
+  marker-end: none;
+}
+.wsf-thread {
+  fill: none;
+  stroke: #e9b44c;
+  stroke-width: 1;
+  pointer-events: none;
+}
+.wsf-setup {
+  position: absolute;
+  top: var(--ws-space-3);
+  right: var(--ws-space-3);
+  z-index: 5;
+  width: min(20rem, calc(100% - 2 * var(--ws-space-3)));
+  max-height: calc(100% - 2 * var(--ws-space-3));
+  padding: var(--ws-space-3);
+  overflow-y: auto;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-body);
+  box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .18);
+  animation: wsf-setup-in 260ms cubic-bezier(.2, .7, .3, 1) both;
+}
+@keyframes wsf-setup-in {
+  from { opacity: 0; transform: translateX(1.5rem); }
+  to { opacity: 1; transform: none; }
+}
+.wsf-setup-close {
+  position: absolute;
+  top: var(--ws-space-2);
+  right: var(--ws-space-2);
+}
+.wsf-setup-title {
+  margin: 0 2rem var(--ws-space-1) 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.wsf-setup-help {
+  margin-bottom: var(--ws-space-3);
+  font-size: .8125rem;
+  color: var(--pg-fg-2);
+}
+.wsf-setup-error {
+  margin-bottom: var(--ws-space-2);
+  font-size: .8125rem;
+  color: var(--pg-danger);
+}
+.wsf-setup .wsf-people-list.is-invalid {
+  outline: 1px solid var(--pg-danger);
+}
+.wsf-setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ws-space-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wsf-node.wsf-arrive,
+  .wsf-setup {
+    animation: none;
+  }
+}
 .wsf-problems {
   margin-bottom: var(--ws-space-2);
   padding: var(--ws-space-2) var(--ws-space-3);
