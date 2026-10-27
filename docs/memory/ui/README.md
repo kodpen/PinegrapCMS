@@ -70,6 +70,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - otp-fields.md: Code and PIN fields on the Bootstrap 6 OTP component (B9d, #2210): MFA app and recovery code modes, no auto-submit, developer lock masked slots and submit on complete
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .menu: Bootstrap's capture-phase keydown handler acts on it, so its keys are taken on the window; closing on scroll and a long press
 - page-button-bar.md: The #button_bar strip under a screen's heading is the .pg-toolbar component: full-width nav, buttons as direct children, which wrappers are allowed, fields in it, the list filter select.
+- panel-avatar-sites.md: Where the panel draws people as the Bootstrap 6 Avatar (step B9j slices) and where the picture of letters (pg_initials_avatar_url()) stays
 - panel-avatar.md: The panel Avatar (pg_avatar_markup()): letters on eight theme tones, grey square for a nameless login, presence dot, no empty src; initials and tone on person briefs
 - panel-cloudflare-email-obfuscation.md: Panel body wrapped in <!--email_off--> so Cloudflare Email Obfuscation does not show staff "[email protected]"; which functions, what stays protected, the Cloudflare-side rule
 - panel-code-fields.md: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme

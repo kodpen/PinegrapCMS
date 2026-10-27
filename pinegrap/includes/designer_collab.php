@@ -249,6 +249,7 @@ function pg_collab_user_brief($user_id)
                     'name'     => isset($brief['name']) ? (string)$brief['name'] : '',
                     'username' => isset($brief['username']) ? (string)$brief['username'] : '',
                     'avatar'   => isset($brief['avatar']) ? (string)$brief['avatar'] : '',
+                    'initials' => isset($brief['initials']) ? (string)$brief['initials'] : '',
                 );
             }
         }
@@ -269,6 +270,7 @@ function pg_collab_user_brief($user_id)
         'name'     => $name,
         'username' => (string)$row['user_username'],
         'avatar'   => '',
+        'initials' => function_exists('pg_initials') ? pg_initials($row['first_name'], $row['last_name'], $row['user_username']) : '',
     );
 }
 
@@ -310,6 +312,7 @@ function pg_collab_peers($session_key, $style_id)
             'name'     => $brief['name'],
             'username' => $brief['username'],
             'avatar'   => $brief['avatar'],
+            'initials' => isset($brief['initials']) ? $brief['initials'] : '',
             'page_id'  => (int)$row['page_id'],
             'page'     => $label,
             'editing'  => (!empty($row['lock_key']) && (string)$row['lock_key'] === (string)$row['session_key']),
