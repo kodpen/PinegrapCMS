@@ -18,5 +18,5 @@ description: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups 
 - Result: the ring surrounds the whole field, add-on included; on an input-group it stopped at the add-on.
 
 ## Where was it piloted?
-- `product_builder.php` Unit Price (default size), `includes/templates/edit_offer.php` upsell subtotal and `assets/js/offer_editor.js` subtotal condition (small, the last one rendered from JS). Heights unchanged: 38 px and 31 px.
+- `product_builder.php` Unit Price (default size), `includes/templates/edit_offer.php` upsell subtotal and `assets/js/offer_editor.js` subtotal condition (small, the last one rendered from JS), #2219. Heights unchanged: 38 px and 31 px.
 - The other single-input groups wait for the owner's look at the pilot screenshots.
