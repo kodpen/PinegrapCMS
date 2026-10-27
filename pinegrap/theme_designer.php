@@ -75,8 +75,8 @@ if (!$_POST) {
             name,
             activated_desktop_theme
         FROM files
-        WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_array($result);
     $file_name = $row['name'];
     $activated_desktop_theme = $row['activated_desktop_theme'];
@@ -95,12 +95,14 @@ if (!$_POST) {
     
     // if there is a page to preview id in the session, then get the pages data
     if (!empty($_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id']) && is_scalar($_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id'])) {
-        $where = "WHERE page_id = '" . escape($_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id']) . "'";
+        $where = "WHERE page_id = ?";
+        $where_values = array((string) $_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id']);
         $limit = '';
     
     // else get the homepage, and set it to the page to preview
     } else {
         $where = "WHERE page_home = 'yes'";
+        $where_values = array();
         $limit = ' LIMIT 1';
     }
     
@@ -115,7 +117,8 @@ if (!$_POST) {
             page_type
         FROM page 
         $where$limit";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, $where_values) or output_error('Query failed.');
+
     $row = mysqli_fetch_array($result);
 
     // A page to preview that no longer exists (deleted since it was picked, or
@@ -318,8 +321,8 @@ if (!$_POST) {
     $_SESSION['software']['theme_designer'][$_GET['id']]['page_to_preview_id'] = $page_to_preview_id;
     
     // get page style properties
-    $query = "SELECT style_name, style_layout FROM style WHERE style_id = '" . escape($style_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $query = "SELECT style_name, style_layout FROM style WHERE style_id = ?";
+    $result = db_q($query, array((string) $style_id)) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
     $page_style_name = $row['style_name'];
     $page_style_layout = $row['style_layout'];
@@ -335,13 +338,13 @@ if (!$_POST) {
             region_type,
             region_name
         FROM system_style_cells
-        WHERE style_id = '" . escape($style_id) . "'
+        WHERE style_id = ?
         ORDER BY
             area,
             `row`, # Backticks for reserved word.
             col";
         
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $result = db_q($query, array((string) $style_id)) or output_error('Query failed');
     while($row = mysqli_fetch_assoc($result)) {
         $objects[] = $row;
     }
@@ -409,8 +412,8 @@ if (!$_POST) {
         // If the region is an ad region, get the ad region's display type "dynamic" or "static"
         if ($object['region_type'] == 'ad') {
             $find_name = $object['region_name'];
-            $query = "SELECT display_type FROM ad_regions WHERE name = '$find_name'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            $query = "SELECT display_type FROM ad_regions WHERE name = ?";
+            $result = db_q($query, array((string) $find_name)) or output_error('Query failed');
             $row = mysqli_fetch_assoc($result);
             $output_ad_region_type = $row['display_type'];
 
@@ -1001,8 +1004,8 @@ if (!$_POST) {
                 region_type,
                 region_name
             FROM system_theme_css_rules 
-            WHERE file_id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE file_id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         while($row = mysqli_fetch_array($result)) {
             // if this is an ad region, then set the properties in the ad regions area of the array
             if ($row['region_type'] == 'ad') {
@@ -2021,18 +2024,18 @@ if (!$_POST) {
                     
                     // if this is an ad region, then remove the properties from for this module
                     if ($area == 'ad_region') {
-                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = '" . escape($_POST['id'] ?? '') . "') AND (region_type = 'ad') AND (region_name = '" . escape($object) . "') AND (module = '" . escape($module) . "'))";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = ?) AND (region_type = 'ad') AND (region_name = ?) AND (module = ?))";
+                        $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $object, (string) $module)) or output_error('Query failed.');
                     
                     // else if this is a menu region, then remove the properties from for this module
                     } elseif ($area == 'menu_region') {
-                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = '" . escape($_POST['id'] ?? '') . "') AND (region_type = 'menu') AND (region_name = '" . escape($object) . "') AND (module = '" . escape($module) . "'))";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = ?) AND (region_type = 'menu') AND (region_name = ?) AND (module = ?))";
+                        $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $object, (string) $module)) or output_error('Query failed.');
                         
                     // else delete all of the rules from the database for this module
                     } else {
-                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = '" . escape($_POST['id'] ?? '') . "') AND (area = '" . escape($area) . "') AND (`row` = '" . escape($object_row) . "') AND (col = '" . escape($object_column) . "') AND (module = '" . escape($module) . "'))";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM system_theme_css_rules WHERE ((file_id = ?) AND (area = ?) AND (`row` = ?) AND (col = ?) AND (module = ?))";
+                        $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $area, (string) $object_row, (string) $object_column, (string) $module)) or output_error('Query failed.');
                     }
                     
                     // if there are properties then loop through each property and add it to the database
@@ -2055,17 +2058,17 @@ if (!$_POST) {
                                             property,
                                             value
                                         ) VALUES (
-                                            '" . escape($_POST['id'] ?? '') . "',
-                                            '" . escape($area) . "',
-                                            '" . escape($object_row) . "',
-                                            '" . escape($object_column) . "',
-                                            '" . escape($module) . "',
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
                                             'ad',
-                                            '" . escape($object) . "',
-                                            '" . escape($property) . "',
-                                            '" . escape($value) . "'
+                                            ?,
+                                            ?,
+                                            ?
                                         )";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $area, (string) $object_row, (string) $object_column, (string) $module, (string) $object, (string) $property, (string) $value)) or output_error('Query failed.');
                                 
                                 // else if this is a menu region property, then insert the property
                                 } elseif ($area == 'menu_region') {
@@ -2082,17 +2085,17 @@ if (!$_POST) {
                                             property,
                                             value
                                         ) VALUES (
-                                            '" . escape($_POST['id'] ?? '') . "',
-                                            '" . escape($area) . "',
-                                            '" . escape($object_row) . "',
-                                            '" . escape($object_column) . "',
-                                            '" . escape($module) . "',
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
                                             'menu',
-                                            '" . escape($object) . "',
-                                            '" . escape($property) . "',
-                                            '" . escape($value) . "'
+                                            ?,
+                                            ?,
+                                            ?
                                         )";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $area, (string) $object_row, (string) $object_column, (string) $module, (string) $object, (string) $property, (string) $value)) or output_error('Query failed.');
                                 
                                 // else insert the property as a regular property
                                 } else {
@@ -2107,15 +2110,15 @@ if (!$_POST) {
                                             property,
                                             value
                                         ) VALUES (
-                                            '" . escape($_POST['id'] ?? '') . "',
-                                            '" . escape($area) . "',
-                                            '" . escape($object_row) . "',
-                                            '" . escape($object_column) . "',
-                                            '" . escape($module) . "',
-                                            '" . escape($property) . "',
-                                            '" . escape($value) . "'
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?
                                         )";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $area, (string) $object_row, (string) $object_column, (string) $module, (string) $property, (string) $value)) or output_error('Query failed.');
                                 }
                             }
                         }
@@ -2125,8 +2128,8 @@ if (!$_POST) {
         }
         
         // get filename from the database
-        $query = "SELECT name FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT name FROM files WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_array($result);
         $file_name = $row['name'];
         
@@ -2146,9 +2149,9 @@ if (!$_POST) {
             "UPDATE files 
             SET 
                 timestamp = UNIX_TIMESTAMP(), 
-                user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                user = ? 
+            WHERE id = ?";
+        $result = db_q($query, array((string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // if the edit theme file script name is in the send to, then add a notice
         if (preg_match('/edit_theme_file.php/i', $_POST['send_to']) > 0) {
@@ -2179,8 +2182,8 @@ if (!$_POST) {
                 description,
                 theme
             FROM files
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_array($result);
         $file_name = $row['name'];
         $folder = $row['folder'];
@@ -2216,16 +2219,16 @@ if (!$_POST) {
                 user,
                 timestamp)
             VALUES (
-                '" . escape($new_file_name) . "',
-                '" . escape($folder) . "',
-                '" . escape($description) . "',
-                '" . escape($file_extension) . "',
+                ?,
+                ?,
+                ?,
+                ?,
                 '0',
                 '1',
-                '$theme',
-                '$user[id]',
+                ?,
+                ?,
                 UNIX_TIMESTAMP())";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $new_file_name, (string) $folder, (string) $description, (string) $file_extension, (string) $theme, (string) $user['id'])) or output_error('Query failed.');
         $new_theme_id = mysqli_insert_id(db::$con);
         
         // convert the post data into an array that contains the css rule's selector, property and value
@@ -2255,8 +2258,8 @@ if (!$_POST) {
 		fclose($handle);
         
         // update the filesize for this file in the database
-        $query = "UPDATE files SET size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $new_file_name)) . "' WHERE id = '" . $new_theme_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "UPDATE files SET size = ? WHERE id = ?";
+        $result = db_q($query, array((string) filesize(FILE_DIRECTORY_PATH . '/' . $new_file_name), (string) $new_theme_id)) or output_error('Query failed.');
         
         // loop through the css properties in order to add them to the database
         foreach($_SESSION['software']['theme_designer'][$_POST['id']]['preview_properties'] as $area => $objects) {
@@ -2305,17 +2308,17 @@ if (!$_POST) {
                                             property,
                                             value
                                         ) VALUES (
-                                            '" . escape($new_theme_id) . "',
-                                            '" . escape($area) . "',
-                                            '" . escape($object_row) . "',
-                                            '" . escape($object_column) . "',
-                                            '" . escape($module) . "',
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
                                             'ad',
-                                            '" . escape($object) . "',
-                                            '" . escape($property) . "',
-                                            '" . escape($value) . "'
+                                            ?,
+                                            ?,
+                                            ?
                                         )";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    $result = db_q($query, array((string) $new_theme_id, (string) $area, (string) $object_row, (string) $object_column, (string) $module, (string) $object, (string) $property, (string) $value)) or output_error('Query failed.');
                                 
                                 // else if this is a menu region property, then insert the property
                                 } elseif ($area == 'menu_region') {
@@ -2332,17 +2335,17 @@ if (!$_POST) {
                                             property,
                                             value
                                         ) VALUES (
-                                            '" . escape($new_theme_id) . "',
-                                            '" . escape($area) . "',
-                                            '" . escape($object_row) . "',
-                                            '" . escape($object_column) . "',
-                                            '" . escape($module) . "',
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
                                             'menu',
-                                            '" . escape($object) . "',
-                                            '" . escape($property) . "',
-                                            '" . escape($value) . "'
+                                            ?,
+                                            ?,
+                                            ?
                                         )";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    $result = db_q($query, array((string) $new_theme_id, (string) $area, (string) $object_row, (string) $object_column, (string) $module, (string) $object, (string) $property, (string) $value)) or output_error('Query failed.');
                                 
                                 // else insert the property as a regular property
                                 } else {
@@ -2357,15 +2360,15 @@ if (!$_POST) {
                                             property,
                                             value
                                         ) VALUES (
-                                            '" . escape($new_theme_id) . "',
-                                            '" . escape($area) . "',
-                                            '" . escape($object_row) . "',
-                                            '" . escape($object_column) . "',
-                                            '" . escape($module) . "',
-                                            '" . escape($property) . "',
-                                            '" . escape($value) . "'
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?
                                         )";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    $result = db_q($query, array((string) $new_theme_id, (string) $area, (string) $object_row, (string) $object_column, (string) $module, (string) $property, (string) $value)) or output_error('Query failed.');
                                 }
                             }
                         }
@@ -2636,8 +2639,8 @@ function prepare_theme_designer_post_data($post_data = array())
 function is_system_page_style($style_id)
 {
     // check to see if this is a system page style
-    $query = "SELECT style_type FROM style WHERE style_id = '" . escape($style_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT style_type FROM style WHERE style_id = ?";
+    $result = db_q($query, array((string) $style_id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $is_system_page_style = FALSE;

@@ -55,8 +55,8 @@ if (empty($_POST['name'])) {
             mobile_style_id,
             folder_archived
         FROM folder
-        WHERE folder_id = '" . escape($_GET['id']) . "'";
-    $result=mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE folder_id = ?";
+    $result=db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_array($result);
     
     $folder_id = $row['folder_id'];
@@ -112,8 +112,8 @@ if (empty($_POST['name'])) {
         // if there is a style set for this folder
         if ($folder_style) {
             // get style name
-            $query = "SELECT style_name FROM style WHERE style_id = '$folder_style'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT style_name FROM style WHERE style_id = ?";
+            $result = db_q($query, array((string) $folder_style)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             $output_style = h($row['style_name']);
@@ -124,8 +124,8 @@ if (empty($_POST['name'])) {
             $style_id = get_style($folder_id, 'desktop');
             
             // get inherited style name
-            $query = "SELECT style_name FROM style WHERE style_id = '$style_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT style_name FROM style WHERE style_id = ?";
+            $result = db_q($query, array((string) $style_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             $output_style = lang('Default') . ' (' . lang('inherit') . '): ' . h($row['style_name']);
@@ -134,8 +134,8 @@ if (empty($_POST['name'])) {
         // if there is a mobile style set for this folder, then output style name
         if ($mobile_style_id != 0) {
             // get style name
-            $query = "SELECT style_name FROM style WHERE style_id = '$mobile_style_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT style_name FROM style WHERE style_id = ?";
+            $result = db_q($query, array((string) $mobile_style_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             $output_mobile_style = h($row['style_name']);
@@ -146,8 +146,8 @@ if (empty($_POST['name'])) {
             $mobile_style_id = get_style($folder_id, 'mobile');
             
             // get inherited style name
-            $query = "SELECT style_name FROM style WHERE style_id = '$mobile_style_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT style_name FROM style WHERE style_id = ?";
+            $result = db_q($query, array((string) $mobile_style_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             $output_mobile_style = lang('Default') . ' (' . lang('inherit') . '): ' . h($row['style_name']);
@@ -158,22 +158,22 @@ if (empty($_POST['name'])) {
     $child_exists = false;
 
     // is there a child folder in this folder?
-    $query = "SELECT folder_id FROM folder WHERE folder_parent = '" . escape($_GET['id']) . "' LIMIT 1";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $query = "SELECT folder_id FROM folder WHERE folder_parent = ? LIMIT 1";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     if (mysqli_num_rows($result)) {
         $child_exists = true;
     }
 
     // is there a child page in this folder?
-    $query = "SELECT page_id FROM page WHERE page_folder = '" . escape($_GET['id']) . "' LIMIT 1";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $query = "SELECT page_id FROM page WHERE page_folder = ? LIMIT 1";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     if (mysqli_num_rows($result)) {
         $child_exists = true;
     }
 
     // is there a child file in this folder?
-    $query = "SELECT id FROM files WHERE folder = '" . escape($_GET['id']) . "' LIMIT 1";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $query = "SELECT id FROM files WHERE folder = ? LIMIT 1";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     if (mysqli_num_rows($result)) {
         $child_exists = true;
     }
@@ -181,8 +181,8 @@ if (empty($_POST['name'])) {
     // if there is a child object in this folder, then disable delete button
     if ($child_exists == true) {
         // check if there is a design file in this folder
-        $query = "SELECT id FROM files WHERE (folder = '" . escape($_GET['id']) . "') AND (design = '1') LIMIT 1";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "SELECT id FROM files WHERE (folder = ?) AND (design = '1') LIMIT 1";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
         
         $output_design_file_notice = '';
         
@@ -325,22 +325,22 @@ if (empty($_POST['name'])) {
         $child_exists = false;
         
         // is there a child folder in this folder?
-        $query = "SELECT folder_id FROM folder WHERE folder_parent = '" . escape($_POST['id'] ?? '') . "' LIMIT 1";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "SELECT folder_id FROM folder WHERE folder_parent = ? LIMIT 1";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         if (mysqli_num_rows($result)) {
             $child_exists = true;
         }
 
         // is there a child page in this folder?
-        $query = "SELECT page_id FROM page WHERE page_folder = '" . escape($_POST['id'] ?? '') . "' LIMIT 1";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "SELECT page_id FROM page WHERE page_folder = ? LIMIT 1";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         if (mysqli_num_rows($result)) {
             $child_exists = true;
         }
 
         // is there a child file in this folder?
-        $query = "SELECT id FROM files WHERE folder = '" . escape($_POST['id'] ?? '') . "' LIMIT 1";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "SELECT id FROM files WHERE folder = ? LIMIT 1";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         if (mysqli_num_rows($result)) {
             $child_exists = true;
         }
@@ -351,16 +351,16 @@ if (empty($_POST['name'])) {
         }
         
         // delete entries in acl for this folder
-        $result=mysqli_query(db::$con, "DELETE FROM aclfolder WHERE aclfolder_folder = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+        $result=db_q("DELETE FROM aclfolder WHERE aclfolder_folder = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         // delete folder
-        $result=mysqli_query(db::$con, "DELETE FROM folder WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+        $result=db_q("DELETE FROM folder WHERE folder_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         log_activity(lang(array('string'=>'folder ({var:1}) was deleted','vars'=>array($_POST['name']) )), $_SESSION['sessionusername']);
         $notice = lang('The folder was deleted successfully.');
         
     } else {
         
         // get parent
-        $result=mysqli_query(db::$con, "SELECT folder_parent FROM folder WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+        $result=db_q("SELECT folder_parent FROM folder WHERE folder_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         $row=mysqli_fetch_array($result);
 
         // if select form was blank or not displayed
@@ -406,18 +406,18 @@ if (empty($_POST['name'])) {
             }
 
             // find level of folder being moved
-            $result=mysqli_query(db::$con, "SELECT folder_level FROM folder WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+            $result=db_q("SELECT folder_level FROM folder WHERE folder_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
             $row=mysqli_fetch_array($result);
             $level_folder = $row['folder_level'];
             
             // get level of parent
-            $result=mysqli_query(db::$con, "SELECT folder_level FROM folder WHERE folder_id = '" . escape($folder) . "'") or output_error('Query failed');
+            $result=db_q("SELECT folder_level FROM folder WHERE folder_id = ?", array((string) $folder)) or output_error('Query failed');
             $row=mysqli_fetch_array($result);
             $level_parent = $row['folder_level'];
             // how much each level will change
             $change_level = $level_parent + 1;
             // update the parent and level attributes of the folder being moved
-            $result=mysqli_query(db::$con, "UPDATE folder SET folder_parent = '" . escape($folder) . "', folder_level = '$change_level' WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+            $result=db_q("UPDATE folder SET folder_parent = ?, folder_level = ? WHERE folder_id = ?", array((string) $folder, (string) $change_level, (string) ($_POST['id'] ?? ''))) or output_error('Query failed');
             
             // if the level of the subfolders do not need to be changed then don't execute code
             if (($level_folder - $level_parent) != 1)
@@ -430,26 +430,32 @@ if (empty($_POST['name'])) {
         $name = trim($_POST['name']);
 
         $sql_style_fields = "";
+        $style_values = array();
         
         // if user role is Administrator, Designer, or Manager, then allow user to change style and mobile style for folder
         if ($user['role'] < 3) {
             $sql_style_fields =
-                "folder_style = '" . escape($_POST['style'] ?? '') . "',
-                mobile_style_id = '" . escape($_POST['mobile_style_id'] ?? '') . "',";
+                "folder_style = ?,
+                mobile_style_id = ?,";
+            $style_values = array((string) ($_POST['style'] ?? ''), (string) ($_POST['mobile_style_id'] ?? ''));
         }
         
         $query =
             "UPDATE folder
             SET
-                folder_name = '" . escape($name) . "',
-                folder_order = '" . escape($_POST['order'] ?? '') . "',
-                folder_access_control_type = '" . escape($_POST['access_control_type'] ?? '') . "',
-                folder_archived = '" . escape($_POST['folder_archived'] ?? '') . "',
+                folder_name = ?,
+                folder_order = ?,
+                folder_access_control_type = ?,
+                folder_archived = ?,
                 $sql_style_fields
                 folder_timestamp = UNIX_TIMESTAMP(),
-                folder_user = '" . $user['id'] . "'
-            WHERE folder_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                folder_user = ?
+            WHERE folder_id = ?";
+        $result = db_q($query, array_merge(
+            array((string) $name, (string) ($_POST['order'] ?? ''), (string) ($_POST['access_control_type'] ?? ''), (string) ($_POST['folder_archived'] ?? '')),
+            $style_values,
+            array((string) $user['id'], (string) ($_POST['id'] ?? ''))
+        )) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'folder ({var:1}) was modified','vars'=>array($name) )) , $_SESSION['sessionusername']);
         $notice = lang('The folder was edited successfully.');
@@ -473,13 +479,14 @@ if (empty($_POST['name'])) {
 function change_level($parent_id, $parent_level)
 {
     // find sub-folders that need to be moved so that we can change their level
-    $result=mysqli_query(db::$con, "SELECT folder_id, folder_level FROM folder WHERE folder_parent = '" . escape($parent_id) . "'") or output_error('Query failed');
+    $result=db_q("SELECT folder_id, folder_level FROM folder WHERE folder_parent = ?", array((string) $parent_id)) or output_error('Query failed');
     while($row=mysqli_fetch_array($result))
     {
         // update the level of the sub-folder
-        $result2=mysqli_query(db::$con, "UPDATE folder SET folder_level = '" . escape($parent_level) . "' + 1 WHERE folder_id = '" . $row['folder_id'] . "'") or output_error('Query failed');
+        $result2=db_q("UPDATE folder SET folder_level = ? + 1 WHERE folder_id = ?", array((string) $parent_level, (string) $row['folder_id'])) or output_error('Query failed');
         // check for subfolders
-        $result_check=mysqli_query(db::$con, "SELECT folder_id FROM folder WHERE folder_parent = '" . $row['folder_id'] . "'") or output_error('Query failed');
+        $result_check=db_q("SELECT folder_id FROM folder WHERE folder_parent = ?", array((string) $row['folder_id'])) or output_error('Query failed');
+
         if(mysqli_num_rows($result_check) > 0)
         {
             // recursion

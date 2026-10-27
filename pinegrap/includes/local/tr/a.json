@@ -274,6 +274,8 @@
     "A follow-up call with your doctor": "Hekiminizle bir takip görüşmesi",
     "A follow-up needs a day.": "Takip için bir gün seçilmelidir.",
     "A follow-up needs the record it is about.": "Takip, ilgili olduğu kaydı gerektirir.",
+    "A follow-up of the approval now runs once the request is approved, not once it is asked.": "Onayın devam işi artık istek sorulunca değil, onaylanınca çalışır.",
+    "A follow-up on skipped was left out: the action has no condition that could skip it.": "Atlandığında çalışan devam işi alınmadı: işin onu atlatabilecek bir koşulu yok.",
     "A follow-up the form does not take was left out.": "Formun almadığı bir sonraki adım dışarıda bırakıldı.",
     "A food hygiene certificate, or we help you get one": "Gıda hijyeni belgesi; yoksa almanıza yardım ederiz",
     "A football pitch under floodlights in the evening": "Akşam projektör ışıkları altında bir futbol sahası",
