@@ -4111,10 +4111,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 'panel' =>
                     '<div class="col-12 sm:col-6 lg:col-4">
                         <label for="commission_rate_limit" class="form-label">' . lang('Commission Rate Limit') . '</label>
-                        <div class="input-group">
-                            <input type="text" name="commission_rate_limit" id="commission_rate_limit" class="form-control" size="3" maxlength="3" inputmode="numeric" style="text-align:right;" value="' . h($v('commission_rate_limit')) . '" />
-                            <label for="commission_rate_limit" class="input-group-text">%</label>
-                        </div>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">%</span>
+                            <input type="text" name="commission_rate_limit" id="commission_rate_limit" class="form-ghost" size="3" maxlength="3" inputmode="numeric" style="text-align:right;" value="' . h($v('commission_rate_limit')) . '" />
+                        </label>
                         <div class="form-text">(' . lang('leave blank for no limit') . ')</div>
                     </div>',
             ));
@@ -4158,10 +4158,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                     'panel' =>
                         '<div class="col-12 sm:col-6 lg:col-4">
                             <label for="compare_at_price" class="form-label">' . lang('Amount') . '</label>
-                            <div class="input-group">
-                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
-                                <label class="input-group-text" for="compare_at_price">' . BASE_CURRENCY_SYMBOL . '</label>
-                            </div>
+                            <label class="form-control form-adorn form-adorn-end">
+                                <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                            </label>
                             <div class="form-text">' . lang('Empty or zero is none.') . '</div>
                         </div>',
                 )) .
@@ -4238,10 +4238,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="extra_shipping_cost" class="form-label">' . lang('Extra Shipping Cost') . '</label>
-                                                        <div class="input-group">
-                                                            <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
-                                                            <label class="input-group-text" for="extra_shipping_cost">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                        </div>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                            <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                                                        </label>
                                                     </div>
 
                                                     ' . $output_zones_field .
@@ -5090,10 +5090,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                     <div class="col-12 lg:col-4 my-3">
                                         <label for="membership_renewal" class="form-label">' . lang('Add Days to Customer\'s Membership') . '</label>
-                                        <div class="input-group">
-                                            <input type="text" name="membership_renewal" id="membership_renewal" class="form-control" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('membership_renewal')) . '" />
-                                            <span class="input-group-text">' . lang('day(s)') . '</span>
-                                        </div>
+                                        <label class="form-control form-adorn form-adorn-end">
+                                            <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                            <input type="text" name="membership_renewal" id="membership_renewal" class="form-ghost" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('membership_renewal')) . '" />
+                                        </label>
                                         <div class="form-text text-end">' . lang('0 for none') . '</div>
                                     </div>
 
@@ -5123,10 +5123,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     </div>
                                                     <div class="col-12 md:col-6 lg:col-4">
                                                         <label for="private_days" class="form-label">' . lang('Length') . '</label>
-                                                        <div class="input-group">
-                                                            <input type="text" name="private_days" id="private_days" class="form-control" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('private_days')) . '" />
-                                                            <span class="input-group-text">' . lang('day(s)') . '</span>
-                                                        </div>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                                            <input type="text" name="private_days" id="private_days" class="form-ghost" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('private_days')) . '" />
+                                                        </label>
                                                         <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
                                                     </div>
                                                     <div class="col-12 md:col-6 lg:col-4">
@@ -5266,10 +5266,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     </div>
                                                     <div class="col-12 lg:col-3">
                                                         <label class="form-label" for="form_label_column_width">' . lang('Label Column Width') . '</label>
-                                                        <div class="input-group">
-                                                            <input type="text" id="form_label_column_width" name="form_label_column_width" class="form-control" size="3" maxlength="3" inputmode="numeric" value="' . h($v('form_label_column_width')) . '" />
-                                                            <label class="input-group-text" for="form_label_column_width">%</label>
-                                                        </div>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">%</span>
+                                                            <input type="text" id="form_label_column_width" name="form_label_column_width" class="form-ghost" size="3" maxlength="3" inputmode="numeric" value="' . h($v('form_label_column_width')) . '" />
+                                                        </label>
                                                         <div class="form-text">' . lang('leave blank for auto') . '</div>
                                                     </div>
                                                     <div class="col-12 lg:col-4">

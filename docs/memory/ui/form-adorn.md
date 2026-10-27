@@ -17,6 +17,12 @@ description: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups 
 - The panel's global `input:focus-visible` rule (custom layer, beats Bootstrap's forms layer) drew a ring around the borderless input inside the wrapper. `.form-adorn > .form-ghost:focus-visible` drops it; `.form-adorn:has(> .form-ghost:focus-visible)` joins the global ring list and `.form-control.form-adorn:focus-within` the focus border rule, so the wrapper looks focused like a plain field.
 - Result: the ring surrounds the whole field, add-on included; on an input-group it stopped at the add-on.
 
-## Where was it piloted?
-- `product_builder.php` Unit Price (default size), `includes/templates/edit_offer.php` upsell subtotal and `assets/js/offer_editor.js` subtotal condition (small, the last one rendered from JS), #2219. Heights unchanged: 38 px and 31 px.
-- The other single-input groups wait for the owner's look at the pilot screenshots.
+## Where is it used?
+- Pilot #2219: `product_builder.php` Unit Price, `includes/templates/edit_offer.php` upsell subtotal, `assets/js/offer_editor.js` subtotal condition. Heights unchanged: 38 px and 31 px (small).
+- #2280: shipping method and zone rates, container weight and cost, the rest of `product_builder.php`, `includes/forms/page_form.php` (40 places).
+- A wrapper toggled by script keeps its id (container `#weight_pound` / `#weight_kg`); `d-none` on the label works. `is-invalid` stays on the input: Bootstrap marks the wrapper through `:has()`.
+
+## What stays an input-group on purpose?
+- Several inputs or add-ons (shipping days, container dimensions), the product dimension units (`label.unit`, rewritten by script), add-ons with a `title` hint (product group address, product start days).
+- Settings cards: the `.pg-set-card` row rules and the `pg-f-*` caps in backend.src.css name `.input-group`; a settings part changes them together with the markup.
+- Site templates (`includes/templates/` order screens, `data/layouts`): 5.3.8.
