@@ -261,6 +261,7 @@ function pg_db_running_statement($table, $verbs = array('ALTER TABLE', 'OPTIMIZE
     }
 
     $likes = array();
+    $like_values = array();
     $verb_patterns = array();
 
     foreach ((array) $verbs as $verb) {
@@ -268,7 +269,8 @@ function pg_db_running_statement($table, $verbs = array('ALTER TABLE', 'OPTIMIZE
         if ($verb === '') {
             continue;
         }
-        $likes[] = "(INFO LIKE '" . mysqli_real_escape_string(db::$con, $verb) . "%')";
+        $likes[] = "(INFO LIKE ?)";
+        $like_values[] = $verb . '%';
         $verb_patterns[] = preg_replace('/\s+/', '\s+', preg_quote($verb, '/'));
     }
 
@@ -276,13 +278,13 @@ function pg_db_running_statement($table, $verbs = array('ALTER TABLE', 'OPTIMIZE
         return null;
     }
 
-    $result = @mysqli_query(db::$con,
+    $result = db_q(
         "SELECT ID, TIME, STATE, INFO
         FROM information_schema.PROCESSLIST
         WHERE
             (ID <> CONNECTION_ID())
             AND (INFO IS NOT NULL)
-            AND (" . implode(' OR ', $likes) . ")");
+            AND (" . implode(' OR ', $likes) . ")", $like_values);
 
     if (!$result) {
         return null;
@@ -402,7 +404,7 @@ function pg_db_run_table_statement($table, $statement, $result, $marker = '', $l
         }
     }
 
-    @mysqli_query(db::$con, "SET SESSION lock_wait_timeout = " . max(1, (int) $lock_wait_seconds));
+    db_q("SET SESSION lock_wait_timeout = ?", array(max(1, (int) $lock_wait_seconds)));
 
     $started = microtime(true);
 
@@ -431,7 +433,7 @@ function pg_db_run_table_statement($table, $statement, $result, $marker = '', $l
     }
 
     if ($previous_wait !== null) {
-        @mysqli_query(db::$con, "SET SESSION lock_wait_timeout = " . $previous_wait);
+        db_q("SET SESSION lock_wait_timeout = ?", array((int) $previous_wait));
     }
 
     if ($marker !== '') {
