@@ -2533,17 +2533,16 @@ function upgrade_2026_11_0_shipment_lookup() {
 }
 
 // The KVKK notice at checkout (2026.11.0, 11.0.48; includes/fn/legal_documents.php).
-// Its own switch, so a store that already asks for the two checkout documents
-// shows no new text until it turns this on; the notice template (NULL reads
-// the built-in one) and the explicit consent sentence (NULL: no consent box).
-// The answer is kept in order_documents as type kvkk, which 11.0.1 created.
+// The page holding the store's KVKK notice (0: no notice link) and the explicit
+// consent sentence (NULL: no consent box). The notice is a page of the site,
+// not a template on this row: two more TEXT columns would leave the config row
+// less room on MySQL 8.0 than tests/innodb_test.php keeps free. The answer is
+// kept in order_documents as type kvkk, which 11.0.1 created.
 function upgrade_2026_11_0_kvkk_notice() {
 
-	install_add_column('config', 'ecommerce_kvkk_notice', "TINYINT(1) NOT NULL DEFAULT 0");
-	install_add_column('config', 'ecommerce_kvkk_template', "TEXT NULL");
+	install_add_column('config', 'ecommerce_kvkk_page_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 	install_add_column('config', 'ecommerce_kvkk_consent_text', "TEXT NULL");
 
-	install_note('Checkout legal documents: a KVKK notice link and an optional explicit consent box can be shown at checkout under Site Settings, Ecommerce, Legal Documents. They stay off until switched on.');
+	install_note('Checkout legal documents: a link to your KVKK notice page and an optional explicit consent box can be shown at checkout under Site Settings, Ecommerce, Legal Documents. Nothing changes until a page or a consent sentence is chosen there.');
 
 }
-
