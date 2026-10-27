@@ -37,7 +37,7 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - Which of the types above must be designable before L5 (retire), and which may stay `system` region nodes?
 
 ## Where to start?
-- The multi-step checkout is done. Next: the next type of the owner's order that no open PR holds. One widget per PR.
+- Next: the next type of the owner's order no open PR holds. One widget per PR.
 
 ## Which steps are there?
 1-4. Done: shipping address (#1746; verified box left), method (#1759), billing (#1777), order preview (#1789); [[shipping-address-widget]] and siblings, [[order-preview-widget]].
