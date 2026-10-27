@@ -18,10 +18,10 @@ description: Plan (owner request 2026-10-27, draft): a flow template gallery tha
 
 - G2 animated placement and the setup panel. Done (#2173): `workspace/workspace-flows-template-setup.md`.
 
-- G3 flow-only templates once their boxes exist (approval needs F5).
+- G3 flow-only templates. Done (#2196): new customer, quote approval, text review (`workspace/workspace-flows-template-format.md`).
 
 ## Where to start?
-- G3: flow-only templates; their settings go through the same setup panel (`workspace/workspace-flows-template-setup.md`).
+- All steps done; the plan closes once open question 1 is answered (its decision goes to `workspace/workspace-flows-template-format.md`).
 
 ## Open questions
 1. May staff save their own flow as a template for the site, and move templates between sites through the API?

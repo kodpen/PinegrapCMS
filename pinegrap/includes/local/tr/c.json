@@ -116,6 +116,7 @@
     "Call 112": "112'yi arayın",
     "Call Us": "Bizi Arayın",
     "Call a webhook": "Webhook çağır",
+    "Call or write to say welcome, and note what they need.": "Arayıp ya da yazıp hoş geldiniz deyin ve neye ihtiyaç duyduklarını not edin.",
     "Call or write to the customers": "Müşterileri ara ya da yaz",
     "Call the café and pick up on your way; at the Business District café the order waits on the counter.": "Kafeyi arayın, yolda uğrayıp alın; İş Merkezi şubesinde siparişiniz tezgâhta sizi bekler.",
     "Call the webhook {var:1}": "{var:1} webhook'unu çağır",
