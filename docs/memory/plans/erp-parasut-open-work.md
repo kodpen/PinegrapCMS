@@ -32,4 +32,5 @@ description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#16
 - Bigger, kept elsewhere: the `erp_edoc_queue` worker (`erp-parasut-driver-design.md`); incoming e-invoices through `GET e_invoices`, which needs a company with an e-document integration.
 
 ## Where to start?
+- Only in the owner's local session on the dev machine (dev database, the demo key: `workflow/sandbox-and-environment.md`); a cloud worker never takes these items, so a coordinator does not offer them.
 - Read the key rules in `erp/README.md` and the `erp-parasut-*.md` files of the item. Claim it with a draft PR `[plan:erp-parasut-open-work] <item>`. Mark the item done here with its PR number. When the plan is empty, move its lasting decisions to `erp/` and delete it.

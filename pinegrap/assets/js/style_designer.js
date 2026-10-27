@@ -11160,6 +11160,7 @@ const StyleDesigner = (function () {
                     billing_information:  _sdT('Billing Information'),
                     order_preview:        _sdT('Order Preview'),
                     order_form:           _sdT('Order Form'),
+                    folder_view:          _sdT('Folder View'),
                     menu_region:          _sdT('Menu'),
                     menu_sequence_region: _sdT('Menu Sequence'),
                     ad_region:            _sdT('Ad Region'),
@@ -12338,6 +12339,11 @@ const StyleDesigner = (function () {
         ],
         'catalog.active_filters': [
             { __filter_chip_label: _sdT('Colour: Red'), __filter_chip_url: '#' }
+        ],
+        'folder_view.children': [
+            { __folder_item_name: _sdT('Example page'), __folder_item_is_page: '1', __folder_item_is_folder: '', __folder_item_key: '' },
+            { __folder_item_name: 'brochure.pdf', __folder_item_is_file: '1', __folder_item_is_page: '', __folder_item_is_folder: '', __folder_item_key: '',
+              __folder_item_description: '' }
         ],
         'security.passkeys': [
             { __passkey_id: '2', __passkey_name: _sdT('My laptop'), __passkey_last_used: _sdT('Never'), __passkey_is_synced: '' }
@@ -13956,6 +13962,8 @@ const StyleDesigner = (function () {
         '__order_status': _sdT('Completed'),
         '__shipping_method_name': _sdT('Standard Shipping'),
         '__add_button_label': _sdT('Continue'),
+        '__folder_name': _sdT('Documents'),
+        '__start_page_url': '#',
         '__skip_button_label': _sdT('No, thanks'),
         '__shipping_method': _sdT('Standard Shipping'),
         '__payment_method': _sdT('Credit Card'),
@@ -22665,6 +22673,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Gift cards applied to the order'), type: 'loop_area', icon: 'bi-gift', extra: { listSource: 'checkout.gift_cards' } },
                 { label: _sdT('Recipients in the cart'), type: 'loop_area', icon: 'bi-people', extra: { listSource: 'checkout.recipients' } },
                 { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } },
+                { label: _sdT('Entries of a folder'), type: 'loop_area', icon: 'bi-folder2', extra: { listSource: 'folder_view.children' } },
                 { label: _sdT('Passkeys of the member'), type: 'loop_area', icon: 'bi-fingerprint', extra: { listSource: 'security.passkeys' } },
                 { label: _sdT('Page links'), type: 'loop_area', icon: 'bi-three-dots', extra: { listSource: 'paging.pages' } }
             ]},
@@ -32934,6 +32943,7 @@ const StyleDesigner = (function () {
             'checkout.recipients': _sdT('One row for every recipient of the order. Put a list of the products in the cart inside the row: it lists that recipient\'s. The address fields and shipping choices stay where the widget draws them.'),
             'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
             'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.'),
+            'folder_view.children': _sdT('One row for every entry of the folder of the row it stands in, as the visitor may see them: its folders, then its pages, then its files; outside the loop the entries of the page\'s folder. Put another list inside a folder\'s row for the level below.'),
             'paging.pages':       _sdT('One row for every page link the list shows: the first and the last page, two pages either side of the page shown, a gap between them. With this list in the widget its built-in pagination is not added. Conditions on "Page address" and "The page shown" tell a link, the current page and a gap apart.')
         };
         if (about[p.source]) html += note(about[p.source], false);
@@ -33227,6 +33237,7 @@ const StyleDesigner = (function () {
             var _isBillingInfo     = (_regionType === 'billing_information');
             var _isOrderPreview    = (_regionType === 'order_preview');
             var _isOrderForm       = (_regionType === 'order_form');
+            var _isFolderView      = (_regionType === 'folder_view');
             var _isMenuRegion      = (_regionType === 'menu_region');
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
             var _isAdRegion        = (_regionType === 'ad_region');
@@ -33279,6 +33290,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isFolderView) {
+                _sourceInfoHtml = _sdT('The classic folder view: the pages and files of the page\'s folder and of the folders below it, as the visitor may see them. The loop repeats the entries of the page\'s folder; a list of the entries of a folder in a folder\'s row lists the level below. Pages are listed with their title and description; the page shown and the steps of other screens (confirmations, checkout steps, detail pages) are left out.');
             } else if (_isOrderForm) {
                 _sourceInfoHtml = _sdT('The classic order form: the products of one product group, each with its check box, quantity box or donation amount, or one pick list of them with a quantity; the visitor puts many products into the cart at once. The products, their prices and the cart work as on the classic order form page; a product that cannot be ordered shows without its control.');
             } else if (_isOrderPreview) {
@@ -34549,6 +34562,24 @@ const StyleDesigner = (function () {
                         _sdT('Where the skip button takes the visitor, nothing added.'))) +
                     row(_sdT('Controls'),
                         _ofHint(_sdT('The form reads its controls by name: {var}.', '<code>product, donation, product_id, quantity, ship_to, add_name, submit_add, submit_skip</code>')))
+                );
+            }
+
+            // ── folder_view settings ─────────────────────────────────────────
+            // A converted classic page without these keys keeps reading its
+            // folder_view_pages row.
+            if (_isFolderView) {
+                var _fvSwitch = function (key, on) {
+                    return '<label class="sd-prop-switch">' +
+                        '<input type="checkbox" class="sd-sw-inp" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="bool"' + (on ? ' checked' : '') + '>' +
+                        '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                    '</label>';
+                };
+                systemSection += sect('bi-folder2-open', _sdT('Folder View Settings'),
+                    row(_sdT('Include Pages'), _fvSwitch('include_pages', _cfg.include_pages !== false)) +
+                    row(_sdT('Include Files'), _fvSwitch('include_files', _cfg.include_files === true)) +
+                    row(_sdT('Folder'),
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The entries of the page\'s own folder are listed; move the page to list another folder. With neither pages nor files included the widget lists nothing.')) + '</div>')
                 );
             }
 
@@ -37938,7 +37969,7 @@ const StyleDesigner = (function () {
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
         order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
-        tag_cloud_region: 1, order_form: 1
+        tag_cloud_region: 1, order_form: 1, folder_view: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -39635,6 +39666,29 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // folder_view token palette — has loop_area (one row per entry of the
+    // page's folder); the folder lists give the same row tokens. Mirrors
+    // _render_system_widget_folder_view() in widgets_folder_view.php.
+    var SW_FOLDER_VIEW_TOKEN_GROUPS = [
+        { label: _sdT('Folder'), tokens: [
+            ['__folder_name',               _sdT('Name of the page\'s folder')]
+        ]},
+        { label: _sdT('Entry (loop_area)'), tokens: [
+            ['__folder_item_name',          _sdT('Entry name')],
+            ['__folder_item_key',           _sdT('Folder of the entry (empty for a page or a file)')],
+            ['__folder_item_description',   _sdT('Entry description')],
+            ['__folder_item_is_folder',     _sdT('The entry is a folder (1 or empty)')],
+            ['__folder_item_is_page',       _sdT('The entry is a page (1 or empty)')],
+            ['__folder_item_is_file',       _sdT('The entry is a file (1 or empty)')],
+            ['__folder_item_is_design',     _sdT('The file is a design file (1 or empty)')],
+            ['__folder_item_access',        _sdT('Access of the folder (public, private, guest, registration or membership)')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__folder_item_url',           _sdT('Entry address (empty for a folder)')],
+            ['__start_page_url',            _sdT('The visitor\'s start page (the link drops when there is none)')]
+        ]}
+    ];
+
     // billing_information token palette — no loop_area. Mirrors
     // _render_system_widget_billing_information() in
     // widgets_billing_information.php.
@@ -39785,6 +39839,7 @@ const StyleDesigner = (function () {
         billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS,
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
         order_form:        SW_ORDER_FORM_TOKEN_GROUPS,
+        folder_view:       SW_FOLDER_VIEW_TOKEN_GROUPS,
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
         menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
         ad_region:         SW_AD_REGION_TOKEN_GROUPS,
@@ -41283,9 +41338,14 @@ const StyleDesigner = (function () {
             link(_sdT('Distance Sales Contract'), '__legal_contract_url', 'has_legal_contract')
         ])];
         if (!_sdPartPlaced(tree, ['__withdrawal_deadline', '__withdrawal_text'])) {
-            body.push(_sdPartEl('p', 'small text-muted mt-2 mb-0', _sdT('Right of Withdrawal'), {
-                text: '', _bindings: { text: '__withdrawal_text', eo_visible_if: 'has_withdrawal_deadline' }
-            }));
+            var line = function (name, text, flag) {
+                return _sdPartSentence('p', 'small text-muted mt-2 mb-0', name, text, '__withdrawal_deadline', { _bindings: { eo_visible_if: flag } });
+            };
+            body.push(
+                line(_sdT('Right of Withdrawal'), _sdT('Last day of the right of withdrawal: {var:1}'), 'withdrawal_deadline_firm'),
+                line(_sdT('Estimated Right of Withdrawal'), _sdT('Last day of the right of withdrawal: {var:1} (estimated; the 14 days run from delivery).'), 'withdrawal_deadline_estimated'),
+                line(_sdT('Ended Right of Withdrawal'), _sdT('The right of withdrawal ended on {var:1}.'), 'withdrawal_ended')
+            );
         }
         return [_sdPartOrderCard('pg-ov-legal-documents', _sdT('Legal Documents'), 'has_legal_documents', _sdT('Legal Documents'), body)];
     }
@@ -41452,6 +41512,7 @@ const StyleDesigner = (function () {
             ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
             ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
             ['has_withdrawal_deadline', _sdT('The last day of the right of withdrawal is known')],
+            ['withdrawal_deadline_firm', _sdT('The withdrawal deadline is firm and still ahead')],
             ['withdrawal_deadline_estimated', _sdT('The withdrawal deadline is an estimate')],
             ['withdrawal_ended',        _sdT('The right of withdrawal has ended')],
             ['can_cancel',              _sdT('The order can be cancelled')],
@@ -41657,6 +41718,12 @@ const StyleDesigner = (function () {
             ['not_in_sequence', _sdT('The page shown is not one of the menu\'s pages')],
             ['has_previous',    _sdT('A page comes before the one shown')],
             ['next_wraps',      _sdT('The page shown is the last; the next link goes to the first')]
+        ],
+        folder_view: [
+            ['has_folder_items',           _sdT('The folder has an entry the visitor may see')],
+            ['no_folder_items',            _sdT('The folder has no entry the visitor may see')],
+            ['nothing_included',           _sdT('Neither pages nor files are included')],
+            ['has_start_page',             _sdT('The visitor has a start page other than this one')]
         ],
         menu_region: [
             ['has_menu_items',             _sdT('The menu has an item the visitor may see')],
@@ -54630,6 +54697,7 @@ const StyleDesigner = (function () {
         { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' },
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
         { type: 'order_form',        label: _sdT('Order Form'),        slug: _sdT('order-form'),        icon: 'bi-cart-plus' },
+        { type: 'folder_view',       label: _sdT('Folder View'),       slug: _sdT('folder'),            icon: 'bi-folder2-open' },
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
         { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
         { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
@@ -54818,6 +54886,10 @@ const StyleDesigner = (function () {
         } else if (newType === 'ad_region') {
             // The site's first ad region, so a new widget shows ads at once.
             if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
+        } else if (newType === 'folder_view') {
+            // The classic page's defaults: pages listed, files not.
+            if (cfg.include_pages === undefined) cfg.include_pages = true;
+            if (cfg.include_files === undefined) cfg.include_files = false;
         } else if (newType === 'menu_region' || newType === 'menu_sequence_region') {
             // The site's first menu, so a new widget shows items at once.
             if (cfg.menu_name === undefined) cfg.menu_name = ((regionData && regionData.menu_regions) || [])[0] || '';
@@ -56258,6 +56330,24 @@ const StyleDesigner = (function () {
                 ['__pager_is_current', _sdT('The page shown (1 or empty)')],
                 ['__pager_is_gap',     _sdT('A gap between page numbers (1 or empty)')]
             ]
+        },
+        // The folder view source (pg_sw_list_folder_view_sources()): the
+        // entries of the row's folder, the page's folder outside the loop.
+        'folder_view.children': {
+            label: _sdT('Entries of a folder'),
+            arg: '', argRequired: false,
+            kinds: ['folder_view'],
+            rows: [
+                ['__folder_item_name',        _sdT('Entry name')],
+                ['__folder_item_key',         _sdT('Folder of the entry (empty for a page or a file)')],
+                ['__folder_item_url',         _sdT('Entry address (empty for a folder)')],
+                ['__folder_item_description', _sdT('Entry description')],
+                ['__folder_item_is_folder',   _sdT('The entry is a folder (1 or empty)')],
+                ['__folder_item_is_page',     _sdT('The entry is a page (1 or empty)')],
+                ['__folder_item_is_file',     _sdT('The entry is a file (1 or empty)')],
+                ['__folder_item_is_design',   _sdT('The file is a design file (1 or empty)')],
+                ['__folder_item_access',      _sdT('Access of the folder (public, private, guest, registration or membership)')]
+            ]
         }
     };
 
@@ -56317,6 +56407,15 @@ const StyleDesigner = (function () {
         __menu_item_has_children: '',
         __menu_item_is_current: '',
         __menu_item_holds_current: '',
+        __folder_item_name:        _sdT('Example page'),
+        __folder_item_key:         '',
+        __folder_item_url:         '#',
+        __folder_item_description: _sdT('A short description of the page.'),
+        __folder_item_is_folder:   '',
+        __folder_item_is_page:     '1',
+        __folder_item_is_file:     '',
+        __folder_item_is_design:   '',
+        __folder_item_access:      '',
         __passkey_id:        '1',
         __passkey_name:      _sdT('My phone'),
         __passkey_added:     '20.10.2026',
@@ -56480,6 +56579,7 @@ const StyleDesigner = (function () {
                 ])
             ]);
         }
+        if (source === 'folder_view.children') return _sdFolderViewList(bs);
         if (source === 'paging.pages') return _sdPagingListStarter(bs);
         if (source === 'security.passkeys') {
             return createNode('loop_area', { source: source }, [
@@ -56723,6 +56823,43 @@ const StyleDesigner = (function () {
     // (dimmed on a day of another month), a "Today" badge and its events as
     // links. The others: a list of their own rows, the days list with its
     // events. Every word is the designer's to restyle or translate.
+    // One entry of a folder view: a folder's name above a list of its own
+    // entries (nested `depth` more levels), or a page's or a file's link
+    // with its description and, for a design file, a badge. A condition on
+    // the row picks the block (pg_sw_list_folder_view_rows()).
+    /* @pg-site-output */
+    function _sdFolderViewEntry(bs, depth) {
+        var when = function (token, op) {
+            return { _bindings: { show_if: token }, _bindParams: { show_if: { op: op } } };
+        };
+        var folder = [
+            createNode('semantic', { tag: 'span', cssClass: bs ? 'fw-semibold' : '', text: _sdT('Folder'), customName: _sdT('Folder name'),
+                _bindings: { text: '__folder_item_name' } })
+        ];
+        if (depth > 0) folder.push(_sdFolderViewList(bs, depth - 1));
+        return createNode('semantic', { tag: 'li', cssClass: bs ? 'mb-2' : '', customName: _sdT('Entry') }, [
+            createNode('semantic', Object.assign({ tag: 'div', cssClass: '', customName: _sdT('Folder') },
+                when('__folder_item_is_folder', 'not_empty')), folder),
+            createNode('semantic', Object.assign({ tag: 'div', cssClass: '', customName: _sdT('Page or File') },
+                when('__folder_item_is_folder', 'empty')), [
+                createNode('semantic', { tag: 'a', cssClass: '', text: _sdT('Example page'), href: '#', customName: _sdT('Link'),
+                    _bindings: { href: '__folder_item_url', text: '__folder_item_name' } }),
+                createNode('semantic', Object.assign({ tag: 'span', cssClass: bs ? 'badge text-bg-light border ms-2' : '', text: _sdT('Design'), customName: _sdT('Design file') },
+                    when('__folder_item_is_design', 'not_empty'))),
+                createNode('semantic', Object.assign({ tag: 'div', cssClass: bs ? 'small text-body-secondary' : '', text: _sdT('A short description of the page.'), customName: _sdT('Description') },
+                    { _bindings: { text: '__folder_item_description', show_if: '__folder_item_description' }, _bindParams: { show_if: { op: 'not_empty' } } }))
+            ])
+        ]);
+    }
+
+    // A list of the entries of a folder, indented under the folder's name.
+    /* @pg-site-output */
+    function _sdFolderViewList(bs, depth) {
+        return createNode('semantic', { tag: 'ul', cssClass: bs ? 'list-unstyled ps-4 mt-2 mb-0' : '', customName: _sdT('Entries of a folder') }, [
+            createNode('loop_area', { source: 'folder_view.children' }, [_sdFolderViewEntry(bs, depth || 0)])
+        ]);
+    }
+
     // A new list of the page links: a Bootstrap pagination whose previous
     // and next items show only when there is such a page (the widget's
     // flags), around the list's row: a link, the page shown, or a gap, each
@@ -59993,22 +60130,21 @@ const StyleDesigner = (function () {
                                                 _bindings: { href: '__legal_contract_url' } })
                                         ]),
                                         // Last day of the right of withdrawal: 14 days
-                                        // from the last delivery. One note says the
-                                        // date rests on planned dates, the other that
-                                        // the day has passed.
+                                        // from the last delivery. One sentence per
+                                        // state (firm, resting on planned dates, or
+                                        // passed), the day a value of its own.
                                         createNode('semantic', { tag: 'div', cssClass: 'small text-muted mt-2',
                                             customName: _sdT('Right of Withdrawal'),
                                             _bindings: { eo_visible_if: 'has_withdrawal_deadline' } }, [
-                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
-                                                text: _sdT('Last day of the right of withdrawal:') }),
-                                            createNode('content', { contentType: 'paragraph', cssClass: 'fw-semibold mb-0',
-                                                text: '—', _bindings: { text: '__withdrawal_deadline' } }),
-                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
-                                                text: _sdT('Estimated; the 14 days run from delivery.'),
-                                                _bindings: { eo_visible_if: 'withdrawal_deadline_estimated' } }),
-                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
-                                                text: _sdT('The right of withdrawal has ended.'),
-                                                _bindings: { eo_visible_if: 'withdrawal_ended' } })
+                                            _sdPartSentence('p', 'mb-0', _sdT('Last Day'),
+                                                _sdT('Last day of the right of withdrawal: {var:1}'), '__withdrawal_deadline',
+                                                { _bindings: { eo_visible_if: 'withdrawal_deadline_firm' } }),
+                                            _sdPartSentence('p', 'mb-0', _sdT('Estimated Last Day'),
+                                                _sdT('Last day of the right of withdrawal: {var:1} (estimated; the 14 days run from delivery).'), '__withdrawal_deadline',
+                                                { _bindings: { eo_visible_if: 'withdrawal_deadline_estimated' } }),
+                                            _sdPartSentence('p', 'mb-0', _sdT('Ended'),
+                                                _sdT('The right of withdrawal ended on {var:1}.'), '__withdrawal_deadline',
+                                                { _bindings: { eo_visible_if: 'withdrawal_ended' } })
                                         ])
                                     ])
                                 ]),
@@ -61410,6 +61546,31 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
+            }
+
+            case 'folder_view': {
+                // The classic folder view: the loop repeats the entries of
+                // the page's folder, a folder's row lists its own entries
+                // three levels down (another list in the deepest row goes
+                // further). Mirrors _render_system_widget_folder_view().
+                return _swAcctPage(_sdT('Folder View Card'), '10', '8', [
+                    createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Documents'), cssClass: 'card-title mb-3',
+                        _bindings: { text: '__folder_name' } }),
+                    createNode('semantic', { tag: 'a', cssClass: 'btn btn-sm btn-outline-secondary mb-3', text: _sdT('My Start Page'), href: '#', customName: _sdT('Start Page'),
+                        _bindings: { href: '__start_page_url', eo_visible_if: 'has_start_page' } }),
+                    createNode('semantic', { tag: 'div', cssClass: 'alert alert-warning', customName: _sdT('Nothing Included'),
+                        _bindings: { eo_visible_if: 'nothing_included' } }, [
+                        createNode('content', { contentType: 'paragraph', text: _sdT('Neither pages nor files are included in this folder view, so there is nothing to show.'), cssClass: 'mb-0' })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'alert alert-info', customName: _sdT('No Entries'),
+                        _bindings: { eo_visible_if: 'no_folder_items' } }, [
+                        createNode('content', { contentType: 'paragraph', text: _sdT('There is nothing here that you have access to.'), cssClass: 'mb-0' })
+                    ]),
+                    createNode('semantic', { tag: 'ul', cssClass: 'list-unstyled mb-0', customName: _sdT('Entries'),
+                        _bindings: { eo_visible_if: 'has_folder_items' } }, [
+                        createNode('loop_area', {}, [_sdFolderViewEntry(true, 3)])
+                    ])
+                ], true);
             }
 
             case 'order_form': {
@@ -65690,7 +65851,7 @@ const StyleDesigner = (function () {
         'pg_comments_attachments', 'pg_comments_select_name', 'pg_comments_message',
         'pg_comments_closed_message', 'pg_comments_watchers_managed',
         'page_meta_tags', 'page_custom_jsonld',
-        'page_canonical_url', 'page_noarchive', 'page_max_snippet'
+        'page_canonical_url', 'page_noarchive', 'page_max_snippet', 'ai_fields'
     ];
     // The page's comment settings: the hidden pg_comments* inputs of the
     // editor screen, which the comments panel writes. The keys and their
@@ -65814,6 +65975,7 @@ const StyleDesigner = (function () {
             if (!el) return;
             p[k] = _PG_BOOL_FIELDS[k] ? ((el.value === '1') ? 1 : 0) : el.value;
         });
+        _pgAiMarksRead(p);
     }
 
     function _pgLoadPageIntoFields(p) {
@@ -65864,7 +66026,78 @@ const StyleDesigner = (function () {
         _sdSettingsPageLabel(p.page_name);
         _sdPageTypeSync(p);
         _sdSettingsRefresh();
+        _pgAiMarksShow(p);
     }
+
+    // ── Texts written with AI ─────────────────────────────────────────────
+    // The page's Page Title and Meta Description carry a mark while their
+    // text is the "Write with AI" draft used on them (page.ai_fields,
+    // pg_ai_fields_page_save()). `p.aiText` keeps, by column, the text each
+    // mark was put on; `p.ai_fields`, sent with the page's settings, lists
+    // the columns whose text is still that one. Editing the text by hand
+    // takes the mark off, bringing the same text back puts it on again, and
+    // the marker's button drops it until another draft is used. The draft
+    // panel (assets/js/pg_ai_write.js) sends pg:ai-write-used from the field.
+    var _PG_AI_COLUMNS = { pg_page_title: 'page_title', pg_page_meta_description: 'page_meta_description' };
+
+    // Runs of white space are one space and the ends do not count, as in
+    // the fingerprint the server keeps (pg_ai_fields_fingerprint()).
+    function _pgAiSameText(a, b) {
+        var norm = function (v) { return String(v == null ? '' : v).replace(/[\t\n\v\f\r ]+/g, ' ').replace(/^ | $/g, ''); };
+        return norm(a) !== '' && norm(a) === norm(b);
+    }
+
+    function _pgAiMarksRead(p) {
+        if (!p) return;
+        var texts = p.aiText || {};
+        p.ai_fields = Object.keys(_PG_AI_COLUMNS).map(function (id) { return _PG_AI_COLUMNS[id]; }).filter(function (col) {
+            return Object.prototype.hasOwnProperty.call(texts, col) && _pgAiSameText(p[col], texts[col]);
+        });
+    }
+
+    function _pgAiMarksShow(p) {
+        var marked = (p && Array.isArray(p.ai_fields)) ? p.ai_fields : [];
+        document.querySelectorAll('[data-pg-ai-mark]').forEach(function (el) {
+            if (!_PG_AI_COLUMNS[el.getAttribute('data-pg-ai-field')]) return;
+            el.classList.toggle('d-none', marked.indexOf(el.getAttribute('data-pg-ai-mark')) === -1);
+        });
+    }
+
+    // The marks of a page as the server sends them: each one on the text the
+    // page holds now.
+    function _pgAiMarksInit(p, list) {
+        p.aiText = {};
+        (Array.isArray(list) ? list : []).forEach(function (col) {
+            if (typeof p[col] === 'string') p.aiText[col] = p[col];
+        });
+        _pgAiMarksRead(p);
+    }
+
+    function _pgAiMarksFollow(el, used) {
+        var col = el && el.id ? _PG_AI_COLUMNS[el.id] : '';
+        var p = col ? _pgActivePage() : null;
+        if (!p) return;
+        if (used) {
+            p.aiText = p.aiText || {};
+            p.aiText[col] = el.value;
+        }
+        _pgReadFieldsIntoPage(p);
+        _pgAiMarksShow(p);
+        if (used) _pgTabsRefreshDirty();
+    }
+
+    document.addEventListener('pg:ai-write-used', function (e) { _pgAiMarksFollow(e.target, true); });
+    document.addEventListener('input', function (e) { _pgAiMarksFollow(e.target, false); });
+    document.addEventListener('click', function (e) {
+        var btn = (e.target && e.target.closest) ? e.target.closest('.pg-ai-mark-remove') : null;
+        var mark = btn ? btn.closest('[data-pg-ai-mark]') : null;
+        var p = (mark && _PG_AI_COLUMNS[mark.getAttribute('data-pg-ai-field')]) ? _pgActivePage() : null;
+        if (!p) return;
+        if (p.aiText) delete p.aiText[mark.getAttribute('data-pg-ai-mark')];
+        _pgAiMarksRead(p);
+        _pgAiMarksShow(p);
+        _pgTabsRefreshDirty();
+    });
 
     // ── Tab bar ───────────────────────────────────────────────────────────
     function _pgTabsRender() {
@@ -66421,8 +66654,11 @@ const StyleDesigner = (function () {
             // The form settings come along. The fields do not need to: they
             // are the widget's controls, and the copy is a different page —
             // its rows are created under its own id on the first save.
-            formSettings: JSON.parse(JSON.stringify(src.formSettings || {}))
+            formSettings: JSON.parse(JSON.stringify(src.formSettings || {})),
+            // The copied texts keep their marks while they stay as they are.
+            aiText: JSON.parse(JSON.stringify(src.aiText || {}))
         };
+        _pgAiMarksRead(p);
         // Fresh ids: the canvas keys DOM ↔ node by _id, and two tabs sharing
         // ids would confuse selection the moment both have been rendered.
         (function reId(nd) { nd._id = gid(); if (Array.isArray(nd.children)) nd.children.forEach(reId); })(p.tree);
@@ -68250,8 +68486,10 @@ const StyleDesigner = (function () {
             treeLoadWarning: false,
             // The page keeps its own form settings — it is the same page,
             // only opened from another design.
-            formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
+            formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
+            ai_fields: sp.ai_fields || []
         };
+        _pgAiMarksInit(p, p.ai_fields);
         if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
         // Where it still lives. Until this design is saved the page's
         // page_style is unchanged, so on the server it is somebody else's
@@ -69853,8 +70091,12 @@ const StyleDesigner = (function () {
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
                 // The page's form-level settings, as stored; written back
                 // with the page. The fields are the widget's controls.
-                formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
+                formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
+                // The columns marked as written with AI; _pgAiMarksInit()
+                // remembers the text of each.
+                ai_fields: sp.ai_fields || []
             };
+            _pgAiMarksInit(p, p.ai_fields);
             if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
             else p.tree = createDefaultTree();
             // The address the page is reachable at NOW — a rename in the

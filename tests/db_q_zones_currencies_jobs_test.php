@@ -127,7 +127,7 @@ function db_q_zones_currencies_jobs_test_files()
 		'edit_currency.php' => 5,
 		'update_currency.php' => 3,
 		'add_zone.php' => 3,
-		'add_shipping_method.php' => 3,
+		'add_shipping_method.php' => 1,
 		'add_arrival_date.php' => 3,
 		'add_product_group.php' => 2,
 		'edit_orders.php' => 4,
