@@ -1,6 +1,7 @@
 ---
 name: shipping-address-widget
 description: The Shipping Address and Arrival widget (first step of the classic multi-step checkout): handler, page row, recipient gate, controls by name, state switch, arrival date rows, what is left out.
+module: widgets_shipping_address
 ---
 
 ## What is it?

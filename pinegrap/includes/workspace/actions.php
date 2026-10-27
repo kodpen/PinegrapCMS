@@ -779,6 +779,28 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $run['id'])));
 
+        // One box of the draft tried on the canvas (steps.php): what it would
+        // do, nothing sent or written; the check the API's try route makes.
+        case 'ws_flow_box_try':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            $result = ws_flow_box_try($viewer, $flow, array(
+                'node_id' => (string) ($request['node_id'] ?? ''),
+                'run_id'  => (int) ($request['run_id'] ?? 0),
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            unset($result['ok'], $result['error'], $result['status'], $result['field']);
+
+            return ws_action_ok(array('try' => $result));
+
         // The shares of a flow (includes/workspace/flow_shares.php), in the
         // canvas's Share dialog: whoever reaches the flow reads them, the
         // share writers' own checks decide who changes them (its owner), the

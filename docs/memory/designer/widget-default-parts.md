@@ -1,6 +1,7 @@
 ---
 name: widget-default-parts
 description: W16 placed beats pushed: the one placement rule (pg_sw_placed()), default parts drawing old HTML tokens with design elements, tail and lead parts, slices left
+module: widgets_parts
 ---
 
 ## What is the rule?

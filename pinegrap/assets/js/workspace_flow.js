@@ -1933,6 +1933,11 @@
         }
 
         if (state.edit) {
+            // Only the owner: the box is looked at with their rights.
+            if (state.flow && state.flow.manage) {
+                tryField(box, node);
+            }
+
             box.appendChild(connections(node));
 
             var remove = K.button('btn btn-sm btn-outline-warning', t('fl_remove_box'), 'bi-trash');
@@ -1941,6 +1946,93 @@
         }
 
         return box;
+    }
+
+    // What the box would do, asked of the server (ws_flow_box_try) without
+    // anything being sent or written: the draft is saved first, since the
+    // server tries the box as the draft keeps it. The runs to read the
+    // {{node.*}} values from are listed when the list is first opened.
+    function tryField(box, node) {
+        var flow = state.flow;
+        var wrap = el('div', 'wsf-try border-top pt-3 mb-3');
+        var runs = K.select([['0', t('fl_try_no_run')]], '0');
+        var go = K.button('btn btn-sm btn-outline-secondary', t('fl_try'), 'bi-eye');
+        var out = el('div', 'wsf-try-out small mt-2');
+        var listed = false;
+
+        go.title = t('fl_try_help');
+        out.setAttribute('aria-live', 'polite');
+
+        runs.addEventListener('focus', function () {
+            if (listed) {
+                return;
+            }
+
+            listed = true;
+            K.api('ws_flow_runs_list', { flow_id: flow.id, before_id: 0 }).then(function (data) {
+                (data.runs || []).forEach(function (run) {
+                    var option = document.createElement('option');
+
+                    option.value = String(run.id);
+                    option.textContent = t('fl_try_run_item', run.id, runWord(run.status));
+                    runs.appendChild(option);
+                });
+            }).catch(function () {
+                listed = false;
+            });
+        });
+
+        go.addEventListener('click', function () {
+            go.disabled = true;
+            out.textContent = '';
+
+            flush().then(function () {
+                return K.api('ws_flow_box_try', { flow_id: flow.id, node_id: node.id, run_id: Number(runs.value) || 0 });
+            }).then(function (data) {
+                drawTry(out, data.try || {});
+            }).catch(function (error) {
+                out.appendChild(el('div', 'text-danger', (error && error.message) || t('error_generic')));
+            }).then(function () {
+                go.disabled = false;
+            });
+        });
+
+        wrap.appendChild(field(t('fl_try_run'), runs, t('fl_try_help')));
+        wrap.appendChild(go);
+        wrap.appendChild(out);
+        box.appendChild(wrap);
+    }
+
+    // The answer of ws_flow_box_try in words: what the box would do, why it
+    // would fail, its texts filled in, the values left empty, its next times
+    // and the arrow it would leave on.
+    function drawTry(out, tried) {
+        if (tried.said) {
+            out.appendChild(el('div', 'fw-semibold text-break', tried.said));
+        }
+
+        if (tried.refusal) {
+            out.appendChild(el('div', 'text-danger', t('fl_try_fails', tried.refusal)));
+        }
+
+        (tried.texts || []).forEach(function (text) {
+            var shown = el('div', 'border rounded p-2 mt-1 text-break', text.text);
+
+            shown.style.whiteSpace = 'pre-wrap';
+            out.appendChild(shown);
+        });
+
+        if ((tried.empty || []).length) {
+            out.appendChild(el('div', 'text-body-secondary mt-1', t('fl_try_empty', tried.empty.join(', '))));
+        }
+
+        if ((tried.next || []).length) {
+            out.appendChild(el('div', 'mt-1', t('fl_try_next', tried.next.join(' · '))));
+        }
+
+        if (tried.outcome && OUTCOMES[tried.outcome]) {
+            out.appendChild(el('div', 'text-body-secondary mt-1', t('fl_try_outcome', t(OUTCOMES[tried.outcome]))));
+        }
     }
 
     function taskFields(box, node) {

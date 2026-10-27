@@ -1085,6 +1085,7 @@
     "Rules name another folder, not {var:1}": "Kurallar başka bir klasörü gösteriyor, {var:1} değil",
     "Rules that move work forward on their own.": "İşi kendiliğinden ilerleten kurallar.",
     "Run": "Çalıştır",
+    "Run #{var:1} · {var:2}": "Çalıştırma #{var:1} · {var:2}",
     "Run Cron Jobs Automatically": "Cron İşlerini Otomatik Yürüt",
     "Run a tool of @{var:1}": "@{var:1} araçlarından birini çalıştır",
     "Run a tool with a form": "Bir aracı formla çalıştır",

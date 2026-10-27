@@ -1,6 +1,7 @@
 ---
 name: widget-lists-order
 description: Order view (receipt e-mail too) and my account lists (W10): recipients, items, parcels, steps, the member's orders; keys, tokens, where rows are read, the editor's starters, what is left
+module: widgets_lists_order
 ---
 
 ## Which lists exist?

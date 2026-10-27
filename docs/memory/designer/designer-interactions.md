@@ -1,6 +1,7 @@
 ---
 name: designer-interactions
 description: Interactions of designer nodes: props._fx, the data-pg-fx-* attributes, pg_fx.src.js (entrance, hover, click, sticky, parallax), the head style and fail-safe, reduced motion, the twins and tests.
+module: designer_fx
 ---
 
 ## Why this shape?

@@ -17,6 +17,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - Log every new limit or gate with `waf_log_event()` and every new deny path in `data/firewall.log`; a protection that refuses silently is half a protection (`waf-fail2ban-log.md`).
 - Write a new IP column as `VARCHAR(45)` and a ban as one atomic `INSERT ... ON DUPLICATE KEY UPDATE` (`waf-ipv6-ban-column-width.md`).
 - Count aggregated log rows with `SUM(hit_count)`, never `COUNT(*)`, and cap the table with `MAX(id)` (`waf-log-aggregation-and-cap.md`).
+- Send a visitor to a sign-in screen only for a page opening: `get_file.php` goes through `get_file_sign_in_redirect()`, which answers a sub-resource fetch (`waf_fetch_is_subresource()`) with 403, and such a fetch of a sign-in screen is not counted on the sensitive allowance (`waf-subresource-sign-in-fetches.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -50,3 +51,4 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-score-calibration-and-bot-order.md: WAF signature score bands (thresholds 15/10/6, dead zone 7-9), targets key, and the fixed bot classification order with token-boundary residual signal.
 - waf-secure-mode-enable-guard.md: firewall.save.php refuses to enable Secure Mode from a request not seen as HTTPS: predicate, messages, early return, why disabling is unchecked.
 - waf-security-headers-hsts.md: Security headers are sent outside waf_run(), independent of the firewall switch; HSTS default off and its https gating; Permissions-Policy; nosniff and Referrer-Policy never doubled by server rules.
+- waf-subresource-sign-in-fetches.md: A sub-resource fetch (image, style, script, font, media) of a protected file answers 403, never the sign-in redirect; such a fetch of a sign-in screen is not counted as sensitive (#1989)

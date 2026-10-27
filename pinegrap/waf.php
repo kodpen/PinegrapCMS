@@ -1828,15 +1828,132 @@ function waf_sensitive_scripts()
     );
 }
 
-function waf_is_sensitive_request()
+/**
+ * The screens a protected page or file sends a visitor to sign in on, and
+ * back from (get_file.php, get_page.php: ?send_to=). A GET of one of them
+ * draws a form and does nothing else; what the form sends is a POST.
+ */
+function waf_sign_in_screens()
 {
-    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    return array('index.php', 'registration_entrance.php', 'membership_entrance.php');
+}
+
+/**
+ * Is this a browser fetching one of a page's sub-resources - an image, a
+ * style sheet, a script, a font, a media file - rather than opening a
+ * document?
+ *
+ * Read from Sec-Fetch-Dest, which a browser sends with each request to an
+ * https (or localhost) origin and keeps across a redirect: it names what the
+ * page asked for, and only the browser writes it. Without the header (a site
+ * served over plain http, Safari before 16.4) the first media type of Accept
+ * stands in: an image, style, font or media fetch asks for its own kind
+ * first, a page opening asks for text/html. A wildcard Accept alone (a script
+ * tag, a font or a media element in Chrome and Safari, a command-line client)
+ * is not taken for a sub-resource: this is asked in order to spare a visitor
+ * a redirect or a count, so in doubt the request is treated as the visitor's
+ * own.
+ *
+ * A frame, embed or object is not a sub-resource here: it draws a document,
+ * so a sign-in screen in its place is something the visitor can use. Neither
+ * is a fetch() or XMLHttpRequest ('empty'): the page's script reads the
+ * answer and may act on it.
+ *
+ * @param string $method the request method
+ * @param string $dest   the Sec-Fetch-Dest header, '' when absent
+ * @param string $accept the Accept header, '' when absent
+ * @return bool
+ */
+function waf_fetch_is_subresource($method, $dest, $accept)
+{
+    $method = strtoupper(trim((string) $method));
+
+    // A browser never posts an image: a POST is always the visitor's own.
+    if ($method !== 'GET' && $method !== 'HEAD') {
+        return false;
+    }
+
+    $dest = strtolower(trim((string) $dest));
+
+    if ($dest !== '') {
+        return in_array($dest, array(
+            'image', 'style', 'script', 'font', 'audio', 'video', 'track',
+            'manifest', 'audioworklet', 'paintworklet', 'serviceworker',
+            'sharedworker', 'worker', 'xslt',
+        ), true);
+    }
+
+    $accept = strtolower(trim((string) $accept));
+
+    if ($accept === '') {
+        return false;
+    }
+
+    // The first media range, without its parameters.
+    $ranges = preg_split('/[,;]/', $accept, 2);
+    $first = trim($ranges[0]);
+
+    foreach (array('image/', 'text/css', 'video/', 'audio/', 'font/', 'application/font-') as $kind) {
+        if (strpos($first, $kind) === 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whether a request is counted on the sign-in, forms and checkout allowance
+ * (waf_handle_rate_sensitive()) and held to the ceiling on open requests
+ * (waf_handle_inflight()).
+ *
+ * Every POST is; so is a GET of a sensitive script - a sign-in form being
+ * drawn, a password reset link, a cart action - except a page's sub-resource
+ * fetch landing on a sign-in screen. That is where a protected file sends a
+ * visitor who is not signed in, and an <img> or <link> follows the redirect
+ * like anything else: the browser is handed a sign-in form where it expected
+ * pixels, drops it, and this counter has one more call on the visitor's
+ * address. A page with forty such images spent the whole allowance in one
+ * second, and the refusals that followed banned the visitor who opened it.
+ * get_file.php no longer sends a sub-resource fetch there; this keeps the
+ * count honest for any other redirect that does. Leaving these out gives an
+ * attacker nothing: a GET of a sign-in screen draws a form and does nothing
+ * else, what the form sends is a POST and always counts, and the global
+ * limit still applies.
+ *
+ * @param string $method the request method
+ * @param string $script the running script's file name (waf_script_name())
+ * @param string $dest   the Sec-Fetch-Dest header, '' when absent
+ * @param string $accept the Accept header, '' when absent
+ * @return bool
+ */
+function waf_sensitive_request_counts($method, $script, $dest, $accept)
+{
+    if (strtoupper((string) $method) === 'POST') {
         return true;
     }
 
-    $script = waf_script_name();
+    if (!in_array($script, waf_sensitive_scripts(), true)) {
+        return false;
+    }
 
-    return in_array($script, waf_sensitive_scripts(), true);
+    if (in_array($script, waf_sign_in_screens(), true)
+        && waf_fetch_is_subresource($method, $dest, $accept)
+    ) {
+        return false;
+    }
+
+    return true;
+}
+
+function waf_is_sensitive_request()
+{
+    return waf_sensitive_request_counts(
+        isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : '',
+        waf_script_name(),
+        isset($_SERVER['HTTP_SEC_FETCH_DEST']) ? $_SERVER['HTTP_SEC_FETCH_DEST'] : '',
+        isset($_SERVER['HTTP_ACCEPT']) ? $_SERVER['HTTP_ACCEPT'] : ''
+    );
 }
 
 function waf_script_name()

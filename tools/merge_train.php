@@ -21,8 +21,8 @@
  *             On the current merge-train/* branch: fetches refs/pull/<n>/head
  *             of each PR (the --list train when none is named), merges it
  *             with --no-ff --no-commit, settles the mechanical conflicts
- *             (language files, generated memory indexes, .min.js bundles,
- *             the append-only fn-module map), writes the PR's changelog.txt
+ *             (language files, the generated memory indexes and module
+ *             list, .min.js bundles), writes the PR's changelog.txt
  *             lines from the Changelog section of its body and commits.
  *             A PR already in the branch is skipped, so after a stop the
  *             same command goes on. It stops, with the merge left open, on a
@@ -58,7 +58,7 @@ define('MERGE_TRAIN_MAX_PRS', 12);
 define('MERGE_TRAIN_QUIET_SECONDS', 3600);
 define('MERGE_TRAIN_FIX_LINE', '[FIX] Miscellaneous bug fixes and new features.');
 define('MERGE_TRAIN_SECURITY_LINE', '[SECURITY] Implemented various security fixes.');
-define('MERGE_TRAIN_FN_MAP', 'docs/memory/core/fn-module-map-additions.md');
+define('MERGE_TRAIN_MODULE_LIST', 'docs/memory/core/fn-modules.md');
 
 // The product lines of a change, path => changed lines: lines in files under
 // pinegrap/, minified bundles and the language files under includes/local/
@@ -328,38 +328,6 @@ function merge_train_changelog_apply($contents, array $entry)
 	array_splice($lines, $version + 1, $end - $version - 1, $body);
 
 	return implode($eol, $lines);
-}
-
-// A file in conflict with both sides kept: the conflict markers and the
-// merge base's lines (diff3 style) dropped, ours then theirs. For the
-// append-only files where both sides only add lines.
-function merge_train_union_conflict($contents)
-{
-	$out = array();
-	$in_base = false;
-
-	foreach (explode("\n", (string) $contents) as $line) {
-		if (strpos($line, '<<<<<<< ') === 0 || $line === '<<<<<<<' || strpos($line, '>>>>>>> ') === 0 || $line === '>>>>>>>') {
-			$in_base = false;
-			continue;
-		}
-
-		if (strpos($line, '||||||| ') === 0 || $line === '|||||||') {
-			$in_base = true;
-			continue;
-		}
-
-		if (rtrim($line, "\r") === '=======') {
-			$in_base = false;
-			continue;
-		}
-
-		if (!$in_base) {
-			$out[] = $line;
-		}
-	}
-
-	return implode("\n", $out);
 }
 
 // The test runner loads this file for the functions above.
@@ -663,18 +631,14 @@ function merge_train_settle()
 		}
 	}
 
-	if (in_array(MERGE_TRAIN_FN_MAP, $unmerged, true)) {
-		file_put_contents(MERGE_TRAIN_FN_MAP, merge_train_union_conflict(file_get_contents(MERGE_TRAIN_FN_MAP)));
-		merge_train_stage_if_clean(MERGE_TRAIN_FN_MAP);
-	}
-
 	$unmerged = merge_train_unmerged();
 	$readmes = array();
 	$bundles = array();
 	$rest = array();
 
 	foreach ($unmerged as $path) {
-		if ((strpos($path, 'docs/memory/') === 0) && (basename($path) === 'README.md')) {
+		// The memory indexes and the module list are all written by memory_index.php.
+		if (((strpos($path, 'docs/memory/') === 0) && (basename($path) === 'README.md')) || ($path === MERGE_TRAIN_MODULE_LIST)) {
 			$readmes[] = $path;
 		} elseif (substr($path, -7) === '.min.js') {
 			$bundles[] = $path;

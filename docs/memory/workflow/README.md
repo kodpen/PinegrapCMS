@@ -21,13 +21,14 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt edit; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
+- coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
 - coordinator.md: Coordinator session (pilot, 2026-10-26): one per account, keeps its cloud workers on free plan steps, looks at them every 10 minutes, carries owner questions, writes no code, merges nothing
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS.
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated compared text, old blocks equal in look not bytes (W16), layout gallery sources (W5), entity values allow-list (W8).
-- decisions-made-workspace.md: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task).
+- decisions-made-workspace.md: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task), and whose rights a flow's change box writes with.
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing

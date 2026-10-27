@@ -20,6 +20,7 @@ description: The stock a tracked Paraşüt product card opens with: Pinegrap's c
 ## What is still counted out twice, or not at all?
 - Only the opening document's units are added. Another order placed before the card opened and documented after it is taken out at Paraşüt from a card that never held it: stock 10, order A 2 (8), order B 3 (5); Create Invoice A opens the card at 7 and leaves 5, Create Invoice B leaves 2 while Pinegrap shows 5 (before #1630: 0). Which earlier orders will ever be documented at Paraşüt cannot be told; adding every undocumented one would overstate the card by all orders never sent there.
 - A marketplace-cancelled order the shop restored: `cancelled_by` is 0 again, it reads as taken, nothing took its stock again: card overstated by its units. So is a product switched to tracking after the order.
+- A press that opens a card and then fails (the document is refused or not sent): the card opened with the order's units added and nothing took them out, so it stays higher than Pinegrap's count by those units until the document is sent.
 - A driver invoice whose named shipment document is found deleted (404, sent again with the shipment): a card its first try opened kept the count alone.
 
 ## How was it checked?

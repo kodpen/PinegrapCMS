@@ -1,6 +1,7 @@
 ---
 name: widget-lists-cart
 description: The cart as a list (W11): cart.items in the cart link (mini cart) and the cart widget, its key, tokens, where rows are read, the editor's mini cart starter, what is left
+module: widgets_lists_cart
 ---
 
 ## What does the cart list give?

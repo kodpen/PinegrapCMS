@@ -1,6 +1,7 @@
 ---
 name: widget-entity-fields
 description: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, which families are built (product, event, quiz, order, order line, account, addresses), the group card.
+module: widgets_entity_fields
 ---
 
 ## How does a widget get an entity's values?
