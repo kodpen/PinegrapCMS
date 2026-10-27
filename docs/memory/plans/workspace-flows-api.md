@@ -4,7 +4,7 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 ---
 
 ## Why?
-- The `/workspace/scheduled-actions` routes go before 2026.11.0 ships (workspace-flows-channels.md, C5). The owner asked for more in their place, not the same.
+- The `/workspace/scheduled-actions` routes were removed before 2026.11.0 ships (workspace-flows-channels.md, C5a #2107). The owner asked for more in their place, not the same.
 
 ## What is there today?
 - Routes in `ws_api_routes()` (includes/workspace/api.php), handlers in api_flows.php: `/workspace/flows` list, create; `/{id}` get, update, delete; `/{id}/publish`, `/{id}/pause`; `/{id}/runs` list, start; `/{id}/shares`; `/workspace/flow-runs/{id}` get, `/cancel`.
