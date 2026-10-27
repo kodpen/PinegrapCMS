@@ -49,8 +49,8 @@ $query =
         page.page_type
     FROM short_links
     LEFT JOIN page ON short_links.page_id = page.page_id
-    WHERE short_links.id = '" . escape($_REQUEST['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE short_links.id = ?";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 $short_link = mysqli_fetch_assoc($result);
 
 // If the short link does not exist, then output error.
@@ -406,8 +406,8 @@ if (!$_POST) {
 
             $delete_notice = lang('The short link was moved to the Recycle Bin.');
         } else {
-            $query = "DELETE FROM short_links WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM short_links WHERE id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 
             log_activity( lang(array('string'=>'short link ({var:1}) was deleted','vars'=>$short_link['name'])), $_SESSION['sessionusername']);
 
@@ -498,8 +498,8 @@ if (!$_POST) {
 
                     // If there is not already an error for the product group, then check if product group exists.
                     if ($liveform->check_field_error('product_group_id') == FALSE) {
-                        $query = "SELECT COUNT(*) FROM product_groups WHERE id = '" . escape($liveform->get_field_value('product_group_id')) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT COUNT(*) FROM product_groups WHERE id = ?";
+                        $result = db_q($query, array((string) $liveform->get_field_value('product_group_id'))) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
 
                         // If the selected product group does not exist, then add error.
@@ -527,8 +527,8 @@ if (!$_POST) {
 
                     // If there is not already an error for the product, then check if product exists.
                     if ($liveform->check_field_error('product_id') == FALSE) {
-                        $query = "SELECT COUNT(*) FROM products WHERE id = '" . escape($liveform->get_field_value('product_id')) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT COUNT(*) FROM products WHERE id = ?";
+                        $result = db_q($query, array((string) $liveform->get_field_value('product_id'))) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
 
                         // If the selected product does not exist, then add error.
@@ -628,8 +628,8 @@ if (!$_POST) {
 
             // If there is not already an error, then check if page exists.
             if ($liveform->check_form_errors() == FALSE) {
-                $query = "SELECT COUNT(*) FROM page WHERE page_id = '" . escape($page_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT COUNT(*) FROM page WHERE page_id = ?";
+                $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_row($result);
 
                 // If the selected page does not exist, then add error.
@@ -675,10 +675,12 @@ if (!$_POST) {
         }
 
         $short_link_sql_answer = '';
+        $short_link_answer_values = array();
 
         foreach ($short_link_answer['columns'] as $answer_column => $answer_value) {
-            $short_link_sql_answer .= $answer_column . " = '" . (int) $answer_value . "',
+            $short_link_sql_answer .= $answer_column . " = ?,
                 ";
+            $short_link_answer_values[] = (string) (int) $answer_value;
         }
 
         $product_group_id = '';
@@ -708,18 +710,22 @@ if (!$_POST) {
         $query =
             "UPDATE short_links
             SET
-                name = '" . escape($name) . "',
-                destination_type = '" . escape($liveform->get_field_value('destination_type')) . "',
-                page_id = '" . escape($page_id) . "',
-                product_group_id = '" . escape($product_group_id) . "',
-                product_id = '" . escape($product_id) . "',
-                url = '" . escape($url) . "',
-                tracking_code = '" . escape($liveform->get_field_value('tracking_code')) . "',
-                file_id = '" . escape($file_id) . "',
-                " . $short_link_sql_answer . "last_modified_user_id = '" . USER_ID . "',
+                name = ?,
+                destination_type = ?,
+                page_id = ?,
+                product_group_id = ?,
+                product_id = ?,
+                url = ?,
+                tracking_code = ?,
+                file_id = ?,
+                " . $short_link_sql_answer . "last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array_merge(
+            array((string) $name, (string) $liveform->get_field_value('destination_type'), (string) $page_id, (string) $product_group_id, (string) $product_id, (string) $url, (string) $liveform->get_field_value('tracking_code'), (string) $file_id),
+            $short_link_answer_values,
+            array((string) USER_ID, (string) $liveform->get_field_value('id'))
+        )) or output_error('Query failed.');
         
 
         log_activity(lang(array('string'=>'short link ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);

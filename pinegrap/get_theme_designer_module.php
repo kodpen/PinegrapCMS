@@ -310,9 +310,11 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     value
                 FROM system_theme_css_rules
                 WHERE 
-                    (file_id = '" . escape($file_id) . "') 
+                    (file_id = ?) 
                     AND (region_type = 'ad') 
-                    AND (region_name = '" . escape($object) . "')";
+                    AND (region_name = ?)";
+
+            $query_values = array((string) $file_id, (string) $object);
             
         // else if this is a menu region, then get the menu region properties
         } elseif ($area == 'menu_region') {
@@ -322,9 +324,11 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     value
                 FROM system_theme_css_rules
                 WHERE 
-                    (file_id = '" . escape($file_id) . "') 
+                    (file_id = ?) 
                     AND (region_type = 'menu') 
-                    AND (region_name = '" . escape($object) . "')";
+                    AND (region_name = ?)";
+
+            $query_values = array((string) $file_id, (string) $object);
         
         // else get the properties normally
         } else {
@@ -334,15 +338,23 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     value
                 FROM system_theme_css_rules
                 WHERE 
-                    (file_id = '" . escape($file_id) . "') 
-                    AND (area = '" . escape($area) . "') 
-                    AND (`row` = '" . escape($object_row) . "') 
-                    AND (col = '" . escape($object_column) . "') 
-                    AND (module = '" . escape($module_for_sql) . "') 
+                    (file_id = ?) 
+                    AND (area = ?) 
+                    AND (`row` = ?) 
+                    AND (col = ?) 
+                    AND (module = ?) 
                     ";
+
+            $query_values = array(
+                (string) $file_id,
+                (string) $area,
+                (string) $object_row,
+                (string) $object_column,
+                (string) $module_for_sql,
+            );
         }
         
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, $query_values) or output_error('Query failed.');
         while($row = mysqli_fetch_assoc($result)) {
             $properties[$row['property']] = $row['value'];
         }

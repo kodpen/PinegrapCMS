@@ -100,3 +100,17 @@ function test_classic_style_component_category()
 {
 	pg_assert_same('classic_style:7', pg_classic_style_component_category('7'));
 }
+
+function test_classic_style_frame_places_converted_common_region()
+{
+	$doc = _test_csd_doc('', '<div><cregion>footer</cregion><cregion>note</cregion></div>');
+	$f = pg_classic_style_frame($doc, function ($name) {
+		return $name === 'footer' ? array('sharedId' => 9, 'sharedName' => 'Footer') : array('regionType' => 'common');
+	});
+	$kinds = array();
+	foreach (_test_csd_nodes($f['frame']['children']) as $n) {
+		if ($n['type'] === 'shared_ref') $kinds[] = 'ref:' . $n['props']['sharedId'] . ':' . $n['props']['sharedName'];
+		if ($n['type'] === 'region') $kinds[] = $n['props']['regionType'] . ':' . $n['props']['regionName'];
+	}
+	pg_assert_same(array('ref:9:Footer', 'common:note'), $kinds);
+}

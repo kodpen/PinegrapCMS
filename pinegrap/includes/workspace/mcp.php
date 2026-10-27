@@ -1981,10 +1981,10 @@ function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $pro
             <div class="row g-3">
                 <div class="sm:col-4">
                     <label class="form-label small" for="' . $prefix . 'alias">' . h(lang('Alias')) . '</label>
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text">@</span>
-                        <input class="form-control" type="text" name="mcp_alias" id="' . $prefix . 'alias" value="' . h($values['mcp_alias']) . '" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off"' . $disabled . '>
-                    </div>
+                    <label class="form-control form-control-sm form-adorn' . ($admin ? '' : ' bg-2') . '">
+                        <span class="form-adorn-text" aria-hidden="true">@</span>
+                        <input class="form-ghost" type="text" name="mcp_alias" id="' . $prefix . 'alias" value="' . h($values['mcp_alias']) . '" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off"' . $disabled . '>
+                    </label>
                 </div>
                 <div class="sm:col-8">
                     <label class="form-label small" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>

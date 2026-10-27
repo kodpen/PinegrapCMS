@@ -45,8 +45,8 @@ if ($_POST['email_campaigns']) {
             $query =
                 "SELECT created_user_id
                 FROM email_campaigns
-                WHERE id = '" . escape($email_campaign_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+            $result = db_q($query, array((string) $email_campaign_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $created_user_id = $row['created_user_id'];
             
@@ -59,16 +59,16 @@ if ($_POST['email_campaigns']) {
         // if the user has access to this e-mail campaign, then delete it
         if ($access == true) {
             // delete the e-mail campaign from the database.
-            $query = "DELETE FROM email_campaigns WHERE id = '" . escape($email_campaign_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM email_campaigns WHERE id = ?";
+            $result = db_q($query, array((string) $email_campaign_id)) or output_error('Query failed.');
             
             // delete the records of contact groups for this e-mail campaign
-            $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE email_campaign_id  = '" . escape($email_campaign_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE email_campaign_id  = ?";
+            $result = db_q($query, array((string) $email_campaign_id)) or output_error('Query failed.');
             
             // delete the recipients that were queued for this e-mail campaign
-            $query = "DELETE FROM email_recipients WHERE email_campaign_id = '" . escape($email_campaign_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM email_recipients WHERE email_campaign_id = ?";
+            $result = db_q($query, array((string) $email_campaign_id)) or output_error('Query failed.');
             
             $number_of_email_campaigns++;
         }
