@@ -4865,13 +4865,13 @@ function get_page_type_checkboxes_and_labels($set_page_type_values = array())
         $set_page_type_photo_gallery_checked = ' checked="checked"';
     }
     // output basic page types
-    $output .= '<div class="form-check"><input type="checkbox" name="set_page_type_standart" id="set_page_type_standart" value="1" class="form-check-input disabled" checked disabled readonly/><label class="form-check-label" for="set_page_type_standart"> ' . lang('Standard') . '</label></div>
+    $output .= '<div class="form-field"><input type="checkbox" name="set_page_type_standart" id="set_page_type_standart" value="1" class="check disabled" checked disabled readonly/><label class="" for="set_page_type_standart"> ' . lang('Standard') . '</label></div>
 
-        <div class="form-check"><input type="checkbox" name="set_page_type_email_a_friend" id="set_page_type_email_a_friend" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_email_a_friend_checked . ' /><label class="form-check-label" for="set_page_type_email_a_friend"> ' . lang('Email a Friend') . '</label></div>
+        <div class="form-field"><input type="checkbox" name="set_page_type_email_a_friend" id="set_page_type_email_a_friend" value="1" class="check  multiselect-checkbox"' . $set_page_type_email_a_friend_checked . ' /><label class="" for="set_page_type_email_a_friend"> ' . lang('Email a Friend') . '</label></div>
 
-        <div class="form-check"><input type="checkbox" name="set_page_type_folder_view" id="set_page_type_folder_view" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_folder_view_checked . ' /><label class="form-check-label" for="set_page_type_folder_view"> ' . lang('Folder View') . '</label></div>
+        <div class="form-field"><input type="checkbox" name="set_page_type_folder_view" id="set_page_type_folder_view" value="1" class="check  multiselect-checkbox"' . $set_page_type_folder_view_checked . ' /><label class="" for="set_page_type_folder_view"> ' . lang('Folder View') . '</label></div>
 
-        <div class="form-check"><input type="checkbox" name="set_page_type_photo_gallery" id="set_page_type_photo_gallery" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_photo_gallery_checked . ' /><label class="form-check-label" for="set_page_type_photo_gallery"> ' . lang('Photo Gallery') . '</label></div>';
+        <div class="form-field"><input type="checkbox" name="set_page_type_photo_gallery" id="set_page_type_photo_gallery" value="1" class="check  multiselect-checkbox"' . $set_page_type_photo_gallery_checked . ' /><label class="" for="set_page_type_photo_gallery"> ' . lang('Photo Gallery') . '</label></div>';
     // if forms module is active, then display forms page types
     if (FORMS == true) {
         $set_page_type_custom_form_checked = '';
@@ -4899,15 +4899,15 @@ function get_page_type_checkboxes_and_labels($set_page_type_values = array())
         if (($set_page_type_values['set_page_type_form_view_directory'] == '') || ($set_page_type_values['set_page_type_form_view_directory'] == '1')) {
             $set_page_type_form_view_directory_checked = ' checked="checked"';
         }
-        $output .= '<div class="form-check"><input type="checkbox" name="set_page_type_custom_form" id="set_page_type_custom_form" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_custom_form_checked . ' /><label class="form-check-label" for="set_page_type_custom_form"> ' . lang('Custom Form') . '</label></div>
+        $output .= '<div class="form-field"><input type="checkbox" name="set_page_type_custom_form" id="set_page_type_custom_form" value="1" class="check  multiselect-checkbox"' . $set_page_type_custom_form_checked . ' /><label class="" for="set_page_type_custom_form"> ' . lang('Custom Form') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_custom_form_confirmation" id="set_page_type_custom_form_confirmation" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_custom_form_confirmation_checked . ' /><label class="form-check-label" for="set_page_type_custom_form_confirmation"> ' . lang('Custom Form Confirmation') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_custom_form_confirmation" id="set_page_type_custom_form_confirmation" value="1" class="check  multiselect-checkbox"' . $set_page_type_custom_form_confirmation_checked . ' /><label class="" for="set_page_type_custom_form_confirmation"> ' . lang('Custom Form Confirmation') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_form_list_view" id="set_page_type_form_list_view" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_form_list_view_checked . ' /><label class="form-check-label" for="set_page_type_form_list_view"> ' . lang('Form List View') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_form_list_view" id="set_page_type_form_list_view" value="1" class="check  multiselect-checkbox"' . $set_page_type_form_list_view_checked . ' /><label class="" for="set_page_type_form_list_view"> ' . lang('Form List View') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_form_item_view" id="set_page_type_form_item_view" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_form_item_view_checked . ' /><label class="form-check-label" for="set_page_type_form_item_view"> ' . lang('Form Item View') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_form_item_view" id="set_page_type_form_item_view" value="1" class="check  multiselect-checkbox"' . $set_page_type_form_item_view_checked . ' /><label class="" for="set_page_type_form_item_view"> ' . lang('Form Item View') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_form_view_directory" id="set_page_type_form_view_directory" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_form_view_directory_checked . ' /><label class="form-check-label" for="set_page_type_form_view_directory"> ' . lang('Form View Directory') . '</label></div>';
+            <div class="form-field"><input type="checkbox" name="set_page_type_form_view_directory" id="set_page_type_form_view_directory" value="1" class="check  multiselect-checkbox"' . $set_page_type_form_view_directory_checked . ' /><label class="" for="set_page_type_form_view_directory"> ' . lang('Form View Directory') . '</label></div>';
     }
     // if calendars module is active and user has access to calendars, then display calendars page types
     if (CALENDARS == true) {
@@ -4921,9 +4921,9 @@ function get_page_type_checkboxes_and_labels($set_page_type_values = array())
         if (($set_page_type_values['set_page_type_calendar_event_view'] == '') || ($set_page_type_values['set_page_type_calendar_event_view'] == '1')) {
             $set_page_type_calendar_event_view_checked = ' checked="checked"';
         }
-        $output .= '<div class="form-check" style="' . $set_page_type_calendar_style . '"><input type="checkbox" name="set_page_type_calendar_view" id="set_page_type_calendar_view" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_calendar_view_checked . ' /><label class="form-check-label" for="set_page_type_calendar_view"> ' . lang('Calendar View') . '</label></div>
+        $output .= '<div class="form-field" style="' . $set_page_type_calendar_style . '"><input type="checkbox" name="set_page_type_calendar_view" id="set_page_type_calendar_view" value="1" class="check  multiselect-checkbox"' . $set_page_type_calendar_view_checked . ' /><label class="" for="set_page_type_calendar_view"> ' . lang('Calendar View') . '</label></div>
 
-            <div class="form-check" style="' . $set_page_type_calendar_style . '"><input type="checkbox" name="set_page_type_calendar_event_view" id="set_page_type_calendar_event_view" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_calendar_event_view_checked . ' /><label class="form-check-label" for="set_page_type_calendar_event_view"> ' . lang('Calendar Event View') . '</label></div>';
+            <div class="form-field" style="' . $set_page_type_calendar_style . '"><input type="checkbox" name="set_page_type_calendar_event_view" id="set_page_type_calendar_event_view" value="1" class="check  multiselect-checkbox"' . $set_page_type_calendar_event_view_checked . ' /><label class="" for="set_page_type_calendar_event_view"> ' . lang('Calendar Event View') . '</label></div>';
     }
     // if e-commerce module is active, then display e-commerce page types
     if (ECOMMERCE == true) {
@@ -4977,25 +4977,25 @@ function get_page_type_checkboxes_and_labels($set_page_type_values = array())
         if (($set_page_type_values['set_page_type_order_receipt'] == '') || ($set_page_type_values['set_page_type_order_receipt'] == '1')) {
             $set_page_type_order_receipt_checked = ' checked="checked"';
         }
-        $output .= '<div class="form-check"><input type="checkbox" name="set_page_type_catalog" id="set_page_type_catalog" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_catalog_checked . ' /><label class="form-check-label" for="set_page_type_catalog"> ' . lang('Catalog') . '</label></div>
+        $output .= '<div class="form-field"><input type="checkbox" name="set_page_type_catalog" id="set_page_type_catalog" value="1" class="check  multiselect-checkbox"' . $set_page_type_catalog_checked . ' /><label class="" for="set_page_type_catalog"> ' . lang('Catalog') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_catalog_detail" id="set_page_type_catalog_detail" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_catalog_detail_checked . ' /><label class="form-check-label" for="set_page_type_catalog_detail"> ' . lang('Catalog Detail') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_catalog_detail" id="set_page_type_catalog_detail" value="1" class="check  multiselect-checkbox"' . $set_page_type_catalog_detail_checked . ' /><label class="" for="set_page_type_catalog_detail"> ' . lang('Catalog Detail') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_express_order" id="set_page_type_express_order" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_express_order_checked . ' /><label class="form-check-label" for="set_page_type_express_order"> ' . lang('Express Order') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_express_order" id="set_page_type_express_order" value="1" class="check  multiselect-checkbox"' . $set_page_type_express_order_checked . ' /><label class="" for="set_page_type_express_order"> ' . lang('Express Order') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_order_form" id="set_page_type_order_form" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_order_form_checked . ' /><label class="form-check-label" for="set_page_type_order_form"> ' . lang('Order Form') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_order_form" id="set_page_type_order_form" value="1" class="check  multiselect-checkbox"' . $set_page_type_order_form_checked . ' /><label class="" for="set_page_type_order_form"> ' . lang('Order Form') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_shopping_cart" id="set_page_type_shopping_cart" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_shopping_cart_checked . ' /><label class="form-check-label" for="set_page_type_shopping_cart"> ' . lang('Shopping Cart') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_shopping_cart" id="set_page_type_shopping_cart" value="1" class="check  multiselect-checkbox"' . $set_page_type_shopping_cart_checked . ' /><label class="" for="set_page_type_shopping_cart"> ' . lang('Shopping Cart') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_shipping_address_and_arrival" id="set_page_type_shipping_address_and_arrival" value="1"' . $set_page_type_shipping_address_and_arrival_checked . ' class="form-check-input  multiselect-checkbox" /><label class="form-check-label" for="set_page_type_shipping_address_and_arrival"> ' . lang('Shipping Address and Arrival') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_shipping_address_and_arrival" id="set_page_type_shipping_address_and_arrival" value="1"' . $set_page_type_shipping_address_and_arrival_checked . ' class="check  multiselect-checkbox" /><label class="" for="set_page_type_shipping_address_and_arrival"> ' . lang('Shipping Address and Arrival') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_shipping_method" id="set_page_type_shipping_method" value="1" class="form-check-input  multiselect-form-check-input  multiselect-checkbox"' . $set_page_type_shipping_method_checked . ' /><label class="form-check-label" for="set_page_type_shipping_method"> ' . lang('Shipping Method') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_shipping_method" id="set_page_type_shipping_method" value="1" class="check  multiselect-form-check-input  multiselect-checkbox"' . $set_page_type_shipping_method_checked . ' /><label class="" for="set_page_type_shipping_method"> ' . lang('Shipping Method') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_billing_information" id="set_page_type_billing_information" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_billing_information_checked . ' /><label class="form-check-label" for="set_page_type_billing_information"> ' . lang('Billing Information') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_billing_information" id="set_page_type_billing_information" value="1" class="check  multiselect-checkbox"' . $set_page_type_billing_information_checked . ' /><label class="" for="set_page_type_billing_information"> ' . lang('Billing Information') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_order_preview" id="set_page_type_order_preview" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_order_preview_checked . ' /><label class="form-check-label" for="set_page_type_order_preview"> ' . lang('Order Preview') . '</label></div>
+            <div class="form-field"><input type="checkbox" name="set_page_type_order_preview" id="set_page_type_order_preview" value="1" class="check  multiselect-checkbox"' . $set_page_type_order_preview_checked . ' /><label class="" for="set_page_type_order_preview"> ' . lang('Order Preview') . '</label></div>
 
-            <div class="form-check"><input type="checkbox" name="set_page_type_order_receipt" id="set_page_type_order_receipt" value="1" class="form-check-input  multiselect-checkbox"' . $set_page_type_order_receipt_checked . ' /><label class="form-check-label" for="set_page_type_order_receipt"> ' . lang('Order Receipt') . '</label></div>';
+            <div class="form-field"><input type="checkbox" name="set_page_type_order_receipt" id="set_page_type_order_receipt" value="1" class="check  multiselect-checkbox"' . $set_page_type_order_receipt_checked . ' /><label class="" for="set_page_type_order_receipt"> ' . lang('Order Receipt') . '</label></div>';
     }
     return $output;
 }

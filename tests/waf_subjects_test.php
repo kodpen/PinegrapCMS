@@ -115,7 +115,7 @@ function test_waf_subjects_sign_in_throttle_counts_the_same_addresses()
 	$body = substr($auth, (int) $start, (int) strpos($auth, "\n}\n", (int) $start) - (int) $start);
 
 	pg_assert_contains("\$address_counted = function_exists('waf_ip_is_counted')", $body);
-	pg_assert_contains("if (\$ip !== '' && \$address_counted) {", $body);
+	pg_assert_contains("pg_login_throttle_address_subject(\$ip, \$address_counted, ", $body);
 }
 
 // The api.php allowance asks whether the session is staff, as the sensitive

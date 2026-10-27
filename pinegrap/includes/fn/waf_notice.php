@@ -292,6 +292,10 @@ function pg_waf_ban_notice_email_html(array $entry, array $samples, $log_url)
 
     return $html . '
         <p style="' . $paragraph . '"><a href="' . h($log_url) . '">' . h(lang('Open the firewall log for this address')) . '</a></p>
+        <p style="' . $paragraph . '">' . lang(array(
+            'string' => 'If this is your own address, the control panel is closed to you until the ban ends. To lift it now, run {var:1} in the software directory on the server.',
+            'vars'   => array('<span style="font-family: monospace;">' . h(pg_waf_unban_command($entry['subject'])) . '</span>'),
+        )) . '</p>
         <p style="font-size: 12px; color: #666666; margin: 18px 0 0 0;">' . h(lang('An e-mail is sent for each automatic ban; when one rule bans several addresses within an hour, a single notice is sent instead. Alerts are set under Site Settings, General, Alerts.')) . '</p>';
 }
 

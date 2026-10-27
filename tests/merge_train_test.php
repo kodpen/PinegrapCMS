@@ -4,7 +4,8 @@
  *
  * Tests for the pure parts of tools/merge_train.php: which PRs may ride a
  * train and in what order, the product-line count, reading the Changelog
- * section of a PR body and writing it into changelog.txt.
+ * section of a PR body and writing it into changelog.txt, quoting a
+ * command's arguments on Windows.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -37,6 +38,21 @@ function test_merge_train_product_lines_match_branch_guard()
 	pg_assert_same(122, merge_train_product_lines($files));
 	pg_assert_same(check_pr_product_lines($files), merge_train_product_lines($files));
 	pg_assert_same(0, merge_train_product_lines(array()));
+}
+
+// The train's git log --format=%s and a commit message with double quotes
+// reach git whole on Windows, quoted as the branch guard quotes its git
+// arguments.
+function test_merge_train_windows_arg_matches_branch_guard()
+{
+	pg_assert_same('"--format=%s"', merge_train_windows_arg('--format=%s'));
+	pg_assert_same('"Fix the \\"Save\\" button (#12)"', merge_train_windows_arg('Fix the "Save" button (#12)'));
+	pg_assert_same('"body=50% off!"', merge_train_windows_arg('body=50% off!'));
+	pg_assert_same('""', merge_train_windows_arg(''));
+
+	foreach (array('--format=%s', 'a\\"b', 'C:\\dir\\', "a\\\nb", 'C:\\PHP\\php.exe', '.[]|"#\\(.number)"') as $arg) {
+		pg_assert_same(check_pr_windows_arg($arg), merge_train_windows_arg($arg), $arg);
+	}
 }
 
 function test_merge_train_docs_only()

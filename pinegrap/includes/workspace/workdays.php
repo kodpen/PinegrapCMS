@@ -820,9 +820,9 @@ function ws_holidays_settings_card($self_url)
     $next = '';
 
     foreach (ws_holidays_next(8) as $item) {
-        $next .= '<li class="d-flex gap-2"><span class="text-body-secondary text-nowrap">' . h(ws_day_label($item[0])) . '.' . h(date('Y', strtotime($item[0]))) . '</span>'
+        $next .= '<li class="d-flex gap-3"><span class="fg-secondary text-nowrap">' . h(ws_day_label($item[0])) . '.' . h(date('Y', strtotime($item[0]))) . '</span>'
             . '<span class="ws-grow">' . h($item[1]) . '</span>'
-            . ((int) $item[2] > 0 ? '<span class="badge text-bg-light">' . $whom($item[2]) . '</span>' : '') . '</li>';
+            . ((int) $item[2] > 0 ? '<span class="badge badge-subtle theme-secondary">' . $whom($item[2]) . '</span>' : '') . '</li>';
     }
 
     // The days off kept by hand.
@@ -838,14 +838,14 @@ function ws_holidays_settings_card($self_url)
         $rows .= '
             <tr>
                 <td>' . h($event['title']) . '</td>
-                <td class="text-nowrap">' . h($when) . ((int) $event['yearly'] === 1 ? ' <span class="badge text-bg-light">' . h(lang('Every year')) . '</span>' : '') . '</td>
+                <td class="text-nowrap">' . h($when) . ((int) $event['yearly'] === 1 ? ' <span class="badge badge-subtle theme-secondary">' . h(lang('Every year')) . '</span>' : '') . '</td>
                 <td>' . $whom(((string) $event['scope'] === 'department') ? $event['department_id'] : 0) . '</td>
                 <td class="text-end">' . $form('holiday_remove', '<input type="hidden" name="event_id" value="' . (int) $event['id'] . '"><button type="submit" class="btn btn-sm btn-ghost" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>') . '</td>
             </tr>';
     }
 
     if ($rows === '') {
-        $rows = '<tr><td colspan="4" class="text-body-secondary small">' . h(lang('No holidays kept by hand yet.')) . '</td></tr>';
+        $rows = '<tr><td colspan="4" class="fg-secondary small">' . h(lang('No holidays kept by hand yet.')) . '</td></tr>';
     }
 
     // The calendar addresses.
@@ -862,20 +862,20 @@ function ws_holidays_settings_card($self_url)
             $first = date('d.m.Y', (int) $day['starts_at']);
             $last = date('d.m.Y', (int) $day['ends_at']);
             $when = ((int) $day['yearly'] === 1)
-                ? date('d.m', (int) $day['starts_at']) . (($first !== $last) ? '–' . date('d.m', (int) $day['ends_at']) : '') . ' <span class="badge text-bg-light">' . h(lang('Every year')) . '</span>'
+                ? date('d.m', (int) $day['starts_at']) . (($first !== $last) ? '–' . date('d.m', (int) $day['ends_at']) : '') . ' <span class="badge badge-subtle theme-secondary">' . h(lang('Every year')) . '</span>'
                 : h($first . (($first !== $last) ? '–' . $last : ''));
 
             $left_out += $off ? 1 : 0;
             $days .= '
                 <li class="ws-feed-day' . ($off ? ' ws-feed-day-off' : '') . '">
-                    <span class="text-body-secondary text-nowrap">' . $when . '</span>
-                    <span class="ws-grow">' . h($day['title']) . ($off ? ' <span class="badge text-bg-secondary">' . h(lang('Not counted')) . '</span>' : '') . '</span>
+                    <span class="fg-secondary text-nowrap">' . $when . '</span>
+                    <span class="ws-grow">' . h($day['title']) . ($off ? ' <span class="badge theme-secondary">' . h(lang('Not counted')) . '</span>' : '') . '</span>
                     ' . (ws_holiday_skip_ready() ? $form('feed_day', '<input type="hidden" name="feed_id" value="' . (int) $feed['id'] . '"><input type="hidden" name="event_id" value="' . (int) $day['id'] . '"><input type="hidden" name="skip" value="' . ($off ? 0 : 1) . '"><button type="submit" class="btn btn-sm btn-link p-0">' . h($off ? lang('Count again') : lang('Do not count')) . '</button>') : '') . '
                 </li>';
         }
 
         $state = ((string) $feed['sync_error'] !== '')
-            ? '<span class="text-danger">' . h($feed['sync_error']) . '</span>'
+            ? '<span class="fg-danger">' . h($feed['sync_error']) . '</span>'
             : h(lang(array('string' => '{var:1} days off', 'vars' => (int) $feed['events'])))
                 . ($left_out > 0 ? ' · ' . h(lang(array('string' => '{var:1} not counted', 'vars' => $left_out))) : '')
                 . ((int) $feed['synced_at'] > 0 ? ' · ' . h(lang(array('string' => 'read {var:1}', 'vars' => date('d.m.Y H:i', (int) $feed['synced_at'])))) : '');
@@ -884,8 +884,8 @@ function ws_holidays_settings_card($self_url)
             <div class="ws-feed-row">
                 <i class="bi bi-calendar2-week" aria-hidden="true"></i>
                 <div class="ws-grow">
-                    <div class="fw-semibold">' . h($feed['name']) . ' <span class="badge text-bg-light">' . $whom($feed['department_id']) . '</span></div>
-                    <div class="small text-body-secondary text-break">' . h(parse_url((string) $feed['url'], PHP_URL_HOST)) . ' · ' . $state . '</div>
+                    <div class="fw-semibold">' . h($feed['name']) . ' <span class="badge badge-subtle theme-secondary">' . $whom($feed['department_id']) . '</span></div>
+                    <div class="small fg-secondary text-break">' . h(parse_url((string) $feed['url'], PHP_URL_HOST)) . ' · ' . $state . '</div>
                 </div>
                 ' . $form('feed_sync', '<input type="hidden" name="feed_id" value="' . (int) $feed['id'] . '"><button type="submit" class="btn btn-sm btn-ghost"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Read now')) . '</button>') . '
                 ' . $form('feed_remove', '<input type="hidden" name="feed_id" value="' . (int) $feed['id'] . '"><button type="submit" class="btn btn-sm btn-ghost" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>') . '
@@ -895,7 +895,7 @@ function ws_holidays_settings_card($self_url)
             $feeds .= '
             <details class="ws-feed-days" id="ws-feed-' . (int) $feed['id'] . '"' . ((!empty($_GET['feed']) && ((int) $_GET['feed'] === (int) $feed['id'])) ? ' open' : '') . '>
                 <summary class="small">' . h(lang(array('string' => 'Days from this calendar ({var:1})', 'vars' => substr_count($days, '<li')))) . '</summary>
-                <p class="small text-body-secondary my-1">' . h(lang('A day that is not a day off at this company can be left out; reading the calendar again keeps the choice.')) . '</p>
+                <p class="small fg-secondary my-1">' . h(lang('A day that is not a day off at this company can be left out; reading the calendar again keeps the choice.')) . '</p>
                 <ul class="list-unstyled small mb-0">' . $days . '</ul>
             </details>';
         }
@@ -904,85 +904,85 @@ function ws_holidays_settings_card($self_url)
     $example = 'https://calendar.google.com/calendar/ical/en.turkish%23holiday%40group.v.calendar.google.com/public/basic.ics';
 
     return '
-        <div class="card mt-4" id="ws-calendar">
+        <div class="card mt-7" id="ws-calendar">
             <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-calendar-x me-1" aria-hidden="true"></i>' . h(lang('Working calendar')) . '</h2></div>
             <div class="card-body">
-                <p class="small text-body-secondary">' . h(lang('A repeating task\'s copy that falls on a weekend or a holiday moves to the next working day, and the task window warns about a date picked by hand. The working week is set under Defaults; the days off are kept here. A holiday for one department counts for that department\'s tasks.')) . '</p>
+                <p class="small fg-secondary">' . h(lang('A repeating task\'s copy that falls on a weekend or a holiday moves to the next working day, and the task window warns about a date picked by hand. The working week is set under Defaults; the days off are kept here. A holiday for one department counts for that department\'s tasks.')) . '</p>
 
-                <div class="row g-4">
-                    <div class="col-lg-7">
+                <div class="row g-7">
+                    <div class="lg:col-7">
                         <h3 class="h6">' . h(lang('Holidays')) . '</h3>
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-2">
+                            <table class="table table-sm align-middle mb-3">
                                 <thead><tr><th>' . h(lang('Holiday')) . '</th><th>' . h(lang('Date')) . '</th><th>' . h(lang('Who it is for')) . '</th><th></th></tr></thead>
                                 <tbody>' . $rows . '</tbody>
                             </table>
                         </div>
                         ' . $form('holiday_add', '
-                            <div class="row g-2 align-items-end">
-                                <div class="col-sm-12">
+                            <div class="row g-3 align-items-end">
+                                <div class="sm:col-12">
                                     <label class="form-label small" for="ws_hol_name">' . h(lang('Add a holiday')) . '</label>
                                     <input class="form-control form-control-sm" type="text" name="name" id="ws_hol_name" maxlength="255" required placeholder="' . h(lang('Name')) . '">
                                 </div>
-                                <div class="col-6 col-sm-4">
+                                <div class="col-6 sm:col-4">
                                     <label class="form-label small" for="ws_hol_from">' . h(lang('First day')) . '</label>
                                     <input class="form-control form-control-sm" type="date" name="from" id="ws_hol_from" required>
                                 </div>
-                                <div class="col-6 col-sm-4">
+                                <div class="col-6 sm:col-4">
                                     <label class="form-label small" for="ws_hol_to">' . h(lang('Last day')) . '</label>
                                     <input class="form-control form-control-sm" type="date" name="to" id="ws_hol_to" title="' . h(lang('Leave it empty for one day.')) . '">
                                 </div>
-                                <div class="col-sm-4">
+                                <div class="sm:col-4">
                                     <label class="form-label small" for="ws_hol_for">' . h(lang('Who it is for')) . '</label>
-                                    <select class="form-select form-select-sm" name="department_id" id="ws_hol_for">' . $options . '</select>
+                                    <select class="form-control form-control-sm" name="department_id" id="ws_hol_for">' . $options . '</select>
                                 </div>
-                                <div class="col-sm-8">
-                                    <div class="form-check mb-0">
-                                        <input class="form-check-input" type="checkbox" name="yearly" value="1" id="ws_hol_yearly">
-                                        <label class="form-check-label small" for="ws_hol_yearly">' . h(lang('Every year on the same day')) . '</label>
+                                <div class="sm:col-8">
+                                    <div class="form-field mb-0">
+                                        <input class="check" type="checkbox" name="yearly" value="1" id="ws_hol_yearly">
+                                        <label class="small" for="ws_hol_yearly">' . h(lang('Every year on the same day')) . '</label>
                                     </div>
                                 </div>
-                                <div class="col-sm-4 text-sm-end">
-                                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add')) . '</button>
+                                <div class="sm:col-4 sm:text-end">
+                                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add')) . '</button>
                                 </div>
                             </div>', 'ws-holiday-form') . '
                     </div>
 
-                    <div class="col-lg-5">
+                    <div class="lg:col-5">
                         <h3 class="h6">' . h(lang('Next days off')) . '</h3>
-                        ' . ($next !== '' ? '<ul class="list-unstyled small mb-0 ws-next-off">' . $next . '</ul>' : '<div class="small text-body-secondary">' . h(lang('No days off in the coming months.')) . '</div>') . '
+                        ' . ($next !== '' ? '<ul class="list-unstyled small mb-0 ws-next-off">' . $next . '</ul>' : '<div class="small fg-secondary">' . h(lang('No days off in the coming months.')) . '</div>') . '
                     </div>
                 </div>
 
                 <hr>
 
                 <h3 class="h6">' . h(lang('Public holidays from a calendar address')) . '</h3>
-                <p class="small text-body-secondary mb-2">' . h(lang('Paste the iCal address of a public holiday calendar: its days are read now and again every day. Google Calendar publishes one for every country, for example:')) . '
+                <p class="small fg-secondary mb-3">' . h(lang('Paste the iCal address of a public holiday calendar: its days are read now and again every day. Google Calendar publishes one for every country, for example:')) . '
                     <code class="d-block text-break my-1">' . h($example) . '</code>'
                     . h(lang('Write the country in place of "turkish" (usa, uk, german, french…).')) . '</p>
                 ' . $feeds . '
                 ' . $form('feed_add', '
-                    <div class="row g-2 align-items-end mt-1">
-                        <div class="col-lg-6">
+                    <div class="row g-3 align-items-end mt-1">
+                        <div class="lg:col-6">
                             <label class="form-label small" for="ws_feed_url">' . h(lang('Calendar address (iCal)')) . '</label>
                             <input class="form-control form-control-sm" type="url" name="url" id="ws_feed_url" required placeholder="https://…/basic.ics">
                         </div>
-                        <div class="col-6 col-lg-3">
+                        <div class="col-6 lg:col-3">
                             <label class="form-label small" for="ws_feed_name">' . h(lang('Name')) . '</label>
                             <input class="form-control form-control-sm" type="text" name="name" id="ws_feed_name" maxlength="120">
                         </div>
-                        <div class="col-6 col-lg-3">
+                        <div class="col-6 lg:col-3">
                             <label class="form-label small" for="ws_feed_for">' . h(lang('Who it is for')) . '</label>
-                            <select class="form-select form-select-sm" name="department_id" id="ws_feed_for">' . $options . '</select>
+                            <select class="form-control form-control-sm" name="department_id" id="ws_feed_for">' . $options . '</select>
                         </div>
-                        <div class="col-sm-8">
-                            <div class="form-check mb-0">
-                                <input class="form-check-input" type="checkbox" name="public_only" value="1" id="ws_feed_public" checked>
-                                <label class="form-check-label small" for="ws_feed_public">' . h(lang('Only the public holidays (observances and half days are left out)')) . '</label>
+                        <div class="sm:col-8">
+                            <div class="form-field mb-0">
+                                <input class="check" type="checkbox" name="public_only" value="1" id="ws_feed_public" checked>
+                                <label class="small" for="ws_feed_public">' . h(lang('Only the public holidays (observances and half days are left out)')) . '</label>
                             </div>
                         </div>
-                        <div class="col-sm-4 text-sm-end">
-                            <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h(lang('Add and read')) . '</button>
+                        <div class="sm:col-4 sm:text-end">
+                            <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h(lang('Add and read')) . '</button>
                         </div>
                     </div>', '') . '
             </div>

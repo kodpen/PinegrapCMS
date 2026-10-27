@@ -190,7 +190,7 @@ function ws_screen_rail($viewer, $current)
     // ── the rail ──
 
     $rail = '<nav class="ws-rail" aria-label="' . h(lang('Workspace')) . '">'
-        . '<button type="button" class="ws-rail-item ws-rail-open" data-bs-toggle="offcanvas" data-bs-target="#ws-nav-drawer" aria-controls="ws-nav-drawer" title="' . h(lang('Open the menu')) . '" aria-label="' . h(lang('Open the menu')) . '">'
+        . '<button type="button" class="ws-rail-item ws-rail-open" data-bs-toggle="drawer" data-bs-target="#ws-nav-drawer" aria-controls="ws-nav-drawer" title="' . h(lang('Open the menu')) . '" aria-label="' . h(lang('Open the menu')) . '">'
         . '<i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i></button>'
         // The search box of the whole workspace (assets/js/workspace_palette.js).
         . '<button type="button" class="ws-rail-item ws-rail-search" data-ws-palette="1" title="' . h(lang('Search the workspace (Ctrl+K)')) . '" aria-label="' . h(lang('Search the workspace')) . '">'
@@ -288,7 +288,7 @@ function ws_screen_rail($viewer, $current)
         }
     }
 
-    $list .= $section(lang('My channels'), empty($mine) ? '<div class="small text-body-secondary px-2">' . h(lang('No channels yet.')) . '</div>' : implode('', array_map($channel_link, $mine)));
+    $list .= $section(lang('My channels'), empty($mine) ? '<div class="small fg-secondary px-3">' . h(lang('No channels yet.')) . '</div>' : implode('', array_map($channel_link, $mine)));
 
     if (!empty($others)) {
         $list .= $section(lang('Other channels'), implode('', array_map($channel_link, $others)));
@@ -310,15 +310,15 @@ function ws_screen_rail($viewer, $current)
         $foot .= $list_item($link);
     }
 
-    $drawer = '<div class="offcanvas offcanvas-start ws-nav-drawer" tabindex="-1" id="ws-nav-drawer" aria-labelledby="ws-nav-drawer-title">'
-        . '<div class="offcanvas-header border-bottom">'
-        . '<h5 class="offcanvas-title" id="ws-nav-drawer-title"><i class="bi bi-clipboard2-check me-2" aria-hidden="true"></i>' . h(lang('Workspace')) . '</h5>'
-        . '<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>'
+    $drawer = '<dialog class="drawer drawer-start ws-nav-drawer" id="ws-nav-drawer" aria-labelledby="ws-nav-drawer-title">'
+        . '<div class="drawer-header border-bottom">'
+        . '<h5 class="drawer-title" id="ws-nav-drawer-title"><i class="bi bi-clipboard2-check me-3" aria-hidden="true"></i>' . h(lang('Workspace')) . '</h5>'
+        . '<button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>'
         . '</div>'
-        . '<div class="offcanvas-body p-0 d-flex flex-column">'
+        . '<div class="drawer-body p-0 d-flex flex-column">'
         . '<div class="ws-side-scroll">' . $list . '</div>'
         . (($foot !== '') ? '<div class="ws-side-foot">' . $foot . '</div>' : '')
-        . '</div></div>';
+        . '</div></dialog>';
 
     return $rail . $drawer;
 }

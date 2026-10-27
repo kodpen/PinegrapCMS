@@ -22,7 +22,7 @@ description: Plan (2026-10-26, issue #1989): legitimate traffic must not end in 
 
 4. The operator learns of a ban (findings-lockout): an e-mail on each auto-ban (rule, address, sample requests, log link) queued by `waf_register_offence()` in a `data/temp/` pending file and sent by the next request that has `functions.php` or by the general job; a link from a ban row to the log filtered by its address; a notice when several addresses were banned by one rule within an hour. Done (#2167, `waf/waf-ban-notice.md`).
 
-5. Self-rescue and self-lockout guards (findings-lockout): a CLI root script `waf_unban.php` (cron-gated); Settings › Firewall refuses a block entry that covers the operator's own address; the sign-in throttle's address lock honours the allow list (owner); nothing is served to a banned address (Q3).
+5. Self-rescue and self-lockout guards (findings-lockout): a CLI root script `waf_unban.php` (cron-gated); Settings › Firewall refuses a block entry that covers the operator's own address; the sign-in throttle's address lock honours the allow list (owner); nothing is served to a banned address (Q3). Done (#2187, `waf/waf-self-rescue.md`); the release action beside the account unlock stays open.
 
 6. Scenario tests: `tests/waf_scenarios_test.php` playing the decision functions through "a page with N protected images", "staff whose address changes mid-session" and "a refresh after the ban"; a sandbox run only with a reason in the PR.
 

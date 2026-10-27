@@ -351,8 +351,8 @@ function pg_dashboard_widget_2($request, $user)
                 foreach ($check_detail as $detail_row) {
                     $check_rows .= '
                     <div class="pg-job-panel-row">
-                        <span class="text-truncate"><i class="bi bi-circle-fill pg-health-dot text-' . h(($detail_row['state'] == 'ok') ? 'success' : (($detail_row['state'] == 'fail') ? 'danger' : 'secondary')) . '"></i>' . h($detail_row['label']) . '</span>
-                        <span class="text-muted flex-shrink-0">' . h($detail_row['when']) . '</span>
+                        <span class="text-truncate"><i class="bi bi-circle-fill pg-health-dot fg-' . h(($detail_row['state'] == 'ok') ? 'success' : (($detail_row['state'] == 'fail') ? 'danger' : 'secondary')) . '"></i>' . h($detail_row['label']) . '</span>
+                        <span class="fg-secondary flex-shrink-0">' . h($detail_row['when']) . '</span>
                     </div>';
                 }
 
@@ -434,8 +434,8 @@ function pg_dashboard_widget_2($request, $user)
                 foreach ($job_check['detail'] as $detail_row) {
                     $job_rows .= '
                     <div class="pg-job-panel-row">
-                        <span class="text-truncate"><i class="bi bi-circle-fill pg-health-dot text-' . h(($detail_row['state'] == 'ok') ? 'success' : (($detail_row['state'] == 'fail') ? 'danger' : 'secondary')) . '"></i>' . h($detail_row['label']) . '</span>
-                        <span class="text-muted flex-shrink-0">' . h($detail_row['when']) . '</span>
+                        <span class="text-truncate"><i class="bi bi-circle-fill pg-health-dot fg-' . h(($detail_row['state'] == 'ok') ? 'success' : (($detail_row['state'] == 'fail') ? 'danger' : 'secondary')) . '"></i>' . h($detail_row['label']) . '</span>
+                        <span class="fg-secondary flex-shrink-0">' . h($detail_row['when']) . '</span>
                     </div>';
                 }
             }
@@ -587,7 +587,7 @@ function pg_dashboard_widget_2($request, $user)
         $health_jobs[] = array(
             'rank'   => 2,
             'icon'   => 'bi-database-gear',
-            'color'  => 'text-primary',
+            'color'  => 'fg-primary',
             'name'   => lang('Database table scan'),
             'note'   => lang('All tables'),
             'hint'   => lang('A full scan of every table. This can take several minutes on a large database.'),
@@ -614,7 +614,7 @@ function pg_dashboard_widget_2($request, $user)
         $health_jobs[] = array(
             'rank'   => 2,
             'icon'   => 'bi-trash3',
-            'color'  => 'text-primary',
+            'color'  => 'fg-primary',
             'name'   => lang('Server caches'),
             'note'   => lang('OPcache and file caches'),
             'hint'   => lang('All server-side caches will be cleared.'),
@@ -669,25 +669,25 @@ function pg_dashboard_widget_2($request, $user)
         $ca_bundle_rows = '
             <div class="pg-job-panel-row">
                 <span class="text-truncate">' . h(lang('File')) . '</span>
-                <span class="text-muted flex-shrink-0">' . h(SOFTWARE_DIRECTORY . '/data/cacert.pem') . '</span>
+                <span class="fg-secondary flex-shrink-0">' . h(SOFTWARE_DIRECTORY . '/data/cacert.pem') . '</span>
             </div>
             <div class="pg-job-panel-row">
                 <span class="text-truncate">' . h(lang('Mozilla data')) . '</span>
-                <span class="text-muted flex-shrink-0">' . h(($ca_bundle['stamp'] > 0) ? pg_ca_bundle_date($ca_bundle['stamp']) : $ca_bundle_note) . '</span>
+                <span class="fg-secondary flex-shrink-0">' . h(($ca_bundle['stamp'] > 0) ? pg_ca_bundle_date($ca_bundle['stamp']) : $ca_bundle_note) . '</span>
             </div>
             <div class="pg-job-panel-row">
                 <span class="text-truncate">' . h(lang('Root certificates')) . '</span>
-                <span class="text-muted flex-shrink-0">' . h(pg_format_number((int) $ca_bundle['count'], 0)) . '</span>
+                <span class="fg-secondary flex-shrink-0">' . h(pg_format_number((int) $ca_bundle['count'], 0)) . '</span>
             </div>
             <div class="pg-job-panel-row">
                 <span class="text-truncate">' . h(lang('Source')) . '</span>
-                <span class="text-muted flex-shrink-0">' . h(($ca_bundle['source'] !== '') ? $ca_bundle['source'] : lang('CA_BUNDLE_SOURCE_URL is not an https address')) . '</span>
+                <span class="fg-secondary flex-shrink-0">' . h(($ca_bundle['source'] !== '') ? $ca_bundle['source'] : lang('CA_BUNDLE_SOURCE_URL is not an https address')) . '</span>
             </div>
             <div class="pg-job-panel-row">
-                <span class="text-muted">' . h($ca_bundle_use) . '</span>
+                <span class="fg-secondary">' . h($ca_bundle_use) . '</span>
             </div>
             <div class="pg-job-panel-row">
-                <span class="text-muted">' . h(lang('The payment library keeps its own copy of the bundle; that one is refreshed with software releases and is not touched here.')) . '</span>
+                <span class="fg-secondary">' . h(lang('The payment library keeps its own copy of the bundle; that one is refreshed with software releases and is not touched here.')) . '</span>
             </div>';
 
         $ca_bundle_action = '';
@@ -715,7 +715,7 @@ function pg_dashboard_widget_2($request, $user)
         $health_jobs[] = array(
             'rank'   => 2,
             'icon'   => 'bi-shield-lock',
-            'color'  => 'text-primary',
+            'color'  => 'fg-primary',
             'name'   => lang('CA certificate bundle'),
             'note'   => $ca_bundle_note,
             'hint'   => lang('The Mozilla root certificate list in data/cacert.pem, which outbound connections are verified against when CURL_CA_BUNDLE points at it. Update downloads the current list and replaces the file.'),
@@ -785,7 +785,7 @@ function pg_dashboard_widget_2($request, $user)
             $storage_rows .= '
             <div class="pg-job-panel-row">
                 <span class="text-truncate">' . h($storage_label) . '</span>
-                <span class="text-muted flex-shrink-0">' . h(convert_bytes_to_string((float) $storage[$storage_key], 1)) . '</span>
+                <span class="fg-secondary flex-shrink-0">' . h(convert_bytes_to_string((float) $storage[$storage_key], 1)) . '</span>
             </div>';
         }
 
@@ -793,7 +793,7 @@ function pg_dashboard_widget_2($request, $user)
             $health_jobs[] = array(
                 'rank'   => 4,
                 'icon'   => 'bi-hdd-stack',
-                'color'  => 'text-primary',
+                'color'  => 'fg-primary',
                 'name'   => lang('Storage'),
                 'note'   => convert_bytes_to_string((float) $storage['total'], 1),
                 'hint'   => lang('How much this installation is holding: the database, the file library, the image derivatives made from it and the backup folder.'),
@@ -808,7 +808,7 @@ function pg_dashboard_widget_2($request, $user)
         $health_jobs[] = array(
             'rank'   => 2,
             'icon'   => 'bi-eraser',
-            'color'  => 'text-primary',
+            'color'  => 'fg-primary',
             'name'   => lang('Clean Up'),
             'note'   => lang('Obsolete files'),
             'hint'   => lang('Tool to remove obsolete files and folders inside the software folder.'),
@@ -878,7 +878,7 @@ function pg_dashboard_widget_2($request, $user)
                 ' . $job_open . '
                     <i class="bi ' . h($health_job['icon']) . ' pg-job-icon ' . h($health_job['color']) . '"></i>
                     <span class="pg-job-name">' . h($health_job['name']) . '</span>
-                    <span class="pg-job-note text-muted">' . h($health_job['note']) . '</span>
+                    <span class="pg-job-note fg-secondary">' . h($health_job['note']) . '</span>
                     ' . $job_caret . '
                 ' . $job_close . '
                 ' . $health_job['action'] . '
@@ -896,9 +896,9 @@ function pg_dashboard_widget_2($request, $user)
         $output_jobs .= '
             <div class="pg-job d-none" id="push_widget_row">
                 <div class="pg-job-open" title="' . h(lang('Notifications reach this browser even while the panel is closed. Every device decides for itself.')) . '">
-                    <i class="bi bi-bell pg-job-icon text-primary"></i>
+                    <i class="bi bi-bell pg-job-icon fg-primary"></i>
                     <span class="pg-job-name">' . h(lang('Notifications on this device')) . '</span>
-                    <span class="pg-job-note text-muted" id="push_widget_note"></span>
+                    <span class="pg-job-note fg-secondary" id="push_widget_note"></span>
                 </div>
                 <button type="button" class="pg-job-btn pg-push-toggle" id="push_widget_toggle">
                     <i class="bi bi-bell"></i><span class="pg-push-label">' . h(lang('Turn on')) . '</span>

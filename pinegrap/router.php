@@ -1136,19 +1136,19 @@ function router_output_error($error_message) {
         || !db::$con
         || (($config_tables !== false) && !mysqli_num_rows($config_tables))
         ) {
-        $output_quick_fix_buttons .='<div class="col-12"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">install_desktop</span>' . lang('Install or Reinstall Software') . '</a></div>';
-        $output_other_help_buttons .='<div class="col-12"><a target="_blank" href="https://www.kodpen.com/iletisim" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">support_agent</span>' . lang('Get Support') . '</a></div>';
+        $output_quick_fix_buttons .='<div class="col-12"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/" class="btn btn-link pg-link-primary py-0 mb-3 "><span class="material-icons me-1">install_desktop</span>' . lang('Install or Reinstall Software') . '</a></div>';
+        $output_other_help_buttons .='<div class="col-12"><a target="_blank" href="https://www.kodpen.com/iletisim" class="btn btn-link pg-link-primary py-0 mb-3 "><span class="material-icons me-1">support_agent</span>' . lang('Get Support') . '</a></div>';
         $output_page_title = lang('Software Configuration Error');
     }
 
    
 
-    $output_other_help_buttons .='<div class="col-12"><a target="_blank" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/pi.php" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">help</span>' . lang('PHP Check') . '</a></div>';
+    $output_other_help_buttons .='<div class="col-12"><a target="_blank" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/pi.php" class="btn btn-link pg-link-primary py-0 mb-3 "><span class="material-icons me-1">help</span>' . lang('PHP Check') . '</a></div>';
     // The installation guide covers the configuration file and the web
     // server rules, which is what this screen is usually about.
     $output_documents_url = function_exists('pg_help_url') ? pg_help_url(array('topic' => 'installation')) : '';
     if ($output_documents_url !== '') {
-        $output_other_help_buttons .='<div class="col-12"><a target="_blank" rel="noopener" href="' . h($output_documents_url) . '" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">article</span>' . lang('Documents') . '</a></div>';
+        $output_other_help_buttons .='<div class="col-12"><a target="_blank" rel="noopener" href="' . h($output_documents_url) . '" class="btn btn-link pg-link-primary py-0 mb-3 "><span class="material-icons me-1">article</span>' . lang('Documents') . '</a></div>';
     }
 
     $output_header = output_header_secure(array(
@@ -1156,7 +1156,7 @@ function router_output_error($error_message) {
         'icon' => 'setting'
     ));
 
-    $output_footer = '<div id="footer" class="footer p-3  d-flex flex-wrap justify-content-center justify-content-md-between text-light d-print-none">
+    $output_footer = '<div id="footer" class="footer p-5  d-flex flex-wrap justify-content-center md:justify-content-between fg-white pg-print-none">
                     <h6 class="mx-auto">' . lang('Pinegrap Content Management System') . '</h6>
                     <h6 class="version_and_copyright mx-auto">' . EDITION . ' - <span class="material-icons" >copyright</span>' . date('Y', time()) . '</h6>
                 </div>
@@ -1164,7 +1164,7 @@ function router_output_error($error_message) {
         </html>';
 
     if($output_other_help_buttons != ''){
-        $output_other_help_buttons = '<p class="mt-3">' . lang('Other help links') . ':</p>' . $output_other_help_buttons;
+        $output_other_help_buttons = '<p class="mt-5">' . lang('Other help links') . ':</p>' . $output_other_help_buttons;
     }
 
 
@@ -1173,7 +1173,7 @@ function router_output_error($error_message) {
     echo
     $output_header . '
     <meta name="robots" content="noindex">
-    <style>
+    <style>@layer custom {
     .alert.alert-danger{
         background: #ffe4e4ed !important;
         backdrop-filter: blur(4rem) brightness(3) saturate(8);
@@ -1197,28 +1197,28 @@ function router_output_error($error_message) {
     }
 
     
-    </style>
+    }</style>
     <main id="content" class="container">
         <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
                         <h2 class="d-inline-block title" data-bs-content="' . lang('Something went wrong') . '" title="' . lang('Error') . '">' . lang('Error') . '</h2>
                     </div>
                 </div>
                 <div class="row" id="install_fields">
                     <div class="col-12 ">
-                    <div class="alert alert-danger d-flex align-items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2" viewBox="0 0 16 16" role="img" aria-label="Warning:">
+                    <div class="alert theme-danger d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-exclamation-triangle-fill flex-shrink-0 me-3" viewBox="0 0 16 16" role="img" aria-label="Warning:">
                             <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
                         </svg>
                         <div>' . lang($output_error_message) . '</div>
                     </div>
-                        <div class="card my-4">
+                        <div class="card my-7">
                          
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-12  my-2">
+                                    <div class="col-12  my-3">
                                         <p>' . lang('The reason for the error is written above.') . '</p>
                                         <p>' . lang('Possible quick fixes') . ':</p>
                                         ' . $output_quick_fix_buttons . $output_other_help_buttons . '

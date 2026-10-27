@@ -64,27 +64,23 @@
         if (_modalEl) return;
 
         var html =
-            '<div class="modal fade" id="pgCodeEditorModal" tabindex="-1" aria-labelledby="pgCodeEditorTitle" aria-hidden="true">' +
-                '<div class="modal-dialog modal-xl modal-dialog-scrollable">' +
-                    '<div class="modal-content" style="height:85vh;">' +
-                        '<div class="modal-header">' +
-                            '<h5 class="modal-title" id="pgCodeEditorTitle">' + _h(_t('Code Editor')) + '</h5>' +
-                            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + _h(_t('Close')) + '"></button>' +
+            '<dialog class="dialog dialog-xl dialog-scrollable" id="pgCodeEditorModal" aria-labelledby="pgCodeEditorTitle" style="height:85vh;">' +
+                '<div class="dialog-header">' +
+                            '<h5 class="dialog-title" id="pgCodeEditorTitle">' + _h(_t('Code Editor')) + '</h5>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + _h(_t('Close')) + '"></button>' +
                         '</div>' +
-                        '<div class="modal-body p-0 d-flex flex-column" style="overflow:hidden;min-height:0;">' +
+                        '<div class="dialog-body p-0 d-flex flex-column" style="overflow:hidden;min-height:0;">' +
                             '<div id="pgCodeEditorHost" class="pg-code-editor" style="flex:1 1 auto;min-height:0;"></div>' +
                         '</div>' +
-                        '<div class="modal-footer">' +
-                            '<div class="me-auto d-flex gap-2">' +
-                                '<button type="button" class="btn btn-outline-secondary d-none" id="pgCodeEditorFormat" title="Shift+Alt+F">' + _h(_t('Format code')) + '</button>' +
-                                '<button type="button" class="btn btn-outline-secondary" id="pgCodeEditorMinimap" aria-pressed="false">' + _h(_t('Minimap')) + '</button>' +
+                        '<div class="dialog-footer">' +
+                            '<div class="me-auto d-flex gap-3">' +
+                                '<button type="button" class="btn btn-outline theme-secondary d-none" id="pgCodeEditorFormat" title="Shift+Alt+F">' + _h(_t('Format code')) + '</button>' +
+                                '<button type="button" class="btn btn-outline theme-secondary" id="pgCodeEditorMinimap" aria-pressed="false">' + _h(_t('Minimap')) + '</button>' +
                             '</div>' +
-                            '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' + _h(_t('Cancel')) + '</button>' +
-                            '<button type="button" class="btn btn-primary" id="pgCodeEditorSave">' + _h(_t('Save')) + '</button>' +
+                            '<button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog">' + _h(_t('Cancel')) + '</button>' +
+                            '<button type="button" class="btn btn-solid theme-primary" id="pgCodeEditorSave">' + _h(_t('Save')) + '</button>' +
                         '</div>' +
-                    '</div>' +
-                '</div>' +
-            '</div>';
+                    '</dialog>';
 
         var wrap = document.createElement('div');
         wrap.innerHTML = html;
@@ -131,8 +127,7 @@
             // A fresh editor per open: the language and the text are the call's.
             if (_editor) { _editor.destroy(); _editor = null; }
             _modalEl.classList.remove('pg-code-editor-full');
-            var dlg = _modalEl.querySelector('.modal-dialog');
-            if (dlg) dlg.classList.remove('modal-fullscreen');
+            _modalEl.classList.remove('dialog-fullscreen');
             _opts = null;
         });
     }
@@ -164,17 +159,15 @@
     }
 
     function _toggleFullscreen() {
-        var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
-        if (dlg) dlg.classList.toggle('modal-fullscreen');
+        if (_modalEl) _modalEl.classList.toggle('dialog-fullscreen');
         return true;
     }
 
     // Escape leaves the full window first; only the next one cancels the
     // dialog (the editor stops an Escape it used before the modal hears it).
     function _leaveFullscreen() {
-        var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
-        if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;
-        dlg.classList.remove('modal-fullscreen');
+        if (!_modalEl || !_modalEl.classList.contains('dialog-fullscreen')) return false;
+        _modalEl.classList.remove('dialog-fullscreen');
         return true;
     }
 

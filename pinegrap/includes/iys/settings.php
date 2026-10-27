@@ -145,18 +145,18 @@ function pg_iys_settings_fields()
 
     $html = '
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox" name="iys_enabled" id="iys_enabled" value="1"' . ($app['enabled'] ? ' checked="checked"' : '') . ' class="form-check-input collapse-switcher" data-bs-target="#iys_row"/>
-                                                <label class="form-check-label" for="iys_enabled">' . lang('İYS consent sync') . '<br/><span class="form-text">' . lang('Every day, the e-mail marketing answers people give on this site are sent to İYS (İleti Yönetim Sistemi), and the refusals they give through İYS are brought back. A consent missing from İYS counts as not given.') . '</span></label>
+                                            <div class="form-field">
+                                                <div class="switch"><input type="checkbox" name="iys_enabled" id="iys_enabled" value="1"' . ($app['enabled'] ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#iys_row"/></div>
+                                                <label class="" for="iys_enabled">' . lang('İYS consent sync') . '<br/><span class="form-text">' . lang('Every day, the e-mail marketing answers people give on this site are sent to İYS (İleti Yönetim Sistemi), and the refusals they give through İYS are brought back. A consent missing from İYS counts as not given.') . '</span></label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0" id="iys_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
-                                                   <div class="row gy-3">';
+                                                   <div class="row gy-5">';
 
     if ($warning !== '') {
         $html .= '
-                                                        <div class="col-12"><div class="alert alert-warning mb-0">' . h($warning) . '</div></div>';
+                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . h($warning) . '</div></div>';
     }
 
     $placeholder = ($app['password_stored'] && ($app['password'] !== ''))
@@ -178,7 +178,7 @@ function pg_iys_settings_fields()
             $brand_options .= '<option value="' . h($code) . '"' . $selected((string) $code === $app['brand_code']) . '>' . h(($name !== '') ? $name . ' (' . $code . ')' : $code) . '</option>';
         }
 
-        $brand_field = '<select name="iys_brand" id="iys_brand" class="form-select">' . $brand_options . '</select>';
+        $brand_field = '<select name="iys_brand" id="iys_brand" class="form-control">' . $brand_options . '</select>';
     } else {
         $brand_field = '<input type="text" name="iys_brand" id="iys_brand" class="form-control" value="' . h($app['brand_code']) . '" maxlength="16" inputmode="numeric" autocomplete="off"/>
                                                             <div class="form-text">' . lang('Left empty, saving asks İYS for the brands of the İYS code and takes the only one; with several, pick one after saving.') . '</div>';
@@ -204,23 +204,23 @@ function pg_iys_settings_fields()
                                                         </div>
                                                         <div class="pg-f-sm">
                                                             <label for="iys_env" class="form-label">' . lang('Environment') . '</label>
-                                                            <select name="iys_env" id="iys_env" class="form-select">
+                                                            <select name="iys_env" id="iys_env" class="form-control">
                                                                 <option value="live"' . $selected($app['env'] === 'live') . '>' . lang('Live') . '</option>
                                                                 <option value="test"' . $selected($app['env'] === 'test') . '>' . lang('Test (sandbox)') . '</option>
                                                             </select>
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label for="iys_live" class="form-label">' . lang('Mode') . '</label>
-                                                            <select name="iys_live" id="iys_live" class="form-select">
+                                                            <select name="iys_live" id="iys_live" class="form-control">
                                                                 <option value="0"' . $selected(!$app['live']) . '>' . lang('Dry run: only log what would be sent') . '</option>
                                                                 <option value="1"' . $selected($app['live']) . '>' . lang('Live: send to İYS') . '</option>
                                                             </select>
                                                             <div class="form-text">' . lang('A dry run calls nothing and keeps its place, so the answers go to İYS once the mode is live.') . '</div>
                                                         </div>
                                                         <div class="col-12">
-                                                            <div class="form-check form-switch">
-                                                                <input type="checkbox" name="iys_email" id="iys_email" value="1"' . ($app['email'] ? ' checked="checked"' : '') . ' class="form-check-input"/>
-                                                                <label class="form-check-label" for="iys_email">' . lang('E-mail') . '<br/><span class="form-text">' . lang('Sync e-mail consents, and leave out of e-mail campaigns every address İYS holds a refusal for.') . '</span></label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input type="checkbox" name="iys_email" id="iys_email" value="1"' . ($app['email'] ? ' checked="checked"' : '') . ' class=""/></div>
+                                                                <label class="" for="iys_email">' . lang('E-mail') . '<br/><span class="form-text">' . lang('Sync e-mail consents, and leave out of e-mail campaigns every address İYS holds a refusal for.') . '</span></label>
                                                             </div>
                                                         </div>
                                                     </div>

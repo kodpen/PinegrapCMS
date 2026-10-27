@@ -122,8 +122,8 @@ $repair_blocked = (!$repair_checks_enabled || $repair_permissions['blocked']);
 
 $repair_row = function ($ok, $text, $extra = '') {
     return '
-                            <li class="list-group-item d-flex gap-2 align-items-start">
-                                <i class="bi ' . ($ok ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger') . ' mt-1" aria-hidden="true"></i>
+                            <li class="list-group-item d-flex gap-3 align-items-start">
+                                <i class="bi ' . ($ok ? 'bi-check-circle-fill fg-success' : 'bi-x-circle-fill fg-danger') . ' mt-1" aria-hidden="true"></i>
                                 <div class="flex-grow-1">' . h($text) . $extra . '</div>
                             </li>';
 };
@@ -138,14 +138,14 @@ $repair_rows .= $repair_checks_enabled
     : $repair_row(false, lang('Software update checks are turned off in data/config.php (SOFTWARE_UPDATE_CHECK), and the repair uses the same server. Turn them on to repair.'));
 
 $repair_rows .= $repair_permissions['blocked']
-    ? $repair_row(false, lang('Some folders of the software are not writable.'), '<div class="mt-2">' . $repair_permissions['html'] . '</div>')
+    ? $repair_row(false, lang('Some folders of the software are not writable.'), '<div class="mt-3">' . $repair_permissions['html'] . '</div>')
     : $repair_row(true, lang('The web server can write into every folder of the software.'));
 
 $repair_rows .= $repair_row(true, lang('This site is not hosted on the platform; its files are its own to replace.'));
 
 $repair_warning = '
-                    <div class="alert alert-warning">
-                        <div class="fw-semibold mb-2"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i>' . h(lang('Before you repair')) . '</div>
+                    <div class="alert theme-warning">
+                        <div class="fw-semibold mb-3"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i>' . h(lang('Before you repair')) . '</div>
                         <ul class="mb-0 small">
                             <li>' . h(lang('The package is the current release of this site\'s channel (Stable or Beta), downloaded from kodpen.com over a verified connection.')) . '</li>
                             <li>' . h(lang('It is written over every software file. Changes made to those files by hand are lost; files that are not in the package stay where they are. The data folder and the database are not touched.')) . '</li>
@@ -163,7 +163,7 @@ $rerun_position = array_search(VERSION, $rerun_versions, true);
 if (count($rerun_choices) == 0) {
 
     $rerun_body = '
-                    <p class="small text-body-secondary mb-0">' . h(lang('This version has nothing to repeat.')) . '</p>';
+                    <p class="small fg-secondary mb-0">' . h(lang('This version has nothing to repeat.')) . '</p>';
 
 } else {
 
@@ -175,14 +175,14 @@ if (count($rerun_choices) == 0) {
     }
 
     $rerun_body = ($rerun_install_folder ? '' : '
-                    <div class="alert alert-warning">' . h(lang('The install folder is not on disk, so the upgrade steps cannot run. Repair Software puts it back.')) . '</div>') . '
+                    <div class="alert theme-warning">' . h(lang('The install folder is not on disk, so the upgrade steps cannot run. Repair Software puts it back.')) . '</div>') . '
                     <form id="rerun_form" action="software_repair.php" method="post" class="disable_shortcut">
                         ' . get_token_field() . '
                         <input type="hidden" name="action" value="rerun_upgrades">
                         <label for="version" class="form-label">' . h(lang('Run the steps again from')) . '</label>
-                        <div class="d-flex flex-wrap gap-2 align-items-start">
-                            <div class="pg-f-md">' . $liveform->output_field(array('type' => 'select', 'name' => 'version', 'id' => 'version', 'class' => 'form-select', 'options' => $rerun_options)) . '</div>
-                            <button type="submit" class="btn btn-outline-warning"' . ($rerun_install_folder ? '' : ' disabled') . '>
+                        <div class="d-flex flex-wrap gap-3 align-items-start">
+                            <div class="pg-f-md">' . $liveform->output_field(array('type' => 'select', 'name' => 'version', 'id' => 'version', 'class' => 'form-control', 'options' => $rerun_options)) . '</div>
+                            <button type="submit" class="btn btn-outline theme-warning"' . ($rerun_install_folder ? '' : ' disabled') . '>
                                 <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Run the steps again')) . '
                             </button>
                         </div>
@@ -200,7 +200,7 @@ $rollback_backups = pg_update_backup_list();
 if (!$rollback_backups) {
 
     $rollback_body = '
-                    <p class="small text-body-secondary mb-0">' . h(lang('No backup taken before an update is in the backup folder yet. The next update writes one, unless it is switched off under Site Settings, General, Update Channel.')) . '</p>';
+                    <p class="small fg-secondary mb-0">' . h(lang('No backup taken before an update is in the backup folder yet. The next update writes one, unless it is switched off under Site Settings, General, Update Channel.')) . '</p>';
 
 } else {
 
@@ -209,19 +209,19 @@ if (!$rollback_backups) {
     foreach ($rollback_backups as $rollback_backup) {
 
         $rollback_rows .= '
-                        <li class="list-group-item d-flex flex-wrap gap-2 align-items-center">
+                        <li class="list-group-item d-flex flex-wrap gap-3 align-items-center">
                             <div class="flex-grow-1">
-                                <div class="fw-semibold">' . h(lang(array('string' => 'Version {var:1}', 'vars' => array($rollback_backup['version'])))) . ' <span class="text-body-secondary fw-normal small">· ' . h(date('d.m.Y H:i', (int) $rollback_backup['created'])) . ' · ' . h(convert_bytes_to_string($rollback_backup['size'], 1)) . '</span></div>
-                                <div class="small text-body-secondary text-break">' . h($rollback_backup['name']) . ($rollback_backup['recorded'] ? '' : ' · ' . h(lang('not made by an update on this site'))) . '</div>
+                                <div class="fw-semibold">' . h(lang(array('string' => 'Version {var:1}', 'vars' => array($rollback_backup['version'])))) . ' <span class="fg-secondary fw-normal small">· ' . h(date('d.m.Y H:i', (int) $rollback_backup['created'])) . ' · ' . h(convert_bytes_to_string($rollback_backup['size'], 1)) . '</span></div>
+                                <div class="small fg-secondary text-break">' . h($rollback_backup['name']) . ($rollback_backup['recorded'] ? '' : ' · ' . h(lang('not made by an update on this site'))) . '</div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-warning pg-rollback" data-name="' . h($rollback_backup['name']) . '" data-version="' . h($rollback_backup['version']) . '"' . ($rollback_backup['recorded'] ? '' : ' disabled data-unrecorded="1"') . '>
+                            <button type="button" class="btn btn-sm btn-outline theme-warning pg-rollback" data-name="' . h($rollback_backup['name']) . '" data-version="' . h($rollback_backup['version']) . '"' . ($rollback_backup['recorded'] ? '' : ' disabled data-unrecorded="1"') . '>
                                 <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Roll back')) . '
                             </button>
                         </li>';
     }
 
     $rollback_body = '
-                    <ul class="list-group mb-3">' . $rollback_rows . '
+                    <ul class="list-group mb-5">' . $rollback_rows . '
                     </ul>
                     <div class="alert d-none mb-0" id="rollback_result" role="status"></div>';
 }
@@ -240,30 +240,30 @@ echo '
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
 
-            <div class="row g-3 mb-3">
-                <div class="col-12 col-xl-6">
+            <div class="row g-5 mb-5">
+                <div class="col-12 xl:col-6">
                     <div class="card h-100">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Repair Software')) . '</span>
-                            <a class="btn btn-sm btn-outline-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Repair Software')) . '</span>
+                            <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>
                         <div class="card-body">' . $repair_warning . '
-                            <ul class="list-group mb-3">' . $repair_rows . '
+                            <ul class="list-group mb-5">' . $repair_rows . '
                             </ul>
-                            <div class="progress mb-3">
+                            <div class="progress mb-5">
                                 <div class="progress-bar progress-bar-striped text-start" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"><span class="logbox ms-1"></span></div>
                             </div>
-                            <button type="button" id="repair" class="btn btn-outline-warning"' . ($repair_blocked ? ' disabled' : '') . '>
+                            <button type="button" id="repair" class="btn btn-outline theme-warning"' . ($repair_blocked ? ' disabled' : '') . '>
                                 <i class="bi bi-bandaid me-1" aria-hidden="true"></i><span id="repair_label">' . h(lang('Repair Software')) . '</span>
                             </button>
                         </div>
                     </div>
                 </div>
-                <div class="col-12 col-xl-6">
+                <div class="col-12 xl:col-6">
                     <div class="card h-100" id="rerun" style="scroll-margin-top: 5rem;">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Run the database upgrade steps again')) . '</span>
-                            <a class="btn btn-sm btn-outline-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Run the database upgrade steps again')) . '</span>
+                            <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>
                         <div class="card-body">
                             <p>' . h(lang('Writes the chosen version into the database as the installed one and opens the upgrade screen, which applies every version after it again. Each step asks before it changes anything, so a step that already ran is skipped in a moment; a step that was missed — an upgrade cut short, a table restored from an older backup — is done now.')) . '</p>
@@ -274,12 +274,12 @@ echo '
                 </div>
             </div>
 
-            <div class="row g-3 mb-3">
+            <div class="row g-5 mb-5">
                 <div class="col-12">
                     <div class="card" id="rollback" style="scroll-margin-top: 5rem;">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Roll back an update')) . '</span>
-                            <a class="btn btn-sm btn-outline-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Roll back an update')) . '</span>
+                            <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>
                         <div class="card-body">
                             <p>' . h(lang('Before an update or a repair replaces the software files, it backs up the files it replaces and the database. Rolling back writes those files back, deletes the files the update added and records the older version as the installed one. The database is not changed: what the newer upgrade steps added stays and the older version does not use it; the next update runs those steps again.')) . '</p>
@@ -289,7 +289,7 @@ echo '
                 </div>
             </div>
 
-            <p class="small text-body-secondary mb-5">' . h(lang('The upgrade screen writes what it did; the activity log keeps a line for each repair, each rerun and each rollback.')) . '</p>
+            <p class="small fg-secondary mb-12">' . h(lang('The upgrade screen writes what it did; the activity log keeps a line for each repair, each rerun and each rollback.')) . '</p>
         </div>
     </div>
 </main>
@@ -391,7 +391,7 @@ echo '
                 }),
                 success: function(response) {
                     var ok = response && (response.status == "success");
-                    result.removeClass("d-none alert-success alert-danger").addClass(ok ? "alert-success" : "alert-danger")
+                    result.removeClass("d-none theme-success theme-danger").addClass(ok ? "theme-success" : "theme-danger")
                         .text((response && response.message) ? response.message : "' . escape_javascript(lang('An error occurred.')) . '");
                     if (ok) {
                         window.setTimeout(function(){
@@ -402,7 +402,7 @@ echo '
                     }
                 },
                 error: function() {
-                    result.removeClass("d-none alert-success").addClass("alert-danger").text("' . escape_javascript(lang('An error occurred.')) . '");
+                    result.removeClass("d-none theme-success").addClass("theme-danger").text("' . escape_javascript(lang('An error occurred.')) . '");
                     $(".pg-rollback").not("[data-unrecorded]").prop("disabled", false);
                 }
             });
