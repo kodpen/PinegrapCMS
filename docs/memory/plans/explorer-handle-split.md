@@ -20,9 +20,9 @@ Each slice has its tests in `tests/explorer_handle_<file>_test.php`.
 - 8, catalog quick edit, commerce access, file usage (1,189, #2192): `handle_catalog_edit.php`, `handle_file_usage.php` (takes `$folders_that_user_has_access_to`).
 - 9, tree, new folder, new file, rename, move (459, #2223): `handle_items.php`; `file_withheld_test.php` reads it.
 - 10, paste, delete files, design flag, folder options, folder settings (430, #2265): `handle_files.php`, `handle_folders.php` (options take `$folders_that_user_has_access_to`); test `explorer_handle_files_test.php`; `file_withheld_test.php` reads `handle_files.php`.
+- 11, file window get/save, ERP tree/list, shared list (~470, #2269): `handle_file_window.php`, `handle_erp.php` (one handler for the shared case), `handle_shared.php` (takes `$folders_that_user_has_access_to`); test `explorer_handle_file_window_test.php`; `file_withheld_test.php` reads `handle_file_window.php`.
 
 ## In which order are the rest cut? (lines in the switch)
-11. file_get/file_save (194), erp_tree/erp_list (111), shared_list (125).
 12. bulk page options/apply (184), bulk file options/apply (135), folder_access_get/set (213).
 13. delete_check (135), recycle_delete (203), recycle_restore (211), hard_delete (58).
 14. explorer_list (438) last: the most shared state.

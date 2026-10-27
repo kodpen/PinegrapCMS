@@ -188,16 +188,16 @@ function pg_dashboard_widget_30($request, $user)
 }
 
 /**
- * A person's tile: their avatar where they have one, otherwise the first
- * letter of their name.
+ * A person's tile: their Avatar (the photo, or their letters on their tone),
+ * otherwise the first letter of their name.
  *
  * @param array $person ws_people() entry
  * @return string
  */
 function pg_dashboard_person_badge($person)
 {
-    if (!empty($person['avatar'])) {
-        return '<img src="' . h($person['avatar']) . '" alt="">';
+    if (!empty($person['avatar']) || !empty($person['initials'])) {
+        return pg_avatar_markup(array('name' => '') + (array) $person);
     }
 
     return h(mb_strtoupper(mb_substr((string) ($person['name'] ?? '?'), 0, 1, 'UTF-8'), 'UTF-8'));

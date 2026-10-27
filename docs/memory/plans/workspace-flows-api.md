@@ -13,9 +13,9 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 ## What comes? (one PR each, in this order)
 - A1 done (PR #2122): list filters `start`, `status`, `channel_id`, `updated_since`; `GET /{id}` gives `start` and `start_text` (workspace-flows-api-filters.md).
 
-- A2 `GET /workspace/flow-kinds`: every box kind with its settings, outputs and types (D1 of workspace-flows-data-passing.md); what AI and MCP build drafts from.
+- A2 done (PR #2263): `GET /workspace/flow-kinds` (workspace-flows-catalogue.md).
 
-- A3 `POST /{id}/validate`: the publish check's problems without publishing (D4); `POST /{id}/dry-run` (F4e, PR #2024).
+- A3 done (PR #2263): `GET /{id}/validate` (GET: it writes nothing); box try is `/{id}/boxes/{node}/try` (F4e, PR #2024).
 
 - A4 done (PR #2234): `/{id}/resume` (own session); `/{id}/versions` list, `/{n}` read, `/{n}/restore` into the draft (workspace-flows-versions.md).
 
@@ -26,6 +26,9 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 - A7 events for webhooks and wake-ups: `workspace.flow.run.finished`, `.failed`, `.waiting`, carrying the run's result.
 
 - A8 proposals: a `{type: flow}` draft card replaces `{type: scheduled}` (api_proposals.php, scheduled_draft.php).
+
+## Where to start?
+- Next: A5 (run values), then A6, A7, A8; none claimed.
 
 ## Which rules hold?
 - Reads are MCP tools; a key or OAuth connection may write drafts; publishing, changing a live flow and resuming stay the person's own session (#1708 rule).

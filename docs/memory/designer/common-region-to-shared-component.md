@@ -17,7 +17,7 @@ description: A common region made a shared component (R2): one _editable block o
 ## Which old paths stop?
 - Front-end inline editing (owner: accepted): a converted region gets no editor in edit mode, and `save_region_content.php` refuses a write.
 - `edit_common_region.php`: shows the component's name, no content field and no type change; a rename still works (the tag finds the row by name, the row the component by id). Its convert form posts no `name` and carries `disable_shortcut` (Ctrl+S would send it nameless); fixed in #2253, before which the button did nothing.
-- Still writing the dead row (next slices, `plans/legacy-retirement-prerequisites.md`): the image editor, find and replace, the translation store; the user screens still grant the region.
+- Left out of the other region paths (`pg_common_region_converted_ids()`, `pg_common_region_not_converted_sql()`, PR #2270): the user screens' common-region grant list (`edit_user.php` keeps the grants of converted regions for the undo), find and replace (`cregion_common`), the image editor's `cregion` write. Find and replace does not search component trees.
 
 ## Who edits it?
 - In the designer only, as an opened component (`shared-component-content-editing.md`), opened on its own from the region screen or the edit-mode link (`shared-component-opened-alone.md`).

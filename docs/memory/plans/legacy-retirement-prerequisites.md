@@ -1,6 +1,6 @@
 ---
 name: legacy-retirement-prerequisites
-description: Plan (2026-10-19, R1/R3/R4/R6 done, R2 in slices): regions editable in the visual designer before classic pages move, content rights kept
+description: Plan (2026-10-19, R1-R4 and R6 done, R5 left): regions editable in the visual designer before classic pages move, content rights kept
 ---
 
 ## Why?
@@ -11,7 +11,7 @@ description: Plan (2026-10-19, R1/R3/R4/R6 done, R2 in slices): regions editable
 - R2 Common region -> shared component (one per `cregion` with `cregion_designer_type = 'no'`), in slices:
   - R2a done (PR #2229): conversion on the region screen and the designer's region node, content in one `_editable` block, grants carried over, the `<cregion>` tag draws the component, inline editing and `save_region_content.php` refused (`designer/common-region-to-shared-component.md`).
   - R2b done (PR #2253): a component opened on its own in the designer, links from the region screen and front-end edit mode (`designer/shared-component-opened-alone.md`). Left: a site with no visual design cannot open it.
-  - R2c next: the paths still writing a converted row: `image_editor_edit.php`, `find_and_replace.php` (`cregion_common`), the translation store (`includes/translate/store.php`), and the user screens' common-region grant list (hide converted regions; grants live on the component).
+  - R2c done (PR #2270): converted regions left out of the user screens' grant list (their grants kept), find and replace and the image editor. The translation store holds no region content: nothing to do there. R2 is done.
 - R3 Designer region -> designer-only shared component: done (#1806, `designer/designer-region-to-shared-component.md`).
 - R4 Dynamic region stays PHP: done (#1788, `designer/dynamic-region-in-designer.md`).
 - R5 Page regions: converting a page moves its `pregion` content into the page tree as `_editable` rich-text blocks; page edit rights unchanged.
@@ -24,4 +24,4 @@ description: Plan (2026-10-19, R1/R3/R4/R6 done, R2 in slices): regions editable
 - Accepted: front-end inline editing of common and page regions ends for converted pages; content people edit in the designer. Reason: one editor for designed content, the one that keeps content rights (`_editable`, the merge gate).
 
 ## Where to start?
-- R2c (above); R5 can run beside it. L1-L5 in `legacy-page-designer-retirement.md` wait for R1-R3.
+- R5 (page regions). Open: a site with no visual design cannot open a component on its own; find and replace does not search shared component trees. L1-L5 in `legacy-page-designer-retirement.md` wait for R1-R3.

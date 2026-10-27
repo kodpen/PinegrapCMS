@@ -152,8 +152,7 @@ function test_db_q_ecommerce_cart_value_queries_use_db_q()
 }
 
 // One value per '?': a literal array(...) of values has as many top-level
-// elements as the SQL text has placeholders ('??' is PHP, not SQL, and the
-// cart tax query's "$with_saved ?" ternary adds no value).
+// elements as the SQL text has placeholders.
 function test_db_q_ecommerce_cart_values_fit_placeholders()
 {
 	foreach (array('includes/fn/ecommerce.php', 'shopping_cart.php') as $path) {
@@ -178,10 +177,17 @@ function test_db_q_ecommerce_cart_values_fit_placeholders()
 				}
 			}
 
-			$sql = str_replace(array('??', '$with_saved ?'), '', $call['sql']);
+			// Only the '?' of the SQL text count: a PHP ternary or '??' adds none.
+			$placeholders = 0;
+
+			foreach (token_get_all('<?php ' . $call['sql'] . ';') as $token) {
+				if (is_array($token) && in_array($token[0], array(T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE), true)) {
+					$placeholders += substr_count($token[1], '?');
+				}
+			}
 
 			pg_assert_same(
-				substr_count($sql, '?'),
+				$placeholders,
 				$elements,
 				$path . ' line ' . $call['line'] . ' passes ' . $elements . ' values for its placeholders');
 		}

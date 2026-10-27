@@ -316,6 +316,31 @@ function ws_assistant_avatar($key)
 }
 
 /**
+ * The picture of an assistant with the letters and tone its Avatar draws
+ * (an MCP server's alias carries both, mcp_catalogue.php), also for one
+ * whose connection has been switched off since.
+ *
+ * @param string $key
+ * @return array avatar, and initials and tone where it has letters
+ */
+function ws_assistant_face($key)
+{
+    $assistant = ws_assistant($key);
+
+    if ($assistant) {
+        return array_intersect_key($assistant, array('avatar' => 1, 'initials' => 1, 'tone' => 1));
+    }
+
+    $server_id = ws_assistant_mcp_id($key);
+
+    if (($server_id > 0) && function_exists('ws_mcp_agent_identity_for_id') && function_exists('ws_mcp_agent_face')) {
+        return ws_mcp_agent_face(ws_mcp_agent_identity_for_id($server_id));
+    }
+
+    return array('avatar' => ws_assistant_avatar($key));
+}
+
+/**
  * The icon an MCP server's alias is drawn with on a task's delegate tag, also
  * one switched off or deleted since (mcp_catalogue.php); '' for any other key,
  * whose tag keeps its own icon.
@@ -1007,11 +1032,10 @@ function ws_task_delegation_detail($viewer, $task)
         $with = array(
             'key'    => $delegate,
             'name'   => ws_assistant_name($delegate),
-            'avatar' => ws_assistant_avatar($delegate),
             'icon'   => ws_assistant_mcp_icon($delegate),
             'by'     => $people[(int) $task['delegated_by']]['name'] ?? ws_person_name($task['delegated_by']),
             'at'     => ((int) $task['delegated_at'] > 0) ? ws_time_label($task['delegated_at']) : '',
-        );
+        ) + ws_assistant_face($delegate);
     }
 
     // The run under way, which an application's proposal written after it

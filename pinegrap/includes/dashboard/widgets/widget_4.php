@@ -189,7 +189,6 @@ function pg_dashboard_widget_4($request, $user)
             $eg_is_recent = (($eg_now - $eg_seen) < $eg_recent_seconds);
 
             if ($eg_presence == 'online') {
-                $eg_dot = '#10b981';
                 $eg_status_label = lang('Online');
                 // Already-escaped HTML in every branch, because
                 // get_relative_time() emits a <time> element with
@@ -197,11 +196,9 @@ function pg_dashboard_widget_4($request, $user)
                 // thing at the print site would print the tag.
                 $eg_seen_text = h(lang('Online'));
             } elseif ($eg_presence == 'away') {
-                $eg_dot = '#f59e0b';
                 $eg_status_label = lang('Away');
                 $eg_seen_text = get_relative_time(array('timestamp' => $eg_seen));
             } else {
-                $eg_dot = '#a1a1a1';
                 $eg_status_label = lang('Offline');
                 $eg_seen_text = get_relative_time(array('timestamp' => $eg_seen));
             }
@@ -231,6 +228,22 @@ function pg_dashboard_widget_4($request, $user)
                 isset($eg_person['last_name']) ? $eg_person['last_name'] : '',
                 $eg_person['username'],
                 $eg_person['id']);
+
+            // The same face as the chat's: the photo or the letters on the
+            // person's tone, with the presence dot (includes/fn/contacts.php).
+            $eg_face = pg_avatar_markup(array(
+                'avatar'      => $eg_avatar,
+                'avatar_kind' => pg_chat_avatar_kind(
+                    isset($eg_person['image']) ? $eg_person['image'] : '',
+                    isset($eg_person['image_file_id']) ? $eg_person['image_file_id'] : 0,
+                    isset($eg_person['image_file_name']) ? $eg_person['image_file_name'] : '',
+                    isset($eg_person['first_name']) ? $eg_person['first_name'] : '',
+                    isset($eg_person['last_name']) ? $eg_person['last_name'] : ''),
+                'presence'    => $eg_presence,
+            ) + pg_avatar_letters(pg_initials(
+                isset($eg_person['first_name']) ? $eg_person['first_name'] : '',
+                isset($eg_person['last_name']) ? $eg_person['last_name'] : '',
+                $eg_person['username']), $eg_person['id']), '', 'pg-avatar-34');
 
             $eg_name = pg_chat_display_name(
                 isset($eg_person['first_name']) ? $eg_person['first_name'] : '',
@@ -266,10 +279,8 @@ function pg_dashboard_widget_4($request, $user)
 
             $eg_row = '
             <div class="d-flex align-items-center px-3 py-1' . $eg_pointer . '" ' . $eg_click . '>
-                <div class="position-relative me-3 flex-shrink-0">
-                    <img src="' . h($eg_avatar) . '" class="rounded-circle" style="width:34px;height:34px;object-fit:cover;" alt="" />
-                    <span class="position-absolute rounded-circle border border-2 border-white" title="' . h($eg_status_label) . '"
-                          style="width:10px;height:10px;bottom:0;right:0;background:' . $eg_dot . '"></span>
+                <div class="me-3 flex-shrink-0" title="' . h($eg_status_label) . '">
+                    ' . $eg_face . '
                 </div>
                 <div class="flex-grow-1 overflow-hidden">
                     <div class="d-flex justify-content-between align-items-center">
