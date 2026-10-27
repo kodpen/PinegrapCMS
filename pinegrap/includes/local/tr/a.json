@@ -76,6 +76,7 @@
     "A card cannot be put in this column.": "Bu sütuna kart bırakılamaz.",
     "A card goes into the channel; its members can read the note as it is now, not change it.": "Kanala bir not kartı düşer; üyeler notun güncel hâlini okuyabilir, değiştiremez.",
     "A card number is recorded": "Kart numarası kayıtlı",
+    "A card of {var:1} product drafts is waiting for you to apply it.": "{var:1} ürün taslağından oluşan bir kart uygulamanızı bekliyor.",
     "A card surcharge applies": "Kart ek ücreti uygulanıyor",
     "A card type is recorded": "Kart tipi kayıtlı",
     "A cargo company: its title and its 10-digit VKN. A courier or a person: first name, surname and the 11-digit TCKN. Saved on this invoice only.": "Kargo firmasıysa unvanını ve 10 haneli VKN'sini, kurye ya da şahıssa adını, soyadını ve 11 haneli TCKN'sini yazın. Yalnız bu faturaya kaydedilir.",

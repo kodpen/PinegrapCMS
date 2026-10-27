@@ -2862,6 +2862,21 @@ function ws_handle_action($action, $request)
                 'decision_id' => $created['decision_id'],
             ));
 
+        // Product drafts from a pasted list or a file posted in a channel
+        // (bulk_sources.php): one bulk create card under a message of the
+        // person's own, which they apply.
+        case 'ws_bulk_create_propose':
+            $proposed = ws_bulk_create_propose($viewer, (int) ($request['channel_id'] ?? 0), array(
+                'text'       => (string) ($request['text'] ?? ''),
+                'message_id' => (int) ($request['message_id'] ?? 0),
+            ));
+
+            if (!$proposed['ok']) {
+                return ws_action_error($proposed['error']);
+            }
+
+            return ws_action_ok(array('message_id' => $proposed['message_id'], 'count' => $proposed['count'], 'ignored' => $proposed['ignored']));
+
         case 'ws_task_get':
             $task = ws_task((int) ($request['task_id'] ?? 0));
 

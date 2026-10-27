@@ -1,6 +1,6 @@
 ---
 name: workspace-bulk-create
-description: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' card of up to 200 rows, checks at proposal and write, row place saved before the write, events, card
+description: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' card of up to 200 rows, checks, row place saved before the write, events, card, pasted list and channel file sources
 ---
 
 ## What is it?
@@ -22,5 +22,10 @@ description: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' 
 ## How is the card drawn?
 - Label "New records in bulk"; summary "Make N new records (Product), off sale unless a row puts it on sale"; sample: the first five names with their price; `bulk.create` true picks the create warning and result line in workspace.js. The decision reads "N records made, N left out, N could not be made" with up to 30 product tags.
 
+## Where do a person's own rows come from? (3b, PR #2278)
+- `bulk_sources.php`: "Make products" in the channel menu (a pasted list in the question window) and under a CSV/xlsx/xls/ods file of the channel (`channel.bulk_products`: may post and make products). Action `ws_bulk_create_propose` → `ws_bulk_create_propose()`.
+- Table: `ws_bulk_text_table()` (tab, else `;`, else `|`); a file through `ws_bulk_file_table()` (a spreadsheet via `pg_products_import_to_csv()`, a CSV with its first line's separator). `ws_bulk_table_rows()`: a first row naming a known column (`ws_bulk_header_fields()`, import names, English and Turkish words, folded) is a header, unknown columns named back; else the first cell is the name and short description, the first amount after it the price. Prices by `pg_products_import_price_cents()`.
+- The card hangs under a message of the person's own ("Product drafts: N rows from …"), `request_id 0`. Applied, `ws_bulk_step()` sets `ws_change_source()` to the person and a quiet log; the decision reads "Bulk change by {person}: …".
+
 ## What is not built yet?
-- Plan workspace-catalog-create 3b: rows from a pasted list and a channel xlsx/csv. 3c: Pinegrap AI's `propose_bulk_change` tool and @Claude texts that teach `action` create (the AI tool still copies only the update keys, so it cannot pass `rows`).
+- Plan workspace-catalog-create 3c: Pinegrap AI's `propose_bulk_change` tool and @Claude texts that teach `action` create (the AI tool still copies only the update keys, so it cannot pass `rows`).

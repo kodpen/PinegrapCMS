@@ -1049,6 +1049,8 @@
     "Row total (currency)": "Satır toplamı (₺)",
     "Row total (effective)": "Satır toplamı (efektif)",
     "Row total block (automatic struck-through + new, HTML)": "Satır toplamı bloğu (otomatik strike+yeni HTML)",
+    "Row {var:1} has no name.": "{var:1}. satırda ad yok.",
+    "Row {var:1}: {var:2} is not a price.": "{var:1}. satır: {var:2} bir fiyat değil.",
     "Row: a comment on a page": "Satır: bir sayfadaki yorum",
     "Row: a comment on a record": "Satır: bir kayıttaki yorum",
     "Row: a reply drawn under the comment it answers": "Satır: yanıtladığı yorumun altında gösterilen yanıt",
