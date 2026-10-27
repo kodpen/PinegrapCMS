@@ -5,7 +5,7 @@ description: The condition box of a flow (F4c, PR #1980, flow_conditions.php): o
 
 ## What is it?
 - Kind `condition` in `ws_flow_kinds()` (not a step, not a start), outcomes `yes`, `no` (`ws_flow_condition_outcomes()`); an arrow sent without an outcome leaves on yes. Code: `includes/workspace/flow_conditions.php` (loaded after steps.php); tests `tests/workspace_flow_conditions_test.php`.
-- Settings `{rule: …}` (`ws_flow_condition_normalize()`): one rule of `ws_flow_condition_types()`: workday, weekdays (days), hours (from, to), metric (metric, param: a channel or the number it is measured against, op, value as written), record (record, id, field, op, value as the record keeps it: minor units, '1'/'0', YYYY-MM-DD, YYYY-MM-DD HH:MM:00, a decimal with a dot). Time, event and join rules are the anchor's (F4d), never a condition's.
+- Settings `{rule: …}` (`ws_flow_condition_normalize()`): one rule of `ws_flow_condition_types()`: workday, weekdays (days), hours (from, to), metric (metric, param: a channel or the number it is measured against, op, value as written), record (record, id, field, op, value as the record keeps it: minor units, '1'/'0', YYYY-MM-DD, YYYY-MM-DD HH:MM:00, a decimal with a dot). Time, event and join rules are the anchor's (F4d), never a condition's. A value of the run (D7): `workspace-flows-condition-values.md`.
 - Problems (`ws_flow_condition_problems()`): no rule, no day, no hours, no count, no record or field.
 
 ## How is it checked and run?

@@ -54,6 +54,7 @@ function get_sitemap_info() {
     }
 
     // get pages that might need to appear in sitemap (sitemap is enabled and page type is valid)
+    $page_types = pg_sitemap_page_types();
     $query =
         "SELECT
             page_id as id,
@@ -66,23 +67,9 @@ function get_sitemap_info() {
         WHERE
             (sitemap = '1')
             $sql_page_noindex
-            AND
-            (
-                (page_type = 'standard')
-                OR (page_type = 'folder view')
-                OR (page_type = 'photo gallery')
-                OR (page_type = 'custom form')
-                OR (page_type = 'form list view')
-                OR (page_type = 'form view directory')
-                OR (page_type = 'calendar view')
-                OR (page_type = 'catalog')
-                OR (page_type = 'express order')
-                OR (page_type = 'order form')
-                OR (page_type = 'shopping cart')
-                OR (page_type = 'search results')
-            )
+            AND (page_type IN (" . implode(', ', array_fill(0, count($page_types), '?')) . "))
         ORDER BY page_timestamp DESC";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, $page_types) or output_error('Query failed.');
 
     $pages = array();
 
@@ -96,6 +83,21 @@ function get_sitemap_info() {
     $catalog_pages = array();
     $form_list_view_pages = array();
     $calendar_view_pages = array();
+
+    // Pages built in the visual editor whose system widget makes them a page
+    // type the query above leaves out (an error page, a login, logout or
+    // account page, a checkout step, a record or product detail page): not
+    // listed themselves, whatever their site map switch says. The home page
+    // is always listed.
+    $unlisted_page_ids = array();
+
+    if (function_exists('pg_sw_widget_pages') && function_exists('pg_sw_page_type_widgets')) {
+        foreach (pg_sitemap_unlisted_widget_types(pg_sw_page_type_widgets()) as $widget_type) {
+            foreach (pg_sw_widget_pages($widget_type) as $row) {
+                $unlisted_page_ids[(int) $row['page_id']] = true;
+            }
+        }
+    }
 
     // loop through pages in order to prepare sitemap
     foreach ($pages as $page) {
@@ -115,7 +117,7 @@ function get_sitemap_info() {
 
                     $home_page_added = TRUE;
                 }
-            } else {
+            } else if (($page['type'] != 'standard') || !isset($unlisted_page_ids[(int) $page['id']])) {
                 $output_path = h(PATH . encode_url_path($page['name']));
 
                 $output_sitemap_urls .=

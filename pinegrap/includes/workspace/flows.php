@@ -436,7 +436,8 @@ function ws_flow_problem($code, $node, $edge, $text, $warning = false)
 
 /**
  * The texts of a box a run fills {{node.<id>.<field>}} into: a step box's
- * texts (ws_step_kinds()), a task box's title and description. Pure.
+ * texts (ws_step_kinds()), a task box's title and description, the value a
+ * condition box compares. Pure.
  *
  * @param array $node ws_flow_graph_normalize() box
  * @return string[]
@@ -444,6 +445,14 @@ function ws_flow_problem($code, $node, $edge, $text, $warning = false)
 function ws_flow_node_texts($node)
 {
     $kind = (string) $node['kind'];
+
+    // A condition on a value reads that one value.
+    if ($kind === 'condition') {
+        $rule = (array) ($node['config']['rule'] ?? array());
+
+        return ((($rule['type'] ?? '') === 'value') && is_string($rule['ref'] ?? null) && ($rule['ref'] !== '')) ? array($rule['ref']) : array();
+    }
+
     $keys = ($kind === 'task') ? array('title', 'description') : ((function_exists('ws_step_kinds') ? (ws_step_kinds()[$kind]['texts'] ?? array()) : array()));
     $out = array();
 
@@ -2197,6 +2206,9 @@ function ws_flow_js_strings()
         'fl_cond_any_channel' => lang('Every channel'),
         'fl_cond_threshold'   => lang('At most'),
         'fl_cond_record'      => lang('A field of a record'),
+        'fl_cond_value_rule'  => lang('A value of an earlier box'),
+        'fl_cond_value_ref'   => lang('Value'),
+        'fl_cond_value_ref_pick' => lang('Choose a value'),
         'fl_cond_field'       => lang('Field'),
         'fl_cond_field_pick'  => lang('Choose a field'),
         'fl_cond_op'          => lang('Comparison'),

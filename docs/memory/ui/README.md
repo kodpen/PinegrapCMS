@@ -43,7 +43,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - bootstrap-6.md: The panel on Bootstrap 6 (switch #1866, tag bs6-switch): docs and skills, the dist copy, what is v6 and what stays 5.3.8, layers and breakpoints, own class names, a branch older than the switch
 - button-busy-state.md: Buttons never change their label or lock for a fixed time while a request runs; the window-level guard against double submits and double clicks (3 s); how an Ajax button disables itself.
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
-- calendar-event-shared-form.md: add_calendar_event.php and edit_calendar_event.php check a submitted event through includes/forms/calendar_event_form.php; what differs between the two calls
+- calendar-event-shared-form.md: add_calendar_event.php and edit_calendar_event.php draw and check the event form through includes/forms/calendar_event_form.php; what differs between the two calls
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.
 - code-editor-escape-in-dialogs.md: Escape inside a code editor that sits in a dialog: an Escape the editor used (completion list, search panel, full window) stops at the editor; only a free one closes the dialog
 - command-palette.md: Panel search box (Ctrl+K): where the chips come from, how text is matched, why every key must be a string (the "503" crash), chips that open a dialog
@@ -100,6 +100,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - product-edit-vs-set-edit.md: Why product editing (edit_product.php) and variant set editing (edit_product_group.php) are separate screens, and why the product screen has no variant matrix.
 - range-value-bubble.md: Panel sliders as the Bootstrap 6 Range with a value bubble (step B9e, #2207): markup, pgUI.range.bubble(), data-pg-range, where it is used, the site Range that stays v5
 - rich-text-source-dialog.md: The rich text editor's Source dialog with the code editor: isolated in a shadow root (the dialog resets every element), sized like its textarea, Enter, Tab and used keys kept from the dialog
+- server-paged-lists.md: Big DataTables lists paged on the server (users list since PR #2460): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and the bulk buttons still act on
 - settings-card-chrome.md: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open) and the pg-alert-dismissible padding rule.
 - settings-card-field-widths.md: Settings card control width classes pg-f-xs/sm/md/lg, how to pick one from field attributes, and why not to write style width or malformed col classes.
 - settings-card-layout-pitfalls.md: CSS pitfalls of the settings card row layout: no nested :has(), specificity of :has() rules, tagin and form-label predicates, divider alignment with text.
