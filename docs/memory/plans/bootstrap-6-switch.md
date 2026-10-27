@@ -4,7 +4,7 @@ description: Step B8 of plans/bootstrap-6-panel.md (claim #1866): building a reh
 ---
 
 ## How is the switch rehearsed?
-- Rebuild `feature/bootstrap-6` (#1866, a draft until the owner says go) on the latest `development`, comment the result there. Tool commits first, the generated commit last, pushed only when every check passes: drop it (`git rebase --onto <gen>~1 <gen>`), `git rebase origin/development`, `php tools/bs6_migrate.php --all --write`, `--switch --write`, `php tools/build_js.php`, every CI check, commit, `git push --force-with-lease`. Never commit the sandbox's `data/config.php`; `git checkout -- pinegrap` also resets it.
+- Rebuild `feature/bootstrap-6` (#1866, a draft until the owner says go) on the latest `development`, comment the result there. Tool commits first, the generated commit last, pushed only when every check passes: drop it (`git rebase --onto <gen>~1 <gen>`), `git rebase origin/development`, `php tools/bs6_migrate.php --all --write`, `--switch --write`, `php tools/build_js.php`, every CI check, commit; then `git merge -s ours origin/feature/bootstrap-6` (keeps the old history, the tree stays the rebuild) and a plain `git push`. Never commit the sandbox's `data/config.php`.
 - Scriptable hand fixes are code in `tools/bs6_switch.php` and `tools/bs6_switch_shell.php` (tests `tests/bs6_switch_test.php`, `bs6_switch_shell_test.php`); a fix found by its exact text goes into `tools/bs6_switch_texts.txt`. Never a patch file. What each fix does: the file headers and `ui/bootstrap-6-codemod.md`.
 
 ## What is still on the hand-fix list (rehearsal 3, 2026-10-26)?
@@ -18,10 +18,10 @@ description: Step B8 of plans/bootstrap-6-panel.md (claim #1866): building a reh
 - Open question for the owner: own media queries now follow v6's breakpoints (lg 1024, xl 1280); `bs6_switch_breakpoints()` is dropped if the owner keeps 992/1200.
 
 ## What does the owner check?
-- The before/after page of each round (rehearsal 3: https://claude.ai/artifact/Xdh6cnCar778Z77jphtzS4): liked, secure and visual editor screens at 1440, 834 and 390 px, light and dark (`ui/panel-screenshots.md`). Then the branch runs on dev.pinegrap.com (a linked session checks it out) and the owner says go.
+- The before/after page of each round (rehearsal 3: https://claude.ai/artifact/Xdh6cnCar778Z77jphtzS4): liked, secure and visual editor screens at 1440, 834 and 390 px, light and dark (`ui/panel-screenshots.md`). Then the branch runs on dev.pinegrap.com and the owner says go.
 
 ## What happens at and after the merge?
-- In the same PR: CLAUDE.md's "Bootstrap 5 + jQuery", the ui and designer key rules, `php tools/check_bs6.php --strict` in php-checks.yml, CLAUDE.md's check list and pre_push.sh; the body names the changelog's `[NEW] Added …` line; new `lang()` keys go in with `php tools/tr_add.php`. The merging session merges it; tag the merge `bs6-switch`.
+- In the same PR: CLAUDE.md's "Bootstrap 5 + jQuery", the ui and designer key rules, `php tools/check_bs6.php --strict` in php-checks.yml, CLAUDE.md's check list and pre_push.sh; the body names the `[NEW]` line; new `lang()` keys go in with `php tools/tr_add.php`. The merging session merges it; tag the merge `bs6-switch`.
 - A PR whose merge-base is older than the tag: merge `development`, run `php tools/bs6_migrate.php --write --diff=origin/development` (only its own added lines: a second run corrupts converted sizes), then `check_bs6.php`. CI fails such a PR until then. Revert only during the freeze window; after it, fix forward.
 
 ## Which memory files are rewritten with it?
