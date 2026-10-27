@@ -70,6 +70,7 @@ $text_checks = array(
 	'box or state of a v5 modal named in code (the <dialog> is the box)' => '/(?<![\w-])modal-(dialog|content|backdrop|open|static|fullscreen)(?![\w-])/',
 	'v5 component variable (--bs-dropdown-*, --bs-offcanvas-*, --bs-modal-*)' => '/--bs-(dropdown|offcanvas|modal)-[a-z-]+/',
 	'v5 RGB variable (removed in v6: use color-mix())' => '/var\(\s*--bs-[a-z0-9-]+-rgb\s*\)/',
+	'v5 component selector in a code string' => '/[\'"][^\'"\n]*\\.(dropdown|dropup|dropend|dropstart|dropdown-menu|dropdown-item|dropdown-toggle|modal|modal-body|modal-footer|modal-header|modal-title|offcanvas|offcanvas-body|offcanvas-header|offcanvas-title|form-check|form-check-input|form-check-label|form-switch|form-select|accordion-button|accordion-collapse)(?![\w-])[^\'"\n{]*[\'"]/',
 	'v5 component selector in a style block' => '/\.(modal-dialog|modal-content|modal-backdrop|dropdown-menu|dropdown-item|dropdown-toggle|offcanvas|form-check-input|form-check|form-switch|form-select|accordion-button|btn-close-white|collapsing)\b(?=[^\n{;]*\{)/',
 );
 
