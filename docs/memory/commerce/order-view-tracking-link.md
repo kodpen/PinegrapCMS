@@ -5,7 +5,7 @@ description: How a parcel's carrier, name and tracking link are found (pg_shippi
 
 ## Which tokens and flags does the order view widget give?
 - `__tracking_code` (first parcel's number), `__tracking_codes` (every parcel: number, carrier, linked when known), `__tracking_link` (first parcel's carrier page, empty when unknown), `__tracking_company_name` ("Yurtiçi Kargo"); flags `has_tracking_code`, `has_tracking_link`. Numbers come from `shipping_tracking_numbers`, never from `orders.tracking_code` (a campaign code).
-- Each row goes through `pg_sw_order_parcels()` (`includes/fn/widgets_lists_order.php`) → `pg_shipment_view()`: since #PRNUM the carrier and link stored on the row (11.0.20 columns) win over the guess below, as on the order screen; `order.parcels` rows take the same values. Before, a parcel a marketplace or the panel had named "Aras" showed the carrier guessed from the method code.
+- Each row goes through `pg_sw_order_parcels()` (`includes/fn/widgets_lists_order.php`) → `pg_shipment_view()`: since #2102 the carrier and link stored on the row (11.0.20 columns) win over the guess below, as on the order screen; `order.parcels` rows take the same values. Before, a parcel a marketplace or the panel had named "Aras" showed the carrier guessed from the method code.
 
 ## How is the carrier of a parcel found?
 - `pg_shipping_carrier($number, $method, $default)` (`includes/fn/ecommerce.php`), in this order: (1) the whole `ship_tos.shipping_method_code` against each carrier's key and aliases, (2) the code a word at a time ("UPS-5GUN", "MNG Ertesi Gün"), (3) the site's default carrier, (4) the number's shape (`patterns`).
