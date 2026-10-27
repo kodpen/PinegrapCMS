@@ -48,6 +48,8 @@
  *            pg-link-* and pg-print-* classes
  *   breakpoints  own media queries at v5's lg/xl/xxl widths (992, 1200,
  *            1400) move to v6's (1024, 1280, 1536)
+ *   fields   the v6 class on liveform fields that name none
+ *            (bs6_switch_fields.php)
  *   texts    hand fixes found by their exact text (bs6_switch_texts())
  *
  * @author      Erdal Güral (Kodpen)
@@ -60,6 +62,7 @@ require_once(__DIR__ . '/bs6_rules.php');
 require_once(__DIR__ . '/bs6_switch_shell.php');
 require_once(__DIR__ . '/bs6_switch_tokens.php');
 require_once(__DIR__ . '/bs6_switch_stems.php');
+require_once(__DIR__ . '/bs6_switch_fields.php');
 
 // Bootstrap 6's own layer order with `vendor` before `custom`. jQuery UI,
 // DataTables, select2 and the icon fonts go into `vendor`: an unlayered sheet
@@ -146,6 +149,10 @@ function bs6_switch_plan($root)
 
 	foreach (bs6_switch_script_check_files($root) as $path) {
 		$plan[] = array($path, 'checks', 'bs6_switch_script_checks');
+	}
+
+	foreach (bs6_switch_field_files($root) as $path) {
+		$plan[] = array($path, 'fields', 'bs6_switch_fields');
 	}
 
 	foreach (bs6_switch_shell_files($root) as $path) {
@@ -965,6 +972,9 @@ function bs6_switch_shell_rules($source)
 		. ".input-group > .input-group-text.material-icons {\n  font-size: var(--bs-input-group-addon-font-size);\n  line-height: var(--bs-input-group-addon-line-height);\n}\n"
 		. ".input-group-sm > .input-group-text.material-icons {\n  font-size: var(--bs-btn-input-sm-font-size);\n}\n"
 		. ".input-group-lg > .input-group-text.material-icons {\n  font-size: var(--bs-btn-input-lg-font-size);\n}\n"
+		. "/* A select in a small or large input group keeps the room for its arrow:\n   v6's input group padding (components layer) beats the select's own\n   (forms layer). */\n"
+		. ".input-group-sm > select.form-control:not([multiple], [size]:not([size=\"1\"])) {\n  padding-inline-end: calc(var(--bs-btn-input-sm-padding-x) * 3);\n}\n"
+		. ".input-group-lg > select.form-control:not([multiple], [size]:not([size=\"1\"])) {\n  padding-inline-end: calc(var(--bs-btn-input-lg-padding-x) * 3);\n}\n"
 		. "/* v5's field: a label in the text's own colour and weight (.small\n   shrinks it), no inset shadow. */\n"
 		. ".form-label,\n.col-form-label {\n  --bs-label-font-weight: 400;\n  --bs-label-color: currentcolor;\n}\n"
 		. ":where(.form-label, .col-form-label):is(.small, small) {\n  font-size: 0.875em;\n}\n"
