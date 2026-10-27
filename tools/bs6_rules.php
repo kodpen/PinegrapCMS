@@ -243,6 +243,7 @@ function bs6_map_plain_token($token)
 		'btn-light' => array('btn-subtle', 'theme-secondary'),
 		'btn-dark' => array('btn-solid', 'theme-inverse'),
 		'border-dark' => array('border-inverse'),
+		'border-light' => array('border-subtle'),
 	);
 
 	if (isset($light_dark[$token])) {
@@ -718,6 +719,21 @@ function bs6_site_output_ranges($source, $path = null)
 	$path = ($path !== null) ? $path : bs6_current_path();
 	$functions = bs6_site_functions();
 
+	$panel = bs6_shared_panel_functions();
+	if ($path !== null && isset($panel[$path])) {
+		// Everything outside the panel functions is site output.
+		$ranges = array();
+		$from = 0;
+		foreach (bs6_function_ranges($source, $panel[$path]) as $range) {
+			if ($range[0] > $from) {
+				$ranges[] = array($from, $range[0]);
+			}
+			$from = $range[1];
+		}
+		$ranges[] = array($from, strlen($source));
+		return $ranges;
+	}
+
 	if ($path !== null && isset($functions[$path])) {
 		$ranges = bs6_function_ranges($source, $functions[$path]);
 		$marked = (strpos($source, $marker) === false) ? array() : bs6_marker_ranges($source);
@@ -768,6 +784,30 @@ function bs6_site_functions()
 		'includes/fn/design_themes.php' => array('pg_design_looks'),
 		'includes/fn/passkeys.php' => array('pg_passkey_account_section', 'pg_passkey_add_form_script'),
 		'includes/fn/returns.php' => array('pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
+	);
+}
+
+/**
+ * Functions of files shared with the site (bs6_scope_kind() 'shared') that
+ * print only panel markup: they are converted with the panel, and every
+ * other function of the file is read as site output. A shared function that
+ * prints on both sides (liveform's fields and notices, get_calendar(),
+ * pg_seo_page_toolbar()) is not listed: it chooses its classes at run time.
+ */
+function bs6_shared_panel_functions()
+{
+	return array(
+		'chat.php' => array('pg_chat_render_backend_launcher'),
+		'includes/fn/auth.php' => array('get_acl_folder_tree', 'pg_login_captcha_screen'),
+		'includes/fn/content.php' => array('get_checkboxes_for_items_user_can_edit'),
+		'includes/fn/ecommerce.php' => array('pg_order_list_status_html'),
+		'includes/fn/editor.php' => array('pg_code_editor_attach'),
+		'includes/fn/forms.php' => array('get_page_type_checkboxes_and_labels'),
+		'includes/fn/legal_documents.php' => array('pg_legal_documents_panel_card'),
+		'seo.php' => array(
+			'pg_seo_render_impact', 'pg_seo_render_bar', 'pg_seo_render_checklist', 'pg_seo_render_run_buttons',
+			'pg_seo_render_group_row', 'pg_seo_render_detail_offcanvas', 'pg_seo_render_badge',
+		),
 	);
 }
 
@@ -1271,7 +1311,10 @@ function bs6_codemod_converts($path)
 {
 	$kind = bs6_scope_kind($path);
 
-	return $kind === 'panel' || ($kind === 'editor' && in_array(str_replace('\\', '/', $path), bs6_marked_editor_files(), true));
+	$path = str_replace('\\', '/', $path);
+
+	return $kind === 'panel' || ($kind === 'editor' && in_array($path, bs6_marked_editor_files(), true))
+		|| ($kind === 'shared' && isset(bs6_shared_panel_functions()[$path]));
 }
 
 // Every file under $root (the pinegrap/ folder) with its scope kind, as
