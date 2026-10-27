@@ -3017,24 +3017,20 @@ function pg_designer_target_modal()
     );
 
     return '
-    <div class="modal fade" id="pgDesignTargetModal" tabindex="-1" aria-labelledby="pgDesignTargetTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title fs-5" id="pgDesignTargetTitle"></h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="small text-body-secondary" id="pgDesignTargetIntro"></p>
-                    <div class="list-group" id="pgDesignTargetList" role="radiogroup" aria-labelledby="pgDesignTargetTitle"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-                    <button type="button" class="btn btn-sm btn-primary" id="pgDesignTargetGo" disabled>' . lang('Continue') . '</button>
-                </div>
-            </div>
+    <dialog class="dialog pg-dialog-centered dialog-scrollable" id="pgDesignTargetModal" aria-labelledby="pgDesignTargetTitle">
+        <div class="dialog-header">
+            <h2 class="dialog-title fs-lg" id="pgDesignTargetTitle"></h2>
+            <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
         </div>
-    </div>
+        <div class="dialog-body">
+            <p class="small fg-secondary" id="pgDesignTargetIntro"></p>
+            <div class="list-group" id="pgDesignTargetList" role="radiogroup" aria-labelledby="pgDesignTargetTitle"></div>
+        </div>
+        <div class="dialog-footer">
+            <button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+            <button type="button" class="btn btn-sm btn-solid theme-primary" id="pgDesignTargetGo" disabled>' . lang('Continue') . '</button>
+        </div>
+    </dialog>
     <script>
         (function () {
             var T = ' . encode_json($text) . ';
@@ -3045,10 +3041,10 @@ function pg_designer_target_modal()
             var esc = function (v) { var d = document.createElement("div"); d.textContent = String(v == null ? "" : v); return d.innerHTML; };
             var row = function (value, title, sub, checked, badge) {
                 return "<label class=\"list-group-item list-group-item-action d-flex gap-3 align-items-center\">" +
-                    "<input class=\"form-check-input flex-shrink-0 m-0\" type=\"radio\" name=\"pg_design_target\" value=\"" + esc(value) + "\"" + (checked ? " checked" : "") + ">" +
+                    "<input class=\"radio flex-shrink-0 m-0\" type=\"radio\" name=\"pg_design_target\" value=\"" + esc(value) + "\"" + (checked ? " checked" : "") + ">" +
                     "<span class=\"flex-grow-1 text-truncate\"><span class=\"fw-semibold\">" + esc(title) + "</span>" +
-                    (badge ? " <span class=\"badge text-bg-primary fw-normal ms-1\">" + esc(badge) + "</span>" : "") +
-                    (sub ? "<span class=\"d-block small text-body-secondary\">" + esc(sub) + "</span>" : "") + "</span></label>";
+                    (badge ? " <span class=\"badge theme-primary fw-normal ms-1\">" + esc(badge) + "</span>" : "") +
+                    (sub ? "<span class=\"d-block small fg-secondary\">" + esc(sub) + "</span>" : "") + "</span></label>";
             };
             var target = function () {
                 var c = list.querySelector("input[name=pg_design_target]:checked");
@@ -3079,7 +3075,7 @@ function pg_designer_target_modal()
                     var mode = (opts.mode === "move" || opts.mode === "copy") ? opts.mode : "add";
                     document.getElementById("pgDesignTargetTitle").textContent = T[mode + "_title"];
                     document.getElementById("pgDesignTargetIntro").textContent = T[mode + "_intro"];
-                    list.innerHTML = "<div class=\"list-group-item small text-body-secondary\">" + esc(T.loading) + "</div>";
+                    list.innerHTML = "<div class=\"list-group-item small fg-secondary\">" + esc(T.loading) + "</div>";
                     go.disabled = true;
                     pgUI.dialog.show(modal);
                     fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
@@ -3092,7 +3088,7 @@ function pg_designer_target_modal()
                             return row(d.style_id, d.name, T.pages + ": " + d.pages, d.style_id === res["default"], d.style_id === res.folder ? T.folder : "");
                         }).join("");
                         if (mode === "add") html += row("new", T.new_design, T.new_text, !(res.designs || []).length, "");
-                        list.innerHTML = html || "<div class=\"list-group-item small text-body-secondary\">" + esc(T.empty) + "</div>";
+                        list.innerHTML = html || "<div class=\"list-group-item small fg-secondary\">" + esc(T.empty) + "</div>";
                         go.disabled = !target();
                         var c = list.querySelector("input:checked");
                         if (c) c.focus();

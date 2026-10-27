@@ -196,13 +196,11 @@
         }
 
         ui = {};
-        ui.node = el('div', 'modal fade ws-palette');
+        ui.node = el('dialog', 'dialog dialog-lg ws-palette ws-palette-dialog');
         ui.node.id = 'ws-palette';
-        ui.node.tabIndex = -1;
         ui.node.setAttribute('aria-label', t('pal_open'));
 
-        var dialog = el('div', 'modal-dialog modal-lg ws-palette-dialog');
-        var content = el('div', 'modal-content');
+        var content = ui.node;
         var head = el('div', 'ws-palette-head');
 
         head.appendChild(icon('bi-search', 'ws-palette-glass'));
@@ -241,8 +239,6 @@
         content.appendChild(ui.live);
 
         content.appendChild(el('div', 'ws-palette-foot', t('pal_hint')));
-        dialog.appendChild(content);
-        ui.node.appendChild(dialog);
         document.body.appendChild(ui.node);
 
         ui.input.addEventListener('input', function () {

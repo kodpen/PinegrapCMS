@@ -233,7 +233,7 @@ function pg_dashboard_ops_shipping()
             'name'  => h($carrier),
             // Two days is where a parcel stops being today's packing and
             // starts being one that was left behind.
-            'aside' => '<span class="' . (($waited >= 172800) ? 'text-danger' : '') . '">'
+            'aside' => '<span class="' . (($waited >= 172800) ? 'fg-danger' : '') . '">'
                 . get_relative_time(array('timestamp' => (int) $shipment['order_date'])) . '</span>',
             'meta'  => $meta,
         ));
@@ -349,7 +349,7 @@ function pg_dashboard_ops_refunds()
             'badge' => '<i class="bi bi-arrow-counterclockwise"></i>',
             'color' => '#ec4899',
             'name'  => h(($who !== '') ? $who : lang('Unknown')),
-            'aside' => '<span class="' . ($late ? 'text-danger' : 'text-warning-emphasis') . '">'
+            'aside' => '<span class="' . ($late ? 'fg-danger' : 'fg-emphasis-warning') . '">'
                 . get_relative_time(array('timestamp' => (int) $row['cancelled_at'])) . '</span>',
             'meta'  => '#' . h($number) . ' &middot; '
                 . pg_format_number(((float) $row['total']) / 100, 2) . ' ' . h($row['currency_code']),

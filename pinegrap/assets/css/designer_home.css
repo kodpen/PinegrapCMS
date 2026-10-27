@@ -1,3 +1,7 @@
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 /**
  * Pinegrap - Enterprise Website Platform
  *
@@ -641,7 +645,7 @@ button.sdh-page:hover {
   text-overflow: ellipsis;
 }
 
-.sdh-menu .dropdown-item {
+.sdh-menu .menu-item {
   display: flex;
   align-items: center;
   gap: .6rem;
@@ -649,7 +653,7 @@ button.sdh-page:hover {
   border-radius: .45rem;
 }
 
-.sdh-menu .dropdown-item > .bi {
+.sdh-menu .menu-item > .bi {
   flex: 0 0 auto;
   width: 1.1rem;
   text-align: center;
@@ -662,7 +666,7 @@ button.sdh-page:hover {
   color: var(--pg-fg-2);
 }
 
-.sdh-menu .dropdown-divider {
+.sdh-menu .menu-divider {
   margin: .3rem .25rem;
 }
 
@@ -674,8 +678,8 @@ button.sdh-page:hover {
   height: auto;
 }
 
-#sdTemplateModal .sd-tpl-dialog {
-  --bs-modal-width: min(96vw, 1600px);
+#sdTemplateModal.sd-tpl-dialog {
+  --bs-dialog-width: min(96vw, 1600px);
 }
 
 .sd-tpl-thumb {
@@ -749,7 +753,7 @@ button.sdh-page:hover {
 }
 
 /* pgConfirm escapes its message; the list of rows to delete is one line each. */
-.modal[aria-labelledby="pg-confirm-title"] .modal-body {
+.dialog[aria-labelledby="pg-confirm-title"] .dialog-body {
   white-space: pre-line;
 }
 
@@ -805,4 +809,6 @@ button.sdh-page:hover {
   .sdh-head-tools .input-group {
     width: 100%;
   }
+}
+
 }

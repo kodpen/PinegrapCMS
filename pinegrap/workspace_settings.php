@@ -92,7 +92,7 @@ function ws_settings_days_html($name, $mask, $id_prefix)
 
         $output .= '<input type="checkbox" class="btn-check" name="' . h($name) . '[]" value="' . $day . '" id="' . h($id) . '" autocomplete="off"'
             . (($mask & (1 << ($day - 1))) ? ' checked' : '') . '>'
-            . '<label class="btn btn-outline-secondary" for="' . h($id) . '">' . h($label) . '</label>';
+            . '<label class="btn btn-outline theme-secondary" for="' . h($id) . '">' . h($label) . '</label>';
     }
 
     return $output . '</div>';
@@ -442,8 +442,8 @@ foreach ($departments as $department) {
         <div class="ws-dept-row' . ($department['archived'] ? ' opacity-50' : '') . '">
             <span class="ws-dept-swatch" style="background:' . h($department['color']) . '"></span>
             <div class="ws-grow">
-                <div class="fw-semibold">' . h($department['name']) . ($department['archived'] ? ' <span class="badge text-bg-secondary ms-1">' . h(lang('In the archive')) . '</span>' : '') . '</div>
-                <div class="small text-body-secondary">'
+                <div class="fw-semibold">' . h($department['name']) . ($department['archived'] ? ' <span class="badge theme-secondary ms-1">' . h(lang('In the archive')) . '</span>' : '') . '</div>
+                <div class="small fg-secondary">'
                     . h(lang(array('string' => '{var:1} people', 'vars' => count($department['members']))))
                     . (!empty($lead_names) ? ' · ' . h(lang(array('string' => 'Lead: {var:1}', 'vars' => implode(', ', $lead_names)))) : '')
                     . ($channel ? ' · <a href="workspace.php?channel=' . (int) $channel['id'] . '">#' . h($channel['name']) . '</a>' : '') . '
@@ -463,7 +463,7 @@ foreach ($departments as $department) {
 }
 
 if ($output_departments === '') {
-    $output_departments = '<div class="ws-empty py-3"><i class="bi bi-diagram-3" aria-hidden="true"></i>' . h(lang('No departments yet. A department groups people so work can be handed to it and its lead sees its board.')) . '</div>';
+    $output_departments = '<div class="ws-empty py-5"><i class="bi bi-diagram-3" aria-hidden="true"></i>' . h(lang('No departments yet. A department groups people so work can be handed to it and its lead sees its board.')) . '</div>';
 }
 
 /**
@@ -491,13 +491,13 @@ function ws_settings_department_form($self_url, $department, $primary_ids, $chan
         $rows .= '
             <tr>
                 <td>
-                    <div class="form-check mb-0">
-                        <input class="form-check-input" type="checkbox" name="members[]" value="' . $person_id . '" id="' . $prefix . '_m' . $person_id . '"' . ($in ? ' checked' : '') . '>
-                        <label class="form-check-label" for="' . $prefix . '_m' . $person_id . '">' . h($person['name']) . ($person['title'] !== '' ? ' <span class="text-body-secondary small">' . h($person['title']) . '</span>' : '') . '</label>
+                    <div class="form-field mb-0">
+                        <input class="check" type="checkbox" name="members[]" value="' . $person_id . '" id="' . $prefix . '_m' . $person_id . '"' . ($in ? ' checked' : '') . '>
+                        <label class="" for="' . $prefix . '_m' . $person_id . '">' . h($person['name']) . ($person['title'] !== '' ? ' <span class="fg-secondary small">' . h($person['title']) . '</span>' : '') . '</label>
                     </div>
                 </td>
-                <td class="text-center"><input class="form-check-input" type="checkbox" name="leads[]" value="' . $person_id . '" aria-label="' . h(lang('Team lead')) . '"' . (in_array($person_id, $leads, true) ? ' checked' : '') . '></td>
-                <td class="text-center"><input class="form-check-input" type="checkbox" name="primary[]" value="' . $person_id . '" aria-label="' . h(lang('Own department')) . '"' . (in_array($person_id, $primary_ids, true) ? ' checked' : '') . '></td>
+                <td class="text-center"><input class="check" type="checkbox" name="leads[]" value="' . $person_id . '" aria-label="' . h(lang('Team lead')) . '"' . (in_array($person_id, $leads, true) ? ' checked' : '') . '></td>
+                <td class="text-center"><input class="check" type="checkbox" name="primary[]" value="' . $person_id . '" aria-label="' . h(lang('Own department')) . '"' . (in_array($person_id, $primary_ids, true) ? ' checked' : '') . '></td>
             </tr>';
     }
 
@@ -506,7 +506,7 @@ function ws_settings_department_form($self_url, $department, $primary_ids, $chan
             ' . get_token_field() . '
             <input type="hidden" name="ws_action" value="department">
             <input type="hidden" name="department_id" value="' . $id . '">
-            <div class="row g-2 mb-3">
+            <div class="row g-3 mb-5">
                 <div class="col">
                     <label class="form-label" for="' . $prefix . '_name">' . h(lang('Name')) . '</label>
                     <input class="form-control form-control-sm" type="text" name="name" id="' . $prefix . '_name" maxlength="100" required value="' . h($department ? $department['name'] : '') . '">
@@ -517,7 +517,7 @@ function ws_settings_department_form($self_url, $department, $primary_ids, $chan
                 </div>
             </div>
             <div class="table-responsive ws-dept-people">
-                <table class="table table-sm align-middle mb-2">
+                <table class="table table-sm align-middle mb-3">
                     <thead>
                         <tr>
                             <th>' . h(lang('In the department')) . '</th>
@@ -528,13 +528,13 @@ function ws_settings_department_form($self_url, $department, $primary_ids, $chan
                     <tbody>' . $rows . '</tbody>
                 </table>
             </div>
-            <div class="form-text mb-2">' . h(lang('A lead sees the department\'s board and may hand its work around and overrule a clash with leave. Somebody in several departments is counted in their own one first.')) . '</div>
+            <div class="form-text mb-3">' . h(lang('A lead sees the department\'s board and may hand its work around and overrule a clash with leave. Somebody in several departments is counted in their own one first.')) . '</div>
             ' . ($channel ? '' : '
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" name="create_channel" value="1" id="' . $prefix . '_channel"' . ($department ? '' : ' checked') . '>
-                <label class="form-check-label" for="' . $prefix . '_channel">' . h(lang('Open a channel for the department')) . '</label>
+            <div class="form-field mb-5">
+                <div class="switch"><input class="" type="checkbox" name="create_channel" value="1" id="' . $prefix . '_channel"' . ($department ? '' : ' checked') . '></div>
+                <label class="" for="' . $prefix . '_channel">' . h(lang('Open a channel for the department')) . '</label>
             </div>') . '
-            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h($department ? lang('Save') : lang('Create the department')) . '</button>
+            <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h($department ? lang('Save') : lang('Create the department')) . '</button>
         </form>';
 }
 
@@ -556,7 +556,7 @@ foreach ($candidates as $person) {
     $output_people .= '
         <tr' . ($person['excluded'] ? ' class="opacity-50"' : '') . '>
             <td>
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-3">
                     <img src="' . h($person['avatar']) . '" alt="" class="rounded-circle" width="28" height="28" loading="lazy">
                     <div>
                         <div class="fw-semibold">' . h($person['name']) . '</div>
@@ -568,10 +568,10 @@ foreach ($candidates as $person) {
             <td style="width:6rem"><input class="form-control form-control-sm" type="text" inputmode="decimal" name="people[' . $person_id . '][day_hours]" value="' . h(ws_settings_hours($day)) . '" aria-label="' . h(lang('Hours a day')) . '"></td>
             <td>' . ws_settings_days_html('people[' . $person_id . '][workdays]', $mask, 'ws_p' . $person_id) . '</td>
             <td class="text-center">
-                <div class="form-check form-switch d-inline-block mb-0">
-                    <input class="form-check-input" type="checkbox" name="people[' . $person_id . '][excluded]" value="1" aria-label="' . h(lang('Not in the team')) . '"'
+                <div class="form-field d-inline-block mb-0">
+                    <div class="switch"><input class="" type="checkbox" name="people[' . $person_id . '][excluded]" value="1" aria-label="' . h(lang('Not in the team')) . '"'
                         . ($person['excluded'] ? ' checked' : '')
-                        . (($person_id === (int) $viewer['id']) ? ' disabled' : '') . '>
+                        . (($person_id === (int) $viewer['id']) ? ' disabled' : '') . '></div>
                 </div>
             </td>
         </tr>';
@@ -593,19 +593,19 @@ pg_page_shell([
     ' . $liveform->output_errors() . '
     ' . $liveform->get_warnings() . '
     ' . $liveform->output_notices() . '
-    <nav id="button_bar" class="pg-toolbar navigation mb-3" aria-label="' . lang('Button Bar') . '">
+    <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
         <a class="btn btn-sm btn-ghost" href="workspace.php"><i class="bi bi-chat-square-text me-1" aria-hidden="true"></i>' . h(lang('Channels')) . '</a>
         <a class="btn btn-sm btn-ghost" href="workspace_board.php"><i class="bi bi-calendar-week me-1" aria-hidden="true"></i>' . h(lang('Planning Board')) . '</a>
     </nav>
-    <div class="row g-4">
-        <div class="col-xl-8">
-            <div class="card mb-4" id="ws-departments">
-                <div class="card-header d-flex align-items-center gap-2">
+    <div class="row g-7">
+        <div class="xl:col-8">
+            <div class="card mb-7" id="ws-departments">
+                <div class="card-header d-flex align-items-center gap-3">
                     <h2 class="h6 mb-0 ws-grow"><i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>' . h(lang('Departments')) . '</h2>
-                    <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="collapse" data-bs-target="#ws-dept-new"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New department')) . '</button>
+                    <button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="collapse" data-bs-target="#ws-dept-new"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New department')) . '</button>
                 </div>
                 <div class="card-body">
-                    <div class="collapse mb-3" id="ws-dept-new">
+                    <div class="collapse mb-5" id="ws-dept-new">
                         ' . ws_settings_department_form($self_url, null, array(), null) . '
                     </div>
                     ' . $output_departments . '
@@ -615,9 +615,9 @@ pg_page_shell([
             <form method="post" action="' . h($self_url) . '" class="card" id="ws-people">
                 ' . get_token_field() . '
                 <input type="hidden" name="ws_action" value="people">
-                <div class="card-header d-flex align-items-center gap-2">
+                <div class="card-header d-flex align-items-center gap-3">
                     <h2 class="h6 mb-0 ws-grow"><i class="bi bi-people me-1" aria-hidden="true"></i>' . h(lang('Team members')) . '</h2>
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -648,27 +648,27 @@ pg_page_shell([
             ' . ws_mcp_settings_card($self_url, $viewer, $liveform) . '
         </div>
 
-        <div class="col-xl-4">
-            <form method="post" action="' . h($self_url) . '" class="card mb-4" id="ws-defaults">
+        <div class="xl:col-4">
+            <form method="post" action="' . h($self_url) . '" class="card mb-7" id="ws-defaults">
                 ' . get_token_field() . '
                 <input type="hidden" name="ws_action" value="defaults">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('Defaults')) . '</h2></div>
                 <div class="card-body">
-                    <div class="mb-3">
+                    <div class="mb-5">
                         <label class="form-label" for="ws_day_hours">' . h(lang('Hours in a working day')) . '</label>
                         <input class="form-control form-control-sm" type="text" inputmode="decimal" name="day_hours" id="ws_day_hours" value="' . h(ws_settings_hours(WS_DAY_MINUTES)) . '">
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-5">
                         <div class="form-label">' . h(lang('Working days')) . '</div>
                         ' . ws_settings_days_html('workdays', (int) WS_WORKDAYS, 'ws_default_day') . '
                         <div class="form-text"><a href="#ws-calendar">' . h(lang('The days off are kept in the Working calendar card.')) . '</a></div>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-5">
                         <label class="form-label" for="ws_default_task_hours">' . h(lang('A task with no estimate counts as (hours)')) . '</label>
                         <input class="form-control form-control-sm" type="text" inputmode="decimal" name="default_task_hours" id="ws_default_task_hours" value="' . h(ws_settings_hours(WS_DEFAULT_TASK_MINUTES)) . '">
                         <div class="form-text">' . h(lang('The board spreads a task\'s estimate over the working days between its start and its due date, and warns when a day goes over.')) . '</div>
                     </div>
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>
                 </div>
             </form>
 
@@ -679,7 +679,7 @@ pg_page_shell([
                 <div class="card-body small">
                     <p>' . h(lang('Every administrator, designer and manager is in the team, unless taken out of it on this screen.')) . '</p>
                     <p>' . h(lang('A basic user joins the team when the Workspace right is switched on in their user settings. The same place gives them the right to hand work to others, to see the whole team\'s board and to change these settings.')) . '</p>
-                    <a class="btn btn-sm btn-outline-secondary" href="view_users.php"><i class="bi bi-person-gear me-1" aria-hidden="true"></i>' . h(lang('Users')) . '</a>
+                    <a class="btn btn-sm btn-outline theme-secondary" href="view_users.php"><i class="bi bi-person-gear me-1" aria-hidden="true"></i>' . h(lang('Users')) . '</a>
                 </div>
             </div>
         </div>

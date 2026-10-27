@@ -130,7 +130,7 @@ $output_actions = '';
 
 if (empty($proposal['success'])) {
 
-    $output_alerts = '<div class="alert alert-danger my-4">'
+    $output_alerts = '<div class="alert theme-danger my-7">'
         . lang(array('string' => 'The document could not be read: {var:1}', 'vars' => h((string) $proposal['error'])))
         . '</div>';
 
@@ -144,7 +144,7 @@ if (empty($proposal['success'])) {
         foreach ($proposal['refusals'] as $refusal) {
             $items .= '<li>' . h($refusal) . '</li>';
         }
-        $output_alerts .= '<div class="alert alert-danger my-4"><div class="fw-bold mb-1">' . lang('This e-invoice cannot be taken in as it stands') . '</div><ul class="mb-0">' . $items . '</ul></div>';
+        $output_alerts .= '<div class="alert theme-danger my-7"><div class="fw-bold mb-1">' . lang('This e-invoice cannot be taken in as it stands') . '</div><ul class="mb-0">' . $items . '</ul></div>';
     }
 
     if (($state === 'new') && !empty($proposal['warnings'])) {
@@ -152,21 +152,21 @@ if (empty($proposal['success'])) {
         foreach ($proposal['warnings'] as $warning) {
             $items .= '<li>' . h($warning) . '</li>';
         }
-        $output_alerts .= '<div class="alert alert-warning my-4"><ul class="mb-0 ps-3">' . $items . '</ul></div>';
+        $output_alerts .= '<div class="alert theme-warning my-7"><ul class="mb-0 ps-5">' . $items . '</ul></div>';
     }
 
     if (($state === 'new') && ($proposal['existing'] !== null)) {
-        $output_alerts .= '<div class="alert alert-info my-4">'
+        $output_alerts .= '<div class="alert theme-info my-7">'
             . lang(array('string' => 'Purchase invoice {var:1} already carries this ETTN.', 'vars' => '<a href="edit_erp_invoice.php?id=' . (int) $proposal['existing']['id'] . '">' . h(((string) $proposal['existing']['full_number'] !== '') ? $proposal['existing']['full_number'] : lang('Draft')) . '</a>'))
             . '</div>';
     } elseif (($state === 'new') && ($proposal['candidate'] !== null)) {
         $candidate = $proposal['candidate'];
-        $output_alerts .= '<div class="alert alert-info my-4 d-flex flex-wrap align-items-center gap-2">
+        $output_alerts .= '<div class="alert theme-info my-7 d-flex flex-wrap align-items-center gap-3">
                 <span class="flex-grow-1">' . lang(array(
                     'string' => 'Purchase invoice {var:1} from this supplier already has the number {var:2}. If it is the same invoice, link the two instead of taking it in twice.',
                     'vars' => array('<a href="edit_erp_invoice.php?id=' . (int) $candidate['id'] . '">' . h(((string) $candidate['full_number'] !== '') ? $candidate['full_number'] : lang('Draft')) . '</a>', h($document['number'])),
                 )) . '</span>
-                ' . $form('link', '<button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Link to that invoice') . '</button>',
+                ' . $form('link', '<button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Link to that invoice') . '</button>',
                     '<input type="hidden" name="invoice_id" value="' . (int) $candidate['id'] . '" />') . '
             </div>';
     }
@@ -197,12 +197,12 @@ if (empty($proposal['success'])) {
         $flag = '';
         if (($built !== null) && (((int) $built['line_total'] - (int) $built['discount_amount'] !== (int) $source['net'])
             || ((int) $built['tax_total'] !== (int) $source['vat']) || ((int) $built['withholding_amount'] !== (int) $source['withholding']))) {
-            $flag = '<i class="bi bi-exclamation-triangle text-warning ms-1" aria-hidden="true" title="' . h(lang(array(
+            $flag = '<i class="bi bi-exclamation-triangle fg-warning ms-1" aria-hidden="true" title="' . h(lang(array(
                 'string' => 'In the purchase invoice: {var:1} before VAT, {var:2} VAT, {var:3} withheld',
                 'vars' => array(erp_money_out_currency((int) $built['line_total'] - (int) $built['discount_amount'], $currency), erp_money_out_currency((int) $built['tax_total'], $currency), erp_money_out_currency((int) $built['withholding_amount'], $currency)),
             ))) . '"></i>';
         } elseif (in_array((string) $line['no'], (array) $proposal['folded'], true)) {
-            $flag = '<i class="bi bi-info-circle text-body-secondary ms-1" aria-hidden="true" title="' . h(lang('Kept as one unit of its amount')) . '"></i>';
+            $flag = '<i class="bi bi-info-circle fg-secondary ms-1" aria-hidden="true" title="' . h(lang('Kept as one unit of its amount')) . '"></i>';
         }
 
         $detail = array_filter(array($line['seller_code'], trim($line['brand'] . ' ' . $line['model']), $source['exemption'],
@@ -210,11 +210,11 @@ if (empty($proposal['success'])) {
         $price = (strpos((string) $line['price'], '.') !== false) ? rtrim(rtrim((string) $line['price'], '0'), '.') : (string) $line['price'];
 
         $output_lines .= '<tr>
-                <td class="text-body-secondary">' . h($line['no']) . '</td>
-                <td>' . h($source['text']) . $flag . (!empty($detail) ? '<div class="small text-body-secondary">' . h(implode(' · ', $detail)) . '</div>' : '') . '</td>
-                <td class="text-end text-nowrap" data-sort="' . (float) $line['quantity'] . '">' . h(erp_quantity_text($line['quantity'])) . ' <span class="text-body-secondary small">' . h($line['unit_code']) . '</span></td>
+                <td class="fg-secondary">' . h($line['no']) . '</td>
+                <td>' . h($source['text']) . $flag . (!empty($detail) ? '<div class="small fg-secondary">' . h(implode(' · ', $detail)) . '</div>' : '') . '</td>
+                <td class="text-end text-nowrap" data-sort="' . (float) $line['quantity'] . '">' . h(erp_quantity_text($line['quantity'])) . ' <span class="fg-secondary small">' . h($line['unit_code']) . '</span></td>
                 <td class="text-end text-nowrap">' . h($price) . '</td>
-                <td class="text-end text-nowrap" data-sort="' . (int) $discount . '">' . (($discount > 0) ? $money($discount) : '<span class="text-body-secondary">—</span>') . '</td>
+                <td class="text-end text-nowrap" data-sort="' . (int) $discount . '">' . (($discount > 0) ? $money($discount) : '<span class="fg-secondary">—</span>') . '</td>
                 <td class="text-end text-nowrap" data-sort="' . (int) $source['net'] . '">' . $money($source['net']) . '</td>
                 <td class="text-end text-nowrap">' . h($vat_rate) . '</td>
                 <td class="text-end text-nowrap" data-sort="' . (int) $source['vat'] . '">' . $money($source['vat']) . '</td>
@@ -227,28 +227,28 @@ if (empty($proposal['success'])) {
     $place = trim(implode(' / ', array_filter(array($supplier['city'], $supplier['country']), 'strlen')));
 
     if ($account !== null) {
-        $output_account = '<div class="form-label text-body-secondary">' . lang('Account') . '</div>
+        $output_account = '<div class="form-label fg-secondary">' . lang('Account') . '</div>
                 <div><a href="edit_erp_account.php?id=' . (int) $account['id'] . '">' . h($account['title']) . '</a></div>
-                <div class="small text-body-secondary">' . lang('The account with this tax number. The purchase invoice is written to it.') . '</div>';
+                <div class="small fg-secondary">' . lang('The account with this tax number. The purchase invoice is written to it.') . '</div>';
     } else {
-        $output_account = '<div class="form-label text-body-secondary">' . lang('Account') . '</div>
-                <div class="text-warning-emphasis"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('No account has this tax number yet.') . '</div>
-                <div class="small text-body-secondary">' . lang('Taking the invoice in opens a supplier account with the details on the left.') . '</div>';
+        $output_account = '<div class="form-label fg-secondary">' . lang('Account') . '</div>
+                <div class="fg-emphasis-warning"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('No account has this tax number yet.') . '</div>
+                <div class="small fg-secondary">' . lang('Taking the invoice in opens a supplier account with the details on the left.') . '</div>';
     }
 
     $output_supplier = '
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Supplier') . '</div>
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Supplier') . '</div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 col-md-7 my-2">
+                        <div class="col-12 md:col-7 my-3">
                             <div class="fw-bold">' . h($supplier['title']) . '</div>
-                            <div>' . h($supplier['tax_scheme'] !== '' ? $supplier['tax_scheme'] : lang('VKN / TCKN')) . ' ' . h($supplier['tax_number']) . ' <span class="text-body-secondary">' . h($supplier['tax_office']) . '</span></div>
+                            <div>' . h($supplier['tax_scheme'] !== '' ? $supplier['tax_scheme'] : lang('VKN / TCKN')) . ' ' . h($supplier['tax_number']) . ' <span class="fg-secondary">' . h($supplier['tax_office']) . '</span></div>
                             ' . (($address !== '') ? '<div>' . h($address) . '</div>' : '') . '
                             ' . (($place !== '') ? '<div>' . h($place) . '</div>' : '') . '
-                            ' . ((trim($supplier['phone'] . $supplier['email']) !== '') ? '<div class="text-body-secondary small">' . h(trim(implode(' · ', array_filter(array($supplier['phone'], $supplier['email']), 'strlen')))) . '</div>' : '') . '
+                            ' . ((trim($supplier['phone'] . $supplier['email']) !== '') ? '<div class="fg-secondary small">' . h(trim(implode(' · ', array_filter(array($supplier['phone'], $supplier['email']), 'strlen')))) . '</div>' : '') . '
                         </div>
-                        <div class="col-12 col-md-5 my-2">' . $output_account . '</div>
+                        <div class="col-12 md:col-5 my-3">' . $output_account . '</div>
                     </div>
                 </div>
             </div>';
@@ -279,14 +279,14 @@ if (empty($proposal['success'])) {
         $output_total_rows .= '<tr>
                 <th scope="row" class="fw-normal">' . h($total_row[0]) . '</th>
                 <td class="text-end text-nowrap">' . $money($total_row[1]) . '</td>
-                <td class="text-end text-nowrap' . ($differs ? ' text-warning-emphasis fw-bold' : ' text-body-secondary') . '">' . (($total_row[2] === null) ? '—' : $money($total_row[2])) . '</td>
+                <td class="text-end text-nowrap' . ($differs ? ' fg-emphasis-warning fw-bold' : ' fg-secondary') . '">' . (($total_row[2] === null) ? '—' : $money($total_row[2])) . '</td>
             </tr>';
     }
 
     $output_totals = '
             <div class="row">
-                <div class="col-12 col-lg-6 ms-auto">
-                    <div class="card my-4">
+                <div class="col-12 lg:col-6 ms-auto">
+                    <div class="card my-7">
                         <div class="card-body p-0 table-responsive">
                             <table class="table align-middle mb-0">
                                 <thead><tr><th></th><th class="text-end">' . lang('On the e-invoice') . '</th><th class="text-end">' . lang('Purchase invoice') . '</th></tr></thead>
@@ -316,11 +316,11 @@ if (empty($proposal['success'])) {
 
     if (!empty($references) || ($notes !== '')) {
         $output_references = '
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Notes') . '</div>
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Notes') . '</div>
                 <div class="card-body">
-                    ' . (!empty($references) ? '<div class="mb-2">' . implode(' · ', $references) . '</div>' : '') . '
-                    ' . (($notes !== '') ? '<ul class="mb-0 ps-3 text-body-secondary">' . $notes . '</ul>' : '') . '
+                    ' . (!empty($references) ? '<div class="mb-3">' . implode(' · ', $references) . '</div>' : '') . '
+                    ' . (($notes !== '') ? '<ul class="mb-0 ps-5 fg-secondary">' . $notes . '</ul>' : '') . '
                 </div>
             </div>';
     }
@@ -329,20 +329,20 @@ if (empty($proposal['success'])) {
 // What can be done from here, by the state the document is in.
 if ($state === 'new') {
     if (!empty($proposal['success']) && ($proposal['existing'] !== null)) {
-        $output_actions .= $form('link', '<button type="submit" class="btn my-1 btn-primary"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>' . lang('Mark as taken in') . '</button>',
+        $output_actions .= $form('link', '<button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-link-45deg me-3" aria-hidden="true"></i>' . lang('Mark as taken in') . '</button>',
             '<input type="hidden" name="invoice_id" value="' . (int) $proposal['existing']['id'] . '" />');
     } elseif (!empty($proposal['success']) && empty($proposal['refusals'])) {
-        $output_actions .= $form('import', '<button type="submit" class="btn my-1 btn-primary"><i class="bi bi-box-arrow-in-down me-2" aria-hidden="true"></i>'
+        $output_actions .= $form('import', '<button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-box-arrow-in-down me-3" aria-hidden="true"></i>'
             . (($proposal['account'] === null) ? lang('Open the supplier and draft the purchase invoice') : lang('Draft the purchase invoice')) . '</button>');
     }
 
-    $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline-secondary"><i class="bi bi-archive me-2" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
+    $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
 } elseif ($state === 'ignored') {
-    $output_actions .= $form('restore', '<button type="submit" class="btn my-1 btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>' . lang('Bring back') . '</button>');
+    $output_actions .= $form('restore', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . lang('Bring back') . '</button>');
 } elseif ($state === 'drafted') {
-    $output_actions .= '<a class="btn my-1 btn-primary" href="edit_erp_invoice_draft.php?id=' . (int) $row['invoice_id'] . '"><i class="bi bi-pencil-square me-2" aria-hidden="true"></i>' . lang('Open the draft') . '</a>';
+    $output_actions .= '<a class="btn my-1 btn-solid theme-primary" href="edit_erp_invoice_draft.php?id=' . (int) $row['invoice_id'] . '"><i class="bi bi-pencil-square me-3" aria-hidden="true"></i>' . lang('Open the draft') . '</a>';
 } elseif ($state === 'imported') {
-    $output_actions .= '<a class="btn my-1 btn-outline-secondary" href="edit_erp_invoice.php?id=' . (int) $row['invoice_id'] . '"><i class="bi bi-receipt me-2" aria-hidden="true"></i>' . h($row['invoice_number']) . '</a>';
+    $output_actions .= '<a class="btn my-1 btn-outline theme-secondary" href="edit_erp_invoice.php?id=' . (int) $row['invoice_id'] . '"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . h($row['invoice_number']) . '</a>';
 }
 
 // The status column: what is read, not worked on.
@@ -351,20 +351,20 @@ $rate = (array) ($document['exchange_rate'] ?? array());
 $status_items = array(
     lang('Document Number') => h($row['gib_number']),
     lang('ETTN') => '<span class="small text-break">' . h($row['gib_uuid']) . '</span>',
-    lang('Date') => h(prepare_form_data_for_output($row['issue_date'], 'date')) . ((($document['issue_time'] ?? '') !== '') ? ' <span class="text-body-secondary">' . h(substr($document['issue_time'], 0, 5)) . '</span>' : ''),
+    lang('Date') => h(prepare_form_data_for_output($row['issue_date'], 'date')) . ((($document['issue_time'] ?? '') !== '') ? ' <span class="fg-secondary">' . h(substr($document['issue_time'], 0, 5)) . '</span>' : ''),
     lang('Due Date') => ((($document['due_date'] ?? '') !== '') ? h(prepare_form_data_for_output($document['due_date'], 'date')) : '—'),
     lang('Type') => h(erp_edoc_inbox_type_label(($document['type_code'] ?? '') !== '' ? $document['type_code'] : $row['invoice_type']))
-        . ' <span class="text-body-secondary">' . h(($document['profile'] ?? '') !== '' ? $document['profile'] : $row['profile']) . '</span>',
+        . ' <span class="fg-secondary">' . h(($document['profile'] ?? '') !== '' ? $document['profile'] : $row['profile']) . '</span>',
     lang('At GİB') => h(((string) $row['provider_status'] !== '') ? $row['provider_status'] : '—'),
     lang('Currency') => h($currency) . ((!empty($rate['rate']) && ($currency !== erp_base_currency()))
-        ? ' <span class="text-body-secondary">' . h(erp_fx_rate_text((float) $rate['rate'])) . ' ' . h($rate['target']) . '</span>' : ''),
-    lang('Status') => '<span class="badge rounded-pill text-bg-' . $states[$state]['tone'] . '">' . h($states[$state]['label']) . '</span>',
+        ? ' <span class="fg-secondary">' . h(erp_fx_rate_text((float) $rate['rate'])) . ' ' . h($rate['target']) . '</span>' : ''),
+    lang('Status') => '<span class="badge rounded-pill theme-' . $states[$state]['tone'] . '">' . h($states[$state]['label']) . '</span>',
 );
 
 $output_status = '';
 foreach ($status_items as $label => $value) {
-    $output_status .= '<div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . h($label) . '</div>
+    $output_status .= '<div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . h($label) . '</div>
                                 <div>' . $value . '</div>
                             </div>';
 }
@@ -400,8 +400,8 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-outline-secondary" href="get_erp_inbox_file.php?id=' . $id . '&amp;format=pdf" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="get_erp_inbox_file.php?id=' . $id . '&amp;format=ubl"><i class="bi bi-filetype-xml me-1" aria-hidden="true"></i>' . lang('UBL') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_inbox_file.php?id=' . $id . '&amp;format=pdf" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_inbox_file.php?id=' . $id . '&amp;format=ubl"><i class="bi bi-filetype-xml me-1" aria-hidden="true"></i>' . lang('UBL') . '</a>
                 ' . $form('refresh', '<button type="submit" class="btn btn-sm btn-ghost"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Read the document again') . '</button>') . '
                 ' . $output_workspace_button . '
             </nav>
@@ -411,13 +411,13 @@ pg_page_shell([
             The document column, with the summary beside it rather than
             above it: the pattern the invoice screens use.
         -->
-        <div class="col-12 col-lg-8 col-xxl-9 order-1">
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
 
             ' . $output_alerts . '
 
             ' . (($output_lines !== '')
-                ? '<div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Lines') . '</div>
+                ? '<div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Lines') . '</div>
                 <div class="card-body p-0 position-relative table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
@@ -443,21 +443,21 @@ pg_page_shell([
             ' . $output_references . '
 
             ' . (($output_actions !== '')
-                ? '<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                ? '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                 <div class="container">
-                    <div class="d-flex flex-wrap justify-content-center gap-2">' . $output_actions . '</div>
+                    <div class="d-flex flex-wrap justify-content-center gap-3">' . $output_actions . '</div>
                 </div>
             </nav>'
                 : '') . '
         </div>
 
-        <div class="col-12 col-lg-4 col-xxl-3 order-2">
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('e-Invoice') . '</div>
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('e-Invoice') . '</div>
                     <div class="card-body">
                         <div class="row">' . $output_status . '</div>
-                        <div class="small text-body-secondary border-top mt-2 pt-2">' . lang(array('string' => 'Read from {var:1}.', 'vars' => h(is_array($provider_info) ? $provider_info['label'] : $row['provider']))) . '</div>
+                        <div class="small fg-secondary border-top mt-3 pt-3">' . lang(array('string' => 'Read from {var:1}.', 'vars' => h(is_array($provider_info) ? $provider_info['label'] : $row['provider']))) . '</div>
                     </div>
                 </div>
             </div>

@@ -88,33 +88,33 @@ if (!$_POST) {
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                         <div class="row">
-                            <div class="col-12 mb-5">
-                                <div class="card my-4 h-100">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="col-12 mb-12">
+                                <div class="card my-7 h-100">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Options') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="name" class="form-label">' . lang('Name') . '</label>
                                                 <input type="text" name="name" id="name" maxlength="100" value="' . h($liveform->get_field_value('name')) . '" class="form-control' . ($liveform->check_field_error('name') ? ' is-invalid' : '') . '" />
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2 d-flex align-items-end">
-                                                <div class="form-check">
-                                                    <input type="checkbox" name="enabled" id="enabled" value="1" class="form-check-input"' . ($liveform->get_field_value('enabled') ? ' checked' : '') . ' />
-                                                    <label for="enabled" class="form-check-label">' . lang('Enabled') . '</label>
+                                            <div class="col-12 md:col-6 lg:col-4 my-3 d-flex align-items-end">
+                                                <div class="form-field">
+                                                    <input type="checkbox" name="enabled" id="enabled" value="1" class="check"' . ($liveform->get_field_value('enabled') ? ' checked' : '') . ' />
+                                                    <label for="enabled" class="">' . lang('Enabled') . '</label>
                                                 </div>
                                             </div>
-                                            <div class="col-12 my-2">
+                                            <div class="col-12 my-3">
                                                 <label class="form-label">' . lang('Dimensions') . '</label>
-                                                <div class="mb-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input type="radio" class="form-check-input" id="length_type_inches" name="length_type" value="inches" checked />
-                                                        <label class="form-check-label" for="length_type_inches">' . lang('Inches') . '</label>
+                                                <div class="mb-3">
+                                                    <div class="form-field d-inline-grid me-5">
+                                                        <input type="radio" class="radio" id="length_type_inches" name="length_type" value="inches" checked />
+                                                        <label class="" for="length_type_inches">' . lang('Inches') . '</label>
                                                     </div>
-                                                    <div class="form-check form-check-inline">
-                                                        <input type="radio" class="form-check-input" id="length_type_cm" name="length_type" value="cm" />
-                                                        <label class="form-check-label" for="length_type_cm">' . lang('Cm') . '</label>
+                                                    <div class="form-field d-inline-grid me-5">
+                                                        <input type="radio" class="radio" id="length_type_cm" name="length_type" value="cm" />
+                                                        <label class="" for="length_type_cm">' . lang('Cm') . '</label>
                                                     </div>
                                                 </div>
                                                 <div id="length_inches" class="input-group" style="max-width:400px;">
@@ -136,16 +136,16 @@ if (!$_POST) {
                                                     <span class="input-group-text">' . lang('cm') . '</span>
                                                 </div>
                                             </div>
-                                            <div class="col-12 col-md-6 my-2">
+                                            <div class="col-12 md:col-6 my-3">
                                                 <label class="form-label">' . lang('Weight') . '</label>
-                                                <div class="mb-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input type="radio" class="form-check-input" id="weight_type_pounds" name="weight_type" value="pounds" checked />
-                                                        <label class="form-check-label" for="weight_type_pounds">' . lang('Pounds') . '</label>
+                                                <div class="mb-3">
+                                                    <div class="form-field d-inline-grid me-5">
+                                                        <input type="radio" class="radio" id="weight_type_pounds" name="weight_type" value="pounds" checked />
+                                                        <label class="" for="weight_type_pounds">' . lang('Pounds') . '</label>
                                                     </div>
-                                                    <div class="form-check form-check-inline">
-                                                        <input type="radio" class="form-check-input" id="weight_type_kg" name="weight_type" value="kg" />
-                                                        <label class="form-check-label" for="weight_type_kg">' . lang('Kg') . '</label>
+                                                    <div class="form-field d-inline-grid me-5">
+                                                        <input type="radio" class="radio" id="weight_type_kg" name="weight_type" value="kg" />
+                                                        <label class="" for="weight_type_kg">' . lang('Kg') . '</label>
                                                     </div>
                                                 </div>
                                                 <div id="weight_pound" class="input-group" style="max-width:200px;">
@@ -157,7 +157,7 @@ if (!$_POST) {
                                                     <span class="input-group-text">' . lang('kg') . '</span>
                                                 </div>
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="cost" class="form-label">' . lang('Cost') . '</label>
                                                 <div class="input-group" style="max-width:200px;">
                                                     <span class="input-group-text">' . BASE_CURRENCY_SYMBOL . '</span>
@@ -169,11 +169,11 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('container')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
+                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('container')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                                 </div>
                             </div>
                         </nav>

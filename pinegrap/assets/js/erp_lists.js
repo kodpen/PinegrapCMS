@@ -53,7 +53,7 @@
         mark(row);
         title.textContent = '';
         open.classList.add('d-none');
-        body.innerHTML = '<div class="d-flex justify-content-center py-5"><span class="spinner-border text-secondary" role="status" aria-hidden="true"></span></div>';
+        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" role="status" aria-hidden="true"></span></div>';
         pgUI.drawer.show(panel);
 
         fetch(endpoint + '?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id), {
@@ -68,7 +68,7 @@
                 return;
             }
             if (!data || data.error || !data.html) {
-                body.innerHTML = '<div class="alert alert-warning mb-0"></div>';
+                body.innerHTML = '<div class="alert theme-warning mb-0"></div>';
                 body.firstChild.textContent = (data && data.error) ? data.error : failure;
                 return;
             }
@@ -78,7 +78,7 @@
             body.innerHTML = data.html;
         }).catch(function () {
             if (ticket === current) {
-                body.innerHTML = '<div class="alert alert-warning mb-0"></div>';
+                body.innerHTML = '<div class="alert theme-warning mb-0"></div>';
                 body.firstChild.textContent = failure;
             }
         });

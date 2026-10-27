@@ -49,17 +49,17 @@ if (!$_POST) {
                     <input type="hidden" name="send_to" value="' . h(pg_send_to_url()) . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Import ZIP') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-lg-auto my-2">
+                                        <div class="col-12 lg:col-auto my-3">
                                             <label for="file" class="form-label">' . lang('Select .zip to Upload') . '</label>
                                             ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto')) . '
                                         </div>
-                                        <div class="col-12 col-lg my-2">
+                                        <div class="col-12 lg:col my-3">
                                             <label for="name" class="form-label">' . lang('Tag') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'import_name', 'size'=>'10', 'class'=>'form-control')) . '
                                             <div class="form-text text-end">' . lang('appended to imported items and filenames for easy reference, recommended, e.g. \'mysite\'') . '</div>
@@ -69,10 +69,10 @@ if (!$_POST) {
                             </div> 
                         </div> 
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import" name="submit_import" value="Import" class="btn my-1  btn-success "  ><span class="material-icons me-2">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import') ) . '</span></button>
+                                <button type="submit" id="submit_import" name="submit_import" value="Import" class="btn my-1  btn-solid theme-success "  ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

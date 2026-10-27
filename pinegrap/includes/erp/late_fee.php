@@ -388,10 +388,10 @@ function erp_late_fee_panel($account, $from = '', $as_of = '', $back = 'account'
     $draft = erp_late_fee_open_draft((int) $account['id']);
 
     if ($draft > 0) {
-        return '<div class="d-flex flex-wrap align-items-center gap-2 small">'
-            . '<i class="bi bi-hourglass-split text-warning" aria-hidden="true"></i>'
+        return '<div class="d-flex flex-wrap align-items-center gap-3 small">'
+            . '<i class="bi bi-hourglass-split fg-warning" aria-hidden="true"></i>'
             . '<span>' . h(lang('A late payment fee draft of this account is waiting to be issued.')) . '</span>'
-            . '<a class="btn btn-sm btn-outline-primary" href="edit_erp_invoice_draft.php?id=' . (int) $draft . '">' . h(lang('Open the draft')) . '</a>'
+            . '<a class="btn btn-sm btn-outline theme-primary" href="edit_erp_invoice_draft.php?id=' . (int) $draft . '">' . h(lang('Open the draft')) . '</a>'
             . '</div>';
     }
 
@@ -413,12 +413,12 @@ function erp_late_fee_panel($account, $from = '', $as_of = '', $back = 'account'
             . '<input type="hidden" name="from" value="' . h((string) $from) . '" />'
             . '<input type="hidden" name="as_of" value="' . h((string) $as_of) . '" />'
             . '<input type="hidden" name="back" value="' . h(($back === 'reconciliation') ? 'reconciliation' : 'account') . '" />'
-            . '<button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . h(lang('Late payment fee invoice')) . '</button>'
+            . '<button type="submit" class="btn btn-sm btn-outline theme-primary"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . h(lang('Late payment fee invoice')) . '</button>'
             . '</form>';
     }
 
-    return '<div class="d-flex flex-wrap align-items-center gap-2 small">'
-        . '<i class="bi bi-hourglass-split text-warning" aria-hidden="true"></i>'
+    return '<div class="d-flex flex-wrap align-items-center gap-3 small">'
+        . '<i class="bi bi-hourglass-split fg-warning" aria-hidden="true"></i>'
         . '<span>' . h(erp_late_fee_summary_text($fee)) . '</span>'
         . $button
         . '</div>';

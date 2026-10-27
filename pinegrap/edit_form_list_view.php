@@ -114,7 +114,7 @@ if (!$_POST) {
 
         // Show marker next to collection fields, so user understands which
         // fields are collection fields.
-        $collection_field_marker = ' <span class="text-success">' . lang('Collection Field') . '</span>';
+        $collection_field_marker = ' <span class="fg-success">' . lang('Collection Field') . '</span>';
     }
 
     // Get collection A info for this form list view.  We get the collection A
@@ -626,29 +626,29 @@ if (!$_POST) {
                     }
 
                     $output_browse_field_rows .=
-                        '<div class="form-check">
-                            <input type="checkbox" id="browse_field_' . $field['id'] . '" name="browse_field_' . $field['id'] . '" value="1"' . $output_checked . ' class="form-check-input collapse-switcher" data-bs-target="#browse_field_' . $field['id'] . '_row" onclick="show_or_hide_edit_form_list_view_browse_field(' . $field['id'] . ')"/>
-                            <label class="form-check-label" for="browse_field_' . $field['id'] . '">' . $output_label . '</label>
+                        '<div class="form-field">
+                            <input type="checkbox" id="browse_field_' . $field['id'] . '" name="browse_field_' . $field['id'] . '" value="1"' . $output_checked . ' class="check collapse-switcher" data-bs-target="#browse_field_' . $field['id'] . '_row" onclick="show_or_hide_edit_form_list_view_browse_field(' . $field['id'] . ')"/>
+                            <label class="" for="browse_field_' . $field['id'] . '">' . $output_label . '</label>
                         </div>
-                        <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="browse_field_' . $field['id'] . '_row">
+                        <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="browse_field_' . $field['id'] . '_row">
                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                             <div class="popover-body">
                                 <div class="row">
-                                    <div class="col-12 col-lg-6 col-xl-4 my-1" id="browse_field_' . $field['id'] . '_number_of_columns_cell" style="' . $output_number_of_columns_cell_style . '" >
+                                    <div class="col-12 lg:col-6 xl:col-4 my-1" id="browse_field_' . $field['id'] . '_number_of_columns_cell" style="' . $output_number_of_columns_cell_style . '" >
                                         <label for="browse_field_' . $field['id'] . '_number_of_columns" class="form-label">' . lang('Columns') . '</label>
                                         <input value="' . $output_number_of_columns . '" name="browse_field_' . $field['id'] . '_number_of_columns" id="browse_field_' . $field['id'] . '_number_of_columns" type="text" class="form-control" size="2" maxlength="3" />
                                     </div>
-                                    <div class="col-12 col-lg-6 col-xl-4 my-1" id="browse_field_' . $field['id'] . '_sort_order_cell" style="' . $output_sort_order_cell_style . '">
+                                    <div class="col-12 lg:col-6 xl:col-4 my-1" id="browse_field_' . $field['id'] . '_sort_order_cell" style="' . $output_sort_order_cell_style . '">
                                         <label for="browse_field_' . $field['id'] . '_sort_order" class="form-label">' . lang('Sorting') . '</label>
-                                        <select class="form-select" name="browse_field_' . $field['id'] . '_sort_order" id="browse_field_' . $field['id'] . '_sort_order"><option value="ascending"' . $output_sort_order_ascending_selected . '>' . lang('Ascending') . '</option><option value="descending"' . $output_sort_order_descending_selected . '>' . lang('Descending') . '</option></select>
+                                        <select class="form-control" name="browse_field_' . $field['id'] . '_sort_order" id="browse_field_' . $field['id'] . '_sort_order"><option value="ascending"' . $output_sort_order_ascending_selected . '>' . lang('Ascending') . '</option><option value="descending"' . $output_sort_order_descending_selected . '>' . lang('Descending') . '</option></select>
                                     </div>
-                                    <div class="col-12 col-lg-6 col-xl-4 my-1" id="browse_field_' . $field['id'] . '_date_format_cell" style="' . $output_date_format_cell_style . '">
+                                    <div class="col-12 lg:col-6 xl:col-4 my-1" id="browse_field_' . $field['id'] . '_date_format_cell" style="' . $output_date_format_cell_style . '">
                                         ' . $output_date_format_field . '
                                     </div>
-                                    <div class="col-12 my-2" id="browse_field_' . $field['id'] . '_shortcut_cell" style="' . $output_shortcut_cell_style . '">
-                                        <div class="form-check">
-                                            <input type="checkbox" id="browse_field_' . $field['id'] . '_shortcut" name="browse_field_' . $field['id'] . '_shortcut" value="1"' . $output_shortcut_checked . ' class="form-check-input" />
-                                            <label class="form-check-label" for="browse_field_' . $field['id'] . '_shortcut">' . lang('Shortcut') . '</label>
+                                    <div class="col-12 my-3" id="browse_field_' . $field['id'] . '_shortcut_cell" style="' . $output_shortcut_cell_style . '">
+                                        <div class="form-field">
+                                            <input type="checkbox" id="browse_field_' . $field['id'] . '_shortcut" name="browse_field_' . $field['id'] . '_shortcut" value="1"' . $output_shortcut_checked . ' class="check" />
+                                            <label class="" for="browse_field_' . $field['id'] . '_shortcut">' . lang('Shortcut') . '</label>
                                         </div>
                                     </div>
                                 </div>
@@ -693,59 +693,51 @@ if (!$_POST) {
             <div class="row">
             <div class="col-12">
                 ' . $form->get_messages() . '
-                <div class="row mb-2 flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3 flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         <p>' . $output_custom_form_information . '</p>
                     </div>
                 </div>
-                <div class="modal fade" id="hints" tabindex="-1" aria-labelledby="hints" aria-hidden="true">
-                    <div class="modal-dialog modal-xl ">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">' . lang('Hints') . '</h5>
-                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <dialog class="dialog dialog-xl" id="hints" aria-labelledby="hints">
+                            <div class="dialog-header">
+                                <h5 class="dialog-title">' . lang('Hints') . '</h5>
+                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                             </div>
-                            <div class="modal-body ">
+                            <div class="dialog-body ">
                                 <div class="row">
-                                    <div class="col-12 my-3">
+                                    <div class="col-12 my-5">
                                         <p>' . lang('Copy tags from Fields and paste in the layout below.') . '</p>
                                         <p>' . lang('To link to a Form Item View Page, create a link and set the link URL to ^^form_item_view^^ (e.g. &lt;a href="^^form_item_view^^"&gt;Example&lt;/a&gt;). The system will then automatically create a URL. If the link does not work then make sure that a Form Item View Page is set in the page properties for this Form List View.') . '</p>
                                         <p>' . lang('Use the following URL format to link to files and embed images') . ':</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">{path}^^example^^</p>
+                                        <p class="mt-3 mb-7 p-5 bg-black rounded-4 fg-white">{path}^^example^^</p>
                                         <p>' . lang('Use the following format to output different content depending on whether there is a value or not') . ':</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">[[' . lang('There is a value') . ': ^^example^^ || ' . lang('There is not a value') . ']]</p>
+                                        <p class="mt-3 mb-7 p-5 bg-black rounded-4 fg-white">[[' . lang('There is a value') . ': ^^example^^ || ' . lang('There is not a value') . ']]</p>
                                         <p>' . lang('Use the following format to output different content depending on whether Comparison Operators.') . ' ("==","===","!=","<>","!==","<",">","<=",">=","<=>"):</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {else} ' . lang('Not Equal') . ' {endif}<br/>{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {endif}</p>
+                                        <p class="mt-3 mb-7 p-5 bg-black rounded-4 fg-white">{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {else} ' . lang('Not Equal') . ' {endif}<br/>{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {endif}</p>
                                         <p>' . lang(array('string'=>'Use the following format to customize the date format for date and date & time fields. The format can either be a {var:1} or "relative" for a relative time (e.g. "2 minutes ago", "2 minutes from now").','vars'=>lang('<a href="http://php.net/manual/en/function.date.php" target="_blank">PHP date format</a>'))) . '</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">^^submitted_date_and_time^^%%l, F j, Y \a\t g:i A%%<br />^^submitted_date_and_time^^%%relative%%</p>
+                                        <p class="mt-3 mb-7 p-5 bg-black rounded-4 fg-white">^^submitted_date_and_time^^%%l, F j, Y \a\t g:i A%%<br />^^submitted_date_and_time^^%%relative%%</p>
                                         <p>' . lang('Use the following URL format to link directly to the newest comment') . ':</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">#c-^^newest_comment_id^^</p>
+                                        <p class="mt-3 mb-7 p-5 bg-black rounded-4 fg-white">#c-^^newest_comment_id^^</p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
+                </dialog>
                 
-                <div class="modal fade" id="hints_for_advanced_search" tabindex="-1" aria-labelledby="hints_for_advanced_search" aria-hidden="true">
-                    <div class="modal-dialog modal-xl ">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">' . lang('Hints') . '</h5>
-                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <dialog class="dialog dialog-xl" id="hints_for_advanced_search" aria-labelledby="hints_for_advanced_search">
+                            <div class="dialog-header">
+                                <h5 class="dialog-title">' . lang('Hints') . '</h5>
+                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                             </div>
-                            <div class="modal-body ">
+                            <div class="dialog-body ">
                                 <div class="row">
-                                    <div class="col-12 my-3">
+                                    <div class="col-12 my-5">
                                         <p>' . lang('Copy tags from Fields and paste in the layout below.') . '</p>
                                         <p>' . lang('You may add additional properties to any field for further customization. See help for available properties.') . '</p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
+                </dialog>
                 <form action="edit_form_list_view.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
@@ -754,38 +746,38 @@ if (!$_POST) {
                     ' . $output_mysql_version_new_hidden_field . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <label for="name" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Field Options') . '
                                 </label>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <div class="form-text text-start">' . lang(array('string'=>'Header (code that is outputted before the list of Submitted Forms){var:1}','vars'=>$collection_field_marker)) . '</div>
                                             <textarea id="header_content" name="header_content">' . h($header) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'header_content', 'code_type' => 'mixed')) . '
                                         </div>
-                                        <div class="col-12 col-md-auto col-lg my-2 ">
-                                            <p class="mb-0 text-primary ">' . lang('System Fields') . '</p>
+                                        <div class="col-12 md:col-auto lg:col my-3 ">
+                                            <p class="mb-0 fg-primary ">' . lang('System Fields') . '</p>
                                             <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:150px;max-height:500px;resize: vertical;">
                                                 ' . $output_available_standard_fields . '
                                             </ul>
                                         </div>
-                                        <div class="col-12 col-md my-2">
+                                        <div class="col-12 md:col my-3">
                                             <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
                                             <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:150px;max-height:500px;resize: vertical;">
                                                 ' . $output_available_custom_fields . '
                                             </ul>
                                         </div>
-                                        <div class="col-12 text-end my-2">
-                                            <button type="button" class="btn btn-link link-secondary" data-bs-toggle="modal" data-bs-target="#hints"><span class="material-icons me-1">info</span>' . lang('Hints') . '</button>
+                                        <div class="col-12 text-end my-3">
+                                            <button type="button" class="btn btn-link pg-link-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><span class="material-icons me-1">info</span>' . lang('Hints') . '</button>
                                         </div>
-                                        <div class="col mt-3">
+                                        <div class="col mt-5">
                                             <div class="form-text text-start">' . lang(array('string'=>'Display layout of submitted form data fields within View{var:1}','vars'=>$collection_field_marker)) . '</div>
                                             <textarea id="layout" name="layout">' . h($layout) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')) . '
                                         </div>
-                                        <div class="col-12 my-2 mt-5">
+                                        <div class="col-12 my-3 mt-12">
                                             <div class="form-text text-start">' . lang(array('string'=>'Footer (code that is outputted after the list of Submitted Forms){var:1}','vars'=>$collection_field_marker)) . '</div>
                                             <textarea id="footer_content" name="footer_content">' . h($footer) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'footer_content', 'code_type' => 'mixed')) . '
@@ -795,47 +787,47 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <label for="name" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Sort & Filter Options') . '
                                 </label>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
-                                            <div class="input-group-text row my-2">
-                                                <div class="col-12 col-md">' . lang('Summarize by') . '</div>
-                                                <div class="col-12 col-md"><select class="form-select" id="order_by_1" name="order_by_1" onchange="change_order_by(1)">' . select_order_by($order_by_1, $standard_fields, $custom_fields, TRUE) . '</select></div>
-                                                <div class="col-12 col-md">' . lang('order by') . '</div>
-                                                <div class="col-12 col-md"><select class="form-select" id="order_by_1_type" name="order_by_1_type"' . $output_order_by_1_type_style . '>' . select_order_by_type($order_by_1_type) . '</select></div>
+                                        <div class="col-12 my-3">
+                                            <div class="input-group-text row my-3">
+                                                <div class="col-12 md:col">' . lang('Summarize by') . '</div>
+                                                <div class="col-12 md:col"><select class="form-control" id="order_by_1" name="order_by_1" onchange="change_order_by(1)">' . select_order_by($order_by_1, $standard_fields, $custom_fields, TRUE) . '</select></div>
+                                                <div class="col-12 md:col">' . lang('order by') . '</div>
+                                                <div class="col-12 md:col"><select class="form-control" id="order_by_1_type" name="order_by_1_type"' . $output_order_by_1_type_style . '>' . select_order_by_type($order_by_1_type) . '</select></div>
                                             </div>
-                                            <div class="input-group-text row my-2">
-                                                <div class="col-12 col-md">' . lang('and then by') . '</div>
-                                                <div class="col-12 col-md"><select class="form-select" id="order_by_2" name="order_by_2" onchange="change_order_by(2)">' . select_order_by($order_by_2, $standard_fields, $custom_fields, FALSE) . '</select></div>
-                                                <div class="col-12 col-md">' . lang('order by') . '</div>
-                                                <div class="col-12 col-md"><select class="form-select" id="order_by_2_type" name="order_by_2_type"' . $output_order_by_2_type_style . '>' . select_order_by_type($order_by_2_type) . '</select></div>
+                                            <div class="input-group-text row my-3">
+                                                <div class="col-12 md:col">' . lang('and then by') . '</div>
+                                                <div class="col-12 md:col"><select class="form-control" id="order_by_2" name="order_by_2" onchange="change_order_by(2)">' . select_order_by($order_by_2, $standard_fields, $custom_fields, FALSE) . '</select></div>
+                                                <div class="col-12 md:col">' . lang('order by') . '</div>
+                                                <div class="col-12 md:col"><select class="form-control" id="order_by_2_type" name="order_by_2_type"' . $output_order_by_2_type_style . '>' . select_order_by_type($order_by_2_type) . '</select></div>
                                             </div>
-                                            <div class="input-group-text row my-2">
-                                                <div class="col-12 col-md">' . lang('and finally by') . '</div>
-                                                <div class="col-12 col-md"><select class="form-select" id="order_by_3" name="order_by_3" onchange="change_order_by(3)">' . select_order_by($order_by_3, $standard_fields, $custom_fields, FALSE) . '</select></div>
-                                                <div class="col-12 col-md">' . lang('order by') . '</div>
-                                                <div class="col-12 col-md"><select class="form-select" id="order_by_3_type" name="order_by_3_type"' . $output_order_by_3_type_style . '>' . select_order_by_type($order_by_3_type) . '</select></div>
+                                            <div class="input-group-text row my-3">
+                                                <div class="col-12 md:col">' . lang('and finally by') . '</div>
+                                                <div class="col-12 md:col"><select class="form-control" id="order_by_3" name="order_by_3" onchange="change_order_by(3)">' . select_order_by($order_by_3, $standard_fields, $custom_fields, FALSE) . '</select></div>
+                                                <div class="col-12 md:col">' . lang('order by') . '</div>
+                                                <div class="col-12 md:col"><select class="form-control" id="order_by_3_type" name="order_by_3_type"' . $output_order_by_3_type_style . '>' . select_order_by_type($order_by_3_type) . '</select></div>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="maximum_number_of_results" class="form-label">' . lang('Maximum Number of Results') . '</label>
                                             <input value="' . $maximum_number_of_results . '" type="text" name="maximum_number_of_results" id="maximum_number_of_results" class="form-control" size="7" maxlength="10" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                             <div class="text-end form-text">' . lang('leave blank for no limit') . '</div>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="maximum_number_of_results_per_page" class="form-label">' . lang('Maximum Number of Results Per Page') . '</label>
                                             <input value="' . $maximum_number_of_results_per_page . '" type="text" name="maximum_number_of_results_per_page" id="maximum_number_of_results_per_page" class="form-control" size="7" maxlength="10" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                             <div class="text-end form-text">' . lang('leave blank for no limit') . '</div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <h4 class="fw-bold text-muted">' . lang('Filters') . '</h4>
+                                        <div class="col-12 my-3">
+                                            <h4 class="fw-bold fg-secondary">' . lang('Filters') . '</h4>
                                         </div>
                                         <div>
-                                            <a href="javascript:void(0)" onclick="create_filter()" class="button btn btn-primary">' . lang('Add Filter') . '</a>
+                                            <a href="javascript:void(0)" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</a>
                                         </div>
                                         <div class="table-responsive">
                                             <table id="filter_table" class="chart_no_hover table">
@@ -856,67 +848,67 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <label for="name" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Search & Browser Options') . '
                                 </label>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $output_search_checked . ' id="search" name="search" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_edit_form_list_view_search" />
-                                                <label class="form-check-label" for="search">' . lang('Enable Search') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $output_search_checked . ' id="search" name="search" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_edit_form_list_view_search" /></div>
+                                                <label class="" for="search">' . lang('Enable Search') . '</label>
                                                 <div class="form-text" for="search">' . lang('Allow Visitor to search data') . '</div>
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_edit_form_list_view_search">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_edit_form_list_view_search">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
-                                                        <div class="col-12 col-md-6 col-lg-4 my-1">
+                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
                                                             <label for="search_label" class="form-label">' . lang('Label') . '</label>
                                                             <input name="search_label" id="search_label" type="text" value="' . h($search_label) . '" size="30" maxlength="100" class="form-control" />
                                                         </div>
-                                                        <div class="col-12 my-2" id="search_advanced_row"' . $output_search_advanced_row_style . '>
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $output_search_advanced_checked . ' id="search_advanced" name="search_advanced" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_edit_form_list_view_search_advanced" />
-                                                                <label class="form-check-label" for="search_advanced">' . lang('Enable Advanced Search') . '</label>
+                                                        <div class="col-12 my-3" id="search_advanced_row"' . $output_search_advanced_row_style . '>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $output_search_advanced_checked . ' id="search_advanced" name="search_advanced" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_edit_form_list_view_search_advanced" /></div>
+                                                                <label class="" for="search_advanced">' . lang('Enable Advanced Search') . '</label>
                                                             </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_edit_form_list_view_search_advanced">
+                                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_edit_form_list_view_search_advanced">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                 <div class="popover-body">
                                                                     <div class="row">
                                                                         <div class="col-12 my-1">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $output_search_advanced_show_by_default_checked . ' id="search_advanced_show_by_default" name="search_advanced_show_by_default" class="form-check-input" type="checkbox" role="switch" onclick="if (this.checked == true) {document.getElementById(\'browse_show_by_default_form_field_id\').selectedIndex = 0}" />
-                                                                                <label class="form-check-label" for="search_advanced_show_by_default">' . lang('Expand by Default') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $output_search_advanced_show_by_default_checked . ' id="search_advanced_show_by_default" name="search_advanced_show_by_default" class="" type="checkbox" role="switch" onclick="if (this.checked == true) {document.getElementById(\'browse_show_by_default_form_field_id\').selectedIndex = 0}" /></div>
+                                                                                <label class="" for="search_advanced_show_by_default">' . lang('Expand by Default') . '</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 my-1">
-                                                                            <h4 class="fw-bold text-muted">' . lang('All available fields for advanced search') . '</h4>
+                                                                            <h4 class="fw-bold fg-secondary">' . lang('All available fields for advanced search') . '</h4>
                                                                         </div>
-                                                                        <div class="col-12 col-md-auto col-lg my-2">
-                                                                            <p class="mb-0 text-primary ">' . lang('System Fields') . '</p>
+                                                                        <div class="col-12 md:col-auto lg:col my-3">
+                                                                            <p class="mb-0 fg-primary ">' . lang('System Fields') . '</p>
                                                                             <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:150px;max-height:500px;resize: vertical;">
                                                                                 ' . $output_advanced_search_available_standard_fields . '
                                                                             </ul>
                                                                         </div>
-                                                                        <div class="col-12 col-md-auto col-lg my-2">
+                                                                        <div class="col-12 md:col-auto lg:col my-3">
                                                                             <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
                                                                             <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:150px;max-height:500px;resize: vertical;">
                                                                                 ' . $output_advanced_search_available_custom_fields . '
                                                                             </ul>
                                                                         </div>
-                                                                        <div class="col-12 col-md-auto col-lg my-2">
-                                                                            <p class="mb-0 text-success">' . lang('Buttons') . '</p>
+                                                                        <div class="col-12 md:col-auto lg:col my-3">
+                                                                            <p class="mb-0 fg-success">' . lang('Buttons') . '</p>
                                                                             <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:150px;max-height:500px;resize: vertical;">
                                                                                 <li class="list-group-item py-1" >{{name: \'submit_button\'}}</li> 
                                                                                 <li class="list-group-item py-1" >{{name: \'clear_button\'}}</li>
                                                                             </ul>
                                                                         </div>
-                                                                        <div class="col-12 text-end my-2">
-                                                                            <button type="button" class="btn btn-link link-secondary" data-bs-toggle="modal" data-bs-target="#hints_for_advanced_search"><span class="material-icons me-1">info</span>' . lang('Hints') . '</button>
+                                                                        <div class="col-12 text-end my-3">
+                                                                            <button type="button" class="btn btn-link pg-link-secondary" data-bs-toggle="dialog" data-bs-target="#hints_for_advanced_search"><span class="material-icons me-1">info</span>' . lang('Hints') . '</button>
                                                                         </div>
-                                                                        <div class="col mt-3">
+                                                                        <div class="col mt-5">
                                                                             <div class="form-text text-start">' . lang(array('string'=>'Layout of fields in advanced search{var:1}','vars'=>$collection_field_marker)) . '</div>
                                                                             <textarea id="search_advanced_layout" name="search_advanced_layout">' . h($search_advanced_layout) . '</textarea>
                                                                             ' . pg_code_editor_attach(array('id' => 'search_advanced_layout', 'code_type' => 'mixed')) . '
@@ -929,23 +921,23 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2"' . $output_browse_container_style . '>
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $output_browse_checked . ' id="browse" name="browse" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_edit_form_list_view_browse" />
-                                                <label class="form-check-label" for="browse">' . lang('Enable Browse') . '</label>
+                                        <div class="col-12 my-3"' . $output_browse_container_style . '>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $output_browse_checked . ' id="browse" name="browse" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_edit_form_list_view_browse" /></div>
+                                                <label class="" for="browse">' . lang('Enable Browse') . '</label>
                                                 <div class="form-text" for="browse">' . lang('Allow Visitor to browse data') . '</div>
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_edit_form_list_view_browse">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_edit_form_list_view_browse">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
-                                                        <div class="col-12 col-md-6 col-lg-4 my-1">
+                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
                                                             <label for="browse_show_by_default_form_field_id" class="form-label">' . lang('Expand by Default') . '</label>
-                                                            <select class="form-select" id="browse_show_by_default_form_field_id" name="browse_show_by_default_form_field_id" onchange="if (this.selectedIndex != 0) {document.getElementById(\'search_advanced_show_by_default\').checked = false}">' . $output_browse_show_by_default_form_field_id_options . '</select>
+                                                            <select class="form-control" id="browse_show_by_default_form_field_id" name="browse_show_by_default_form_field_id" onchange="if (this.selectedIndex != 0) {document.getElementById(\'search_advanced_show_by_default\').checked = false}">' . $output_browse_show_by_default_form_field_id_options . '</select>
                                                         </div>
-                                                        <div class="col-12 my-2" id="calendar_view_calendars_row" style="' . $calendar_view_calendars_row_style . '">
+                                                        <div class="col-12 my-3" id="calendar_view_calendars_row" style="' . $calendar_view_calendars_row_style . '">
                                                             <h5>' . lang('Select Fields') . '</h5>
-                                                            <div class="card multiselect-checkbox-container rounded-0 mb-4">
+                                                            <div class="card multiselect-checkbox-container rounded-0 mb-7">
                                                                 <div class="card-body overflow-auto" >
                                                                     ' . $output_browse_field_rows . '
                                                                 </div>
@@ -955,10 +947,10 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $output_show_results_by_default_checked . ' id="show_results_by_default" name="show_results_by_default" class="form-check-input" type="checkbox" role="switch" />
-                                                <label class="form-check-label" for="show_results_by_default">' . lang('Show Results by Default') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $output_show_results_by_default_checked . ' id="show_results_by_default" name="show_results_by_default" class="" type="checkbox" role="switch" /></div>
+                                                <label class="" for="show_results_by_default">' . lang('Show Results by Default') . '</label>
                                                 <div class="form-text" for="show_results_by_default">' . lang('Show all results before Visitor filters results by browsing or searching') . '</div>
                                             </div>
                                         </div>
@@ -967,10 +959,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

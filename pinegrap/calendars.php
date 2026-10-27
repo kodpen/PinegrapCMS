@@ -80,7 +80,7 @@ if($calendar_name == ''){
     $pg_breadcrumb_items[] = array('label' => lang('All Calendars'));
 }else{
     $pg_breadcrumb_items[] = array('label' => lang('View Calendars'));
-    $output_edit_calendar_button ='<a class="btn btn-sm btn-primary m-1 " href="edit_calendar.php?id=' . h(($_SESSION['software']['calendars']['calendar_id'] ?? '')) . '"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Edit Calendar Properties') ) . '</a>';
+    $output_edit_calendar_button ='<a class="btn btn-sm btn-solid theme-primary m-1 " href="edit_calendar.php?id=' . h(($_SESSION['software']['calendars']['calendar_id'] ?? '')) . '"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Edit Calendar Properties') ) . '</a>';
 }
 echo
 
@@ -106,16 +106,16 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
 
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_calendar_event.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create Calendar Event') ) . '</a>
+                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_calendar_event.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create Calendar Event') ) . '</a>
                         ' . $output_edit_calendar_button . '
                     </nav>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 ' . get_calendar(($_SESSION['software']['calendars']['calendar_id'] ?? ''), $calendars, ($_SESSION['software']['calendars']['view'] ?? ''), ($_SESSION['software']['calendars']['status'] ?? ''), $user, ($_SESSION['software']['calendars']['date'] ?? ''), PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event.php') . '
             </div>
         </div>
