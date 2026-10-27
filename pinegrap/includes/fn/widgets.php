@@ -6981,36 +6981,26 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // campaign code as a parcel number, under a link to a courier that had
     // never heard of it.
     //
-    // The carrier comes from the shipping method the customer chose, failing
+    // Since 11.0.20 the row holds the carrier and the link the panel, the API
+    // or a marketplace saved; they win, as on the order screen. Without them
+    // the carrier comes from the shipping method the customer chose, failing
     // that from the carrier the site names for the whole shop
     // (ECOMMERCE_DEFAULT_TRACKING_PROVIDER), and failing that from the number's
-    // own shape (pg_shipping_carrier). The helpers read the site's default
-    // themselves, as they do on every other order screen.
+    // own shape (pg_sw_order_parcels(), pg_shipment_view()).
+    $tracking_columns = pg_shipment_rows_ready()
+        ? ', shipping_tracking_numbers.carrier, shipping_tracking_numbers.tracking_url, shipping_tracking_numbers.status'
+        : '';
+
     $tracking_rows = db_items("SELECT shipping_tracking_numbers.number,
             shipping_tracking_numbers.ship_to_id,
-            ship_tos.shipping_method_code
+            ship_tos.shipping_method_code" . $tracking_columns . "
         FROM shipping_tracking_numbers
         LEFT JOIN ship_tos ON ship_tos.id = shipping_tracking_numbers.ship_to_id
         WHERE (shipping_tracking_numbers.order_id = '$oid_esc')
             AND (TRIM(shipping_tracking_numbers.number) != '')
         ORDER BY shipping_tracking_numbers.id ASC");
 
-    if (!is_array($tracking_rows)) {
-        $tracking_rows = array();
-    }
-
-    $tracking_parcels = array();
-
-    foreach ($tracking_rows as $tracking_row) {
-        $parcel_number = trim((string)$tracking_row['number']);
-        $parcel_method = trim((string)($tracking_row['shipping_method_code'] ?? ''));
-        $tracking_parcels[] = array(
-            'number'  => $parcel_number,
-            'url'     => get_shipping_tracking_url($parcel_number, $parcel_method),
-            'carrier' => get_shipping_carrier_name($parcel_number, $parcel_method),
-            'ship_to' => (int)($tracking_row['ship_to_id'] ?? 0),
-        );
-    }
+    $tracking_parcels = pg_sw_order_parcels(is_array($tracking_rows) ? $tracking_rows : array(), pg_shipping_default_carrier());
 
     // The first parcel answers the singular tokens, which is what a one-parcel
     // order - nearly all of them - needs; __tracking_codes carries the rest.
