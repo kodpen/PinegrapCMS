@@ -19,7 +19,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - Count aggregated log rows with `SUM(hit_count)`, never `COUNT(*)`, and cap the table with `MAX(id)` (`waf-log-aggregation-and-cap.md`).
 - Send a visitor to a sign-in screen only for a page opening: `get_file.php` goes through `get_file_sign_in_redirect()`, which answers a sub-resource fetch (`waf_fetch_is_subresource()`) with 403, and such a fetch of a sign-in screen is not counted on the sensitive allowance (`waf-subresource-sign-in-fetches.md`).
 - Register a rate refusal with the burst flag (`waf_register_offence($ip, $score, $blocking, true)`: one offence per subject and minute) and a signature hit, an attack tool or a wrong key without it; never auto-ban an address staff signed in from (`waf-offence-fold-and-staff-address.md`).
-- Gate every per-address counter or ban on `waf_ip_is_counted()` (not infrastructure, not a private or reserved address; the lists still apply), and go by `waf_script_name()`, never `basename(SCRIPT_NAME)`: the web root's `index.php` is the router (`waf-counter-subjects-and-endpoints.md`).
+- Gate a new per-address counter or ban on `waf_ip_is_counted()` (not infrastructure, not a private or reserved address; the lists still apply), and go by `waf_script_name()`, never `basename(SCRIPT_NAME)`: the web root's `index.php` is the router (`waf-counter-subjects-and-endpoints.md`).
 <!-- key-rules:end -->
 
 ## Files

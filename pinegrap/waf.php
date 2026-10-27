@@ -2074,7 +2074,10 @@ function waf_script_dir($path)
         $path = $real;
     }
 
-    return rtrim(str_replace('\\', '/', $path), '/');
+    $path = rtrim(str_replace('\\', '/', $path), '/');
+
+    // The file system root is a directory too (a chroot whose web root is /).
+    return ($path === '') ? '/' : $path;
 }
 
 /**
@@ -3994,7 +3997,16 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'shipworks.php', 'workspace_guest.php'));
+        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php');
+
+        // ShipWorks is spared the counters sized for a sign-in screen only
+        // while the sign-in throttle counts its password; with the throttle
+        // off, those counters are what bounds a password guess against it.
+        if (waf_schema_ready() && ((int) waf_setting('login_throttle', 1) === 1)) {
+            $names[] = 'shipworks.php';
+        }
+
+        $answer = waf_request_names_script($names);
     }
 
     return $answer;
@@ -4737,13 +4749,25 @@ function waf_country_staff_signed_in()
  * The allow list of addresses never reaches here: waf_run() returns for it
  * before any rule.
  */
+/**
+ * The endpoints the API exemption of the country restriction covers: called
+ * by a service's servers, which run wherever their provider does. Not every
+ * credential endpoint (waf_is_api_request()): the ShipWorks client and a
+ * guest room's page are a warehouse's or a person's own requests, held to
+ * the country rule like the panel's screens.
+ */
+function waf_country_api_scripts()
+{
+    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php');
+}
+
 function waf_country_request_exempt()
 {
     if (waf_path_is_always_served() || waf_is_health_request() || waf_is_client_metadata_request()) {
         return true;
     }
 
-    if ((int) waf_setting('waf_country_exempt_api', 1) && waf_is_api_request() && !waf_is_site_api_request()) {
+    if ((int) waf_setting('waf_country_exempt_api', 1) && waf_request_names_script(waf_country_api_scripts())) {
         return true;
     }
 

@@ -21,8 +21,10 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/waf.php');
 
-// A private, link-local, loopback or documentation address is nobody's on
-// the internet and is not counted; a public one is a visitor's. Being
+// A private, link-local, loopback or unspecified address (the ranges PHP's
+// filter rejects as private or reserved; the IPv4 documentation ranges are
+// not among them) is nobody's on the internet and is not counted; a public
+// one is a visitor's. Being
 // infrastructure (the server, a trusted proxy) keeps its own meaning, which
 // the maintenance card reads: a private address is not that.
 function test_waf_subjects_private_or_reserved_addresses()
@@ -67,6 +69,7 @@ function test_waf_subjects_root_index_is_the_router()
 	pg_assert_same('index.php', waf_script_name_from('/pinegrap/index.php', $software . '/./index.php', $software), 'the same directory spelt differently');
 	pg_assert_same('router.php', waf_script_name_from('/pinegrap/router.php', $software . '/router.php', $software), 'the router itself');
 	pg_assert_same('registration_entrance.php', waf_script_name_from('/pinegrap/registration_entrance.php', $software . '/registration_entrance.php', $software), 'another script');
+	pg_assert_same('router.php', waf_script_name_from('/index.php', '/index.php', '/pinegrap'), 'a chroot whose web root is the file system root');
 	pg_assert_same('index.php', waf_script_name_from('/index.php', '', $software), 'no file name known: the name as it is');
 	pg_assert_same('index.php', waf_script_name_from('/index.php', '/var/www/index.php', ''), 'no software directory known');
 	pg_assert_same('router.php', waf_script_name_from('/index.php', 'C:\\inetpub\\wwwroot\\index.php', 'C:\\inetpub\\wwwroot\\pinegrap'), 'Windows paths');
@@ -89,8 +92,30 @@ function test_waf_subjects_credential_endpoints()
 	pg_assert_false(waf_names_script_in('/pinegrap/index.php', '/pinegrap/index.php/shipworks.php', $api), 'the name as PATH_INFO claims nothing');
 
 	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
-	pg_assert_contains("'marketplace_webhook.php', 'shipworks.php', 'workspace_guest.php'));", $waf, 'both in waf_is_api_request()');
+	pg_assert_contains("'marketplace_webhook.php', 'workspace_guest.php');", $waf, 'the guest room in waf_is_api_request()');
+	pg_assert_contains("if (waf_schema_ready() && ((int) waf_setting('login_throttle', 1) === 1)) {\n            \$names[] = 'shipworks.php';", $waf, 'ShipWorks only while the sign-in throttle counts its password');
 	pg_assert_contains("\$answer = waf_request_names_script(array('api.php'));", $waf, 'api.php alone keeps the site allowance');
+
+	// Neither joins the country restriction's API exemption: a warehouse's
+	// client and a person's guest room are held to the country rule like
+	// the panel.
+	$country = waf_country_api_scripts();
+	pg_assert_same(array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php'), $country);
+	pg_assert_false(waf_names_script_in('/pinegrap/shipworks.php', '/pinegrap/shipworks.php', $country), 'ShipWorks is not country-exempt');
+	pg_assert_false(waf_names_script_in('/pinegrap/workspace_guest.php', '/pinegrap/workspace_guest.php', $country), 'a guest room is not country-exempt');
+	pg_assert_contains("waf_setting('waf_country_exempt_api', 1) && waf_request_names_script(waf_country_api_scripts())", $waf, 'the country restriction reads its own list');
+}
+
+// The sign-in throttle's address lock asks the same question as the
+// firewall's counters, so one shared address cannot lock everybody out.
+function test_waf_subjects_sign_in_throttle_counts_the_same_addresses()
+{
+	$auth = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
+	$start = strpos($auth, 'function pg_login_throttle_subjects(');
+	$body = substr($auth, (int) $start, (int) strpos($auth, "\n}\n", (int) $start) - (int) $start);
+
+	pg_assert_contains("\$address_counted = function_exists('waf_ip_is_counted')", $body);
+	pg_assert_contains("if (\$ip !== '' && \$address_counted) {", $body);
 }
 
 // The api.php allowance asks whether the session is staff, as the sensitive
@@ -113,5 +138,5 @@ function test_waf_subjects_settings_warn_about_an_unlisted_proxy()
 
 	pg_assert_contains("\$waf_own_address = function_exists('waf_client_ip') ? (string) waf_client_ip() : '';", $screen);
 	pg_assert_contains("waf_ip_is_private_or_reserved(\$waf_own_address) && !waf_ip_in_any(\$waf_own_address, array('127.0.0.0/8', '::1/128'))", $screen, 'loopback is the operator on the server itself');
-	pg_assert_contains("lang(array('string' => 'The firewall sees this request as coming from {var:1}, a private address.", $screen);
+	pg_assert_contains("lang(array('string' => 'The firewall sees this request as coming from {var:1}, a private address: a proxy in front of the site that is not listed here, or a local network.", $screen);
 }

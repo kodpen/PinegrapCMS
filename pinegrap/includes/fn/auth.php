@@ -4011,13 +4011,19 @@ function pg_login_throttle_subjects($identifier)
 
     $ip = function_exists('waf_client_ip') ? waf_client_ip() : '';
 
-    // An unresolved address stands for the whole internet rather than one
-    // visitor, so counting against it would lock everybody out at once.
+    // An unresolved or a shared address (the one a proxy not listed under
+    // Trusted Proxies gives every visitor) stands for the whole internet
+    // rather than one visitor, so counting against it would lock everybody
+    // out at once. See waf_ip_is_counted().
     //
     // Counted per subject - the address for IPv4, the /64 for IPv6 - because
     // an IPv6 guesser can otherwise present a fresh address on every attempt.
     // See waf_ip_subject().
-    if ($ip !== '' && (!function_exists('waf_ip_is_infrastructure') || !waf_ip_is_infrastructure($ip))) {
+    $address_counted = function_exists('waf_ip_is_counted')
+        ? waf_ip_is_counted($ip)
+        : (!function_exists('waf_ip_is_infrastructure') || !waf_ip_is_infrastructure($ip));
+
+    if ($ip !== '' && $address_counted) {
         $subjects['a'] = function_exists('waf_ip_subject') ? waf_ip_subject($ip) : $ip;
     }
 
