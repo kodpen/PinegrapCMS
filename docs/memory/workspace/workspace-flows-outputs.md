@@ -27,4 +27,4 @@ description: Values a flow box gives later boxes (data-passing D1-D3): outputs p
 - Not covered: `ws_scheduled_fill()` values (`{{form_fields}}`, `{{result}}`) and Markdown marks in a message.
 
 ## What does the canvas get?
-- `ws_flow_js_config()` `outputs`: kind => declared list (report: `message_id` only; its counts follow from `steps.metrics` and the box config). Used by the reference check (D4) and the value picker (D6); no canvas UI reads it yet.
+- `ws_flow_js_config()` `outputs`: kind => declared list (report: `message_id` only; its counts follow from `steps.metrics` and the box config). For the value picker (D6); no canvas UI reads it yet. References are checked on the server (`workspace-flows-references.md`).

@@ -51,8 +51,8 @@ if (validate_calendar_event_access($_REQUEST['id']) == false) {
 // in order to check if the user should be able to edit this calendar event
 if (($user['role'] == 3) && ($user['publish_calendar_events'] == FALSE)) {
     // check to see if the calendar event has been published
-    $query = "SELECT published FROM calendar_events WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT published FROM calendar_events WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     // if the event has been published then log and output error
@@ -136,8 +136,8 @@ if (!$_POST) {
                 product_id,
                 next_page_id
             FROM calendar_events
-            WHERE id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $liveform->assign_field_value('name', $row['name']);
@@ -183,8 +183,8 @@ if (!$_POST) {
         $query =
             "SELECT calendar_id
             FROM calendar_events_calendars_xref
-            WHERE calendar_event_id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         
         $selected_calendars = array();
         
@@ -205,8 +205,8 @@ if (!$_POST) {
         $query =
             "SELECT calendar_event_location_id
             FROM calendar_events_calendar_event_locations_xref
-            WHERE calendar_event_id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         
         $selected_calendar_event_locations = array();
         
@@ -237,9 +237,9 @@ if (!$_POST) {
             "SELECT number_of_remaining_spots
             FROM remaining_reservation_spots
             WHERE
-                (calendar_event_id = '" . escape($_GET['id']) . "')
-                AND (recurrence_number = '" . escape($recurrence_number) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (calendar_event_id = ?)
+                AND (recurrence_number = ?)";
+        $result = db_q($query, array((string) $_GET['id'], (string) $recurrence_number)) or output_error('Query failed.');
         
         // if a remaining spots record was found then use it to populate the remaining spots
         if (mysqli_num_rows($result) > 0) {
@@ -788,30 +788,30 @@ if (!$_POST) {
     // if calendar event was selected for delete
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
         // get calendar event name for log
-        $query = "SELECT name FROM calendar_events WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT name FROM calendar_events WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $calendar_event_name = $row['name'];
         
         // delete calendar event
-        $query = "DELETE FROM calendar_events WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM calendar_events WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete calendar event exceptions if any exist
-        $query = "DELETE FROM calendar_event_exceptions WHERE calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM calendar_event_exceptions WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete calendar event cross reference if any exist
-        $query = "DELETE FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM calendar_events_calendars_xref WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete calendar event & calendar event locations cross reference if any exist
-        $query = "DELETE FROM calendar_events_calendar_event_locations_xref WHERE calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM calendar_events_calendar_event_locations_xref WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete remaining spots data if any exists
-        $query = "DELETE FROM remaining_reservation_spots WHERE calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM remaining_reservation_spots WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('event'), $calendar_event_name) )), $_SESSION['sessionusername']);
         $liveform->remove_form();
@@ -985,8 +985,8 @@ if (!$_POST) {
                                     $query =
                                         "SELECT name
                                         FROM calendar_events
-                                        WHERE id = '" . escape($check_availability) . "'";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                        WHERE id = ?";
+                                    $result = db_q($query, array((string) $check_availability)) or output_error('Query failed.');
                                     
                                     $row = mysqli_fetch_assoc($result);
                                     
@@ -1004,8 +1004,8 @@ if (!$_POST) {
                             recurrence_number
                         FROM calendar_event_exceptions
                         WHERE
-                            calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-                    $result = mysqli_query(db::$con, $query);
+                            calendar_event_id = ?";
+                    $result = db_q($query, array((string) $liveform->get_field_value('id')));
                     
                     $calendar_event_exceptions = array();
                     
@@ -1208,8 +1208,8 @@ if (!$_POST) {
                                             $query =
                                                 "SELECT name
                                                 FROM calendar_events
-                                                WHERE id = '" . escape($check_availability) . "'";
-                                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                                WHERE id = ?";
+                                            $result = db_q($query, array((string) $check_availability)) or output_error('Query failed.');
                                             
                                             $row = mysqli_fetch_assoc($result);
                                             
@@ -1290,8 +1290,8 @@ if (!$_POST) {
                 UNIX_TIMESTAMP(start_time) as start_time,
                 UNIX_TIMESTAMP(end_time) as end_time
             FROM calendar_events
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         $row = mysqli_fetch_assoc($result);
         $new_start_time = strtotime(prepare_form_data_for_input($start_time, 'date and time'));
@@ -1301,8 +1301,8 @@ if (!$_POST) {
         if (($new_start_time != $row['start_time'])
             || ($new_end_time != $row['end_time'])) {
             // delete calendar event exceptions (if any)
-            $query = "DELETE FROM calendar_event_exceptions WHERE calendar_event_id = '" . escape($liveform->get_field_value('id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM calendar_event_exceptions WHERE calendar_event_id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         }
 
         // If recurrence was disabled then set recurrence number to 0,
@@ -1314,7 +1314,7 @@ if (!$_POST) {
         // if notes has real content, then use notes content
         if ((strip_tags(escape($liveform->get_field_value('notes'))) != '')
             && (strip_tags(escape($liveform->get_field_value('notes'))) != '&nbsp;')) {
-                $notes = escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('notes')));
+                $notes = prepare_rich_text_editor_content_for_input($liveform->get_field_value('notes'));
                 
         // else notes does not have real content, so set to empty string
         } else {
@@ -1322,53 +1322,89 @@ if (!$_POST) {
         }
 
         $sql_update_publish_columns = '';
+        $publish_values = array();
         
         // If the user has access to publish calendar events then allow
         // publish fields to be updated
         if (($user['role'] < 3) || ($user['publish_calendar_events'] == 'yes')) {
             $sql_update_publish_columns =
-                "published = '" . e($liveform->get('published')) . "',
-                unpublish_days = '" . e($liveform->get('unpublish_days')) . "',";
+                "published = ?,
+                unpublish_days = ?,";
+            $publish_values = array((string) $liveform->get('published'), (string) $liveform->get('unpublish_days'));
         }
         
         // update calendar event
         $query =
             "UPDATE calendar_events
             SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
+                name = ?,
                 $sql_update_publish_columns
-                short_description = '" . escape($liveform->get_field_value('short_description')) . "',
-                full_description = '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('full_description'))) . "',
-                notes = '" . $notes . "',
-                all_day = '" . escape($liveform->get_field_value('all_day')) . "',
-                start_time = '" . escape(prepare_form_data_for_input($start_time, 'date and time')) . "',
-                end_time = '" . escape(prepare_form_data_for_input($end_time, 'date and time')) . "',
-                show_start_time = '" . escape($liveform->get_field_value('show_start_time')) . "',
-                show_end_time = '" . escape($liveform->get_field_value('show_end_time')) . "',
-                recurrence = '" . escape($liveform->get_field_value('recurrence')) . "',
-                recurrence_number = '" . escape($liveform->get_field_value('total_recurrence_number')) . "',
-                recurrence_type = '" . escape($liveform->get_field_value('recurrence_type')) . "',
-                recurrence_day_sun = '" . escape($liveform->get_field_value('recurrence_day_sun')) . "',
-                recurrence_day_mon = '" . escape($liveform->get_field_value('recurrence_day_mon')) . "',
-                recurrence_day_tue = '" . escape($liveform->get_field_value('recurrence_day_tue')) . "',
-                recurrence_day_wed = '" . escape($liveform->get_field_value('recurrence_day_wed')) . "',
-                recurrence_day_thu = '" . escape($liveform->get_field_value('recurrence_day_thu')) . "',
-                recurrence_day_fri = '" . escape($liveform->get_field_value('recurrence_day_fri')) . "',
-                recurrence_day_sat = '" . escape($liveform->get_field_value('recurrence_day_sat')) . "',
-                recurrence_month_type = '" . escape($liveform->get_field_value('recurrence_month_type')) . "',
-                location = '" . escape($liveform->get_field_value('location')) . "',
-                reservations = '" . escape($liveform->get_field_value('reservations')) . "',
-                separate_reservations = '" . escape($liveform->get_field_value('separate_reservations')) . "',
-                limit_reservations = '" . escape($liveform->get_field_value('limit_reservations')) . "',
-                number_of_initial_spots = '" . escape($liveform->get_field_value('number_of_initial_spots')) . "',
-                no_remaining_spots_message = '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('no_remaining_spots_message'))) . "',
-                reserve_button_label = '" . escape($liveform->get_field_value('reserve_button_label')) . "',
-                product_id = '" . escape($liveform->get_field_value('product_id')) . "',
-                next_page_id = '" . escape($liveform->get_field_value('next_page_id')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                short_description = ?,
+                full_description = ?,
+                notes = ?,
+                all_day = ?,
+                start_time = ?,
+                end_time = ?,
+                show_start_time = ?,
+                show_end_time = ?,
+                recurrence = ?,
+                recurrence_number = ?,
+                recurrence_type = ?,
+                recurrence_day_sun = ?,
+                recurrence_day_mon = ?,
+                recurrence_day_tue = ?,
+                recurrence_day_wed = ?,
+                recurrence_day_thu = ?,
+                recurrence_day_fri = ?,
+                recurrence_day_sat = ?,
+                recurrence_month_type = ?,
+                location = ?,
+                reservations = ?,
+                separate_reservations = ?,
+                limit_reservations = ?,
+                number_of_initial_spots = ?,
+                no_remaining_spots_message = ?,
+                reserve_button_label = ?,
+                product_id = ?,
+                next_page_id = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array_merge(
+            array((string) $liveform->get_field_value('name')),
+            $publish_values,
+            array(
+                (string) $liveform->get_field_value('short_description'),
+                (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('full_description')),
+                (string) $notes,
+                (string) $liveform->get_field_value('all_day'),
+                (string) prepare_form_data_for_input($start_time, 'date and time'),
+                (string) prepare_form_data_for_input($end_time, 'date and time'),
+                (string) $liveform->get_field_value('show_start_time'),
+                (string) $liveform->get_field_value('show_end_time'),
+                (string) $liveform->get_field_value('recurrence'),
+                (string) $liveform->get_field_value('total_recurrence_number'),
+                (string) $liveform->get_field_value('recurrence_type'),
+                (string) $liveform->get_field_value('recurrence_day_sun'),
+                (string) $liveform->get_field_value('recurrence_day_mon'),
+                (string) $liveform->get_field_value('recurrence_day_tue'),
+                (string) $liveform->get_field_value('recurrence_day_wed'),
+                (string) $liveform->get_field_value('recurrence_day_thu'),
+                (string) $liveform->get_field_value('recurrence_day_fri'),
+                (string) $liveform->get_field_value('recurrence_day_sat'),
+                (string) $liveform->get_field_value('recurrence_month_type'),
+                (string) $liveform->get_field_value('location'),
+                (string) $liveform->get_field_value('reservations'),
+                (string) $liveform->get_field_value('separate_reservations'),
+                (string) $liveform->get_field_value('limit_reservations'),
+                (string) $liveform->get_field_value('number_of_initial_spots'),
+                (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('no_remaining_spots_message')),
+                (string) $liveform->get_field_value('reserve_button_label'),
+                (string) $liveform->get_field_value('product_id'),
+                (string) $liveform->get_field_value('next_page_id'),
+                (string) $user['id'],
+                (string) $liveform->get_field_value('id'))
+        )) or output_error('Query failed.');
         
         foreach ($calendars as $calendar) {
             if (validate_calendar_access($calendar['id']) == true) {
@@ -1378,9 +1414,9 @@ if (!$_POST) {
                         "SELECT calendar_event_id
                         FROM calendar_events_calendars_xref
                         WHERE 
-                            (calendar_event_id = '" . escape($liveform->get_field_value('id')) . "') AND 
-                            (calendar_id = '" . $calendar['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            (calendar_event_id = ?) AND 
+                            (calendar_id = ?)";
+                    $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar['id'])) or output_error('Query failed.');
                     
                     if (mysqli_num_rows($result) == 0) {
                         $query =
@@ -1388,18 +1424,18 @@ if (!$_POST) {
                                 calendar_event_id,
                                 calendar_id)
                             VALUES (
-                                '" . escape($liveform->get_field_value('id')) . "',
-                                '" . $calendar['id'] . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                ?,
+                                ?)";
+                        $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar['id'])) or output_error('Query failed.');
                     }
                 // Else, the current calendar was not selected for the calendar event, so remove it from the database.
                 } else {
                     $query =
                         "DELETE FROM calendar_events_calendars_xref
                         WHERE
-                            (calendar_event_id = '" . escape($liveform->get_field_value('id')) . "')
-                            AND (calendar_id = '" . $calendar['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            (calendar_event_id = ?)
+                            AND (calendar_id = ?)";
+                    $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar['id'])) or output_error('Query failed.');
                 }
             }
         }
@@ -1414,9 +1450,9 @@ if (!$_POST) {
                         calendar_event_id
                     FROM calendar_events_calendar_event_locations_xref
                     WHERE 
-                        (calendar_event_id = '" . escape($liveform->get_field_value('id')) . "') AND 
-                        (calendar_event_location_id = '" . $calendar_event_location['id'] . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (calendar_event_id = ?) AND 
+                        (calendar_event_location_id = ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar_event_location['id'])) or output_error('Query failed.');
                 // If not, then add it!
                 if (mysqli_num_rows($result) == 0) {
                     $query =
@@ -1424,18 +1460,18 @@ if (!$_POST) {
                             calendar_event_id,
                             calendar_event_location_id)
                         VALUES (
-                            '" . escape($liveform->get_field_value('id')) . "',
-                            '" . $calendar_event_location['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar_event_location['id'])) or output_error('Query failed.');
                 }
             // Else, the location was not selected so remove it if it was previously.
             } else {
                 $query =
                     "DELETE FROM calendar_events_calendar_event_locations_xref
                     WHERE
-                        (calendar_event_id = '" . escape($liveform->get_field_value('id')) . "')
-                        AND (calendar_event_location_id = '" . $calendar_event_location['id'] . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (calendar_event_id = ?)
+                        AND (calendar_event_location_id = ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $calendar_event_location['id'])) or output_error('Query failed.');
             }
         }
         
@@ -1456,9 +1492,9 @@ if (!$_POST) {
             $query =
                 "DELETE FROM remaining_reservation_spots
                 WHERE
-                    (calendar_event_id = '" . escape($liveform->get_field_value('id')) . "')
-                    AND (recurrence_number = '" . escape($liveform->get_field_value('recurrence_number')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (calendar_event_id = ?)
+                    AND (recurrence_number = ?)";
+            $result = db_q($query, array((string) $liveform->get_field_value('id'), (string) $liveform->get_field_value('recurrence_number'))) or output_error('Query failed.');
             
             // insert record for remaining spots
             $query =
@@ -1467,10 +1503,14 @@ if (!$_POST) {
                     recurrence_number,
                     number_of_remaining_spots)
                 VALUES (
-                    '" . escape($liveform->get_field_value('id')) . "',
-                    '" . escape($liveform->get_field_value('recurrence_number')) . "',
-                    '" . escape($liveform->get_field_value('number_of_remaining_spots')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?,
+                    ?)";
+            $result = db_q($query, array(
+                (string) $liveform->get_field_value('id'),
+                (string) $liveform->get_field_value('recurrence_number'),
+                (string) $liveform->get_field_value('number_of_remaining_spots'))) or output_error('Query failed.');
+
         }
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('Event'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);

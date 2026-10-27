@@ -20,4 +20,4 @@ description: The cart's gift card part with controls (W16): the cart.item_gift_c
 - Ids now carry the list's row suffix too; names, values, classes, words and markers are the old block's (`tests/widget_default_parts_cart_gift_card_test.php`).
 
 ## What is left?
-- The other fixed forms (recurring schedule, cancel, returns), then the product order form. A browser round (editor load, a gift card in the cart, checkout) is owed.
+- The other fixed forms (cancel, returns), then the product order form; the payment schedule: [[widget-default-parts-cart-schedule]]. A browser round (editor load, a gift card in the cart, checkout) is owed.

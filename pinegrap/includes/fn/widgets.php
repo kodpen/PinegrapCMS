@@ -826,6 +826,8 @@ function pg_sw_raw_token_keys()
         '__return_customer_note_html',
         '__return_decision_note_html',
         '__return_actions_html',
+        // Cart: a payment schedule's frequency choices, the value selected.
+        '__schedule_period_options_html',
         // Ad Region widget: the ad's own markup.
         '__ad_content_html',
         '__ad_caption_html',
@@ -5140,17 +5142,20 @@ function pg_sw_pagination_html($page_param, $current_page, $total_pages, $fragme
 // cuts each span. (_eo_apply_visibility_bindings() drops the node from the
 // tree instead, which needs the flags before the render.) With $only, a
 // flag not in that list is left unmarked, so its node is always drawn.
-function _pg_sw_mark_visibility(&$tree, $only = null)
+// A flag naming a value of the list row it stands in ($row) is the row's
+// (pg_sw_list_flag_alias()), never marked.
+function _pg_sw_mark_visibility(&$tree, $only = null, $row = array())
 {
     static $seq = 0;
     if (!is_array($tree) || empty($tree['children']) || !is_array($tree['children'])) return;
+    if (pg_sw_list_is_sourced($tree)) $row += pg_sw_list_row_flags($tree['props']['source']);
     $out = array();
     foreach ($tree['children'] as $child) {
         if (!is_array($child)) { $out[] = $child; continue; }
-        _pg_sw_mark_visibility($child, $only);
+        _pg_sw_mark_visibility($child, $only, $row);
         $flag = isset($child['props']['_bindings']['eo_visible_if'])
             ? preg_replace('/[^a-z0-9_]/', '', (string)$child['props']['_bindings']['eo_visible_if']) : '';
-        if ($flag === '' || (is_array($only) && !in_array($flag, $only, true))) { $out[] = $child; continue; }
+        if ($flag === '' || isset($row[$flag]) || (is_array($only) && !in_array($flag, $only, true))) { $out[] = $child; continue; }
         $n = ++$seq;
         $out[] = array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '<!--pg-vis:' . $flag . ':' . $n . '-->'), 'children' => array());
         $out[] = $child;

@@ -4640,12 +4640,21 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
         return '<!--pg-active:begin-->' . _render_tree_node($node, $indent, $depth) . '<!--pg-active:end-->';
     }
 
+    // A widget flag naming a value of the list row it is drawn in is a
+    // value condition on that value (pg_sw_list_flag_alias()).
+    $flag_alias = pg_sw_finish_active() ? pg_sw_list_flag_alias(isset($node['props']) ? $node['props'] : null) : null;
+    if ($flag_alias !== null && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
+        unset($node['props']['_bindings']['eo_visible_if']);
+        return pg_sw_finish_wrap(_render_tree_node($node, $indent, $depth), $flag_alias);
+    }
+
     // Value conditions (_bindings.show_if and show_if_2, show_if_3, with
     // their _bindParams) are wiring, never props. Inside a widget render the
     // node is drawn between the markers the finish pass keeps or cuts
     // (widgets_finish.php); one that cannot be evaluated draws nothing.
-    // Outside a widget the node draws as it is, so no saved page body ever
-    // holds a marker. The compared texts are read in the page's language, as
+    // Outside a widget the node draws as it is, unless every condition reads
+    // a fact of the visit (page_facts.php): then it stands between the page
+    // markers the stored body keeps and every request decides. The compared texts are read in the page's language, as
     // the values they are compared with are; a node that holds a required
     // form control is always drawn.
     if (pg_sw_cond_present(isset($node['props']) ? $node['props'] : null)) {
@@ -4664,6 +4673,10 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
             if ($cond === false) return '';
             return pg_sw_finish_wrap(_render_tree_node($node, $indent, $depth), $cond);
+        }
+        if (!pg_sw_finish_active() && pg_page_fact_spec($cond)
+            && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
+            return pg_page_fact_wrap(_render_tree_node($node, $indent, $depth), $cond);
         }
     }
 

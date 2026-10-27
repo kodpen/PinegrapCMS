@@ -38,8 +38,8 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
             page_folder,
             page_name
         FROM page
-        WHERE page_id = '" . escape($_REQUEST['page_id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page_id = ?";
+    $result = db_q($query, array((string) $_REQUEST['page_id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // A deleted or mistyped page id must stop here: the page type below is
@@ -141,8 +141,8 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
         }
         
         // get form name and possibly quiz for page
-        $query = "SELECT form_name" . $sql_quiz . " FROM " . $form_settings_table . " WHERE page_id = '" . escape($_REQUEST['page_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT form_name" . $sql_quiz . " FROM " . $form_settings_table . " WHERE page_id = ?";
+        $result = db_q($query, array((string) $_REQUEST['page_id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         $form_name = $row['form_name'] ?? '';
@@ -230,8 +230,8 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
             short_description,
             form_name
         FROM products
-        WHERE id = '" . escape($_REQUEST['product_id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['product_id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $product_name = $row['name'];
@@ -882,16 +882,16 @@ if (!$_POST) {
                         target_form_field_id,
                         upload_folder_id)
                     VALUES (
-                        '" . escape($_POST[$form_type_identifier_id]) . "',
-                        '$form_field_id',
-                        '" . escape($label) . "',
-                        '" . escape($value) . "',
-                        '" . escape($email_address_list) . "',
-                        '$default_selected',
-                        '$count',
-                        '$target_field_id',
-                        '" . escape($upload_folder_id) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?)";
+            $result = db_q($query, array((string) $_POST[$form_type_identifier_id], (string) $form_field_id, (string) $label, (string) $value, (string) $email_address_list, (string) $default_selected, (string) $count, (string) $target_field_id, (string) $upload_folder_id)) or output_error('Query failed.');
 
             $option_id = mysqli_insert_id(db::$con);
 
@@ -945,9 +945,9 @@ if (!$_POST) {
     foreach ($fields as $key => $field_id) {
         // update sort order for field
         $query = "UPDATE form_fields
-                 SET sort_order = '$count'
-                 WHERE id = '" . escape($field_id)  . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 SET sort_order = ?
+                 WHERE id = ?";
+        $result = db_q($query, array((string) $count, (string) $field_id)) or output_error('Query failed.');
         
         $count++;
     }
@@ -958,19 +958,19 @@ if (!$_POST) {
     if ($form_type == 'product') {
         $query = "UPDATE products
                  SET
-                    user = '" . $user['id'] . "',
+                    user = ?,
                     timestamp = UNIX_TIMESTAMP()
-                 WHERE id = '" . escape($_POST['product_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE id = ?";
+        $result = db_q($query, array((string) $user['id'], (string) ($_POST['product_id'] ?? ''))) or output_error('Query failed.');
         
     // else if this is a form for a page (a variant set's form template has no page), so update last modified info for page
     } else if ($form_type != 'product_group') {
         $query = "UPDATE page
                  SET
                     page_timestamp = UNIX_TIMESTAMP(),
-                    page_user = '" . $user['id'] . "'
-                 WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    page_user = ?
+                 WHERE page_id = ?";
+        $result = db_q($query, array((string) $user['id'], (string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
     }
 
     $liveform = new liveform('view_fields');

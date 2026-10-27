@@ -12685,6 +12685,10 @@ const StyleDesigner = (function () {
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
             if (!_sdCondCanvasShows(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) wrapper.classList.add('sd-state-off');
+        } else if (!_sysWidgetRenderCfg && node.props && _sdCondPresent(node.props) && _sdPageFactRows(node)) {
+            // On a page: named, always drawn (each visit decides it).
+            wrapper.classList.add('sd-cond');
+            wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
         }
         // "Hide when empty": left out in the state that empties it.
         if (_sysWidgetRenderCfg && _sdHideEmptyCanvasOff(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) {
@@ -32913,6 +32917,7 @@ const StyleDesigner = (function () {
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
+            'cart.item_schedule': _sdT('One row when the customer may set the payment schedule of the cart line the row stands in: put the frequency, number of payments and start date controls in it; the cart gives them their names, values and the payment gateway\'s rules, and a required control comes back when it is deleted.'),
             'checkout.offers':    _sdT('One row for every offer applied to the order: a discount on the cart, an item\'s or a recipient\'s bonus. An offer without a message shows its code.'),
             'checkout.suggestions': _sdT('One row for every offer the cart could still earn, with its message; a condition on "Offer page URL" shows its button only when the offer points to a page.'),
             'checkout.gift_cards': _sdT('One row for every gift card applied to the order: the masked code, the amount taken, the balance left and a link that removes it.'),
@@ -38079,6 +38084,7 @@ const StyleDesigner = (function () {
         '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
         '__return_customer_note_html', '__return_decision_note_html', '__return_actions_html',
+        '__schedule_period_options_html',
         '__ad_content_html', '__ad_caption_html'
     ];
     // Twin of pg_sw_attr_name_ok().
@@ -38115,7 +38121,26 @@ const StyleDesigner = (function () {
     // (_swBindTokenOptions(), the row position group inside a list
     // included) that a condition may read.
     function _sdCondTokenOptions(node) {
+        if (!_isInsideSystemWidget(node)) return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; });
         return _swBindTokenOptions(node).filter(function (o) { return _sdCondTokenAllowed(o.token); });
+    }
+
+    // The facts of the visit an element outside a widget may be shown by
+    // (pg_page_fact_tokens()): the page decides them for each visit and
+    // never prints them.
+    var SD_PAGE_FACTS = [
+        ['__visit_signed_in',      _sdT('Visitor is signed in')],
+        ['__visit_cart_has_items', _sdT('Cart has products')],
+        ['__visit_cart_count',     _sdT('Number of products in the cart')]
+    ];
+
+    // Whether every condition of `node` reads a fact of the visit, as the
+    // page needs to decide it (pg_page_fact_spec()).
+    function _sdPageFactRows(node) {
+        var rows = _sdCondRowsOf(node);
+        return rows.length > 0 && rows.every(function (r) {
+            return SD_PAGE_FACTS.some(function (f) { return f[0] === String(r.token).toLowerCase(); });
+        });
     }
 
     // The conditions of `node` as rows, [{token, op, value}] in the order of
@@ -38192,7 +38217,8 @@ const StyleDesigner = (function () {
         var any = _sdCondJoin(node) === 'any';
         return rows.map(function (r, i) {
             var entry = _sdCondOp(r.op);
-            var parts = [_swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
+            var fact = kind ? null : SD_PAGE_FACTS.filter(function (f) { return f[0] === r.token; })[0];
+            var parts = [fact ? fact[1] : _swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
             if (!i) return _sdT('Only when: {var:1} {var:2} {var:3}', parts);
             return any ? _sdT('or {var:1} {var:2} {var:3}', parts) : _sdT('and {var:1} {var:2} {var:3}', parts);
         }).join(' ').replace(/\s+/g, ' ').trim();
@@ -38380,7 +38406,11 @@ const StyleDesigner = (function () {
     // the "All must hold / Any is enough" switch. Beside the flag row above,
     // which some kinds have; when both are set both must pass.
     function _sdConditionRows(node) {
-        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        if (!node || !node.props) return '';
+        // Outside a widget the list holds the visit's facts only
+        // (_sdCondTokenOptions()); a condition written by hand on another
+        // value is still listed, so it can be seen and cleared.
+        var inWidget = _isInsideSystemWidget(node);
         if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
         var label = esc(_sdT('Show only when a value…'));
         var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
@@ -38428,7 +38458,11 @@ const StyleDesigner = (function () {
         }
         html += note(required
             ? _sdT('A required form field cannot be hidden by a condition: the site ignores this one. Choose Always to remove it.')
-            : _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.'));
+            : inWidget
+                ? _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.')
+                : (rows.length && !_sdPageFactRows(node))
+                    ? _sdT('Outside a system widget only the facts of the visit decide: with another value here the element is always shown.')
+                    : _sdT('Each visit decides it: the page leaves the element out while the fact does not pass; the canvas keeps showing it. Nothing about the visitor is shown.'));
         return row(label, html);
     }
 
@@ -40086,7 +40120,8 @@ const StyleDesigner = (function () {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
         },
         shopping_cart: {
-            '__item_gift_card_html': function (cfg) { return _sdPartCartItemGiftCard(); }
+            '__item_gift_card_html': function (cfg) { return _sdPartCartItemGiftCard(); },
+            '__item_recurring_schedule_html': function (cfg) { return _sdPartCartItemSchedule(); }
         },
         // A list of recent comments is a comments widget on the server.
         comments_recent: {
@@ -40464,7 +40499,8 @@ const StyleDesigner = (function () {
             [['__item_gift_card_html', 'order.item_gift_cards'], function () { return _sdPartOrderItemGiftCard(); }]
         ],
         shopping_cart: [
-            [['__item_gift_card_html', 'cart.item_gift_cards'], function () { return _sdPartCartItemGiftCard(); }]
+            [['__item_gift_card_html', 'cart.item_gift_cards'], function () { return _sdPartCartItemGiftCard(); }],
+            [['__item_recurring_schedule_html', 'cart.item_schedule'], function () { return _sdPartCartItemSchedule(); }]
         ],
         catalog_item_view: [
             [['__cross_sell_html', 'product.related'], function () { return _sdPartCatalogCrossSell(); }, 'tree']
@@ -40672,6 +40708,49 @@ const StyleDesigner = (function () {
                     { _attrs: [{ name: 'data-pg-gc-set', value: '{{__gift_card_number}}' }] },
                     [_sdPartItemLegend({}, { text: _sdT('Gift card') }, '__gift_card_number', '__gift_card_count')].concat(fields))
             ])
+        ])];
+    }
+
+    // The cart's payment schedule controls (pg_sw_cart_schedule_control_specs()):
+    // binding value => [name without the item id, list token, kind]. The
+    // server gives each its name, value and the gateway's rules.
+    var SW_CART_SCHEDULE_CONTROLS = {
+        schedule_period:   ['recurring_payment_period_', '__schedule_period', 'select'],
+        schedule_payments: ['recurring_number_of_payments_', '__schedule_payments', 'number'],
+        schedule_start:    ['recurring_start_date_', '__schedule_start', 'date']
+    };
+
+    // One schedule field of the cart (pg_sw_part_cart_schedule_field()).
+    /* @pg-site-output */
+    function _sdPartCartScheduleField(value) {
+        var labels = { schedule_period: _sdT('Frequency'), schedule_payments: _sdT('Number of Payments'),
+            schedule_start: _sdT('Start Date') };
+        var label = labels[value] || '';
+        var star = (value === 'schedule_payments') ? _sdPartWhen('__schedule_payments_required', 'not_empty') : {};
+        star.text = '*';
+        var words = [_sdPartEl('span', '', _sdT('Text'), { text: label }), _sdPartEl('span', 'text-danger', _sdT('Required mark'), star)];
+        var control = (value === 'schedule_period')
+            ? _sdPartEl('select', 'form-select', label, { _bindings: { value: value } })
+            : _sdPartEl('input', 'form-control', label, { _bindings: { value: value } });
+        var children = [_sdPartEl('label', 'form-label', _sdT('Label'), {}, words), control];
+        if (value === 'schedule_payments') {
+            var help = _sdPartWhen('__schedule_payments_help', 'not_empty');
+            help._bindings.text = '__schedule_payments_help';
+            children.push(_sdPartEl('div', 'form-text', _sdT('Help'), help));
+        }
+        return _sdPartEl('div', 'mb-3 pg-cart-recurring-field', label,
+            (value === 'schedule_start') ? _sdPartWhen('__schedule_start_shown', 'not_empty') : {}, children);
+    }
+
+    // The payment schedule of a cart line (pg_sw_part_cart_item_schedule()):
+    // a box of controls from the cart.item_schedule list.
+    /* @pg-site-output */
+    function _sdPartCartItemSchedule() {
+        var fields = Object.keys(SW_CART_SCHEDULE_CONTROLS).map(function (v) { return _sdPartCartScheduleField(v); });
+        return [createNode('loop_area', { source: 'cart.item_schedule' }, [
+            _sdPartEl('fieldset', 'pg-cart-recurring-set border rounded p-3 mb-3', _sdT('Payment Schedule'),
+                { _attrs: [{ name: 'data-pg-recurring-item', value: '{{__schedule_item}}' }] },
+                [_sdPartEl('legend', 'float-none w-auto px-2 fs-6 fw-semibold', _sdT('Heading'), { text: _sdT('Payment Schedule') })].concat(fields))
         ])];
     }
 
@@ -41453,6 +41532,9 @@ const StyleDesigner = (function () {
                 vOpts.push(['gift_card_from_name',     _sdT('Gift card: from name')]);
                 vOpts.push(['gift_card_message',       _sdT('Gift card: message')]);
                 vOpts.push(['gift_card_delivery_date', _sdT('Gift card: delivery date')]);
+                vOpts.push(['schedule_period',         _sdT('Payment schedule: frequency (required)')]);
+                vOpts.push(['schedule_payments',       _sdT('Payment schedule: number of payments')]);
+                vOpts.push(['schedule_start',          _sdT('Payment schedule: start date')]);
             }
             if (region === 'catalog_listing' || region === 'search_results') {
                 vOpts.push(['search_query', _sdT('Search text (query)')]);
@@ -41471,8 +41553,10 @@ const StyleDesigner = (function () {
         // Show-only-when: any element of a widget that evaluates visibility
         // flags. A flag written by an older starter that is no longer in the
         // list is still shown, so it can be seen and cleared.
-        var visFlags = SW_VISIBILITY_FLAGS[region];
-        if (visFlags && node.type !== 'loop_area' && node.type !== 'root') {
+        // Inside a list, the flags of its rows and of the lists around it
+        // too: the row decides (pg_sw_list_flag_alias()).
+        var visFlags = (SW_VISIBILITY_FLAGS[region] || []).concat(_sdListRowFlags(node));
+        if (visFlags.length && node.type !== 'loop_area' && node.type !== 'root') {
             var vis = [['', _sdT('Always')]].concat(visFlags);
             var curVis = cur.eo_visible_if || '';
             if (curVis && !visFlags.some(function (f) { return f[0] === curVis; })) vis.push([curVis, curVis]);
@@ -41498,7 +41582,7 @@ const StyleDesigner = (function () {
         // Node has an action/value binding but no token bindings (a plain
         // "Add to Cart" button, say) — still show the section, so every
         // binding is reachable from the panel named after the job.
-        if (!html) return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'), extra);
+        if (!html) return sect('bi-link-45deg', _isInsideSystemWidget(node) ? _sdT('Bind Data (System Widget)') : _sdT('Show by the visit'), extra);
         // sect() closes with `</div></div>`; slot the rows in just before it
         // so they land INSIDE the section body.
         var idx = html.lastIndexOf('</div></div>');
@@ -55386,6 +55470,24 @@ const StyleDesigner = (function () {
                 ['__gift_card_delivery_date', _sdT('Delivery Date')]
             ]
         },
+        'cart.item_schedule': {
+            label: _sdT('Payment schedule of the item'),
+            arg: '', argRequired: false,
+            kinds: ['shopping_cart'],
+            rows: [
+                ['__schedule_item',                _sdT('Number of the cart line')],
+                ['__schedule_period',              _sdT('Frequency')],
+                ['__schedule_payments',            _sdT('Number of Payments')],
+                ['__schedule_start',               _sdT('Start Date')],
+                ['__schedule_payments_required',   _sdT('Whether the number of payments is required (1 / empty)')],
+                ['__schedule_payments_help',       _sdT('The accepted number of payments')],
+                ['__schedule_start_shown',         _sdT('Whether the start date may be chosen (1 / empty)')],
+                ['__schedule_period_invalid',      _sdT('Error class of the frequency')],
+                ['__schedule_payments_invalid',    _sdT('Error class of the number of payments')],
+                ['__schedule_start_invalid',       _sdT('Error class of the start date')],
+                ['__schedule_period_options_html', _sdT('Choices of the frequency (HTML)')]
+            ]
+        },
         // The express order's sources (pg_sw_list_checkout_sources()): rows
         // under the whole order only; a cart list inside a recipients row
         // lists that recipient's products.
@@ -55594,6 +55696,25 @@ const StyleDesigner = (function () {
     }
 
     // The sources a widget kind offers, in their order (pg_sw_kind_lists()).
+    // The flags the rows of the lists `node` is drawn in answer, nearest
+    // list first: each list's "1 or empty" row values (__menu_item_has_children
+    // as menu_item_has_children), labelled with the list's name.
+    function _sdListRowFlags(node) {
+        var out = [];
+        var seen = {};
+        _sdListsAbove(node).forEach(function (l) {
+            var src = SW_LIST_SOURCES[l.props.source];
+            if (!src) return;
+            src.rows.forEach(function (r) {
+                var name = String(r[0]).replace(/^__/, '');
+                if (seen[name] || !/_(is|has|holds)_/.test(r[0])) return;
+                seen[name] = true;
+                out.push([name, src.label + ': ' + r[1]]);
+            });
+        });
+        return out;
+    }
+
     function _sdKindLists(kind) {
         return Object.keys(SW_LIST_SOURCES).filter(function (s) { return SW_LIST_SOURCES[s].kinds.indexOf(kind) !== -1; });
     }
@@ -55916,7 +56037,7 @@ const StyleDesigner = (function () {
     // other source.
     function _sdOrderItemListKey(source) {
         var keys = { 'order.item_forms': 'order.items', 'order.item_gift_cards': 'order.items', 'order.item_form_fields': 'order.item_forms',
-            'cart.item_gift_cards': 'cart.items',
+            'cart.item_gift_cards': 'cart.items', 'cart.item_schedule': 'cart.items',
             'order.return_lines': 'order.returns' };
         return keys.hasOwnProperty(source) ? keys[source] : '';
     }

@@ -427,9 +427,151 @@ function ws_flow_box_name($node)
  * @param string      $text
  * @return array code, node, edge, text
  */
-function ws_flow_problem($code, $node, $edge, $text)
+function ws_flow_problem($code, $node, $edge, $text, $warning = false)
 {
-    return array('code' => $code, 'node' => $node, 'edge' => $edge, 'text' => $text);
+    $problem = array('code' => $code, 'node' => $node, 'edge' => $edge, 'text' => $text);
+
+    return $warning ? $problem + array('warning' => true) : $problem;
+}
+
+/**
+ * The texts of a box a run fills {{node.<id>.<field>}} into: a step box's
+ * texts (ws_step_kinds()), a task box's title and description. Pure.
+ *
+ * @param array $node ws_flow_graph_normalize() box
+ * @return string[]
+ */
+function ws_flow_node_texts($node)
+{
+    $kind = (string) $node['kind'];
+    $keys = ($kind === 'task') ? array('title', 'description') : ((function_exists('ws_step_kinds') ? (ws_step_kinds()[$kind]['texts'] ?? array()) : array()));
+    $out = array();
+
+    foreach ($keys as $key) {
+        if (isset($node['config'][$key]) && is_string($node['config'][$key])) {
+            $out[] = $node['config'][$key];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The fields {{node.<id>.<field>}} reads of a box: text, outcome and status
+ * of every box, and the values it declares (a step box's as it is set up:
+ * ws_step_outputs()). Pure.
+ *
+ * @param array $node  ws_flow_graph_normalize() box
+ * @param array $kinds ws_flow_kinds()
+ * @return string[]
+ */
+function ws_flow_node_fields($node, $kinds)
+{
+    $kind = (string) $node['kind'];
+    $outputs = (!empty($kinds[$kind]['step']) && function_exists('ws_step_outputs')) ? ws_step_outputs($kind, $node['config']) : ($kinds[$kind]['outputs'] ?? array());
+
+    return array_merge(array('text', 'outcome', 'status'), array_column($outputs, 'key'));
+}
+
+/**
+ * The boxes that have surely run, done, whenever a box runs, by box: its own
+ * and those every arrow into it brings (a box runs after one arrow in was
+ * taken, the box it leaves done), and the boxes before it an arrow that is
+ * always taken leads into from such a box. The walk (ws_flow_walk()) waits
+ * for every box before a box to settle and skips a box behind a failure, so
+ * a box before it with such an arrow in has run, done. A box on a loop is
+ * left out. Pure.
+ *
+ * @param array $next   node id => ids an arrow leads into
+ * @param array $always node id => id => true: an arrow taken whenever its box is done
+ * @return array node id => node id => true
+ */
+function ws_flow_sure_before($next, $always)
+{
+    $into = array_fill_keys(array_keys($next), array());
+
+    foreach ($next as $from => $tos) {
+        foreach ($tos as $to) {
+            $into[$to][] = $from;
+        }
+    }
+
+    // The boxes in an order of their arrows (Kahn).
+    $left = array_map('count', $into);
+    $queue = array_keys(array_filter($left, function ($count) {
+        return $count === 0;
+    }));
+    $order = array();
+
+    while (!empty($queue)) {
+        $id = array_shift($queue);
+        $order[] = $id;
+
+        foreach ($next[$id] as $to) {
+            if (--$left[$to] === 0) {
+                $queue[] = $to;
+            }
+        }
+    }
+
+    $sure = array();
+
+    foreach ($order as $id) {
+        $before = ws_flow_boxes_before($into, $id);
+        $set = null;
+
+        foreach ($into[$id] as $from) {
+            $set = ($set === null) ? $sure[$from] : array_intersect_key($set, $sure[$from]);
+        }
+
+        $set = (array) $set + array($id => true);
+
+        do {
+            $grew = false;
+
+            foreach ($before as $other => $unused) {
+                if (isset($set[$other])) {
+                    continue;
+                }
+
+                foreach ($into[$other] as $from) {
+                    if (isset($set[$from]) && !empty($always[$from][$other])) {
+                        $set += $sure[$other];
+                        $grew = true;
+                        break;
+                    }
+                }
+            }
+        } while ($grew);
+
+        $sure[$id] = $set;
+    }
+
+    return $sure;
+}
+
+/**
+ * The boxes some arrows lead from to a box: those before it. Pure.
+ *
+ * @param array  $into node id => ids an arrow comes from
+ * @param string $id
+ * @return array node id => true
+ */
+function ws_flow_boxes_before($into, $id)
+{
+    $before = array();
+    $queue = array($id);
+
+    while (!empty($queue)) {
+        foreach ($into[array_shift($queue)] ?? array() as $from) {
+            if (!isset($before[$from])) {
+                $before[$from] = true;
+                $queue[] = $from;
+            }
+        }
+    }
+
+    return $before;
 }
 
 /**
@@ -455,11 +597,16 @@ function ws_flow_starts_on_join($graph)
  * What stops a graph from being published, in the order a reader fixes it:
  * too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger,
  * two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge,
- * cycle, unreachable. Notes are never checked. A kind of record a start box
- * names is checked by ws_flow_problems(), which knows the site's records.
+ * cycle, unreachable, bad_reference (a {{node.<id>.<field>}} of a box that
+ * is not there, not before the reader, or a field the box does not give).
+ * A reference to a box that may not have run when the reader runs (a branch
+ * of a condition, a step's done) is a warning, skippable_reference with
+ * warning true, which does not stop publishing: the value is then empty.
+ * Notes are never checked. A kind of record a start box names is checked by
+ * ws_flow_problems(), which knows the site's records.
  *
  * @param array|string $graph
- * @return array[] code, node, edge, text (none for a graph that may be published)
+ * @return array[] code, node, edge, text, warning on a warning (none for a graph that may be published)
  */
 function ws_flow_graph_check($graph)
 {
@@ -568,6 +715,7 @@ function ws_flow_graph_check($graph)
     $next = array_fill_keys(array_keys($nodes), array());
     $into = array_fill_keys(array_keys($nodes), 0);
     $seen = array();
+    $always = array();
 
     foreach ($graph['edges'] as $index => $edge) {
         $from = $edge['from'];
@@ -601,6 +749,14 @@ function ws_flow_graph_check($graph)
         }
 
         $seen[$key] = true;
+
+        // Taken whenever its box is done: on always, or on the one outcome
+        // the box has.
+        $outcomes = (array) ($kinds[$kind]['outcomes'] ?? array());
+
+        if (($edge['on'] === 'always') || ((count($outcomes) === 1) && ($edge['on'] === $outcomes[0]))) {
+            $always[$from][$to] = true;
+        }
 
         if (!in_array($to, $next[$from], true)) {
             $next[$from][] = $to;
@@ -663,7 +819,90 @@ function ws_flow_graph_check($graph)
         }
     }
 
+    return array_merge($problems, ws_flow_reference_problems($nodes, $kinds, $next, $always));
+}
+
+/**
+ * The {{node.<id>.<field>}} of each box's texts: bad_reference for a box the
+ * flow does not have, one not before the reader, a field that box does not
+ * give; a warning for a box that may not have run when the reader runs
+ * (ws_flow_sure_before()). Once per reference and box. Pure.
+ *
+ * @param array $nodes  node id => box
+ * @param array $kinds  ws_flow_kinds()
+ * @param array $next   node id => ids an arrow leads into
+ * @param array $always node id => id => true (ws_flow_sure_before())
+ * @return array[] ws_flow_problem()
+ */
+function ws_flow_reference_problems($nodes, $kinds, $next, $always)
+{
+    $problems = array();
+    $into = array_fill_keys(array_keys($nodes), array());
+    $sure = null;
+
+    foreach ($next as $from => $tos) {
+        foreach ($tos as $to) {
+            $into[$to][] = $from;
+        }
+    }
+
+    foreach ($nodes as $id => $node) {
+        if (!isset($kinds[$node['kind']])) {
+            continue;
+        }
+
+        $refs = array();
+
+        foreach (ws_flow_node_texts($node) as $text) {
+            if (preg_match_all('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', $text, $found, PREG_SET_ORDER)) {
+                foreach ($found as $match) {
+                    $refs[$match[0]] = array($match[1], $match[2]);
+                }
+            }
+        }
+
+        if (empty($refs)) {
+            continue;
+        }
+
+        $name = ws_flow_box_name($node);
+        $before = ws_flow_boxes_before($into, (string) $id);
+
+        foreach ($refs as $ref => $parts) {
+            list($box, $field) = $parts;
+            $other = $nodes[$box] ?? null;
+
+            if (($other === null) || !isset($kinds[$other['kind']])) {
+                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the flow has no box {var:3}.', 'vars' => array($name, $ref, $box))));
+            } elseif (!isset($before[$box])) {
+                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} does not come before it.', 'vars' => array($name, $ref, ws_flow_box_name($other)))));
+            } elseif (!in_array($field, ws_flow_node_fields($other, $kinds), true)) {
+                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} gives no value {var:4}.', 'vars' => array($name, $ref, ws_flow_box_name($other), $field))));
+            } else {
+                $sure = $sure ?? ws_flow_sure_before($next, $always);
+
+                if (isset($sure[$id]) && !isset($sure[$id][$box])) {
+                    $problems[] = ws_flow_problem('skippable_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} may not run before it; the value is then empty.', 'vars' => array($name, $ref, ws_flow_box_name($other)))), true);
+                }
+            }
+        }
+    }
+
     return $problems;
+}
+
+/**
+ * What a graph may be published with but a reader should know: references
+ * to a box that may not run before the box reading it. Pure.
+ *
+ * @param array|string $graph
+ * @return array[] code, node, edge, text, warning
+ */
+function ws_flow_warnings($graph)
+{
+    return array_values(array_filter(ws_flow_graph_check($graph), function ($problem) {
+        return !empty($problem['warning']);
+    }));
 }
 
 /* ---------------------------------------------------------------------------
@@ -672,7 +911,8 @@ function ws_flow_graph_check($graph)
 
 /**
  * What stops a graph from being published, the site's own records included:
- * ws_flow_graph_check(), and a start box about a kind of record the
+ * ws_flow_graph_check() without its warnings (ws_flow_warnings()), and a
+ * start box about a kind of record the
  * Workspace does not know (ws_scheduled_record_types()).
  *
  * @param array|string $graph
@@ -681,7 +921,9 @@ function ws_flow_graph_check($graph)
 function ws_flow_problems($graph)
 {
     $graph = ws_flow_graph_normalize($graph);
-    $problems = ws_flow_graph_check($graph);
+    $problems = array_values(array_filter(ws_flow_graph_check($graph), function ($problem) {
+        return empty($problem['warning']);
+    }));
     $types = function_exists('ws_scheduled_record_types') ? ws_scheduled_record_types() : array();
 
     foreach ($graph['nodes'] as $node) {
@@ -1161,6 +1403,7 @@ function ws_flow_save_check($viewer, $data, $flow = null)
         'sets'      => $sets,
         'graph'     => $graph,
         'problems'  => ws_flow_problems($graph),
+        'warnings'  => ws_flow_warnings($graph),
         'draft_rev' => $draft_rev,
     );
 }
@@ -1173,7 +1416,7 @@ function ws_flow_save_check($viewer, $data, $flow = null)
  * @param array      $viewer
  * @param array      $data   see ws_flow_save_check()
  * @param array|null $flow   null for a new flow
- * @return array ok, error, status, field, flow_id, draft_rev, problems
+ * @return array ok, error, status, field, flow_id, draft_rev, problems, warnings (on a write)
  */
 function ws_flow_save($viewer, $data, $flow = null)
 {
@@ -1199,7 +1442,7 @@ function ws_flow_save($viewer, $data, $flow = null)
 
         log_activity(lang(array('string' => 'workspace flow ({var:1}) was created', 'vars' => $sets['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
-        return array('ok' => true, 'error' => '', 'status' => 201, 'field' => '', 'flow_id' => $flow_id, 'draft_rev' => 1, 'problems' => $check['problems']);
+        return array('ok' => true, 'error' => '', 'status' => 201, 'field' => '', 'flow_id' => $flow_id, 'draft_rev' => 1, 'problems' => $check['problems'], 'warnings' => $check['warnings']);
     }
 
     $parts = array();
@@ -1222,7 +1465,7 @@ function ws_flow_save($viewer, $data, $flow = null)
             + array('flow_id' => (int) $flow['id'], 'draft_rev' => 0, 'problems' => array());
     }
 
-    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'flow_id' => (int) $flow['id'], 'draft_rev' => (int) $check['draft_rev'] + 1, 'problems' => $check['problems']);
+    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'flow_id' => (int) $flow['id'], 'draft_rev' => (int) $check['draft_rev'] + 1, 'problems' => $check['problems'], 'warnings' => $check['warnings']);
 }
 
 /**
@@ -1239,7 +1482,7 @@ function ws_flow_save($viewer, $data, $flow = null)
  * @param array $viewer
  * @param array $flow
  * @param array $data draft_rev (the one the draft was read at), optional
- * @return array ok, error, status, field, graph, json (the graph as it will be kept), problems
+ * @return array ok, error, status, field, graph, json (the graph as it will be kept), problems, warnings
  */
 function ws_flow_publish_check($viewer, $flow, $data = array())
 {
@@ -1713,6 +1956,7 @@ function ws_flow_detail($viewer, $flow)
         'draft'    => ($draft !== null) ? ws_flow_graph_present($draft, $edit) : null,
         'graph'    => ($live !== null) ? ws_flow_graph_present($live, $edit) : null,
         'problems' => ($edit && ($draft !== null)) ? ws_flow_problems($draft) : array(),
+        'warnings' => ($edit && ($draft !== null)) ? ws_flow_warnings($draft) : array(),
         // The draft holds something its live version does not.
         'changed'  => $edit && ($draft !== null) && (($live === null) || ($draft !== $live)),
         'manage'   => ws_flow_share_manager($viewer, $flow),
@@ -1761,6 +2005,7 @@ function ws_flow_js_strings()
         'fl_retry'            => lang('Try again'),
         'fl_problems'         => ws_js_template('Problems: {var:1}', 1),
         'fl_no_problems'      => lang('No problems'),
+        'fl_warnings'         => ws_js_template('Warnings: {var:1}', 1),
         'fl_publish'          => lang('Publish'),
         'fl_publish_blocked'  => lang('Fix the problems before the flow is published.'),
         'fl_publish_ask'      => ws_js_template('Publish this draft as version {var:1}? Whoever may run the flow runs this version from now on; runs already started keep theirs.', 1),

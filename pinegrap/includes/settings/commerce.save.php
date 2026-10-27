@@ -180,14 +180,14 @@ function pg_parasut_credentials_for_save()
                 
                 // if the decryption was successful, then encrypt it with new key and store it
                 if (is_numeric($order['card_number']) == TRUE) {
-                    $query = "UPDATE orders SET card_number = '" . e(encrypt_credit_card_number($order['card_number'], $new_encryption_key)) . "' WHERE id = '" . (int) $order['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "UPDATE orders SET card_number = ? WHERE id = ?";
+                    $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
                 }
                 
             // else the credit card number is not already encrypted, so encrypt it for the first time
             } else {
-                $query = "UPDATE orders SET card_number = '" . e(encrypt_credit_card_number($order['card_number'], $new_encryption_key)) . "' WHERE id = '" . (int) $order['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE orders SET card_number = ? WHERE id = ?";
+                $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
             }
         }
     }
@@ -630,8 +630,8 @@ function pg_parasut_credentials_for_save()
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // create new record for next order number
-        $query = "INSERT INTO next_order_number VALUES ('" . escape($ecommerce_next_order_number) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "INSERT INTO next_order_number VALUES (?)";
+        $result = db_q($query, array((string) $ecommerce_next_order_number)) or output_error('Query failed.');
         
         // release lock on table
         $query = "UNLOCK TABLES";

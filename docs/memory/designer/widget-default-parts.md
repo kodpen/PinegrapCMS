@@ -6,7 +6,7 @@ module: widgets_parts
 
 ## What is the rule?
 - A part the designer placed always wins; a renderer adds its own copy of a block only when the saved tree places none of its tokens: `pg_sw_placed($tree, $tokens)` (`includes/fn/widgets_parts.php`). A binding, a literal `^^token^^` or an attribute `{{token}}` places; a condition never does (`pg_sw_cond_tree_json()`); the name is matched whole.
-- Uses: the cart's item form and gift card rows (the item template's nodes). The order view's parts and cards: [[widget-default-parts-order]], its item blocks [[widget-default-parts-order-items]]. Comment stars: [[widget-default-parts-comments]]. Catalog breadcrumb: [[widget-default-parts-breadcrumb]]. Cross-sell: [[widget-default-parts-cross-sell]]. Filter chips: [[widget-default-parts-filter-chips]]. Returns: [[widget-default-parts-returns]]. Cart gift card: [[widget-default-parts-cart-gift-card]].
+- Uses: the cart's item form and gift card rows (the item template's nodes). The order view's parts and cards: [[widget-default-parts-order]], its item blocks [[widget-default-parts-order-items]]. Also [[widget-default-parts-comments]], [[widget-default-parts-breadcrumb]], [[widget-default-parts-cross-sell]], [[widget-default-parts-filter-chips]]. Returns: [[widget-default-parts-returns]]. Cart: [[widget-default-parts-cart-gift-card]], [[widget-default-parts-cart-schedule]].
 
 ## What is a default part?
 - An old token that stood for server-built markup is drawn by real design elements the designer can select and change. `pg_sw_default_part_tokens()`: kind => (token, builder) pairs (pairs, so `check_bindings.php` does not read them as filled).

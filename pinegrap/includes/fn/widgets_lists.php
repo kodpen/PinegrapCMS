@@ -113,8 +113,8 @@ function pg_sw_kind_lists($kind)
                       'order_view' => 'order', 'my_account' => 'account', 'cart_link' => 'cart', 'shopping_cart' => 'cart',
                       'express_order' => array('cart', 'checkout'),
                       'menu_region' => 'menu', 'account_security' => 'security', 'search_results' => 'paging');
-    $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true),
-                      'express_order' => array('cart.item_gift_cards' => true));
+    $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true),
+                      'express_order' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();
     $out = array();
@@ -220,6 +220,45 @@ function _pg_sw_list_position_names()
     return array_keys(pg_sw_finish_position_values(0, 1));
 }
 
+// The row tokens of the lists whose row templates are being drawn, the
+// innermost last (pg_sw_list_span()): each a set of flag names.
+function &_pg_sw_list_row_stack()
+{
+    static $stack = array();
+    return $stack;
+}
+
+// The flag names a row of $source answers: each row token without its
+// leading '__' (menu_item_has_children for __menu_item_has_children), as a
+// set. Empty for an unknown source.
+function pg_sw_list_row_flags($source)
+{
+    $sources = pg_sw_list_sources();
+    if (!is_string($source) || !isset($sources[$source])) return array();
+    $out = array();
+    foreach ($sources[$source]['tokens'] as $pair) $out[substr($pair[0], 2)] = true;
+    return $out;
+}
+
+// A widget flag (_bindings.eo_visible_if) inside a list's row that names a
+// row value of that list or of a list around it is a value condition on
+// it: eo_visible_if 'menu_item_has_children' reads as show_if
+// '__menu_item_has_children' not_empty, so the row decides. The widget's
+// own flags were judged on the whole tree before the render and are not
+// row values (_eo_apply_visibility_bindings() and _pg_sw_mark_visibility()
+// leave these alone). The condition, in pg_sw_cond_spec()'s shape, or null.
+function pg_sw_list_flag_alias($props)
+{
+    $stack = &_pg_sw_list_row_stack();
+    if (!$stack || !is_array($props) || !isset($props['_bindings']['eo_visible_if'])) return null;
+    $flag = $props['_bindings']['eo_visible_if'];
+    if (!is_string($flag) || $flag === '' || preg_match('/[^a-z0-9_]/', $flag)) return null;
+    foreach ($stack as $flags) {
+        if (isset($flags[$flag])) return array('token' => '__' . $flag, 'op' => 'not_empty', 'operand' => '');
+    }
+    return null;
+}
+
 // The render half: the span a list draws where its loop_area stands, its
 // row template rendered and kept aside. '' outside a widget render (no
 // pass would expand it), for invalid settings, and for a source the
@@ -236,11 +275,18 @@ function pg_sw_list_span($node, $indent = 0, $depth = 0)
     $descriptor = $offered[$spec['source']];
 
     // The row template, drawn inside the scope: a node with a condition is
-    // wrapped, and a list in it writes its own span.
+    // wrapped, a flag naming a row value is one (pg_sw_list_flag_alias()),
+    // and a list in it writes its own span.
     $template = '';
     $children = (isset($node['children']) && is_array($node['children'])) ? $node['children'] : array();
-    foreach ($children as $child) {
-        $template .= _render_tree_node($child, $indent, $depth);
+    $rows_drawn = &_pg_sw_list_row_stack();
+    $rows_drawn[] = pg_sw_list_row_flags($spec['source']);
+    try {
+        foreach ($children as $child) {
+            $template .= _render_tree_node($child, $indent, $depth);
+        }
+    } finally {
+        array_pop($rows_drawn);
     }
     if (trim($template) === '') return '';
 
