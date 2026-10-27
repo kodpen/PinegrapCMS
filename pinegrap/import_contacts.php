@@ -249,13 +249,13 @@ if (!$_POST) {
                     // if e-mail address exists
                     if (trim($row[$email_address_key]) != '') {
                         // check to see if contact should be opted out
-                        $query = "SELECT id FROM contacts WHERE (opt_in = 0) AND (email_address = '" . escape(trim($row[$email_address_key])) . "') AND (id != '$contact_id')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT id FROM contacts WHERE (opt_in = 0) AND (email_address = ?) AND (id != ?)";
+                        $result = db_q($query, array((string) trim($row[$email_address_key]), (string) $contact_id)) or output_error('Query failed.');
                         
                         // if a contact was found
                         if (mysqli_num_rows($result) > 0) {
-                            $query = "UPDATE contacts SET opt_in = 0 WHERE id = '$contact_id'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "UPDATE contacts SET opt_in = 0 WHERE id = ?";
+                            $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
                         }
                     }
 
@@ -279,8 +279,8 @@ if (!$_POST) {
                         // if e-mail address is not empty
                         if (trim($row[$email_address_key]) != '') {
                             // query database to determine if e-mail address is already in use
-                            $query = "SELECT id FROM contacts WHERE email_address = '" . escape(trim($row[$email_address_key])) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "SELECT id FROM contacts WHERE email_address = ?";
+                            $result = db_q($query, array((string) trim($row[$email_address_key]))) or output_error('Query failed.');
                             
                             // if a contact was not found
                             if (mysqli_num_rows($result) == 0) {
@@ -332,9 +332,9 @@ if (!$_POST) {
                             contact_id,
                             contact_group_id)
                         VALUES (
-                            '" . $contact_id . "',
-                            '" . $contact_group['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $contact_id, (string) $contact_group['id'])) or output_error('Query failed.');
                 }
             }
 
