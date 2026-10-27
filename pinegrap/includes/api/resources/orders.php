@@ -79,7 +79,12 @@ function api_order_present($row, $items = null, $shipments = null) {
 			'method'         => $row['payment_method'],
 			'transaction_id' => $row['transaction_id']
 		),
-		'offer_code' => $row['special_offer_code']
+		'offer_code' => $row['special_offer_code'],
+		// Null on a site that lacks the column (api_order_state_columns()).
+		'type'                => array_key_exists('type', $row) ? (string)$row['type'] : null,
+		'cancelled_at'        => array_key_exists('cancelled_at', $row) ? api_time($row['cancelled_at']) : null,
+		'cancellation_reason' => array_key_exists('cancellation_reason', $row) ? (string)$row['cancellation_reason'] : null,
+		'refund_status'       => array_key_exists('refund_status', $row) ? (string)$row['refund_status'] : null
 	);
 
 	foreach (api_order_money_fields() as $field) {
@@ -214,10 +219,36 @@ function api_order_shipments($order_id) {
 
 }
 
-function api_order_select() {
+// The order's kind and cancellation state, each added by a later migration
+// (type 2026.1.4, the cancellation 2026.1.26, refund_status 2026.1.27): a site
+// that missed one still answers, with that field null.
+function api_order_state_columns() {
+
+	return array('type', 'cancelled_at', 'cancellation_reason', 'refund_status');
+
+}
+
+// $present lists the state columns the site has; null asks the schema.
+function api_order_select($present = null) {
+
+	$state = '';
+
+	foreach (api_order_state_columns() as $column) {
+
+		$has = ($present === null)
+			? pg_schema_has('orders', $column)
+			: in_array($column, $present, true);
+
+		if ($has) {
+
+			$state .= 'orders.' . $column . ', ';
+
+		}
+
+	}
 
 	return "SELECT orders.id, orders.order_number, orders.order_date, orders.status,
-			orders.contact_id,
+			" . $state . "orders.contact_id,
 			orders.billing_first_name, orders.billing_last_name,
 			orders.billing_email_address, orders.billing_company,
 			orders.billing_address_1, orders.billing_address_2,
@@ -1502,6 +1533,10 @@ function api_order_schema() {
 			'transaction_id' => 'string?'
 		),
 		'offer_code' => 'string',
+		'type'                => 'string?',
+		'cancelled_at'        => 'string?',
+		'cancellation_reason' => 'string?',
+		'refund_status'       => 'string?',
 		'items' => array(array(
 			'id'             => 'integer',
 			'product_id'     => 'integer?',
