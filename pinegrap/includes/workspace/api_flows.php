@@ -134,6 +134,8 @@ function ws_api_flow_present($flow, $version, $full)
         'draft'      => ($draft !== null) ? ws_api_flow_graph_present($draft, $edit) : null,
         'graph'      => ($full && is_array($version)) ? ws_api_flow_graph_present(ws_flow_graph_of($version), $edit) : null,
         'problems'   => ($edit && ($draft !== null)) ? array_map('ws_api_flow_problem_present', ws_flow_problems($draft)) : null,
+        'start'      => null,
+        'start_text' => null,
         'created_at' => api_time($flow['created_at']),
         'updated_at' => api_time($flow['updated_at']),
     );
@@ -154,6 +156,8 @@ function ws_api_flow_schema()
         'draft'      => 'WorkspaceFlowGraph?',
         'graph'      => 'WorkspaceFlowGraph?',
         'problems'   => 'WorkspaceFlowProblem[]?',
+        'start'      => 'string?',
+        'start_text' => 'string?',
         'created_at' => 'string?',
         'updated_at' => 'string?',
     );
@@ -368,8 +372,19 @@ function ws_api_flow_refused($result)
 function ws_api_flow_answer($viewer, $id, $full = true)
 {
     $flow = ws_api_flow_or_404($viewer, $id);
+    $version = ws_flow_version($flow['version_id']);
+    $out = ws_api_flow_present($flow, $version, $full);
 
-    return ws_api_flow_present($flow, ws_flow_version($flow['version_id']), $full);
+    if ($full) {
+        $graph = ws_flow_start_graph($flow, $version);
+        $kind = ws_flow_start_kind($graph);
+        $out['start'] = ($kind !== '') ? $kind : null;
+        $out['start_text'] = ws_flow_start_text($viewer, $graph, function ($channel_id) use ($viewer) {
+            return ws_api_is_claude() ? ws_api_flow_claude_channel($viewer, $channel_id) : ws_flow_channel_readable($viewer, $channel_id);
+        });
+    }
+
+    return $out;
 }
 
 /**
@@ -430,7 +445,14 @@ function ws_api_flows_list($params)
 
     ws_api_flows_ready();
 
-    $rows = array_values(array_filter(ws_flows_list($viewer, (string) ($params['scope'] ?? 'all')), function ($row) use ($viewer) {
+    $filters = array(
+        'start'         => (string) ($params['start'] ?? ''),
+        'status'        => (string) ($params['status'] ?? ''),
+        'channel_id'    => (int) ($params['channel_id'] ?? 0),
+        'updated_since' => (int) ($params['updated_since'] ?? 0),
+    );
+
+    $rows = array_values(array_filter(ws_flows_list($viewer, (string) ($params['scope'] ?? 'all'), $filters), function ($row) use ($viewer) {
         return ws_api_flow_reachable($viewer, $row);
     }));
     $version_ids = array();
