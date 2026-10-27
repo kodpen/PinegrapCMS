@@ -26,6 +26,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
 - decisions-made-files.md: Decisions list, files part: a submitted-form file whose record no view shows stays refused in a public folder too (no fallback to the folder's permission).
+- decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS.
 - decisions-made-panel.md: Part of the decisions list: the control panel's Bootstrap 6 breakpoints (own media queries on 1024/1280, xxl to 2xl), kept as they are on purpose
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
