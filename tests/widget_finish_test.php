@@ -609,7 +609,7 @@ function test_widget_finish_hooks_in_source()
 	pg_assert_contains('function ($m) use ($render, $email, $configs) {', $designer);
 	pg_assert_contains('if ($email) return pg_sw_finish_widget_html($out, $scope);', $designer, 'e-mail branch');
 	pg_assert_contains('return pg_img_responsive_html(pg_img_fluid_alias(pg_sw_finish_widget_html($out, $scope)));', $designer, 'page branch');
-	pg_assert_same(1, preg_match('/pg_sw_finish_open\([^;]*;\s*try \{\s*\$out = \$render\(\$m\);\s*\} finally \{\s*pg_sw_finish_close\(\);/', $designer), 'scope around the render');
+	pg_assert_same(1, preg_match('/pg_sw_finish_open\([^;]*;\s*try \{\s*\$out = \$render\(\$m(, \$placement)?\);\s*\} finally \{\s*pg_sw_finish_close\(\);/', $designer), 'scope around the render');
 
 	$functions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/functions.php');
 	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_conditions.php');", $functions);
