@@ -326,6 +326,7 @@
     "GİB has not accepted the e-document yet, so the store's PDF is attached. Once it is accepted, the official copy goes instead.": "e-Belge henüz GİB'de kabul edilmedi, bu yüzden mağazanın PDF'i eklenir. Kabul edildikten sonra onun yerine resmî kopya gider.",
     "GİB number": "GİB numarası",
     "GİB will not take the invoice until these are on the account card: {var:1}. A document already issued keeps the copy it was written with, so the invoice has to be raised again after the card is filled in.": "Şunlar cari kartta olmadan GİB faturayı almaz: {var:1}. Kesilmiş belge yazıldığı kopyayı korur; kart doldurulduktan sonra fatura yeniden kesilmelidir.",
+    "gallery": "galeri",
     "gardens, food": "bahçeler, gıda",
     "general": "genel",
     "general job cancelled unpaid bank transfer order #{var:1} after {var:2} day(s)": "genel görev, ödenmemiş #{var:1} numaralı havale siparişini {var:2} gün sonra iptal etti",

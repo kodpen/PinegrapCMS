@@ -59,6 +59,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_order_preview`: [[order-preview-widget]]
 - `widgets_parts`: [[widget-default-parts]]
 - `widgets_parts_forms`: [[widget-default-parts-order-forms]]
+- `widgets_photo_gallery`: [[photo-gallery-widget]]
 - `widgets_placement`: [[widget-placement-settings]]
 - `widgets_shipping_address`: [[shipping-address-widget]]
 - `widgets_shipping_method`: [[shipping-method-widget]]

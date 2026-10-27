@@ -93,6 +93,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_billing_information.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_order_preview.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_order_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_folder_view.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_photo_gallery.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_comments_recent.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_gallery.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_placement.php');
