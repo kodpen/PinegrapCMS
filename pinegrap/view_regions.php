@@ -40,7 +40,7 @@ switch ($filter) {
         $subheading = lang('All ad regions that can be added to any page style and display rotating ads created by any site manager.');
         
         // Add the create button to the button bar.
-        $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_ad_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
+        $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_ad_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
         // The columns this list sorts by, in the order the table shows them.
         // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -175,7 +175,7 @@ switch ($filter) {
             $output_table_contents .= '
                 <tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($name) . '</td>
                     <td class="align-middle">' . $output_display_type . '</td>
@@ -196,7 +196,7 @@ switch ($filter) {
         $subheading = lang('All login regions that add the login process to any page.');
         
         // Add the create button to the button bar.
-        $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_login_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
+        $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_login_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
         // The columns this list sorts by, in the order the table shows them.
         // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -335,7 +335,7 @@ switch ($filter) {
             $output_table_contents .= '
                 <tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($name) . '</td>
                     <td class="align-middle">' . $not_logged_in_header . '</td>
@@ -355,7 +355,7 @@ switch ($filter) {
         $subheading = lang('All dynamic regions that contain PHP code and can be added to any page style.');
         
         // Add the create button to the button bar.
-        $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_dynamic_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
+        $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_dynamic_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
         // output dynamic regions
         // if user's role is above a designer role then output dynamic region area
@@ -435,7 +435,7 @@ switch ($filter) {
                 $output_table_contents .= '
                 <tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($row['dregion_name']) . '</td>
                     <td class="align-middle">'.$code_preview.'</td>
@@ -452,7 +452,7 @@ switch ($filter) {
         $subheading =lang('All designer regions of shared content that can be added to any page style and updated during page editing by any Site Designer.');
         
         // Add the create button to the button bar.
-        $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_designer_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
+        $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_designer_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
         // The columns this list sorts by, in the order the table shows them.
         // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -529,7 +529,7 @@ switch ($filter) {
             $output_table_contents .= '
                 <tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($row['cregion_name']) . '</td>
                     <td class="align-middle">' . $content_preview . '</td>
@@ -546,7 +546,7 @@ switch ($filter) {
         $subheading =lang('All common regions of shared content that can be added to any page style and updated during page editing by any site manager.');
         
         // Add the create button to the button bar.
-        $button_bar_button = '<a class="btn btn-sm btn-primary m-1" href="add_common_region.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
+        $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_common_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
         
         // The columns this list sorts by, in the order the table shows them.
         // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -622,7 +622,7 @@ switch ($filter) {
             $output_table_contents .= '
                 <tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($row['cregion_name']) . '</td>
                     <td class="align-middle">' . $content_preview . '</td>
@@ -647,8 +647,8 @@ echo
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 text-center md:text-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             ' . $button_bar_button . '
@@ -657,7 +657,7 @@ echo
                         </nav>
                     </div>
                 </div>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table " style="width:100%;display:none">
                             <thead>' . $output_table_headers . '</thead>

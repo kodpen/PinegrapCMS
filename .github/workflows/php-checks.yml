@@ -75,6 +75,10 @@ jobs:
         if: ${{ hashFiles('tools/check_copies.php') != '' }}
         run: php tools/check_copies.php
 
+      - name: Panel markup is Bootstrap 6 (tools/check_bs6.php --strict)
+        if: ${{ hashFiles('tools/check_bs6.php') != '' }}
+        run: php tools/check_bs6.php --strict
+
       # tools/static_analysis.sh fetches the pinned analysers into the
       # runner's temporary folder; PHPStan's errors become annotations on the
       # pull request's diff.

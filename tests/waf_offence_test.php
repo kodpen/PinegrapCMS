@@ -161,7 +161,7 @@ function test_waf_offence_release_and_allow_clear_the_bucket()
 function test_waf_offence_would_ban_has_a_badge()
 {
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_waf_log.php');
-	pg_assert_contains("'would-ban'   => array('bg-warning text-dark', lang('Would ban')),", $screen);
+	pg_assert_contains("'would-ban'   => array('bg-warning fg-black', lang('Would ban')),", $screen);
 	pg_assert_contains("action IN ('would-block','would-rate','would-ban')", $screen);
 
 	$widget = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_21.php');

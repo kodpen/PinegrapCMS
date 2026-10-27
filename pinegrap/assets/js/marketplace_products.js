@@ -90,7 +90,7 @@
 
         var alert = document.createElement('div');
 
-        alert.className = 'alert alert-' + (kind || 'info') + ' alert-dismissible fade show';
+        alert.className = 'alert theme-' + (kind || 'info') + ' pg-alert-dismissible fade show';
         alert.setAttribute('role', kind === 'danger' ? 'alert' : 'status');
         alert.textContent = message;
 
@@ -448,7 +448,7 @@
         var before = cell.innerHTML;
         var form = element('form', 'mpp-code-edit');
         var input = element('input', 'form-control form-control-sm');
-        var save = element('button', 'btn btn-sm btn-primary', label('save'));
+        var save = element('button', 'btn btn-sm btn-solid theme-primary', label('save'));
         var cancel = element('button', 'btn btn-sm btn-ghost', label('cancel'));
 
         input.type = 'text';
@@ -561,7 +561,7 @@
         search.placeholder = label('search');
         search.setAttribute('aria-label', label('search'));
 
-        var caption = element('div', 'small text-body-secondary mt-3');
+        var caption = element('div', 'small fg-secondary mt-5');
         var grid = element('div', 'mpp-pick-grid');
 
         built.body.appendChild(head);
@@ -645,14 +645,14 @@
         meta.appendChild(element('span', '', product.stock));
 
         if (!product.enabled) {
-            meta.appendChild(element('span', 'text-warning', label('disabled')));
+            meta.appendChild(element('span', 'fg-warning', label('disabled')));
         }
 
         button.appendChild(meta);
 
         if (product.matched) {
             button.disabled = true;
-            button.appendChild(element('div', 'small text-body-secondary', label('matched_to', [product.matched])));
+            button.appendChild(element('div', 'small fg-secondary', label('matched_to', [product.matched])));
         }
 
         button.addEventListener('click', function () {
@@ -757,7 +757,7 @@
             closeLabel: label('close')
         });
 
-        var caption = element('div', 'small text-body-secondary mb-2');
+        var caption = element('div', 'small fg-secondary mb-3');
         var search = element('input', 'form-control');
         var hint = element('div', 'form-text', label('category_hint'));
         var results = element('div', 'mpa-results');
@@ -798,7 +798,7 @@
             return;
         }
 
-        categories.results.appendChild(element('div', 'small text-body-secondary', label('loading')));
+        categories.results.appendChild(element('div', 'small fg-secondary', label('loading')));
 
         post('list_categories', { q: q }).then(function (answer) {
             if (request !== categories.request) {
@@ -808,7 +808,7 @@
             categories.results.innerHTML = '';
 
             if (!answer.ok || !answer.categories.length) {
-                categories.results.appendChild(element('div', 'small text-body-secondary', answer.ok ? label('nothing') : (answer.error || label('failed'))));
+                categories.results.appendChild(element('div', 'small fg-secondary', answer.ok ? label('nothing') : (answer.error || label('failed'))));
                 return;
             }
 
@@ -886,7 +886,7 @@
         });
 
         var cancel = element('button', 'btn btn-ghost', label('cancel'));
-        var save = element('button', 'btn btn-primary', label('save'));
+        var save = element('button', 'btn btn-solid theme-primary', label('save'));
 
         cancel.type = 'button';
         save.type = 'button';
@@ -950,7 +950,7 @@
         answers.id = id;
         answers.title.textContent = label('attributes') + (row ? ' · ' + row.getAttribute('data-mp-title') : '');
         answers.body.innerHTML = '';
-        answers.body.appendChild(element('div', 'small text-body-secondary', label('loading')));
+        answers.body.appendChild(element('div', 'small fg-secondary', label('loading')));
         answers.save.disabled = true;
 
         pgUI.dialog.show(answers.root);
@@ -963,7 +963,7 @@
             answers.body.innerHTML = '';
 
             if (!answer.ok) {
-                answers.body.appendChild(element('div', 'alert alert-warning mb-0', answer.error || label('failed')));
+                answers.body.appendChild(element('div', 'alert theme-warning mb-0', answer.error || label('failed')));
                 return;
             }
 

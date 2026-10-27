@@ -226,20 +226,20 @@
                     var opts = el.getAttribute(HOOKS.date) === 'plain'
                         ? { dateFormat: (window.datetimepicker_options && window.datetimepicker_options.dateFormat) || window.date_picker_format }
                         : (window.datetimepicker_options || {});
-                    jq()(el).datepicker(opts);
+                    jq()(el).datepicker(inOverlayHost(opts));
                 },
                 redraw: function () {},
                 destroy: destroyPicker
             },
             datetime: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.datetimepicker); },
-                init: function (el) { jq()(el).datetimepicker(window.datetimepicker_options || {}); },
+                init: function (el) { jq()(el).datetimepicker(inOverlayHost(window.datetimepicker_options || {})); },
                 redraw: function () {},
                 destroy: destroyPicker
             },
             time: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.timepicker); },
-                init: function (el) { jq()(el).timepicker(window.timepicker_options || window.datetimepicker_options || {}); },
+                init: function (el) { jq()(el).timepicker(inOverlayHost(window.timepicker_options || window.datetimepicker_options || {})); },
                 redraw: function () {},
                 destroy: destroyPicker
             }
@@ -264,6 +264,28 @@
         if (el.getAttribute('data-placeholder')) {
             opts.placeholder = el.getAttribute('data-placeholder');
         }
+    }
+
+    // The jQuery UI picker's one box moves into the field's overlay host each
+    // time it opens (the open dialog holding the field, else <body>); a
+    // field's own beforeShow still runs.
+    function inOverlayHost(opts) {
+        var copy = {}, own = opts.beforeShow;
+        for (var key in opts) {
+            if (Object.prototype.hasOwnProperty.call(opts, key)) {
+                copy[key] = opts[key];
+            }
+        }
+        copy.beforeShow = function (input, inst) {
+            if (window.pgUI && window.pgUI.overlayHost && inst && inst.dpDiv) {
+                var host = window.pgUI.overlayHost(input);
+                if (host && inst.dpDiv[0].parentNode !== host) {
+                    host.appendChild(inst.dpDiv[0]);
+                }
+            }
+            return own ? own.apply(this, arguments) : {};
+        };
+        return copy;
     }
 
     function removeTaginWrapper(el) {

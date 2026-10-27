@@ -147,12 +147,17 @@ function bs6_map_plain_token($token)
 	}
 
 	if (preg_match('/^(m|mt|mb|ms|me|mx|my)-n([1-5])$/', $token, $m)) {
-		// v6 keeps two negative margins, and only inline: ms--1/-2, me--1/-2.
+		// v6 keeps two negative margins, and only inline: ms--1/-2, me--1/-2;
+		// the others become the panel's own pg-<side>-n<key> (v5's sizes).
 		if (in_array($m[1], array('ms', 'me'), true) && in_array($m[2], array('1', '2'), true)) {
 			return array('tokens' => array($m[1] . '--' . $m[2]), 'review' => null);
 		}
 
-		return array('tokens' => array($token), 'review' => 'negative margin with no v6 class (only ms--1/-2, me--1/-2 exist)');
+		return array('tokens' => array('pg-' . $token), 'review' => null);
+	}
+
+	if (preg_match('/^display-([1-6])$/', $token, $m)) {
+		return array('tokens' => array('pg-display-' . $m[1]), 'review' => null);
 	}
 
 	if (preg_match('/^fs-([1-6])$/', $token, $m)) {
@@ -203,10 +208,46 @@ function bs6_map_plain_token($token)
 		'mw-100' => array('max-w-100'),
 		'valid-tooltip' => array('tooltip', 'valid-tooltip'),
 		'invalid-tooltip' => array('tooltip', 'invalid-tooltip'),
+		// v6 neutrals the panel's token bridge sets to v5's values.
+		'text-reset' => array('fg-reset'),
+		'text-body-tertiary' => array('fg-3'),
+		'bg-body-tertiary' => array('bg-1'),
+		'bg-body-secondary' => array('bg-2'),
+		// v6's close icon is drawn in currentcolor.
+		'btn-close-white' => array('fg-white'),
+		// A Bootstrap 4 class: neither v5 nor v6 draws it.
+		'dropdown-menu-right' => array(),
+		// No v6 class: the panel's own, drawn as v5 did (the switch's shell
+		// rules in backend.src.css).
+		'text-body-emphasis' => array('pg-fg-emphasis'),
+		'table-light' => array('pg-table-light'),
+		'alert-dismissible' => array('pg-alert-dismissible'),
+		'lead' => array('pg-lead'),
 	);
 
 	if (isset($renames[$token])) {
 		return array('tokens' => $renames[$token], 'review' => null);
+	}
+
+	// Light and dark have no theme in v6: the nearest neutral keeps the look
+	// (v5's light is a pale grey surface, its dark a near-black one, in both
+	// colour modes).
+	$light_dark = array(
+		'text-dark' => array('fg-black'),
+		'text-light' => array('fg-white'),
+		'bg-light' => array('bg-1'),
+		'bg-dark' => array('bg-black'),
+		'text-bg-light' => array('bg-1', 'fg-body'),
+		'text-bg-dark' => array('bg-black', 'fg-white'),
+		'alert-light' => array('theme-secondary'),
+		'btn-light' => array('btn-subtle', 'theme-secondary'),
+		'btn-dark' => array('btn-solid', 'theme-inverse'),
+		'border-dark' => array('border-inverse'),
+		'border-light' => array('border-subtle'),
+	);
+
+	if (isset($light_dark[$token])) {
+		return array('tokens' => $light_dark[$token], 'review' => null);
 	}
 
 	if (preg_match('/^text-bg-(' . $colours . ')$/', $token, $m)) {
@@ -255,8 +296,7 @@ function bs6_map_plain_token($token)
 		'/^link-(underline-)?opacity-(0|25|75)(-hover)?$/' => 'link opacity step with no v6 class',
 		'/^opacity-\d+-hover$/' => 'hover opacity with no v6 class in 6.0.0-alpha.1',
 		'/^d-print-/' => 'print display utility with no v6 class in 6.0.0-alpha.1',
-		'/^(display-[1-6]|lead)$/' => 'removed: compose with fs-* and fw-*',
-		'/^(btn-close-white|alert-dismissible|navbar-light|navbar-dark)$/' => 'removed in v6',
+		'/^(navbar-light|navbar-dark)$/' => 'removed in v6',
 		'/^(needs-validation|was-validated)$/' => 'validation: data-bs-validate on the form, :user-invalid instead of the JS class',
 		'/^modal(-.+)?$/' => 'modal becomes a <dialog class="dialog">: structural',
 		'/^offcanvas(-.+)?$/' => 'offcanvas becomes a <dialog class="drawer">: structural',
@@ -278,11 +318,46 @@ function bs6_map_plain_token($token)
 }
 
 /**
+ * The classes of the Bootstrap 6 dist while a converted tree is read, else
+ * null. On a converted tree `p-5` or `rounded-4` is a v6 class, not a v5 one
+ * to rewrite again: tools/check_bs6.php sets the dist's classes after the
+ * switch, and bs6_map_token() then keeps any class v6 defines. The codemod
+ * never sets it (it reads Bootstrap 5 markup). Pass false to clear.
+ */
+function bs6_converted_tree_classes($classes = null)
+{
+	static $set = null;
+
+	if ($classes === false) {
+		$set = null;
+	} elseif (is_array($classes)) {
+		$set = $classes;
+	}
+
+	return $set;
+}
+
+// True when the panel head (output_control_panel_header_includes()) loads the
+// Bootstrap 6 stylesheet: the tree has been switched.
+function bs6_panel_head_is_v6($product)
+{
+	$output = (string) @file_get_contents($product . '/includes/fn/output.php');
+
+	return strpos($output, '/assets/lib/bootstrap-6/css/bootstrap.min.css') !== false;
+}
+
+/**
  * Maps one class token, breakpoint infix included: `p-md-3` gives `md:p-5`,
  * `col-xxl-4` gives `2xl:col-4`. Same return shape as bs6_map_plain_token().
  */
 function bs6_map_token($token)
 {
+	$v6 = bs6_converted_tree_classes();
+
+	if ($v6 !== null && isset($v6[$token])) {
+		return array('tokens' => array($token), 'review' => null);
+	}
+
 	$split = bs6_split_responsive($token);
 
 	if ($split === null) {
@@ -328,7 +403,8 @@ function bs6_is_dynamic_v5_stem($piece)
  * array of array('token', 'reason')).
  *
  * In a list holding `badge`, `bg-<colour>` and `text-bg-<colour>` become
- * `theme-<colour>` (v6 badges take the theme class).
+ * `theme-<colour>` (v6 badges take the theme class); a light badge becomes
+ * `badge-subtle theme-secondary`, a dark one `theme-inverse`.
  *
  * With $one_class_each (an argument of classList or addClass/removeClass/
  * toggleClass) a class that would become two or none is kept and reported:
@@ -366,22 +442,47 @@ function bs6_convert_class_list($value, $one_class_each = false)
 		if (!bs6_is_literal_token($part)) {
 			if (bs6_is_dynamic_v5_stem($part)) {
 				$reviews[] = array($part, 'class built in code from a Bootstrap 5 stem');
-			} elseif (preg_match_all('/[\'"]([A-Za-z0-9][A-Za-z0-9_:-]*)|([A-Za-z0-9][A-Za-z0-9_:-]*)[\'"]/', $part, $quoted, PREG_SET_ORDER)) {
-				// A class inside the code (`? 'text-success' : ''`) is left as
-				// written and reported when the rules would change it.
-				foreach ($quoted as $q) {
-					$inner = ($q[1] !== '') ? $q[1] : $q[2];
-					$mapped = bs6_map_token($inner);
-					if ($mapped['review'] !== null || $mapped['tokens'] !== array($inner)) {
-						$reviews[] = array($inner . ($mapped['review'] === null ? ' -> ' . implode(' ', $mapped['tokens']) : ''), 'class inside code: convert it by hand');
+			} elseif (preg_match_all('/[\'"]([A-Za-z0-9][A-Za-z0-9_:-]*)|([A-Za-z0-9][A-Za-z0-9_:-]*)[\'"]|\?>([A-Za-z0-9][A-Za-z0-9_:-]*)(?=<\?)/', $part, $quoted, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+				// A class quoted in the code (`? 'text-success' : ''`), or
+				// printed between two PHP blocks (a class right after a PHP close tag), is
+				// text the code prints into the list: it is rewritten in
+				// place. One that needs a hand, or one that would split in a
+				// class API call, is reported.
+				$rewritten = $part;
+
+				foreach (array_reverse($quoted) as $q) {
+					$hit = ($q[1][0] !== '') ? $q[1] : ((isset($q[2]) && $q[2][0] !== '') ? $q[2] : $q[3]);
+					$inner = $hit[0];
+					$mapped = ($is_badge && preg_match('/^(text-bg|bg)-(' . $colours . ')$/', $inner, $m))
+						? array('tokens' => array('theme-' . $m[2]), 'review' => null)
+						: bs6_map_token($inner);
+
+					if ($mapped['review'] === null && $mapped['tokens'] === array($inner)) {
+						continue;
 					}
+
+					if ($mapped['review'] !== null || !$mapped['tokens'] || ($one_class_each && count($mapped['tokens']) !== 1)) {
+						$reviews[] = array($inner . ($mapped['review'] === null ? ' -> ' . implode(' ', $mapped['tokens']) : ''), 'class inside code: convert it by hand');
+						continue;
+					}
+
+					$rewritten = substr($rewritten, 0, $hit[1]) . implode(' ', $mapped['tokens']) . substr($rewritten, $hit[1] + strlen($inner));
+					$changed++;
 				}
+
+				$parts[$i] = $rewritten;
 			}
 			continue;
 		}
 
-		if ($is_badge && preg_match('/^(text-bg|bg)-(' . $colours . ')$/', $part, $m)) {
+		$v6 = bs6_converted_tree_classes();
+
+		if ($v6 !== null && isset($v6[$part])) {
+			$mapped = array('tokens' => array($part), 'review' => null);
+		} elseif ($is_badge && preg_match('/^(text-bg|bg)-(' . $colours . ')$/', $part, $m)) {
 			$mapped = array('tokens' => array('theme-' . $m[2]), 'review' => null);
+		} elseif ($is_badge && preg_match('/^(text-bg|bg)-(light|dark)$/', $part, $m)) {
+			$mapped = array('tokens' => $m[2] === 'light' ? array('badge-subtle', 'theme-secondary') : array('theme-inverse'), 'review' => null);
 		} else {
 			$mapped = bs6_map_token($part);
 		}
@@ -465,12 +566,18 @@ function bs6_join_class_parts($value, $parts)
  * Contexts: a `class="..."` / `class='...'` attribute (escaped quotes too),
  * PHP array keys ending in "class" or "classes" (`'class' => '...'`), JS
  * object keys `class:` / `className:`, `.className = '...'`, jQuery
- * `addClass` / `removeClass` / `toggleClass` / `hasClass` and the
- * `classList` methods with string arguments.
+ * `addClass` / `removeClass` / `toggleClass` / `hasClass`, the
+ * `classList` methods with string arguments, and the element helpers of the
+ * panel scripts (`el('div', 'mb-3')`, `h.el(…)`, `make(…)`, `button('btn …')`,
+ * `icon('bi-x', 'me-2')`).
  */
-function bs6_find_class_lists($source)
+function bs6_find_class_lists($source, $strings = false)
 {
 	$found = array();
+
+	if ($strings) {
+		$found = bs6_find_class_strings($source);
+	}
 
 	$patterns = array(
 		// Not `$class = '...'`: a PHP variable assignment is code, not markup.
@@ -479,6 +586,12 @@ function bs6_find_class_lists($source)
 		'js-key' => '/\b(?:class|className)\s*:\s*([\'"])(.*?)(?<!\\\\)\1/',
 		'class-name' => '/\.className\s*\+?=\s*([\'"])(.*?)(?<!\\\\)\1/',
 		'jquery' => '/\.(?:addClass|removeClass|toggleClass|hasClass)\(\s*([\'"])(.*?)(?<!\\\\)\1/',
+		// Element helpers of the panel scripts: el('div', 'mb-3'),
+		// h.el(…), make(…), element(…), svgEl(…); button('btn …', label);
+		// icon('bi-x', 'me-2').
+		'helper' => '/(?<![\w$])(?:[A-Za-z_$][\w$]*\.)?(?:el|element|make|svgEl)\(\s*([\'"])[a-zA-Z][\w-]*\1\s*,\s*([\'"])(.*?)(?<!\\\\)\2/',
+		'helper-first' => '/(?<![\w$])(?:[A-Za-z_$][\w$]*\.)?button\(\s*()([\'"])(.*?)(?<!\\\\)\2/',
+		'helper-icon' => '/(?<![\w$])(?:[A-Za-z_$][\w$]*\.)?icon\(\s*([\'"])[^\'"]*\1\s*,\s*([\'"])(.*?)(?<!\\\\)\2/',
 	);
 
 	foreach ($patterns as $kind => $pattern) {
@@ -487,7 +600,7 @@ function bs6_find_class_lists($source)
 		}
 
 		foreach ($matches as $m) {
-			$group = ($kind === 'attribute' || $kind === 'php-key') ? 3 : 2;
+			$group = in_array($kind, array('attribute', 'php-key', 'helper', 'helper-first', 'helper-icon'), true) ? 3 : 2;
 
 			if ($m[$group][1] < 0) {
 				continue;
@@ -528,6 +641,66 @@ function bs6_find_class_lists($source)
 	return $unique;
 }
 
+// Whether the codemod reads class names in plain string literals of a file
+// (bs6_find_class_strings()): not in the editor's script, whose chrome code
+// names the canvas's Bootstrap 5 classes as data.
+function bs6_reads_class_strings($path)
+{
+	return str_replace('\\', '/', $path) !== 'assets/js/style_designer.js';
+}
+
+/**
+ * String literals in code that hold only class names, at least one of them a
+ * Bootstrap 5 class the rules change or report: a status map
+ * (`'expired' => 'text-bg-warning'`), a function's return value, a JS
+ * object of classes. Every token has a hyphen or is a class without one
+ * (`btn`, `badge`, …), so text and keys are not taken. Kind 'string'; a
+ * single class in one is converted like a class API argument (a class that
+ * would become two is reported), since the code may add it with classList.
+ */
+function bs6_find_class_strings($source)
+{
+	$bare = array('btn', 'badge', 'small', 'row', 'col', 'card', 'border', 'rounded', 'shadow', 'active', 'disabled', 'show', 'fade', 'container', 'table', 'alert', 'collapse', 'clearfix', 'invisible', 'visible');
+	$found = array();
+
+	// One space may lead or end the string (`' text-success'`, added to a
+	// list in code); the class list is what lies between.
+	if (!preg_match_all('/([\'"]) ?([A-Za-z][A-Za-z0-9_:-]*(?: [A-Za-z][A-Za-z0-9_:-]*)*) ?\1/', $source, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+		return $found;
+	}
+
+	foreach ($matches as $m) {
+		// An attribute value other than class (`id="modal-contact"`) or an
+		// element id in code names no class.
+		if (preg_match('/(?:\s(?:id|for|name|form|list|role|type|value|href|src|target|rel|title|alt|placeholder|aria-[\w-]+)=\\\\?|getElementById\(\s*)$/', substr($source, max(0, $m[0][1] - 40), min(40, $m[0][1])))) {
+			continue;
+		}
+
+		$tokens = explode(' ', $m[2][0]);
+		$v5 = false;
+
+		foreach ($tokens as $token) {
+			// A word with neither a hyphen nor an underscore (an own class
+			// such as `status_enabled`) is not a class: the string is text.
+			if (strpos($token, '-') === false && strpos($token, '_') === false && !in_array($token, $bare, true)) {
+				continue 2;
+			}
+
+			$mapped = bs6_map_token($token);
+
+			if ($mapped['review'] !== null || $mapped['tokens'] !== array($token)) {
+				$v5 = true;
+			}
+		}
+
+		if ($v5) {
+			$found[] = array('offset' => $m[2][1], 'length' => strlen($m[2][0]), 'value' => $m[2][0], 'kind' => 'string');
+		}
+	}
+
+	return $found;
+}
+
 // 1-based line number of a byte offset.
 function bs6_line_of($source, $offset)
 {
@@ -544,13 +717,228 @@ function bs6_line_of($source, $offset)
  *
  * Returns a list of array(start, end) byte offsets, end exclusive.
  */
-function bs6_site_output_ranges($source)
+function bs6_site_output_ranges($source, $path = null)
 {
 	$marker = '/* @pg-site-output */';
+	$path = ($path !== null) ? $path : bs6_current_path();
+	$functions = bs6_site_functions();
+
+	$panel = bs6_shared_panel_functions();
+	$blocks = bs6_shared_panel_blocks();
+	if ($path !== null && (isset($panel[$path]) || isset($blocks[$path]))) {
+		// Everything outside the panel functions and blocks is site output.
+		$inside = isset($panel[$path]) ? bs6_function_ranges($source, $panel[$path]) : array();
+		if (isset($blocks[$path])) {
+			foreach ($blocks[$path] as $function => $anchor) {
+				$inside = array_merge($inside, bs6_block_ranges($source, $function, $anchor));
+			}
+		}
+		usort($inside, function ($a, $b) {
+			return $a[0] - $b[0];
+		});
+		$ranges = array();
+		$from = 0;
+		foreach ($inside as $range) {
+			if ($range[0] > $from) {
+				$ranges[] = array($from, $range[0]);
+			}
+			$from = $range[1];
+		}
+		$ranges[] = array($from, strlen($source));
+		return $ranges;
+	}
+
+	if ($path !== null && isset($functions[$path])) {
+		$ranges = bs6_function_ranges($source, $functions[$path]);
+		$marked = (strpos($source, $marker) === false) ? array() : bs6_marker_ranges($source);
+		$all = array_merge($ranges, $marked);
+		usort($all, function ($a, $b) {
+			return $a[0] - $b[0];
+		});
+		return $all;
+	}
 
 	if (strpos($source, $marker) === false) {
 		return array();
 	}
+
+	return bs6_marker_ranges($source);
+}
+
+/**
+ * The file the tools are reading now (relative to pinegrap/), set by the
+ * codemod, check_bs6.php and the switch for each file, so
+ * bs6_site_output_ranges() can add the file's site functions
+ * (bs6_site_functions()). Pass false to clear.
+ */
+function bs6_current_path($path = null)
+{
+	static $current = null;
+
+	if ($path === false) {
+		$current = null;
+	} elseif ($path !== null) {
+		$current = str_replace('\\', '/', $path);
+	}
+
+	return $current;
+}
+
+/**
+ * Functions of panel files that print into site pages (called from site
+ * renderers): their markup stays Bootstrap 5 like any site output. Found by
+ * tests/bs6_site_output_test.php, which fails on a site-called function the
+ * codemod would change that is not listed here. The OAuth consent screens
+ * are not listed: they print under output_header_secure(), on Bootstrap 6.
+ */
+function bs6_site_functions()
+{
+	return array(
+		'includes/fn/custom_form.php' => array('pg_cf_validation_script'),
+		'includes/fn/design_themes.php' => array('pg_design_looks'),
+		'includes/fn/passkeys.php' => array('pg_passkey_account_section', 'pg_passkey_add_form_script'),
+		'includes/fn/returns.php' => array('pg_return_actions_html', 'pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
+	);
+}
+
+/**
+ * Functions of files shared with the site (bs6_scope_kind() 'shared') that
+ * print only panel markup: they are converted with the panel, and every
+ * other function of the file is read as site output. A shared function that
+ * prints on both sides (liveform's fields and notices, get_calendar(),
+ * pg_seo_page_toolbar()) is not listed: it chooses its classes at run time,
+ * and its panel-only blocks are listed in bs6_shared_panel_blocks().
+ */
+function bs6_shared_panel_functions()
+{
+	return array(
+		'chat.php' => array('pg_chat_render_backend_launcher'),
+		'includes/fn/auth.php' => array('get_acl_folder_tree', 'pg_login_captcha_screen'),
+		'includes/fn/content.php' => array('get_checkboxes_for_items_user_can_edit'),
+		'includes/fn/ecommerce.php' => array('pg_key_code_list_cells', 'pg_order_list_status_html'),
+		'includes/fn/editor.php' => array('pg_code_editor_attach'),
+		'includes/fn/forms.php' => array('get_page_type_checkboxes_and_labels'),
+		'includes/fn/legal_documents.php' => array('pg_legal_documents_panel_card'),
+		'seo.php' => array(
+			'pg_seo_render_impact', 'pg_seo_render_bar', 'pg_seo_render_checklist', 'pg_seo_render_run_buttons',
+			'pg_seo_render_group_row', 'pg_seo_render_detail_offcanvas', 'pg_seo_render_badge',
+		),
+	);
+}
+
+/**
+ * Blocks of shared functions that print on both sides and choose their
+ * markup at run time: the brace block opened by each `<anchor>` inside the
+ * named function prints only in the panel and is converted with it; the
+ * rest of the function and the file stays site output.
+ */
+function bs6_shared_panel_blocks()
+{
+	return array(
+		// The calendar screen and the dashboard calendar widget pass the
+		// signed-in user; site pages pass none.
+		'includes/fn/calendar.php' => array('get_calendar' => 'if ($user) {'),
+	);
+}
+
+/**
+ * Byte ranges, as array(start, end), of the brace blocks opened by $anchor
+ * (text ending in `{`) inside the top-level function $function: from the
+ * anchor to the matching closing brace.
+ */
+function bs6_block_ranges($source, $function, $anchor)
+{
+	$ranges = array();
+	$outer = bs6_function_ranges($source, array($function));
+	if (!$outer) {
+		return $ranges;
+	}
+
+	// Offsets of the brace tokens, so braces inside strings are skipped.
+	$braces = array();
+	$offset = 0;
+	foreach (token_get_all($source) as $token) {
+		$text = is_array($token) ? $token[1] : $token;
+		if ($text === '{' || $text === '}' || (is_array($token) && ($token[0] === T_CURLY_OPEN || $token[0] === T_DOLLAR_OPEN_CURLY_BRACES))) {
+			$braces[] = array($offset + strlen($text) - 1, $text === '}' ? -1 : 1);
+		}
+		$offset += strlen($text);
+	}
+
+	list($from, $to) = $outer[0];
+	$at = $from;
+	while (($at = strpos($source, $anchor, $at)) !== false && $at < $to) {
+		$open = $at + strlen($anchor) - 1;
+		$depth = 0;
+		foreach ($braces as $brace) {
+			if ($brace[0] < $open) {
+				continue;
+			}
+			$depth += $brace[1];
+			if ($depth === 0) {
+				$ranges[] = array($at, $brace[0] + 1);
+				break;
+			}
+		}
+		$at = $open + 1;
+	}
+
+	return $ranges;
+}
+
+/**
+ * Byte ranges of the named top-level functions of a PHP source, as
+ * array(start, end): from the `function` keyword to the closing brace.
+ */
+function bs6_function_ranges($source, array $names)
+{
+	$ranges = array();
+	$offset = 0;
+	$depth = 0;
+	$start = null;
+	$name = null;
+	$current = null;
+	$want_name = false;
+
+	foreach (token_get_all($source) as $token) {
+		$text = is_array($token) ? $token[1] : $token;
+
+		if (is_array($token) && $token[0] === T_FUNCTION && $depth === 0) {
+			$want_name = true;
+			$start = $offset;
+		} elseif ($want_name && is_array($token) && $token[0] === T_STRING) {
+			$name = $token[1];
+			$want_name = false;
+		} elseif ($want_name && $text === '(') {
+			$want_name = false;
+		}
+
+		if ($text === '{' || (is_array($token) && ($token[0] === T_CURLY_OPEN || $token[0] === T_DOLLAR_OPEN_CURLY_BRACES))) {
+			if ($depth === 0 && $name !== null) {
+				$current = $name;
+				$name = null;
+			}
+			$depth++;
+		} elseif ($text === '}') {
+			$depth--;
+			if ($depth === 0 && $current !== null) {
+				if (in_array($current, $names, true)) {
+					$ranges[] = array($start, $offset + 1);
+				}
+				$current = null;
+			}
+		}
+
+		$offset += strlen($text);
+	}
+
+	return $ranges;
+}
+
+// Ranges covered by `/* @pg-site-output */` markers (bs6_site_output_ranges()).
+function bs6_marker_ranges($source)
+{
+	$marker = '/* @pg-site-output */';
 
 	$ranges = array();
 	$lines = explode("\n", $source);
@@ -613,6 +1001,49 @@ function bs6_in_ranges($offset, array $ranges)
 	return false;
 }
 
+// The PHP code of a .php file as array(start, end) byte ranges: from each
+// PHP open tag to its close tag, or to the end of the file.
+function bs6_php_code_ranges($source)
+{
+	$ranges = array();
+	$offset = 0;
+
+	while (preg_match('/<\?(?:php\b|=)/', $source, $m, PREG_OFFSET_CAPTURE, $offset)) {
+		$start = $m[0][1];
+		$end = strpos($source, '?>', $start);
+		$end = ($end === false) ? strlen($source) : $end;
+		$ranges[] = array($start, $end);
+		$offset = $end + 2;
+	}
+
+	return $ranges;
+}
+
+// True when a lone class string is printed into a class list rather than
+// handed to a class API: in PHP code (`$x ? 'btn-success' : 'btn-danger'`,
+// a helper's argument; PHP has no class API), or in a parenthesised choice
+// joined to a class string (`'btn btn-sm ' + (on ? 'btn-primary' :
+// 'btn-outline-secondary')`). Such a string takes the whole v6 class list.
+// The argument of a class API call (`classList.add(`, `addClass(`) still
+// takes one class.
+function bs6_is_markup_string($source, $offset, array $php_code)
+{
+	$before = substr($source, max(0, $offset - 40), min(40, $offset));
+
+	if (preg_match('/(?:classList\.\w+|[Cc]lass)\(\s*\\?[\'"]$/', $before)) {
+		return false;
+	}
+
+	if ($php_code && bs6_in_ranges($offset, $php_code)) {
+		return true;
+	}
+
+	$line_start = strrpos(substr($source, 0, $offset), "\n");
+	$line = substr($source, $line_start === false ? 0 : $line_start + 1, $offset - ($line_start === false ? 0 : $line_start + 1));
+
+	return (bool) preg_match('/[\'"]\s*\+\s*\([^()]*$/', $line);
+}
+
 /**
  * Converts the class lists in a source file. With $lines (a set of 1-based
  * line numbers as array keys) only the lists starting on those lines change:
@@ -624,7 +1055,7 @@ function bs6_in_ranges($offset, array $ranges)
  * Returns array('source', 'changed' => int, 'kept' => int, 'reviews' =>
  * array of array('line', 'token', 'reason')).
  */
-function bs6_convert_source($source, $lines = null)
+function bs6_convert_source($source, $lines = null, $strings = false)
 {
 	$out = '';
 	$position = 0;
@@ -632,8 +1063,10 @@ function bs6_convert_source($source, $lines = null)
 	$kept = 0;
 	$reviews = array();
 	$site_output = bs6_site_output_ranges($source);
+	$path = bs6_current_path();
+	$php_code = ($path !== null && substr($path, -4) === '.php') ? bs6_php_code_ranges($source) : array();
 
-	foreach (bs6_find_class_lists($source) as $list) {
+	foreach (bs6_find_class_lists($source, $strings) as $list) {
 		$line = bs6_line_of($source, $list['offset']);
 
 		if ($lines !== null && !isset($lines[$line])) {
@@ -645,7 +1078,16 @@ function bs6_convert_source($source, $lines = null)
 			continue;
 		}
 
-		$result = bs6_convert_class_list($list['value'], in_array($list['kind'], array('class-list', 'jquery'), true));
+		$one_each = in_array($list['kind'], array('class-list', 'jquery'), true)
+			|| ($list['kind'] === 'string' && strpos(trim($list['value']), ' ') === false && !bs6_is_markup_string($source, $list['offset'], $php_code));
+
+		// A lone `text-bg-<colour>` string is a status badge's colour (code
+		// adds it after 'badge '): the badge's theme class.
+		if ($list['kind'] === 'string' && preg_match('/^text-bg-(' . implode('|', bs6_theme_colours()) . ')$/', $list['value'], $m)) {
+			$result = array('value' => 'theme-' . $m[1], 'changed' => 1, 'reviews' => array());
+		} else {
+			$result = bs6_convert_class_list($list['value'], $one_each);
+		}
 
 		foreach ($result['reviews'] as $review) {
 			$reviews[] = array($line, $review[0], $review[1]);
@@ -704,9 +1146,12 @@ function bs6_scope_kind($path)
 		return 'editor';
 	}
 
+	// includes/fn/output.php is not among them: every class list in it is
+	// panel markup (the panel head, the main and account menus, the footer,
+	// list screens' helpers); output_toolbar() prints nothing.
 	$shared = array(
 		'get_login.php', 'liveform.class.php', 'toolbar.php', 'chat.php', 'seo.php',
-		'includes/fn/output.php', 'includes/fn/ecommerce.php', 'includes/fn/forms.php', 'includes/fn/editor.php',
+		'includes/fn/ecommerce.php', 'includes/fn/forms.php', 'includes/fn/editor.php',
 		'includes/fn/content.php', 'includes/fn/calendar.php', 'includes/fn/auth.php', 'includes/fn/seo.php',
 		'includes/fn/legal_documents.php',
 	);
@@ -726,12 +1171,13 @@ function bs6_scope_kind($path)
 		return in_array(substr($base, 0, -4), $panel_templates, true) ? 'panel' : 'site';
 	}
 
+	// Every system widget module (widgets.php, widgets_*.php) draws site
+	// output, the ones added later included.
 	$site_fn = array(
-		'widgets.php', 'widgets_account.php', 'widgets_cart.php', 'widgets_catalog.php', 'widgets_error.php',
-		'widgets_express_order.php', 'widgets_language.php', 'consent.php', 'language_redirect.php',
-		'maintenance_mode.php', 'meta_tags.php', 'reviews.php', 'visitor_texts.php',
+		'consent.php', 'language_redirect.php', 'maintenance_mode.php', 'meta_tags.php', 'reviews.php',
+		'visitor_texts.php',
 	);
-	if (strpos($path, 'includes/fn/') === 0 && in_array($base, $site_fn, true)) {
+	if (strpos($path, 'includes/fn/') === 0 && (in_array($base, $site_fn, true) || preg_match('/^widgets(_[a-z0-9_]+)?\.php$/', $base))) {
 		return 'site';
 	}
 
@@ -926,11 +1372,13 @@ function bs6_syntax_error($path, $source)
 	return trim($result['err'] . ' ' . $result['out']);
 }
 
-// The visual editor's files whose site-output code carries the
-// `/* @pg-site-output */` marker, so the codemod may rewrite the rest.
+// The visual editor's files the codemod may rewrite: style_designer.js
+// outside the code marked `/* @pg-site-output */`, and the editor screen
+// (designer_screen.php), whose markup is all panel chrome printed under
+// pg_page_shell().
 function bs6_marked_editor_files()
 {
-	return array('assets/js/style_designer.js');
+	return array('assets/js/style_designer.js', 'includes/designer_screen.php');
 }
 
 // Whether --all, --diff and a named path rewrite this file without --force.
@@ -938,7 +1386,10 @@ function bs6_codemod_converts($path)
 {
 	$kind = bs6_scope_kind($path);
 
-	return $kind === 'panel' || ($kind === 'editor' && in_array(str_replace('\\', '/', $path), bs6_marked_editor_files(), true));
+	$path = str_replace('\\', '/', $path);
+
+	return $kind === 'panel' || ($kind === 'editor' && in_array($path, bs6_marked_editor_files(), true))
+		|| ($kind === 'shared' && (isset(bs6_shared_panel_functions()[$path]) || isset(bs6_shared_panel_blocks()[$path])));
 }
 
 // Every file under $root (the pinegrap/ folder) with its scope kind, as

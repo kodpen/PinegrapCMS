@@ -52,9 +52,9 @@ if (!$_POST) {
         );
 
         $output_design_row =
-            '<div class="col-12 col-xs-4 col-sm-4">
-                <div class="form-floating mt-1 mb-2">
-                    ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-select', 'id'=>'design', 'options'=>$design_options)) . '
+            '<div class="col-12 col-xs-4 sm:col-4">
+                <div class="form-floating mt-1 mb-3">
+                    ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'id'=>'design', 'options'=>$design_options)) . '
                     <label for="folder" class="form-label">' . lang('Design') . '</label>
                 </div>
             </div>';
@@ -66,12 +66,12 @@ if (!$_POST) {
         <div class="container-fluid">
             <span class="navbar-text me-auto" data-bs-content="' . lang('You may update the selected Files via the form below. You may leave an option unselected if you do not want to modify a property.') . '" title="' . lang('Modify Files') . '">' . lang('Modify Files') . '</span>
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
-                    <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                    <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+                <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
+                    <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+                    <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
                     </ul>
                 </li>
                 <li class="nav-item">
@@ -109,7 +109,7 @@ if (!$_POST) {
                 opener.scrollTo(0, 0);
 
                 opener.$("#content").prepend(\'\
-                    <div class=" alert alert-secondary software_notice">\
+                    <div class=" alert theme-secondary software_notice">\
                         <h4 class="alert-heading">' . lang('Optimizing images') . '...</h4>\
                         <p>' . lang('Please stay on this page until this process is complete.') . '<p>\
                         <div class="progress">\
@@ -133,20 +133,20 @@ if (!$_POST) {
     </script>
     <main id="content" class="container-fluid">
         <div class="row">
-            <div class="col-12 col-xs-8 col-sm-8 col-md-auto">
-                <div class="form-floating mt-1 mb-2">
-                    <select class="form-select" id="folder"><option value=""></option>' . select_folder() . '</select>
+            <div class="col-12 col-xs-8 sm:col-8 md:col-auto">
+                <div class="form-floating mt-1 mb-3">
+                    <select class="form-control" id="folder"><option value=""></option>' . select_folder() . '</select>
                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
                 </div>
             </div>
             ' . $output_design_row . '
-            <div class="col-12 my-2">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="optimize" value="1" />
-                  <label class="form-check-label" for="optimize">' . lang('Optimize Images') . '</label>
+            <div class="col-12 my-3">
+                <div class="form-field">
+                  <div class="switch"><input class="" type="checkbox" id="optimize" value="1" /></div>
+                  <label class="" for="optimize">' . lang('Optimize Images') . '</label>
                 </div>
-                <div class="mt-2">
-                    <select class="form-select" id="optimize_mode">
+                <div class="mt-3">
+                    <select class="form-control" id="optimize_mode">
                         <option value="optimize">' . lang('Compress only, keep the original size') . '</option>
                         <option value="resize">' . lang(array('string' => 'Compress, and shrink anything wider than {var:1} pixels', 'vars' => array($optimize_resize_trigger))) . '</option>
                     </select>
@@ -157,7 +157,7 @@ if (!$_POST) {
         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
             <div class="container">
                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button type="button" name="submit_save" value="Modify Files" class="btn mb-1 mt-1  btn-primary submit-primary" onclick="edit_files()"><span class="material-icons me-2">save</span>' . lang(array('string'=>'Modify Files') ) . '</button>
+                    <button type="button" name="submit_save" value="Modify Files" class="btn mb-1 mt-1  btn-solid theme-primary submit-primary" onclick="edit_files()"><span class="material-icons me-3">save</span>' . lang(array('string'=>'Modify Files') ) . '</button>
                 </div>
             </div>
         </nav>

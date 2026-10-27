@@ -124,7 +124,7 @@ if (!$_POST) {
                
                 
                 <form name="form"  action="edit_featured_and_new_items.php" method="post"> 
-                    <div class="card my-4">
+                    <div class="card my-7">
                         <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
                         <div class="card-body p-0 position-relative">
                             ' . get_token_field() . '
@@ -146,7 +146,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

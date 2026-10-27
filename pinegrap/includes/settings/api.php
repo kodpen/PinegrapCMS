@@ -27,29 +27,29 @@ $api_openapi_public_checked = ($api_openapi_public == 1) ? ' checked="checked"' 
 
 $output_api_not_ready = '
                     <div class="col-12">
-                        <div class="alert alert-secondary mb-0 py-2 small">' . lang('These settings arrive with the 2026.4.4 upgrade, which this site has not run yet.') . '</div>
+                        <div class="alert theme-secondary mb-0 py-3 small">' . lang('These settings arrive with the 2026.4.4 upgrade, which this site has not run yet.') . '</div>
                     </div>';
 
 // ── Application API ──
 $output_api_switches = '
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $api_enabled_checked . ' class="form-check-input" type="checkbox" id="api_enabled" name="api_enabled"/>
-                            <label class="form-check-label" for="api_enabled">' . lang('Enable the application API') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $api_enabled_checked . ' class="" type="checkbox" id="api_enabled" name="api_enabled"/></div>
+                            <label class="" for="api_enabled">' . lang('Enable the application API') . '</label>
                             <div class="form-text">' . lang('When this is off every call is answered with 503, whatever key it carries. The application keys are kept and work again as soon as the API is turned back on.') . '</div>
                         </div>
                     </div>
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $api_require_https_checked . ' class="form-check-input" type="checkbox" id="api_require_https" name="api_require_https"/>
-                            <label class="form-check-label" for="api_require_https">' . lang('Require HTTPS') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $api_require_https_checked . ' class="" type="checkbox" id="api_require_https" name="api_require_https"/></div>
+                            <label class="" for="api_require_https">' . lang('Require HTTPS') . '</label>
                             <div class="form-text">' . lang('The key and secret travel with every call, so a call over plain HTTP is refused with 403. Turn this off only on an internal network that has no certificate.') . '</div>
                         </div>
                     </div>
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $api_openapi_public_checked . ' class="form-check-input" type="checkbox" id="api_openapi_public" name="api_openapi_public"/>
-                            <label class="form-check-label" for="api_openapi_public">' . lang('Publish the API description without credentials') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $api_openapi_public_checked . ' class="" type="checkbox" id="api_openapi_public" name="api_openapi_public"/></div>
+                            <label class="" for="api_openapi_public">' . lang('Publish the API description without credentials') . '</label>
                             <div class="form-text">' . lang('The description at /openapi.json names every endpoint and parameter. It is served to anyone only while this is on; otherwise it needs a valid application key like every other call.') . '</div>
                         </div>
                     </div>';
@@ -57,11 +57,11 @@ $output_api_switches = '
 $pg_settings_cards[] = '
     <div id="pgset-api" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('Application API') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">' . ($api_settings_ready ? $output_api_switches : $output_api_not_ready) . '
+                <div class="row gy-5">' . ($api_settings_ready ? $output_api_switches : $output_api_not_ready) . '
                     <div class="col-12">
                         <div class="form-text">
                             <i class="bi bi-key me-1"></i>' . lang(array(
@@ -78,7 +78,7 @@ $pg_settings_cards[] = '
 $output_api_storage = '
                     <div class="pg-f-lg">
                         <label for="api_upload_folder_id" class="form-label">' . lang('Upload Folder') . '</label>
-                        <select name="api_upload_folder_id" id="api_upload_folder_id" class="form-select">
+                        <select name="api_upload_folder_id" id="api_upload_folder_id" class="form-control">
                             <option value="0">' . lang('-Not selected-') . '</option>' . select_folder($api_upload_folder_id, 0) . '
                         </select>
                         <div class="form-text">' . lang('Files uploaded through the API are filed in this folder. When no folder is selected, or the selected one has since been deleted, they go to the topmost folder.') . '</div>
@@ -95,11 +95,11 @@ $output_api_storage = '
 $pg_settings_cards[] = '
     <div id="pgset-api-storage" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('Uploads & Logs') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">' . ($api_settings_ready ? $output_api_storage : $output_api_not_ready) . '
+                <div class="row gy-5">' . ($api_settings_ready ? $output_api_storage : $output_api_not_ready) . '
                 </div>
             </div>
         </div>

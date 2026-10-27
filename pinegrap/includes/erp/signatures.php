@@ -327,9 +327,9 @@ function erp_signature_pad_markup($name, $options = array())
     return '
 <div class="pg-signature" data-pg-signature data-pg-empty-text="' . h(lang('Not signed yet')) . '" data-pg-signed-text="' . h(lang('Signed')) . '">
     <canvas id="' . h($id) . '" class="form-control p-0 bg-white" style="display:block;width:100%;height:' . $height . 'px;touch-action:none;cursor:crosshair"></canvas>
-    <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-pg-signature-clear><i class="bi bi-eraser me-1" aria-hidden="true"></i>' . lang('Clear') . '</button>
-        <small class="text-body-secondary" data-pg-signature-status></small>
+    <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+        <button type="button" class="btn btn-sm btn-outline theme-secondary" data-pg-signature-clear><i class="bi bi-eraser me-1" aria-hidden="true"></i>' . lang('Clear') . '</button>
+        <small class="fg-secondary" data-pg-signature-status></small>
     </div>
     <input type="hidden" name="' . h($name) . '" data-pg-signature-value value="" />
     <input type="hidden" name="' . h($name) . '_strokes" data-pg-signature-strokes value="" />

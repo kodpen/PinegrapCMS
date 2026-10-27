@@ -109,7 +109,7 @@ if (count($changelog_sections) > 0) {
 
     if ($changelog_preamble['banner'] != '') {
         $output_changelog_head .= '
-        <pre class="mb-2 text-body-secondary" style="white-space:pre; overflow-x:auto; font-size:.72rem; line-height:1.35; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;">' . h($changelog_preamble['banner']) . '</pre>';
+        <pre class="mb-3 fg-secondary" style="white-space:pre; overflow-x:auto; font-size:.72rem; line-height:1.35; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;">' . h($changelog_preamble['banner']) . '</pre>';
     }
 
     if (count($changelog_preamble['legend']) > 0) {
@@ -118,14 +118,14 @@ if (count($changelog_sections) > 0) {
 
         foreach ($changelog_preamble['legend'] as $changelog_legend_row) {
             $output_changelog_legend .= '
-            <span class="d-inline-flex align-items-center gap-1 me-3">
+            <span class="d-inline-flex align-items-center gap-1 me-5">
                 <span class="badge ' . pg_changelog_tag_class($changelog_legend_row['tag']) . '">' . h($changelog_legend_row['tag']) . '</span>
-                <span class="small text-body-secondary">' . h($changelog_legend_row['text']) . '</span>
+                <span class="small fg-secondary">' . h($changelog_legend_row['text']) . '</span>
             </span>';
         }
 
         $output_changelog_head .= '
-        <div class="d-flex flex-wrap gap-y-1 pb-3 mb-3 border-bottom">' . $output_changelog_legend . '</div>';
+        <div class="d-flex flex-wrap gap-y-1 pb-5 mb-5 border-bottom">' . $output_changelog_legend . '</div>';
     }
 
     $output_changelog_versions = '';
@@ -149,7 +149,7 @@ if (count($changelog_sections) > 0) {
 
                 if ($changelog_group != '') {
                     $output_changelog_entries .= '
-            <div class="small fw-bold text-uppercase text-body-secondary pt-3 pb-1">' . h($changelog_group) . '</div>';
+            <div class="small fw-bold text-uppercase fg-secondary pt-5 pb-1">' . h($changelog_group) . '</div>';
                 }
             }
 
@@ -162,7 +162,7 @@ if (count($changelog_sections) > 0) {
             }
 
             $output_changelog_entries .= '
-            <div class="d-flex gap-2 py-2 border-bottom border-1">
+            <div class="d-flex gap-3 py-3 border-bottom border-1">
                 <div class="d-flex flex-column gap-1 flex-shrink-0" style="width:6.5rem">' . $output_changelog_tags . '</div>
                 <div class="small">' . h($changelog_entry['text']) . '</div>
             </div>';
@@ -174,7 +174,7 @@ if (count($changelog_sections) > 0) {
         $changelog_id = 'changelog_v' . preg_replace('/[^0-9]/', '_', $changelog_section['version']);
 
         $output_changelog_versions .= '
-        <div class="mb-2">
+        <div class="mb-3">
             <button class="btn btn-link p-0 text-decoration-none fw-bold' . ($changelog_open ? '' : ' collapsed') . '"
                     type="button" data-bs-toggle="collapse" data-bs-target="#' . $changelog_id . '"
                     aria-expanded="' . ($changelog_open ? 'true' : 'false') . '" aria-controls="' . $changelog_id . '">
@@ -189,27 +189,23 @@ if (count($changelog_sections) > 0) {
     // The trigger rides the System Status header; the dialog cannot follow it
     // there, because a widget card clips and scrolls its own content. It is
     // printed once with the page body instead.
-    $output_changelog_button = '<button title="' . lang('Release Notes') . '" aria-label="' . lang('Release Notes') . '" class="pg-widget-action no-popover" type="button" data-bs-toggle="modal" data-bs-target="#changelog_modal"><span class="bi bi-card-list"></span></button>';
+    $output_changelog_button = '<button title="' . lang('Release Notes') . '" aria-label="' . lang('Release Notes') . '" class="pg-widget-action no-popover" type="button" data-bs-toggle="dialog" data-bs-target="#changelog_modal"><span class="bi bi-card-list"></span></button>';
 
     $output_changelog_modal = '
-    <div class="modal fade" id="changelog_modal" tabindex="-1" aria-labelledby="changelog_modal_label" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="changelog_modal_label">
-                        <span class="bi bi-card-list me-2"></span>' . lang('Release Notes') . '
+    <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered" id="changelog_modal" aria-labelledby="changelog_modal_label">
+                <div class="dialog-header">
+                    <h5 class="dialog-title" id="changelog_modal_label">
+                        <span class="bi bi-card-list me-3"></span>' . lang('Release Notes') . '
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
                 </div>
-                <div class="modal-body text-start">
+                <div class="dialog-body text-start">
                     ' . $output_changelog_head . $output_changelog_versions . '
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
+                <div class="dialog-footer">
+                    <button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
                 </div>
-            </div>
-        </div>
-    </div>';
+    </dialog>';
 }
 $output_widget_controls = '';
 // ── Loading skeletons ───────────────────────────────────────────────────────
@@ -242,7 +238,7 @@ $pg_ph_card = function ($inner) {
 // with the card's accent colour and the skeleton would look already loaded.
 $pg_ph_row = '
 <div class="pg-row">
-    <span class="placeholder rounded flex-shrink-0" style="width:34px;height:34px"></span>
+    <span class="placeholder rounded-4 flex-shrink-0" style="width:34px;height:34px"></span>
     <span class="pg-row-text">
         <span class="placeholder col-8 d-block" style="height:13px"></span>
         <span class="placeholder col-5 d-block mt-1" style="height:11px"></span>
@@ -252,7 +248,7 @@ $pg_ph_row = '
 // The compact variant, for the widgets that list one line per entry.
 $pg_ph_row_sm = '
 <div class="pg-row pg-row-sm">
-    <span class="placeholder rounded flex-shrink-0" style="width:22px;height:22px"></span>
+    <span class="placeholder rounded-4 flex-shrink-0" style="width:22px;height:22px"></span>
     <span class="pg-row-text">
         <span class="placeholder col-7 d-block" style="height:12px"></span>
     </span>
@@ -261,7 +257,7 @@ $pg_ph_row_sm = '
 // Section heading inside a list -- "Top Pages", "Expiring Soon".
 $pg_ph_heading = '
 <div class="pg-row-heading">
-    <span class="placeholder col-5 rounded" style="height:11px"></span>
+    <span class="placeholder col-5 rounded-4" style="height:11px"></span>
 </div>';
 
 // KPI tile strip, in the two sizes api.php ships: compact (widgets 2 and 13,
@@ -271,12 +267,12 @@ $pg_ph_heading = '
 $pg_ph_tiles = function ($height, $large) {
     $icon = $large ? 20 : 12;
     $tile =
-        '<div class="flex-fill rounded ' . ($large ? 'p-2' : 'px-1 py-1') . ' text-center d-flex flex-column align-items-center justify-content-center" style="gap:4px">'
-        . '<span class="placeholder rounded" style="width:' . $icon . 'px;height:' . $icon . 'px"></span>'
-        . '<span class="placeholder rounded" style="width:60%;height:' . ($large ? 15 : 13) . 'px"></span>'
-        . '<span class="placeholder rounded" style="width:80%;height:' . ($large ? 12 : 9) . 'px"></span>'
+        '<div class="flex-fill rounded-4 ' . ($large ? 'p-3' : 'px-1 py-1') . ' text-center d-flex flex-column align-items-center justify-content-center" style="gap:4px">'
+        . '<span class="placeholder rounded-4" style="width:' . $icon . 'px;height:' . $icon . 'px"></span>'
+        . '<span class="placeholder rounded-4" style="width:60%;height:' . ($large ? 15 : 13) . 'px"></span>'
+        . '<span class="placeholder rounded-4" style="width:80%;height:' . ($large ? 12 : 9) . 'px"></span>'
         . '</div>';
-    return '<div class="d-flex ' . ($large ? 'gap-2 p-2' : 'gap-1 px-2 pt-2 pb-1') . '" style="height:' . $height . 'px">' . str_repeat($tile, 3) . '</div>';
+    return '<div class="d-flex ' . ($large ? 'gap-3 p-3' : 'gap-1 px-3 pt-3 pb-1') . '" style="height:' . $height . 'px">' . str_repeat($tile, 3) . '</div>';
 };
 
 // Panels of a given height, for the widgets whose body is neither a list nor a
@@ -287,11 +283,11 @@ $pg_ph_blocks = function ($heights) {
     $out = '';
     foreach ($heights as $height) {
         if ($height >= 100) {
-            $out .= '<div class="p-2" style="height:' . $height . 'px"><span class="placeholder w-100 h-100 rounded"></span></div>';
+            $out .= '<div class="p-3" style="height:' . $height . 'px"><span class="placeholder w-100 h-100 rounded-4"></span></div>';
         } else {
-            $out .= '<div class="d-flex flex-column justify-content-center px-2 border-bottom" style="height:' . $height . 'px;gap:6px">'
-                . '<span class="placeholder col-7 rounded" style="height:12px"></span>'
-                . '<span class="placeholder col-4 rounded" style="height:10px"></span>'
+            $out .= '<div class="d-flex flex-column justify-content-center px-3 border-bottom" style="height:' . $height . 'px;gap:6px">'
+                . '<span class="placeholder col-7 rounded-4" style="height:12px"></span>'
+                . '<span class="placeholder col-4 rounded-4" style="height:10px"></span>'
                 . '</div>';
         }
     }
@@ -303,10 +299,10 @@ $pg_ph_blocks = function ($heights) {
 $pg_ph_head = '
 <div class="pg-head">
     <div class="pg-head-line">
-        <span class="placeholder rounded" style="width:26px;height:19px"></span>
-        <span class="placeholder col-4 rounded"></span>
+        <span class="placeholder rounded-4" style="width:26px;height:19px"></span>
+        <span class="placeholder col-4 rounded-4"></span>
     </div>
-    <span class="placeholder rounded d-block" style="height:20px"></span>
+    <span class="placeholder rounded-4 d-block" style="height:20px"></span>
 </div>';
 
 // Ecommerce summary head: the stock line, its detail line and the two facts
@@ -319,19 +315,19 @@ $pg_ph_head = '
 $pg_ph_ec = '
 <div class="pg-ec-head">
     <div class="pg-ec-line" style="height:22.8px">
-        <span class="placeholder rounded" style="width:112px;height:19px"></span>
-        <span class="placeholder rounded" style="width:54px;height:10px"></span>
+        <span class="placeholder rounded-4" style="width:112px;height:19px"></span>
+        <span class="placeholder rounded-4" style="width:54px;height:10px"></span>
     </div>
-    <div class="pg-ec-sub" style="height:15.8px"><span class="placeholder col-9 rounded d-block" style="height:10px"></span></div>
+    <div class="pg-ec-sub" style="height:15.8px"><span class="placeholder col-9 rounded-4 d-block" style="height:10px"></span></div>
 </div>
 <div class="pg-ec-facts">
     <div class="pg-ec-fact" style="height:36.3px">
-        <span class="placeholder col-9 rounded" style="height:10px"></span>
-        <span class="placeholder col-7 rounded" style="height:13px;margin-top:6px"></span>
+        <span class="placeholder col-9 rounded-4" style="height:10px"></span>
+        <span class="placeholder col-7 rounded-4" style="height:13px;margin-top:6px"></span>
     </div>
     <div class="pg-ec-fact" style="height:36.3px">
-        <span class="placeholder col-8 rounded" style="height:10px"></span>
-        <span class="placeholder col-10 rounded" style="height:13px;margin-top:6px"></span>
+        <span class="placeholder col-8 rounded-4" style="height:10px"></span>
+        <span class="placeholder col-10 rounded-4" style="height:13px;margin-top:6px"></span>
     </div>
 </div>';
 
@@ -345,7 +341,7 @@ $placeholder_w1 = $pg_ph_card(
     '<div class="pg-split">'
     . '<div class="pg-split-half d-flex flex-column">'
     . $pg_ph_head
-    . '<div class="p-2 flex-fill d-flex"><span class="placeholder w-100 rounded" style="min-height:140px"></span></div>'
+    . '<div class="p-3 flex-fill d-flex"><span class="placeholder w-100 rounded-4" style="min-height:140px"></span></div>'
     . '</div>'
     . '<div class="pg-split-half"><div class="pg-list">' . str_repeat($pg_ph_row, 5) . '</div></div>'
     . '</div>');
@@ -354,7 +350,7 @@ $placeholder_w1 = $pg_ph_card(
 // and a label, with the count left to arrive with the data.
 $pg_ph_filter = '
 <div class="pg-filter">
-    <span class="placeholder rounded flex-shrink-0" style="width:28px;height:28px"></span>
+    <span class="placeholder rounded-4 flex-shrink-0" style="width:28px;height:28px"></span>
     <span class="pg-filter-text"><span class="placeholder col-7 d-block" style="height:12px"></span></span>
 </div>';
 
@@ -365,7 +361,7 @@ $placeholder_w7  = $pg_ph_card(
     . '</div>');
 $placeholder_w3  = $pg_ph_card(
     '<div class="pg-split">'
-    . '<div class="pg-split-half">' . $pg_ph_ec . '<div class="border-top mx-2 mb-1"></div><div class="pg-list">' . str_repeat($pg_ph_row_sm, 4) . '</div></div>'
+    . '<div class="pg-split-half">' . $pg_ph_ec . '<div class="border-top mx-3 mb-1"></div><div class="pg-list">' . str_repeat($pg_ph_row_sm, 4) . '</div></div>'
     . '<div class="pg-split-half"><div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row_sm, 6) . '</div></div>'
     . '</div>');
 $placeholder_w9  = $pg_ph_card(
@@ -389,24 +385,24 @@ $placeholder_w24 = $pg_ph_card(
     '<div class="pg-split">'
     . '<div class="pg-split-half">'
     . '<div class="pg-health">'
-    . '<span class="placeholder rounded d-block mx-auto" style="width:170px;height:80px"></span>'
-    . '<span class="placeholder rounded d-block mx-auto mt-2" style="width:70px;height:12px"></span>'
+    . '<span class="placeholder rounded-4 d-block mx-auto" style="width:170px;height:80px"></span>'
+    . '<span class="placeholder rounded-4 d-block mx-auto mt-3" style="width:70px;height:12px"></span>'
     . '</div>'
     . '<div class="pg-checks">'
-    . '<span class="placeholder rounded" style="width:74px;height:21px"></span>'
-    . '<span class="placeholder rounded" style="width:58px;height:21px"></span>'
-    . '<span class="placeholder rounded" style="width:66px;height:21px"></span>'
-    . '<span class="placeholder rounded" style="width:88px;height:21px"></span>'
-    . '<span class="placeholder rounded" style="width:62px;height:21px"></span>'
-    . '<span class="placeholder rounded" style="width:80px;height:21px"></span>'
-    . '<span class="placeholder rounded" style="width:54px;height:21px"></span>'
-    . '<span class="placeholder rounded" style="width:92px;height:21px"></span>'
-    . '<span class="placeholder rounded" style="width:70px;height:21px"></span>'
-    . '<span class="placeholder rounded" style="width:60px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:74px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:58px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:66px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:88px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:62px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:80px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:54px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:92px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:70px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:60px;height:21px"></span>'
     . '</div>'
     . '</div>'
     . '<div class="pg-split-half">'
-    . '<div class="pg-jobs">' . str_repeat('<span class="placeholder rounded d-block" style="height:29px"></span>', 7) . '</div>'
+    . '<div class="pg-jobs">' . str_repeat('<span class="placeholder rounded-4 d-block" style="height:29px"></span>', 7) . '</div>'
     . '</div>'
     . '</div>'
 );
@@ -751,7 +747,7 @@ foreach ($widget_order as $widget_id) {
         '<div class="pg-widget' . ($widget['wide'] ? ' pg-widget-wide' : '') . '">'
         . '<div widget-id="' . (int) $widget_id . '" class="card widget">'
         . '<div class="card-header border-0 bg-reset position-relative">'
-        . (($widget['icon'] != '') ? '<i class="bi ' . $widget['icon'] . ' me-2"></i>' : '')
+        . (($widget['icon'] != '') ? '<i class="bi ' . $widget['icon'] . ' me-3"></i>' : '')
         . $widget['title']
         . $widget['action']
         . '</div>'
@@ -954,7 +950,7 @@ $output_header_includes .
             ' . $output_changelog_modal . '
             ' . $output_status_popover_script . '
             
-            <div id="widgets" class="pg-widgets mb-5">
+            <div id="widgets" class="pg-widgets mb-12">
                 ' . $output_widgets . '
             </div>
         </div>

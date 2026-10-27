@@ -628,7 +628,7 @@ function pg_geo_settings_note()
                                 'string' => 'IP geolocation by {var:1}.',
                                 'vars'   => array('<a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP</a>'))) . '
                         </div>
-                        <button type="submit" name="geo_db_refresh" value="1" class="btn btn-sm btn-outline-secondary mt-2"><i class="bi bi-cloud-arrow-down me-1" aria-hidden="true"></i>' . lang('Download the location database now') . '</button>';
+                        <button type="submit" name="geo_db_refresh" value="1" class="btn btn-sm btn-outline theme-secondary mt-3"><i class="bi bi-cloud-arrow-down me-1" aria-hidden="true"></i>' . lang('Download the location database now') . '</button>';
 }
 
 /**

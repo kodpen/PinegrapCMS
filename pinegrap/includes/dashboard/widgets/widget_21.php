@@ -43,8 +43,8 @@ function pg_dashboard_widget_21($request, $user)
             $output_data = '
             <div class="card-body d-flex align-items-center justify-content-center text-center">
                 <div>
-                    <i class="bi bi-database-exclamation d-block mb-2" style="font-size:22px;opacity:.4"></i>
-                    <p class="text-muted mb-0" style="font-size:12px">' . lang('The firewall tables do not exist yet. Please run the software upgrade to create them.') . '</p>
+                    <i class="bi bi-database-exclamation d-block mb-3" style="font-size:22px;opacity:.4"></i>
+                    <p class="fg-secondary mb-0" style="font-size:12px">' . lang('The firewall tables do not exist yet. Please run the software upgrade to create them.') . '</p>
                 </div>
             </div>';
 
@@ -215,18 +215,18 @@ function pg_dashboard_widget_21($request, $user)
                     : $waf_event['rule_id'];
 
                 $waf_rows .= '
-                <div class="px-2 py-2 border-bottom">
+                <div class="px-3 py-3 border-bottom">
                     <div class="d-flex align-items-center justify-content-between" style="gap:6px">
-                        <span class="badge bg-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
-                        <span class="text-truncate text-muted" style="font-size:11px" title="' . h($waf_event['rule_id']) . '">' . $waf_identity . '</span>
+                        <span class="badge theme-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
+                        <span class="text-truncate fg-secondary" style="font-size:11px" title="' . h($waf_event['rule_id']) . '">' . $waf_identity . '</span>
                         <span class="badge rounded-pill flex-shrink-0" style="background:rgba(0,0,0,.06);color:inherit;font-size:10px" title="' . lang('Requests') . '">&times;' . pg_format_number($waf_event_hits, 0) . '</span>
                     </div>
                     <div class="d-flex align-items-center mt-1" style="gap:6px">
-                        <span class="text-truncate text-muted flex-shrink-0" style="font-size:10px;max-width:45%" title="' . h($waf_event['target']) . '">' . h($waf_evidence) . '</span>
+                        <span class="text-truncate fg-secondary flex-shrink-0" style="font-size:10px;max-width:45%" title="' . h($waf_event['target']) . '">' . h($waf_evidence) . '</span>
                         <div class="progress flex-fill" style="height:4px;background:rgba(0,0,0,.06)" title="' . lang('Score') . ': ' . $waf_event_score . ' / ' . (int) $waf_threshold_value . '">
                             <div class="progress-bar ' . $waf_bar_class . '" style="width:' . $waf_score_percent . '%"></div>
                         </div>
-                        <span class="text-muted flex-shrink-0" style="font-size:10px;min-width:1.4rem;text-align:right">' . $waf_event_score . '</span>
+                        <span class="fg-secondary flex-shrink-0" style="font-size:10px;min-width:1.4rem;text-align:right">' . $waf_event_score . '</span>
                     </div>
                 </div>';
             }
@@ -304,9 +304,9 @@ function pg_dashboard_widget_21($request, $user)
 
         if ($waf_current_mode === 'block') {
             $waf_shield = '
-            <div class="d-flex align-items-center px-2 py-2 border-bottom" style="gap:8px">
-                <i class="bi bi-shield-fill-check text-success" style="font-size:20px"></i>
-                <div class="text-success" style="font-size:12px;line-height:1.25">'
+            <div class="d-flex align-items-center px-3 py-3 border-bottom" style="gap:8px">
+                <i class="bi bi-shield-fill-check fg-success" style="font-size:20px"></i>
+                <div class="fg-success" style="font-size:12px;line-height:1.25">'
                     . lang('Your website is protected against threats.')
                 . '</div>
             </div>';
@@ -321,7 +321,7 @@ function pg_dashboard_widget_21($request, $user)
 
         if (($waf_current_mode === 'off') && ($waf_had_rows)) {
 
-            $waf_turn_on = '<a class="btn btn-sm btn-outline-secondary position-relative py-0 px-2" style="font-size:10px" href="'
+            $waf_turn_on = '<a class="btn btn-sm btn-outline theme-secondary position-relative py-0 px-3" style="font-size:10px" href="'
                 . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link('firewall', 'pgset-waf') . '">'
                 . lang('Turn on') . '</a>';
         }
@@ -329,27 +329,27 @@ function pg_dashboard_widget_21($request, $user)
         $waf_panel = '
             <div class="pg-split-half d-flex flex-column">
                 ' . $waf_shield . '
-                <div class="d-flex align-items-center justify-content-between px-2 py-2 border-bottom">
-                    <span class="d-flex align-items-center gap-2">
-                        <span class="badge rounded-pill bg-' . h($waf_mode_class) . '-subtle text-' . h($waf_mode_class) . '-emphasis border border-' . h($waf_mode_class) . '-subtle" style="font-size:10px">
+                <div class="d-flex align-items-center justify-content-between px-3 py-3 border-bottom">
+                    <span class="d-flex align-items-center gap-3">
+                        <span class="badge rounded-pill bg-subtle-' . h($waf_mode_class) . ' fg-emphasis-' . h($waf_mode_class) . ' border border-subtle-' . h($waf_mode_class) . '" style="font-size:10px">
                             <i class="bi ' . h($waf_mode_icon) . ' me-1"></i>' . h($waf_mode_label) . '
                         </span>
                         ' . $waf_turn_on . '
                     </span>
-                    <span class="text-muted" style="font-size:10px">' . lang('Last 24 hours') . '</span>
+                    <span class="fg-secondary" style="font-size:10px">' . lang('Last 24 hours') . '</span>
                 </div>
                 <div class="row g-0 text-center border-bottom">
-                    <div class="col-4 py-2 border-end">
-                        <div class="fw-semibold text-' . h($waf_headline_color) . '" style="font-size:17px">' . pg_format_number($waf_headline_value, 0) . '</div>
-                        <div class="text-muted text-truncate" style="font-size:10px">' . h($waf_headline_label) . '</div>
+                    <div class="col-4 py-3 border-end">
+                        <div class="fw-semibold fg-' . h($waf_headline_color) . '" style="font-size:17px">' . pg_format_number($waf_headline_value, 0) . '</div>
+                        <div class="fg-secondary text-truncate" style="font-size:10px">' . h($waf_headline_label) . '</div>
                     </div>
-                    <div class="col-4 py-2 border-end">
+                    <div class="col-4 py-3 border-end">
                         <div class="fw-semibold" style="font-size:17px">' . pg_format_number($waf_addresses, 0) . '</div>
-                        <div class="text-muted text-truncate" style="font-size:10px">' . lang('Addresses') . '</div>
+                        <div class="fg-secondary text-truncate" style="font-size:10px">' . lang('Addresses') . '</div>
                     </div>
-                    <div class="col-4 py-2">
+                    <div class="col-4 py-3">
                         <div class="fw-semibold" style="font-size:17px">' . pg_format_number($waf_active_bans, 0) . '</div>
-                        <div class="text-muted text-truncate" style="font-size:10px">' . lang('Bans') . '</div>
+                        <div class="fg-secondary text-truncate" style="font-size:10px">' . lang('Bans') . '</div>
                     </div>
                 </div>
                 ' . $waf_rows . '
