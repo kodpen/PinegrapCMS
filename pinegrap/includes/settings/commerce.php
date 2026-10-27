@@ -219,6 +219,7 @@ $pg_settings_cards[] = '
                                                                                 </div>
                                                                             </div>
                                                                         </div>
+                                                                        ' . pg_label_settings_rows() . '
                                                                         <div class="col-12 ">
                                                                             <label for="ecommerce_product_restriction_message" class="form-label">' . lang('Product Restriction Message') . '</label>
                                                                             <input type="text" name="ecommerce_product_restriction_message" id="ecommerce_product_restriction_message" class="form-control" value="' . h($ecommerce_product_restriction_message) . '" maxlength="255"/>
