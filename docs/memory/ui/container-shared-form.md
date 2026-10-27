@@ -4,7 +4,7 @@ description: add_container.php and edit_container.php draw and check the contain
 ---
 
 ## What is shared?
-- `includes/forms/container_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_container_form_card($liveform)` (the options card: name, enabled, dimensions, weight, cost), `pg_container_form_script()` (unit switch, printed after `</form>`) and `pg_container_form_validate($liveform, $container_id = 0)`. PR #<n>.
+- `includes/forms/container_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_container_form_card($liveform)` (the options card: name, enabled, dimensions, weight, cost), `pg_container_form_script()` (unit switch, printed after `</form>`) and `pg_container_form_validate($liveform, $container_id = 0)`. PR #2514.
 - A screen keeps its gates, prefill (edit: record values, weight and cost blank when 0), the form tag, the edit screen's hidden `id`, its buttons (edit adds Delete), the error redirect and the INSERT / UPDATE.
 
 ## Which fields are posted?
