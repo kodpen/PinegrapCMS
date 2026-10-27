@@ -28,7 +28,7 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 ## Drivers, budgets, limits?
 - `ws_scheduled_run()` (ws_tick, both jobs) calls `ws_flow_advance()` before its early returns; `ws_scheduled_due()` sees due steps (job.php's gate).
 - Time budget: no box starts after 10 s in ws_tick, 25 s in a job; 3 boxes a run per request.
-- A run's events carry its depth (`ws_event_depth()`); `pg_event_record()` will too (today only `ws_event()`).
+- Done (PR #2325): events of a run, step boxes and `pg_event_record()` included, carry its depth (`workspace-flows-event-depth.md`).
 - `WS_FLOW_*`: 100 boxes, 200 box runs a run, 60 starts a flow an hour, 500 open runs, result 16 KB, finished runs kept 30 days.
 
 ## Shared steps and idempotency?

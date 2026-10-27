@@ -16,6 +16,7 @@ description: Generated from the module field of the memory files: each includes/
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
+- `events`: [[workspace-flows-event-depth]]
 - `lang_files`: [[lang-files]]
 - `layouts`: [[layout-code-tab]]
 - `link_resolve`: [[designer-prototype-viewer]]
