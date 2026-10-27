@@ -298,6 +298,7 @@
     "Left out because the account card would refuse them:": "Cari kartı kabul etmeyeceği için alınmayanlar:",
     "Left out for safety: {1}": "Güvenlik için çıkarıldı: {1}",
     "Left out for safety: {list}": "Güvenlik için çıkarıldı: {list}",
+    "Left out of the widget, still drawn by the region: {var}": "Widget'a alınmadı, bölge çizmeye devam ediyor: {var}",
     "Left out: {var:1}.": "Dışarıda kalan: {var:1}.",
     "Left over": "Kalan",
     "Left to refund on this order": "Bu siparişte iade edilebilecek kalan",

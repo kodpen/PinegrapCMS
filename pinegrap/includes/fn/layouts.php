@@ -173,6 +173,34 @@ function pg_layout_custom_page_ids(array $page_ids)
     return $out;
 }
 
+// Of those pages (pg_layout_custom_page_ids()), the custom form pages: their
+// layout converts into a custom_form widget (pg_layout_form_convert()).
+function pg_layout_form_page_ids(array $page_ids)
+{
+    $ids = array();
+
+    foreach ($page_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = true;
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_values(
+        "SELECT page_id FROM page
+        WHERE page_id IN (" . implode(',', array_keys($ids)) . ") AND page_type = 'custom form'"
+    ) as $id) {
+        $out[] = (int) $id;
+    }
+
+    return $out;
+}
+
 // The parameter the toolbar's style designer button (Ctrl+G) adds so the
 // visual designer opens on the page's layout tab, where the classic page
 // designer used to open: for a page that draws a custom layout, for the
