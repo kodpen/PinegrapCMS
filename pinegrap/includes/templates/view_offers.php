@@ -48,7 +48,7 @@ if (!defined('PG_INIT_LOADED')) {
         </div>
         <div class="pg-toolbar-grow"></div>
         <div class="pg-menu-wrap ms-auto">
-            <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="<?=lang('More')?>"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+            <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="<?=lang('More')?>"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
             <ul class="menu pg-menu-end">
                 <li><a class="menu-item pg-link-body-emphasis" href="view_key_codes.php"><i class="bi bi-key me-3" aria-hidden="true"></i><?=lang('All Key Codes')?></a></li>
                 <li><hr class="menu-divider"></li>

@@ -151,7 +151,7 @@
             '<div class="row g-3 align-items-center">' +
             '<div class="col-12 md:col-auto d-flex align-items-center gap-3">' + icon(type.icon) + '<span class="fw-medium">' + esc(type.label) + '</span></div>' +
             columns +
-            '<div class="col-auto ms-auto"><button type="button" class="btn btn-sm btn-ghost" data-on="' + removeAction + '" data-index="' + index + '" title="' + esc(removeTitle) + '">' + icon('bi-x-lg') + '</button></div>' +
+            '<div class="col-auto ms-auto"><button type="button" class="btn btn-sm btn-text theme-secondary" data-on="' + removeAction + '" data-index="' + index + '" title="' + esc(removeTitle) + '">' + icon('bi-x-lg') + '</button></div>' +
             '<div class="col-12 small fg-emphasis-danger' + (err ? '' : ' d-none') + '" data-error>' + esc(err) + '</div>' +
             '</div></div>';
     }
@@ -450,7 +450,7 @@
                 '<div class="col-4 sm:col-3 md:col-2 xl:col-1">' +
                 '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="numeric" value="' + esc(t.percent || '') + '" data-on="tier-percent" data-index="' + i + '" data-tier="' + k + '"><span class="input-group-text">%</span></div>' +
                 '</div>' +
-                '<div class="col-auto"><button type="button" class="btn btn-sm btn-ghost" data-on="tier-remove" data-index="' + i + '" data-tier="' + k + '" title="' + esc(L.remove) + '">' + icon('bi-x-lg') + '</button></div>' +
+                '<div class="col-auto"><button type="button" class="btn btn-sm btn-text theme-secondary" data-on="tier-remove" data-index="' + i + '" data-tier="' + k + '" title="' + esc(L.remove) + '">' + icon('bi-x-lg') + '</button></div>' +
                 '</div></div>';
         });
         h += '<div class="col-12"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-on="tier-add" data-index="' + i + '">' + icon('bi-plus-lg') + ' ' + esc(L.addTier) + '</button>' +

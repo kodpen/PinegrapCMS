@@ -586,8 +586,8 @@ echo
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
     <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-        <a class="btn btn-sm btn-ghost" href="view_returns.php"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('All Returns')) . '</a>
-        <a class="btn btn-sm btn-ghost" href="view_order.php?id=' . (int) $return['order_id'] . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . h(lang('View Order')) . '</a>
+        <a class="btn btn-sm btn-text theme-secondary" href="view_returns.php"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('All Returns')) . '</a>
+        <a class="btn btn-sm btn-text theme-secondary" href="view_order.php?id=' . (int) $return['order_id'] . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . h(lang('View Order')) . '</a>
     </nav>
     <div class="row g-7">
         <div class="col-12 lg:col-8 2xl:col-9 order-1">

@@ -1095,10 +1095,10 @@ echo '
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                ' . $engine_button('check_all', '', lang('Check all tables'), 'bi-clipboard-check', 'btn-ghost', lang('A full CHECK TABLE of every table; minutes on a large database.'), $engine_tools) . '
-                <a class="btn btn-sm btn-ghost" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
-                <a class="btn btn-sm btn-ghost" href="welcome.php"><i class="bi bi-heart-pulse me-1" aria-hidden="true"></i>' . h(lang('System Status')) . '</a>' . (((int) $user['role'] === 0) ? '
-                <a class="btn btn-sm btn-ghost" href="software_repair.php#rerun"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Run upgrade steps again')) . '</a>' : '') . '
+                ' . $engine_button('check_all', '', lang('Check all tables'), 'bi-clipboard-check', 'btn-text theme-secondary', lang('A full CHECK TABLE of every table; minutes on a large database.'), $engine_tools) . '
+                <a class="btn btn-sm btn-text theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="welcome.php"><i class="bi bi-heart-pulse me-1" aria-hidden="true"></i>' . h(lang('System Status')) . '</a>' . (((int) $user['role'] === 0) ? '
+                <a class="btn btn-sm btn-text theme-secondary" href="software_repair.php#rerun"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Run upgrade steps again')) . '</a>' : '') . '
             </nav>
 
             ' . $engine_alerts . '

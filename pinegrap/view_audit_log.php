@@ -292,7 +292,7 @@ $audit_view_toolbar = '
                             <input type="search" class="form-control" name="q" value="' . h($audit_view_filters['q']) . '" maxlength="255" placeholder="' . h(lang('Record name')) . '" aria-label="' . h(lang('Record name')) . '">
                         </div>
                         <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>
-                        ' . ($audit_view_query ? '<a href="view_audit_log.php" class="btn btn-sm btn-ghost">' . h(lang('Clear filters')) . '</a>' : '') . '
+                        ' . ($audit_view_query ? '<a href="view_audit_log.php" class="btn btn-sm btn-text theme-secondary">' . h(lang('Clear filters')) . '</a>' : '') . '
                         <div class="pg-toolbar-grow">' . $audit_view_narrowed . '</div>
                         <a href="' . h($audit_view_url(array('export' => 'csv', 'page' => 0))) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . h(lang('Export CSV')) . '</a>
                     </div>

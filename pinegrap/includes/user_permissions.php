@@ -65,7 +65,7 @@ function pg_user_permission_row($group)
 		$output_button  = '';
 	} else {
 		$output_button =
-			'<button type="button" class="btn btn-sm btn-ghost pg-perm-open"'
+			'<button type="button" class="btn btn-sm btn-text theme-secondary pg-perm-open"'
 			. ' data-bs-toggle="drawer" data-bs-target="#pgperm_panel_' . h($group['id']) . '"'
 			. ' aria-controls="pgperm_panel_' . h($group['id']) . '">'
 			. h(lang('Select')) . '<i class="bi bi-chevron-right ms-1"></i></button>';
