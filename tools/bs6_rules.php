@@ -221,6 +221,7 @@ function bs6_map_plain_token($token)
 		// rules in backend.src.css).
 		'text-body-emphasis' => array('pg-fg-emphasis'),
 		'table-light' => array('pg-table-light'),
+		'alert-dismissible' => array('pg-alert-dismissible'),
 		'lead' => array('pg-lead'),
 	);
 
@@ -294,7 +295,7 @@ function bs6_map_plain_token($token)
 		'/^link-(underline-)?opacity-(0|25|75)(-hover)?$/' => 'link opacity step with no v6 class',
 		'/^opacity-\d+-hover$/' => 'hover opacity with no v6 class in 6.0.0-alpha.1',
 		'/^d-print-/' => 'print display utility with no v6 class in 6.0.0-alpha.1',
-		'/^(alert-dismissible|navbar-light|navbar-dark)$/' => 'removed in v6',
+		'/^(navbar-light|navbar-dark)$/' => 'removed in v6',
 		'/^(needs-validation|was-validated)$/' => 'validation: data-bs-validate on the form, :user-invalid instead of the JS class',
 		'/^modal(-.+)?$/' => 'modal becomes a <dialog class="dialog">: structural',
 		'/^offcanvas(-.+)?$/' => 'offcanvas becomes a <dialog class="drawer">: structural',
