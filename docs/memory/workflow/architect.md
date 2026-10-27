@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Decision questions (2026-10-27): an issue labelled architect; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (label erdal, Turkish), records it, brings it to the PR
+description: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 ---
 
 ## What is a decision question?
