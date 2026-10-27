@@ -22,7 +22,7 @@ description: waf_is_excluded() matches the resolved script path only (never quer
 - `connect_client.php` (the site's OAuth client document a service's sign-in server reads) the same, by `waf_is_client_metadata_request()` (#1829): its fetcher has a library's name and runs wherever the service does.
 
 ## Which endpoints skip the bot policy?
-- The credential-checked ones (`integration.php`, `mcp.php`, `oauth.php`, `workspace_ical.php`, `feed.php`, `marketplace_webhook.php`), not `api.php`: `waf-bot-policy-credential-endpoints.md`.
+- The credential-checked ones (`integration.php`, `mcp.php`, `oauth.php`, `workspace_ical.php`, `feed.php`, `marketplace_webhook.php`, `workspace_guest.php`, `shipworks.php` while the sign-in throttle is on), not `api.php`: `waf-bot-policy-credential-endpoints.md`.
 
 ## Which feed readers are good bots?
 - Feedly, Inoreader, Feedbin, NewsBlur, Miniflux, Netvibes, The Old Reader, FeedFetcher. Each request represents a real subscribed person; blocked, the feed silently empties and nobody reports "my feed stopped".

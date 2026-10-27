@@ -25,7 +25,7 @@ description: Plan (approved 2026-10-19, in progress: endpoint, text buttons, bro
 
 ## What remains?
 3. The alt-text button in the designer once the Pinegrap AI connection can say its model reads images, or on the browser's model, whose Prompt API takes images (`expectedInputs` type `image`) (S).
-4. The rest of the labelling (S): the designer's page settings mark Page Title and Meta Description on `pg:ai-write-used` and save `page.ai_fields` (`pg_ai_fields_after_save()`; after the open PRs on `includes/designer_screen.php` and `style_designer.js`); the widget token `__ai_generated` printing a note where `pg_ai_fields_marked()` names a column.
+4. The rest of the labelling (S): the designer's page settings mark Page Title and Meta Description on `pg:ai-write-used` and save `page.ai_fields` (`pg_ai_fields_after_save()`; after the open PRs on `includes/designer_screen.php` and `style_designer.js`); the widget token `__ai_generated` printing a note where `pg_ai_fields_marked()` names a column. Copies: #2123.
 5. When done: decisions move to docs/memory/ui/ai-write.md and this file is deleted.
 
 ## Where to start?

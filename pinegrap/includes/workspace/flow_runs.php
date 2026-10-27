@@ -35,7 +35,8 @@
  * due, and the queue of the workspace's events (watch.php) keeps the event a
  * waiting box needs and wakes the box with it (ws_flow_wake()). An event that
  * was lost is made up for: a waiting box looks at its task again every
- * WS_FLOW_RECHECK seconds.
+ * WS_FLOW_RECHECK seconds. A delay box waits the same way, with its next
+ * look at the moment its time is up.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -85,6 +86,9 @@ define('WS_FLOW_TOKEN_MAX', 56);
 
 /** The event a task box waits for (ws_event(), tasks.php). */
 define('WS_FLOW_TASK_WAIT', 'workspace.task.status_changed');
+
+/** The longest a delay box waits, in minutes: a scheduled action's start delay (a week). */
+define('WS_FLOW_DELAY_MAX', 10080);
 
 /* ---------------------------------------------------------------------------
    States and the walk (pure)
@@ -468,6 +472,151 @@ function ws_flow_stale_action($step)
     }
 
     return ((int) ($step['attempt'] ?? 0) < 2) ? 'retry' : 'fail';
+}
+
+/* ---------------------------------------------------------------------------
+   The delay box (pure)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The units a delay box counts its time in, as minutes.
+ *
+ * @return int[] unit => minutes
+ */
+function ws_flow_delay_units()
+{
+    return array('minutes' => 1, 'hours' => 60, 'days' => 1440);
+}
+
+/**
+ * A delay box's settings as it keeps them: amount ('' when none is set, else
+ * a whole number of at least 0, held below a size the problems still name)
+ * and unit (ws_flow_delay_units()).
+ *
+ * @param array $config
+ * @return array amount, unit
+ */
+function ws_flow_delay_normalize($config)
+{
+    $amount = $config['amount'] ?? '';
+    $unit = is_string($config['unit'] ?? null) ? $config['unit'] : '';
+
+    return array(
+        'amount' => (is_bool($amount) || !is_numeric($amount)) ? '' : (int) max(0, min(99999, (float) $amount)),
+        'unit'   => isset(ws_flow_delay_units()[$unit]) ? $unit : 'minutes',
+    );
+}
+
+/**
+ * How many minutes a delay box waits, 0 when no time is set.
+ *
+ * @param array $config ws_flow_delay_normalize()
+ * @return int
+ */
+function ws_flow_delay_minutes($config)
+{
+    $config = ws_flow_delay_normalize($config);
+
+    return ($config['amount'] === '') ? 0 : $config['amount'] * ws_flow_delay_units()[$config['unit']];
+}
+
+/**
+ * Why a delay box may not be published: no time to wait, or more than a
+ * scheduled action's start may be put off (WS_FLOW_DELAY_MAX minutes).
+ *
+ * @param array  $config
+ * @param string $name the box as the problems name it
+ * @return string[]
+ */
+function ws_flow_delay_problems($config, $name)
+{
+    $minutes = ws_flow_delay_minutes($config);
+
+    if ($minutes < 1) {
+        return array(lang(array('string' => 'The delay box {var:1} needs a time to wait.', 'vars' => $name)));
+    }
+
+    if ($minutes > WS_FLOW_DELAY_MAX) {
+        return array(lang(array('string' => 'The delay box {var:1} waits at most a week (10,080 minutes).', 'vars' => $name)));
+    }
+
+    return array();
+}
+
+/**
+ * The time a delay box waits, in words: "2 hours".
+ *
+ * @param array $config
+ * @return string
+ */
+function ws_flow_delay_text($config)
+{
+    $config = ws_flow_delay_normalize($config);
+    $amount = (int) $config['amount'];
+
+    switch ($config['unit']) {
+        case 'days':
+            return ($amount === 1) ? lang('1 day') : lang(array('string' => '{var:1} days', 'vars' => $amount));
+
+        case 'hours':
+            return ($amount === 1) ? lang('1 hour') : lang(array('string' => '{var:1} hours', 'vars' => $amount));
+    }
+
+    return ($amount === 1) ? lang('1 minute') : lang(array('string' => '{var:1} minutes', 'vars' => $amount));
+}
+
+/**
+ * The moment a delay box that starts waiting at $from waits until.
+ *
+ * @param array $config
+ * @param int   $from unix time
+ * @return int
+ */
+function ws_flow_delay_until($config, $from)
+{
+    return (int) $from + ws_flow_delay_minutes($config) * 60;
+}
+
+/**
+ * The key a waiting delay box keeps (wait_key and effect): delay:<until>.
+ *
+ * @param int $until
+ * @return string
+ */
+function ws_flow_delay_key($until)
+{
+    return 'delay:' . (int) $until;
+}
+
+/**
+ * The moment a delay box's key waits until, 0 for a key of another kind.
+ *
+ * @param string $key
+ * @return int
+ */
+function ws_flow_delay_key_until($key)
+{
+    return preg_match('/^delay:([1-9][0-9]{0,11})$/', (string) $key, $match) ? (int) $match[1] : 0;
+}
+
+/**
+ * How a look at a waiting delay box settles it: done once its moment has
+ * come, with the moment as its output (waited_until); before it, it goes on
+ * waiting (status '').
+ *
+ * @param string $key ws_flow_delay_key()
+ * @param int    $now
+ * @return array status (done | ''), outcome, data
+ */
+function ws_flow_delay_settlement($key, $now)
+{
+    $until = ws_flow_delay_key_until($key);
+
+    if (($until <= 0) || ((int) $now < $until)) {
+        return array('status' => '', 'outcome' => '', 'data' => array());
+    }
+
+    return array('status' => 'done', 'outcome' => 'done', 'data' => array('waited_until' => ws_flow_time($until)));
 }
 
 /**
@@ -1713,6 +1862,11 @@ function ws_flow_step_run($step)
             ws_flow_step_settle($step, 'running', 'done', '', lang('The flow reached its end.'));
             return;
 
+        // A wait acts on nothing, so it needs nobody's rights.
+        case 'delay':
+            ws_flow_delay_run($step, $node);
+            return;
+
         // The owner's rights as they are now: somebody who has left the staff
         // opens no task in the team's name.
         case 'task':
@@ -1938,6 +2092,10 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
  */
 function ws_flow_step_recheck($step)
 {
+    if (ws_flow_delay_key_until($step['wait_key']) > 0) {
+        return ws_flow_delay_recheck($step);
+    }
+
     $task_id = ws_flow_effect_task_id($step['wait_key']);
     $run = ($task_id > 0) ? ws_flow_run($step['run_id']) : null;
 
@@ -1979,6 +2137,73 @@ function ws_flow_step_recheck($step)
     }
 
     return ws_flow_step_settle($step, 'waiting', $settled['status'], $settled['outcome'], $text, array('task_id' => $task_id));
+}
+
+/**
+ * A delay box claimed by this request starts to wait: in one conditional
+ * write it keeps the moment it waits until (effect and wait_key, see
+ * ws_flow_delay_key()), waits on no event, and has its next look then
+ * (wake_at), which ws_flow_due() and ws_flow_steps_recheck() read. Its
+ * result says until when, which the run view shows while it waits. A box
+ * whose time is out of range (a graph published before the check) fails.
+ *
+ * @param array $step ws_flow_run_steps row, now running
+ * @param array $node its box
+ */
+function ws_flow_delay_run($step, $node)
+{
+    $minutes = ws_flow_delay_minutes($node['config'] ?? array());
+
+    if (($minutes < 1) || ($minutes > WS_FLOW_DELAY_MAX)) {
+        ws_flow_step_settle($step, 'running', 'failed', '', lang('The delay box has no time to wait within a week.'));
+        return;
+    }
+
+    $until = ws_flow_delay_until($node['config'], time());
+    $key = ws_flow_delay_key($until);
+    $text = lang(array('string' => 'Waits until {var:1}.', 'vars' => ws_scheduled_moment($until)));
+
+    db("UPDATE ws_flow_run_steps SET effect = '" . e($key) . "', status = 'waiting',
+            wait_event = '', wait_key = '" . e($key) . "', wake_at = '" . $until . "',
+            result = '" . e(ws_flow_result_pack($text, array('waited_until' => ws_flow_time($until)))) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'running'");
+
+    if ((int) mysqli_affected_rows(db::$con) === 1) {
+        ws_flow_run_refresh((int) $step['run_id']);
+    }
+}
+
+/**
+ * A waiting delay box looks at its time (ws_flow_delay_settlement()): come,
+ * it settles done; not yet (a look before it, as a clock moved), its next
+ * look goes back to the moment. A run that ended meanwhile lets it go.
+ *
+ * @param array $step ws_flow_run_steps row, waiting
+ * @return bool whether the box settled
+ */
+function ws_flow_delay_recheck($step)
+{
+    $run = ws_flow_run($step['run_id']);
+
+    if (!$run) {
+        return false;
+    }
+
+    if (!ws_flow_run_open($run['status'])) {
+        return ws_flow_step_settle($step, 'waiting', 'skipped', '', lang('Not reached in this run.'));
+    }
+
+    $settled = ws_flow_delay_settlement((string) $step['wait_key'], time());
+    $until = ws_flow_delay_key_until($step['wait_key']);
+
+    if ($settled['status'] === '') {
+        db("UPDATE ws_flow_run_steps SET wake_at = '" . $until . "'
+            WHERE id = '" . (int) $step['id'] . "' AND status = 'waiting'");
+
+        return false;
+    }
+
+    return ws_flow_step_settle($step, 'waiting', 'done', 'done', lang(array('string' => 'Waited until {var:1}.', 'vars' => ws_scheduled_moment($until))), $settled['data']);
 }
 
 /**

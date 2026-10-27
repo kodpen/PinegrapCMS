@@ -1994,6 +1994,28 @@ function pg_ai_fields_after_save($record, $posted, $stored, $values)
 }
 
 /**
+ * What a copy of a product or a page stores in ai_fields: the source's marks
+ * whose text the copy writes unchanged. A text the copy changes (the letters
+ * replaced at the end of a product's short description, a page's find and
+ * replace) loses its mark, as it would on a save.
+ *
+ * @param string $record product | page
+ * @param mixed  $row    the source row, as SELECT * read it
+ * @param array  $values column => the text the copy writes
+ * @return string|null|false pg_ai_fields_encode(); false when the source row
+ *                           has no ai_fields column (the database lacks it),
+ *                           so the copy names no such column
+ */
+function pg_ai_fields_copy($record, $row, $values)
+{
+    if (!is_array($row) || !array_key_exists('ai_fields', $row)) {
+        return false;
+    }
+
+    return pg_ai_fields_after_save($record, null, $row['ai_fields'], $values);
+}
+
+/**
  * The marks of one variant the product screen creates for a set. The texts
  * are copied to every variant except the short description, which is the
  * set's with the options added, or made from a template: its mark goes with

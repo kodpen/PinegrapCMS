@@ -9,7 +9,9 @@
  * that was not a number stopped the page with an error, at redemption after
  * Givex had taken the amount. A code of only dashes and spaces was sent to
  * Givex empty, a gift card code posted as an array stopped the order preview,
- * and so did an applied gift card id given as an array on removal.
+ * and so did an applied gift card id given as an array on removal. Both Givex
+ * hosts are asked through pg_curl_run(), the secondary one only when cURL
+ * failed on the primary.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,6 +22,8 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
+
+require_once(__DIR__ . '/helpers/source_reader.php');
 
 // A Givex reply as its XML-RPC method response, one string per value.
 function givex_test_reply($values)
@@ -89,4 +93,24 @@ function test_givex_single_value_inputs()
 
 	$remove = file_get_contents(PG_FUNCTIONS_DIR . '/remove_gift_card_from_order.php');
 	pg_assert_true(strpos($remove, "pg_request_single_values(array('applied_gift_card_id'));") < strpos($remove, "escape(\$_GET['applied_gift_card_id'] ?? '')"), 'removed gift card id');
+}
+
+// Both Givex hosts are asked through pg_curl_run(): the primary first, the
+// secondary only when cURL failed on it, and that failure is still answered
+// as curl_errno and curl_error.
+function test_givex_request_through_curl_run()
+{
+	$source = pg_test_function_source('send_givex_request');
+
+	pg_assert_same(0, substr_count($source, 'curl_init'), 'no hand-written cURL handle');
+	pg_assert_same(0, substr_count($source, 'curl_setopt'), 'no hand-written cURL option');
+	pg_assert_contains("pg_curl_run('POST', 'https://' . \$hostname . ':50042', array(", $source, 'one wrapper call');
+	pg_assert_contains("'headers' => array('Content-Type: text/xml'),", $source, 'XML content type');
+	pg_assert_contains("'timeout' => 15,", $source, 'timeout');
+	pg_assert_contains("'forbid_reuse' => true,", $source, 'fresh connection');
+	pg_assert_true(strpos($source, 'ECOMMERCE_GIVEX_PRIMARY_HOSTNAME') < strpos($source, 'ECOMMERCE_GIVEX_SECONDARY_HOSTNAME'), 'primary host before the secondary');
+	pg_assert_contains("if (\$response['errno'] == 0) {", $source, 'fall-back only on a cURL error');
+	pg_assert_contains("\$result['curl_errno'] = \$response['errno'];", $source, 'curl_errno kept');
+	pg_assert_contains("\$result['curl_error'] = \$response['error'];", $source, 'curl_error kept');
+	pg_assert_contains("pg_givex_parse_response(\$type, \$response['body'])", $source, 'reply parsed');
 }

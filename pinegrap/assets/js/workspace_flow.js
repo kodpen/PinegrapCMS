@@ -125,6 +125,7 @@
         change: { icon: 'bi-pencil-square', name: 'fl_kind_change', into: true, out: ['done', 'failed'] },
         lead: { icon: 'bi-person-vcard', name: 'fl_kind_lead', into: true, out: ['done', 'failed'] },
         condition: { icon: 'bi-signpost-split', name: 'fl_kind_condition', into: true, out: ['yes', 'no'] },
+        delay: { icon: 'bi-hourglass', name: 'fl_kind_delay', into: true, out: ['done'] },
         end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] }
     };
 
@@ -152,6 +153,7 @@
         ['join', 'bi-person-plus', 'fl_kind_join'],
         ['task', 'bi-check2-square', 'fl_add_task'],
         ['condition', 'bi-signpost-split', 'fl_kind_condition'],
+        ['delay', 'bi-hourglass', 'fl_kind_delay'],
         ['post', 'bi-chat-left-text', 'fl_add_post'],
         ['email', 'bi-envelope', 'fl_add_email'],
         ['notify', 'bi-bell', 'fl_kind_notify'],
@@ -481,6 +483,10 @@
 
         if (node.kind === 'condition') {
             return conditionMeta(config.rule || {});
+        }
+
+        if (node.kind === 'delay') {
+            return delayText(config);
         }
 
         if (node.kind === 'schedule') {
@@ -1930,6 +1936,10 @@
             conditionFields(box, node);
         }
 
+        if (node.kind === 'delay') {
+            delayFields(box, node);
+        }
+
         if (node.kind === 'schedule') {
             scheduleFields(box, node);
         }
@@ -2475,6 +2485,49 @@
         });
         box.appendChild(field(t('fl_start_target'), pick));
         box.appendChild(field(t('fl_start_delay'), delay, t('fl_start_delay_help')));
+    }
+
+    // How long a delay box waits, in words: "2 hours", or that none is set.
+    function delayText(config) {
+        var amount = parseInt(config.amount, 10);
+        var words = {
+            minutes: ['fl_delay_minute', 'fl_delay_minutes'],
+            hours: ['fl_delay_hour', 'fl_delay_hours'],
+            days: ['fl_delay_day', 'fl_delay_days']
+        }[config.unit] || ['fl_delay_minute', 'fl_delay_minutes'];
+
+        if (!(amount > 0)) {
+            return t('fl_delay_none');
+        }
+
+        return (amount === 1) ? t(words[0]) : t(words[1], amount);
+    }
+
+    // A delay box: how long it waits and the unit counted in, at most a
+    // week (WS_FLOW_DELAY_MAX minutes), as a scheduled action's start delay.
+    function delayFields(box, node) {
+        var config = node.config;
+        var amount = el('input', 'form-control form-control-sm wsf-number');
+        var unit = K.select([
+            ['minutes', t('fl_delay_unit_minutes')],
+            ['hours', t('fl_delay_unit_hours')],
+            ['days', t('fl_delay_unit_days')]
+        ], config.unit || 'minutes');
+
+        amount.type = 'number';
+        amount.min = '1';
+        amount.max = '10080';
+        amount.value = (config.amount === '' || config.amount === undefined) ? '' : String(config.amount);
+        amount.addEventListener('input', function () {
+            config.amount = (amount.value === '') ? '' : clamp(parseInt(amount.value, 10) || 0, 0, 99999);
+            refreshNode(node);
+        });
+        unit.addEventListener('change', function () {
+            config.unit = unit.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_delay_amount'), amount, t('fl_delay_help')));
+        box.appendChild(field(t('fl_delay_unit'), unit));
     }
 
     // A time the flow starts at: its first day and time, how it repeats, the
@@ -3485,6 +3538,8 @@
             config = { private: false, user_ids: [] };
         } else if (kind === 'condition') {
             config = { rule: { type: 'workday' } };
+        } else if (kind === 'delay') {
+            config = { amount: 1, unit: 'hours' };
         } else if (kind === 'schedule') {
             config = { date: new Date().toISOString().slice(0, 10), time: '09:00', repeat: 'none', every: 1, days: [], until: '' };
         } else if (kind === 'event') {
