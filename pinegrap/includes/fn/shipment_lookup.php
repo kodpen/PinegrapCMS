@@ -227,7 +227,7 @@ function pg_shipment_lookup_throttled()
     }
 
     if (function_exists('waf_text_log')) {
-        waf_text_log('DENY', $ip, array('rule' => 'rate-shipment-lookup'));
+        waf_text_log('DENY', $ip, array('status' => 429, 'rule' => 'rate-shipment-lookup'));
     }
 
     return true;

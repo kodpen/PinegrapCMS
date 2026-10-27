@@ -208,7 +208,7 @@ function pg_consent_answer_throttled()
     }
 
     if (function_exists('waf_text_log')) {
-        waf_text_log('DENY', $ip, array('rule' => 'rate-consent-answer'));
+        waf_text_log('DENY', $ip, array('status' => 429, 'rule' => 'rate-consent-answer'));
     }
 
     return true;

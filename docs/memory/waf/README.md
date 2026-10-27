@@ -30,7 +30,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-ai-bots-ranges.md: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() verification by published IP ranges (waf_bot_ranges), verdict ladder, refresh path (2026.4.4).
 - waf-architecture-and-phases.md: waf.php structure: standalone module (no functions.php, no HTTP), what runs in the router vs init phase, signature scanning only in init, fail-open, waf_client_ip(), upgrade compatibility.
 - waf-ban-ladder.md: waf_auto_ban() escalation ladder: hit_count is the number of bans, 60-240-960-3840-10080 min, cap waf_auto_ban_max_minutes, expired rows kept for ladder memory.
-- waf-ban-shield-mirror.md: The ban shield mirror data/temp/ban_shield.txt: line types B/P/A/L, who writes it, staleness asymmetry, allow-list lines, shield_pending.log and drain.
+- waf-ban-shield-mirror.md: The ban shield mirror data/temp/ban_shield.txt: line types B/P/A/L, the ban's end on B lines, who writes it, staleness asymmetry, allow-list lines, the shield's page, shield_pending.log and drain.
 - waf-bot-policy-credential-endpoints.md: Which endpoints skip the WAF bot policy because they admit a caller by its credential (integration, mcp, oauth, workspace_ical, feed, marketplace_webhook), why, where the return sits, why not api.php.
 - waf-cidr-prefix-validation.md: waf_ip_in_cidr() / waf_ip_matches_simple() must reject empty or non-numeric CIDR prefixes (ctype_digit); the (int) cast bug that banned everyone.
 - waf-connection-held-work-and-silent-rejection.md: Endpoints holding a DB connection while waiting on external services, rate limits vs connection-seconds, and always logging rejections.
@@ -38,7 +38,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-country-restriction.md: Firewall country restriction (waf_handle_country(), 2026.4.10 step 10.2): place in waf_run(), allow/block, unknown country, exemptions, not an offence, save guard, sign-in screens kept to the panel.
 - waf-csp-builtin-and-reporter.md: Built-in CSP policy (learning mode), waf_csp_policy() allowlist rule for new panel external resources, standalone csp_report.php collector and its storage.
 - waf-db-guard-connection-failures.md: includes/db_guard.php rules: no fatal on DB connect error, only transient errors trip, guard runs before functions.php, circuit breaker with probing.
-- waf-fail2ban-log.md: data/firewall.log fail2ban line format, which code paths write it, ip= is always the visitor address, rotation; add a line for every new deny path.
+- waf-fail2ban-log.md: data/firewall.log fail2ban line format (path= on every line, the rule on BAN), which code paths write it, ip= is always the visitor address, rotation; a line for every new deny path.
 - waf-false-positives-and-reference.md: view_waf_log.php likely false positive evidence and Allow/Remove actions, and the stored waf_reference() number shown on block pages.
 - waf-geo-country-lookup.md: pg_geo_country() (includes/geo.php): edge header, server module or the site's DB-IP database, trust rules, no network call on a request; how data/geo is fetched, built and kept (includes/fn/geo.php).
 - waf-inflight-request-cap.md: waf_inflight_* concurrent request cap on sensitive scripts: limit, 429 rule concurrent, file slots under data/temp, 120 s dead slot, fail-open, monitor mode.

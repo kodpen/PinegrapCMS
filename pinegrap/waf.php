@@ -2556,7 +2556,34 @@ function waf_text_log($event, $ip, $fields)
         $line .= ' ' . $key . '=' . preg_replace('/\s+/', '_', (string) $value);
     }
 
+    // Every line names the path it refused or banned on: a rule name alone
+    // cannot tell a probe for /wp-login.php from a page full of images.
+    $line .= ' ' . 'path=' . waf_text_log_path();
+
     @file_put_contents($file, $line . "\n", FILE_APPEND | LOCK_EX);
+}
+
+/**
+ * The path= value of a firewall.log line: the request path without its
+ * query (which may carry a token), as one token; '-' outside a request.
+ * includes/db_guard.php writes the same value for the shield's line
+ * (pg_ban_shield_text_log_path()).
+ *
+ * @return string
+ */
+function waf_text_log_path()
+{
+    $path = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+
+    $question = strpos($path, '?');
+
+    if ($question !== false) {
+        $path = substr($path, 0, $question);
+    }
+
+    $path = preg_replace('/\s+/', '_', substr($path, 0, 200));
+
+    return ($path === '') ? '-' : $path;
 }
 
 /**
@@ -3117,11 +3144,13 @@ function waf_ban_shield_refresh($force = false)
     // hours with no screen anywhere saying why.
     if (waf_mode() !== 'off') {
 
+        $expiries = waf_ip_block_expiries();
+
         foreach ($lists['block'] as $entry) {
             $entry = trim($entry);
 
             if ($entry !== '') {
-                $out .= 'B ' . $entry . "\n";
+                $out .= waf_ban_shield_block_line($entry, isset($expiries[$entry]) ? $expiries[$entry] : 0);
             }
         }
     }
@@ -3142,6 +3171,92 @@ function waf_ban_shield_refresh($force = false)
             @unlink($tmp);
         }
     }
+}
+
+/**
+ * One block line of the mirror: the entry and the ban's end, so the guard
+ * stops enforcing a ban the moment it ends (pg_ban_shield_block_entry()).
+ * Before the end was written, a mirror nobody refreshed kept an ended ban for
+ * up to the six hours it is read for: on a quiet site the banned operator
+ * was the only visitor, and the only request that refreshes it is one that
+ * is not banned (#1989).
+ *
+ * @param string $entry   the address or range
+ * @param int    $expires the ban's end as a Unix time, 0 for none
+ * @return string
+ */
+function waf_ban_shield_block_line($entry, $expires)
+{
+    return 'B ' . $entry . ' ' . max(0, (int) $expires) . "\n";
+}
+
+/**
+ * The end of each block entry in force, keyed by the stored entry: the latest
+ * end across its rows, 0 when one of them has none (a manual ban). Empty
+ * before the list columns exist, which writes every line without an end.
+ *
+ * @return array
+ */
+function waf_ip_block_expiries()
+{
+    $expiries = array();
+
+    if (!isset(db::$con) || !db::$con || !waf_table_has_column('banned_ip_addresses', 'list_type')) {
+        return $expiries;
+    }
+
+    $result = @mysqli_query(
+        db::$con,
+        "SELECT ip_address, expires_at
+         FROM banned_ip_addresses
+         WHERE list_type = 'block' AND (expires_at = 0 OR expires_at > " . time() . ")"
+    );
+
+    if (!$result) {
+        return $expiries;
+    }
+
+    while ($row = @mysqli_fetch_assoc($result)) {
+        $entry = trim((string) $row['ip_address']);
+        $expires = (int) $row['expires_at'];
+
+        if (!isset($expiries[$entry])) {
+            $expiries[$entry] = $expires;
+        } elseif ($expiries[$entry] !== 0) {
+            $expiries[$entry] = ($expires === 0) ? 0 : max($expiries[$entry], $expires);
+        }
+    }
+
+    return $expiries;
+}
+
+/**
+ * Read one line of data/temp/shield_pending.log (pg_ban_shield_record()):
+ * time, address, path and the reference the shield's page showed. A line
+ * written before the reference was added has three fields and drains with
+ * none.
+ *
+ * @param string $line
+ * @return array|null array('when', 'ip', 'path', 'reference'), or null for a
+ *                    line that cannot be read
+ */
+function waf_shield_pending_line($line)
+{
+    $parts = explode("\t", trim((string) $line));
+
+    if (count($parts) !== 3 && count($parts) !== 4) {
+        return null;
+    }
+
+    $when = (int) $parts[0];
+
+    if ($when <= 0 || !waf_is_ip($parts[1])) {
+        return null;
+    }
+
+    $reference = isset($parts[3]) ? substr(preg_replace('/[^0-9A-Za-z]/', '', $parts[3]), 0, 16) : '';
+
+    return array('when' => $when, 'ip' => $parts[1], 'path' => $parts[2], 'reference' => $reference);
 }
 
 /**
@@ -3192,19 +3307,15 @@ function waf_shield_drain()
     $groups = array();
 
     foreach (explode("\n", $raw) as $line) {
-        $parts = explode("\t", trim($line));
+        $pending = waf_shield_pending_line($line);
 
-        if (count($parts) !== 3) {
+        if ($pending === null) {
             continue;
         }
 
-        $when = (int) $parts[0];
-        $ip   = $parts[1];
-        $path = $parts[2];
-
-        if ($when <= 0 || !waf_is_ip($ip)) {
-            continue;
-        }
+        $when = $pending['when'];
+        $ip   = $pending['ip'];
+        $path = $pending['path'];
 
         $bucket = $when - ($when % WAF_LOG_WINDOW);
         $key    = $bucket . '|' . $ip . '|' . $path;
@@ -3217,7 +3328,13 @@ function waf_shield_drain()
                 continue;
             }
 
-            $groups[$key] = array('bucket' => $bucket, 'ip' => $ip, 'path' => $path, 'n' => 0, 'first' => $when, 'last' => $when);
+            $groups[$key] = array('bucket' => $bucket, 'ip' => $ip, 'path' => $path, 'n' => 0, 'first' => $when, 'last' => $when, 'reference' => '');
+        }
+
+        // A row holds one reference; the latest refusal's is the one a reader
+        // who writes in is most likely to quote.
+        if ($pending['reference'] !== '' && $when >= $groups[$key]['last']) {
+            $groups[$key]['reference'] = $pending['reference'];
         }
 
         $groups[$key]['n']++;
@@ -3252,12 +3369,13 @@ function waf_shield_drain()
                  '" . waf_escape($group['ip']) . "',
                  '',
                  0,
-                 '',
+                 '" . waf_escape($group['reference']) . "',
                  " . (int) $group['first'] . ",
                  " . (int) $group['last'] . ")
              ON DUPLICATE KEY UPDATE
                 hit_count = hit_count + " . (int) $group['n'] . ",
-                last_seen = GREATEST(last_seen, " . (int) $group['last'] . ")"
+                last_seen = GREATEST(last_seen, " . (int) $group['last'] . "),
+                reference = IF('" . waf_escape($group['reference']) . "' = '', reference, '" . waf_escape($group['reference']) . "')"
         );
     }
 }
@@ -5225,6 +5343,14 @@ function waf_register_offence($ip, $score, $blocking, $burst = false)
         return;
     }
 
+    // The rule of the refusal that brought the subject past the threshold,
+    // read before the log rows below overwrite it.
+    $rule = waf_last_rule();
+
+    if ($rule === '') {
+        $rule = 'auto-ban';
+    }
+
     if (waf_user_is_staff() || waf_address_has_staff_sign_in($ip)) {
         waf_rate_record($subject, 'ob', 600);
         waf_log_event('would-ban', 'auto-ban', 'ban', $score, 'REMOTE_ADDR', $subject . ' staff address');
@@ -5244,12 +5370,34 @@ function waf_register_offence($ip, $score, $blocking, $burst = false)
         $minutes = 60;
     }
 
-    $applied = waf_auto_ban($subject, $minutes, 'Automatic: ' . $threshold . '+ firewall events');
+    $applied = waf_auto_ban($subject, $minutes, waf_ban_note($rule, $threshold));
 
-    // The line names what was banned and for how long it actually is, which
-    // after a repeat is longer than the configured base period.
-    waf_log_event('ban', 'auto-ban', 'ban', $score, 'REMOTE_ADDR', $subject . ' ' . ($applied > 0 ? $applied : $minutes) . ' min');
-    waf_text_log('BAN', $ip, array('minutes' => ($applied > 0 ? $applied : $minutes), 'subject' => $subject, 'rule' => 'auto-ban'));
+    // The line names what was banned, for how long it actually is (after a
+    // repeat longer than the configured base period) and the rule that
+    // brought it, which the Active Automatic Bans table could not say.
+    waf_log_event('ban', 'auto-ban', 'ban', $score, 'REMOTE_ADDR', $subject . ' ' . ($applied > 0 ? $applied : $minutes) . ' min' . ($rule === 'auto-ban' ? '' : ' ' . $rule));
+    waf_text_log('BAN', $ip, array('minutes' => ($applied > 0 ? $applied : $minutes), 'subject' => $subject, 'rule' => $rule));
+}
+
+/**
+ * The note an automatic ban is written with: the rule of the refusal that
+ * brought the address past the threshold, and the threshold.
+ *
+ * @param string $rule      waf_last_rule() at the time of the ban; '' or
+ *                          'auto-ban' when no refusal rule is known
+ * @param int    $threshold the offences a ban takes
+ * @return string
+ */
+function waf_ban_note($rule, $threshold)
+{
+    $rule = (string) $rule;
+    $events = (int) $threshold . '+ firewall events';
+
+    if ($rule === '' || $rule === 'auto-ban') {
+        return 'Automatic: ' . $events;
+    }
+
+    return 'Automatic: ' . $rule . ', ' . $events;
 }
 
 /**

@@ -167,6 +167,7 @@
     "Each line must be an object of {line_id, quantity}.": "Her satır {line_id, quantity} biçiminde bir nesne olmalıdır.",
     "Each line must be an object.": "Her satır bir nesne olmalıdır.",
     "Each line reads: date, time, pinegrap-firewall, DENY or BAN, then ip=, status=, rule= and reference. Not reachable from the web.": "Her satır: tarih, saat, pinegrap-firewall, DENY ya da BAN, ardından ip=, status=, rule= ve referans. Web'den erişilemez.",
+    "Each line reads: date, time, pinegrap-firewall, DENY or BAN, then ip=, status=, rule=, the reference and path=. Not reachable from the web.": "Her satır: tarih, saat, pinegrap-firewall, DENY ya da BAN, ardından ip=, status=, rule=, referans ve path=. Web'den erişilemez.",
     "Each message opens a conversation. You answer it from the control panel, and the visitor reads the answer and writes back on the site.": "Her mesaj bir görüşme açar. Siz kontrol panelinden cevaplarsınız; ziyaretçi cevabı sitede okur ve oradan yazar.",
     "Each next step is a task, so it lands in my task list with the meeting note linked. It takes ten minutes to set up and saves that much every week.": "Her sonraki adım bir görev; böylece toplantı notunun bağlantısıyla birlikte görev listeme düşüyor. Kurması on dakika sürüyor ve her hafta o kadarını geri kazandırıyor.",
     "Each note is written as the notes of whoever applies the template and shared in the channel.": "Her not, şablonu uygulayan kişinin notu olarak yazılır ve kanalda paylaşılır.",

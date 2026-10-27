@@ -515,7 +515,7 @@ if ($security_ready) {
                                                         <div class="col-12 ">
                                                             <label class="form-label">' . lang('Log File') . '</label>
                                                             <div class="font-monospace small text-break">' . h($waf_text_log_path) . '</div>
-                                                            <div class="form-text">' . lang('Each line reads: date, time, pinegrap-firewall, DENY or BAN, then ip=, status=, rule= and reference. Not reachable from the web.') . '</div>
+                                                            <div class="form-text">' . lang('Each line reads: date, time, pinegrap-firewall, DENY or BAN, then ip=, status=, rule=, the reference and path=. Not reachable from the web.') . '</div>
                                                         </div>
                                                         <div class="col-12 ">
                                                             <label class="form-label">' . lang('fail2ban Filter and Jail') . '</label>
