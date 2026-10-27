@@ -29,7 +29,7 @@ module: layouts
 - `pg_hosted()`: Ctrl+G opens the canvas; the tab is read only (`_design.layoutReadOnly`), no Regenerate, save refused with "Custom layouts are not available on this site."; read shows the generated layout, which is what `render_layout()` draws there (the classic `get_layout` now shows the same).
 
 ## What stays?
-- The field-change warning (`add_field.php`, `edit_field.php`, `delete_fields.php`) for a modified custom layout.
+- The field-change warning for a modified custom layout: `pg_field_form_layout_warning()` (`includes/forms/field_form.php`, used by `add_field.php` and `edit_field.php`), `delete_fields.php`.
 
 ## Tests?
 - `tests/designer_layout_retirement_test.php`: the Ctrl+G parameter, the page opened on load, the "Edit Layout" target.

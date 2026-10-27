@@ -95,9 +95,13 @@ if (!isset($_POST['name'])) {
     $_POST['name'] = trim($_POST['name']);
 
     $query = "INSERT INTO cregion (cregion_name, cregion_content, cregion_designer_type, cregion_user, cregion_timestamp) "
-            ."VALUES ('" . escape($_POST['name'] ?? '') . "', '" . escape(prepare_rich_text_editor_content_for_input($_POST['content'])) . "', 'no', {$user['id']}, UNIX_TIMESTAMP())";
+            ."VALUES (?, ?, 'no', ?, UNIX_TIMESTAMP())";
     // insert row into region table
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $result = db_q($query, array(
+        (string) ($_POST['name'] ?? ''),
+        (string) prepare_rich_text_editor_content_for_input($_POST['content']),
+        (int) $user['id'],
+    )) or output_error('Query failed');
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('common region'),$_POST['name']))), $_SESSION['sessionusername']);
     $notice = lang(array('string'=>'{var:1} was created successfully','vars'=>lang('Common Region') ));
 

@@ -129,8 +129,8 @@ function test_cli_job_warnings_unsigned_renders()
 	foreach (array('get_my_account_profile.php', 'get_affiliate_sign_up_form_screen_content.php') as $file) {
 		$source = cli_job_warnings_test_source($file);
 
-		pg_assert_contains("escape(\$_SESSION['sessionusername'] ?? '')", $source, $file . ': no session user');
-		pg_assert_same(0, substr_count($source, "escape(\$_SESSION['sessionusername'])"), $file . ': unguarded session user');
+		pg_assert_contains("(string) (\$_SESSION['sessionusername'] ?? '')", $source, $file . ': no session user');
+		pg_assert_same(0, substr_count($source, "(string) \$_SESSION['sessionusername']"), $file . ': unguarded session user');
 		pg_assert_contains("if (is_array(\$row) == false) {\n        \$row = array(", $source, $file . ': no user row');
 	}
 

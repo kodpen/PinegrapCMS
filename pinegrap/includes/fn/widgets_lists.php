@@ -87,7 +87,7 @@ function pg_sw_list_sources()
         ),
     ) + pg_sw_list_product_sources() + pg_sw_list_crumb_sources() + pg_sw_list_active_filter_sources() + pg_sw_list_calendar_sources() + pg_sw_list_order_sources()
         + pg_sw_list_cart_sources() + pg_sw_list_checkout_sources() + pg_sw_list_menu_sources() + pg_sw_list_security_sources()
-        + pg_sw_list_paging_sources();
+        + pg_sw_list_paging_sources() + pg_sw_list_folder_view_sources();
 }
 
 // The sources a widget kind offers (source => descriptor): the form record
@@ -101,7 +101,8 @@ function pg_sw_list_sources()
 // widget (widgets_lists_order.php), the visitor's cart in the cart link and
 // the cart widget (widgets_lists_cart.php), the express order's offers,
 // gift cards and recipients and its cart (widgets_lists_checkout.php), the sub-items of a menu item in
-// the menu widget (widgets_lists_menu.php), the member's passkeys in the
+// the menu widget (widgets_lists_menu.php), the entries of a folder in
+// the folder view (widgets_folder_view.php), the member's passkeys in the
 // account security widget (widgets_account.php), and in the form list the
 // page links too, as in the catalog listing and the search results
 // (widgets_lists_paging.php), each kind publishing its
@@ -112,7 +113,7 @@ function pg_sw_kind_lists($kind)
                       'catalog_item_view' => array('product', 'crumbs'), 'catalog_listing' => array('product', 'crumbs', 'filter_chips', 'paging'), 'calendar_view' => 'calendar',
                       'order_view' => 'order', 'my_account' => 'account', 'cart_link' => 'cart', 'shopping_cart' => 'cart',
                       'express_order' => array('cart', 'checkout'),
-                      'menu_region' => 'menu', 'account_security' => 'security', 'search_results' => 'paging');
+                      'menu_region' => 'menu', 'folder_view' => 'folder_view', 'account_security' => 'security', 'search_results' => 'paging');
     $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true),
                       'express_order' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true));
     $kind = pg_sw_finish_kind($kind);

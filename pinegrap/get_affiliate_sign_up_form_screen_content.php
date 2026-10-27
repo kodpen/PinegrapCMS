@@ -32,8 +32,8 @@ function get_affiliate_sign_up_form_screen_content($properties)
     // Nobody is signed in while the search index is updated, or when a visitor
     // who has not signed in opens the page. There is then no user and no
     // contact, so every field starts blank, as it always did.
-    $query = "SELECT user_id, user_email, user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT user_id, user_email, user_contact FROM user WHERE user_username = ?";
+    $result = db_q($query, array((string) ($_SESSION['sessionusername'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     if (is_array($row) == false) {
@@ -61,8 +61,8 @@ function get_affiliate_sign_up_form_screen_content($properties)
                     company,
                     website
                  FROM contacts
-                 WHERE id = '" . $contact_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE id = ?";
+        $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         // A user without a contact record (an administrator created in the control

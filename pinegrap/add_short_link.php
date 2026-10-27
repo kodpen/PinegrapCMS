@@ -410,8 +410,8 @@ if (!$_POST) {
 
                 // If there is not already an error for the product group, then check if product group exists.
                 if ($liveform->check_field_error('product_group_id') == FALSE) {
-                    $query = "SELECT COUNT(*) FROM product_groups WHERE id = '" . escape($liveform->get_field_value('product_group_id')) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "SELECT COUNT(*) FROM product_groups WHERE id = ?";
+                    $result = db_q($query, array((string) $liveform->get_field_value('product_group_id'))) or output_error('Query failed.');
                     $row = mysqli_fetch_row($result);
 
                     // If the selected product group does not exist, then add error.
@@ -436,8 +436,8 @@ if (!$_POST) {
 
                 // If there is not already an error for the product, then check if product exists.
                 if ($liveform->check_field_error('product_id') == FALSE) {
-                    $query = "SELECT COUNT(*) FROM products WHERE id = '" . escape($liveform->get_field_value('product_id')) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "SELECT COUNT(*) FROM products WHERE id = ?";
+                    $result = db_q($query, array((string) $liveform->get_field_value('product_id'))) or output_error('Query failed.');
                     $row = mysqli_fetch_row($result);
 
                     // If the selected product does not exist, then add error.
@@ -534,8 +534,8 @@ if (!$_POST) {
 
         // If there is not already an error, then check if page exists.
         if ($liveform->check_form_errors() == FALSE) {
-            $query = "SELECT COUNT(*) FROM page WHERE page_id = '" . escape($page_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT COUNT(*) FROM page WHERE page_id = ?";
+            $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
 
             // If the selected page does not exist, then add error.
@@ -580,27 +580,32 @@ if (!$_POST) {
 
     $sql_field = "";
     $sql_value = "";
+    $sql_values = array();
 
     // Prepare the SQL differently based on the destination type.
     switch ($liveform->get_field_value('destination_type')) {
         case 'product_group':
             $sql_field = "product_group_id,";
-            $sql_value = "'" . escape($liveform->get_field_value('product_group_id')) . "',";
+            $sql_value = "?,";
+            $sql_values[] = (string) $liveform->get_field_value('product_group_id');
             break;
         
         case 'product':
             $sql_field = "product_id,";
-            $sql_value = "'" . escape($liveform->get_field_value('product_id')) . "',";
+            $sql_value = "?,";
+            $sql_values[] = (string) $liveform->get_field_value('product_id');
             break;
 
         case 'url':
             $sql_field = "url,";
-            $sql_value = "'" . escape($liveform->get_field_value('url')) . "',";
+            $sql_value = "?,";
+            $sql_values[] = (string) $liveform->get_field_value('url');
             break;
 
         case 'file':
             $sql_field = "file_id,";
-            $sql_value = "'" . escape($liveform->get_field_value('file')) . "',";
+            $sql_value = "?,";
+            $sql_values[] = (string) $liveform->get_field_value('file');
             break;
     }
     
@@ -610,18 +615,23 @@ if (!$_POST) {
 
     if (pg_short_link_modes_ready()) {
         $sql_field .= "link_mode, expires_at,";
-        $sql_value .= "'" . escape($link_mode) . "', '" . (int) $link_expires . "',";
+        $sql_value .= "?, ?,";
+        $sql_values[] = (string) $link_mode;
+        $sql_values[] = (string) (int) $link_expires;
 
         if ($link_mode === 'once') {
             $link_token = pg_short_link_new_token();
             $sql_field .= "token_hash, token_hint,";
-            $sql_value .= "'" . hash('sha256', $link_token) . "', '" . escape(substr($link_token, 0, 6)) . "',";
+            $sql_value .= "?, ?,";
+            $sql_values[] = hash('sha256', $link_token);
+            $sql_values[] = (string) substr($link_token, 0, 6);
         }
     }
 
     foreach ($short_link_answer['columns'] as $answer_column => $answer_value) {
         $sql_field .= $answer_column . ",";
-        $sql_value .= "'" . (int) $answer_value . "',";
+        $sql_value .= "?,";
+        $sql_values[] = (string) (int) $answer_value;
     }
 
     // create short link
@@ -637,16 +647,20 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES (
-            '" . escape($name) . "',
-            '" . escape($liveform->get_field_value('destination_type')) . "',
-            '" . escape($page_id) . "',
+            ?,
+            ?,
+            ?,
             " . $sql_value . "
-            '" . escape($liveform->get_field_value('tracking_code')) . "',
-            '" . USER_ID . "',
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . USER_ID . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array_merge(
+        array((string) $name, (string) $liveform->get_field_value('destination_type'), (string) $page_id),
+        $sql_values,
+        array((string) $liveform->get_field_value('tracking_code'), (string) USER_ID, (string) USER_ID)
+    )) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'short link ({var:1}) was created','vars'=>($link_token !== '') ? substr($link_token, 0, 6) . '…' : $name)), $_SESSION['sessionusername']);
     $liveform->remove_form();

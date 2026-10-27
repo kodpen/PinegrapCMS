@@ -22,7 +22,7 @@ description: Plan (owner request 2026-10-27, draft): flows started from a channe
 
 - C3 Add › Scheduled flow (mini window) replaces Add › Scheduled action for new work.
 
-- C4 the flow list: a start-kind filter (time, by hand, event).
+- C4 the flow list: a start-kind filter (time, by hand, event, join) — done, #2391.
 
 - C5a remove the scheduled-actions routes, their MCP tools, tests and the parity table's `api_routes` lines; rewrite workspace/workspace-scheduled-actions-api.md — done, #2107. The draft card's texts no longer name the removed route.
 

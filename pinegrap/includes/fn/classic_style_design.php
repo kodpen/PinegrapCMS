@@ -179,11 +179,20 @@ function pg_classic_style_design_open($style_id, $user)
         return $out;
     }
 
-    // A <cregion> stays a region node of its kind; making components of the
-    // regions is a step of its own (common-region-to-shared-component.md).
+    // A common region already made a shared component is placed as that
+    // component: its tag draws the component anyway (pg_common_region_components()),
+    // and the canvas shows the content instead of a placeholder. Any other
+    // <cregion> stays a region node of its kind; no region is converted here.
     $lookup = function ($name) {
-        $hit = db_item("SELECT cregion_designer_type FROM cregion WHERE cregion_name = '" . e($name) . "' LIMIT 1");
-        return array('regionType' => (is_array($hit) && $hit['cregion_designer_type'] === 'yes') ? 'designer' : 'common');
+        $hit = db_item("SELECT cregion_id, cregion_designer_type FROM cregion WHERE cregion_name = '" . e($name) . "' LIMIT 1");
+        if (!is_array($hit)) return array('regionType' => 'common');
+        if ($hit['cregion_designer_type'] === 'yes') return array('regionType' => 'designer');
+        $made = db_item("SELECT id, name FROM shared_components
+                         WHERE category = '" . e(pg_common_region_component_category($hit['cregion_id'])) . "'
+                           AND (system_region_config IS NULL OR system_region_config = '')
+                         ORDER BY id ASC LIMIT 1");
+        if (is_array($made)) return array('sharedId' => (int)$made['id'], 'sharedName' => (string)$made['name']);
+        return array('regionType' => 'common');
     };
     $frame = pg_classic_style_frame((string)$row['style_code'], $lookup);
 

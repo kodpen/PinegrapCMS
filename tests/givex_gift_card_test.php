@@ -92,7 +92,7 @@ function test_givex_single_value_inputs()
 	pg_assert_true(strpos($order_preview, "pg_request_single_values(array('gift_card_code'));") < strpos($order_preview, "\$liveform->assign_field_value('gift_card_code', \$_POST['gift_card_code'] ?? '');"), 'order preview code');
 
 	$remove = file_get_contents(PG_FUNCTIONS_DIR . '/remove_gift_card_from_order.php');
-	pg_assert_true(strpos($remove, "pg_request_single_values(array('applied_gift_card_id'));") < strpos($remove, "escape(\$_GET['applied_gift_card_id'] ?? '')"), 'removed gift card id');
+	pg_assert_true(strpos($remove, "pg_request_single_values(array('applied_gift_card_id'));") < strpos($remove, "(string) (\$_GET['applied_gift_card_id'] ?? '')"), 'removed gift card id');
 }
 
 // Both Givex hosts are asked through pg_curl_run(): the primary first, the

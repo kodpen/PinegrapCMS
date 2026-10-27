@@ -655,9 +655,10 @@ function ws_handle_action($action, $request)
 
             $rows = ws_flows_list($viewer);
             $numbers = ws_flow_version_numbers($rows);
+            $starts = empty($rows) ? array() : ws_flows_start_kinds($rows);
 
-            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers) {
-                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0);
+            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers, $starts) {
+                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0, $starts[(int) $row['id']] ?? '');
             }, $rows)));
 
         case 'ws_flow_get':
@@ -665,10 +666,11 @@ function ws_handle_action($action, $request)
 
             return $flow ? ws_action_ok(array('flow' => ws_flow_detail($viewer, $flow))) : ws_action_error(lang('That flow could not be found.'));
 
-        // A scheduled action drafted on a card (scheduled_draft.php) opened
-        // as a new flow of the person who asked for it.
+        // A flow an application proposed (flow_draft.php) or a scheduled
+        // action drafted on a card (scheduled_draft.php) opened as a new flow
+        // of the person it waits for.
         case 'ws_flow_from_draft':
-            $result = ws_scheduled_draft_flow_open($viewer, (int) ($request['change_id'] ?? 0));
+            $result = ws_flow_draft_open($viewer, (int) ($request['change_id'] ?? 0));
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);

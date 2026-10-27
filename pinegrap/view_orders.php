@@ -2468,8 +2468,17 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
              ORDER BY $order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-    $filter_totals = 0;
+    $order_rows = array();
     while ($row = mysqli_fetch_assoc($result)) {
+        $order_rows[] = $row;
+    }
+
+    // An incomplete order has no total yet: the cell shows its cart instead
+    // (includes/fn/order_list.php), one query for the whole page.
+    $cart_totals = pg_order_list_cart_totals($order_rows);
+
+    $filter_totals = 0;
+    foreach ($order_rows as $row) {
         $id = $row['id'];
         $billing_first_name = $row['billing_first_name'];
         $billing_last_name = $row['billing_last_name'];
@@ -2602,7 +2611,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 <td class="align-middle"' . $output_status_edit . '>' . $output_status . '</td>
                 <td class="align-middle">' . $output_order_type . '</td>
                 <td class="align-middle">' . $order_number . '</td>
-                <td class="align-middle text-end">' . prepare_amount($total) . '</td>
+                <td class="align-middle text-end">' . pg_order_list_amount_html($status, $row['total'], $cart_totals[(int) $id] ?? null) . '</td>
                 <td class="align-middle">' . h($username) . '</td>
                 <td class="align-middle">' . h($tracking_code) . '</td>
                 <td class="align-middle">' . h($member_id) . '</td>
@@ -2970,7 +2979,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $output_payment_mode = 'merchant';
 		}
         
-		$output_gateway_buttons = '<button type="button" class="btn btn-sm btn-solid theme-secondary m-1" title="' . ECOMMERCE_PAYMENT_GATEWAY . '" onclick="window.open(\'https://' . $output_payment_mode . '.iyzipay.com/dashboard\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-3">account_balance</span>' . lang(array('string'=>'View Orders') ) . '</button>';
+		// The payment provider's own merchant panel, in a tab of its own.
+		$output_gateway_buttons = '<a class="btn btn-sm btn-text theme-secondary" href="https://' . $output_payment_mode . '.iyzipay.com/dashboard" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => '{var:1} panel', 'vars' => ECOMMERCE_PAYMENT_GATEWAY))) . '</a>';
 	}
 
 
@@ -3135,7 +3145,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <div class="col-6 lg:col-3">
                         <div class="card h-100 shadow-sm border-0">
                             <div class="card-body p-5 pb-3">
-                                <div class="d-flex align-items-center gap-3 small fg-secondary mb-1"><i class="bi ' . $icon . '" aria-hidden="true"></i><span class="text-truncate">' . $label . '</span></div>
+                                <div class="d-flex align-items-start gap-3 small fg-secondary mb-1"><i class="bi ' . $icon . '" aria-hidden="true"></i><span>' . $label . '</span></div>
                                 <div class="h5 mb-1 text-nowrap' . $value_class . '">' . $value . '</div>
                                 ' . (($canvas !== '') ? '<div class="pg-orders-spark"><canvas id="' . $canvas . '" aria-hidden="true"></canvas></div>' : '') . '
                             </div>
@@ -3195,8 +3205,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
                     <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
                         ' . get_token_field() . '
-                        <button type="submit" name="submit_data" value="Export Orders (multiple files)" title="' . lang('Multiple files') . '" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
-                        <button type="submit" name="submit_data" value="Export Orders (single file)" title="' . lang('Single file') . '" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
+                        <div class="pg-menu-wrap d-inline-block">
+                            <button type="button" class="btn btn-sm btn-text theme-secondary no-popover pg-menu-caret" data-bs-toggle="menu" aria-expanded="false"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button>
+                            <ul class="menu shadow">
+                                <li><button type="submit" name="submit_data" value="Export Orders (single file)" class="menu-item"><i class="bi bi-file-earmark-arrow-down me-3" aria-hidden="true"></i>' . lang('Single file') . '</button></li>
+                                <li><button type="submit" name="submit_data" value="Export Orders (multiple files)" class="menu-item"><i class="bi bi-file-earmark-zip me-3" aria-hidden="true"></i>' . lang('One file per order') . '</button></li>
+                            </ul>
+                        </div>
                         ' . $output_gateway_buttons . '
                     </form>
                     <a class="btn btn-sm btn-text theme-secondary" href="import_shipments.php"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Import Tracking Numbers') . '</a>

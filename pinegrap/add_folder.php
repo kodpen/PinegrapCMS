@@ -76,7 +76,7 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-8 my-3">
-                                            <label for="name" class="form-label">*' . lang('Folder Name') . '</label>
+                                            <label for="name" class="form-label">' . lang('Folder Name') . '</label>
                                             ' . $liveform_add_folder->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
@@ -159,7 +159,7 @@ if (!$_POST) {
     }
     
     // find level of parent
-    $result=mysqli_query(db::$con, "SELECT folder_level FROM folder WHERE folder_id = '" . escape($_POST['folder'] ?? '') . "'") or output_error('Query failed');
+    $result=db_q("SELECT folder_level FROM folder WHERE folder_id = ?", array((string) ($_POST['folder'] ?? ''))) or output_error('Query failed');
     $row=mysqli_fetch_array($result);
 
     // The parent must exist; otherwise the new folder would hang off a
@@ -188,6 +188,7 @@ if (!$_POST) {
 
     $sql_style_fields = "";
     $sql_style_values = "";
+    $style_values = array();
     
     // if user role is Administrator, Designer, or Manager, then allow user to set style and mobile style for folder
     if ($user['role'] < 3) {
@@ -196,8 +197,10 @@ if (!$_POST) {
             mobile_style_id,";
         
         $sql_style_values =
-            "'" . escape($_POST['style'] ?? '') . "',
-            '" . escape($_POST['mobile_style_id'] ?? '') . "',";
+            "?,
+            ?,";
+
+        $style_values = array((string) ($_POST['style'] ?? ''), (string) ($_POST['mobile_style_id'] ?? ''));
     }
     
     // insert row into folder table
@@ -213,16 +216,27 @@ if (!$_POST) {
             folder_timestamp,
             folder_user)
         VALUES (
-            '" . escape($name) . "',
-            '" . escape($_POST['folder'] ?? '') . "',
-            '" . escape($level) . "',
-            '" . escape($_POST['order'] ?? '') . "',
-            '" . escape($_POST['access_control_type'] ?? '') . "',
-            '" . escape($_POST['folder_archived'] ?? '') . "',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             $sql_style_values
             UNIX_TIMESTAMP(),
-            '$user[id]')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            ?)";
+    $result = db_q($query, array_merge(
+        array(
+            (string) $name,
+            (string) ($_POST['folder'] ?? ''),
+            (string) $level,
+            (string) ($_POST['order'] ?? ''),
+            (string) ($_POST['access_control_type'] ?? ''),
+            (string) ($_POST['folder_archived'] ?? ''),
+        ),
+        $style_values,
+        array((string) $user['id'])
+    )) or output_error('Query failed');
     
     log_activity(lang(array('string'=>'folder ({var:1}) was created','vars'=>array($name) )) , $_SESSION['sessionusername']);
     

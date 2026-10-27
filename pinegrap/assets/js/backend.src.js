@@ -181,12 +181,6 @@ function getPreferredThemeColor() {
 $(document).ready(function () {
 
 
-    //check if it's toolbar
-    if ($("body").hasClass('toolbar')) {
-        //convert color-scheme light for transparent bg. it fix some bug
-        $("html").attr('style', 'color-scheme:light;');
-    }
-
     //update backdrop height.
     update_menu_backdrop_height();
 

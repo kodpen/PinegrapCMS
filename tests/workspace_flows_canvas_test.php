@@ -156,8 +156,55 @@ function test_workspace_flows_canvas_brief_is_typed()
 	$flow = array('id' => '12', 'name' => 'Onboarding', 'status' => 'live', 'access' => 'run', 'owner_id' => '4', 'channel_id' => '9', 'draft_rev' => '3', 'version_id' => '30');
 	$brief = ws_flow_brief(array('id' => 7), $flow, 2);
 
-	pg_assert_same(array('id' => 12, 'name' => 'Onboarding', 'status' => 'live', 'access' => 'run', 'mine' => false, 'channel_id' => 9, 'draft_rev' => 3, 'version' => 2), $brief);
+	pg_assert_same(array('id' => 12, 'name' => 'Onboarding', 'status' => 'live', 'access' => 'run', 'mine' => false, 'channel_id' => 9, 'draft_rev' => 3, 'version' => 2, 'start' => ''), $brief);
 	pg_assert_true(ws_flow_brief(array('id' => 4), $flow, 0)['mine'], 'the owner\'s own');
+
+	foreach (array('time', 'manual', 'event', 'join') as $start) {
+		pg_assert_same($start, ws_flow_brief(array('id' => 7), $flow, 2, $start)['start'], 'start ' . $start);
+	}
+}
+
+// A flow opened on the screen says how it starts, so the list keeps the kind
+// after a save: the draft of a flow never published, by its start box.
+function test_workspace_flows_canvas_detail_carries_the_start_kind()
+{
+	foreach (array('schedule' => 'time', 'manual' => 'manual', 'event' => 'event', 'join' => 'join') as $kind => $start) {
+		$draft = array('v' => 1, 'nodes' => array(
+			array('id' => 'start_1', 'kind' => $kind, 'x' => 0, 'y' => 0),
+			array('id' => 'end_1', 'kind' => 'end', 'x' => 288, 'y' => 0),
+		), 'edges' => array(array('from' => 'start_1', 'to' => 'end_1')));
+		$flow = array('id' => '12', 'name' => 'Onboarding', 'status' => 'draft', 'access' => 'view', 'owner_id' => '4', 'channel_id' => '9',
+			'draft_rev' => '3', 'version_id' => '0', 'draft' => json_encode($draft));
+
+		pg_assert_same($start, ws_flow_detail(array('id' => 7), $flow)['start'], 'detail start of a ' . $kind . ' box');
+	}
+
+	$flow['draft'] = json_encode(array('v' => 1, 'nodes' => array(), 'edges' => array()));
+	pg_assert_same('', ws_flow_detail(array('id' => 7), $flow)['start'], 'no start box: empty');
+}
+
+// The list action hands each flow its start kind, and the screen keeps it
+// in a saved flow's entry and narrows the list by it with a select.
+function test_workspace_flows_canvas_list_filters_by_start_kind()
+{
+	$actions = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$list = substr($actions, strpos($actions, "case 'ws_flow_list':"), 800);
+
+	pg_assert_contains('ws_flows_start_kinds($rows)', $list, 'the list reads each flow\'s start');
+
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$entry = substr($script, strpos($script, 'function listEntry(flow)'), 400);
+	$draw = substr($script, strpos($script, 'function drawList()'), 3000);
+	$filter = substr($script, strpos($script, 'function startFilter()'), 1500);
+
+	pg_assert_contains('start: flow.start', $entry, 'a saved flow keeps its start kind');
+	pg_assert_contains('startFilter()', $draw, 'the list draws the filter');
+	pg_assert_contains('flow.start === state.startFilter', $draw, 'the list is narrowed by the chosen start');
+	pg_assert_contains("el('select', 'form-control form-control-sm')", $filter, 'the filter is a Bootstrap select');
+
+	foreach (array('time', 'manual', 'event', 'join') as $start) {
+		pg_assert_contains("['" . $start . "', 'fl_", $filter, 'a choice for ' . $start);
+	}
 }
 
 // A save always names the draft it was made on: without draft_rev,
@@ -823,4 +870,76 @@ JS
 	pg_assert_same(array('fl_cond_threshold', '5', 'number'), array($result['threshold']['label'], $result['threshold']['shown'], $result['threshold']['type']), 'and asks for it');
 	pg_assert_same(3, $result['threshold']['kept'], 'what is typed is kept');
 	pg_assert_same(0, $result['channel'], 'a count of a channel\'s tasks starts at every channel');
+}
+
+// "Add value" offers what started the run and the boxes before the box, in
+// arrow order, each with the fields the server lets {{node.*}} and
+// {{trigger.*}} read: a web check's by its mode, a report's counts by the
+// counts it sends, an event's by the event. A box after the reader, the box
+// itself and a start that gives nothing are not offered. A box that may not
+// have run is marked as the reference check warns about it
+// (ws_flow_sure_before()): a condition's branch, not the boxes every way in
+// passes. Before, the builder typed {{node.<id>.<field>}} with ids the
+// canvas never shows.
+function test_workspace_flows_canvas_value_picker_offers_the_boxes_before()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups'),
+		<<<'JS'
+var KINDS = {
+    event: { into: false, out: ['next'] },
+    manual: { into: false, out: ['next'] },
+    web_check: { name: 'Check a web address', into: true, out: ['done', 'failed'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    report: { name: 'Report', into: true, out: ['done', 'failed'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] },
+    email: { name: 'Email', into: true, out: ['done', 'failed'] }
+};
+var FL = {
+    outputs: { web_check: [{ key: 'status_code', label: 'Status code', mode: 'status' }, { key: 'days_left', label: 'Days left', mode: 'ssl' }], report: [{ key: 'message_id', label: 'Message' }], post: [{ key: 'message_id', label: 'Message' }], condition: [], email: [{ key: 'sent', label: 'Sent' }] },
+    trigger_outputs: { kinds: { event: [{ key: 'event', label: 'What happened' }, { key: 'record_id', label: 'Record' }], manual: [] }, events: { 'order.created': [{ key: 'order_number', label: 'Order number' }, { key: 'record_id', label: 'Again' }] } },
+    steps: { metrics: [{ key: 'tasks_open', label: 'Open tasks' }] }
+};
+function box(id, kind, config, y) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: y }; }
+function groups(id) {
+    return valueGroups(nodeById(id)).map(function (group) {
+        return group.node.id + (group.skipped ? ' skipped' : '') + ': ' + group.values.map(function (value) { return value.token.slice(2, -2) + '=' + value.label; }).join(', ');
+    });
+}
+state = { graph: { nodes: [
+    box('event_1', 'event', { event: 'order.created' }, 0),
+    box('web_check_1', 'web_check', { mode: 'ssl' }, 1),
+    box('report_1', 'report', { metrics: [{ key: 'tasks_open', param: 4 }, { key: 'Bad-key', param: 0 }] }, 2),
+    box('condition_1', 'condition', {}, 3),
+    box('post_1', 'post', {}, 4),
+    box('email_1', 'email', {}, 5)
+], edges: [
+    { from: 'event_1', to: 'web_check_1', on: 'next' },
+    { from: 'web_check_1', to: 'report_1', on: 'done' },
+    { from: 'report_1', to: 'condition_1', on: 'done' },
+    { from: 'condition_1', to: 'post_1', on: 'yes' },
+    { from: 'post_1', to: 'email_1', on: 'done' },
+    { from: 'condition_1', to: 'email_1', on: 'no' }
+] } };
+var out = { email: groups('email_1'), web: groups('web_check_1') };
+state.graph.nodes[0] = box('manual_1', 'manual', {}, 0);
+state.graph.edges[0].from = 'manual_1';
+out.manual = groups('web_check_1');
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'event_1: trigger.event=What happened, trigger.record_id=Record, trigger.order_number=Order number',
+		'web_check_1: node.web_check_1.text=fl_values_text, node.web_check_1.outcome=fl_values_outcome, node.web_check_1.status=fl_values_status, node.web_check_1.days_left=Days left',
+		'report_1: node.report_1.text=fl_values_text, node.report_1.outcome=fl_values_outcome, node.report_1.status=fl_values_status, node.report_1.message_id=Message, node.report_1.tasks_open_4=Open tasks',
+		'condition_1: node.condition_1.text=fl_values_text, node.condition_1.outcome=fl_values_outcome, node.condition_1.status=fl_values_status',
+		'post_1 skipped: node.post_1.text=fl_values_text, node.post_1.outcome=fl_values_outcome, node.post_1.status=fl_values_status, node.post_1.message_id=Message',
+	), $result['email'], 'the start, then every box before in arrow order; a branch marked');
+	pg_assert_same(array('event_1: trigger.event=What happened, trigger.record_id=Record, trigger.order_number=Order number'), $result['web'], 'the first box after the start reads only the start');
+	pg_assert_same(array(), $result['manual'], 'a start that gives nothing is not offered');
 }

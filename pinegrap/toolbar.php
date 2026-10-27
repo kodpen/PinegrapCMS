@@ -137,16 +137,16 @@ if ($pg_toolbar_panel['panel'] !== '') {
                on the site) and id+class would otherwise outrank a plain id. */
             #software_seo_panel,
             #software_seo_panel.pg_seo_tb_dark{
-                --pg-sp-bg: rgb(var(--pg-navbar-bg-rgb));
-                --pg-sp-fg: var(--bs-body-color);
-                --pg-sp-muted: var(--bs-secondary-color);
-                --pg-sp-faint: var(--bs-tertiary-color);
-                --pg-sp-line: var(--bs-border-color-translucent);
-                --pg-sp-line-soft: var(--bs-border-color-translucent);
-                --pg-sp-border: var(--bs-border-color);
-                --pg-sp-hover: var(--bs-tertiary-bg);
-                --pg-sp-link: var(--bs-link-color);
-                --pg-sp-track: var(--bs-secondary-bg);
+                --pg-sp-bg: var(--pg-navbar-bg);
+                --pg-sp-fg: var(--pg-fg-body);
+                --pg-sp-muted: var(--pg-fg-2);
+                --pg-sp-faint: var(--pg-fg-3);
+                --pg-sp-line: var(--pg-border-color-translucent);
+                --pg-sp-line-soft: var(--pg-border-color-translucent);
+                --pg-sp-border: var(--pg-border-color);
+                --pg-sp-hover: var(--pg-bg-1);
+                --pg-sp-link: var(--pg-link-color);
+                --pg-sp-track: var(--pg-bg-2);
             }
 
             #software_seo_panel{
@@ -198,14 +198,14 @@ if ($pg_toolbar_panel['panel'] !== '') {
                 content: "";
                 position: fixed;
                 top: calc(var(--pg-navbar-h, 50px) - 1px);
-                right: calc(var(--pg-tbp-w) - var(--bs-border-width, 1px));
+                right: calc(var(--pg-tbp-w) - var(--pg-border-width, 1px));
                 width: var(--pg-corner, 16px);
                 height: var(--pg-corner, 16px);
                 pointer-events: none;
                 background: radial-gradient(
                     circle at 0% 100%,
-                    transparent calc(var(--pg-corner, 16px) - var(--bs-border-width, 1px)),
-                    var(--pg-sp-border) calc(var(--pg-corner, 16px) - var(--bs-border-width, 1px)),
+                    transparent calc(var(--pg-corner, 16px) - var(--pg-border-width, 1px)),
+                    var(--pg-sp-border) calc(var(--pg-corner, 16px) - var(--pg-border-width, 1px)),
                     var(--pg-sp-border) var(--pg-corner, 16px),
                     var(--pg-sp-bg) var(--pg-corner, 16px)
                 );
@@ -329,6 +329,27 @@ print pg_page_shell(
         'heading' => $page_name,
     )
 ) . $pg_toolbar_panel_output . '
+        <style>
+            /* Bootstrap 6 writes its colours as light-dark(), resolved by
+               color-scheme. The frame has to show the site page through, and
+               a browser paints a frame opaque when the scheme of the element
+               that gives its canvas a background differs from the page
+               around it. So the root stays light and carries the shade the
+               bar casts (a body background would be lifted to the canvas and
+               take the scheme of the body), while the body takes the panel theme:
+               every colour inside it resolves the way the theme says and
+               follows the theme buttons of the account menu.
+               Outside any layer: Bootstrap sets color-scheme on
+               [data-bs-theme] outside its layers too, and a layered rule
+               would lose to it. */
+            :root {
+                color-scheme: light;
+                background: linear-gradient(180deg, #0000008c, transparent) no-repeat;
+                background-size: 100%;
+            }
+            :root body.toolbar { background: none; }
+            :root[data-bs-theme="dark"] body { color-scheme: dark; }
+        </style>
         <script>
             var loaded = false;
             $(window).on("load", function() {

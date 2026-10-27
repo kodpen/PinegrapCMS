@@ -1940,12 +1940,13 @@ function ws_flow_version_numbers($rows)
 /**
  * A flow in the screen's list.
  *
- * @param array $viewer
- * @param array $flow ws_flows row with access
- * @param int   $n    the number of its live version, 0 for none
+ * @param array  $viewer
+ * @param array  $flow  ws_flows row with access
+ * @param int    $n     the number of its live version, 0 for none
+ * @param string $start how it starts (ws_flow_start_kind()), '' for no start box
  * @return array
  */
-function ws_flow_brief($viewer, $flow, $n)
+function ws_flow_brief($viewer, $flow, $n, $start = '')
 {
     return array(
         'id'         => (int) $flow['id'],
@@ -1956,6 +1957,7 @@ function ws_flow_brief($viewer, $flow, $n)
         'channel_id' => (int) $flow['channel_id'],
         'draft_rev'  => (int) $flow['draft_rev'],
         'version'    => (int) $n,
+        'start'      => (string) $start,
     );
 }
 
@@ -1990,7 +1992,9 @@ function ws_flow_detail($viewer, $flow)
     $edit = ((string) $flow['access'] === 'edit');
     $draft = ws_flow_draft_readable((string) $flow['access'], is_array($version) ? (int) $version['id'] : 0) ? ws_flow_graph_of($flow) : null;
 
-    return ws_flow_brief($viewer, $flow, is_array($version) ? (int) $version['n'] : 0) + array(
+    $start = ws_flow_start_kind(ws_flow_start_graph($flow, $version));
+
+    return ws_flow_brief($viewer, $flow, is_array($version) ? (int) $version['n'] : 0, $start) + array(
         'draft'    => ($draft !== null) ? ws_flow_graph_present($draft, $edit) : null,
         'graph'    => ($live !== null) ? ws_flow_graph_present($live, $edit) : null,
         'problems' => ($edit && ($draft !== null)) ? ws_flow_problems($draft) : array(),
@@ -2028,6 +2032,9 @@ function ws_flow_js_strings()
         'fl_list_mine'        => lang('My flows'),
         'fl_list_shared'      => lang('Shared with me and my channels'),
         'fl_none'             => lang('No flows yet.'),
+        'fl_none_start'       => lang('No flow starts this way.'),
+        'fl_start_filter'     => lang('How the flow starts'),
+        'fl_start_all'        => lang('Every start'),
         'fl_none_build'       => lang('No flows yet. "New flow" starts one: the box that starts it, the tasks that follow one another, the end.'),
         'fl_none_run'         => lang('No flows yet. A published flow of a channel you read, or a flow shared with you, appears here.'),
         'fl_not_ready'        => lang('The database has to be updated first.'),
@@ -2250,7 +2257,14 @@ function ws_flow_js_strings()
         'fl_email_to_help'    => lang('E-mail addresses, separated by commas.'),
         'fl_email_subject'    => lang('Subject'),
         'fl_email_body'       => lang('Text of the e-mail'),
-        'fl_values_help'      => lang('Written in your name when the box runs. {{node.ID.text}} puts in what an earlier box of the run did, {{node.ID.message_id}} the message it posted; {{date}} and the other words of scheduled actions work too.'),
+        'fl_values_hint'      => lang('Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.'),
+        'fl_values_add'       => lang('Add value'),
+        'fl_values_text'      => lang('What it did'),
+        'fl_values_outcome'   => lang('Outcome'),
+        'fl_values_status'    => lang('Status'),
+        'fl_values_skipped'   => lang('Empty if skipped'),
+        'fl_values_missing'   => lang('No box before this one gives this value.'),
+        'fl_values_none'      => lang('No box before this one gives a value yet: connect it after a box or a start.'),
         'fl_add_manual'       => lang('Start manually'),
         'fl_add_task'         => lang('Task'),
         'fl_add_end'          => lang('End'),
