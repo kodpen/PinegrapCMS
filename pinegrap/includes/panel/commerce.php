@@ -586,8 +586,8 @@ function pg_panel_get_product($request, $action)
         (strpos($product_raw['code'], '^^image_loop_end^^') !== false)
     ) {
         //check for image list from products_images_xref
-        $item_images = "SELECT product,file_name FROM products_images_xref WHERE product = '" . e($request['product']['id']) . "'";
-        $image_results = mysqli_query(db::$con, $item_images) or output_error('Query failed');
+        $item_images = "SELECT product,file_name FROM products_images_xref WHERE product = ?";
+        $image_results = db_q($item_images, array((string) $request['product']['id'])) or output_error('Query failed');
 
         $code_header_position = strpos($product_raw['code'], '^^image_loop_start^');//number
         $code_content_position = strpos($product_raw['code'], '^^image_url^^');
@@ -684,8 +684,9 @@ function pg_panel_get_product($request, $action)
             'alt' => (string)$product['short_description'],
         );
     }
-    $_pg_xref = mysqli_query(db::$con,
-        "SELECT file_name FROM products_images_xref WHERE product = '" . $_pg_pid . "'"
+    $_pg_xref = db_q(
+        "SELECT file_name FROM products_images_xref WHERE product = ?",
+        array((string) $_pg_pid)
     );
     if ($_pg_xref) {
         while ($_pg_row = mysqli_fetch_assoc($_pg_xref)) {

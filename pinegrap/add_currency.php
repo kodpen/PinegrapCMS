@@ -121,8 +121,8 @@ if (!$_POST) {
     $query =
         "SELECT id
         FROM currencies
-        WHERE (code = '" . escape($liveform->get_field_value('code')) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE (code = ?)";
+    $result = db_q($query, array((string) $liveform->get_field_value('code'))) or output_error('Query failed.');
     
     // if code is already in use by a different currency, prepare error and forward user back to screen
     if (mysqli_num_rows($result) > 0) {
@@ -160,16 +160,23 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES (
-            '" . escape($liveform->get_field_value('name')) . "',
-            '" . escape($liveform->get_field_value('base')) . "',
-            '" . escape($liveform->get_field_value('code')) . "',
-            '" . escape($liveform->get_field_value('symbol')) . "',
-            '" . escape($exchange_rate) . "',
-            '" . $user['id'] . "',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array(
+        (string) $liveform->get_field_value('name'),
+        (string) $liveform->get_field_value('base'),
+        (string) $liveform->get_field_value('code'),
+        (string) $liveform->get_field_value('symbol'),
+        (string) $exchange_rate,
+        (string) $user['id'],
+        (string) $user['id'])) or output_error('Query failed.');
 
     $currency_id = mysqli_insert_id(db::$con);
 
