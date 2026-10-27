@@ -4708,6 +4708,13 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
         $props = pg_tr_props($props, $type);
     }
 
+    // Outside a widget, a binding to a value of the page's record prints
+    // that value, filled in on every request (page_facts.php).
+    if (!pg_sw_finish_active() && !empty($props['_bindings'])) {
+        $props = pg_page_record_bind_props($props, $type === 'content'
+            && in_array(isset($props['contentType']) ? $props['contentType'] : '', array('heading', 'link', 'paragraph', 'span', 'text'), true));
+    }
+
     // A stretched link covers the nearest positioned element around it; when
     // nothing above is positioned, the box the link reaches takes
     // position-relative (see _pg_stretch_claims()).

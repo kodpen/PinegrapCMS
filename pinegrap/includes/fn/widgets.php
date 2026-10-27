@@ -3435,7 +3435,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                 form_fields.label   AS field_label,
                 form_fields.type    AS field_type,
                 form_fields.wysiwyg AS field_wysiwyg,
-                form_fields.office_use_only AS field_office_use,"
+                form_fields.office_use_only AS field_office_use,
+                form_fields.rss_field AS field_rss,"
                 . (pg_schema_has('form_fields', 'translate_values') ? " form_fields.translate_values AS field_translate," : "") . "
                 files.name          AS file_name
              FROM form_data
@@ -3488,10 +3489,14 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         );
 
         // The record's allow-listed values (widgets_entity_fields.php): the
-        // quiz score of a quiz form. This view shows one record to whoever
-        // may open it; the list view offers none of them.
+        // quiz score of a quiz form, the title, summary, picture, date and
+        // author the record's page shows anybody. This view shows one record
+        // to whoever may open it; the list view offers none of them.
         $_fiv_entity = pg_sw_entity_values('form_record', $form_row + array(
             'quiz' => (int)db_value("SELECT quiz FROM custom_form_pages WHERE page_id = '" . $custom_form_page_id . "' LIMIT 1"),
+            'post_author' => pg_submitted_form_author_name((int)$form_row['id']),
+        ) + pg_sw_entity_post_values($data_rows, $custom), array(
+            'format_stamp' => function ($stamp) { return date(pg_sw_default_date_format('date'), $stamp); },
         ));
         $extra += array_map('h', $_fiv_entity);
         // The record is the page's record (page_facts.php).
