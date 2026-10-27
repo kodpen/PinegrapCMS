@@ -349,6 +349,7 @@
     "Flow runs": "Çalıştırmalar",
     "Flow share": "Akış paylaşımı",
     "Flow tools": "Akış araçları",
+    "Flow version": "Akış sürümü",
     "Flow “{var:1}” · {var:2}": "“{var:1}” akışı · {var:2}",
     "Flow “{var:1}”, run {var:2}, failed at the box {var:3}: {var:4}": "“{var:1}” akışının {var:2} numaralı çalıştırması {var:3} kutusunda başarısız oldu: {var:4}",
     "Flow “{var:1}”, run {var:2}, is done.": "“{var:1}” akışının {var:2} numaralı çalıştırması tamamlandı.",

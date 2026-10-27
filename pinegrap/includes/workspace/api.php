@@ -198,6 +198,7 @@ function ws_openapi_objects()
         'WorkspaceNoteSource'       => 'ws_api_note_source_schema',
         'WorkspaceFlow'             => 'ws_api_flow_schema',
         'WorkspaceFlowVersion'      => 'ws_api_flow_version_schema',
+        'WorkspaceFlowVersionDetail' => 'ws_api_flow_version_detail_schema',
         'WorkspaceFlowGraph'        => 'ws_api_flow_graph_schema',
         'WorkspaceFlowProblem'      => 'ws_api_flow_problem_schema',
         'WorkspaceFlowRun'          => 'ws_api_flow_run_schema',
@@ -1955,9 +1956,79 @@ function ws_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceFlow',
             'summary'     => 'Pause a flow',
-            'description' => 'Pauses a live flow the owner may change (their own, or one shared with them at edit): nothing starts it until its owner publishes it again, and its versions stay as they are. Runs already going go on. A flow that is not live is refused with 422. The activity log gets a line.',
+            'description' => 'Pauses a live flow the owner may change (their own, or one shared with them at edit): nothing starts it until its owner resumes it (POST /workspace/flows/{id}/resume) or publishes it again, and its versions stay as they are. Runs already going go on. A flow that is not live is refused with 422. The activity log gets a line.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // Resumed, a paused flow opens tasks in the person's own name again,
+        // as a published one does: their team devices session only, and no
+        // MCP tool (flow_versions.php).
+        array(
+            'id'          => 'workspace.flows.resume',
+            'method'      => 'POST',
+            'path'        => '/workspace/flows/{id}/resume',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flows_resume',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlow',
+            'summary'     => 'Resume a paused flow',
+            'description' => 'Makes a paused flow of the owner\'s own live again on the version it was paused at; its draft stays a draft (POST /workspace/flows/{id}/publish makes the draft live instead). Only the flow\'s owner resumes it: a colleague it is shared with at edit is refused with 403, since the runs act with the owner\'s rights. The version is checked again as a publish checks it, with the owner\'s rights now: a channel they no longer write in, a time already gone or a person they may no longer give work to is refused with 422, and the owner then publishes a changed draft. A flow that is not paused, or was never published, is refused with 422; a second resume of the same moment with 409. Only a team devices session (a Bearer token from POST /auth/login) may resume a flow: an application key and an OAuth connection are refused with 403 forbidden. The activity log gets a line.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // The published versions of a flow (flow_versions.php), read and
+        // brought back into the draft by whoever may change the flow. A draft
+        // never runs, so bringing one back is a tool, as changing the draft is.
+        array(
+            'id'          => 'workspace.flow_versions.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/versions',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flow_versions_list',
+            'returns'     => array('list' => 'WorkspaceFlowVersion'),
+            'summary'     => 'List the versions of a flow',
+            'description' => 'The versions a flow the owner of the application may change was published as, newest first, without their graphs: n is the version\'s number, published_by who published it. The live one is the version of GET /workspace/flows/{id}; a paused flow keeps it and resumes on it. Versions are never changed or deleted, and runs keep the one they started on. Somebody who may only run the flow or look at it is refused with 403. Page with next_cursor.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flow_versions.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/versions/{n}',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flow_versions_get',
+            'returns'     => 'WorkspaceFlowVersionDetail',
+            'summary'     => 'One version of a flow, with its graph',
+            'description' => 'A version of a flow the owner of the application may change, by its number, with the graph as it was published; live says whether it is the version live now (or the one a paused flow resumes on). Somebody who may only run the flow or look at it is refused with 403; a number the flow was never published as is a 404.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'n', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The version\'s number.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flow_versions.restore',
+            'method'      => 'POST',
+            'path'        => '/workspace/flows/{id}/versions/{n}/restore',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flow_versions_restore',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceFlow',
+            'summary'     => 'Bring a version back into the draft',
+            'description' => 'Replaces the draft of a flow the owner of the application may change with the graph of one of its published versions, as a change of the draft does: draft_rev goes up, the name and the home channel stay. The flow itself is not changed - a live flow goes on running its live version, a paused one stays paused - until its owner publishes the draft. A draft never runs, so an application key or an OAuth connection may do it. Send draft_rev, the one the draft was read at, to have it refused with 409 changed_meanwhile when the draft changed since. Somebody who may only run the flow or look at it is refused with 403; a number the flow was never published as is a 404. A dry run answers the boxes and the problems the draft would have. The activity log gets a line.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'n', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The version\'s number.'),
+                array('name' => 'draft_rev', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The draft_rev the draft was read at.'),
             ),
         ),
 
