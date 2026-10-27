@@ -11161,6 +11161,7 @@ const StyleDesigner = (function () {
                     order_preview:        _sdT('Order Preview'),
                     order_form:           _sdT('Order Form'),
                     folder_view:          _sdT('Folder View'),
+                    photo_gallery:        _sdT('Photo Gallery'),
                     menu_region:          _sdT('Menu'),
                     menu_sequence_region: _sdT('Menu Sequence'),
                     ad_region:            _sdT('Ad Region'),
@@ -13963,6 +13964,17 @@ const StyleDesigner = (function () {
         '__shipping_method_name': _sdT('Standard Shipping'),
         '__add_button_label': _sdT('Continue'),
         '__folder_name': _sdT('Documents'),
+        '__album_name': _sdT('Photo Gallery'),
+        '__back_url': '#',
+        '__gallery_item_id': '1',
+        '__gallery_item_name': _sdT('Summer'),
+        '__gallery_item_url': '#',
+        '__gallery_item_image_url': '',
+        '__gallery_item_description': '',
+        '__gallery_item_photo_count': '3',
+        '__gallery_item_count_label': _sdT('3 Photos'),
+        '__gallery_item_is_album': '1',
+        '__gallery_item_is_photo': '',
         '__start_page_url': '#',
         '__skip_button_label': _sdT('No, thanks'),
         '__shipping_method': _sdT('Standard Shipping'),
@@ -33238,6 +33250,7 @@ const StyleDesigner = (function () {
             var _isOrderPreview    = (_regionType === 'order_preview');
             var _isOrderForm       = (_regionType === 'order_form');
             var _isFolderView      = (_regionType === 'folder_view');
+            var _isPhotoGallery    = (_regionType === 'photo_gallery');
             var _isMenuRegion      = (_regionType === 'menu_region');
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
             var _isAdRegion        = (_regionType === 'ad_region');
@@ -33290,6 +33303,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isPhotoGallery) {
+                _sourceInfoHtml = _sdT('The classic photo gallery: the page\'s folder is the gallery. The loop repeats its albums (the sub-folders the visitor may view, each with its first photo and its number of photos), then its photos (the images in the folder). An album opens on the same page; the back link returns to the album above. Photos are added under Files, albums are folders.');
             } else if (_isFolderView) {
                 _sourceInfoHtml = _sdT('The classic folder view: the pages and files of the page\'s folder and of the folders below it, as the visitor may see them. The loop repeats the entries of the page\'s folder; a list of the entries of a folder in a folder\'s row lists the level below. Pages are listed with their title and description; the page shown and the steps of other screens (confirmations, checkout steps, detail pages) are left out.');
             } else if (_isOrderForm) {
@@ -37969,7 +37984,7 @@ const StyleDesigner = (function () {
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
         order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
-        tag_cloud_region: 1, order_form: 1, folder_view: 1
+        tag_cloud_region: 1, order_form: 1, folder_view: 1, photo_gallery: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -39689,6 +39704,31 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // photo_gallery token palette — has loop_area (one row per album, then
+    // per photo). Mirrors _render_system_widget_photo_gallery() in
+    // widgets_photo_gallery.php.
+    var SW_PHOTO_GALLERY_TOKEN_GROUPS = [
+        { label: _sdT('Album'), tokens: [
+            ['__album_name',                _sdT('Name of the album shown')]
+        ]},
+        { label: _sdT('Album or Photo (loop_area)'), tokens: [
+            ['__gallery_item_id',           _sdT('Album or photo ID')],
+            ['__gallery_item_name',         _sdT('Album name or photo file name')],
+            ['__gallery_item_description',  _sdT('Photo description')],
+            ['__gallery_item_photo_count',  _sdT('Number of photos in the album')],
+            ['__gallery_item_count_label',  _sdT('Number of photos, in words ("3 Photos")')],
+            ['__gallery_item_is_album',     _sdT('The row is an album (1 or empty)')],
+            ['__gallery_item_is_photo',     _sdT('The row is a photo (1 or empty)')]
+        ]},
+        { label: _sdT('Images (src)'), tokens: [
+            ['__gallery_item_image_url',    _sdT('The photo, or the album\'s first photo (empty for an empty album)')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__gallery_item_url',          _sdT('The album on this page, or the photo')],
+            ['__back_url',                  _sdT('The album above (the link drops at the top of the gallery)')]
+        ]}
+    ];
+
     // billing_information token palette — no loop_area. Mirrors
     // _render_system_widget_billing_information() in
     // widgets_billing_information.php.
@@ -39840,6 +39880,7 @@ const StyleDesigner = (function () {
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
         order_form:        SW_ORDER_FORM_TOKEN_GROUPS,
         folder_view:       SW_FOLDER_VIEW_TOKEN_GROUPS,
+        photo_gallery:     SW_PHOTO_GALLERY_TOKEN_GROUPS,
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
         menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
         ad_region:         SW_AD_REGION_TOKEN_GROUPS,
@@ -41718,6 +41759,13 @@ const StyleDesigner = (function () {
             ['not_in_sequence', _sdT('The page shown is not one of the menu\'s pages')],
             ['has_previous',    _sdT('A page comes before the one shown')],
             ['next_wraps',      _sdT('The page shown is the last; the next link goes to the first')]
+        ],
+        photo_gallery: [
+            ['has_gallery_items',          _sdT('The album shown has an album or a photo')],
+            ['no_gallery_items',           _sdT('The album shown has no album and no photo')],
+            ['has_albums',                 _sdT('The album shown has albums')],
+            ['has_photos',                 _sdT('The album shown has photos')],
+            ['in_album',                   _sdT('An album below the gallery\'s own is open')]
         ],
         folder_view: [
             ['has_folder_items',           _sdT('The folder has an entry the visitor may see')],
@@ -54698,6 +54746,7 @@ const StyleDesigner = (function () {
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
         { type: 'order_form',        label: _sdT('Order Form'),        slug: _sdT('order-form'),        icon: 'bi-cart-plus' },
         { type: 'folder_view',       label: _sdT('Folder View'),       slug: _sdT('folder'),            icon: 'bi-folder2-open' },
+        { type: 'photo_gallery',     label: _sdT('Photo Gallery'),     slug: _sdT('gallery'),           icon: 'bi-images' },
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
         { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
         { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
@@ -61546,6 +61595,55 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
+            }
+
+            case 'photo_gallery': {
+                // The classic photo gallery: one card per album (its first
+                // photo, its name and number of photos, opening the album on
+                // this page), then one per photo (opening the image), in a
+                // responsive grid. Mirrors _render_system_widget_photo_gallery().
+                var pgWhen = function (token, op) {
+                    return { _bindings: { show_if: token }, _bindParams: { show_if: { op: op } } };
+                };
+                var pgPicture = createNode('semantic', { tag: 'div', cssClass: 'ratio ratio-1x1 bg-body-tertiary rounded overflow-hidden', customName: _sdT('Picture') }, [
+                    createNode('semantic', Object.assign({ tag: 'img', cssClass: 'object-fit-cover', customName: _sdT('Image'),
+                        src: '', alt: _sdT('Album or photo'),
+                        _attrs: [{ name: 'loading', value: 'lazy' }] },
+                        { _bindings: { src: '__gallery_item_image_url', alt: '__gallery_item_name', show_if: '__gallery_item_image_url' }, _bindParams: { show_if: { op: 'not_empty' } } })),
+                    createNode('semantic', Object.assign({ tag: 'div', cssClass: 'd-flex align-items-center justify-content-center text-body-secondary small', text: _sdT('No photos yet'), customName: _sdT('Empty Album') },
+                        pgWhen('__gallery_item_image_url', 'empty')))
+                ]);
+                var pgLoop = createNode('loop_area', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: 'col', customName: _sdT('Album or Photo') }, [
+                        createNode('semantic', { tag: 'a', cssClass: 'd-block text-decoration-none text-body', href: '#', customName: _sdT('Link'),
+                            _bindings: { href: '__gallery_item_url' } }, [
+                            pgPicture,
+                            createNode('semantic', Object.assign({ tag: 'div', cssClass: 'mt-2', customName: _sdT('Album Caption') },
+                                pgWhen('__gallery_item_is_album', 'not_empty')), [
+                                createNode('semantic', { tag: 'div', cssClass: 'fw-semibold', text: _sdT('Summer'), customName: _sdT('Album name'),
+                                    _bindings: { text: '__gallery_item_name' } }),
+                                createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary', text: _sdT('3 Photos'), customName: _sdT('Number of photos'),
+                                    _bindings: { text: '__gallery_item_count_label' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary mt-1', text: _sdT('Photo description'), customName: _sdT('Description'),
+                                _bindings: { text: '__gallery_item_description', show_if: '__gallery_item_description' }, _bindParams: { show_if: { op: 'not_empty' } } })
+                        ])
+                    ])
+                ]);
+                return _swAcctPage(_sdT('Photo Gallery Card'), '12', '10', [
+                    createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3', customName: _sdT('Header') }, [
+                        createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Photo Gallery'), cssClass: 'card-title mb-0',
+                            _bindings: { text: '__album_name' } }),
+                        createNode('semantic', { tag: 'a', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Back'), href: '#', customName: _sdT('Back Link'),
+                            _bindings: { href: '__back_url', eo_visible_if: 'in_album' } })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'alert alert-info', customName: _sdT('No Albums or Photos'),
+                        _bindings: { eo_visible_if: 'no_gallery_items' } }, [
+                        createNode('content', { contentType: 'paragraph', text: _sdT('There are no albums or photos in this photo gallery.'), cssClass: 'mb-0' })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: 'row row-cols-2 row-cols-sm-3 row-cols-lg-4 g-3', customName: _sdT('Albums and Photos'),
+                        _bindings: { eo_visible_if: 'has_gallery_items' } }, [pgLoop])
+                ], true);
             }
 
             case 'folder_view': {
