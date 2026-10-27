@@ -192,6 +192,7 @@
     "Each variant must be an object.": "Her varyant bir nesne olmalıdır.",
     "Each variant needs the option pairs that make it that variant.": "Her varyant, onu o varyant yapan seçenek çiftlerini içermelidir.",
     "Each version runs in its own request, so a request limit of the web server (FastCGI, proxy) bounds one version rather than the whole upgrade.": "Her sürüm kendi isteğinde çalışır; bu yüzden web sunucusunun istek sınırı (FastCGI, proxy) yükseltmenin tamamını değil yalnızca tek bir sürümü sınırlar.",
+    "Each visit decides it: the page leaves the element out while the fact does not pass; the canvas keeps showing it. Nothing about the visitor is shown.": "Her ziyaret kendisi karar verir: bilgi koşulu sağlamadıkça sayfa öğeyi göstermez; tuval göstermeye devam eder. Ziyaretçiye ait hiçbir şey gösterilmez.",
     "Eager": "Hemen",
     "Earlier days": "Önceki günler",
     "Earlier files ({var:1})": "Önceki dosyalar ({var:1})",

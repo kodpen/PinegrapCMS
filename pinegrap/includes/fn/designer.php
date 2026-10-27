@@ -4645,8 +4645,9 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     // their _bindParams) are wiring, never props. Inside a widget render the
     // node is drawn between the markers the finish pass keeps or cuts
     // (widgets_finish.php); one that cannot be evaluated draws nothing.
-    // Outside a widget the node draws as it is, so no saved page body ever
-    // holds a marker. The compared texts are read in the page's language, as
+    // Outside a widget the node draws as it is, unless every condition reads
+    // a fact of the visit (page_facts.php): then it stands between the page
+    // markers the stored body keeps and every request decides. The compared texts are read in the page's language, as
     // the values they are compared with are; a node that holds a required
     // form control is always drawn.
     if (pg_sw_cond_present(isset($node['props']) ? $node['props'] : null)) {
@@ -4665,6 +4666,10 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
             if ($cond === false) return '';
             return pg_sw_finish_wrap(_render_tree_node($node, $indent, $depth), $cond);
+        }
+        if (!pg_sw_finish_active() && pg_page_fact_spec($cond)
+            && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
+            return pg_page_fact_wrap(_render_tree_node($node, $indent, $depth), $cond);
         }
     }
 

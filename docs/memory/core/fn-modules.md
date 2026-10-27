@@ -20,6 +20,7 @@ description: Generated from the module field of the memory files: each includes/
 - `layouts`: [[layout-code-tab]]
 - `link_resolve`: [[designer-prototype-viewer]]
 - `mail_queue`: [[fn-module-errors-mail-backup-consent]]
+- `page_facts`: [[page-conditions]]
 - `privacy`: [[consent-log-and-audit-trail]]
 - `privacy_export`: [[personal-data-export]]
 - `prototype`: [[designer-prototype-viewer]]

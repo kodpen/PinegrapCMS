@@ -12685,6 +12685,10 @@ const StyleDesigner = (function () {
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
             if (!_sdCondCanvasShows(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) wrapper.classList.add('sd-state-off');
+        } else if (!_sysWidgetRenderCfg && node.props && _sdCondPresent(node.props) && _sdPageFactRows(node)) {
+            // On a page: named, always drawn (each visit decides it).
+            wrapper.classList.add('sd-cond');
+            wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
         }
         // "Hide when empty": left out in the state that empties it.
         if (_sysWidgetRenderCfg && _sdHideEmptyCanvasOff(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) {
@@ -38115,7 +38119,26 @@ const StyleDesigner = (function () {
     // (_swBindTokenOptions(), the row position group inside a list
     // included) that a condition may read.
     function _sdCondTokenOptions(node) {
+        if (!_isInsideSystemWidget(node)) return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; });
         return _swBindTokenOptions(node).filter(function (o) { return _sdCondTokenAllowed(o.token); });
+    }
+
+    // The facts of the visit an element outside a widget may be shown by
+    // (pg_page_fact_tokens()): the page decides them for each visit and
+    // never prints them.
+    var SD_PAGE_FACTS = [
+        ['__visit_signed_in',      _sdT('Visitor is signed in')],
+        ['__visit_cart_has_items', _sdT('Cart has products')],
+        ['__visit_cart_count',     _sdT('Number of products in the cart')]
+    ];
+
+    // Whether every condition of `node` reads a fact of the visit, as the
+    // page needs to decide it (pg_page_fact_spec()).
+    function _sdPageFactRows(node) {
+        var rows = _sdCondRowsOf(node);
+        return rows.length > 0 && rows.every(function (r) {
+            return SD_PAGE_FACTS.some(function (f) { return f[0] === String(r.token).toLowerCase(); });
+        });
     }
 
     // The conditions of `node` as rows, [{token, op, value}] in the order of
@@ -38192,7 +38215,8 @@ const StyleDesigner = (function () {
         var any = _sdCondJoin(node) === 'any';
         return rows.map(function (r, i) {
             var entry = _sdCondOp(r.op);
-            var parts = [_swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
+            var fact = kind ? null : SD_PAGE_FACTS.filter(function (f) { return f[0] === r.token; })[0];
+            var parts = [fact ? fact[1] : _swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
             if (!i) return _sdT('Only when: {var:1} {var:2} {var:3}', parts);
             return any ? _sdT('or {var:1} {var:2} {var:3}', parts) : _sdT('and {var:1} {var:2} {var:3}', parts);
         }).join(' ').replace(/\s+/g, ' ').trim();
@@ -38380,7 +38404,11 @@ const StyleDesigner = (function () {
     // the "All must hold / Any is enough" switch. Beside the flag row above,
     // which some kinds have; when both are set both must pass.
     function _sdConditionRows(node) {
-        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        if (!node || !node.props) return '';
+        // Outside a widget the list holds the visit's facts only
+        // (_sdCondTokenOptions()); a condition written by hand on another
+        // value is still listed, so it can be seen and cleared.
+        var inWidget = _isInsideSystemWidget(node);
         if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
         var label = esc(_sdT('Show only when a value…'));
         var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
@@ -38428,7 +38456,11 @@ const StyleDesigner = (function () {
         }
         html += note(required
             ? _sdT('A required form field cannot be hidden by a condition: the site ignores this one. Choose Always to remove it.')
-            : _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.'));
+            : inWidget
+                ? _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.')
+                : (rows.length && !_sdPageFactRows(node))
+                    ? _sdT('Outside a system widget only the facts of the visit decide: with another value here the element is always shown.')
+                    : _sdT('Each visit decides it: the page leaves the element out while the fact does not pass; the canvas keeps showing it. Nothing about the visitor is shown.'));
         return row(label, html);
     }
 
@@ -41494,7 +41526,7 @@ const StyleDesigner = (function () {
         // Node has an action/value binding but no token bindings (a plain
         // "Add to Cart" button, say) — still show the section, so every
         // binding is reachable from the panel named after the job.
-        if (!html) return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'), extra);
+        if (!html) return sect('bi-link-45deg', _isInsideSystemWidget(node) ? _sdT('Bind Data (System Widget)') : _sdT('Show by the visit'), extra);
         // sect() closes with `</div></div>`; slot the rows in just before it
         // so they land INSIDE the section body.
         var idx = html.lastIndexOf('</div></div>');
