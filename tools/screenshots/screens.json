@@ -14,6 +14,8 @@
 		{"name": "view_product_groups", "path": "view_product_groups.php", "kept": true},
 		{"name": "view_offers", "path": "view_offers.php", "kept": true},
 		{"name": "edit_offer", "path": "edit_offer.php?id={offer_id}", "kept": true},
+		{"name": "calendars", "path": "calendars.php"},
+		{"name": "view_pages", "path": "view_pages.php"},
 		{"name": "signin", "path": "index.php", "signed_out": true},
 		{"name": "forgot_password", "path": "forgot_password.php", "signed_out": true},
 		{"name": "designer_home", "path": "view_system_styles.php"},
