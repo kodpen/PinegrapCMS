@@ -8,6 +8,7 @@ description: Generated from the module field of the memory files: each includes/
 ## Which memory file describes an `includes/fn/` module?
 - `a11y`: [[accessibility-report]]
 - `audit`: [[consent-log-and-audit-trail]]
+- `audit_view`: [[audit-trail-screen]]
 - `backup`: [[fn-module-errors-mail-backup-consent]]
 - `collections`: [[collection-references]]
 - `comments`: [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-pages]], [[designed-page-comment-names]]
@@ -25,6 +26,7 @@ description: Generated from the module field of the memory files: each includes/
 - `page_facts`: [[page-conditions]]
 - `privacy`: [[consent-log-and-audit-trail]]
 - `privacy_export`: [[personal-data-export]]
+- `privacy_retention`: [[privacy-log-retention]]
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]
 - `reviews`: [[product-reviews-verified]]
@@ -51,6 +53,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_menu`: [[menu-widget]]
 - `widgets_order_preview`: [[order-preview-widget]]
 - `widgets_parts`: [[widget-default-parts]]
+- `widgets_placement`: [[widget-placement-settings]]
 - `widgets_shipping_address`: [[shipping-address-widget]]
 - `widgets_shipping_method`: [[shipping-method-widget]]
 - `widgets_wishlist`: [[wishlist-widget]]

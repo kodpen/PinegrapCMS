@@ -35,7 +35,7 @@ Nothing open.
 - W15 done (#1734). W16 default parts: order view #1808 #1824 #1863, stars #1908, crumbs #1945, cross-sell #1973 #2067, chips #2218, cart gift card #2260, cart payment schedule #2311; left: cancel, return forms, then the product order form.
 - W17 Widget parts anywhere on the page. W18 visit facts done (#2308, [[page-conditions]]); page record context left.
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
-- W20 Parts palette, starter library. W21 Per-placement settings. W22: W22a #2317 ([[layout-form-converter]]); W22b editor, after owner. W23 done #2225 #2307. W24 Express order lists (owner, 2026-10-27): W24a done (#2259, [[widget-lists-checkout]]); W24b done (#2304, offer texts in Translations).
+- W20 Parts palette, starter library. W21 a #2326, b filter. W22: W22a #2317 ([[layout-form-converter]]); W22b editor, after owner. W23 done #2225 #2307. W24 Express order lists (owner, 2026-10-27): W24a done (#2259, [[widget-lists-checkout]]); W24b done (#2304, offer texts in Translations).
 - W25 done (#2221, [[widget-condition-rows]]): up to three conditions per element, All or Any (owner, 2026-10-27).
 - W26 Words beside a value ([[sentence-with-values]]): order view's ended line left.
 

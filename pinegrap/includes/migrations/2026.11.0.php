@@ -77,6 +77,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_marketplace_map_code_bin(); // 11.0.44
 	upgrade_2026_11_0_shipment_lookup();        // 11.0.45
 	upgrade_2026_11_0_session_passkey();        // 11.0.46
+	upgrade_2026_11_0_audit_retention();        // 11.0.47
 
 }
 
@@ -2517,6 +2518,19 @@ function upgrade_2026_11_0_marketplace_map_code_bin() {
 	}
 
 	install_note('Marketplaces: product codes that differ only in upper and lower case are now told apart, so an order is matched to the right product.');
+
+}
+
+// How long the audit trail keeps its lines (2026.11.0, 11.0.47;
+// includes/fn/privacy_retention.php, the Security screen's Audit Trail card).
+// Years, 2 by default; 0 keeps every line. The general job removes older
+// lines once a day, and the consent log's history past three years with
+// them (the newest answer of each person, channel and purpose stays).
+function upgrade_2026_11_0_audit_retention() {
+
+	install_add_column('config', 'audit_log_retention_years', "TINYINT UNSIGNED NOT NULL DEFAULT 2");
+
+	install_note('Privacy: the audit trail now keeps its lines for 2 years and the consent log its history for 3 years; the general job removes older lines once a day. The consent answer in force for each person is always kept. The audit trail period can be changed under Settings › Security › Audit Trail.');
 
 }
 
