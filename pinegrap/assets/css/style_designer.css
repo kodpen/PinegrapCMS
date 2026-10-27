@@ -3116,9 +3116,16 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-bcp-mid-row .form-range {
     flex: 1;
 }
-/* Room above a Range for its value bubble, which sits over the thumb */
-.pg-range-bubble {
-    margin-top: 1.75rem;
+/* A Range in the inspector: not boxed like the other inputs, and a bubble
+   in the accent colour, as the dark tooltip would vanish on the dark panel */
+.sd-prop-control .form-range-input {
+    padding: 0;
+    background-color: transparent;
+    border: 0;
+}
+:is(.sd-prop-control, .sd-bcp-mid-row) .form-range-bubble {
+    --bs-tooltip-bg: var(--sd-accent);
+    --bs-tooltip-color: #fff;
 }
 /* Options row (shape/pos in radial) */
 .sd-bcp-opt-row {
