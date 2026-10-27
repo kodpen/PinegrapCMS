@@ -66,7 +66,8 @@ sessions.
    ```
    A PR on the same plan file (any step) or the same files (`…/pulls/<n>/files`)
    holds it: do not start, even if it looks stale, and tell the owner which
-   PR. One plan's steps run in parallel only where the owner allowed it.
+   PR. One plan's steps run in parallel only where the owner allowed it or
+   the coordinator chose it (they touch different files).
    Check the queue limit (Working mode 8) here too.
 2. **Claim.** Branch from `origin/development`, push the first commit (the
    failing test or the first slice) and open a **draft** PR to `development`
@@ -140,7 +141,10 @@ decision questions.
    records the decision and brings it to the PR as a comment. It never
    decides alone. The issue is the only way to ask: no question to the
    owner in a session's reply or PR body, and no `erdal` label but the
-   architect's.
+   architect's. Everything else is a session's own call, never asked:
+   implementation choices inside its step, naming, structure within its
+   files, tests (the notable ones named in its PR body); and for a
+   coordinator, the choice of work (`coordinator.md`).
 
 ## Fixed rules
 

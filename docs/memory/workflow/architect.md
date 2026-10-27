@@ -8,7 +8,7 @@ description: Decision questions (2026-10-27): an issue labelled architect; the a
 
 ## What is a decision question?
 - Product behaviour, a schema change (Fixed rules 5), an entry of the decisions list, an architecture question, a large migration or its order, a logic clash between two PRs (the merging session takes the PR out of the train and asks).
-- Not one: what memory, the plan or the decisions list already answers, or a small implementation choice inside the step. The session takes those and names them in its PR body.
+- Not one: what memory, the plan or the decisions list already answers, or an implementation choice inside the step (naming, structure within its files, tests). The session takes those and names the notable ones in its PR body. Nor a coordinator's choice of work (`coordinator.md`).
 
 ## How is one asked?
 - One issue per decision (numbered questions only when one change needs them all), over REST: `gh api repos/kodpen/pinegrapcms/issues -f title='<topic>' -F body=@body.md -f 'labels[]=architect'`.
