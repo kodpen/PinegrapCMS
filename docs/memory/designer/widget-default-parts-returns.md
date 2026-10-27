@@ -13,11 +13,11 @@ description: The order view's returns list part (W16, #2067): order.returns and 
 - Raw (`pg_sw_raw_token_keys()`, editor `SW_ATTR_MARKUP`): `__return_customer_note_html`, `__return_decision_note_html` (escaped, line breaks kept), `__return_actions_html`. A condition reads the plain `__return_customer_note` / `__return_decision_note`.
 
 ## Why are the customer's moves still server-built?
-- "I have sent it" (tracking number box) and "Withdraw the request" are forms with controls; parts with controls wait on the owner. Each row's forms are one raw value.
+- "I have sent it" (tracking number box) and "Withdraw the request" are forms with controls, not made parts yet (the owner allowed parts with controls on 2026-10-27; the cancel and request forms went first, [[widget-default-parts-order-forms]]). Each row's forms are one raw value.
 - In a list row every id gets the row's suffix (`pg_sw_uniquify_row_ids()`): the tracking box is `pg-ov-return-tracking-<id>_pgw…`, its label's `for` with it. No script reads that id; names and hidden fields are as before.
 
 ## How does an old layout get it?
-- A node bound to `__returns` (or a text that is the token alone) becomes the host (`pg_sw_default_part_tokens()`, editor `SW_DEFAULT_PARTS`). The returns card added after an order view (`pg_sw_part_order_returns()`) holds the part in a div, then the form; it is placed by `__returns`, `__return_form` or an `order.returns` list. The starter's returns card holds the part.
+- A node bound to `__returns` (or a text that is the token alone) becomes the host (`pg_sw_default_part_tokens()`, editor `SW_DEFAULT_PARTS`). The returns card added after an order view (`pg_sw_part_order_returns()`) holds the part in a div, then the form; it is placed by `__returns`, `__return_form`, an `order.returns` or `order.return_deliveries` list; the form is the return form part ([[widget-default-parts-order-forms]]). The starter's returns card holds the part.
 - The order view no longer fills `__returns`; the editor no longer offers it.
 
 ## Editor rules?

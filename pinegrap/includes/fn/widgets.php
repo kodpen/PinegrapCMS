@@ -774,6 +774,7 @@ function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
         '/data-bs-target="#([^"]+)"/'     => 'data-bs-target="#$1',
         '/aria-controls="([^"]+)"/'       => 'aria-controls="$1',
         '/aria-labelledby="([^"]+)"/'     => 'aria-labelledby="$1',
+        '/aria-describedby="([^"]+)"/'    => 'aria-describedby="$1',
         '/href="#([^"]+)"/'               => 'href="#$1',
         '/data-bs-parent="#([^"]+)"/'     => 'data-bs-parent="#$1',
     );
@@ -828,6 +829,8 @@ function pg_sw_raw_token_keys()
         '__return_actions_html',
         // Cart: a payment schedule's frequency choices, the value selected.
         '__schedule_period_options_html',
+        // Order view: a return request's reasons (the return form part).
+        '__return_reason_options_html',
         // Ad Region widget: the ad's own markup.
         '__ad_content_html',
         '__ad_caption_html',
@@ -7237,7 +7240,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // widget's messages node (liveform 'order_receipt').
     $_ov_returns      = ($is_owner && empty($sw_ctx['email'])) ? pg_return_customer_view($order_id, $fmt_gc_date) : null;
     $_ov_return_form  = '';
-    $_ov_return_rows  = array('order.returns' => array(), 'order.return_lines' => array());
+    $_ov_return_rows  = array('order.returns' => array(), 'order.return_lines' => array(),
+                              'order.return_deliveries' => array(), 'order.return_delivery_lines' => array());
     if (is_array($_ov_returns) && ($_ov_returns['has_returns'] || $_ov_returns['can_request'])) {
         $_ov_return_cfg = array(
             'action'   => (defined('PATH') ? PATH : '/') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'software') . '/order_return.php',
@@ -7246,7 +7250,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'order_id' => (int)$order['id'],
         );
         $_ov_return_form  = $_ov_returns['can_request'] ? pg_return_form_html($_ov_returns['deliveries'], $_ov_return_cfg) : '';
-        $_ov_return_rows  = pg_sw_list_order_return_rows($_ov_returns['returns'], $_ov_return_cfg);
+        $_ov_return_rows  = pg_sw_list_order_return_rows($_ov_returns['returns'], $_ov_return_cfg)
+                          + pg_sw_list_order_return_form_rows($_ov_returns['can_request'] ? $_ov_returns['deliveries'] : array());
     }
     $_ov_has_returns = !empty($_ov_return_rows['order.returns']);
     // A layout made before returns existed places neither token: it is
@@ -7278,6 +7283,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'has_surcharge'            => (int)$order['surcharge'] > 0,
         // Cancellation gates
         'can_cancel'               => $_ov_can_cancel,
+        // The cancel form's refund warning: paid through a payment
+        // provider, so the money comes back by hand.
+        'cancel_needs_refund'      => (int)$order['total'] > 0 && (string)$order['payment_method'] !== ''
+                                      && (string)$order['payment_method'] !== 'Offline Payment',
         'is_cancelled'             => $_ov_already_cancelled,
         // Flash-style notice from cancel_order.php redirect
         'cancel_flash_success'     => $_ov_cancel_flash === '1',
@@ -7313,6 +7322,20 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     if (function_exists('_eo_apply_visibility_bindings')) {
         _eo_apply_visibility_bindings($tree_decoded, $_ov_vis_ctx);
     }
+
+    // The cancel and return request forms' parts (widgets_parts_forms.php):
+    // their address, hidden fields and controls' names are the system's.
+    $_ov_form_ctx = array(
+        'token'    => function_exists('get_token_field') ? get_token_field() : '',
+        'order_id' => (int)$order['id'],
+        'send_to'  => isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : (defined('PATH') ? PATH : '/'),
+    );
+    $_ov_sw_path = (defined('PATH') ? PATH : '/') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'software');
+    pg_sw_order_cancel_wire($tree_decoded, $_ov_form_ctx + array('action' => $_ov_sw_path . '/cancel_order.php'));
+    pg_sw_order_return_form_wire($tree_decoded, array_merge($_ov_form_ctx, array(
+        'action'  => $_ov_sw_path . '/order_return.php',
+        'send_to' => isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '',
+    )));
 
     // ── Now split + render with the visibility-filtered tree ──────────
     $split = _split_widget_tree($tree_decoded);
