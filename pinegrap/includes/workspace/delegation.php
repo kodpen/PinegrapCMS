@@ -314,6 +314,25 @@ function ws_assistant_avatar($key)
 }
 
 /**
+ * The icon an MCP server's alias is drawn with on a task's delegate tag, also
+ * one switched off or deleted since (mcp_catalogue.php); '' for any other key,
+ * whose tag keeps its own icon.
+ *
+ * @param string $key
+ * @return string
+ */
+function ws_assistant_mcp_icon($key)
+{
+    $server_id = ws_assistant_mcp_id($key);
+
+    if (($server_id > 0) && function_exists('ws_mcp_agent_identity_for_id')) {
+        return ws_mcp_agent_identity_for_id($server_id)['icon'];
+    }
+
+    return '';
+}
+
+/**
  * The assistant a text calls by name: its tag, its handle written by hand or
  * its command. Claude first when more than one is called, as a note decides
  * it; then an MCP server's alias before Pinegrap AI's own name, as in a
@@ -987,6 +1006,7 @@ function ws_task_delegation_detail($viewer, $task)
             'key'    => $delegate,
             'name'   => ws_assistant_name($delegate),
             'avatar' => ws_assistant_avatar($delegate),
+            'icon'   => ws_assistant_mcp_icon($delegate),
             'by'     => $people[(int) $task['delegated_by']]['name'] ?? ws_person_name($task['delegated_by']),
             'at'     => ((int) $task['delegated_at'] > 0) ? ws_time_label($task['delegated_at']) : '',
         );
