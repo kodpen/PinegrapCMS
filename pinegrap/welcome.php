@@ -901,7 +901,7 @@ pg_page_shell(
 $output_header_includes .
 '<meta http-equiv="Refresh" content="3600"> <!--Refresh page every (3600 sec = 60 min) to stop error invalid token. Will be measured later. -->
 <script src="assets/lib/chartjs/chart.umd.min.js"></script>
-    <div class="pg-clockbar">
+    <section class="card pg-clockbar" aria-label="' . h(lang('Welcome')) . '">
         <div class="pg-brief" id="pg_brief">
             <!-- One mark, not two. The hour already had an icon in front of the
                  greeting; moving it into the chip makes it the speaker rather
@@ -937,7 +937,7 @@ $output_header_includes .
             </span>
             ' . $brief['next'] . '
         </div>
-    </div>
+    </section>
     <div class="row">
         <div class="col-12">
             <div class="row">
