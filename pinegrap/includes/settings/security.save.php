@@ -143,15 +143,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // Device limit lives in a column a not-yet-upgraded database may not have
     // yet (migration 4.14). Save it on its own, only when the column exists, so
     // the rest of Settings still saves either way.
-    $rml_col = @mysqli_query(db::$con, "SHOW COLUMNS FROM config LIKE 'remember_me_device_limit'");
-    if ($rml_col && mysqli_num_rows($rml_col) > 0) {
+    if (function_exists('pg_schema_has') && pg_schema_has('config', 'remember_me_device_limit')) {
         db("UPDATE config SET remember_me_device_limit_enabled = '" . ((post_value('remember_me_device_limit_enabled') == '1') ? 1 : 0) . "', remember_me_device_limit = '" . max(1, (int) post_value('remember_me_device_limit')) . "'");
 
         // Strict mode arrives with migration 4.16, one release later than the
         // limit itself, so it gets its own column check.
-        $strict_column = @mysqli_query(db::$con, "SHOW COLUMNS FROM config LIKE 'remember_me_device_limit_strict'");
-
-        if ($strict_column && (mysqli_num_rows($strict_column) > 0)) {
+        if (pg_schema_has('config', 'remember_me_device_limit_strict')) {
             db("UPDATE config SET remember_me_device_limit_strict = '" . ((post_value('remember_me_device_limit_strict') == '1') ? 1 : 0) . "'");
         }
     }
