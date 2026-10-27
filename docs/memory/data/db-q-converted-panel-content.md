@@ -4,7 +4,7 @@ description: Folder, page copy, calendar event, image editor and theme designer 
 ---
 
 ## Which panel content screens are converted, and what stayed raw?
-- `edit_folder.php` 21, `duplicate_page_f.php` 22, `edit_calendar_event.php` 25, `image_editor_edit.php` 26, `theme_designer.php` 20 calls with values (PR #PRNUM), `(string)` where the SQL quoted, also where a value was written unescaped into quotes (row ids, `$user['id']`, the ad region name of the theme designer: now escaped).
+- `edit_folder.php` 21, `duplicate_page_f.php` 22, `edit_calendar_event.php` 25, `image_editor_edit.php` 26, `theme_designer.php` 20 calls with values (PR #2302), `(string)` where the SQL quoted, also where a value was written unescaped into quotes (row ids, `$user['id']`, the ad region name of the theme designer: now escaped).
 - Optional SQL pieces carry their values beside them, merged in column order: the folder style columns (`$style_values`), the calendar event publish columns (`$publish_values`), the theme designer preview page lookup (`$where_values`, empty for the home page), the copied page's tree and AI columns (`$page_values`, a value only when its `?` is in the text).
 - Inline stay PHP ints with no value of their own: the copied page's `noindex` / `nofollow`, the form field's `$translate_value` and the comment's `$sql_parent_value`.
 - The calendar event notes were escaped into `$notes` before the UPDATE; `$notes` now holds the raw text and is bound, so it is escaped once.
