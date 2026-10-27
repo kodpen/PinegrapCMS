@@ -43,6 +43,8 @@ function test_layout_retirement_edit_layout_url()
 	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, '/about', 4, true, 2, false), 'a manager: the canvas');
 	pg_assert_same('page_designer.php?url=%2Fabout&type=layout&id=7', pg_layout_edit_url(7, '/about', 4, false, 1, false), 'classic style');
 	pg_assert_same('page_designer.php?url=%2Fabout&type=layout&id=7', pg_layout_edit_url(7, '/about', 0, true, 1, false), 'no own style');
+	// edit_page.php passes the path with its ?from= query; it travels encoded in url=.
+	pg_assert_same('page_designer.php?url=%2Fcart%3Ffrom%3Dcontrol_panel&type=layout&id=7', pg_layout_edit_url(7, '/cart?from=control_panel', 4, false, 1, false), 'query string in the path');
 }
 
 // The designer opens the tab only for the page it lands on.
@@ -65,6 +67,10 @@ function test_layout_retirement_wiring()
 	$fields = file_get_contents(PG_FUNCTIONS_DIR . '/view_fields.php');
 	pg_assert_true(strpos($fields, 'pg_layout_edit_url(') !== false, 'Edit Layout asks for its target');
 	pg_assert_true(strpos($fields, 'pg_page_is_visual_design(') !== false, 'Edit Layout checks the page style');
+
+	$properties = file_get_contents(PG_FUNCTIONS_DIR . '/edit_page.php');
+	pg_assert_true(strpos($properties, 'pg_layout_edit_url(') !== false, 'page properties: Edit Layout asks for its target');
+	pg_assert_true(strpos($properties, 'page_designer.php?url=') === false, 'page properties: no hand-built page designer link');
 
 	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 	pg_assert_true(strpos($screen, "'openLayout'") !== false, 'the screen passes the page');

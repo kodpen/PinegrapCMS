@@ -349,8 +349,21 @@ if (!$_POST) {
                 $query_string_from = '';
             }
 
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+
+            // The same target as the form screen's link. A page whose own
+            // style is a visual design never reaches this screen (it is sent
+            // to the designer above), so this is the classic link in practice.
+            $edit_layout_url = pg_layout_edit_url(
+                $page_id,
+                PATH . encode_url_path($page_name) . $query_string_from,
+                $page_style,
+                pg_page_is_visual_design(array('page_style' => $page_style)),
+                USER_ROLE,
+                pg_hosted());
+
             $output_layout_buttons =
-                '<a class="btn btn-link link-secondary py-0 mb-2 " href="page_designer.php?url=' . h(urlencode(PATH . encode_url_path($page_name) . $query_string_from)) . '&amp;type=layout&amp;id=' . $page_id . '" target="_top"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
+                '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . h($edit_layout_url) . '" target="_top"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
                 <a class="btn btn-link link-secondary py-0 mb-2 " href="generate_layout.php?page_id=' . $page_id . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>';
         }
 
