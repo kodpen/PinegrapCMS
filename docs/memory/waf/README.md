@@ -19,6 +19,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - Count aggregated log rows with `SUM(hit_count)`, never `COUNT(*)`, and cap the table with `MAX(id)` (`waf-log-aggregation-and-cap.md`).
 - Send a visitor to a sign-in screen only for a page opening: `get_file.php` goes through `get_file_sign_in_redirect()`, which answers a sub-resource fetch (`waf_fetch_is_subresource()`) with 403, and such a fetch of a sign-in screen is not counted on the sensitive allowance (`waf-subresource-sign-in-fetches.md`).
 - Register a rate refusal with the burst flag (`waf_register_offence($ip, $score, $blocking, true)`: one offence per subject and minute) and a signature hit, an attack tool or a wrong key without it; never auto-ban an address staff signed in from (`waf-offence-fold-and-staff-address.md`).
+- Treat a private or reserved visitor address as infrastructure through `waf_ip_is_infrastructure()` (never counted, never auto-banned; the lists still apply), and go by `waf_script_name()`, never `basename(SCRIPT_NAME)`: the web root's `index.php` is the router (`waf-counter-subjects-and-endpoints.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -33,6 +34,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-bot-policy-credential-endpoints.md: Which endpoints skip the WAF bot policy because they admit a caller by its credential (integration, mcp, oauth, workspace_ical, feed, marketplace_webhook), why, where the return sits, why not api.php.
 - waf-cidr-prefix-validation.md: waf_ip_in_cidr() / waf_ip_matches_simple() must reject empty or non-numeric CIDR prefixes (ctype_digit); the (int) cast bug that banned everyone.
 - waf-connection-held-work-and-silent-rejection.md: Endpoints holding a DB connection while waiting on external services, rate limits vs connection-seconds, and always logging rejections.
+- waf-counter-subjects-and-endpoints.md: A private visitor address is infrastructure, the web root's index.php is the router, shipworks.php and workspace_guest.php are credential endpoints, the api.php allowance exempts staff only
 - waf-country-restriction.md: Firewall country restriction (waf_handle_country(), 2026.4.10 step 10.2): place in waf_run(), allow/block, unknown country, exemptions, not an offence, save guard, sign-in screens kept to the panel.
 - waf-csp-builtin-and-reporter.md: Built-in CSP policy (learning mode), waf_csp_policy() allowlist rule for new panel external resources, standalone csp_report.php collector and its storage.
 - waf-db-guard-connection-failures.md: includes/db_guard.php rules: no fatal on DB connect error, only transient errors trip, guard runs before functions.php, circuit breaker with probing.

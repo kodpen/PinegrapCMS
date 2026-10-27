@@ -351,6 +351,19 @@ function waf_is_ip($value)
 }
 
 /**
+ * Is this address one no visitor on the internet has: private (10/8,
+ * 172.16/12, 192.168/16, fc00::/7), link-local, loopback, unspecified or
+ * otherwise reserved?
+ *
+ * @param string $ip a valid address (waf_is_ip())
+ * @return bool
+ */
+function waf_ip_is_private_or_reserved($ip)
+{
+    return (filter_var((string) $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false);
+}
+
+/**
  * The unit a per-address counter counts.
  *
  * An IPv4 visitor is one address. An IPv6 visitor is one /64: that is the
@@ -411,6 +424,17 @@ function waf_ip_is_infrastructure($ip)
     }
 
     if (waf_ip_in_any($ip, array('127.0.0.0/8', '::1/128'))) {
+        return true;
+    }
+
+    // A private or reserved address is the peer of a reverse proxy, a load
+    // balancer or a container network not listed under Trusted Proxies, or a
+    // local network, and is shared by every visitor behind it: counted, it
+    // would hold the whole site to one visitor's allowance, and six refusals
+    // would ban them all. The form limits make the same call
+    // (pg_cf_visitor_address_counted()). The IP lists still apply to it: they
+    // are the operator's own data.
+    if (waf_ip_is_private_or_reserved($ip)) {
         return true;
     }
 
@@ -1967,10 +1991,78 @@ function waf_script_name()
     $script = '';
 
     if (!empty($_SERVER['SCRIPT_NAME'])) {
-        $script = basename($_SERVER['SCRIPT_NAME']);
+        $script = waf_script_name_from(
+            $_SERVER['SCRIPT_NAME'],
+            isset($_SERVER['SCRIPT_FILENAME']) ? $_SERVER['SCRIPT_FILENAME'] : '',
+            dirname(__FILE__)
+        );
     }
 
     return $script;
+}
+
+/**
+ * The file name of the script a request runs, for the checks that go by it
+ * (waf_sensitive_scripts(), waf_sign_in_screens(), waf_is_health_request()).
+ *
+ * The web root's index.php is not the panel's: it holds one line, a require
+ * of router.php, and runs when the server's directory index answers "/",
+ * which the rewrite rules leave alone because the root is a directory. By
+ * its name alone it was the panel sign-in, so every home page view counted
+ * on the sign-in, forms and checkout allowance and the ceiling on open
+ * requests. An index.php outside the software directory answers as
+ * router.php, which is what it runs.
+ *
+ * @param string $script_name     SCRIPT_NAME
+ * @param string $script_filename SCRIPT_FILENAME, '' when unknown
+ * @param string $software_dir    the directory waf.php sits in
+ * @return string
+ */
+function waf_script_name_from($script_name, $script_filename, $software_dir)
+{
+    $script = basename((string) $script_name);
+
+    if ($script !== 'index.php' || (string) $script_filename === '') {
+        return $script;
+    }
+
+    // Separators first: dirname() knows only the running system's.
+    $dir  = waf_script_dir(dirname(str_replace('\\', '/', (string) $script_filename)));
+    $home = waf_script_dir((string) $software_dir);
+
+    if ($dir === '' || $home === '') {
+        return $script;
+    }
+
+    // Windows paths compare without case.
+    $windows = (DIRECTORY_SEPARATOR === '\\') || preg_match('/^[A-Za-z]:\//', $dir);
+    $same = $windows ? (strcasecmp($dir, $home) === 0) : ($dir === $home);
+
+    return $same ? $script : 'router.php';
+}
+
+/**
+ * A directory path in one spelling: resolved when it exists, forward
+ * slashes, no trailing slash.
+ *
+ * @param string $path
+ * @return string
+ */
+function waf_script_dir($path)
+{
+    $path = (string) $path;
+
+    if ($path === '') {
+        return '';
+    }
+
+    $real = @realpath($path);
+
+    if (is_string($real) && $real !== '') {
+        $path = $real;
+    }
+
+    return rtrim(str_replace('\\', '/', $path), '/');
 }
 
 /**
@@ -3853,7 +3945,13 @@ function waf_address_has_staff_sign_in($ip)
  * whichever country it runs in. A product feed (feed.php) is read the same
  * way by a shopping platform's fetcher, with its token in the address. A
  * marketplace's servers post order packages to marketplace_webhook.php with
- * the key they were given in a header, under no browser's user agent.
+ * the key they were given in a header, under no browser's user agent. The
+ * ShipWorks client posts to shipworks.php with a password the sign-in
+ * throttle counts, one call per order it downloads or ships, from a
+ * warehouse's address; a guest room's page posts to workspace_guest.php
+ * every few seconds with the room's token, which the endpoint's own limits
+ * and its wrong-token offence guard. Both were counted on the allowance
+ * sized for a sign-in screen and banned from it.
  */
 /**
  * Is this a call to the REST API?
@@ -3884,7 +3982,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php'));
+        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'shipworks.php', 'workspace_guest.php'));
     }
 
     return $answer;
@@ -4898,7 +4996,10 @@ function waf_handle_rate_api($ip, $blocking)
 
     // Signed-in staff are exempt, which is what keeps a control panel screen
     // that loads a dozen widgets one request at a time out of this counter.
-    if (waf_user_is_authenticated()) {
+    // Staff, not any session: a form's auto-registration signs anyone in who
+    // types an address, and a member with the chat open is a visitor with
+    // the chat open, counted on the allowance sized for that.
+    if (waf_user_is_staff()) {
         return;
     }
 
