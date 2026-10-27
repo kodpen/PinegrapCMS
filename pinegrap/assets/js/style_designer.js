@@ -12253,6 +12253,9 @@ const StyleDesigner = (function () {
             { __crumb_label: _sdT('Example group'), __crumb_url: '#', __crumb_kind: 'link' },
             { __crumb_label: _sdT('Example product'), __crumb_url: '', __crumb_kind: 'active' }
         ],
+        'catalog.active_filters': [
+            { __filter_chip_label: _sdT('Colour: Red'), __filter_chip_url: '#' }
+        ],
         'security.passkeys': [
             { __passkey_id: '2', __passkey_name: _sdT('My laptop'), __passkey_last_used: _sdT('Never'), __passkey_is_synced: '' }
         ],
@@ -13064,9 +13067,7 @@ const StyleDesigner = (function () {
                 && node.props && node.props._bindings && node.props._bindings.section) {
                 var _sectionLabels = {
                     group_tree:        _sdT('Category Tree (nested list — filled by the backend)'),
-                    filter_chips:      _sdT('Active Filter Chips (filled in by the backend)'),
                     filters_offcanvas: _sdT('Filter Offcanvas (filled in by the backend — Bootstrap offcanvas)'),
-                    active_filters:    _sdT('Active Attribute Filters (filled in by the backend)'),
                     attribute_filters: _sdT('Attribute Filter UI (filled in by the backend)'),
                     applied_offers:    _sdT('Applied Offers (filled in by the backend)'),
                     recipient_picker:  _sdT('Recipient Picker (filled by the backend)'),
@@ -14109,7 +14110,8 @@ const StyleDesigner = (function () {
         '__has_low_stock': 1, '__has_tax': 1, '__has_shipping': 1,
         '__has_offers': 1, '__has_terms': 1, '__is_cancelled': 1,
         '__can_cancel': 1, '__has_timeline': 1, '__has_notes': 1,
-        '__has_tracking_link': 1, '__has_related': 1
+        '__has_tracking_link': 1, '__has_related': 1,
+        '__has_active_filters': 1, '__has_active_attr_filters': 1
     };
     // A date the way the server prints one when no format suffix is given:
     // day/month/year and a 12-hour clock. Today's date, so the canvas never
@@ -22507,6 +22509,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
                 { label: _sdT('Crumbs of the catalog path'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'catalog.crumbs' } },
+                { label: _sdT('Active attribute filters'), type: 'loop_area', icon: 'bi-funnel', extra: { listSource: 'catalog.active_filters' } },
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
                 { label: _sdT('Days of the week'), type: 'loop_area', icon: 'bi-calendar-week', extra: { listSource: 'calendar.weekdays' } },
                 { label: _sdT('Days of the calendar'), type: 'loop_area', icon: 'bi-calendar-day', extra: { listSource: 'calendar.days' } },
@@ -32749,6 +32752,7 @@ const StyleDesigner = (function () {
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
             'catalog.crumbs':     _sdT('One row for every crumb of the path to what the page shows: the catalog, its groups, then the group or product itself. A condition on "Kind of crumb" draws a link, words, or where the visitor is.'),
+            'catalog.active_filters': _sdT('One row for every attribute filter the visitor applied, such as "Colour: Red". Bind a link to "Address without the filter": it opens the listing without that filter. With this list on the page the automatic chip row above the products is not added.'),
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
             'calendar.weeks':     _sdT('One row for every week the monthly or weekly view shows. Put a list of the days of the calendar inside the row: it lists that week\'s days.'),
             'calendar.days':      _sdT('One row for every day: inside a list of weeks that week\'s days, else every day the view shows. Days of the next or previous month hold no events; a condition on "Day of another month" or "Today" styles them.'),
@@ -37674,7 +37678,6 @@ const StyleDesigner = (function () {
     // __page_link_N / __link_label_N go too (_sdCondTokenAllowed()).
     var SW_COND_DENY = [
         '__variant_picker',
-        '__filter_chips',
         '__filters_button',
         '__filters_offcanvas',
         '__clear_filters_button',
@@ -37862,7 +37865,6 @@ const StyleDesigner = (function () {
         '__description', '__details', '__out_of_stock_message', '__price_formatted', '__price_block_html',
         '__price_range', '__variant_picker',
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
-        '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
         '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
@@ -38311,7 +38313,6 @@ const StyleDesigner = (function () {
             ['__group_tree_html',        _sdT('Category tree HTML (old — use a section binding)')],
             ['__filters_button',         _sdT('Filters button (old — use the open_filters action)')],
             ['__filters_offcanvas',      _sdT('Filter offcanvas (legacy — use the section binding)')],
-            ['__filter_chips',           _sdT('Active filter chips (legacy — use the section binding)')],
             ['__clear_filters_button',   _sdT('Clear Filters button (old — use the clear_filters action)')]
         ]},
         { label: _sdT('More product details'), tokens: SW_PRODUCT_ENTITY_TOKENS },
@@ -38333,8 +38334,9 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Filter State'), tokens: [
             ['__attribute_filters_html', _sdT('Attribute filter UI HTML (legacy)')],
-            ['__active_filters_html',    _sdT('Active attribute filter chips HTML (legacy)')],
-            ['__has_active_filters',     _sdT('Whether a filter is active (1/0)')]
+            ['__has_active_filters',     _sdT('Whether a filter is active (1/0)')],
+            ['__has_active_attr_filters', _sdT('Whether an attribute filter is active (1/0)')],
+            ['__clear_filters_url',      _sdT('Address without the filters')]
         ]},
         // pg_sw_list_paging(), as in a form list.
         { label: _sdT('Pages'), tokens: [
@@ -39770,7 +39772,13 @@ const StyleDesigner = (function () {
             '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); },
             '__breadcrumb_inner_html': function (cfg) { return _sdPartCatalogCrumbs(true); },
             'section:breadcrumb':      function (cfg) { return _sdPartCatalogCrumbs(true); },
-            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); }
+            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); },
+            '__filter_chips':              function (cfg) { return _sdPartCatalogFilterChips(); },
+            '__filter_chips_inner_html':   function (cfg) { return _sdPartCatalogFilterChipsInner(); },
+            'section:filter_chips':        function (cfg) { return _sdPartCatalogFilterChipsInner(); },
+            '__active_filters_html':       function (cfg) { return _sdPartCatalogActiveFilters(); },
+            '__active_filters_inner_html': function (cfg) { return _sdPartCatalogActiveFilters(); },
+            'section:active_filters':      function (cfg) { return _sdPartCatalogActiveFilters(); }
         },
         catalog_item_view: {
             '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); },
@@ -39999,6 +40007,48 @@ const StyleDesigner = (function () {
         var p = _sdPartWhen('__has_breadcrumb', 'not_empty');
         p._attrs = [{ name: 'aria-label', value: 'breadcrumb' }];
         return [_sdPartEl('nav', cls, _sdT('Breadcrumb'), p, _sdPartCatalogCrumbs(false))];
+    }
+
+    // A listing's active attribute filters
+    // (pg_sw_part_catalog_active_filters()): a box drawn when there are any,
+    // one badge per filter (catalog.active_filters) linking to the listing
+    // without it, its words, then a cross.
+    /* @pg-site-output */
+    function _sdPartCatalogActiveFilters() {
+        return [_sdPartEl('div', 'pg-sw-attr-active-filters mb-3', _sdT('Active attribute filters'), _sdPartWhen('__has_active_attr_filters', 'eq', '1'), [
+            createNode('loop_area', { source: 'catalog.active_filters' }, [
+                _sdPartEl('a', 'badge text-bg-secondary text-decoration-none me-2 mb-1 d-inline-flex align-items-center', _sdT('Filter chip'), {
+                    href: '#', text: '', textPosition: 'start',
+                    _bindings: { text: '__filter_chip_label', href: '__filter_chip_url' }
+                }, [
+                    _sdPartEl('span', 'bi bi-x-lg ms-2', _sdT('Remove icon'))
+                ])
+            ])
+        ])];
+    }
+
+    // What the filter chip strip held (pg_sw_part_catalog_filter_chips_inner()):
+    // the active attribute filters, then, while any filter is active, the
+    // button that clears them all.
+    /* @pg-site-output */
+    function _sdPartCatalogFilterChipsInner() {
+        return _sdPartCatalogActiveFilters().concat([
+            _sdPartEl('span', 'ms-auto', _sdT('Clear Filters'), _sdPartWhen('__has_active_filters', 'eq', '1'), [
+                _sdPartEl('a', 'btn btn-sm btn-outline-danger', _sdT('Clear Filters button'), {
+                    href: '#', text: _sdT('Clear Filters'), _bindings: { href: '__clear_filters_url' }
+                }, [
+                    _sdPartEl('i', 'bi bi-x-circle me-1', _sdT('Icon'))
+                ])
+            ])
+        ]);
+    }
+
+    // The filter chip strip (pg_sw_part_catalog_filter_chips()), drawn while
+    // any filter is active.
+    /* @pg-site-output */
+    function _sdPartCatalogFilterChips() {
+        return [_sdPartEl('div', 'pg-sw-filter-chips d-flex align-items-center gap-2 flex-wrap py-2', _sdT('Filter Chips'),
+            _sdPartWhen('__has_active_filters', 'eq', '1'), _sdPartCatalogFilterChipsInner())];
     }
 
     // The blocks the server put before the main loop of a widget whose
@@ -43283,9 +43333,7 @@ const StyleDesigner = (function () {
             var _sectionOpts = [['', _sdT('None')]];
             if (_semSwRegion === 'catalog_listing') {
                 _sectionOpts.push(['group_tree',        _sdT('Category Tree (nested list)')]);
-                _sectionOpts.push(['filter_chips',      _sdT('Active Filter Chips')]);
                 _sectionOpts.push(['filters_offcanvas', _sdT('Filter Offcanvas')]);
-                _sectionOpts.push(['active_filters',    _sdT('Active Attribute Filters')]);
                 _sectionOpts.push(['attribute_filters', _sdT('Attribute Filter UI (legacy)')]);
             } else if (_semSwRegion === 'shopping_cart') {
                 _sectionOpts.push(['applied_offers',    _sdT('Applied Offers Info Box')]);
@@ -55106,6 +55154,7 @@ const StyleDesigner = (function () {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
         if (source === 'catalog.crumbs') return _sdPartCatalogCrumbs(false)[0];
+        if (source === 'catalog.active_filters') return _sdPartCatalogActiveFilters()[0];
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source === 'menu.children') {
@@ -55456,9 +55505,10 @@ const StyleDesigner = (function () {
 
     // Whether a list of `source` in a widget of `kind` must sit in the main
     // loop: in a list of records only the record template fills it. The
-    // crumbs and the page links are the page's, filled anywhere.
+    // crumbs, the active filters and the page links are the page's, filled
+    // anywhere.
     function _sdListNeedsMainLoop(kind, source) {
-        if (source === 'catalog.crumbs' || source === 'paging.pages') return false;
+        if (source === 'catalog.crumbs' || source === 'catalog.active_filters' || source === 'paging.pages') return false;
         return kind === 'form_list_view' || kind === 'catalog_listing';
     }
 
@@ -57123,14 +57173,12 @@ const StyleDesigner = (function () {
                                     _bindings: { action: 'submit_search' } })
                             ])
                         ]),
-                        // Active filter chips — semantic <div> bound to
-                        // section=filter_chips. Backend fills with active
-                        // filter pinleri (chips) when any filter is active;
-                        // empty otherwise (designer can hide via CSS :empty).
+                        // Active filter chips: the active attribute
+                        // filters (catalog.active_filters) and the clear
+                        // button, each drawn only while a filter is active.
                         createNode('semantic', { tag: 'div',
                             cssClass: 'pg-sw-filter-chips mb-3',
-                            customName: _sdT('Filter Chips'),
-                            _bindings: { section: 'filter_chips' } }),
+                            customName: _sdT('Filter Chips') }, _sdPartCatalogFilterChipsInner()),
                         createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [loopArea]),
                         // Filters offcanvas — semantic <div> bound to
                         // section=filters_offcanvas. Backend stamps the

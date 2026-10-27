@@ -125,12 +125,10 @@ function _pg_render_catalog_group_tree($parent_id, $listing_path_base, $listing_
 //
 // Bindings recognized:
 //   • _bindings.section = '<name>'  (on any container — div, nav, ul, ol)
-//       (breadcrumb: drawn by its default part before this pass,
-//       pg_sw_part_catalog_crumbs())
+//       (breadcrumb, filter_chips, active_filters: drawn by their default
+//       parts before this pass, widgets_parts.php)
 //       group_tree         → emits the nested group navigation tree HTML
-//       filter_chips       → emits the active-filter chip strip
 //       filters_offcanvas  → emits the offcanvas with all filter forms
-//       active_filters     → emits the (smaller) active attr-filter chips
 //       attribute_filters  → emits the standalone attribute filter UI block
 //
 //   • _bindings.action = '<name>'  on btn / form
@@ -183,8 +181,8 @@ function _pg_catalog_binding_disabled($node, $context)
         if ($action === 'open_filters' || $action === 'clear_filters') return true;
         if ($section === 'filters_offcanvas' || $section === 'attribute_filters') return true;
     }
-    // filter_chips / active_filters are intentionally NOT dropped: they also
-    // carry category and search chips, and render to nothing when empty.
+    // The filter chip parts are not dropped: they draw nothing while no
+    // filter is active.
     return false;
 }
 
@@ -345,15 +343,13 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
     //
     // $bindings_used (by-ref, populated as we walk): the catalog widget
     // renderer reads this set after the binding pass to SKIP auto-stitched
-    // legacy duplicates — e.g. if `section_filter_chips` is set, the body
-    // composition omits the legacy $chips_html so the visitor doesn't see
-    // two chip strips.
+    // legacy duplicates — e.g. if `section_filters_offcanvas` is set, the
+    // body composition omits the legacy offcanvas so the visitor doesn't
+    // see two of them.
     if (isset($bindings['section'])) {
         $section_inner_token_map = array(
             'group_tree'        => '__group_tree_inner_html',
-            'filter_chips'      => '__filter_chips_inner_html',
             'filters_offcanvas' => '__filters_offcanvas_inner_html',
-            'active_filters'    => '__active_filters_inner_html',
             'attribute_filters' => '__attribute_filters_inner_html',
         );
         $sec = $bindings['section'];
@@ -2147,7 +2143,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // products. Results drive both the filter UI and the active-chip labels.
     //
     // ^^__attribute_filters_html^^  — the filter widget (checkboxes/buttons)
-    // ^^__active_filters_html^^     — only the active-attribute chips
+    // The active-attribute chips are the catalog.active_filters rows below.
     //
     // Note: always shows all available options for the group regardless of
     // other active filters (so user can combine/remove filters freely).
@@ -2668,35 +2664,31 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     }
 
     // Attribute filter chips — one chip per active {attr, option} pair.
-    // Added to the shared $chips array for inline rendering AND collected
-    // separately for the standalone ^^__active_filters_html^^ token.
+    // Added to the shared $chips array for inline rendering, and published
+    // as the catalog.active_filters rows the filter chip parts draw
+    // (widgets_parts.php); the offcanvas still prints them as markup.
+    $_attr_chip_rows = array();
     if ($attr_filter_enabled && $active_attr_filters) {
+        $_attr_chip_rows = pg_sw_list_active_filter_rows($active_attr_filters, $available_attrs, function ($aid) use ($page_param) {
+            return '?' . _pg_sw_build_query('pg_attr_' . $aid, '', $page_param, '');
+        });
         $_attr_cs = '';
-        foreach ($active_attr_filters as $_c_aid => $_c_oid) {
-            $_c_albl = isset($available_attrs[$_c_aid]) ? $available_attrs[$_c_aid]['attr_label'] : lang('Attribute');
-            $_c_olbl = '';
-            if (isset($available_attrs[$_c_aid])) {
-                foreach ($available_attrs[$_c_aid]['options'] as $_c_opt) {
-                    if ((int)$_c_opt['option_id'] === (int)$_c_oid) {
-                        $_c_olbl = $_c_opt['option_label'];
-                        break;
-                    }
-                }
-            }
-            if ($_c_olbl === '') $_c_olbl = '#' . $_c_oid;
-            $_c_href = '?' . _pg_sw_build_query('pg_attr_' . $_c_aid, '', $page_param, '');
+        foreach ($_attr_chip_rows as $_c_row) {
             $chips[] = array(
-                'label' => $_c_albl . ': ' . $_c_olbl,
-                'href'  => $_c_href,
+                'label' => $_c_row['__filter_chip_label'],
+                'href'  => $_c_row['__filter_chip_url'],
             );
             $_attr_cs .=
-                '<a href="' . h($_c_href) . '" class="badge text-bg-secondary text-decoration-none me-2 mb-1 d-inline-flex align-items-center" style="font-weight:normal">' .
-                    h($_c_albl . ': ' . $_c_olbl) . ' <span class="bi bi-x-lg ms-2" style="font-size:.7em"></span>' .
+                '<a href="' . h($_c_row['__filter_chip_url']) . '" class="badge text-bg-secondary text-decoration-none me-2 mb-1 d-inline-flex align-items-center" style="font-weight:normal">' .
+                    h($_c_row['__filter_chip_label']) . ' <span class="bi bi-x-lg ms-2" style="font-size:.7em"></span>' .
                 '</a>';
         }
         if ($_attr_cs) {
             $active_attr_chips_html = '<div class="pg-sw-attr-active-filters mb-3">' . $_attr_cs . '</div>';
         }
+    }
+    if (pg_sw_list_wanted('filter_chips')) {
+        pg_sw_list_publish('filter_chips', array('catalog.active_filters' => array(1 => $_attr_chip_rows)));
     }
 
     $chips_html = '';
@@ -2721,21 +2713,27 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // The `__filters_offcanvas` token wraps every filter form (price, stock,
     // attribute) inside a Bootstrap left-side offcanvas. The `__filters_button`
     // token renders the trigger that opens it. Active-filter chips appear
-    // both INSIDE the offcanvas (top) and as `^^__filter_chips^^` in the
-    // main page area, so the visitor can clear filters from either place.
+    // both INSIDE the offcanvas (top) and in the main page area (the filter
+    // chip parts, widgets_parts.php), so the visitor can clear filters from
+    // either place.
     $_pg_off_id = 'pgFilters' . (int)$widget_id;
     $_pg_any_filter_ui = ($price_filter_enabled || $stock_filter_enabled || $attr_filter_enabled);
 
     $clear_query_keys = array('pmin','pmax','stock','sort','attr');
     $clear_query_pairs = array();
+    $clear_query_raw   = array();
     if (!empty($_GET) && is_array($_GET)) {
         foreach ($_GET as $k => $v) {
             if (in_array($k, $clear_query_keys, true) || $k === $page_param) continue;
             if (is_array($v)) continue;
             $clear_query_pairs[] = h($k) . '=' . urlencode((string)$v);
+            $clear_query_raw[]   = $k . '=' . urlencode((string)$v);
         }
     }
     $clear_url = '?' . implode('&', $clear_query_pairs);
+    // The same address unescaped, for the clear button of the filter chip
+    // parts (^^__clear_filters_url^^), which the token fill escapes once.
+    $clear_url_raw = '?' . implode('&', $clear_query_raw);
     // `$stock_filter_active` reflects the CURRENT state — including the
     // configured default ("show only in-stock"). Treating that default as
     // "an active filter" makes the chip strip + clear button render on
@@ -2753,16 +2751,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
           . '<i class="bi bi-x-circle me-1"></i>' . h(lang('Clear Filters')) . '</a>'
         : '';
 
-    // Active chips block — used both as the col-12 row in the page layout
-    // AND inside the offcanvas header. Wrapping div added so the designer
-    // can hide-when-empty via CSS (`:empty`).
-    //
-    // Two variants — same data, different wrapping:
-    //   • $filter_chips_inner_html — chips + clear button without a wrapping
-    //     div. Used when designer's container is bound via section=
-    //     filter_chips (their wrapper preserved).
-    //   • $filter_chips_html — wrapped in `<div class="pg-sw-filter-chips ...">`.
-    //     Legacy token for in-text token placement.
+    // Active chips block inside the offcanvas header: the attribute chips
+    // and the clear button in a `<div class="pg-sw-filter-chips ...">`. In
+    // the page the filter chip parts draw the same (widgets_parts.php).
     $filter_chips_inner_html = '';
     $filter_chips_html       = '';
     if ($has_active_filters) {
@@ -2874,11 +2865,12 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // showing only price/stock/attr with our "Filtreleri Temizle" button)
     // lives INSIDE the offcanvas only — emitting both would duplicate.
     //
-    // Same suppression rule as toolbar: when the designer placed bound
-    // versions of these blocks via section bindings, skip the auto-stitched
+    // Same suppression rule as toolbar: when the designer placed these
+    // blocks (the filter chip parts hold a catalog.active_filters list;
+    // pg_sw_placed()) or bound a section, skip the auto-stitched
     // duplicates so the visitor doesn't see two copies.
-    $_skip_chips      = !empty($_pg_bindings_used['section_filter_chips'])
-                       || !empty($_pg_bindings_used['section_active_filters']);
+    $_skip_chips      = pg_sw_placed($tree_decoded, array('catalog.active_filters', '__filter_chips', '__filter_chips_inner_html',
+                                                      '__active_filters_html', '__active_filters_inner_html'));
     $_skip_offcanvas  = !empty($_pg_bindings_used['section_filters_offcanvas']);
     // When there are no products to loop, $loop_output is empty — substitute
     // the "Ürün bulunamadı" message in its place so the visitor sees a clear
@@ -2912,26 +2904,27 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // Phase 2.5 attribute filter tokens — designer can place them anywhere
         // in the template; they are also auto-injected into $controls_html.
         '__attribute_filters_html'  => $attribute_filters_html,
-        '__active_filters_html'     => $active_attr_chips_html,
         // New offcanvas-based filter tokens (designer can place each piece
         // wherever in the layout, or use the auto-stitched body).
         '__filters_button'          => $filters_button_html,
         '__filters_offcanvas'       => $filters_offcanvas_html,
-        '__filter_chips'            => $filter_chips_html,
         '__has_active_filters'      => $has_active_filters ? '1' : '0',
+        // The filter chip parts (widgets_parts.php): whether an attribute
+        // filter is active (the key of catalog.active_filters) and where
+        // their clear button leads.
+        '__has_active_attr_filters' => $_attr_chip_rows ? '1' : '0',
+        '__clear_filters_url'       => $clear_url_raw,
         '__clear_filters_button'    => $clear_button_html,
 
         // ── Inner-only variants (no outer wrapper) ─────────────────────
         // Used by the section-binding pre-process: when a designer marks
         // their own <nav>/<div>/<aside>/<ul> with section=group_tree
-        // (or filter_chips, etc.), the binding pass replaces
+        // (or filters_offcanvas, etc.), the binding pass replaces
         // that node's children with one of these inner-only tokens — so
         // the designer's wrapping tag, classes, and attributes are
         // preserved while the inner markup comes from the backend.
         '__group_tree_inner_html'        => $group_tree_inner_html,
-        '__filter_chips_inner_html'      => $filter_chips_inner_html,
         '__filters_offcanvas_inner_html' => $filters_offcanvas_inner_html,
-        '__active_filters_inner_html'    => $active_attr_chips_html,
         '__attribute_filters_inner_html' => $attribute_filters_html,
     );
     // The paging values are escaped already.
