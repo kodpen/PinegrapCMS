@@ -441,16 +441,16 @@ function pg_sw_finish_judged_kinds()
 // element that came out empty goes, with its heading, its words and its
 // frame. On a product page whose variant picker redraws the bound values
 // (pg_civ_variants.js), an empty element holding one of them waits hidden
-// instead, and the script shows it when a variant fills it; the rule printed
-// before it keeps a design's display utility from showing it.
+// instead, and the script shows it when a variant fills it, or hides one a
+// variant empties; the rule printed before them keeps a design's display
+// utility (Bootstrap's d-flex is !important) from showing a hidden one.
 function pg_sw_finish_hide_empty($html, $kind)
 {
     if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
     $wait = ($kind === 'catalog_item_view' && strpos($html, 'pgCivVariants.push(') !== false);
     $out  = pg_sw_hide_empty_fields($html, null, $wait);
-    if ($wait && strpos($out, ' data-pg-empty-wait') !== false && strpos($html, ' data-pg-empty-wait') === false) {
-        $out = '<style>[data-pg-empty-wait][hidden]{display:none!important}</style>' . $out;
-    }
+    $rule = '<style>[data-pg-empty-wait][hidden]{display:none!important}</style>';
+    if ($wait && strpos($out, 'pg-hide-if-empty') !== false && strpos($out, $rule) === false) $out = $rule . $out;
     return $out;
 }
 

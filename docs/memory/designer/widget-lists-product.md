@@ -21,10 +21,12 @@ module: widgets_lists_product
 ## What happens to the cross-sell block?
 - It is a default part drawing a `product.related` list ([[widget-default-parts-cross-sell]]); a list the tree places itself takes its place. `cross_sell_enabled` off hides only the part and reads nothing for it, never a placed list.
 
+## Does an empty list take its heading?
+- Yes, in a box marked Hide when empty whose value element holds the list: turning the switch on picks the list's holder ([[widget-hide-if-empty]], #2225).
+
 ## What does the editor give?
 - Palette "Lists in a record": three more items; starters are real elements (`_sdProductListStarter()`): images as `col` pictures in a `row g-2`, attributes as `dt`/`dd` in a `dl.row`, related products as cards in a `row g-3` with `limit: 4`. The list panel shows no field row for a source without an arg. `_swBindLabel()` names a row token in every kind.
 
 ## What is not done yet?
 - A variant picked on the page (`pg_civ_variants.js`) redraws only the cross-sell part; other lists show the product the page opened with.
-- An empty list leaves its surroundings (a heading over related products): `catalog_item_view` has no pg-hide-if-empty rerun (open owner question "pg-hide-if-empty everywhere").
 - Group images (`product_groups_images_xref`), keywords, the products of a group: not offered. A browser round is owed.

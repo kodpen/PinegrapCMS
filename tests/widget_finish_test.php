@@ -358,6 +358,11 @@ function test_widget_finish_hide_empty_waits_for_a_variant()
 	pg_assert_same('<p>x</p>', pg_sw_finish_widget_html($plain, array('kind' => 'catalog_item_view')), 'no variant picker: it goes');
 	pg_assert_same('<p>x</p>' . $script, pg_sw_finish_widget_html($plain . $script, array('kind' => 'catalog_listing')), 'only the product page waits');
 	pg_assert_same('<br class="pg-hide-if-empty" hidden data-pg-empty-wait/>', pg_sw_empty_wait_tag('<br class="pg-hide-if-empty"/>'));
+
+	// A filled box a variant may empty gets the rule too, for the script.
+	$filled = '<div class="d-flex pg-hide-if-empty"><s data-pg-bind="text:original_price_formatted">₺9</s></div>' . $script;
+	pg_assert_same('<style>[data-pg-empty-wait][hidden]{display:none!important}</style>' . $filled,
+		pg_sw_finish_widget_html($filled, array('kind' => 'catalog_item_view')));
 }
 
 // After a cut only the pg-hide-if-empty elements around a cut are judged

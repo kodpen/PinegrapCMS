@@ -37,7 +37,7 @@ OR in conditions; canvas default state; pg-hide-if-empty everywhere; words besid
 - W15 done (#1734). W16 default parts: order view #1808 #1824 #1863, stars #1908, crumbs #1945, cross-sell #1973 #2067 ([[widget-default-parts]]); rest left.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
 - W19 done #1904 #1914 #1928 ([[widget-condition-canvas]]).
-- W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
+- W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` alias (pg-hide-if-empty done #2225). W24 Express order lists.
 
 ## How are other sessions kept clear?
 - Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.

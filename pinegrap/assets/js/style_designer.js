@@ -12010,6 +12010,83 @@ const StyleDesigner = (function () {
         return current;
     }
 
+    // ── Canvas state of "Hide when empty" (pg-hide-if-empty) ─────────────
+    // The page drops a marked element that came out empty, in every kind
+    // (pg_sw_hide_empty_fields(), the finish pass): judged by its first
+    // element marked pg-field-value ("label: value" rows, a heading over a
+    // list), else by everything inside it. The canvas draws it so in the
+    // state the band chose: every value empty, or the sample values.
+    var SD_HIDE_EMPTY = 'pg-hide-if-empty';
+    var SD_FIELD_VALUE = 'pg-field-value';
+
+    function _sdNodeClassHas(node, cls) {
+        var c = node && node.props && node.props.cssClass;
+        return !!c && (' ' + String(c) + ' ').indexOf(' ' + cls + ' ') !== -1;
+    }
+
+    // Whether `tree` holds an element marked "Hide when empty".
+    function _sdTreeHasHideEmpty(tree) {
+        var found = false;
+        (function walk(n) {
+            if (found || !n || typeof n !== 'object') return;
+            if (_sdNodeClassHas(n, SD_HIDE_EMPTY)) { found = true; return; }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        })(tree);
+        return found;
+    }
+
+    // The element a marked `node` is judged by: its first descendant marked
+    // pg-field-value, else itself.
+    function _sdHideEmptyValueNode(node) {
+        var found = null;
+        (function walk(n) {
+            if (found || !n || !Array.isArray(n.children)) return;
+            n.children.forEach(function (c) {
+                if (found) return;
+                if (_sdNodeClassHas(c, SD_FIELD_VALUE)) { found = c; return; }
+                walk(c);
+            });
+        })(node);
+        return found || node;
+    }
+
+    // Whether what `node` holds shows anything on the page in `state`, as
+    // pg_sw_has_content() reads it: words, a picture with an address, a
+    // link, a button, a form control, a frame; a bound value by its sample
+    // (none in the empty state); a list by its sample rows.
+    function _sdHideEmptyContentShows(node, state) {
+        var p = (node && node.props) || {};
+        if (node.type === 'loop_area' && p.source) return state !== 'empty';
+        var b = p._bindings || {};
+        var bound = b.html || b.text;
+        if (b.src) return state !== 'empty';
+        if (bound) return state !== 'empty' && _sdCondCanvasValue(bound, node, state) !== '';
+        if (node.type === 'component') return true;
+        var ct = p.contentType || '';
+        if (ct === 'link' || ct === 'custom_html' || ct === 'carousel' || ct === 'variant_attr') return true;
+        if (ct === 'image') return !!(p.src || p.url);
+        var tag = String(p.tag || '').toLowerCase();
+        if (/^(a|button|input|select|textarea|video|audio|iframe|object|embed|svg|canvas)$/.test(tag)) return true;
+        if (tag === 'img') return !!(p.src || p.url);
+        if (p.text && _sdCondText(String(p.text)) !== '') return true;
+        return Array.isArray(node.children) && node.children.some(function (c) { return _sdHideEmptyShows(c, state); });
+    }
+
+    // Whether the canvas draws `node` in `state` and it shows anything.
+    function _sdHideEmptyShows(node, state) {
+        if (!node || !_sdCondCanvasShows(node, state)) return false;
+        if (_sdHideEmptyCanvasOff(node, state)) return false;
+        return _sdHideEmptyContentShows(node, state);
+    }
+
+    // Whether `node` is marked "Hide when empty" and the page would drop it
+    // in `state`. Every element is drawn in "All elements".
+    function _sdHideEmptyCanvasOff(node, state) {
+        if (state === 'all' || !_sdNodeClassHas(node, SD_HIDE_EMPTY)) return false;
+        var value = _sdHideEmptyValueNode(node);
+        return (value === node) ? !_sdHideEmptyContentShows(node, state) : !_sdHideEmptyShows(value, state);
+    }
+
     // Switch the state the canvas draws. A selection the new state hides
     // moves up to the widget (refNode), or the next render would switch back.
     function _sdSetCommentsCanvasState(state, refNode) {
@@ -12600,6 +12677,10 @@ const StyleDesigner = (function () {
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
             if (!_sdCondCanvasShows(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) wrapper.classList.add('sd-state-off');
+        }
+        // "Hide when empty": left out in the state that empties it.
+        if (_sysWidgetRenderCfg && _sdHideEmptyCanvasOff(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) {
+            wrapper.classList.add('sd-state-off');
         }
 
         // Login region: the canvas draws one session state at a time; an
@@ -37979,7 +38060,7 @@ const StyleDesigner = (function () {
     // the sample values; then every value empty and every element.
     function _sdCondCanvasStates(tree) {
         var tokens = _sdCondTreeTokens(tree);
-        if (!tokens.length) return [];
+        if (!tokens.length && !_sdTreeHasHideEmpty(tree)) return [];
         var states = [];
         tokens.forEach(function (t) {
             (_sdCondCodeStates(t) || []).forEach(function (s) { states.push(['code:' + t + ':' + s[0], s[1]]); });
@@ -38045,7 +38126,7 @@ const StyleDesigner = (function () {
             if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, here); });
         })(root, []);
         if (!path) return current;
-        var shows = function (state) { return path.every(function (n) { return _sdCondCanvasShows(n, state); }); };
+        var shows = function (state) { return path.every(function (n) { return _sdCondCanvasShows(n, state) && !_sdHideEmptyCanvasOff(n, state); }); };
         if (shows(current)) return current;
         var states = _sdCondCanvasStates(root);
         for (var i = 0; i < states.length; i++) {
@@ -38067,6 +38148,54 @@ const StyleDesigner = (function () {
             }
         }
         render();
+    }
+
+    // The "Hide when empty" row of Bind Data, on any element of a system
+    // widget but its root and its loops (the class pg-hide-if-empty), and on
+    // an element inside a marked one, "Value of the box around it" (the class
+    // pg-field-value): the box is judged by that element alone, so its
+    // heading and words go with it.
+    function _sdHideEmptyRows(node) {
+        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
+        var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
+        var html = row(esc(_sdT('Hide when empty')), swAttr('data-sd-hide-empty="1"', _sdNodeClassHas(node, SD_HIDE_EMPTY)) +
+            note(_sdT('The page leaves the element out, with its frame and its words, when what it shows is empty. The canvas leaves it out in the Empty values state.')));
+        var boxed = false;
+        for (var up = _sdAnyParent(node); up && up.parent; up = _sdAnyParent(up.parent)) {
+            if (_sdNodeClassHas(up.parent, SD_HIDE_EMPTY)) { boxed = true; break; }
+            if (up.parent.type === 'root') break;
+        }
+        if (boxed || _sdNodeClassHas(node, SD_FIELD_VALUE)) {
+            html += row(esc(_sdT('Value of the box around it')), swAttr('data-sd-field-value="1"', _sdNodeClassHas(node, SD_FIELD_VALUE)) +
+                note(_sdT('The box marked Hide when empty is judged by this element alone: when it is empty, the heading and the words beside it go too.')));
+        }
+        return html;
+    }
+
+    // Puts `cls` on `node` or takes it off.
+    function _sdNodeToggleClass(node, cls, on) {
+        var arr = String(node.props.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== cls; });
+        if (on) arr.push(cls);
+        node.props.cssClass = arr.join(' ');
+    }
+
+    // When "Hide when empty" is turned on for a box that holds one list
+    // (a heading over related products) and names no value element, the
+    // element the list's rows are drawn in becomes its value, so the heading
+    // goes with an empty list. A list drawn straight into the box changes
+    // nothing: an empty list leaves the box empty anyway.
+    function _sdHideEmptyPickValue(node) {
+        if (_sdHideEmptyValueNode(node) !== node) return;
+        var holders = [];
+        (function walk(n) {
+            if (!n || !Array.isArray(n.children)) return;
+            n.children.forEach(function (c) {
+                if (c && c.type === 'loop_area' && c.props && c.props.source) holders.push(n);
+                else walk(c);
+            });
+        })(node);
+        if (holders.length === 1 && holders[0] !== node && holders[0].props) _sdNodeToggleClass(holders[0], SD_FIELD_VALUE, true);
     }
 
     // The "Show only when a value…" row of Bind Data, on any element of a
@@ -41056,7 +41185,7 @@ const StyleDesigner = (function () {
     // `sect(...)` returns inside the core keeps the two concerns separate.
     function propsDataBinding(node) {
         var html  = _propsDataBindingCore(node);
-        var extra = _sdBindingActionRows(node) + _sdFormatRows(node) + _sdConditionRows(node);
+        var extra = _sdBindingActionRows(node) + _sdFormatRows(node) + _sdConditionRows(node) + _sdHideEmptyRows(node);
         if (html) {
             var note = _sdBindingTextNote(node);
             if (note) extra = note + (extra || '');
@@ -42606,6 +42735,19 @@ const StyleDesigner = (function () {
                 renderCanvas();
             });
         }
+
+        // "Hide when empty" and "Value of the box around it"
+        // (_sdHideEmptyRows()): one undo step each.
+        document.querySelectorAll('#sd-properties input[data-sd-hide-empty], #sd-properties input[data-sd-field-value]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                if (!selectedNode || !selectedNode.props) return;
+                saveState();
+                var hide = this.hasAttribute('data-sd-hide-empty');
+                _sdNodeToggleClass(selectedNode, hide ? SD_HIDE_EMPTY : SD_FIELD_VALUE, this.checked);
+                if (hide && this.checked) _sdHideEmptyPickValue(selectedNode);
+                render();
+            });
+        });
 
         // EO field binding dropdown — express_order specific. Sets
         // node.props._bindings.eo_field which the PHP walker
