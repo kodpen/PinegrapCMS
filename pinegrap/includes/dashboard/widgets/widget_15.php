@@ -81,7 +81,7 @@ function pg_dashboard_widget_15($request, $user)
 
         // ── Section: Expiring Soon (only shown when non-empty) ────
         if (!empty($expiring)) {
-            $output_rows .= pg_widget_row_heading('<i class="bi bi-alarm-fill text-danger"></i> <span class="text-danger">' . lang('Expiring Soon') . '</span>', lang('Days Left'));
+            $output_rows .= pg_widget_row_heading('<i class="bi bi-alarm-fill fg-danger"></i> <span class="fg-danger">' . lang('Expiring Soon') . '</span>', lang('Days Left'));
             foreach ($expiring as $offer) {
                 $days_left = max(0, (int) ceil((strtotime($offer['end_date']) - strtotime($today)) / 86400));
                 // Three days or fewer is the point at which an offer
@@ -101,7 +101,7 @@ function pg_dashboard_widget_15($request, $user)
 
         // ── Section: Active Offers (only shown when non-empty) ────
         if (!empty($active)) {
-            $output_rows .= pg_widget_row_heading('<i class="bi bi-tag-fill text-success"></i> <span class="text-success">' . lang('Active Offers') . '</span>', lang('Days Left'));
+            $output_rows .= pg_widget_row_heading('<i class="bi bi-tag-fill fg-success"></i> <span class="fg-success">' . lang('Active Offers') . '</span>', lang('Days Left'));
             foreach ($active as $offer) {
                 $days_left = max(0, (int) ceil((strtotime($offer['end_date']) - strtotime($today)) / 86400));
                 $output_rows .= pg_widget_row(array(

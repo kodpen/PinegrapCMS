@@ -67,11 +67,11 @@ if (!$_POST) {
     
     // if there are no contacts in this contact group, allow delete
     if ($number_of_contacts == 0) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         
     // else there is at least one contact in this contact group, so disable delete button
     } else {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " onclick="alert(\'' . lang('Please delete or remove all contacts from this contact group before deleting this contact group.') . '\')" ><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete or remove all contacts from this contact group before deleting this contact group.') . '\')" ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     print
@@ -99,39 +99,39 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Contact Group Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'placeholder'=>lang('Please enter a name'), 'maxlength'=>'255', 'class'=>'form-control')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
 
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'email_subscription', 'id'=>'email_subscription', 'value'=>'1', 'class'=>'form-check-input collapse-switcher', 'data-bs-target'=>'#email_subscription_type_row')) . '
-                                                <label class="form-check-label" for="email_subscription">' . lang('Enable E-mail Subscription') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'email_subscription', 'id'=>'email_subscription', 'value'=>'1', 'class'=>'collapse-switcher', 'data-bs-target'=>'#email_subscription_type_row')) . '</div>
+                                                <label class="" for="email_subscription">' . lang('Enable E-mail Subscription') . '</label>
                                                 <div class="form-text">' . lang('Allow Campaigns to send to this Contact Group') . '</div>
                                             </div>
                                         </div>
-                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="email_subscription_type_row">
+                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="email_subscription_type_row">
                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                             <div class="popover-body">
                                                 <div class="row">
                                                  
-                                                    <div class="col-12 my-3">
+                                                    <div class="col-12 my-5">
                                                         <label class="form-label">' . lang('E-mail Subscription Type') . '</label>
-                                                        <div class="form-check">
-                                                        ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'open', 'value'=>'open', 'checked'=>'checked', 'class'=>'form-check-input')) . '
-                                                            <label class="form-check-label" for="open">' . lang('Open') . '</label>
+                                                        <div class="form-field">
+                                                        ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'open', 'value'=>'open', 'checked'=>'checked', 'class'=>'radio')) . '
+                                                            <label class="" for="open">' . lang('Open') . '</label>
                                                         </div>
-                                                        <div class="form-check">
-                                                            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'closed', 'value'=>'closed', 'class'=>'form-check-input')) . '
-                                                            <label class="form-check-label" for="closed">' . lang('Closed') . '</label>
+                                                        <div class="form-field">
+                                                            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'closed', 'value'=>'closed', 'class'=>'radio')) . '
+                                                            <label class="" for="closed">' . lang('Closed') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-12 my-1">
@@ -147,10 +147,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>

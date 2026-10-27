@@ -90,14 +90,14 @@ $privacy_erase_side = '';
 if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'], array('refused', 'self'), true)) {
 
     $privacy_erase_body = '
-            <div class="alert alert-warning">' . h(($privacy_erase_result['status'] === 'self')
+            <div class="alert theme-warning">' . h(($privacy_erase_result['status'] === 'self')
                 ? lang('This is your own account. Ask another administrator to erase it.')
                 : lang('This person has a user account with a role as high as yours or higher. Ask an administrator to erase their data.')) . '</div>';
 
 } elseif (is_array($privacy_erase_result) && ($privacy_erase_result['status'] === 'not_found')) {
 
     $privacy_erase_body = '
-            <div class="alert alert-info">' . h(lang('The site keeps nothing for this person.')) . '</div>';
+            <div class="alert theme-info">' . h(lang('The site keeps nothing for this person.')) . '</div>';
 
 } elseif (is_array($privacy_erase_result) && ($privacy_erase_result['status'] === 'ok')) {
 
@@ -111,7 +111,7 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
         $privacy_erase_rows[$privacy_erase_done_table['action']] .= '
                         <tr>
                             <td>' . h($privacy_erase_labels[$privacy_erase_table] ?? $privacy_erase_table)
-                                . ($privacy_erase_fields ? '<div class="small text-body-secondary text-break">' . h(implode(', ', $privacy_erase_fields)) . '</div>' : '') . '</td>
+                                . ($privacy_erase_fields ? '<div class="small fg-secondary text-break">' . h(implode(', ', $privacy_erase_fields)) . '</div>' : '') . '</td>
                             <td class="text-end">' . pg_format_number((int) $privacy_erase_done_table['rows'], 0) . '</td>
                         </tr>';
     }
@@ -125,9 +125,9 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
         }
 
         $privacy_erase_body .= '
-            <div class="card mb-5">
+            <div class="card mb-12">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h($privacy_erase_title) . '</span>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h($privacy_erase_title) . '</span>
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
@@ -150,14 +150,14 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
 
     foreach ($privacy_erase_found['users'] as $privacy_erase_user) {
         $privacy_erase_people .= '
-                        <li class="mb-1"><i class="bi bi-person me-1" aria-hidden="true"></i>' . h($privacy_erase_user['user_username']) . ' <span class="text-body-secondary small">' . h(pg_user_role_name($privacy_erase_user['user_role'])) . '</span></li>';
+                        <li class="mb-1"><i class="bi bi-person me-1" aria-hidden="true"></i>' . h($privacy_erase_user['user_username']) . ' <span class="fg-secondary small">' . h(pg_user_role_name($privacy_erase_user['user_role'])) . '</span></li>';
     }
 
     foreach ($privacy_erase_found['contacts'] as $privacy_erase_contact) {
         $privacy_erase_name = trim($privacy_erase_contact['first_name'] . ' ' . $privacy_erase_contact['last_name']);
 
         $privacy_erase_people .= '
-                        <li class="mb-1"><i class="bi bi-person-vcard me-1" aria-hidden="true"></i>' . h(($privacy_erase_name !== '') ? $privacy_erase_name : '#' . (int) $privacy_erase_contact['id']) . ' <span class="text-body-secondary small">' . h(lang('Contact')) . '</span></li>';
+                        <li class="mb-1"><i class="bi bi-person-vcard me-1" aria-hidden="true"></i>' . h(($privacy_erase_name !== '') ? $privacy_erase_name : '#' . (int) $privacy_erase_contact['id']) . ' <span class="fg-secondary small">' . h(lang('Contact')) . '</span></li>';
     }
 
     $privacy_erase_emails = '';
@@ -176,24 +176,24 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
                         <form action="privacy_erase.php" method="post" class="disable_shortcut">
                             ' . get_token_field() . $privacy_erase_hidden . '
                             <input type="hidden" name="erase" value="1">
-                            <div class="form-check mb-3">
-                                <input type="checkbox" class="form-check-input" id="confirm" name="confirm" value="1" required>
-                                <label class="form-check-label" for="confirm">' . h(lang('I understand that the erasure cannot be undone.')) . '</label>
+                            <div class="form-field mb-5">
+                                <input type="checkbox" class="check" id="confirm" name="confirm" value="1" required>
+                                <label class="" for="confirm">' . h(lang('I understand that the erasure cannot be undone.')) . '</label>
                             </div>
-                            <button type="submit" class="btn btn-sm btn-danger rounded-pill px-3" data-confirm-content="' . h(lang('WARNING: This person\'s data will be erased for good.')) . '"><i class="bi bi-person-x me-1" aria-hidden="true"></i>' . h(lang('Erase')) . '</button>
+                            <button type="submit" class="btn btn-sm btn-solid theme-danger rounded-pill px-5" data-confirm-content="' . h(lang('WARNING: This person\'s data will be erased for good.')) . '"><i class="bi bi-person-x me-1" aria-hidden="true"></i>' . h(lang('Erase')) . '</button>
                         </form>
-                        <p class="small text-body-secondary mt-3 mb-0">' . h(lang('Export the person\'s data first if they asked for a copy. Orders and invoices are kept for the legal retention period without the person\'s name, address and contact details. The erasure is recorded in the audit trail without them.')) . '</p>';
+                        <p class="small fg-secondary mt-5 mb-0">' . h(lang('Export the person\'s data first if they asked for a copy. Orders and invoices are kept for the legal retention period without the person\'s name, address and contact details. The erasure is recorded in the audit trail without them.')) . '</p>';
 
     $privacy_erase_side = $privacy_erase_done ? '' : '
             <div class="position-sticky" style="top:1rem">
-                <div class="card mb-5">
+                <div class="card mb-12">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Who this is about')) . '</span>
+                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Who this is about')) . '</span>
                     </div>
                     <div class="card-body">
-                        <div class="small text-body-secondary">' . h(lang('E-mail Address')) . '</div>
-                        <div class="mb-3">' . (($privacy_erase_emails !== '') ? $privacy_erase_emails : '<span class="text-body-secondary">' . h(lang('None')) . '</span>') . '</div>
-                        ' . (($privacy_erase_people !== '') ? '<ul class="list-unstyled mb-3">' . $privacy_erase_people . '</ul>' : '') . '
+                        <div class="small fg-secondary">' . h(lang('E-mail Address')) . '</div>
+                        <div class="mb-5">' . (($privacy_erase_emails !== '') ? $privacy_erase_emails : '<span class="fg-secondary">' . h(lang('None')) . '</span>') . '</div>
+                        ' . (($privacy_erase_people !== '') ? '<ul class="list-unstyled mb-5">' . $privacy_erase_people . '</ul>' : '') . '
                         ' . $privacy_erase_form . '
                     </div>
                 </div>
@@ -201,21 +201,21 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
 }
 
 $privacy_erase_search = '
-            <div class="card mb-5">
+            <div class="card mb-12">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Find a person')) . '</span>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Find a person')) . '</span>
                 </div>
                 <div class="card-body">
-                    <form action="privacy_erase.php" method="post" class="disable_shortcut row g-2 align-items-end">
+                    <form action="privacy_erase.php" method="post" class="disable_shortcut row g-3 align-items-end">
                         ' . get_token_field() . '
-                        <div class="col-12 col-md-8 col-xl-6">
+                        <div class="col-12 md:col-8 xl:col-6">
                             <label for="email" class="form-label">' . h(lang('E-mail Address')) . '</label>
                             ' . $liveform->output_field(array('type' => 'email', 'id' => 'email', 'name' => 'email', 'class' => 'form-control', 'maxlength' => '254', 'autocomplete' => 'off', 'required' => 'true')) . '
                         </div>
-                        <div class="col-12 col-md-auto">
-                            <button type="submit" class="btn btn-primary rounded-pill px-3"><i class="bi bi-search me-1" aria-hidden="true"></i>' . h(lang('Find')) . '</button>
+                        <div class="col-12 md:col-auto">
+                            <button type="submit" class="btn btn-solid theme-primary rounded-pill px-5"><i class="bi bi-search me-1" aria-hidden="true"></i>' . h(lang('Find')) . '</button>
                         </div>
-                        <div class="col-12 small text-body-secondary">' . h(lang('Nothing is changed until the erasure is confirmed: first the screen lists what will be deleted and what will be kept with the personal fields replaced.')) . '</div>
+                        <div class="col-12 small fg-secondary">' . h(lang('Nothing is changed until the erasure is confirmed: first the screen lists what will be deleted and what will be kept with the personal fields replaced.')) . '</div>
                     </form>
                 </div>
             </div>';
@@ -235,11 +235,11 @@ pg_page_shell(array(
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
         </div>
-        <div class="col-12 col-lg-8 col-xxl-9 order-1">
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
             ' . $privacy_erase_search . '
             ' . $privacy_erase_body . '
         </div>
-        <div class="col-12 col-lg-4 col-xxl-3 order-2">
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
             ' . $privacy_erase_side . '
         </div>
     </div>

@@ -707,7 +707,7 @@ function ws_command_unknown_answer($viewer, $word)
         }, $closest)) . '</div>';
     }
 
-    $html .= '<div class="text-body-secondary">' . h(lang(array(
+    $html .= '<div class="fg-secondary">' . h(lang(array(
         'string' => 'Nothing was sent. To post it as a message, start it with two slashes: {var:1}. {var:2} lists every command.',
         'vars'   => array('//' . $word, lang('/help')),
     ))) . '</div>';
@@ -1372,7 +1372,7 @@ function ws_command_run($viewer, $channel, $body, $options = array())
             foreach (ws_command_help($viewer) as $item) {
                 $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description'])
                     . '<br><code class="ws-help-usage">' . h($item['usage']) . '</code>'
-                    . '<br><span class="text-body-secondary">' . h($item['example']) . '</span></dd>';
+                    . '<br><span class="fg-secondary">' . h($item['example']) . '</span></dd>';
             }
 
             return array('type' => 'ephemeral', 'html' => $html . '</dl>');

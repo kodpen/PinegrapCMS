@@ -49,7 +49,7 @@ echo pg_page_shell(
         'icon'=>'design',
         'replace_home_with'=>'close',
         'hide_menu'=>true,
-        'heading'=>'<span class="pagelink me-2"></span><span id="previewpaneltitle"></span>',
+        'heading'=>'<span class="pagelink me-3"></span><span id="previewpaneltitle"></span>',
     )
 ) . '  
 

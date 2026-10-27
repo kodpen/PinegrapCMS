@@ -28,7 +28,7 @@ $output_add_calendar_button = '';
 // if user is a manager or above.
 if ($user['role'] < 3) {
    
-    $output_add_calendar_button = '<a class="btn btn-sm btn-primary m-1 " href="add_calendar.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
+    $output_add_calendar_button = '<a class="btn btn-sm btn-solid theme-primary m-1 " href="add_calendar.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
 }
 
 // The columns this list sorts by, in the order the table shows them.
@@ -108,7 +108,7 @@ if ($calendars) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Expand') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-chevron-right"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Expand') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-chevron-right"></i></button>
                 </td>
                 <td class="align-middle chart_label">' . h($calendar['name']) . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $calendar['created_timestamp'])) . ' ' . $created_username . '</td>
@@ -135,8 +135,8 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         ' . $output_add_calendar_button . '
@@ -145,7 +145,7 @@ pg_page_shell(
                     </nav>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>

@@ -124,7 +124,7 @@
         var name = el('span', 'ws-tpl-card-name', template ? template.name : t('tpl_none'));
 
         if (template && template.builtin) {
-            name.appendChild(el('span', 'badge text-bg-light ms-1', t('tpl_builtin')));
+            name.appendChild(el('span', 'badge badge-subtle theme-secondary ms-1', t('tpl_builtin')));
         }
 
         text.appendChild(name);
@@ -146,7 +146,7 @@
         var chosen = null;
         var cards = [];
 
-        box.appendChild(el('div', 'small text-body-secondary', t('loading')));
+        box.appendChild(el('div', 'small fg-secondary', t('loading')));
 
         function mark(node) {
             cards.forEach(function (item) {
@@ -185,11 +185,11 @@
             templates.forEach(add);
 
             if (!templates.length) {
-                box.appendChild(el('div', 'small text-body-secondary', t('tpl_empty')));
+                box.appendChild(el('div', 'small fg-secondary', t('tpl_empty')));
             }
         }).catch(function (error) {
             clear(box);
-            box.appendChild(el('div', 'small text-danger', error.message));
+            box.appendChild(el('div', 'small fg-danger', error.message));
         });
 
         return {
@@ -203,7 +203,7 @@
     // The section on top of the new channel form. value() is the id of the
     // template chosen, '' for none.
     function picker(helpers, onPick) {
-        var box = el('div', 'mb-3 ws-tpl-picker');
+        var box = el('div', 'mb-5 ws-tpl-picker');
         var label = el('div', 'form-label', t('tpl_from'));
         var help = el('div', 'form-text d-none', t('tpl_suggest_help'));
         var list = cardList(helpers, true, function (template) {
@@ -261,13 +261,12 @@
 
     function applyDialog(channel, helpers) {
         if (!applyModal) {
-            applyModal = el('div', 'modal fade ws-tpl-modal');
+            applyModal = el('dialog', 'dialog ws-tpl-modal pg-dialog-centered dialog-scrollable dialog-lg');
             applyModal.tabIndex = -1;
-            applyModal.innerHTML = '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg"><div class="modal-content">'
-                + '<div class="modal-header"><h2 class="modal-title h6" data-ws-tpl-title></h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
-                + '<div class="modal-body"><p class="small text-body-secondary" data-ws-tpl-help></p><div data-ws-tpl-list></div></div>'
-                + '<div class="modal-footer"><a class="btn btn-sm btn-ghost me-auto d-none" data-ws-tpl-manage></a><button type="button" class="btn btn-sm btn-ghost" data-bs-dismiss="modal" data-ws-tpl-cancel></button>'
-                + '<button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-ws-tpl-ok></button></div></div></div>';
+            applyModal.innerHTML = '<div class="dialog-header"><h2 class="dialog-title h6" data-ws-tpl-title></h2><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
+                + '<div class="dialog-body"><p class="small fg-secondary" data-ws-tpl-help></p><div data-ws-tpl-list></div></div>'
+                + '<div class="dialog-footer"><a class="btn btn-sm btn-ghost me-auto d-none" data-ws-tpl-manage></a><button type="button" class="btn btn-sm btn-ghost" data-bs-dismiss="dialog" data-ws-tpl-cancel></button>'
+                + '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-tpl-ok></button></div>';
             document.body.appendChild(applyModal);
         }
 
@@ -416,7 +415,7 @@
         }
 
         function select(options, value) {
-            var node = el('select', 'form-select form-select-sm');
+            var node = el('select', 'form-control form-control-sm');
 
             options.forEach(function (option) {
                 if (option.group) {
@@ -452,7 +451,7 @@
         }
 
         function labelled(label, control, className) {
-            var box = el('div', className || 'col-6 col-md-3');
+            var box = el('div', className || 'col-6 md:col-3');
             var caption = el('label', 'form-label small mb-1', label);
             control.id = 'ws-tpl-f-' + (++keySeed);
             caption.htmlFor = control.id;
@@ -557,7 +556,7 @@
             head.appendChild(remove);
             node.appendChild(head);
 
-            var grid = el('div', 'row g-2 mt-1');
+            var grid = el('div', 'row g-3 mt-1');
             var priorities = Object.keys(DATA.priorities || {}).map(function (key) { return [key, DATA.priorities[key]]; });
             var priority = select(priorities, task.priority || 'normal');
             var start = numberField(task.start_in_days, 3650);
@@ -569,17 +568,17 @@
             grid.appendChild(labelled(t('tpl_start_in'), start));
             grid.appendChild(labelled(t('tpl_due_in'), due));
             grid.appendChild(labelled(t('tpl_estimate'), estimate));
-            grid.appendChild(labelled(t('tpl_assign'), assign, 'col-12 col-md-6'));
+            grid.appendChild(labelled(t('tpl_assign'), assign, 'col-12 md:col-6'));
 
             var description = el('textarea', 'form-control form-control-sm');
             description.rows = 2;
             description.maxLength = 2000;
             description.value = task.description || '';
-            grid.appendChild(labelled(t('description'), description, 'col-12 col-md-6'));
+            grid.appendChild(labelled(t('description'), description, 'col-12 md:col-6'));
             node.appendChild(grid);
 
             // The checklist: one field an item.
-            var listBox = el('div', 'mt-2');
+            var listBox = el('div', 'mt-3');
             var items = el('div', 'ws-tpl-checklist');
 
             listBox.appendChild(el('div', 'form-label small mb-1', t('insert_checklist')));
@@ -594,7 +593,7 @@
                 text.setAttribute('aria-label', t('tpl_item_placeholder'));
                 line.appendChild(text);
 
-                var drop = button('btn btn-outline-secondary', '', 'bi-x-lg', t('remove'));
+                var drop = button('btn btn-outline theme-secondary', '', 'bi-x-lg', t('remove'));
                 drop.addEventListener('click', function () { line.remove(); });
                 line.appendChild(drop);
                 items.appendChild(line);
@@ -614,14 +613,14 @@
             var earlier = tasks.slice(0, position);
 
             if (earlier.length) {
-                var afterBox = el('div', 'mt-2');
+                var afterBox = el('div', 'mt-3');
                 afterBox.appendChild(el('div', 'form-label small mb-1', t('tpl_after')));
 
                 var chips = el('div', 'ws-tpl-after');
 
                 earlier.forEach(function (other, index) {
                     var on = row.after.indexOf(other.key) !== -1;
-                    var chip = el('button', 'btn btn-sm rounded-pill ' + (on ? 'btn-primary' : 'btn-outline-secondary'), String(index + 1) + '. ' + (other.data.title || t('tpl_task_n', index + 1)));
+                    var chip = el('button', 'btn btn-sm rounded-pill ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary'), String(index + 1) + '. ' + (other.data.title || t('tpl_task_n', index + 1)));
                     chip.type = 'button';
                     chip.setAttribute('aria-pressed', on ? 'true' : 'false');
                     chip.addEventListener('click', function () {
@@ -681,14 +680,14 @@
             });
 
             if (!tasks.length) {
-                taskBox.appendChild(el('div', 'small text-body-secondary mb-2', t('tpl_no_tasks')));
+                taskBox.appendChild(el('div', 'small fg-secondary mb-3', t('tpl_no_tasks')));
             }
 
             tasks.forEach(function (row, position) {
                 taskBox.appendChild(taskRow(row, position));
             });
 
-            var add = button('btn btn-sm btn-outline-secondary rounded-pill px-3', t('tpl_add_task'), 'bi-plus-lg');
+            var add = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('tpl_add_task'), 'bi-plus-lg');
             add.addEventListener('click', function () {
                 collect();
                 keySeed += 1;
@@ -729,7 +728,7 @@
             head.appendChild(remove);
             node.appendChild(head);
 
-            var text = el('textarea', 'form-control form-control-sm mt-2 ws-tpl-note-body');
+            var text = el('textarea', 'form-control form-control-sm mt-3 ws-tpl-note-body');
             text.rows = 6;
             text.maxLength = 20000;
             text.value = row.data.body || '';
@@ -748,14 +747,14 @@
             clear(noteBox);
 
             if (!notes.length) {
-                noteBox.appendChild(el('div', 'small text-body-secondary mb-2', t('tpl_no_notes')));
+                noteBox.appendChild(el('div', 'small fg-secondary mb-3', t('tpl_no_notes')));
             }
 
             notes.forEach(function (row) {
                 noteBox.appendChild(noteRow(row));
             });
 
-            var add = button('btn btn-sm btn-outline-secondary rounded-pill px-3', t('add_note'), 'bi-plus-lg');
+            var add = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('add_note'), 'bi-plus-lg');
             add.addEventListener('click', function () {
                 collect();
                 notes.push({ data: { title: '', body: '' } });

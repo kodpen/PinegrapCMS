@@ -232,11 +232,11 @@ $invoices = (array) db_items("SELECT i.*, a.title AS live_account_title, o.order
 
 if (!empty($parts)) {
     $output_filter_note = '
-            <div class="alert alert-light d-flex align-items-center gap-2 py-2 mb-3" role="status">
+            <div class="alert theme-secondary d-flex align-items-center gap-3 py-3 mb-5" role="status">
                 <i class="bi bi-funnel"></i>
                 <span>' . h(lang(array('string' => 'Showing: {var:1}', 'vars' => implode(' · ', $parts)))) . '</span>
-                <span class="text-body-secondary">(' . count($invoices) . ')</span>
-                <a href="erp_invoices.php" class="ms-auto link-body-emphasis">' . lang('Clear the filter') . '</a>
+                <span class="fg-secondary">(' . count($invoices) . ')</span>
+                <a href="erp_invoices.php" class="ms-auto pg-link-body-emphasis">' . lang('Clear the filter') . '</a>
             </div>';
 }
 
@@ -261,11 +261,11 @@ $status_labels = array(
 );
 
 $status_classes = array(
-    'draft' => 'text-body-secondary',
-    'issued' => 'text-primary',
-    'partially_paid' => 'text-warning',
-    'paid' => 'text-success',
-    'cancelled' => 'text-danger',
+    'draft' => 'fg-secondary',
+    'issued' => 'fg-primary',
+    'partially_paid' => 'fg-warning',
+    'paid' => 'fg-success',
+    'cancelled' => 'fg-danger',
 );
 
 $direction_labels = array(
@@ -290,7 +290,7 @@ foreach ($invoices as $invoice) {
     $account_title = (trim((string) $invoice['account_title']) !== '') ? (string) $invoice['account_title'] : (string) $invoice['live_account_title'];
     $output_link_url = ($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id;
     $output_number = $is_draft
-        ? '<span class="text-body-secondary fst-italic">' . lang('Draft') . '</span>'
+        ? '<span class="fg-secondary fst-italic">' . lang('Draft') . '</span>'
         : h($invoice['full_number']);
 
     $order_cell = ((int) $invoice['order_id'] > 0)
@@ -316,13 +316,13 @@ foreach ($invoices as $invoice) {
                 // Reminders put off: the bell is crossed out until the date.
                 $snoozed_until = (int) ($invoice['overdue_snoozed_until'] ?? 0);
                 $output_snoozed = ($snoozed_until > $now)
-                    ? ' <i class="bi bi-bell-slash text-body-secondary" title="' . h(lang(array('string' => 'Reminders put off until {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d', $snoozed_until), 'date')))) . '"></i>'
+                    ? ' <i class="bi bi-bell-slash fg-secondary" title="' . h(lang(array('string' => 'Reminders put off until {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d', $snoozed_until), 'date')))) . '"></i>'
                     : '';
-                $output_due .= '<div><span class="badge text-bg-danger">' . h(lang(array('string' => '{var:1} days overdue', 'vars' => $days))) . '</span>' . $output_snoozed . '</div>';
+                $output_due .= '<div><span class="badge theme-danger">' . h(lang(array('string' => '{var:1} days overdue', 'vars' => $days))) . '</span>' . $output_snoozed . '</div>';
             } elseif ($days === 0) {
-                $output_due .= '<div><span class="badge text-bg-warning">' . lang('Due today') . '</span></div>';
+                $output_due .= '<div><span class="badge theme-warning">' . lang('Due today') . '</span></div>';
             } elseif (-$days <= 7) {
-                $output_due .= '<div><span class="badge text-bg-warning">' . h(lang(array('string' => 'due in {var:1} days', 'vars' => -$days))) . '</span></div>';
+                $output_due .= '<div><span class="badge theme-warning">' . h(lang(array('string' => 'due in {var:1} days', 'vars' => -$days))) . '</span></div>';
             }
         }
     }
@@ -337,12 +337,12 @@ foreach ($invoices as $invoice) {
         $edoc_sendable = (!$is_draft && ((string) $invoice['direction'] === 'sales') && ((string) $invoice['status'] !== 'cancelled'));
 
         if (($edoc_status === 'none') && !$edoc_sendable) {
-            $output_edoc_cell = '<td class="align-middle text-body-secondary" data-order="">&mdash;</td>';
+            $output_edoc_cell = '<td class="align-middle fg-secondary" data-order="">&mdash;</td>';
         } else {
             $edoc_label = $edoc_labels[$edoc_status] ?? array($edoc_status, 'secondary');
             $output_edoc_cell = '<td class="align-middle text-nowrap" data-order="' . h($edoc_status) . '">'
-                . '<span class="badge text-bg-' . h($edoc_label[1]) . '">' . h($edoc_label[0]) . '</span>'
-                . (((string) ($invoice['gib_number'] ?? '') !== '') ? '<div class="small text-body-secondary">' . h($invoice['gib_number']) . '</div>' : '')
+                . '<span class="badge theme-' . h($edoc_label[1]) . '">' . h($edoc_label[0]) . '</span>'
+                . (((string) ($invoice['gib_number'] ?? '') !== '') ? '<div class="small fg-secondary">' . h($invoice['gib_number']) . '</div>' : '')
                 . '</td>';
         }
     }
@@ -356,7 +356,7 @@ foreach ($invoices as $invoice) {
         $pickable = !$is_draft && ((string) $invoice['direction'] === 'sales') && ($status !== 'cancelled');
 
         $output_pick_cell = $pickable
-            ? '<td class="select-all align-middle text-start"><input class="form-check-input" type="checkbox" name="invoice_ids[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => (string) $invoice['full_number']))) . '" /></td>'
+            ? '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="invoice_ids[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => (string) $invoice['full_number']))) . '" /></td>'
             : '<td class="align-middle"></td>';
         $row_class = $pickable ? '' : ' class="unselectable"';
     }
@@ -365,7 +365,7 @@ foreach ($invoices as $invoice) {
         '<tr' . erp_drawer_row_attributes($id) . $row_class . '>
             ' . $output_pick_cell . '
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . ($is_draft ? lang('Edit') : lang('View')) . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi ' . ($is_draft ? 'bi-pencil' : 'bi-eye') . '"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . ($is_draft ? lang('Edit') : lang('View')) . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi ' . ($is_draft ? 'bi-pencil' : 'bi-eye') . '"></i></button>
             </td>
             <td class="align-middle text-nowrap chart_label" data-order="' . h($is_draft ? ('~' . $id) : $invoice['full_number']) . '">' . $output_number . '</td>
             <td class="align-middle text-nowrap" data-order="' . h($invoice['issue_date']) . '">' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</td>
@@ -377,8 +377,8 @@ foreach ($invoices as $invoice) {
             <td class="align-middle">' . $order_cell . '</td>
             <td class="align-middle text-end" data-order="' . (int) $invoice['tax_total'] . '">' . h(erp_money_out_currency((int) $invoice['tax_total'], $currency)) . '</td>
             <td class="align-middle text-end fw-bold" data-order="' . (int) $invoice['grand_total_base'] . '">' . h(erp_money_out_currency((int) $invoice['grand_total'], $currency))
-                . ($is_foreign ? '<div class="text-body-secondary small fw-normal">' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>' : '') . '</td>
-            <td class="align-middle text-end ' . (($open > 0) ? 'text-danger' : 'text-body-secondary') . '" data-order="' . $open . '">' . h(erp_money_out_currency($open, $currency)) . '</td>
+                . ($is_foreign ? '<div class="fg-secondary small fw-normal">' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>' : '') . '</td>
+            <td class="align-middle text-end ' . (($open > 0) ? 'fg-danger' : 'fg-secondary') . '" data-order="' . $open . '">' . h(erp_money_out_currency($open, $currency)) . '</td>
         </tr>';
 }
 
@@ -393,15 +393,15 @@ if (!empty($edoc_filters)) {
 
     foreach ($edoc_filters as $edoc_key => $edoc_item) {
         $output_edoc_items .= '
-                        <li><a class="dropdown-item d-flex align-items-center gap-2 link-body-emphasis' . (($edoc_filter === $edoc_key) ? ' active' : '') . '" href="erp_invoices.php?edoc=' . $edoc_key . '"><i class="bi ' . $edoc_item['icon'] . '" aria-hidden="true"></i><span class="me-auto">' . h($edoc_item['label']) . '</span><span class="badge rounded-pill text-bg-' . (($edoc_counts[$edoc_key] > 0) ? $edoc_item['tone'] : 'secondary') . '">' . number_format($edoc_counts[$edoc_key]) . '</span></a></li>';
+                        <li><a class="menu-item d-flex align-items-center gap-3 pg-link-body-emphasis' . (($edoc_filter === $edoc_key) ? ' active' : '') . '" href="erp_invoices.php?edoc=' . $edoc_key . '"><i class="bi ' . $edoc_item['icon'] . '" aria-hidden="true"></i><span class="me-auto">' . h($edoc_item['label']) . '</span><span class="badge rounded-pill theme-' . (($edoc_counts[$edoc_key] > 0) ? $edoc_item['tone'] : 'secondary') . '">' . number_format($edoc_counts[$edoc_key]) . '</span></a></li>';
     }
 
     $output_edoc_menu = '
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-ghost dropdown-toggle' . (($edoc_filter !== '') ? ' active' : '') . '" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-send-check me-1" aria-hidden="true"></i>' . (($edoc_filter !== '') ? h($edoc_filters[$edoc_filter]['label']) : lang('e-Document')) . '</button>
-                    <ul class="dropdown-menu dropdown-menu-end">' . $output_edoc_items . '
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item link-body-emphasis" href="erp_invoices.php">' . lang('All') . '</a></li>
+                <div class="pg-menu-wrap">
+                    <button class="btn btn-sm btn-ghost pg-menu-caret' . (($edoc_filter !== '') ? ' active' : '') . '" type="button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false"><i class="bi bi-send-check me-1" aria-hidden="true"></i>' . (($edoc_filter !== '') ? h($edoc_filters[$edoc_filter]['label']) : lang('e-Document')) . '</button>
+                    <ul class="menu pg-menu-end">' . $output_edoc_items . '
+                        <li><hr class="menu-divider"></li>
+                        <li><a class="menu-item pg-link-body-emphasis" href="erp_invoices.php">' . lang('All') . '</a></li>
                     </ul>
                 </div>';
 }
@@ -413,9 +413,9 @@ $output_bulk_buttons = '';
 if ($edoc_bulk) {
     $output_bulk_buttons = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="btn btn-sm btn-outline-secondary disabled" data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send selected') . '</button>
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="btn btn-sm btn-outline-secondary disabled" data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-1" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button>
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Ask status') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send selected') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-1" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Ask status') . '</button>
                 </span>';
 }
 
@@ -436,11 +436,11 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_manual_invoice.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Invoice') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="add_erp_invoice.php"><i class="bi bi-receipt me-1"></i>' . lang(array('string' => 'Invoice an Order')) . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="erp_export.php?entity=invoices"><i class="bi bi-box-arrow-up me-1"></i>' . lang('Export') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="erp_aging.php"><i class="bi bi-hourglass-split me-1"></i>' . lang('Aging report') . '</a>
-                ' . ((function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_invoice_recurrences.php"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Repeating invoices') . '</a>' : '') . '
+                <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_manual_invoice.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Invoice') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_invoice.php"><i class="bi bi-receipt me-1"></i>' . lang(array('string' => 'Invoice an Order')) . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="erp_export.php?entity=invoices"><i class="bi bi-box-arrow-up me-1"></i>' . lang('Export') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="erp_aging.php"><i class="bi bi-hourglass-split me-1"></i>' . lang('Aging report') . '</a>
+                ' . ((function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_ready()) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_invoice_recurrences.php"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Repeating invoices') . '</a>' : '') . '
                 ' . $output_bulk_buttons . '
                 <div class="pg-toolbar-grow"></div>
                 ' . $output_edoc_menu . '
@@ -448,12 +448,12 @@ pg_page_shell([
             </nav>
             ' . $output_filter_note . '
             ' . ($edoc_bulk ? '<form id="erp_edoc_bulk" method="post" action="' . h($self_url) . '">' . get_token_field() : '') . '
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none;">
                         <thead>
                             <tr>
-                                ' . ($edoc_bulk ? '<th class="noVis"><input class="form-check-input" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>' : '') . '
+                                ' . ($edoc_bulk ? '<th class="noVis"><input class="check" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>' : '') . '
                                 <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
                                 <th>' . lang('Document Number') . '</th>
                                 <th>' . lang('Date') . '</th>

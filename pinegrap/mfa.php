@@ -214,13 +214,13 @@ $form_action = h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/mfa.php');
 $hidden = get_token_field() . '<input type="hidden" name="send_to" value="' . h($send_to) . '"/>';
 
 $messages = ($error !== '')
-    ? '<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h($error) . '</div>'
+    ? '<div class="alert theme-danger" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h($error) . '</div>'
     : '';
 
-$cancel_button = '<button type="submit" name="pg_mfa_action" value="cancel" class="btn btn-outline-secondary w-100 mt-2" formnovalidate="formnovalidate">' . h(lang('Cancel')) . '</button>';
+$cancel_button = '<button type="submit" name="pg_mfa_action" value="cancel" class="btn btn-outline theme-secondary w-100 mt-3" formnovalidate="formnovalidate">' . h(lang('Cancel')) . '</button>';
 
 $code_input =
-    '<div class="mb-3">
+    '<div class="mb-5">
         <label for="mfa_code" class="form-label">' . h(lang('Code')) . '</label>
         <input type="text" id="mfa_code" name="code" class="form-control form-control-lg" required="required" inputmode="numeric" autocomplete="one-time-code" autofocus="autofocus" spellcheck="false" maxlength="20"/>
     </div>';
@@ -231,12 +231,12 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
     $codes_text = implode("\n", $pending['codes']);
 
     $body =
-        '<p class="text-muted mb-3">' . h(lang('Each code signs you in once if you lose your phone. Keep them somewhere safe; they are not shown again.')) . '</p>
-        <pre class="border rounded p-3 mb-3 text-center fs-5" style="letter-spacing: .08em;">' . h($codes_text) . '</pre>
-        <p class="mb-4"><a class="btn btn-sm btn-outline-secondary" download="recovery-codes.txt" href="data:text/plain;charset=utf-8,' . h(rawurlencode($codes_text . "\n")) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download')) . '</a></p>
+        '<p class="fg-secondary mb-5">' . h(lang('Each code signs you in once if you lose your phone. Keep them somewhere safe; they are not shown again.')) . '</p>
+        <pre class="border rounded-4 p-5 mb-5 text-center fs-lg" style="letter-spacing: .08em;">' . h($codes_text) . '</pre>
+        <p class="mb-7"><a class="btn btn-sm btn-outline theme-secondary" download="recovery-codes.txt" href="data:text/plain;charset=utf-8,' . h(rawurlencode($codes_text . "\n")) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download')) . '</a></p>
         <form name="mfa_codes" action="' . $form_action . '" method="post">
             ' . $hidden . '
-            <button type="submit" name="pg_mfa_action" value="setup_done" class="btn btn-primary w-100">' . h(lang('I have saved them, continue')) . '</button>
+            <button type="submit" name="pg_mfa_action" value="setup_done" class="btn btn-solid theme-primary w-100">' . h(lang('I have saved them, continue')) . '</button>
         </form>';
 
 } elseif ($mode === 'setup') {
@@ -251,24 +251,24 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
     $qr = pg_qr_svg($key_uri, 208, array('label' => lang('QR code for the authenticator app'), 'class' => 'd-block'));
 
     $key_intro = ($qr !== '')
-        ? '<p class="mb-2">' . h(lang('Scan the QR code with your authenticator app (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>
-        <div class="text-center mb-3"><div class="d-inline-block bg-white border rounded p-2">' . $qr . '</div></div>
-        <p class="mb-2">' . h(lang('If you cannot scan it, add the key by hand:')) . '</p>'
-        : '<p class="mb-2">' . h(lang('Add the key to your authenticator app by hand (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>';
+        ? '<p class="mb-3">' . h(lang('Scan the QR code with your authenticator app (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>
+        <div class="text-center mb-5"><div class="d-inline-block bg-white border rounded-4 p-3">' . $qr . '</div></div>
+        <p class="mb-3">' . h(lang('If you cannot scan it, add the key by hand:')) . '</p>'
+        : '<p class="mb-3">' . h(lang('Add the key to your authenticator app by hand (Google Authenticator, Aegis, 1Password, Microsoft Authenticator), then enter the code it shows.')) . '</p>';
 
     $body =
-        '<p class="text-muted mb-3">' . h(lang('Your account must use two-step verification: after your password, a code from an authenticator app on your phone.')) . '</p>
+        '<p class="fg-secondary mb-5">' . h(lang('Your account must use two-step verification: after your password, a code from an authenticator app on your phone.')) . '</p>
         ' . $key_intro . '
-        <p class="mb-2"><code id="mfa_key" class="fs-5 user-select-all">' . h(pg_mfa_format_secret($secret)) . '</code></p>
-        <div class="input-group input-group-sm mb-4">
+        <p class="mb-3"><code id="mfa_key" class="fs-lg user-select-all">' . h(pg_mfa_format_secret($secret)) . '</code></p>
+        <div class="input-group input-group-sm mb-7">
             <input type="text" id="mfa_uri" class="form-control" readonly="readonly" value="' . h($key_uri) . '" aria-label="' . h(lang('Key link')) . '"/>
-            <button type="button" class="btn btn-outline-secondary" id="mfa_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+            <button type="button" class="btn btn-outline theme-secondary" id="mfa_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
         </div>
         ' . $messages . '
         <form name="mfa_setup" action="' . $form_action . '" method="post" autocomplete="off">
             ' . $hidden . '
             ' . $code_input . '
-            <button type="submit" name="pg_mfa_action" value="setup_confirm" class="btn btn-primary w-100">' . h(lang('Continue')) . '</button>
+            <button type="submit" name="pg_mfa_action" value="setup_confirm" class="btn btn-solid theme-primary w-100">' . h(lang('Continue')) . '</button>
             ' . $cancel_button . '
         </form>
         <script>
@@ -298,16 +298,16 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
 
     if (pg_mfa_has_passkey($user_id)) {
         $passkey_block =
-            ($totp_on ? '' : '<div id="mfa_passkey_unsupported" class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h(lang('Your browser could not use a passkey here.')) . '</div>') . '
+            ($totp_on ? '' : '<div id="mfa_passkey_unsupported" class="alert theme-warning" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h(lang('Your browser could not use a passkey here.')) . '</div>') . '
             <div id="mfa_passkey" class="d-none">
                 <form name="mfa_passkey" action="' . $form_action . '" method="post">
                     ' . $hidden . '
                     <input type="hidden" name="pg_mfa_action" value="passkey"/>
                     <input type="hidden" name="credential" value=""/>
-                    <button type="button" id="mfa_passkey_button" class="btn btn-primary w-100"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Use a passkey')) . '</button>
+                    <button type="button" id="mfa_passkey_button" class="btn btn-solid theme-primary w-100"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Use a passkey')) . '</button>
                 </form>
-                <div id="mfa_passkey_error" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
-                ' . ($totp_on ? '<p class="text-center text-muted small my-3">' . h(lang('or enter a code')) . '</p>' : '') . '
+                <div id="mfa_passkey_error" class="alert theme-danger mt-5 mb-0 d-none" role="alert"></div>
+                ' . ($totp_on ? '<p class="text-center fg-secondary small my-5">' . h(lang('or enter a code')) . '</p>' : '') . '
             </div>
             <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_passkey.js?v=' . (int) @filemtime(dirname(__FILE__) . '/assets/js/pg_passkey.js') . '"></script>
             <script>
@@ -349,7 +349,7 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
 
     if (!$totp_on) {
         $body =
-            '<p class="text-muted mb-3">' . h(lang('Use one of your passkeys to finish signing in.')) . '</p>
+            '<p class="fg-secondary mb-5">' . h(lang('Use one of your passkeys to finish signing in.')) . '</p>
             ' . $messages . '
             ' . $passkey_block . '
             <form name="mfa_cancel" action="' . $form_action . '" method="post">
@@ -358,24 +358,24 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
             </form>';
     } else {
         $body =
-            '<p class="text-muted mb-3">' . h(lang('Enter the 6-digit code from your authenticator app, or one of your recovery codes.')) . '</p>
-            ' . (pg_mfa_available() ? '' : '<div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h(lang('The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.')) . '</div>') . '
+            '<p class="fg-secondary mb-5">' . h(lang('Enter the 6-digit code from your authenticator app, or one of your recovery codes.')) . '</p>
+            ' . (pg_mfa_available() ? '' : '<div class="alert theme-warning" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h(lang('The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.')) . '</div>') . '
             ' . $messages . '
             ' . $passkey_block . '
             <form name="mfa_verify" action="' . $form_action . '" method="post" autocomplete="off">
                 ' . $hidden . '
                 ' . $code_input . '
-                <button type="submit" name="pg_mfa_action" value="verify" class="btn btn-primary w-100">' . h(lang('Verify')) . '</button>
+                <button type="submit" name="pg_mfa_action" value="verify" class="btn btn-solid theme-primary w-100">' . h(lang('Verify')) . '</button>
                 ' . $cancel_button . '
             </form>';
     }
 }
 
 echo output_header_secure(array('title' => $title))
-    . '<main class="container py-4 py-md-5">
+    . '<main class="container py-7 md:py-12">
         <div class="card mx-auto shadow-sm" style="max-width: 28rem;">
-            <div class="card-body p-4">
-                <h1 class="h4 mb-3"><i class="bi bi-shield-lock me-2" aria-hidden="true"></i>' . h($title) . '</h1>
+            <div class="card-body p-7">
+                <h1 class="h4 mb-5"><i class="bi bi-shield-lock me-3" aria-hidden="true"></i>' . h($title) . '</h1>
                 ' . $body . '
             </div>
         </div>

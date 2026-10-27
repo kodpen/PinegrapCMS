@@ -796,7 +796,7 @@
 
         if (!products.length) {
             var empty = document.createElement('span');
-            empty.className = 'dropdown-item-text text-body-secondary small';
+            empty.className = 'menu-text fg-secondary small';
             empty.textContent = textNoResults;
             menu.appendChild(empty);
         }
@@ -804,7 +804,7 @@
         products.forEach(function (product) {
             var item = document.createElement('button');
             item.type = 'button';
-            item.className = 'dropdown-item text-truncate no-submit';
+            item.className = 'menu-item text-truncate no-submit';
 
             var name = document.createElement('span');
             name.textContent = product.name;
@@ -812,26 +812,26 @@
 
             if (product.sku && product.sku !== product.name) {
                 var sku = document.createElement('span');
-                sku.className = 'text-body-secondary small ms-2';
+                sku.className = 'fg-secondary small ms-3';
                 sku.textContent = product.sku;
                 item.appendChild(sku);
             }
 
             var price = document.createElement('span');
-            price.className = 'text-body-secondary small ms-2';
+            price.className = 'fg-secondary small ms-3';
             price.textContent = formatPrice(product.price);
             item.appendChild(price);
 
             if (product.stock !== null && product.stock !== undefined) {
                 item.appendChild(product.stock > 0
-                    ? badge(fill(texts.stock, product.stock), 'text-bg-light border')
-                    : badge(texts.outOfStock, 'text-bg-warning'));
+                    ? badge(fill(texts.stock, product.stock), 'bg-1 fg-body border')
+                    : badge(texts.outOfStock, 'theme-warning'));
             }
             if (product.enabled === false && texts.disabled) {
-                item.appendChild(badge(texts.disabled, 'text-bg-secondary'));
+                item.appendChild(badge(texts.disabled, 'theme-secondary'));
             }
             if (product.offer && !isPurchase()) {
-                item.appendChild(badge('\u2212' + trimNumber(Number(product.offer.rate).toFixed(3)) + '%', 'text-bg-success'));
+                item.appendChild(badge('\u2212' + trimNumber(Number(product.offer.rate).toFixed(3)) + '%', 'theme-success'));
             }
 
             item.addEventListener('click', function () {

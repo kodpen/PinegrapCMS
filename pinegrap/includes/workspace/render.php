@@ -751,7 +751,7 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
                 $who = ($state !== null) ? '<span class="ws-check-who">' . h($state['name'] . ' · ' . $state['at']) . '</span>' : '';
 
                 $list .= '<li class="ws-check' . ($checked ? ' ws-checked' : '') . '"><label>'
-                    . '<input type="checkbox" class="form-check-input" data-ws-check="' . $item . '"' . ($checked ? ' checked' : '') . ($can_check ? '' : ' disabled') . '>'
+                    . '<input type="checkbox" class="check" data-ws-check="' . $item . '"' . ($checked ? ' checked' : '') . ($can_check ? '' : ' disabled') . '>'
                     . '<span class="ws-check-text">' . ws_render_inline(trim($match[2]), $refs) . '</span></label>' . $who . '</li>';
 
                 $item++;
