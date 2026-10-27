@@ -66,14 +66,15 @@ function file_withheld_test_section($source, $start)
 function test_file_withheld_is_asked_by_the_file_doors()
 {
 	$explorer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php')
-		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/archives.php');
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/archives.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_zip.php');
 
 	$doors = array(
 		"case 'explorer_file_get':"                 => 'file_get_contents(',
 		"case 'explorer_file_save':"                => '@rename(',
 		"case 'explorer_rename':"                   => '@rename(',
 		"case 'explorer_paste':"                    => '@copy(',
-		"case 'explorer_zip_create':"               => '->addFile(',
+		'function pg_explorer_handle_zip_create(' => '->addFile(',
 		'function pg_explorer_copy_folder('         => '@copy(',
 		'function pg_explorer_zip_add_folder('      => '->addFile('
 	);
